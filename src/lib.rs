@@ -1,0 +1,125 @@
+use geo::{Distance, Haversine, Point};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use rayon::prelude::*;
+
+#[pyfunction]
+fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+    let p1 = Point::new(lon1, lat1);
+    let p2 = Point::new(lon2, lat2);
+    Haversine.distance(p1, p2) / 1000.0
+}
+
+#[pyfunction]
+fn jump_lengths_km(latitudes: Vec<f64>, longitudes: Vec<f64>) -> PyResult<Vec<f64>> {
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    if latitudes.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Zip coordinates together into a single slice of pairs for easier windowing
+    let coords: Vec<(f64, f64)> = latitudes
+        .into_iter()
+        .zip(longitudes.into_iter())
+        .collect();
+
+    // Use par_windows to process segments in parallel
+    let lengths: Vec<f64> = coords
+        .par_windows(2)
+        .map(|window| {
+            let (lat1, lon1) = window[0];
+            let (lat2, lon2) = window[1];
+            haversine_km(lat1, lon1, lat2, lon2)
+        })
+        .collect();
+
+    Ok(lengths)
+}
+
+/// Compute the radius of gyration (in km) for a single user's trajectory.
+///
+/// Accepts a list of (lat, lng) pairs. Returns the RMS Haversine distance
+/// from each point to the center of mass (mean lat/lng).
+///
+/// Returns 0.0 for empty or single-point trajectories.
+#[pyfunction]
+fn radius_of_gyration_km(coords: Vec<(f64, f64)>) -> PyResult<f64> {
+    Ok(rog_for_slice(&coords))
+}
+
+/// Compute radius of gyration for a contiguous slice of coordinates.
+fn rog_for_slice(coords: &[(f64, f64)]) -> f64 {
+    let n = coords.len();
+    if n == 0 {
+        return 0.0;
+    }
+
+    // Center of mass: arithmetic mean of lat and lng
+    let (lat_sum, lng_sum) = coords.iter().fold((0.0f64, 0.0f64), |(ls, ns), &(lat, lng)| {
+        (ls + lat, ns + lng)
+    });
+    let cm_lat = lat_sum / n as f64;
+    let cm_lng = lng_sum / n as f64;
+    let cm = Point::new(cm_lng, cm_lat);
+
+    // RMS distance from center of mass
+    let sum_sq: f64 = coords
+        .iter()
+        .map(|&(lat, lng)| {
+            let p = Point::new(lng, lat);
+            let d = Haversine.distance(p, cm) / 1000.0;
+            d * d
+        })
+        .sum();
+
+    (sum_sq / n as f64).sqrt()
+}
+
+/// Batch version: compute radius of gyration for all users in one call.
+///
+/// Accepts the full sorted latitude and longitude arrays, plus a list of
+/// (start, end) index ranges — one range per user, in any order.
+/// Returns one RoG value per range in the same order.
+///
+/// This eliminates the per-user Python↔Rust boundary crossing overhead when
+/// there are many users.
+#[pyfunction]
+fn radius_of_gyration_batch_km(
+    latitudes: Vec<f64>,
+    longitudes: Vec<f64>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    // Interleave into (lat, lng) pairs for cache-friendly access
+    let coords: Vec<(f64, f64)> = latitudes
+        .into_iter()
+        .zip(longitudes.into_iter())
+        .collect();
+
+    // Process each user's range in parallel
+    let results: Vec<f64> = ranges
+        .par_iter()
+        .map(|&(start, end)| rog_for_slice(&coords[start..end]))
+        .collect();
+
+    Ok(results)
+}
+
+#[pymodule]
+fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(haversine_km, m)?)?;
+    m.add_function(wrap_pyfunction!(jump_lengths_km, m)?)?;
+    m.add_function(wrap_pyfunction!(radius_of_gyration_km, m)?)?;
+    m.add_function(wrap_pyfunction!(radius_of_gyration_batch_km, m)?)?;
+    Ok(())
+}

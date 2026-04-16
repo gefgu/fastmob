@@ -1,0 +1,37 @@
+[build-system]
+requires = ["maturin>=1.13,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "skmob2"
+requires-python = ">=3.8"
+dependencies = [
+    "narwhals>=1.0",
+    "pandas>=1.5",
+]
+
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-benchmark",
+    "polars",
+    "tqdm",
+]
+dev-skmob = [
+    "scikit-mobility",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "bench_*.py"]
+
+[tool.maturin]
+module-name = "skmob2._core"
+python-source = "."
