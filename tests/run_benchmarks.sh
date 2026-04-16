@@ -24,5 +24,6 @@ if [ ! -f ".venv/bin/activate" ]; then
 fi
 
 source .venv/bin/activate
+maturin develop
 
 pytest tests/benchmarks/ -v "$@"

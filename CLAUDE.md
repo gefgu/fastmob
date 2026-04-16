@@ -81,7 +81,7 @@ bash tests/run_benchmarks.sh --benchmark-save=baseline
 pytest-benchmark compare baseline 0001
 ```
 
-Benchmarks are parametrized over three dataset sizes (1k / 10k / 100k rows) and run both `skmob` and `skmob2` side by side. The Brightkite check-in dataset (~100k rows) is downloaded on first run and cached to `tests/shared/data/`.
+Benchmarks are parametrized over three dataset sizes (1k / 10k / 100k / 1M / 4M rows) and run both `skmob` and `skmob2` side by side. The Brightkite check-in dataset (~4M rows) is downloaded on first run and cached to `tests/shared/data/`.
 
 ## Narwhals API notes
 
@@ -109,3 +109,9 @@ If a user-ID column is absent, the entire dataframe is treated as a single indiv
 3. Create the Python wrapper in `skmob2/measures/individual.py` (or a new file), following the pattern of `jump_lengths`.
 4. Re-export from `skmob2/measures/__init__.py` and `skmob2/__init__.py`.
 5. Add a correctness test in `tests/correctness/test_individual.py` and a benchmark in `tests/benchmarks/bench_individual.py`.
+
+
+# Project Structure
+
+- Each functionality should have its own small file, like jump lenghts belong to the jump_lenghts.py file. 
+- Each file should have a mirror in the test folder that tests its functionality.

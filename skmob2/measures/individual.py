@@ -1,211 +1,176 @@
+"""Individual-level mobility measures."""
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any
 
+import numpy as np
 import narwhals as nw
-from skmob2._core import jump_lengths_km, radius_of_gyration_km, radius_of_gyration_batch_km
+import pandas as pd
 
-_ROW_ORDER_COL = "__skmob2_row_order__"
+from ._common import _pick_existing_column
 
-
-def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str | None:
-    for candidate in candidates:
-        if candidate in columns:
-            return candidate
-    return None
+_USER_ID_CANDIDATES = ["user_id", "uid", "agent_id", "user", "ID"]
+_LOCATION_CANDIDATES = ["location_id", "area", "venueId", "location"]
+_DURATION_CANDIDATES = ["duration_steps", "duration_minutes", "duration"]
+_PURPOSE_CANDIDATES = ["purpose", "activity", "location_type"]
 
 
-def jump_lengths(traj: Any, show_progress: bool = True, merge: bool = False):
-    """Compute jump lengths (km) for each user in the trajectory.
+# ---------------------------------------------------------------------------
+# Intermittance and Degree of Return
+# ---------------------------------------------------------------------------
 
-    Parameters
-    ----------
-    traj
-        Trajectory data; must have columns for user ID, datetime, latitude, and longitude.
-    show_progress
-        Whether to display a progress bar during computation.
-    merge
-        If True, return a single list of all jump lengths; otherwise, return a dict mapping user IDs to their jump lengths.
+def intermittance_and_degree_of_return(
+    visits: Any,
+    user_id_col: str | None = None,
+    location_id_col: str | None = None,
+    duration_col: str | None = None,
+    purpose_col: str | None = None,
+    home_purposes: frozenset = frozenset({"HOME", "WORK"}),
+    combine_purpose_with_location: bool = True,
+) -> pd.DataFrame:
+    """Compute intermittancy and degree of return per user.
 
-    Returns
-    -------
-    dict[str, list[float]] | list[float]
-        Jump lengths in kilometers, either grouped by user or merged into a single list.
-    """
-    nw_df = nw.from_native(traj, eager_only=True).with_row_index(_ROW_ORDER_COL)
-
-    datetime_col = _pick_existing_column(
-        nw_df.columns, ["datetime", "timestamp", "time", "check-in_time"]
-    )
-    lat_col = _pick_existing_column(nw_df.columns, ["latitude", "lat"])
-    lng_col = _pick_existing_column(nw_df.columns, ["longitude", "lon", "lng"])
-    uid_col = _pick_existing_column(nw_df.columns, ["user_id", "uid", "user"])
-
-    if not all([datetime_col, lat_col, lng_col]):
-        missing = [
-            name
-            for name, col in zip(
-                ["datetime", "latitude", "longitude"],
-                [datetime_col, lat_col, lng_col],
-            )
-            if col is None
-        ]
-        raise ValueError(f"Missing required columns: {', '.join(missing)}")
-
-    # Sort by user and datetime to ensure correct jump length calculations
-    sort_cols = (
-        [uid_col, datetime_col, _ROW_ORDER_COL]
-        if uid_col
-        else [datetime_col, _ROW_ORDER_COL]
-    )
-    df = (
-        nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
-        .sort(*sort_cols)
-        .with_columns(
-            nw.col(lat_col).cast(nw.Float64), nw.col(lng_col).cast(nw.Float64)
-        )
-    )
-
-    lat_buffer = df.get_column(lat_col).to_numpy()
-    lon_buffer = df.get_column(lng_col).to_numpy()
-
-    if len(lat_buffer) < 2:
-        # Not enough points to compute jump lengths
-        return (
-            nw.from_dict({uid_col: [], "jump_lengths": []}).to_native()
-            if not merge
-            else []
-        )
-
-    flat_jump_lengths = jump_lengths_km(lat_buffer, lon_buffer)
-
-    # Pad with 0.0 at the start so the array length matches the dataframe.
-    # The jump at index `i` becomes the distance traveled from row `i-1` to row `i`.
-    padded_jump_lengths = [0.0] + flat_jump_lengths
-
-    if uid_col is None:
-        if merge:
-            return flat_jump_lengths
-        return nw.from_dict(
-            {"jump_lengths": [flat_jump_lengths]}, backend=df.implementation
-        ).to_native()
-
-    jumps_df = nw.from_dict(
-        {uid_col: df.get_column(uid_col), "jump_lengths": padded_jump_lengths},
-        backend=df.implementation,
-    )
-
-    # Mask out boundaries (identify where the jump bridged two different users)
-    jumps_df = jumps_df.with_columns(nw.col(uid_col).shift(1).alias("__uid_prev"))
-    valid_jumps_df = jumps_df.filter(nw.col(uid_col) == nw.col("__uid_prev"))
-
-    if merge:
-        return valid_jumps_df.get_column("jump_lengths").to_list()
-
-    jump_dict = {}
-    for keys, group in valid_jumps_df.group_by(uid_col):
-        jump_dict[keys[0]] = group.get_column("jump_lengths").to_list()
-
-    # Maintain original user order; users with only 1 point get an empty list
-    uid_values = df.select(uid_col).unique(maintain_order=True).get_column(uid_col).to_list()
-    jump_values = [jump_dict.get(uid, []) for uid in uid_values]
-
-    result = nw.from_dict(
-        {uid_col: uid_values, "jump_lengths": jump_values},
-        backend=df.implementation,
-    )
-
-    return result.to_native()
-
-
-def radius_of_gyration(traj: Any, show_progress: bool = True):
-    """Compute the radius of gyration (km) for each user in the trajectory.
-
-    The radius of gyration captures how far a user typically roams from their
-    center of mass.  Formally:
-
-        rg(u) = sqrt( mean_i( haversine(r_i, r_cm)^2 ) )
-
-    where ``r_cm`` is the arithmetic mean of the user's lat/lng coordinates.
+    For each user, partitions the visit sequence into alternating blocks of
+    *explorations* (new places) and *returns* (revisits or home/work visits).
+    Then computes summary statistics over those blocks.
 
     Parameters
     ----------
-    traj
-        Trajectory data; must have columns for datetime, latitude, and
-        longitude.  A user-ID column is optional; when absent the entire
-        dataframe is treated as a single individual.
-    show_progress
-        Accepted for API compatibility with skmob; currently unused.
+    visits:
+        A DataFrame (any Narwhals-compatible backend) with visit rows.
+    user_id_col:
+        Column name for the user ID. Auto-detected if None.
+    location_id_col:
+        Column name for the location ID. Auto-detected if None.
+    duration_col:
+        Column name for the visit duration (numeric). Auto-detected if None.
+    purpose_col:
+        Column name for the activity/purpose type. Auto-detected if None.
+    home_purposes:
+        Set of purpose strings treated as "known places" unconditionally
+        (independent of visit history). Default ``{"HOME", "WORK"}``.
+    combine_purpose_with_location:
+        When True (default), the effective location key is
+        ``str(location_id) + "_" + str(purpose)``. When False, just
+        ``str(location_id)``.
 
     Returns
     -------
-    DataFrame
-        One row per user with columns ``[uid_col, "radius_of_gyration"]``.
-        The returned backend matches the input backend.
+    pd.DataFrame
+        One row per user with columns
+        ``[user_id_col, "intermittency", "degree_of_return", "mean_return",
+        "mean_exploration"]``.
     """
-    nw_df = nw.from_native(traj, eager_only=True).with_row_index(_ROW_ORDER_COL)
+    nw_df = nw.from_native(visits, eager_only=True)
 
-    datetime_col = _pick_existing_column(
-        nw_df.columns, ["datetime", "timestamp", "time", "check-in_time"]
-    )
-    lat_col = _pick_existing_column(nw_df.columns, ["latitude", "lat"])
-    lng_col = _pick_existing_column(nw_df.columns, ["longitude", "lon", "lng"])
-    uid_col = _pick_existing_column(nw_df.columns, ["user_id", "uid", "user"])
+    if user_id_col is None:
+        user_id_col = _pick_existing_column(nw_df.columns, _USER_ID_CANDIDATES)
+    if location_id_col is None:
+        location_id_col = _pick_existing_column(nw_df.columns, _LOCATION_CANDIDATES)
+    if duration_col is None:
+        duration_col = _pick_existing_column(nw_df.columns, _DURATION_CANDIDATES)
+    if purpose_col is None:
+        purpose_col = _pick_existing_column(nw_df.columns, _PURPOSE_CANDIDATES)
 
-    if not all([datetime_col, lat_col, lng_col]):
-        missing = [
-            name
-            for name, col in zip(
-                ["datetime", "latitude", "longitude"],
-                [datetime_col, lat_col, lng_col],
+    # Convert to pandas for the row-iterative inner loop
+    df = nw_df.to_native()
+    if not isinstance(df, pd.DataFrame):
+        df = pd.DataFrame(df)
+
+    results = []
+    if user_id_col:
+        user_order = df[user_id_col].unique().tolist()
+        for uid, group in df.groupby(user_id_col, sort=False):
+            metrics = _compute_single_idr(
+                group, location_id_col, duration_col, purpose_col,
+                home_purposes, combine_purpose_with_location,
             )
-            if col is None
-        ]
-        raise ValueError(f"Missing required columns: {', '.join(missing)}")
-
-    sort_cols = (
-        [uid_col, datetime_col, _ROW_ORDER_COL]
-        if uid_col
-        else [datetime_col, _ROW_ORDER_COL]
-    )
-    df = (
-        nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
-        .sort(*sort_cols)
-        .with_columns(
-            nw.col(lat_col).cast(nw.Float64), nw.col(lng_col).cast(nw.Float64)
+            results.append((uid, *metrics))
+        out_df = pd.DataFrame(
+            results,
+            columns=[user_id_col, "intermittency", "degree_of_return",
+                     "mean_return", "mean_exploration"],
         )
-    )
+        # Preserve original user order
+        out_df[user_id_col] = pd.Categorical(out_df[user_id_col], categories=user_order, ordered=True)
+        out_df = out_df.sort_values(user_id_col).reset_index(drop=True)
+        out_df[user_id_col] = out_df[user_id_col].astype(df[user_id_col].dtype)
+    else:
+        metrics = _compute_single_idr(
+            df, location_id_col, duration_col, purpose_col,
+            home_purposes, combine_purpose_with_location,
+        )
+        out_df = pd.DataFrame(
+            [metrics],
+            columns=["intermittency", "degree_of_return", "mean_return", "mean_exploration"],
+        )
 
-    lats_full = df.get_column(lat_col).to_list()
-    lngs_full = df.get_column(lng_col).to_list()
+    return out_df
 
-    if uid_col is None:
-        rg = radius_of_gyration_km(list(zip(lats_full, lngs_full)))
-        return nw.from_dict(
-            {"radius_of_gyration": [rg]}, backend=df.implementation
-        ).to_native()
 
-    # Build per-user index ranges from the already-sorted dataframe.
-    # The df is sorted by [uid_col, datetime_col] so same-uid rows are contiguous.
-    uid_series = df.get_column(uid_col).to_list()
-    uid_values: list = []
-    ranges: list = []
-    i = 0
-    n = len(uid_series)
-    while i < n:
-        current_uid = uid_series[i]
-        start = i
-        while i < n and uid_series[i] == current_uid:
-            i += 1
-        uid_values.append(current_uid)
-        ranges.append((start, i))
+def _compute_single_idr(
+    user_visits: pd.DataFrame,
+    location_id_col: str | None,
+    duration_col: str | None,
+    purpose_col: str | None,
+    home_purposes: frozenset,
+    combine_purpose_with_location: bool,
+) -> tuple[float, float, float, float]:
+    """Inner loop for a single user's intermittance computation."""
+    successive_explorations: list[float] = []
+    successive_returns: list[float] = []
+    visited_locations: set = set()
 
-    # Single Rust call covering all users — eliminates per-user boundary crossings
-    rog_values = radius_of_gyration_batch_km(lats_full, lngs_full, ranges)
+    current_exploration: float = 0.0
+    current_return: float = 0.0
 
-    result = nw.from_dict(
-        {uid_col: uid_values, "radius_of_gyration": rog_values},
-        backend=df.implementation,
-    )
+    for _, row in user_visits.iterrows():
+        # Build location key
+        loc = str(row[location_id_col]) if location_id_col else "unknown"
+        purpose = str(row[purpose_col]) if purpose_col else None
 
-    return result.to_native()
+        if combine_purpose_with_location and purpose is not None:
+            location_key = loc + "_" + purpose
+        else:
+            location_key = loc
+
+        duration = float(row[duration_col]) if duration_col else 1.0
+
+        # Determine if this is a known place (return) or new place (exploration)
+        is_known_place = location_key in visited_locations or (
+            purpose is not None and purpose in home_purposes
+        )
+
+        visited_locations.add(location_key)
+
+        if is_known_place:
+            current_return += duration
+            if current_exploration > 0:
+                successive_explorations.append(current_exploration)
+                current_exploration = 0.0
+        else:
+            current_exploration += duration
+            if current_return > 0:
+                successive_returns.append(current_return)
+                current_return = 0.0
+
+    if current_exploration > 0:
+        successive_explorations.append(current_exploration)
+    if current_return > 0:
+        successive_returns.append(current_return)
+
+    if not successive_explorations:
+        successive_explorations.append(0.0)
+    if not successive_returns:
+        successive_returns.append(0.0)
+
+    mean_exploration = float(np.mean(successive_explorations))
+    mean_return = float(np.mean(successive_returns))
+
+    intermittency = mean_exploration + mean_return
+    if mean_exploration == 0.0:
+        degree_of_return = np.pi / 2
+    else:
+        degree_of_return = np.arctan(mean_return / mean_exploration)
+
+    return intermittency, float(degree_of_return), mean_return, mean_exploration

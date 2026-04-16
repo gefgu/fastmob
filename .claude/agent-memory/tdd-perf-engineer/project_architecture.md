@@ -27,6 +27,18 @@ type: project
 - Expected values: compute by calling the Rust kernel directly (not reimplementing Haversine in Python) to avoid floating-point formula mismatch (~1e-5 km)
 - Haversine tolerance between geo crate and skmob's Python: up to 0.02 km for long trajectories
 
+## Non-Rust measure pattern (pure Python measures)
+- Pure Python measures live in `skmob2/measures/<name>.py` — each feature gets its own file
+- Use `nw.from_native(visits, eager_only=True)` then convert to pandas for row-iterative loops
+- `_pick_existing_column` for all auto-detection; keep all candidate lists local in the module
+- For OD/pivot output: use narwhals for filtering/groupby, then convert to pandas for `pivot_table`
+- For transition matrices / inner loops: convert to pandas early, iterate with `iterrows()` or `groupby()`
+- Candidate lists in TDD migration: user_id→["user_id","uid","agent_id","user","ID"], location→["location_id","area","venueId","location"], duration→["duration_steps","duration_minutes","duration"], purpose→["purpose","activity","location_type"]
+- od.py: `od_matrix` returns plain `pd.DataFrame` (not Narwhals-wrapped); `od_metrics_per_area` takes the wide pivot as input
+- mobility_laws.py: guard `_scipy_curve_fit = None` when scipy absent; raise `ImportError` with install hint
+- activity.py: `day_filter` requires `day_col` resolvable — raise `ValueError` with "day_col" in message
+- individual.py: `intermittance_and_degree_of_return` — each user group runs `_compute_single_idr`; `degree_of_return = pi/2` when `mean_exploration == 0`
+
 ## Build/test workflow
 - `maturin develop` after any Rust change (rebuilds .so in place)
 - `bash tests/run_correctness.sh` — correctness only

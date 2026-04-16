@@ -18,11 +18,14 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+fitting = ["scipy"]
+diversity = ["pydivsufsort"]
 dev = [
     "pytest",
     "pytest-benchmark",
     "polars",
     "tqdm",
+    "scipy",
 ]
 dev-skmob = [
     "scikit-mobility",
