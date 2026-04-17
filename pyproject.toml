@@ -30,6 +30,10 @@ dev = [
 dev-skmob = [
     "scikit-mobility",
 ]
+dev-movingpandas = [
+    "movingpandas",
+    "geopandas",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -7,12 +7,13 @@ import numpy as np
 import narwhals as nw
 import pandas as pd
 
-from ._common import _pick_existing_column
-
-_USER_ID_CANDIDATES = ["user_id", "uid", "agent_id", "user", "ID"]
-_LOCATION_CANDIDATES = ["location_id", "area", "venueId", "location"]
-_DURATION_CANDIDATES = ["duration_steps", "duration_minutes", "duration"]
-_PURPOSE_CANDIDATES = ["purpose", "activity", "location_type"]
+from ._common import (
+    _pick_existing_column,
+    USER_ID_CANDIDATES,
+    LOCATION_CANDIDATES,
+    DURATION_CANDIDATES,
+    PURPOSE_CANDIDATES,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -64,13 +65,13 @@ def intermittance_and_degree_of_return(
     nw_df = nw.from_native(visits, eager_only=True)
 
     if user_id_col is None:
-        user_id_col = _pick_existing_column(nw_df.columns, _USER_ID_CANDIDATES)
+        user_id_col = _pick_existing_column(nw_df.columns, USER_ID_CANDIDATES)
     if location_id_col is None:
-        location_id_col = _pick_existing_column(nw_df.columns, _LOCATION_CANDIDATES)
+        location_id_col = _pick_existing_column(nw_df.columns, LOCATION_CANDIDATES)
     if duration_col is None:
-        duration_col = _pick_existing_column(nw_df.columns, _DURATION_CANDIDATES)
+        duration_col = _pick_existing_column(nw_df.columns, DURATION_CANDIDATES)
     if purpose_col is None:
-        purpose_col = _pick_existing_column(nw_df.columns, _PURPOSE_CANDIDATES)
+        purpose_col = _pick_existing_column(nw_df.columns, PURPOSE_CANDIDATES)
 
     # Convert to pandas for the row-iterative inner loop
     df = nw_df.to_native()

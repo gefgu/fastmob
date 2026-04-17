@@ -4,25 +4,45 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import pandas as pd
 
-from ._common import _pick_existing_column
+from ._common import _pick_existing_column, ORIGIN_CANDIDATES, DEST_CANDIDATES
 
-# Candidate column names for auto-detection
-_ORIGIN_CANDIDATES = ["origin_area", "Origin_Area", "area_o", "ORIGIN_AREA"]
-_DEST_CANDIDATES = ["destination_area", "Dest_Area", "area_d", "DESTINATION_AREA"]
+
+def _detect_od_columns(
+    nw_df: nw.DataFrame,
+    origin_col: str | None,
+    destination_col: str | None,
+) -> tuple[str, str]:
+    if origin_col is None:
+        origin_col = _pick_existing_column(nw_df.columns, ORIGIN_CANDIDATES)
+    if destination_col is None:
+        destination_col = _pick_existing_column(nw_df.columns, DEST_CANDIDATES)
+
+    if origin_col is None or destination_col is None:
+        missing = []
+        if origin_col is None:
+            missing.append(f"origin (looked for: {ORIGIN_CANDIDATES})")
+        if destination_col is None:
+            missing.append(f"destination (looked for: {DEST_CANDIDATES})")
+        raise ValueError(
+            f"Could not auto-detect column(s): {', '.join(missing)}. "
+            f"Available columns: {nw_df.columns}. "
+            f"Pass the column name(s) explicitly."
+        )
+
+    return origin_col, destination_col
 
 
 def od_matrix(
     trips: Any,
     origin_col: str | None = None,
     destination_col: str | None = None,
-) -> pd.DataFrame:
+) -> Any:
     """Compute an Origin-Destination matrix from a trips DataFrame.
 
-    Groups trips by (origin, destination) pairs and counts them. The result
-    is a wide-format pandas DataFrame with origins as index, destinations as
-    columns, and counts as values (missing pairs filled with 0).
+    Groups trips by (origin, destination) pairs and counts them. Returns a
+    long-format DataFrame with one row per observed origin-destination pair,
+    in the same backend as the input.
 
     Parameters
     ----------
@@ -36,110 +56,98 @@ def od_matrix(
 
     Returns
     -------
-    pd.DataFrame
-        Wide-format OD matrix (plain pandas DataFrame).
+    DataFrame
+        Long-format OD counts with columns
+        ``[origin_col, destination_col, "count"]``,
+        returned in the caller's original backend.
     """
     nw_df = nw.from_native(trips, eager_only=True)
+    origin_col, destination_col = _detect_od_columns(nw_df, origin_col, destination_col)
 
-    if origin_col is None:
-        origin_col = _pick_existing_column(nw_df.columns, _ORIGIN_CANDIDATES)
-    if destination_col is None:
-        destination_col = _pick_existing_column(nw_df.columns, _DEST_CANDIDATES)
-
-    if origin_col is None or destination_col is None:
-        missing = []
-        if origin_col is None:
-            missing.append("origin")
-        if destination_col is None:
-            missing.append("destination")
-        raise ValueError(
-            f"Could not auto-detect columns: {', '.join(missing)}. "
-            f"Available columns: {nw_df.columns}"
-        )
-
-    # Drop rows where either column is null
-    filtered = nw_df.drop_nulls(subset=[origin_col, destination_col])
-
-    # Group by (origin, destination) and count
     counts = (
-        filtered.select([origin_col, destination_col])
+        nw_df.drop_nulls(subset=[origin_col, destination_col])
+        .select([origin_col, destination_col])
         .group_by([origin_col, destination_col])
         .agg(nw.len().alias("count"))
+        .sort([origin_col, destination_col])
     )
 
-    # Convert to pandas for the pivot
-    counts_pd = counts.to_native() if isinstance(counts.to_native(), pd.DataFrame) else pd.DataFrame(counts.to_native())
-
-    # Pivot to wide format
-    od = counts_pd.pivot_table(
-        index=origin_col,
-        columns=destination_col,
-        values="count",
-        fill_value=0,
-        aggfunc="sum",
-    )
-    od.index.name = None
-    od.columns.name = None
-
-    return od
+    return counts.to_native()
 
 
 def od_metrics_per_area(
-    od_df: pd.DataFrame,
-    origin_col: str = "origin_area",
-    dest_col: str = "destination_area",
-) -> pd.DataFrame:
-    """Compute per-area mobility metrics from a wide OD matrix.
+    od_df: Any,
+    origin_col: str | None = None,
+    destination_col: str | None = None,
+) -> Any:
+    """Compute per-area mobility metrics from a long-format OD DataFrame.
 
-    Takes the wide OD matrix returned by :func:`od_matrix` and computes
-    MoveInside, InComing, OutGoing, and Total flows for each area.
+    Takes the long-format OD DataFrame returned by :func:`od_matrix` and
+    computes MoveInside, InComing, OutGoing, and Total flows for each area.
 
     Parameters
     ----------
     od_df:
-        Wide OD matrix as returned by :func:`od_matrix` (origin as index,
-        destination as columns, counts as values).
+        Long-format OD DataFrame as returned by :func:`od_matrix`, with
+        columns ``[origin_col, destination_col, "count"]``.
     origin_col:
-        Unused — kept for API compatibility with mobility_analysis adapters.
-    dest_col:
-        Unused — kept for API compatibility with mobility_analysis adapters.
+        Column name for the origin area. Auto-detected if None.
+    destination_col:
+        Column name for the destination area. Auto-detected if None.
 
     Returns
     -------
-    pd.DataFrame
+    DataFrame
         DataFrame with columns ``["area_code", "MoveInside", "InComing",
-        "OutGoing", "Total"]``, one row per area.
+        "OutGoing", "Total"]``, one row per area, returned in the caller's
+        original backend.
     """
-    areas = sorted(set(od_df.index.tolist()) | set(od_df.columns.tolist()))
-    records = []
+    nw_df = nw.from_native(od_df, eager_only=True)
+    origin_col, destination_col = _detect_od_columns(nw_df, origin_col, destination_col)
 
-    for area in areas:
-        # MoveInside: diagonal (self-loop count), 0 if area not in both axis
-        move_inside = 0
-        if area in od_df.index and area in od_df.columns:
-            move_inside = int(od_df.loc[area, area])
+    all_areas = nw.concat([
+        nw_df.select(nw.col(origin_col).alias("area_code")),
+        nw_df.select(nw.col(destination_col).alias("area_code")),
+    ]).unique().sort("area_code")
 
-        # OutGoing: sum of row for this area, excluding the diagonal
-        if area in od_df.index:
-            row = od_df.loc[area]
-            out_going = int(row.sum()) - (int(row[area]) if area in row.index else 0)
-        else:
-            out_going = 0
+    self_loops = (
+        nw_df.filter(nw.col(origin_col) == nw.col(destination_col))
+        .group_by(origin_col)
+        .agg(nw.col("count").sum().alias("MoveInside"))
+        .rename({origin_col: "area_code"})
+    )
 
-        # InComing: sum of column for this area, excluding the diagonal
-        if area in od_df.columns:
-            col = od_df[area]
-            in_coming = int(col.sum()) - (int(col[area]) if area in col.index else 0)
-        else:
-            in_coming = 0
+    cross_trips = nw_df.filter(nw.col(origin_col) != nw.col(destination_col))
 
-        total = move_inside + in_coming + out_going
-        records.append({
-            "area_code": area,
-            "MoveInside": move_inside,
-            "InComing": in_coming,
-            "OutGoing": out_going,
-            "Total": total,
-        })
+    outgoing = (
+        cross_trips
+        .group_by(origin_col)
+        .agg(nw.col("count").sum().alias("OutGoing"))
+        .rename({origin_col: "area_code"})
+    )
 
-    return pd.DataFrame(records, columns=["area_code", "MoveInside", "InComing", "OutGoing", "Total"])
+    incoming = (
+        cross_trips
+        .group_by(destination_col)
+        .agg(nw.col("count").sum().alias("InComing"))
+        .rename({destination_col: "area_code"})
+    )
+
+    result = (
+        all_areas
+        .join(self_loops, on="area_code", how="left")
+        .join(outgoing, on="area_code", how="left")
+        .join(incoming, on="area_code", how="left")
+        .with_columns(
+            nw.col("MoveInside").fill_null(0).cast(nw.Int64),
+            nw.col("OutGoing").fill_null(0).cast(nw.Int64),
+            nw.col("InComing").fill_null(0).cast(nw.Int64),
+        )
+        .with_columns(
+            (nw.col("MoveInside") + nw.col("InComing") + nw.col("OutGoing")).alias("Total")
+        )
+        .select(["area_code", "MoveInside", "InComing", "OutGoing", "Total"])
+        .sort("area_code")
+    )
+
+    return result.to_native()

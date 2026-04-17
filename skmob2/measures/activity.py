@@ -7,15 +7,16 @@ import numpy as np
 import narwhals as nw
 import pandas as pd
 
-from ._common import _pick_existing_column
+from ._common import (
+    _pick_existing_column,
+    ACTIVITY_CANDIDATES,
+    USER_ID_CANDIDATES,
+    TIMESTAMP_CANDIDATES,
+    DAY_CANDIDATES,
+)
 
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday"}
 _WEEKENDS = {"saturday", "sunday"}
-
-_ACTIVITY_CANDIDATES = ["purpose", "activity", "act", "location_type"]
-_USER_ID_CANDIDATES = ["user_id", "uid", "agent_id", "user"]
-_TIMESTAMP_CANDIDATES = ["start_timestamp", "timestamp", "datetime", "local_timestamp"]
-_DAY_CANDIDATES = ["day_of_week", "day", "weekday"]
 
 
 def activity_transition_matrix(
@@ -64,18 +65,18 @@ def activity_transition_matrix(
     nw_df = nw.from_native(visits, eager_only=True)
 
     if activity_col is None:
-        activity_col = _pick_existing_column(nw_df.columns, _ACTIVITY_CANDIDATES)
+        activity_col = _pick_existing_column(nw_df.columns, ACTIVITY_CANDIDATES)
     if user_id_col is None:
-        user_id_col = _pick_existing_column(nw_df.columns, _USER_ID_CANDIDATES)
+        user_id_col = _pick_existing_column(nw_df.columns, USER_ID_CANDIDATES)
     if timestamp_col is None:
-        timestamp_col = _pick_existing_column(nw_df.columns, _TIMESTAMP_CANDIDATES)
+        timestamp_col = _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
     if day_col is None:
-        day_col = _pick_existing_column(nw_df.columns, _DAY_CANDIDATES)
+        day_col = _pick_existing_column(nw_df.columns, DAY_CANDIDATES)
 
     if day_filter is not None and day_col is None:
         raise ValueError(
             "day_col could not be auto-detected and is required when day_filter is set. "
-            f"Tried: {_DAY_CANDIDATES}. Available columns: {nw_df.columns}"
+            f"Tried: {DAY_CANDIDATES}. Available columns: {nw_df.columns}"
         )
 
     # Convert to pandas for the row-iterative transition-counting loop

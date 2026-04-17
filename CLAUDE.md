@@ -85,7 +85,9 @@ Benchmarks are parametrized over three dataset sizes (1k / 10k / 100k / 1M / 4M 
 
 ## Narwhals API notes
 
-When writing new measures, use `nw.from_native(traj, eager_only=True)` to accept any dataframe. Use `.to_native()` to return a result in the caller's original backend. Never import pandas/polars directly in measure code — go through Narwhals.
+When writing new measures, use `nw.from_native(traj, eager_only=True)` to accept any dataframe. Use `.to_native()` to return a result in the caller's original backend.
+
+**Narwhals-only enforcement:** `import pandas` and `import polars` are **forbidden** inside any file under `skmob2/`. All DataFrame operations must go through the Narwhals API. This keeps every function backend-agnostic (pandas, polars, and any future backend). Dropping this guarantee for a specific function requires **explicit written approval from the user**; it is not a judgment call.
 
 Preserve `backend=nw_df.implementation` when constructing output dicts so the result backend matches the input.
 

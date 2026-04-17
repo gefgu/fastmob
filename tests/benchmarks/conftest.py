@@ -85,3 +85,109 @@ def bench_slice_polars(brightkite_raw, dataset_size):
 
     pandas_slice = brightkite_raw.head(dataset_size).copy()
     return polars.from_pandas(pandas_slice)
+
+
+# ---------------------------------------------------------------------------
+# movingpandas fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def brightkite_tc(brightkite_raw):
+    """Build a movingpandas TrajectoryCollection from the full Brightkite dataset.
+
+    Constructs Shapely Point geometries from longitude/latitude columns, sets the
+    datetime index, and groups trajectories by the "user" column. Construction is
+    session-scoped because building a GeoDataFrame + TrajectoryCollection at 4M rows
+    is expensive (10–60 s) and must not be included in benchmark timing.
+
+    @usedBy bench_slice_movingpandas_1k, bench_slice_movingpandas_10k,
+             bench_slice_movingpandas_100k, bench_slice_movingpandas_1M,
+             bench_slice_movingpandas_4M
+    """
+    mpd = pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    gpd = pytest.importorskip("geopandas", reason="Install geopandas to run this benchmark")
+    import pandas as pd
+
+    df = brightkite_raw.copy()
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
+        crs="EPSG:4326",
+    )
+    gdf["check-in_time"] = pd.to_datetime(gdf["check-in_time"])
+    gdf = gdf.set_index("check-in_time")
+    return mpd.TrajectoryCollection(gdf, traj_id_col="user")
+
+
+@pytest.fixture
+def bench_slice_movingpandas_1k(brightkite_tc):
+    """TrajectoryCollection slice of the first 1 000 rows.
+
+    @usedBy test_jump_lengths_movingpandas (1k tier),
+             test_radius_of_gyration_movingpandas (1k tier)
+    """
+    mpd = pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    point_gdf = brightkite_tc.to_point_gdf().head(1_000)
+    return mpd.TrajectoryCollection(point_gdf, traj_id_col="user")
+
+
+@pytest.fixture
+def bench_slice_movingpandas_10k(brightkite_tc):
+    """TrajectoryCollection slice of the first 10 000 rows.
+
+    @usedBy test_jump_lengths_movingpandas (10k tier),
+             test_radius_of_gyration_movingpandas (10k tier)
+    """
+    mpd = pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    point_gdf = brightkite_tc.to_point_gdf().head(10_000)
+    return mpd.TrajectoryCollection(point_gdf, traj_id_col="user")
+
+
+@pytest.fixture
+def bench_slice_movingpandas_100k(brightkite_tc):
+    """TrajectoryCollection slice of the first 100 000 rows.
+
+    @usedBy test_jump_lengths_movingpandas (100k tier),
+             test_radius_of_gyration_movingpandas (100k tier)
+    """
+    mpd = pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    point_gdf = brightkite_tc.to_point_gdf().head(100_000)
+    return mpd.TrajectoryCollection(point_gdf, traj_id_col="user")
+
+
+@pytest.fixture
+def bench_slice_movingpandas_1M(brightkite_tc):
+    """TrajectoryCollection slice of the first 1 000 000 rows.
+
+    @usedBy test_jump_lengths_movingpandas (1M tier),
+             test_radius_of_gyration_movingpandas (1M tier)
+    """
+    mpd = pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    point_gdf = brightkite_tc.to_point_gdf().head(1_000_000)
+    return mpd.TrajectoryCollection(point_gdf, traj_id_col="user")
+
+
+@pytest.fixture
+def bench_slice_movingpandas_4M(brightkite_tc):
+    """TrajectoryCollection slice of the first 4 000 000 rows (full dataset).
+
+    @usedBy test_jump_lengths_movingpandas (4M tier),
+             test_radius_of_gyration_movingpandas (4M tier)
+    """
+    mpd = pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    point_gdf = brightkite_tc.to_point_gdf().head(4_000_000)
+    return mpd.TrajectoryCollection(point_gdf, traj_id_col="user")
+
+
+# ---------------------------------------------------------------------------
+# Marker registration
+# ---------------------------------------------------------------------------
+
+
+def pytest_configure(config):
+    """Register the movingpandas pytest marker for benchmark tests."""
+    config.addinivalue_line(
+        "markers",
+        "movingpandas: benchmarks that require the movingpandas package to be installed",
+    )

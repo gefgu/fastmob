@@ -34,3 +34,38 @@ def test_jump_lengths_skmob2_polars(benchmark, bench_slice_polars):
     from skmob2.measures.jump_lengths import jump_lengths as skmob2_jl
 
     benchmark(skmob2_jl, bench_slice_polars, show_progress=False, merge=False)
+
+
+@pytest.mark.movingpandas
+def test_jump_lengths_movingpandas_1k(benchmark, bench_slice_movingpandas_1k):
+    """Benchmark movingpandas TrajectoryCollection.add_distance (km) on 1k rows."""
+    pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    benchmark(bench_slice_movingpandas_1k.add_distance, overwrite=True, units="km")
+
+
+@pytest.mark.movingpandas
+def test_jump_lengths_movingpandas_10k(benchmark, bench_slice_movingpandas_10k):
+    """Benchmark movingpandas TrajectoryCollection.add_distance (km) on 10k rows."""
+    pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    benchmark(bench_slice_movingpandas_10k.add_distance, overwrite=True, units="km")
+
+
+@pytest.mark.movingpandas
+def test_jump_lengths_movingpandas_100k(benchmark, bench_slice_movingpandas_100k):
+    """Benchmark movingpandas TrajectoryCollection.add_distance (km) on 100k rows."""
+    pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    benchmark(bench_slice_movingpandas_100k.add_distance, overwrite=True, units="km")
+
+
+@pytest.mark.movingpandas
+def test_jump_lengths_movingpandas_1M(benchmark, bench_slice_movingpandas_1M):
+    """Benchmark movingpandas TrajectoryCollection.add_distance (km) on 1M rows."""
+    pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    benchmark(bench_slice_movingpandas_1M.add_distance, overwrite=True, units="km")
+
+
+@pytest.mark.movingpandas
+def test_jump_lengths_movingpandas_4M(benchmark, bench_slice_movingpandas_4M):
+    """Benchmark movingpandas TrajectoryCollection.add_distance (km) on 4M rows."""
+    pytest.importorskip("movingpandas", reason="Install movingpandas to run this benchmark")
+    benchmark(bench_slice_movingpandas_4M.add_distance, overwrite=True, units="km")

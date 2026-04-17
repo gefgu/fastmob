@@ -5,58 +5,71 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import jump_lengths_km
 
-from ._common import _ROW_ORDER_COL, _pick_existing_column
+from ._common import _prepare_trajectory
 
 
-def jump_lengths(traj: Any, show_progress: bool = True, merge: bool = False):
+def jump_lengths(
+    traj: Any,
+    show_progress: bool = True,
+    merge: bool = False,
+    *,
+    datetime_col: str | None = None,
+    lat_col: str | None = None,
+    lng_col: str | None = None,
+    uid_col: str | None = None,
+):
     """Compute jump lengths (km) for each user in the trajectory.
+
+    A *jump length* is the Haversine distance (in km) between consecutive
+    GPS fixes for the same user, sorted by datetime.
 
     Parameters
     ----------
-    traj
-        Trajectory data; must have columns for user ID, datetime, latitude, and longitude.
-    show_progress
-        Whether to display a progress bar during computation.
-    merge
-        If True, return a single list of all jump lengths; otherwise, return a dict mapping user IDs to their jump lengths.
+    traj:
+        Trajectory data; any Narwhals-compatible eager dataframe (pandas,
+        polars, …).  Must have columns for datetime, latitude, and longitude.
+        A user-ID column is optional; when absent the whole frame is treated
+        as a single individual.
+    show_progress:
+        Accepted for API compatibility with skmob; currently unused.
+    merge:
+        When True, return a flat ``list[float]`` of all jump lengths across
+        all users.  When False (default), return a per-user dataframe.
+    datetime_col:
+        Explicit datetime column name.  Auto-detected when None.
+    lat_col:
+        Explicit latitude column name.  Auto-detected when None.
+    lng_col:
+        Explicit longitude column name.  Auto-detected when None.
+    uid_col:
+        Explicit user-ID column name.  Auto-detected when None.
 
     Returns
     -------
-    dict[str, list[float]] | list[float]
-        Jump lengths in kilometers, either grouped by user or merged into a single list.
+    DataFrame | list[float]
+        When ``merge=False``: a dataframe with columns ``[uid_col, "jump_lengths"]``
+        where each row holds a list of jump lengths for one user.  The returned
+        backend matches the input backend.
+        When ``merge=True``: a flat ``list[float]`` of all jump lengths.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures import jump_lengths
+    >>> df = pd.DataFrame({
+    ...     "uid": ["a", "a", "a"],
+    ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+    ...     "lat": [0.0, 1.0, 2.0],
+    ...     "lng": [0.0, 0.0, 0.0],
+    ... })
+    >>> jump_lengths(df)
     """
-    nw_df = nw.from_native(traj, eager_only=True).with_row_index(_ROW_ORDER_COL)
-
-    datetime_col = _pick_existing_column(
-        nw_df.columns, ["datetime", "timestamp", "time", "check-in_time"]
-    )
-    lat_col = _pick_existing_column(nw_df.columns, ["latitude", "lat"])
-    lng_col = _pick_existing_column(nw_df.columns, ["longitude", "lon", "lng"])
-    uid_col = _pick_existing_column(nw_df.columns, ["user_id", "uid", "user"])
-
-    if not all([datetime_col, lat_col, lng_col]):
-        missing = [
-            name
-            for name, col in zip(
-                ["datetime", "latitude", "longitude"],
-                [datetime_col, lat_col, lng_col],
-            )
-            if col is None
-        ]
-        raise ValueError(f"Missing required columns: {', '.join(missing)}")
-
-    # Sort by user and datetime to ensure correct jump length calculations
-    sort_cols = (
-        [uid_col, datetime_col, _ROW_ORDER_COL]
-        if uid_col
-        else [datetime_col, _ROW_ORDER_COL]
-    )
-    df = (
-        nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
-        .sort(*sort_cols)
-        .with_columns(
-            nw.col(lat_col).cast(nw.Float64), nw.col(lng_col).cast(nw.Float64)
-        )
+    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
+        traj,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
     )
 
     lat_buffer = df.get_column(lat_col).to_numpy()
