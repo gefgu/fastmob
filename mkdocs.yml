@@ -1,0 +1,46 @@
+site_name: skmob2
+site_description: High-performance mobility analysis library with a Rust-accelerated core and backend-agnostic DataFrame API.
+site_url: https://gefgu.github.io/skmob2/
+repo_url: https://github.com/gefgu/skmob2
+repo_name: gefgu/skmob2
+
+docs_dir: docs/src
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: false
+            show_root_heading: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Reference:
+    - Overview: api/index.md
+    - Measures: api/measures.md
