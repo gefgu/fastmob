@@ -34,6 +34,11 @@ dev-movingpandas = [
     "movingpandas",
     "geopandas",
 ]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
