@@ -62,6 +62,9 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# MkDocs build output
+site/
+
 # PyCharm
 .idea/
 
