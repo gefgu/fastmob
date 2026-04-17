@@ -65,6 +65,21 @@ bash tests/run_correctness.sh -m skmob
 pytest tests/correctness/ -m "not skmob"
 ```
 
+## Documentation
+
+```bash
+# Install docs toolchain
+uv sync --extra docs
+
+# Serve locally with live reload
+uv run mkdocs serve
+
+# Build and validate (strict mode, zero warnings)
+uv run mkdocs build --strict
+```
+
+MkDocs source pages live in `docs/src/`. The `docs/features/` subdirectory holds internal planning files and is intentionally excluded from the published site nav.
+
 ## Benchmarks
 
 ```bash
