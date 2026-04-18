@@ -23,6 +23,7 @@ USER_ID_CANDIDATES: list[str] = ["user_id", "uid", "agent_id", "user", "ID"]
 LOCATION_CANDIDATES: list[str] = ["location_id", "area", "venueId", "location"]
 DURATION_CANDIDATES: list[str] = ["duration_steps", "duration_minutes", "duration"]
 PURPOSE_CANDIDATES: list[str] = ["purpose", "activity", "location_type"]
+LOCATION_TYPE_CANDIDATES: list[str] = ["location_type", "purpose", "activity"]
 ORIGIN_CANDIDATES: list[str] = ["origin_area", "Origin_Area", "area_o", "ORIGIN_AREA"]
 DEST_CANDIDATES: list[str] = ["destination_area", "Dest_Area", "area_d", "DESTINATION_AREA"]
 

@@ -26,6 +26,7 @@ dev = [
     "polars",
     "tqdm",
     "scipy",
+    "pydivsufsort",
 ]
 dev-skmob = [
     "scikit-mobility",
@@ -47,3 +48,4 @@ python_files = ["test_*.py", "bench_*.py"]
 [tool.maturin]
 module-name = "skmob2._core"
 python-source = "."
+
