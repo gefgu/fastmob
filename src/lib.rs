@@ -115,11 +115,130 @@ fn radius_of_gyration_batch_km(
     Ok(results)
 }
 
+/// Compute the maximum consecutive-pair Haversine distance (km) for each user range.
+///
+/// Accepts the full sorted latitude and longitude arrays, plus a list of
+/// (start, end) index ranges — one range per user, in any order.
+/// Returns one maximum-jump-length value per range in the same order.
+///
+/// A range with fewer than 2 points returns 0.0.
+///
+/// Called from skmob2/measures/spatial/maximum_distance.py.
+#[pyfunction]
+fn maximum_distance_batch_km(
+    latitudes: Vec<f64>,
+    longitudes: Vec<f64>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    let coords: Vec<(f64, f64)> = latitudes
+        .into_iter()
+        .zip(longitudes.into_iter())
+        .collect();
+
+    let results: Vec<f64> = ranges
+        .par_iter()
+        .map(|&(start, end)| {
+            let slice = &coords[start..end];
+            if slice.len() < 2 {
+                return 0.0;
+            }
+            slice
+                .windows(2)
+                .map(|w| haversine_km(w[0].0, w[0].1, w[1].0, w[1].1))
+                .fold(0.0f64, f64::max)
+        })
+        .collect();
+
+    Ok(results)
+}
+
+/// Compute the total trajectory length (km) — sum of consecutive Haversine distances —
+/// for each user range.
+///
+/// Accepts the full sorted latitude and longitude arrays, plus a list of
+/// (start, end) index ranges — one range per user, in any order.
+/// Returns one total-distance value per range in the same order.
+///
+/// A range with fewer than 2 points returns 0.0.
+///
+/// Called from skmob2/measures/spatial/distance_straight_line.py.
+#[pyfunction]
+fn total_distance_batch_km(
+    latitudes: Vec<f64>,
+    longitudes: Vec<f64>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    let coords: Vec<(f64, f64)> = latitudes
+        .into_iter()
+        .zip(longitudes.into_iter())
+        .collect();
+
+    let results: Vec<f64> = ranges
+        .par_iter()
+        .map(|&(start, end)| {
+            let slice = &coords[start..end];
+            if slice.len() < 2 {
+                return 0.0;
+            }
+            slice
+                .windows(2)
+                .map(|w| haversine_km(w[0].0, w[0].1, w[1].0, w[1].1))
+                .sum()
+        })
+        .collect();
+
+    Ok(results)
+}
+
+/// Compute consecutive waiting times (seconds) for each user range.
+///
+/// Accepts a flat array of Unix timestamps in seconds (one entry per trajectory
+/// row, sorted by [uid, datetime]), plus a list of (start, end) ranges — one
+/// per user.  Returns a Vec of Vecs: each inner Vec contains the time differences
+/// between consecutive points for one user.
+///
+/// A range with fewer than 2 points returns an empty inner Vec.
+///
+/// Called from skmob2/measures/spatial/waiting_times.py.
+#[pyfunction]
+fn waiting_times_seconds(
+    timestamps_s: Vec<f64>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<Vec<f64>>> {
+    let results: Vec<Vec<f64>> = ranges
+        .par_iter()
+        .map(|&(start, end)| {
+            let slice = &timestamps_s[start..end];
+            if slice.len() < 2 {
+                return Vec::new();
+            }
+            slice.windows(2).map(|w| w[1] - w[0]).collect()
+        })
+        .collect();
+
+    Ok(results)
+}
+
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(haversine_km, m)?)?;
     m.add_function(wrap_pyfunction!(jump_lengths_km, m)?)?;
     m.add_function(wrap_pyfunction!(radius_of_gyration_km, m)?)?;
     m.add_function(wrap_pyfunction!(radius_of_gyration_batch_km, m)?)?;
+    m.add_function(wrap_pyfunction!(maximum_distance_batch_km, m)?)?;
+    m.add_function(wrap_pyfunction!(total_distance_batch_km, m)?)?;
+    m.add_function(wrap_pyfunction!(waiting_times_seconds, m)?)?;
     Ok(())
 }

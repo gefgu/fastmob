@@ -2,6 +2,9 @@ from .measures.spatial.jump_lengths import jump_lengths
 from .measures.spatial.radius_of_gyration import radius_of_gyration
 from .measures.spatial.number_of_visits import number_of_visits
 from .measures.spatial.number_of_locations import number_of_locations
+from .measures.spatial.maximum_distance import maximum_distance
+from .measures.spatial.distance_straight_line import distance_straight_line
+from .measures.spatial.waiting_times import waiting_times
 from .measures.flows.od import od_matrix, od_metrics_per_area
 from .measures.fitting.mobility_laws import log_truncated_powerlaw, fit_values_to_truncated_powerlaw
 from .measures.visits.activity import activity_transition_matrix
@@ -25,6 +28,9 @@ __all__ = [
     "radius_of_gyration",
     "number_of_visits",
     "number_of_locations",
+    "maximum_distance",
+    "distance_straight_line",
+    "waiting_times",
     "od_matrix",
     "od_metrics_per_area",
     "log_truncated_powerlaw",
