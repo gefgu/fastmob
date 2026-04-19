@@ -34,6 +34,19 @@ from .measures.visits.motifs import (
     discover_daily_motifs_from_agents,
     classify_or_add_motif_v2,
 )
+from .measures.evaluation import (
+    common_part_of_commuters,
+    common_part_of_links,
+    r_squared,
+    mse,
+    rmse,
+    nrmse,
+    information_gain,
+    kullback_leibler_divergence,
+    pearson_correlation,
+    spearman_correlation,
+    max_error,
+)
 
 __all__ = [
     "jump_lengths",
@@ -73,4 +86,15 @@ __all__ = [
     "get_motif_library",
     "discover_daily_motifs_from_agents",
     "classify_or_add_motif_v2",
+    "common_part_of_commuters",
+    "common_part_of_links",
+    "r_squared",
+    "mse",
+    "rmse",
+    "nrmse",
+    "information_gain",
+    "kullback_leibler_divergence",
+    "pearson_correlation",
+    "spearman_correlation",
+    "max_error",
 ]
