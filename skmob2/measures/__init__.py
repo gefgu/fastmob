@@ -20,6 +20,8 @@ from .visits.random_entropy import random_entropy
 from .visits.uncorrelated_entropy import uncorrelated_entropy
 from .visits.recency_rank import recency_rank
 from .visits.frequency_rank import frequency_rank
+from .visits.individual_mobility_network import individual_mobility_network
+from .visits.location_frequency import location_frequency
 from .visits.motifs import (
     get_motif_library,
     discover_daily_motifs_from_agents,
@@ -52,6 +54,8 @@ __all__ = [
     "uncorrelated_entropy",
     "recency_rank",
     "frequency_rank",
+    "individual_mobility_network",
+    "location_frequency",
     "get_motif_library",
     "discover_daily_motifs_from_agents",
     "classify_or_add_motif_v2",
