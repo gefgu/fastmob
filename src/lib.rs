@@ -354,6 +354,23 @@ fn waiting_times_seconds(
     Ok(results)
 }
 
+/// Compute the squared Haversine distance (km²) from a reference point to a
+/// destination point.
+///
+/// This is a thin convenience wrapper around ``haversine_km`` that returns
+/// ``d²`` directly, avoiding a Python-side squaring step when building the
+/// mean-square-displacement statistic.
+///
+/// Parameters: lat/lng of the reference point (r0) and the destination (rt),
+/// all in decimal degrees.
+///
+/// Called from skmob2/measures/flows/mean_square_displacement.py.
+#[pyfunction]
+fn square_displacement_km2(lat0: f64, lng0: f64, lat_t: f64, lng_t: f64) -> f64 {
+    let d = haversine_km(lat0, lng0, lat_t, lng_t);
+    d * d
+}
+
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(haversine_km, m)?)?;
@@ -365,5 +382,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(k_radius_of_gyration_km, m)?)?;
     m.add_function(wrap_pyfunction!(max_distance_from_point_batch_km, m)?)?;
     m.add_function(wrap_pyfunction!(waiting_times_seconds, m)?)?;
+    m.add_function(wrap_pyfunction!(square_displacement_km2, m)?)?;
     Ok(())
 }
