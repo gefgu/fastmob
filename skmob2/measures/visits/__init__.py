@@ -11,6 +11,8 @@ from .motifs import (
 )
 from .random_entropy import random_entropy
 from .uncorrelated_entropy import uncorrelated_entropy
+from .recency_rank import recency_rank
+from .frequency_rank import frequency_rank
 
 __all__ = [
     "activity_transition_matrix",
@@ -25,4 +27,6 @@ __all__ = [
     "classify_or_add_motif_v2",
     "random_entropy",
     "uncorrelated_entropy",
+    "recency_rank",
+    "frequency_rank",
 ]

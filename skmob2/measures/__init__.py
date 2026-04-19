@@ -12,6 +12,8 @@ from .visits.diversity import diversity
 from .visits.entropy import trajectory_entropy, trajectory_predictability
 from .visits.random_entropy import random_entropy
 from .visits.uncorrelated_entropy import uncorrelated_entropy
+from .visits.recency_rank import recency_rank
+from .visits.frequency_rank import frequency_rank
 from .visits.motifs import (
     get_motif_library,
     discover_daily_motifs_from_agents,
@@ -36,6 +38,8 @@ __all__ = [
     "trajectory_predictability",
     "random_entropy",
     "uncorrelated_entropy",
+    "recency_rank",
+    "frequency_rank",
     "get_motif_library",
     "discover_daily_motifs_from_agents",
     "classify_or_add_motif_v2",
