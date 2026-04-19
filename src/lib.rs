@@ -202,6 +202,129 @@ fn total_distance_batch_km(
     Ok(results)
 }
 
+/// Compute the k-radius of gyration (km) for a single user's top-k locations.
+///
+/// Accepts the unique location coordinates (lat, lng) and the corresponding
+/// visit counts for a single user, together with k (the number of top-visited
+/// locations to consider).  Returns the weighted RoG over the top-k locations.
+///
+/// The weighted RoG is defined as:
+///   sqrt( sum_i(w_i * haversine(r_i, r_cm)^2) / sum_i(w_i) )
+/// where the sum is over the top-k locations sorted by visit count descending,
+/// and r_cm is the weighted center of mass (weighted mean lat/lng).
+///
+/// Returns 0.0 when coords is empty or k == 0.
+///
+/// Called from skmob2/measures/spatial/k_radius_of_gyration.py.
+#[pyfunction]
+fn k_radius_of_gyration_km(
+    coords: Vec<(f64, f64)>,
+    visit_counts: Vec<u64>,
+    k: usize,
+) -> PyResult<f64> {
+    if coords.len() != visit_counts.len() {
+        return Err(PyValueError::new_err(
+            "coords and visit_counts must have the same length",
+        ));
+    }
+
+    if coords.is_empty() || k == 0 {
+        return Ok(0.0);
+    }
+
+    // Pair each location with its visit count, sort descending by count, take top-k.
+    let mut pairs: Vec<((f64, f64), u64)> = coords
+        .into_iter()
+        .zip(visit_counts.into_iter())
+        .collect();
+    pairs.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+    let top_k = &pairs[..k.min(pairs.len())];
+
+    let total_weight: f64 = top_k.iter().map(|(_, w)| *w as f64).sum();
+    if total_weight == 0.0 {
+        return Ok(0.0);
+    }
+
+    // Weighted center of mass (arithmetic mean weighted by visit count).
+    let (lat_sum, lng_sum) = top_k.iter().fold((0.0f64, 0.0f64), |(ls, ns), &((lat, lng), w)| {
+        (ls + lat * w as f64, ns + lng * w as f64)
+    });
+    let cm_lat = lat_sum / total_weight;
+    let cm_lng = lng_sum / total_weight;
+    let cm = Point::new(cm_lng, cm_lat);
+
+    // Weighted RMS distance from center of mass.
+    let sum_sq: f64 = top_k
+        .iter()
+        .map(|&((lat, lng), w)| {
+            let p = Point::new(lng, lat);
+            let d = Haversine.distance(p, cm) / 1000.0;
+            w as f64 * d * d
+        })
+        .sum();
+
+    Ok((sum_sq / total_weight).sqrt())
+}
+
+/// Compute the maximum Haversine distance (km) from a fixed home point to any
+/// trajectory point, for each user.
+///
+/// Accepts a parallel list of home coordinates (one per user), the full sorted
+/// latitude/longitude arrays, and per-user (start, end) ranges.  Returns one
+/// max-distance value per user in the same order as ``ranges``.
+///
+/// A range with zero points returns 0.0.
+///
+/// Called from skmob2/measures/spatial/max_distance_from_home.py.
+#[pyfunction]
+fn max_distance_from_point_batch_km(
+    home_lats: Vec<f64>,
+    home_lngs: Vec<f64>,
+    latitudes: Vec<f64>,
+    longitudes: Vec<f64>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    if home_lats.len() != home_lngs.len() {
+        return Err(PyValueError::new_err(
+            "home_lats and home_lngs must have the same length",
+        ));
+    }
+    if home_lats.len() != ranges.len() {
+        return Err(PyValueError::new_err(
+            "home coordinates and ranges must have the same length",
+        ));
+    }
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    let coords: Vec<(f64, f64)> = latitudes
+        .into_iter()
+        .zip(longitudes.into_iter())
+        .collect();
+
+    let results: Vec<f64> = ranges
+        .par_iter()
+        .enumerate()
+        .map(|(i, &(start, end))| {
+            let slice = &coords[start..end];
+            if slice.is_empty() {
+                return 0.0;
+            }
+            let home_lat = home_lats[i];
+            let home_lng = home_lngs[i];
+            slice
+                .iter()
+                .map(|&(lat, lng)| haversine_km(home_lat, home_lng, lat, lng))
+                .fold(0.0f64, f64::max)
+        })
+        .collect();
+
+    Ok(results)
+}
+
 /// Compute consecutive waiting times (seconds) for each user range.
 ///
 /// Accepts a flat array of Unix timestamps in seconds (one entry per trajectory
@@ -239,6 +362,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(radius_of_gyration_batch_km, m)?)?;
     m.add_function(wrap_pyfunction!(maximum_distance_batch_km, m)?)?;
     m.add_function(wrap_pyfunction!(total_distance_batch_km, m)?)?;
+    m.add_function(wrap_pyfunction!(k_radius_of_gyration_km, m)?)?;
+    m.add_function(wrap_pyfunction!(max_distance_from_point_batch_km, m)?)?;
     m.add_function(wrap_pyfunction!(waiting_times_seconds, m)?)?;
     Ok(())
 }

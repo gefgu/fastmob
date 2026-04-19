@@ -1,0 +1,172 @@
+"""Correctness tests for skmob2/measures/spatial/k_radius_of_gyration.py."""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+# Pre-computed expected values for the synthetic 3-user fixture (5 pts each),
+# computed via the Rust kernel directly.
+EXPECTED_K2: dict[str, float] = {
+    "user_a": 55.59754011676645,
+    "user_b": 55.59754011676645,
+    "user_c": 0.3422542593102871,
+}
+
+EXPECTED_K3: dict[str, float] = {
+    "user_a": 90.79040282666378,
+    "user_b": 90.79040282666378,
+    "user_c": 0.6566571388235487,
+}
+
+
+def test_k_radius_of_gyration_known_values_k2_pandas(synthetic_tdf):
+    """k-RoG (k=2) on synthetic fixture (pandas backend), hardcoded expected values."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
+
+    result = k_radius_of_gyration(synthetic_tdf, k=2)
+    assert "k_radius_of_gyration" in result.columns
+
+    uid_col = next(c for c in ("uid", "user", "user_id") if c in result.columns)
+
+    for uid, expected in EXPECTED_K2.items():
+        row = result[result[uid_col] == uid]
+        assert len(row) == 1, f"Expected exactly one row for uid={uid!r}"
+        actual = float(row["k_radius_of_gyration"].iloc[0])
+        np.testing.assert_allclose(
+            actual, expected, rtol=1e-5, atol=1e-5,
+            err_msg=f"k-RoG (k=2) mismatch for uid={uid!r}",
+        )
+
+
+def test_k_radius_of_gyration_known_values_k3_pandas(synthetic_tdf):
+    """k-RoG (k=3) on synthetic fixture (pandas backend), hardcoded expected values."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
+
+    result = k_radius_of_gyration(synthetic_tdf, k=3)
+    assert "k_radius_of_gyration" in result.columns
+
+    uid_col = next(c for c in ("uid", "user", "user_id") if c in result.columns)
+
+    for uid, expected in EXPECTED_K3.items():
+        row = result[result[uid_col] == uid]
+        assert len(row) == 1, f"Expected exactly one row for uid={uid!r}"
+        actual = float(row["k_radius_of_gyration"].iloc[0])
+        np.testing.assert_allclose(
+            actual, expected, rtol=1e-5, atol=1e-5,
+            err_msg=f"k-RoG (k=3) mismatch for uid={uid!r}",
+        )
+
+
+def test_k_radius_of_gyration_no_uid_column():
+    """When uid column is absent the result has a single k-RoG value."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
+
+    # loc (0,0) visited twice, (1,0) once, (2,0) once => top-2 are (0,0) and (1,0)
+    df = pd.DataFrame({
+        "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
+        "lat": [0.0, 1.0, 0.0, 2.0],
+        "lng": [0.0, 0.0, 0.0, 0.0],
+    })
+    result = k_radius_of_gyration(df, k=2)
+    assert "k_radius_of_gyration" in result.columns
+    assert len(result) == 1
+    # Expected value computed directly via the Rust kernel
+    np.testing.assert_allclose(
+        float(result["k_radius_of_gyration"].iloc[0]),
+        52.4178635118089,
+        rtol=1e-5,
+        atol=1e-5,
+    )
+
+
+def test_k_radius_of_gyration_k_exceeds_locations():
+    """When k >= number of distinct locations, result equals regular RoG for those locations."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    # Only 2 distinct locations; k=10 should yield the same as using all locations
+    df = pd.DataFrame({
+        "uid": ["u1"] * 5,
+        "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
+        "lat": [0.0, 1.0, 0.0, 1.0, 0.0],
+        "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
+    })
+    result_k10 = k_radius_of_gyration(df, k=10)
+    uid_col = next(c for c in ("uid", "user", "user_id") if c in result_k10.columns)
+    val_k10 = float(result_k10[result_k10[uid_col] == "u1"]["k_radius_of_gyration"].iloc[0])
+
+    # k=2 equals k=10 when there are only 2 distinct locations
+    result_k2 = k_radius_of_gyration(df, k=2)
+    val_k2 = float(result_k2[result_k2[uid_col] == "u1"]["k_radius_of_gyration"].iloc[0])
+
+    np.testing.assert_allclose(val_k10, val_k2, rtol=1e-10, atol=1e-10)
+
+
+def test_k_radius_of_gyration_single_location():
+    """A user who visits only one location should have k-RoG = 0."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
+
+    df = pd.DataFrame({
+        "uid": ["u1"] * 3,
+        "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+        "lat": [10.0, 10.0, 10.0],
+        "lng": [50.0, 50.0, 50.0],
+    })
+    result = k_radius_of_gyration(df, k=2)
+    uid_col = next(c for c in ("uid", "user", "user_id") if c in result.columns)
+    val = float(result[result[uid_col] == "u1"]["k_radius_of_gyration"].iloc[0])
+    assert val == pytest.approx(0.0, abs=1e-10), "Single-location user must have k-RoG = 0"
+
+
+def test_k_radius_of_gyration_pandas_polars_agree(synthetic_tdf, synthetic_tdf_polars):
+    """Polars and pandas backends must produce identical k-RoG values."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("polars", reason="Polars not installed")
+    pytest.importorskip("pyarrow", reason="pyarrow required for polars.to_pandas()")
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
+
+    res_pd = k_radius_of_gyration(synthetic_tdf, k=2)
+    res_pl = k_radius_of_gyration(synthetic_tdf_polars, k=2).to_pandas()
+
+    uid_col = next(c for c in ("uid", "user", "user_id") if c in res_pd.columns)
+    for uid in ("user_a", "user_b", "user_c"):
+        val_pd = float(res_pd[res_pd[uid_col] == uid]["k_radius_of_gyration"].iloc[0])
+        val_pl = float(res_pl[res_pl[uid_col] == uid]["k_radius_of_gyration"].iloc[0])
+        np.testing.assert_allclose(
+            val_pd, val_pl, rtol=1e-12, atol=1e-12,
+            err_msg=f"pandas/polars disagree for uid={uid}",
+        )
+
+
+@pytest.mark.skmob
+def test_k_radius_of_gyration_matches_skmob(brightkite_skmob):
+    """skmob2 k-RoG must agree with skmob's reference implementation within rtol=1e-5."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob.measures.individual import k_radius_of_gyration as skmob_krg
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration as skmob2_krg
+
+    k = 2
+    skmob_result = skmob_krg(brightkite_skmob, k=k, show_progress=False)
+    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob2_result = skmob2_krg(skmob2_input, k=k)
+
+    skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)
+    skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
+
+    skmob_map = dict(zip(skmob_result[skmob_uid], skmob_result["k_radius_of_gyration"]))
+    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result["k_radius_of_gyration"]))
+
+    assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
+    for uid in skmob_map:
+        np.testing.assert_allclose(
+            skmob2_map[uid],
+            skmob_map[uid],
+            rtol=1e-5,
+            err_msg=f"k-RoG mismatch for uid={uid}",
+        )
