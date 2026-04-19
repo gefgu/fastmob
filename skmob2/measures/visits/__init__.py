@@ -15,6 +15,7 @@ from .recency_rank import recency_rank
 from .frequency_rank import frequency_rank
 from .individual_mobility_network import individual_mobility_network
 from .location_frequency import location_frequency
+from .real_entropy import real_entropy
 
 __all__ = [
     "activity_transition_matrix",
@@ -33,4 +34,5 @@ __all__ = [
     "frequency_rank",
     "individual_mobility_network",
     "location_frequency",
+    "real_entropy",
 ]
