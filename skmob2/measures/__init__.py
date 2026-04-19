@@ -9,6 +9,11 @@ from .spatial.waiting_times import waiting_times
 from .spatial.home_location import home_location
 from .spatial.max_distance_from_home import max_distance_from_home
 from .flows.od import od_matrix, od_metrics_per_area
+from .flows.random_location_entropy import random_location_entropy
+from .flows.uncorrelated_location_entropy import uncorrelated_location_entropy
+from .flows.visits_per_location import visits_per_location
+from .flows.homes_per_location import homes_per_location
+from .flows.visits_per_time_unit import visits_per_time_unit
 from .fitting.mobility_laws import log_truncated_powerlaw, fit_values_to_truncated_powerlaw
 from .visits.activity import activity_transition_matrix
 from .visits.intermittance import intermittance_and_degree_of_return
@@ -22,6 +27,7 @@ from .visits.recency_rank import recency_rank
 from .visits.frequency_rank import frequency_rank
 from .visits.individual_mobility_network import individual_mobility_network
 from .visits.location_frequency import location_frequency
+from .visits.real_entropy import real_entropy
 from .visits.motifs import (
     get_motif_library,
     discover_daily_motifs_from_agents,
@@ -41,6 +47,11 @@ __all__ = [
     "max_distance_from_home",
     "od_matrix",
     "od_metrics_per_area",
+    "random_location_entropy",
+    "uncorrelated_location_entropy",
+    "visits_per_location",
+    "homes_per_location",
+    "visits_per_time_unit",
     "log_truncated_powerlaw",
     "fit_values_to_truncated_powerlaw",
     "activity_transition_matrix",
@@ -56,6 +67,7 @@ __all__ = [
     "frequency_rank",
     "individual_mobility_network",
     "location_frequency",
+    "real_entropy",
     "get_motif_library",
     "discover_daily_motifs_from_agents",
     "classify_or_add_motif_v2",

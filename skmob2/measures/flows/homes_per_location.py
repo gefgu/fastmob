@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from typing import Any
+
+import narwhals as nw
+
+from ..spatial.home_location import home_location
+
+
+def homes_per_location(
+    traj: Any,
+    *,
+    start_night: int = 22,
+    end_night: int = 7,
+    datetime_col: str | None = None,
+    lat_col: str | None = None,
+    lng_col: str | None = None,
+    uid_col: str | None = None,
+) -> Any:
+    """Return the number of users whose home is at each distinct location.
+
+    Calls :func:`~skmob2.measures.spatial.home_location.home_location` to
+    assign a home ``(lat, lng)`` to every user, then groups and counts.
+
+    Parameters
+    ----------
+    traj:
+        Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
+        polars, …).  Must have datetime, latitude, and longitude columns.
+    start_night:
+        Hour (0–23) at which the nighttime window begins.  Default: 22.
+    end_night:
+        Hour (0–23) at which the nighttime window ends (exclusive).  Default: 7.
+    datetime_col:
+        Explicit datetime column name.  Auto-detected when None.
+    lat_col:
+        Explicit latitude column name.  Auto-detected when None.
+    lng_col:
+        Explicit longitude column name.  Auto-detected when None.
+    uid_col:
+        Explicit user-ID column name.  Auto-detected when None.
+
+    Returns
+    -------
+    DataFrame
+        One row per distinct home location with columns
+        ``[lat_col, lng_col, "n_homes"]``, sorted by descending count.
+        The returned backend matches the input backend.
+
+    @usedBy
+        skmob2.measures.flows.__init__, skmob2.measures.__init__,
+        skmob2.__init__ (re-exported as public API)
+    """
+    home_df = home_location(
+        traj,
+        start_night=start_night,
+        end_night=end_night,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+
+    nw_home = nw.from_native(home_df, eager_only=True)
+    backend = nw_home.implementation
+
+    # Detect which columns are lat/lng in the home result (same names as _prepare_trajectory returned).
+    lat_candidates = ["lat", "latitude"]
+    lng_candidates = ["lng", "lon", "longitude"]
+
+    cols = nw_home.columns
+    detected_lat = next((c for c in lat_candidates if c in cols), None)
+    detected_lng = next((c for c in lng_candidates if c in cols), None)
+
+    if detected_lat is None or detected_lng is None:
+        raise ValueError(
+            f"Could not detect lat/lng columns in home_location result. "
+            f"Columns: {cols}"
+        )
+
+    result = (
+        nw_home.select([detected_lat, detected_lng])
+        .group_by([detected_lat, detected_lng])
+        .agg(nw.len().alias("n_homes"))
+        .sort("n_homes", descending=True)
+    )
+
+    return result.to_native()
