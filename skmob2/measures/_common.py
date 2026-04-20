@@ -17,9 +17,9 @@ LNG_CANDIDATES: list[str] = ["lng", "lon", "longitude"]
 UID_CANDIDATES: list[str] = ["uid", "user", "user_id"]
 
 ACTIVITY_CANDIDATES: list[str] = ["purpose", "activity", "act", "location_type"]
-TIMESTAMP_CANDIDATES: list[str] = ["start_timestamp", "timestamp", "datetime", "local_timestamp"]
+TIMESTAMP_CANDIDATES: list[str] = ["start_timestamp", "timestamp", "datetime"]
 DAY_CANDIDATES: list[str] = ["day_of_week", "day", "weekday"]
-USER_ID_CANDIDATES: list[str] = ["user_id", "uid", "agent_id", "user", "ID"]
+USER_ID_CANDIDATES: list[str] = ["user_id", "uid", "agent_id", "user"]
 LOCATION_CANDIDATES: list[str] = ["location_id", "area", "venueId", "location"]
 DURATION_CANDIDATES: list[str] = ["duration_steps", "duration_minutes", "duration"]
 PURPOSE_CANDIDATES: list[str] = ["purpose", "activity", "location_type"]
@@ -131,12 +131,11 @@ def _prepare_trajectory(
     measures (jump lengths, radius of gyration, etc.).  It:
 
     1. Wraps the input in Narwhals (accepting any eager backend).
-    2. Attaches a stable row-order index for tie-breaking sorts.
-    3. Auto-detects column names (with optional overrides).
-    4. Drops nulls in the required coordinate/datetime columns.
-    5. Sorts by ``[uid, datetime, row_order]`` to ensure chronological order
-       within each user.
-    6. Casts lat/lng to ``Float64``.
+    2. Auto-detects column names (with optional overrides).
+    3. Drops nulls in the required coordinate/datetime columns.
+    4. Sorts by ``[uid, datetime]`` (with a stable row-order tiebreaker) to
+       ensure chronological order within each user.
+    5. Casts lat/lng to ``Float64``.
 
     Parameters
     ----------
@@ -189,6 +188,7 @@ def _prepare_trajectory(
             nw.col(lat_col).cast(nw.Float64),
             nw.col(lng_col).cast(nw.Float64),
         )
+        .drop(_ROW_ORDER_COL)
     )
 
     return df, datetime_col, lat_col, lng_col, uid_col

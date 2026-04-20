@@ -78,3 +78,6 @@ site/
 *.gz
 
 docs/features/
+
+
+scikit-mobility/

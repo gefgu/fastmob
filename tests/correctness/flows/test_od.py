@@ -1,9 +1,9 @@
-"""Correctness tests for skmob2.measures.od."""
+"""Correctness tests for skmob2.measures.flows.od."""
 from __future__ import annotations
 
 import pandas as pd
 import pytest
-from skmob2.measures.od import od_matrix, od_metrics_per_area
+from skmob2.measures.flows.od import od_matrix, od_metrics_per_area
 
 
 def _lookup(od, origin, dest, origin_col="origin_area", dest_col="destination_area"):

@@ -7,7 +7,7 @@ import numpy as np
 import narwhals as nw
 import pandas as pd
 
-from ._common import (
+from .._common import (
     _pick_existing_column,
     ACTIVITY_CANDIDATES,
     USER_ID_CANDIDATES,

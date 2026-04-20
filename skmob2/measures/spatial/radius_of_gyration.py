@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import radius_of_gyration_km, radius_of_gyration_batch_km
 
-from ._common import _prepare_trajectory
+from .._common import _prepare_trajectory
 
 
 def radius_of_gyration(

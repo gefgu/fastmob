@@ -1,10 +1,10 @@
-"""Correctness tests for skmob2.measures.activity."""
+"""Correctness tests for skmob2.measures.visits.activity."""
 from __future__ import annotations
 
 import pandas as pd
 import numpy as np
 import pytest
-from skmob2.measures.activity import activity_transition_matrix
+from skmob2.measures.visits.activity import activity_transition_matrix
 
 
 def _simple_visits():

@@ -1,8 +1,8 @@
-"""Tests for regularity measure (Step 6)."""
+"""Tests for regularity measure."""
 import pandas as pd
 import numpy as np
 import pytest
-from skmob2.measures.individual import regularity
+from skmob2.measures.visits.regularity import regularity
 
 
 def _uniform_visits():

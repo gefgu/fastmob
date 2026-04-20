@@ -14,7 +14,7 @@ from typing import Any
 
 import pandas as pd
 
-from ._common import _pick_existing_column, USER_ID_CANDIDATES, LOCATION_CANDIDATES
+from .._common import _pick_existing_column, USER_ID_CANDIDATES, LOCATION_CANDIDATES
 
 
 # ---------------------------------------------------------------------------
@@ -37,11 +37,84 @@ class _DiGraph:
     edges: frozenset
 
 
-def _is_isomorphic(g1: _DiGraph, g2: _DiGraph) -> bool:
-    """Brute-force isomorphism check for directed graphs.
+def _degree_sequence(n_nodes: int, edges: frozenset) -> tuple:
+    """Return sorted (in_degree, out_degree) pairs for all nodes.
 
-    Works for up to ~8 nodes (6! = 720 permutations; 8! = 40 320 — fast
-    enough for the static motif library which has at most 6 nodes).
+    Used as a fast prefilter before the full permutation search: two graphs
+    with different degree sequences cannot be isomorphic.
+
+    Parameters
+    ----------
+    n_nodes:
+        Number of nodes (nodes are labeled 0..n_nodes-1).
+    edges:
+        Directed edge set as a frozenset of ``(u, v)`` pairs.
+
+    Returns
+    -------
+    tuple
+        Sorted tuple of ``(in_degree, out_degree)`` pairs, one per node.
+    """
+    in_deg = [0] * n_nodes
+    out_deg = [0] * n_nodes
+    for u, v in edges:
+        out_deg[u] += 1
+        in_deg[v] += 1
+    return tuple(sorted(zip(in_deg, out_deg)))
+
+
+def _canonical_adjacency_form(n_nodes: int, edges: frozenset) -> str:
+    """Return the canonical adjacency-matrix string for a directed graph.
+
+    Builds the n×n binary adjacency matrix for every permutation of node
+    labels, interprets each as a big-endian binary number, and returns the
+    maximum as a zero-padded binary string of length n*n.  Two graphs are
+    isomorphic if and only if their canonical forms are equal.
+
+    Parameters
+    ----------
+    n_nodes:
+        Number of nodes.
+    edges:
+        Directed edge set as a frozenset of ``(u, v)`` pairs.
+
+    Returns
+    -------
+    str
+        Zero-padded big-endian binary string of length ``n_nodes ** 2``.
+        For example, the 2-node bidirectional graph returns ``"0110"``.
+
+    Examples
+    --------
+    >>> _canonical_adjacency_form(1, frozenset())
+    '0'
+    >>> _canonical_adjacency_form(2, frozenset({(0, 1), (1, 0)}))
+    '0110'
+    """
+    best = -1
+    bits = n_nodes * n_nodes
+    for perm in permutations(range(n_nodes)):
+        val = 0
+        for i in range(n_nodes):
+            for j in range(n_nodes):
+                val <<= 1
+                if (perm[i], perm[j]) in edges:
+                    val |= 1
+        if val > best:
+            best = val
+    return format(best, f'0{bits}b')
+
+
+def _is_isomorphic(g1: _DiGraph, g2: _DiGraph) -> bool:
+    """Check whether two directed graphs are isomorphic via canonical forms.
+
+    Uses a degree-sequence prefilter for fast rejection before computing
+    canonical adjacency-matrix strings.  Two graphs are isomorphic if and
+    only if their canonical forms (as returned by
+    ``_canonical_adjacency_form``) are equal.
+
+    Works for up to ~8 nodes (8! = 40 320 permutations — fast enough for
+    the static motif library which has at most 6 nodes).
 
     Parameters
     ----------
@@ -51,20 +124,19 @@ def _is_isomorphic(g1: _DiGraph, g2: _DiGraph) -> bool:
     Returns
     -------
     bool
-        True if g1 and g2 are isomorphic (there exists a bijection between
-        their node sets that preserves all directed edges).
+        True if g1 and g2 are isomorphic.
     """
     if g1.n_nodes != g2.n_nodes or len(g1.edges) != len(g2.edges):
         return False
 
-    nodes = list(range(g1.n_nodes))
-    for perm in permutations(nodes):
-        mapping = {i: perm[i] for i in nodes}
-        mapped_edges = frozenset((mapping[u], mapping[v]) for u, v in g1.edges)
-        if mapped_edges == g2.edges:
-            return True
+    # Fast rejection: different degree sequences → cannot be isomorphic
+    if _degree_sequence(g1.n_nodes, g1.edges) != _degree_sequence(g2.n_nodes, g2.edges):
+        return False
 
-    return False
+    return (
+        _canonical_adjacency_form(g1.n_nodes, g1.edges)
+        == _canonical_adjacency_form(g2.n_nodes, g2.edges)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -73,9 +145,6 @@ def _is_isomorphic(g1: _DiGraph, g2: _DiGraph) -> bool:
 
 def get_motif_library() -> dict[int, _DiGraph]:
     """Return the 17 canonical directed mobility motifs.
-
-    The motifs replicate the networkx-based library from the source
-    ``mobility_analysis/measures/motifs.py``, translated to ``_DiGraph``.
 
     Returns
     -------
@@ -217,9 +286,32 @@ def get_motif_library() -> dict[int, _DiGraph]:
 # Dynamic library management
 # ---------------------------------------------------------------------------
 
-def format_motif_id_v2(num_nodes: int, num_edges: int, order: int) -> str:
-    """Format a motif ID string as ``{n_nodes}_{n_edges}_{order}``."""
-    return f"{num_nodes}_{num_edges}_{order}"
+def _motif_id(graph: _DiGraph) -> str:
+    """Return the canonical motif ID string for *graph*.
+
+    Format: ``m{n_nodes}:{canonical_bits}`` where ``canonical_bits`` is the
+    zero-padded big-endian binary string produced by
+    ``_canonical_adjacency_form``.
+
+    Parameters
+    ----------
+    graph:
+        The directed graph to identify.
+
+    Returns
+    -------
+    str
+        Canonical motif ID, e.g. ``"m1:0"`` for the single-node motif and
+        ``"m2:0110"`` for the simple bidirectional return motif.
+
+    Examples
+    --------
+    >>> g = _DiGraph(n_nodes=2, edges=frozenset({(0, 1), (1, 0)}))
+    >>> _motif_id(g)
+    'm2:0110'
+    """
+    bits = _canonical_adjacency_form(graph.n_nodes, graph.edges)
+    return f"m{graph.n_nodes}:{bits}"
 
 
 def create_dynamic_motif_library_object_from_static() -> dict[int, dict[int, list[_DiGraph]]]:
@@ -311,7 +403,7 @@ def classify_or_add_motif_v2(
     -------
     tuple[str | None, bool]
         ``(motif_id, is_newly_added)``.  ``motif_id`` follows the
-        ``"{n_nodes}_{n_edges}_{order}"`` format.
+        ``"m{n_nodes}:{canonical_bits}"`` format (e.g. ``"m2:0110"``).
     """
     n_nodes = user_graph.n_nodes
     n_edges = len(user_graph.edges)
@@ -319,16 +411,15 @@ def classify_or_add_motif_v2(
     buckets_by_edges = dynamic_library.setdefault(n_nodes, {})
     graph_bucket: list[_DiGraph] = buckets_by_edges.setdefault(n_edges, [])
 
-    for idx, reference_graph in enumerate(graph_bucket, start=1):
+    for reference_graph in graph_bucket:
         if _is_isomorphic(user_graph, reference_graph):
-            return format_motif_id_v2(n_nodes, n_edges, idx), False
+            return _motif_id(user_graph), False
 
     if not auto_add_new_motifs:
         return None, False
 
     graph_bucket.append(user_graph)
-    new_id = format_motif_id_v2(n_nodes, n_edges, len(graph_bucket))
-    return new_id, True
+    return _motif_id(user_graph), True
 
 
 # ---------------------------------------------------------------------------

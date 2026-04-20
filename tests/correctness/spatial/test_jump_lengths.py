@@ -50,7 +50,7 @@ def test_jump_lengths_known_values(synthetic_tdf):
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
     )
-    from skmob2.measures.jump_lengths import jump_lengths
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
 
     result = jump_lengths(synthetic_tdf, show_progress=False, merge=False)
     normalized = _normalize_result(result)
@@ -76,7 +76,7 @@ def test_jump_lengths_merge_returns_flat_list(synthetic_tdf):
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
     )
-    from skmob2.measures.jump_lengths import jump_lengths
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
 
     result = jump_lengths(synthetic_tdf, show_progress=False, merge=True)
     assert isinstance(result, list), "merge=True should return a plain list"
@@ -91,7 +91,7 @@ def test_jump_lengths_no_uid_column():
         reason="Build the skmob2 extension first (maturin develop)",
     )
     import pandas as pd
-    from skmob2.measures.jump_lengths import jump_lengths
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
 
     df = pd.DataFrame(
         {
@@ -111,7 +111,7 @@ def test_jump_lengths_polars_known_values(synthetic_tdf_polars):
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
     )
-    from skmob2.measures.jump_lengths import jump_lengths
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
 
     result = jump_lengths(synthetic_tdf_polars, show_progress=False, merge=False)
     normalized = _normalize_result(result)
@@ -140,7 +140,7 @@ def test_jump_lengths_polars_no_uid_column():
     )
     polars = pytest.importorskip("polars", reason="Install polars to run this test")
     import pandas as pd
-    from skmob2.measures.jump_lengths import jump_lengths
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
 
     df_pandas = pd.DataFrame(
         {
@@ -163,7 +163,7 @@ def test_jump_lengths_polars_vs_pandas_skmob2():
     )
     polars = pytest.importorskip("polars", reason="Install polars to run this test")
     import pandas as pd
-    from skmob2.measures.jump_lengths import jump_lengths as skmob2_jl
+    from skmob2.measures.spatial.jump_lengths import jump_lengths as skmob2_jl
 
     df_pandas = pd.DataFrame({
         "user": [1, 1, 1, 2, 2, 2],
@@ -198,7 +198,7 @@ def test_jump_lengths_matches_skmob(brightkite_skmob):
     )
     import pandas as pd
     from skmob.measures.individual import jump_lengths as skmob_jl
-    from skmob2.measures.jump_lengths import jump_lengths as skmob2_jl
+    from skmob2.measures.spatial.jump_lengths import jump_lengths as skmob2_jl
 
     skmob_result = skmob_jl(brightkite_skmob, show_progress=False, merge=False)
     skmob2_input = pd.DataFrame(brightkite_skmob).copy()

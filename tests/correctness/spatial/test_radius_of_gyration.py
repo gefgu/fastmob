@@ -69,7 +69,7 @@ def skmob_ref_traj_pl(skmob_ref_traj_pd):
 def test_radius_of_gyration_known_values_pandas(synthetic_tdf):
     """RoG on synthetic fixture (pandas backend), hardcoded expected values."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.radius_of_gyration import radius_of_gyration
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     result = radius_of_gyration(synthetic_tdf)
     assert "radius_of_gyration" in result.columns
@@ -90,7 +90,7 @@ def test_radius_of_gyration_known_values_polars(synthetic_tdf_polars):
     """RoG on synthetic fixture (Polars backend), same expected values."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Polars not installed")
-    from skmob2.measures.radius_of_gyration import radius_of_gyration
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     result = radius_of_gyration(synthetic_tdf_polars)
     assert "radius_of_gyration" in result.columns
@@ -113,7 +113,7 @@ def test_radius_of_gyration_skmob_reference_values(request, fixture_name):
     """RoG matches values computed by the Rust kernel directly."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2._core import radius_of_gyration_km
-    from skmob2.measures.radius_of_gyration import radius_of_gyration
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     traj = request.getfixturevalue(fixture_name)
     result = radius_of_gyration(traj)
@@ -139,7 +139,7 @@ def test_radius_of_gyration_skmob_reference_values(request, fixture_name):
 def test_radius_of_gyration_no_uid_column():
     """When uid column is absent the result has a single RoG value."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.radius_of_gyration import radius_of_gyration
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame({
         "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
@@ -159,7 +159,7 @@ def test_radius_of_gyration_no_uid_column():
 def test_radius_of_gyration_single_point_user():
     """A user with one point should have RoG = 0."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.radius_of_gyration import radius_of_gyration
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame({
         "uid":      [1, 2, 2],
@@ -180,7 +180,7 @@ def test_radius_of_gyration_polars_pandas_agree():
     """Polars and pandas backends must produce identical RoG values."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Polars not installed")
-    from skmob2.measures.radius_of_gyration import radius_of_gyration
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     df_pd = pd.DataFrame({
         "uid":      [1, 1, 1, 2, 2, 2],
@@ -206,7 +206,7 @@ def test_radius_of_gyration_matches_skmob(brightkite_skmob):
     """skmob2 RoG must agree with skmob's reference implementation within 0.02 km."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob.measures.individual import radius_of_gyration as skmob_rog
-    from skmob2.measures.radius_of_gyration import radius_of_gyration as skmob2_rog
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration as skmob2_rog
 
     skmob_result  = skmob_rog(brightkite_skmob, show_progress=False)
     skmob2_input  = pd.DataFrame(brightkite_skmob).copy()

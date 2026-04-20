@@ -5,7 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from ._common import _pick_existing_column, ORIGIN_CANDIDATES, DEST_CANDIDATES
+from .._common import _pick_existing_column, ORIGIN_CANDIDATES, DEST_CANDIDATES
 
 
 def _detect_od_columns(

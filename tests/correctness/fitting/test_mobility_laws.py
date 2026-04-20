@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2.measures.mobility_laws — power-law fitting."""
+"""Correctness tests for skmob2.measures.fitting.mobility_laws — power-law fitting."""
 from __future__ import annotations
 
 import numpy as np
@@ -38,7 +38,7 @@ def _sample_truncated_powerlaw(n, beta=1.75, r0=1.5, kappa=400.0,
 
 def test_log_truncated_powerlaw_is_log_of_powerlaw():
     """log_truncated_powerlaw(x, c, r0, b, k) == log(c*(x+r0)^-b * exp(-x/k))."""
-    from skmob2.measures.mobility_laws import log_truncated_powerlaw
+    from skmob2.measures.fitting.mobility_laws import log_truncated_powerlaw
 
     x = np.array([1.0, 10.0, 100.0])
     c, r0, beta, kappa = 1.5, 1.5, 1.75, 400.0
@@ -51,7 +51,7 @@ def test_log_truncated_powerlaw_is_log_of_powerlaw():
 
 def test_log_truncated_powerlaw_scalar_inputs():
     """Works with scalar x as well."""
-    from skmob2.measures.mobility_laws import log_truncated_powerlaw
+    from skmob2.measures.fitting.mobility_laws import log_truncated_powerlaw
 
     val = log_truncated_powerlaw(np.array([5.0]), 1.0, 1.5, 1.75, 400.0)
     expected = np.log(1.0) - 1.75 * np.log(5.0 + 1.5) - 5.0 / 400.0
@@ -65,7 +65,7 @@ def test_log_truncated_powerlaw_scalar_inputs():
 def test_fit_truncated_powerlaw_recovers_beta():
     """Fit on synthetic Gonzalez sample recovers beta within ±0.05."""
     pytest.importorskip("scipy", reason="scipy not installed")
-    from skmob2.measures.mobility_laws import fit_values_to_truncated_powerlaw
+    from skmob2.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
 
     TRUE_BETA = 1.75
     TRUE_KAPPA = 400.0
@@ -85,7 +85,7 @@ def test_fit_truncated_powerlaw_recovers_beta():
 
 def test_fit_truncated_powerlaw_returns_correct_shapes():
     pytest.importorskip("scipy", reason="scipy not installed")
-    from skmob2.measures.mobility_laws import fit_values_to_truncated_powerlaw
+    from skmob2.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
 
     samples = _sample_truncated_powerlaw(5_000, seed=0)
     popt, x_data, y_data = fit_values_to_truncated_powerlaw(samples, bins=50)
@@ -99,7 +99,7 @@ def test_fit_truncated_powerlaw_returns_correct_shapes():
 
 def test_fit_truncated_powerlaw_raises_without_scipy(monkeypatch):
     """fit_values_to_truncated_powerlaw raises ImportError when scipy is absent."""
-    import skmob2.measures.mobility_laws as mod
+    import skmob2.measures.fitting.mobility_laws as mod
     original = mod._scipy_curve_fit
     monkeypatch.setattr(mod, "_scipy_curve_fit", None)
     with pytest.raises(ImportError, match="scipy"):
@@ -110,7 +110,7 @@ def test_fit_truncated_powerlaw_raises_without_scipy(monkeypatch):
 def test_fit_truncated_powerlaw_no_print(capsys):
     """fit_values_to_truncated_powerlaw must not print to stdout."""
     pytest.importorskip("scipy", reason="scipy not installed")
-    from skmob2.measures.mobility_laws import fit_values_to_truncated_powerlaw
+    from skmob2.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
 
     samples = _sample_truncated_powerlaw(1_000, seed=1)
     fit_values_to_truncated_powerlaw(samples, bins=20)

@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import jump_lengths_km
 
-from ._common import _prepare_trajectory
+from .._common import _prepare_trajectory
 
 
 def jump_lengths(
