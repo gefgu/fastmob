@@ -21,7 +21,7 @@ struct Visit<'a> {
 struct DailyMotifResult {
     user_id: String,
     date_id: i32,
-    motif_id: String,
+    motif_id: i64,
 }
 
 // ---------------------------------------------------------------------------
@@ -58,35 +58,23 @@ fn next_permutation(v: &mut [usize]) -> bool {
 // canonical_adjacency_form_internal — pure Rust, no PyO3 overhead
 // ---------------------------------------------------------------------------
 
-fn canonical_adjacency_form_internal(n_nodes: usize, edges: &[(u32, u32)]) -> Result<String, String> {
-    if n_nodes > 11 {
-        return Err(format!(
-            "canonical_adjacency_form supports at most 11 nodes (11! permutations), got {}",
-            n_nodes
-        ));
+// Return a u64 instead of a String
+fn canonical_adjacency_form_internal(n_nodes: usize, edges: &[(u32, u32)]) -> Result<i64, String> {
+    if n_nodes > 6 {
+        return Err("This optimized function supports at most 6 nodes".to_string());
     }
 
     let n = n_nodes;
-    let bits = n * n;
-
     let mut adj = vec![false; n * n];
-    for (u, v) in edges {
-        let u = *u as usize;
-        let v = *v as usize;
-        if u >= n || v >= n {
-            return Err(format!(
-                "edge ({}, {}) references node index >= n_nodes ({})",
-                u, v, n
-            ));
-        }
-        adj[u * n + v] = true;
+    for &(u, v) in edges {
+        adj[(u as usize) * n + (v as usize)] = true;
     }
 
     let mut perm: Vec<usize> = (0..n).collect();
-    let mut best: u128 = 0;
+    let mut best: i64 = 0; // Switched to i64 for maximum speed
 
     loop {
-        let mut val: u128 = 0;
+        let mut val: i64 = 0;
         for i in 0..n {
             for j in 0..n {
                 val <<= 1;
@@ -104,7 +92,11 @@ fn canonical_adjacency_form_internal(n_nodes: usize, edges: &[(u32, u32)]) -> Re
         }
     }
 
-    Ok(format!("{:0>width$b}", best, width = bits))
+    // PACKING LOGIC:
+    // Shift the node count 36 bits to the left, then combine with the matrix integer
+    let combined_id: i64 = ((n as i64) << 36) | best;
+
+    Ok(combined_id)
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +104,7 @@ fn canonical_adjacency_form_internal(n_nodes: usize, edges: &[(u32, u32)]) -> Re
 // ---------------------------------------------------------------------------
 
 #[pyfunction]
-pub(crate) fn canonical_adjacency_form(n_nodes: u32, edges: Vec<(u32, u32)>) -> PyResult<String> {
+pub(crate) fn canonical_adjacency_form(n_nodes: u32, edges: Vec<(u32, u32)>) -> PyResult<i64> {
     canonical_adjacency_form_internal(n_nodes as usize, &edges)
         .map_err(|e| PyValueError::new_err(e))
 }
@@ -237,12 +229,12 @@ fn compute_motif_from_daily_visits<'a>(
     let edges: Vec<(u32, u32)> = edges_set.into_iter().collect();
     let n_nodes = unique_nodes.len();
 
-    let motif_id = if n_nodes > 6 {
-        "-1".to_string()
+    let motif_id: i64 = if n_nodes > 6 {
+        -1
     } else {
         match canonical_adjacency_form_internal(n_nodes, &edges) {
-            Ok(bits) => format!("m{}:{}", n_nodes, bits),
-            Err(_) => "-1".to_string(),
+            Ok(packed_id) => packed_id,
+            Err(_) => -1,
         }
     };
 
@@ -265,8 +257,7 @@ fn process_single_user<'a>(user_id: &str, visits: &[Visit<'a>]) -> Vec<DailyMoti
 
     // visits are already sorted by [user_id, start_timestamp] from Python
     // so date_ids are already grouped by day within each user
-    let daily_chunks: Vec<&[Visit<'_>]> =
-        visits.chunk_by(|a, b| a.date_id == b.date_id).collect();
+    let daily_chunks: Vec<&[Visit<'_>]> = visits.chunk_by(|a, b| a.date_id == b.date_id).collect();
 
     let mut results = Vec::with_capacity(daily_chunks.len());
 
@@ -336,7 +327,7 @@ pub(crate) fn compute_daily_motifs(
     durations: Vec<Option<f64>>,
     user_ranges: Vec<(usize, usize)>,
     user_id_labels: Vec<String>,
-) -> PyResult<(Vec<String>, Vec<i32>, Vec<String>)> {
+) -> PyResult<(Vec<String>, Vec<i32>, Vec<i64>)> {
     let n = unique_ids.len();
 
     // Validate all column vectors have the same length
