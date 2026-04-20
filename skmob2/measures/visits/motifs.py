@@ -4,22 +4,32 @@ Implements the directed-graph motif library from Pappalardo et al. using
 plain Python adjacency-list representations for full independence from
 the networkx library.
 """
+
 from __future__ import annotations
 
 import pickle
 from dataclasses import dataclass
-from itertools import permutations
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
+import narwhals as nw
 
-from .._common import _pick_existing_column, USER_ID_CANDIDATES, LOCATION_CANDIDATES
+from skmob2._core import canonical_adjacency_form as _canonical_adjacency_form_rust
+
+from .._common import (
+    _pick_existing_column,
+    USER_ID_CANDIDATES,
+    LOCATION_CANDIDATES,
+    PURPOSE_CANDIDATES,
+    TIMESTAMP_CANDIDATES,
+    DURATION_CANDIDATES,
+)
 
 
 # ---------------------------------------------------------------------------
 # Internal graph representation
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class _DiGraph:
@@ -66,10 +76,12 @@ def _degree_sequence(n_nodes: int, edges: frozenset) -> tuple:
 def _canonical_adjacency_form(n_nodes: int, edges: frozenset) -> str:
     """Return the canonical adjacency-matrix string for a directed graph.
 
-    Builds the n×n binary adjacency matrix for every permutation of node
-    labels, interprets each as a big-endian binary number, and returns the
-    maximum as a zero-padded binary string of length n*n.  Two graphs are
-    isomorphic if and only if their canonical forms are equal.
+    Delegates to the Rust kernel ``_core.canonical_adjacency_form`` which
+    enumerates all n! permutations of node labels, builds the binary
+    adjacency matrix for each permutation, and returns the maximum value
+    as a zero-padded big-endian binary string of length n*n.
+
+    Two graphs are isomorphic if and only if their canonical forms are equal.
 
     Parameters
     ----------
@@ -91,18 +103,7 @@ def _canonical_adjacency_form(n_nodes: int, edges: frozenset) -> str:
     >>> _canonical_adjacency_form(2, frozenset({(0, 1), (1, 0)}))
     '0110'
     """
-    best = -1
-    bits = n_nodes * n_nodes
-    for perm in permutations(range(n_nodes)):
-        val = 0
-        for i in range(n_nodes):
-            for j in range(n_nodes):
-                val <<= 1
-                if (perm[i], perm[j]) in edges:
-                    val |= 1
-        if val > best:
-            best = val
-    return format(best, f'0{bits}b')
+    return _canonical_adjacency_form_rust(n_nodes, list(edges))
 
 
 def _is_isomorphic(g1: _DiGraph, g2: _DiGraph) -> bool:
@@ -133,15 +134,15 @@ def _is_isomorphic(g1: _DiGraph, g2: _DiGraph) -> bool:
     if _degree_sequence(g1.n_nodes, g1.edges) != _degree_sequence(g2.n_nodes, g2.edges):
         return False
 
-    return (
-        _canonical_adjacency_form(g1.n_nodes, g1.edges)
-        == _canonical_adjacency_form(g2.n_nodes, g2.edges)
+    return _canonical_adjacency_form(g1.n_nodes, g1.edges) == _canonical_adjacency_form(
+        g2.n_nodes, g2.edges
     )
 
 
 # ---------------------------------------------------------------------------
 # Static motif library (17 canonical mobility patterns)
 # ---------------------------------------------------------------------------
+
 
 def get_motif_library() -> dict[int, _DiGraph]:
     """Return the 17 canonical directed mobility motifs.
@@ -172,9 +173,7 @@ def get_motif_library() -> dict[int, _DiGraph]:
     index += 1
 
     # ID 4
-    library[index] = _DiGraph(
-        n_nodes=3, edges=frozenset({(0, 1), (1, 2), (2, 0)})
-    )
+    library[index] = _DiGraph(n_nodes=3, edges=frozenset({(0, 1), (1, 2), (2, 0)}))
     index += 1
 
     # ID 5
@@ -227,18 +226,14 @@ def get_motif_library() -> dict[int, _DiGraph]:
     # ID 12
     library[index] = _DiGraph(
         n_nodes=5,
-        edges=frozenset(
-            {(0, 1), (1, 2), (2, 0), (0, 3), (3, 0), (0, 4), (4, 0)}
-        ),
+        edges=frozenset({(0, 1), (1, 2), (2, 0), (0, 3), (3, 0), (0, 4), (4, 0)}),
     )
     index += 1
 
     # ID 13
     library[index] = _DiGraph(
         n_nodes=5,
-        edges=frozenset(
-            {(0, 1), (1, 2), (2, 0), (0, 3), (3, 4), (4, 0)}
-        ),
+        edges=frozenset({(0, 1), (1, 2), (2, 0), (0, 3), (3, 4), (4, 0)}),
     )
     index += 1
 
@@ -246,18 +241,14 @@ def get_motif_library() -> dict[int, _DiGraph]:
     # ID 14
     library[index] = _DiGraph(
         n_nodes=6,
-        edges=frozenset(
-            {(0, 1), (1, 2), (2, 3), (3, 4), (4, 0), (0, 5), (5, 0)}
-        ),
+        edges=frozenset({(0, 1), (1, 2), (2, 3), (3, 4), (4, 0), (0, 5), (5, 0)}),
     )
     index += 1
 
     # ID 15
     library[index] = _DiGraph(
         n_nodes=6,
-        edges=frozenset(
-            {(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)}
-        ),
+        edges=frozenset({(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)}),
     )
     index += 1
 
@@ -273,18 +264,12 @@ def get_motif_library() -> dict[int, _DiGraph]:
     # ID 17
     library[index] = _DiGraph(
         n_nodes=6,
-        edges=frozenset(
-            {(0, 1), (1, 2), (2, 0), (0, 3), (3, 5), (5, 4), (4, 0)}
-        ),
+        edges=frozenset({(0, 1), (1, 2), (2, 0), (0, 3), (3, 5), (5, 4), (4, 0)}),
     )
     index += 1
 
     return library
 
-
-# ---------------------------------------------------------------------------
-# Dynamic library management
-# ---------------------------------------------------------------------------
 
 def _motif_id(graph: _DiGraph) -> str:
     """Return the canonical motif ID string for *graph*.
@@ -310,148 +295,71 @@ def _motif_id(graph: _DiGraph) -> str:
     >>> _motif_id(g)
     'm2:0110'
     """
+    if graph.n_nodes < 1:
+        raise ValueError("Graph must have at least one node")
+    if graph.n_nodes > 6:
+        print(
+            f"Warning: motif ID for graph with {graph.n_nodes} nodes may not be canonical (library only has motifs up to 6 nodes)"
+        )
+        return "-1"
+
     bits = _canonical_adjacency_form(graph.n_nodes, graph.edges)
     return f"m{graph.n_nodes}:{bits}"
-
-
-def create_dynamic_motif_library_object_from_static() -> dict[int, dict[int, list[_DiGraph]]]:
-    """Create a dynamic motif library initialized from the static 17-motif library.
-
-    Returns
-    -------
-    dict[int, dict[int, list[_DiGraph]]]
-        Structure: ``{n_nodes: {n_edges: [_DiGraph, ...]}}``.
-    """
-    static = get_motif_library()
-    dynamic: dict[int, dict[int, list[_DiGraph]]] = {}
-
-    for _, graph in static.items():
-        n_nodes = graph.n_nodes
-        n_edges = len(graph.edges)
-        dynamic.setdefault(n_nodes, {}).setdefault(n_edges, []).append(graph)
-
-    return dynamic
-
-
-def save_dynamic_motif_library(dynamic_library: dict, file_path: str | Path) -> None:
-    """Pickle the dynamic library to *file_path*.
-
-    Parameters
-    ----------
-    dynamic_library:
-        The dynamic motif library to save.
-    file_path:
-        Destination file path (must be provided — no default).
-    """
-    path = Path(file_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "wb") as fh:
-        pickle.dump(dynamic_library, fh)
-
-
-def load_dynamic_motif_library(
-    file_path: str | Path,
-    initialize_if_missing: bool = True,
-) -> dict:
-    """Load the dynamic motif library from *file_path*.
-
-    Parameters
-    ----------
-    file_path:
-        Path to the pickle file (must be provided — no default).
-    initialize_if_missing:
-        When True (default), create and save a new library from the static
-        motifs if the file does not exist.  When False, raise
-        ``FileNotFoundError``.
-
-    Returns
-    -------
-    dict
-        The dynamic motif library.
-    """
-    path = Path(file_path)
-    if not path.exists():
-        if not initialize_if_missing:
-            raise FileNotFoundError(f"Dynamic motif library not found: {path}")
-        dynamic = create_dynamic_motif_library_object_from_static()
-        save_dynamic_motif_library(dynamic, path)
-        return dynamic
-
-    with open(path, "rb") as fh:
-        return pickle.load(fh)
-
-
-def classify_or_add_motif_v2(
-    user_graph: _DiGraph,
-    dynamic_library: dict,
-    auto_add_new_motifs: bool = True,
-) -> tuple[str | None, bool]:
-    """Classify *user_graph* against *dynamic_library* using isomorphism.
-
-    Parameters
-    ----------
-    user_graph:
-        The mobility graph for a user-day.
-    dynamic_library:
-        Mutable nested dict ``{n_nodes: {n_edges: [_DiGraph, ...]}}``.
-        Modified in-place when a new motif is added.
-    auto_add_new_motifs:
-        When True (default), novel graphs are added to the library and
-        assigned a new ID.  When False, novel graphs return ``(None, False)``.
-
-    Returns
-    -------
-    tuple[str | None, bool]
-        ``(motif_id, is_newly_added)``.  ``motif_id`` follows the
-        ``"m{n_nodes}:{canonical_bits}"`` format (e.g. ``"m2:0110"``).
-    """
-    n_nodes = user_graph.n_nodes
-    n_edges = len(user_graph.edges)
-
-    buckets_by_edges = dynamic_library.setdefault(n_nodes, {})
-    graph_bucket: list[_DiGraph] = buckets_by_edges.setdefault(n_edges, [])
-
-    for reference_graph in graph_bucket:
-        if _is_isomorphic(user_graph, reference_graph):
-            return _motif_id(user_graph), False
-
-    if not auto_add_new_motifs:
-        return None, False
-
-    graph_bucket.append(user_graph)
-    return _motif_id(user_graph), True
 
 
 # ---------------------------------------------------------------------------
 # DataFrame → graph pipeline
 # ---------------------------------------------------------------------------
 
-def _compute_primary_home_node_id(df: pd.DataFrame) -> str | None:
-    """Identify the primary home node ID from a user's visit DataFrame.
+
+def _compute_primary_home_node_id(nw_df: nw.DataFrame) -> str | None:
+    """Identify the primary home node ID from a user's visit Narwhals DataFrame.
 
     Uses the ``"unique_id"`` and ``"purpose"`` columns. Picks the most
     night-time-visited home node (or, failing that, the most frequent home).
+
+    Parameters
+    ----------
+    nw_df:
+        A Narwhals DataFrame for a single user with columns ``"unique_id"``,
+        ``"purpose"``, ``"start_timestamp"``, and optionally
+        ``"duration_minutes"``.
+
+    Returns
+    -------
+    str | None
+        The primary home node identifier, or None if no HOME rows exist.
     """
-    home_rows = df[df["purpose"] == "HOME"]
-    if home_rows.empty:
+    home_df = nw_df.filter(nw.col("purpose") == "HOME")
+    if len(home_df) == 0:
         return None
 
-    home_with_times = home_rows.copy()
-    home_with_times["start_hour"] = home_with_times["start_timestamp"].dt.hour
-    night_mask = (home_with_times["start_hour"] >= 22) | (
-        home_with_times["start_hour"] < 6
+    home_with_hour = home_df.with_columns(
+        nw.col("start_timestamp").dt.hour().alias("start_hour")
     )
-    night_homes = home_with_times[night_mask].copy()
+    night_df = home_with_hour.filter(
+        (nw.col("start_hour") >= 22) | (nw.col("start_hour") < 6)
+    )
 
-    if not night_homes.empty and "duration_minutes" in night_homes.columns:
-        duration_by_home = night_homes.groupby("unique_id")["duration_minutes"].sum()
-        return duration_by_home.idxmax()
+    if len(night_df) > 0 and "duration_minutes" in night_df.columns:
+        duration_by_home = (
+            night_df.group_by("unique_id")
+            .agg(nw.col("duration_minutes").sum())
+            .sort("duration_minutes", descending=True)
+        )
+        return str(duration_by_home.row(0)[0])
 
-    return home_rows["unique_id"].value_counts().idxmax()
+    # Fallback: most frequent home node
+    counts = (
+        home_df.group_by("unique_id")
+        .agg(nw.len().alias("_count"))
+        .sort("_count", descending=True)
+    )
+    return str(counts.row(0)[0])
 
 
 def build_motif_graph(
-    daily_df: pd.DataFrame,
+    daily_df: Any,
     primary_home_node_id: str,
     last_night_node_id: str | None = None,
     next_day_first_node_id: str | None = None,
@@ -460,6 +368,10 @@ def build_motif_graph(
     home_suffix: str = "_HOME",
 ) -> _DiGraph:
     """Construct the directed mobility graph for a single user-day.
+
+    Accepts any Narwhals-compatible DataFrame (or a Narwhals DataFrame).
+    The graph is built from the sorted location sequence — no intermediate
+    DataFrame construction is needed after extraction.
 
     Parameters
     ----------
@@ -470,7 +382,7 @@ def build_motif_graph(
         Identifier for the primary home node (used as node 0 anchor and
         as loop-closure target when the day does not end at home).
     last_night_node_id:
-        If provided, the day is prepended with this node at ``timestamp - 1s``.
+        If provided, prepended as the day's starting location.
     next_day_first_node_id:
         If provided and ends with ``home_suffix``, used as the loop-closure
         target instead of ``primary_home_node_id``.
@@ -489,30 +401,22 @@ def build_motif_graph(
     if primary_home_node_id is None:
         raise ValueError("primary_home_node_id cannot be None")
 
-    if daily_df.empty:
+    # Accept either native or already-wrapped Narwhals DataFrames
+    if not isinstance(daily_df, nw.DataFrame):
+        nw_daily = nw.from_native(daily_df, eager_only=True)
+    else:
+        nw_daily = daily_df
+
+    if len(nw_daily) == 0:
         return _DiGraph(n_nodes=1, edges=frozenset())
 
-    df = daily_df.copy()
+    # Sort by timestamp and extract the location sequence as a plain list.
+    # No prefix-row DataFrame construction is needed: prepend as a Python string.
+    sequence: list[str] = nw_daily.sort(timestamp_col)[location_id_col].to_list()
 
-    # Prepend last-night or primary-home as day's starting node
-    if last_night_node_id:
-        prefix_row = pd.DataFrame({
-            location_id_col: [last_night_node_id],
-            timestamp_col: [df[timestamp_col].min() - pd.Timedelta(seconds=1)],
-        })
-    else:
-        prefix_row = pd.DataFrame({
-            location_id_col: [primary_home_node_id],
-            timestamp_col: [df[timestamp_col].min() - pd.Timedelta(seconds=1)],
-        })
-
-    df = (
-        pd.concat([prefix_row, df], ignore_index=True)
-        .sort_values(timestamp_col)
-        .reset_index(drop=True)
-    )
-
-    sequence = df[location_id_col].tolist()
+    # Prepend the starting node (last night's location or primary home)
+    start_node = last_night_node_id if last_night_node_id else primary_home_node_id
+    sequence = [start_node] + sequence
 
     # Loop closure: ensure day ends at a home node
     last_node = sequence[-1]
@@ -547,7 +451,7 @@ def build_motif_graph(
 
 
 def _build_daily_motif_records(
-    user_df: pd.DataFrame,
+    user_nw_df: nw.DataFrame,
     user_id_col: str,
     location_id_col: str,
 ) -> list[dict]:
@@ -555,8 +459,8 @@ def _build_daily_motif_records(
 
     Parameters
     ----------
-    user_df:
-        Visits DataFrame for one user.  Must contain ``location_id_col``,
+    user_nw_df:
+        Narwhals DataFrame for one user.  Must contain ``location_id_col``,
         ``"purpose"``, ``"start_timestamp"``, ``"end_timestamp"``.
     user_id_col:
         Column name for the user identifier.
@@ -569,47 +473,71 @@ def _build_daily_motif_records(
         One dict per day containing ``user_id_col``, ``"date"``,
         ``"num_nodes"``, ``"num_edges"``, and ``"graph"`` keys.
     """
-    df = user_df.sort_values("start_timestamp").reset_index(drop=True).copy()
-    df["start_timestamp"] = pd.to_datetime(df["start_timestamp"])
-    df["end_timestamp"] = pd.to_datetime(df["end_timestamp"])
-    df["date"] = df["start_timestamp"].dt.date
-    df["unique_id"] = df[location_id_col].astype(str) + "_" + df["purpose"].astype(str)
+    df = (
+        user_nw_df.sort("start_timestamp")
+        .with_columns(
+            nw.col("start_timestamp").cast(nw.Datetime).alias("start_timestamp"),
+            nw.col("end_timestamp").cast(nw.Datetime).alias("end_timestamp"),
+            (
+                nw.col(location_id_col).cast(nw.String)
+                + nw.lit("_")
+                + nw.col("purpose").cast(nw.String)
+            ).alias("unique_id"),
+        )
+        .with_columns(
+            # Use truncate to day-boundary rather than .dt.date() — the latter
+            # raises NotImplementedError on the default pandas backend because
+            # pandas .dt.date returns an object-dtype Series.
+            nw.col("start_timestamp")
+            .dt.truncate("1d")
+            .alias("date"),
+        )
+    )
 
     primary_home_node_id = _compute_primary_home_node_id(df)
     if primary_home_node_id is None:
         return []
 
-    records = []
-    unique_dates = sorted(df["date"].unique())
+    # Extract unique dates in sorted order as Python date objects
+    unique_dates = sorted(set(df["date"].to_list()))
 
+    records = []
     for i, current_date in enumerate(unique_dates):
-        daily_df = (
-            df[df["date"] == current_date]
-            .reset_index(drop=True)
-            .sort_values("start_timestamp")
-        )
-        if daily_df.empty:
+        daily_df = df.filter(nw.col("date") == current_date).sort("start_timestamp")
+        if len(daily_df) == 0:
             continue
 
         # Look ahead: first node of next day (if HOME before 03:00)
         next_day_first_node_id = None
         if i + 1 < len(unique_dates):
-            next_day_df = df[df["date"] == unique_dates[i + 1]].sort_values("start_timestamp")
-            if not next_day_df.empty:
-                first_row = next_day_df.iloc[0]
-                if (first_row["start_timestamp"].hour < 3
-                        and first_row["unique_id"].endswith("_HOME")):
-                    next_day_first_node_id = first_row["unique_id"]
+            next_day_df = (
+                df.filter(nw.col("date") == unique_dates[i + 1])
+                .sort("start_timestamp")
+                .with_columns(nw.col("start_timestamp").dt.hour().alias("_hour"))
+            )
+            if len(next_day_df) > 0:
+                first_uid = next_day_df["unique_id"].to_list()[0]
+                first_hour = next_day_df["_hour"].to_list()[0]
+                if first_hour < 3 and first_uid.endswith("_HOME"):
+                    next_day_first_node_id = first_uid
 
-        # Look back: last node of previous day (if HOME and ended after 03:00 / before midnight)
+        # Look back: last node of previous day (if HOME and ended after 03:00)
         last_night_node_id = None
         if i - 1 >= 0:
-            prev_day_df = df[df["date"] == unique_dates[i - 1]].sort_values("start_timestamp")
-            if not prev_day_df.empty:
-                last_loc = prev_day_df.iloc[-1]["unique_id"]
-                end_hour = prev_day_df["end_timestamp"].iloc[-1].hour
-                if last_loc == primary_home_node_id and (end_hour > 3 or end_hour == 23):
-                    last_night_node_id = last_loc
+            prev_day_df = (
+                df.filter(nw.col("date") == unique_dates[i - 1])
+                .sort("start_timestamp")
+                .with_columns(nw.col("end_timestamp").dt.hour().alias("_end_hour"))
+            )
+            if len(prev_day_df) > 0:
+                uids = prev_day_df["unique_id"].to_list()
+                end_hours = prev_day_df["_end_hour"].to_list()
+                last_uid = uids[-1]
+                end_hour = end_hours[-1]
+                if last_uid == primary_home_node_id and (
+                    end_hour > 3 or end_hour == 23
+                ):
+                    last_night_node_id = last_uid
 
         graph = build_motif_graph(
             daily_df,
@@ -618,13 +546,16 @@ def _build_daily_motif_records(
             next_day_first_node_id=next_day_first_node_id,
         )
 
-        records.append({
-            user_id_col: daily_df.iloc[0][user_id_col],
-            "date": current_date,
-            "num_nodes": graph.n_nodes,
-            "num_edges": len(graph.edges),
-            "graph": graph,
-        })
+        first_user_id = daily_df[user_id_col].to_list()[0]
+        records.append(
+            {
+                user_id_col: first_user_id,
+                "date": current_date,
+                "num_nodes": graph.n_nodes,
+                "num_edges": len(graph.edges),
+                "motif_id": _motif_id(graph),
+            }
+        )
 
     return records
 
@@ -637,9 +568,8 @@ def discover_daily_motifs_from_agents(
     timestamp_col: str | None = None,
     end_timestamp_col: str | None = None,
     duration_col: str | None = None,
-    dynamic_library_file: str | None = None,
-    auto_add_new_motifs: bool = True,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+    show_progress: bool = False,
+) -> tuple[Any, Any]:
     """Discover daily mobility motifs for all agents in a dataset.
 
     Parameters
@@ -662,17 +592,12 @@ def discover_daily_motifs_from_agents(
     duration_col:
         Duration column used for primary-home selection.  Defaults to
         ``"duration_minutes"`` if found.
-    dynamic_library_file:
-        Path to the persisted dynamic library pickle file.  When None,
-        an in-memory library is used (no disk I/O).  When provided, the
-        library is loaded from this path (and saved if new motifs are added).
-    auto_add_new_motifs:
-        When True (default), novel graphs are added to the dynamic library.
 
     Returns
     -------
-    tuple[pd.DataFrame, pd.DataFrame]
-        ``(daily_motifs_df, motif_distribution_df)``.
+    tuple[DataFrame, DataFrame]
+        ``(daily_motifs_df, motif_distribution_df)`` in the same backend as
+        the input ``df``.
 
         *daily_motifs_df*: one row per user-day with columns
         ``[user_id_col, "date", "motif_id", "num_nodes", "num_edges"]``.
@@ -680,38 +605,37 @@ def discover_daily_motifs_from_agents(
         *motif_distribution_df*: one row per distinct motif with columns
         ``["motif_id", "count", "percentage"]``.
     """
-    import narwhals as nw
+    if show_progress:
+        from tqdm import tqdm  # Lazy import to avoid dependency if not showing progress
+
+    # End-timestamp candidates — not in _common.py (motifs-specific)
+    _ETS_CANDIDATES = ["end_timestamp", "end_time"]
 
     nw_df = nw.from_native(df, eager_only=True)
+    backend = nw_df.implementation
     cols = nw_df.columns
 
-    # Column auto-detection
-    _UID_CANDIDATES = ["user_id", "uid", "agent_id", "user"]
-    _LOC_CANDIDATES = ["location_id", "area", "venueId"]
-    _PURPOSE_CANDIDATES = ["purpose", "activity", "location_type"]
-    _TS_CANDIDATES = ["start_timestamp", "timestamp", "datetime"]
-    _ETS_CANDIDATES = ["end_timestamp", "end_time"]
-    _DUR_CANDIDATES = ["duration_minutes", "duration"]
-
+    # Column auto-detection using shared candidate lists from _common.py
     if user_id_col is None:
-        user_id_col = _pick_existing_column(cols, _UID_CANDIDATES) or "agent_id"
+        user_id_col = _pick_existing_column(cols, USER_ID_CANDIDATES) or "agent_id"
     if location_id_col is None:
-        location_id_col = _pick_existing_column(cols, _LOC_CANDIDATES) or "location_id"
+        location_id_col = (
+            _pick_existing_column(cols, LOCATION_CANDIDATES) or "location_id"
+        )
     if purpose_col is None:
-        purpose_col = _pick_existing_column(cols, _PURPOSE_CANDIDATES) or "purpose"
+        purpose_col = _pick_existing_column(cols, PURPOSE_CANDIDATES) or "purpose"
     if timestamp_col is None:
-        timestamp_col = _pick_existing_column(cols, _TS_CANDIDATES) or "start_timestamp"
+        timestamp_col = (
+            _pick_existing_column(cols, TIMESTAMP_CANDIDATES) or "start_timestamp"
+        )
     if end_timestamp_col is None:
-        end_timestamp_col = _pick_existing_column(cols, _ETS_CANDIDATES) or "end_timestamp"
+        end_timestamp_col = (
+            _pick_existing_column(cols, _ETS_CANDIDATES) or "end_timestamp"
+        )
     if duration_col is None:
-        duration_col = _pick_existing_column(cols, _DUR_CANDIDATES)
+        duration_col = _pick_existing_column(cols, DURATION_CANDIDATES)
 
-    # Normalize to pandas
-    native = nw_df.to_native()
-    if not isinstance(native, pd.DataFrame):
-        native = pd.DataFrame(native)
-
-    # Rename columns to expected names for internal helpers
+    # Rename columns to canonical internal names expected by helpers
     rename_map: dict[str, str] = {}
     if purpose_col != "purpose":
         rename_map[purpose_col] = "purpose"
@@ -722,68 +646,74 @@ def discover_daily_motifs_from_agents(
     if duration_col and duration_col != "duration_minutes":
         rename_map[duration_col] = "duration_minutes"
 
-    work_df = native.rename(columns=rename_map).copy()
+    work_df = nw_df.rename(rename_map).sort([user_id_col, "start_timestamp"])
 
-    # Sort globally
-    work_df = work_df.sort_values([user_id_col, "start_timestamp"]).reset_index(drop=True)
-
-    # Load (or create) the dynamic library
-    dynamic_library_changed = False
-    if dynamic_library_file is not None:
-        dynamic_library = load_dynamic_motif_library(dynamic_library_file)
-    else:
-        dynamic_library = create_dynamic_motif_library_object_from_static()
-
-    # Build per-day records for each user
+    # Build per-day records for each user by splitting on user_id_col
+    user_ids = sorted(set(work_df[user_id_col].to_list()))
     all_records: list[dict] = []
-    for _, user_group in work_df.groupby(user_id_col, sort=True):
+    user_iterator = (
+        user_ids if not show_progress else tqdm(user_ids, desc="Processing users")
+    )
+    for uid in user_iterator:
+        user_group = work_df.filter(nw.col(user_id_col) == uid)
         records = _build_daily_motif_records(
             user_group, user_id_col=user_id_col, location_id_col=location_id_col
         )
         all_records.extend(records)
 
     if not all_records:
-        empty_daily = pd.DataFrame(
-            columns=[user_id_col, "date", "motif_id", "num_nodes", "num_edges"]
+        empty_daily = nw.from_dict(
+            {
+                user_id_col: [],
+                "date": [],
+                "motif_id": [],
+                "num_nodes": [],
+                "num_edges": [],
+            },
+            backend=backend,
         )
-        empty_dist = pd.DataFrame(columns=["motif_id", "count", "percentage"])
-        return empty_daily, empty_dist
-
-    # Classify each daily graph
-    assigned_motif_ids: list[str] = []
-    for record in all_records:
-        graph = record["graph"]
-        motif_id, is_new = classify_or_add_motif_v2(
-            graph, dynamic_library=dynamic_library, auto_add_new_motifs=auto_add_new_motifs
+        empty_dist = nw.from_dict(
+            {"motif_id": [], "count": [], "percentage": []},
+            backend=backend,
         )
-        if motif_id is None:
-            motif_id = "-1"
-        if is_new:
-            dynamic_library_changed = True
-        assigned_motif_ids.append(motif_id)
+        return empty_daily.to_native(), empty_dist.to_native()
 
-    # Persist library if it changed and a file path was given
-    if dynamic_library_file is not None and dynamic_library_changed:
-        save_dynamic_motif_library(dynamic_library, dynamic_library_file)
-
-    # Assemble result DataFrames
-    daily_motifs_df = pd.DataFrame(all_records)
-    daily_motifs_df["motif_id"] = assigned_motif_ids
-    daily_motifs_df = (
-        daily_motifs_df.drop(columns=["graph"])
-        .sort_values(["motif_id", user_id_col, "date"])
-        .reset_index(drop=True)
+    # Assemble daily_motifs_df from records (drop the graph object)
+    daily_data: dict[str, list] = {
+        user_id_col: [r[user_id_col] for r in all_records],
+        "date": [r["date"] for r in all_records],
+        "num_nodes": [r["num_nodes"] for r in all_records],
+        "num_edges": [r["num_edges"] for r in all_records],
+        "motif_id": [r["motif_id"] for r in all_records],
+    }
+    daily_nw = nw.from_dict(daily_data, backend=backend).sort(
+        ["motif_id", user_id_col, "date"]
     )
 
-    motif_dist_df = (
-        daily_motifs_df["motif_id"]
-        .value_counts()
-        .sort_index()
-        .rename_axis("motif_id")
-        .reset_index(name="count")
-    )
-    motif_dist_df["percentage"] = (
-        motif_dist_df["count"] / motif_dist_df["count"].sum()
-    ) * 100
+    return daily_nw.to_native()
 
-    return daily_motifs_df, motif_dist_df
+
+def compute_daily_motifs_distribution(
+    daily_motifs_df: Any,
+    motif_id_col: str = "motif_id",
+) -> Any:
+    """Compute the distribution of motifs from a daily motifs DataFrame.
+
+    Parameters
+    ----------
+    daily_motifs_df:
+        DataFrame containing at least a column with motif IDs (e.g. output
+        from discover_daily_motifs_from_agents).
+    motif_id_col:
+        Column name for the motif ID.  Default ``"motif_id"``.
+    """
+
+    nw_df = nw.from_native(daily_motifs_df, eager_only=True)
+    total_rows = len(nw_df)
+    dist_nw = (
+        nw_df.group_by(motif_id_col)
+        .agg(nw.len().alias("count"))
+        .sort(motif_id_col)
+        .with_columns((nw.col("count") / total_rows * 100).alias("percentage"))
+    )
+    return dist_nw.to_native()
