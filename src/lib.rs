@@ -24,5 +24,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(waiting_times::waiting_times_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(square_displacement::square_displacement_km2, m)?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
+    m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
     Ok(())
 }
