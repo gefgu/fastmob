@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import waiting_times_seconds as _waiting_times_seconds_rust
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 
 
 def waiting_times(
@@ -74,20 +74,7 @@ def waiting_times(
             backend=df.implementation,
         ).to_native()
 
-    # Build per-user index ranges from the already-sorted dataframe.
-    uid_series = df.get_column(uid_col).to_list()
-    uid_values: list = []
-    ranges: list = []
-    i = 0
-    n = len(uid_series)
-    while i < n:
-        current_uid = uid_series[i]
-        start = i
-        while i < n and uid_series[i] == current_uid:
-            i += 1
-        uid_values.append(current_uid)
-        ranges.append((start, i))
-
+    uid_values, ranges = _build_user_ranges(df, uid_col)
     wt_lists = _waiting_times_seconds_rust(timestamps_s, ranges)
 
     return nw.from_dict(

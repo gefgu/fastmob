@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 import narwhals as nw
@@ -26,6 +27,42 @@ PURPOSE_CANDIDATES: list[str] = ["purpose", "activity", "location_type"]
 LOCATION_TYPE_CANDIDATES: list[str] = ["location_type", "purpose", "activity"]
 ORIGIN_CANDIDATES: list[str] = ["origin_area", "Origin_Area", "area_o", "ORIGIN_AREA"]
 DEST_CANDIDATES: list[str] = ["destination_area", "Dest_Area", "area_d", "DESTINATION_AREA"]
+
+
+def _shannon_entropy(counts: list[int]) -> float:
+    """Compute Shannon entropy in bits for a list of event counts.
+
+    Parameters
+    ----------
+    counts:
+        A list of non-negative integer counts (e.g. visit counts per location).
+        Zero-count items are ignored (contribute 0 to entropy, matching the
+        information-theoretic convention ``0 * log2(0) = 0``).
+
+    Returns
+    -------
+    float
+        Shannon entropy in bits.  Returns 0.0 when the total count is 0 or
+        when all probability mass is concentrated on a single item.
+
+    Examples
+    --------
+    >>> _shannon_entropy([1, 1])   # two equal-probability items -> 1 bit
+    1.0
+    >>> _shannon_entropy([1, 0])   # one item -> 0 bits
+    0.0
+    >>> _shannon_entropy([])
+    0.0
+    """
+    total = sum(counts)
+    if total == 0:
+        return 0.0
+    entropy = 0.0
+    for c in counts:
+        if c > 0:
+            p = c / total
+            entropy -= p * math.log2(p)
+    return entropy
 
 
 def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str | None:
@@ -192,3 +229,33 @@ def _prepare_trajectory(
     )
 
     return df, datetime_col, lat_col, lng_col, uid_col
+
+
+def _build_user_ranges(
+    df: nw.DataFrame, uid_col: str | None
+) -> tuple[list, list[tuple[int, int]]]:
+    """Split a uid-sorted DataFrame into per-user (uid_value, index_range) pairs.
+
+    Returns
+    -------
+    tuple[list, list[tuple[int, int]]]
+        ``(uid_values, ranges)`` where ``ranges[i]`` is the half-open row
+        interval ``[start, end)`` for ``uid_values[i]``.  When ``uid_col`` is
+        None the whole frame is treated as one user and returns
+        ``([None], [(0, len(df))])``.
+    """
+    n = len(df)
+    if uid_col is None:
+        return [None], [(0, n)]
+    uid_series = df.get_column(uid_col).to_list()
+    uid_values: list = []
+    ranges: list[tuple[int, int]] = []
+    i = 0
+    while i < n:
+        current_uid = uid_series[i]
+        start = i
+        while i < n and uid_series[i] == current_uid:
+            i += 1
+        uid_values.append(current_uid)
+        ranges.append((start, i))
+    return uid_values, ranges

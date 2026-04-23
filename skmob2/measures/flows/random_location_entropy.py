@@ -66,7 +66,6 @@ def random_location_entropy(
             .unique()
             .sort([lat_col, lng_col])
         )
-        n_rows = len(locs)
         result = locs.with_columns(
             nw.lit(0.0).alias("random_entropy")
         )

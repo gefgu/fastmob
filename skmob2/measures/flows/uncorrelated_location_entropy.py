@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _prepare_trajectory, _shannon_entropy
 
 
 def uncorrelated_location_entropy(
@@ -63,18 +62,6 @@ def uncorrelated_location_entropy(
 
     backend = df.implementation
 
-    def _shannon(counts: list[int]) -> float:
-        """Compute Shannon entropy in bits for a list of visit counts."""
-        total = sum(counts)
-        if total == 0:
-            return 0.0
-        entropy = 0.0
-        for c in counts:
-            if c > 0:
-                p = c / total
-                entropy -= p * math.log2(p)
-        return entropy
-
     if uid_col is None:
         # Single user: each location has probability 1 -> entropy = 0.
         locs = (
@@ -87,38 +74,32 @@ def uncorrelated_location_entropy(
         )
         return result.to_native()
 
-    # Count visits per (uid, lat, lng) triplet.
+    # Count visits per (uid, lat, lng) triplet, then collect into Python dicts
+    # keyed by location so we can compute Shannon entropy without per-location
+    # dataframe filter passes (avoids O(L × N) work).
     visit_counts = (
         df.select([uid_col, lat_col, lng_col])
         .group_by([uid_col, lat_col, lng_col])
         .agg(nw.len().alias("__visits__"))
+        .sort([lat_col, lng_col])
     )
 
-    # Group per location and compute Shannon entropy over the per-user counts.
-    loc_lats = (
-        visit_counts
-        .select([lat_col, lng_col])
-        .unique()
-        .sort([lat_col, lng_col])
-        .get_column(lat_col)
-        .to_list()
-    )
-    loc_lngs = (
-        visit_counts
-        .select([lat_col, lng_col])
-        .unique()
-        .sort([lat_col, lng_col])
-        .get_column(lng_col)
-        .to_list()
-    )
+    uid_list = visit_counts.get_column(uid_col).to_list()
+    lat_list = visit_counts.get_column(lat_col).to_list()
+    lng_list = visit_counts.get_column(lng_col).to_list()
+    cnt_list = visit_counts.get_column("__visits__").to_list()
 
-    entropies = []
-    for lat_v, lng_v in zip(loc_lats, loc_lngs):
-        loc_rows = visit_counts.filter(
-            (nw.col(lat_col) == lat_v) & (nw.col(lng_col) == lng_v)
-        )
-        counts = loc_rows.get_column("__visits__").to_list()
-        entropies.append(_shannon(counts))
+    # Accumulate per-location visit-count vectors: {(lat, lng): [c_u1, c_u2, ...]}
+    loc_counts: dict[tuple, list[int]] = {}
+    for lat_v, lng_v, c in zip(lat_list, lng_list, cnt_list):
+        key = (lat_v, lng_v)
+        loc_counts.setdefault(key, []).append(c)
+
+    # Sort locations for stable output order.
+    sorted_locs = sorted(loc_counts.keys())
+    loc_lats = [k[0] for k in sorted_locs]
+    loc_lngs = [k[1] for k in sorted_locs]
+    entropies = [_shannon_entropy(loc_counts[k]) for k in sorted_locs]
 
     return nw.from_dict(
         {lat_col: loc_lats, lng_col: loc_lngs, "uncorrelated_entropy": entropies},

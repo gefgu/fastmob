@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import pandas as pd
 import narwhals as nw
 
 from .._common import (
@@ -36,6 +35,15 @@ def _kontoyiannis_entropy(sequence: list) -> float:
     float
         Entropy in bits. Returns 0.0 for sequences of length <= 1 or
         constant sequences.
+
+    Implementation notes
+    --------------------
+    The DP transition is ``dp[i][j] = dp[i-1][j-1] + 1`` when
+    ``sequence[i-1] == sequence[j-1]``, else 1.  The full n×n table is not
+    needed at once: only the previous row is required to compute the current
+    row.  We therefore keep two 1D arrays (``prev_row`` and ``curr_row``) and
+    accumulate the per-column maximum incrementally, reducing memory from
+    O(n²) to O(n).
     """
     sequence = [str(elem) for elem in sequence]
     n = len(sequence)
@@ -43,17 +51,22 @@ def _kontoyiannis_entropy(sequence: list) -> float:
     if n <= 1:
         return 0.0
 
-    # DP table: dp[i][j] = length of longest match ending at position j
-    # with a match starting at position i
-    dp = [[1] * n for _ in range(n)]
+    # col_max[j] tracks max(dp[0..i][j]) as we advance i.
+    # Initialised to 1 because dp[0][j] == 1 for all j (base row).
+    col_max = [1] * n
+    prev_row = [1] * n
 
     for i in range(1, n):
+        curr_row = [1] * n
         for j in range(i + 1, n):
             if sequence[i - 1] == sequence[j - 1]:
-                dp[i][j] = dp[i - 1][j - 1] + 1
+                curr_row[j] = prev_row[j - 1] + 1
+            # else curr_row[j] remains 1 (initialised above)
+            if curr_row[j] > col_max[j]:
+                col_max[j] = curr_row[j]
+        prev_row = curr_row
 
-    # lambdas = sum of max match length for each position
-    lambdas = sum(max(column) for column in zip(*dp))
+    lambdas = sum(col_max)
 
     if lambdas == 0:
         return 0.0
@@ -132,7 +145,7 @@ def trajectory_entropy(
     location_type_col: str | None = None,
     timestamp_col: str | None = None,
     normalized: bool = True,
-) -> pd.DataFrame:
+) -> Any:
     """Compute Kontoyiannis entropy of mobility trajectories per user.
 
     Parameters
@@ -155,9 +168,13 @@ def trajectory_entropy(
 
     Returns
     -------
-    pd.DataFrame
+    pandas.DataFrame
         One row per user with columns ``[user_id_col, "entropy"]``.
+        Always returns a pandas DataFrame because the internal algorithm
+        requires pandas groupby iteration.
     """
+    import pandas as pd  # noqa: PLC0415 — deferred: pandas iteration is unavoidable here
+
     nw_df = nw.from_native(visits, eager_only=True)
 
     if user_id_col is None:
@@ -219,7 +236,7 @@ def trajectory_predictability(
     location_id_col: str | None = None,
     location_type_col: str | None = None,
     timestamp_col: str | None = None,
-) -> pd.DataFrame:
+) -> Any:
     """Compute per-user maximum predictability via Fano's inequality.
 
     Follows the Song et al. (2010) approach: estimate real entropy using
@@ -242,11 +259,15 @@ def trajectory_predictability(
 
     Returns
     -------
-    pd.DataFrame
+    pandas.DataFrame
         One row per user with columns
         ``[user_id_col, "real_entropy", "predictability",
         "n_unique_locations", "n_steps"]``.
+        Always returns a pandas DataFrame because the internal algorithm
+        requires pandas groupby iteration.
     """
+    import pandas as pd  # noqa: PLC0415 — deferred: pandas iteration is unavoidable here
+
     nw_df = nw.from_native(visits, eager_only=True)
 
     if user_id_col is None:

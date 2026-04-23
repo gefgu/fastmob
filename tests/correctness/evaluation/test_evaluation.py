@@ -20,6 +20,19 @@ from skmob2.measures.evaluation import (
     spearman_correlation,
 )
 
+# Tests that call into scipy are skipped when scipy is not installed.
+# Use a module-level flag so each test can reference it with a simple decorator.
+try:
+    import scipy  # noqa: F401
+    _HAS_SCIPY = True
+except ImportError:
+    _HAS_SCIPY = False
+
+requires_scipy = pytest.mark.skipif(
+    not _HAS_SCIPY,
+    reason="scipy is not installed — install with: pip install scipy",
+)
+
 
 # ---------------------------------------------------------------------------
 # common_part_of_commuters
@@ -195,14 +208,14 @@ def test_information_gain_known_value():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_kl_divergence_identical():
     """KL divergence of identical distributions is 0."""
     v = [0.5, 0.5]
     assert kullback_leibler_divergence(v, v) == pytest.approx(0.0)
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_kl_divergence_known_value():
     """KL divergence matches scipy.stats.entropy for a known input."""
     from scipy import stats
@@ -218,7 +231,7 @@ def test_kl_divergence_known_value():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_pearson_perfect_positive_correlation():
     """Pearson r=1.0 for perfectly correlated arrays."""
     v = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -226,7 +239,7 @@ def test_pearson_perfect_positive_correlation():
     assert r == pytest.approx(1.0)
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_pearson_returns_tuple():
     """pearson_correlation returns a 2-tuple of floats."""
     result = pearson_correlation([1.0, 2.0, 3.0], [3.0, 2.0, 1.0])
@@ -234,7 +247,7 @@ def test_pearson_returns_tuple():
     assert len(result) == 2
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_pearson_known_value():
     """Pearson result matches scipy.stats.pearsonr for a known input."""
     from scipy import stats
@@ -252,7 +265,7 @@ def test_pearson_known_value():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_spearman_perfect_monotonic():
     """Spearman rho=1.0 for a perfectly monotonic relationship."""
     v = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -260,7 +273,7 @@ def test_spearman_perfect_monotonic():
     assert rho == pytest.approx(1.0)
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_spearman_returns_tuple():
     """spearman_correlation returns a 2-tuple of floats."""
     result = spearman_correlation([1.0, 2.0, 3.0], [3.0, 2.0, 1.0])
@@ -268,7 +281,7 @@ def test_spearman_returns_tuple():
     assert len(result) == 2
 
 
-@pytest.mark.skmob
+@requires_scipy
 def test_spearman_known_value():
     """Spearman result matches scipy.stats.spearmanr for a known input."""
     from scipy import stats

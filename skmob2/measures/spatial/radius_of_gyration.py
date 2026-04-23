@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import radius_of_gyration_km, radius_of_gyration_batch_km
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 
 
 def radius_of_gyration(
@@ -79,21 +79,7 @@ def radius_of_gyration(
             {"radius_of_gyration": [rg]}, backend=df.implementation
         ).to_native()
 
-    # Build per-user index ranges from the already-sorted dataframe.
-    # The df is sorted by [uid_col, datetime_col] so same-uid rows are contiguous.
-    uid_series = df.get_column(uid_col).to_list()
-    uid_values: list = []
-    ranges: list = []
-    i = 0
-    n = len(uid_series)
-    while i < n:
-        current_uid = uid_series[i]
-        start = i
-        while i < n and uid_series[i] == current_uid:
-            i += 1
-        uid_values.append(current_uid)
-        ranges.append((start, i))
-
+    uid_values, ranges = _build_user_ranges(df, uid_col)
     # Single Rust call covering all users — eliminates per-user boundary crossings
     rog_values = radius_of_gyration_batch_km(lats_full, lngs_full, ranges)
 

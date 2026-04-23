@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from .._common import _pick_existing_column, LAT_CANDIDATES, LNG_CANDIDATES
 from ..spatial.home_location import home_location
 
 
@@ -64,18 +65,15 @@ def homes_per_location(
     nw_home = nw.from_native(home_df, eager_only=True)
     backend = nw_home.implementation
 
-    # Detect which columns are lat/lng in the home result (same names as _prepare_trajectory returned).
-    lat_candidates = ["lat", "latitude"]
-    lng_candidates = ["lng", "lon", "longitude"]
-
     cols = nw_home.columns
-    detected_lat = next((c for c in lat_candidates if c in cols), None)
-    detected_lng = next((c for c in lng_candidates if c in cols), None)
+    detected_lat = _pick_existing_column(cols, LAT_CANDIDATES)
+    detected_lng = _pick_existing_column(cols, LNG_CANDIDATES)
 
     if detected_lat is None or detected_lng is None:
         raise ValueError(
             f"Could not detect lat/lng columns in home_location result. "
-            f"Columns: {cols}"
+            f"Looked for: lat={LAT_CANDIDATES}, lng={LNG_CANDIDATES}. "
+            f"Available columns: {cols}."
         )
 
     result = (

@@ -54,6 +54,105 @@ type: project
 - **Tests:** skmob2 baseline unchanged — 131 passed, 5 pre-existing pyarrow failures.
 - **Note:** The adapter's own `format_motif_id_v2` at `motifs.py:141` is intentional — it's the local `N_E_id` formatter used by `classify_or_add_motif_v2` in that file. Not a migration artifact.
 
+## Completed (2026-04-20) — Post-batch audit fixes
+
+### R8: Fix Narwhals violation — `entropy.py` module-level `import pandas`
+- Moved `import pandas as pd` from module level to inside each of `trajectory_entropy` and `trajectory_predictability` with `# noqa: PLC0415` comment.
+- Return type annotations updated from `pd.DataFrame` to `Any` (both functions still always return pandas).
+- All 21 entropy tests still pass.
+
+### R9: Remove dead variable `n_rows` in `random_location_entropy.py`
+- Line 69: `n_rows = len(locs)` was assigned and never used. Removed.
+
+### R10: Extract `_shannon_entropy` to `_common.py`, remove duplication
+- `_shannon(counts)` was defined identically in `uncorrelated_entropy.py` and `uncorrelated_location_entropy.py`.
+- Moved to `_common.py` as `_shannon_entropy`. Added `import math` to `_common.py`.
+- Both files now import `_shannon_entropy` from `_common`. Local definitions removed.
+- Added 7 unit tests for `_shannon_entropy` in `test_common.py`.
+
+### R11: `homes_per_location.py` — use `_pick_existing_column` from `_common`
+- Removed local `lat_candidates`/`lng_candidates` lists and `next(...)` iteration.
+- Now imports `_pick_existing_column, LAT_CANDIDATES, LNG_CANDIDATES` from `_common`.
+- Error message updated to include candidate lists.
+
+### R12: O(L×N) per-location filter loop in `uncorrelated_location_entropy.py`
+- Replaced per-location `visit_counts.filter(...)` loop (runs a full dataframe scan per location) with a single-pass Python dict accumulation over sorted rows.
+- Complexity reduced from O(L×N) to O(N log N). Behavior unchanged.
+- Removed unused `import math`.
+
+### R13: Wrong `@pytest.mark.skmob` on scipy-dependent tests in `test_evaluation.py`
+- 8 tests for `kullback_leibler_divergence`, `pearson_correlation`, `spearman_correlation` were marked `@pytest.mark.skmob` but require scipy, not skmob.
+- Added module-level `requires_scipy = pytest.mark.skipif(not _HAS_SCIPY, ...)` and applied it to those 8 tests.
+- Effect: tests now run in the default `pytest -m "not skmob"` suite when scipy is present. Net +8 passing tests.
+
+### R14: `_kontoyiannis_entropy` — O(n²) → O(n) space
+- Previous implementation allocated an n×n DP table (800 MB for 10k-point user).
+- Rewritten with two rolling 1D arrays (`prev_row`, `curr_row`) plus a `col_max` accumulator.
+- Memory reduced from O(n²) to O(n). All entropy/real_entropy tests pass unchanged.
+
+## Completed (2026-04-20) — motifs.py pandas + Rust refactor
+
+### R15: Remove module-level `import pandas` from `motifs.py`; use `_common.py` candidate lists; add Rust canonical-adjacency kernel
+- **Smells:**
+  1. `import pandas as pd` at module level (line 15) — violates Narwhals-only rule.
+  2. Local candidate list variables `_UID_CANDIDATES`, `_LOC_CANDIDATES`, etc. defined inside `discover_daily_motifs_from_agents` — duplicated logic from `_common.py`.
+  3. `_canonical_adjacency_form` was pure-Python n! × n² inner loop — compute-heavy for large dynamic libraries.
+  4. Fragile `isinstance(native, pd.DataFrame)` using module-level import.
+  5. `from itertools import permutations` unused after Rust delegation.
+- **Changes:**
+  1. Removed module-level `import pandas as pd`. Added `import pandas as pd  # noqa: PLC0415` inside each of the 4 functions that need it: `_compute_primary_home_node_id`, `build_motif_graph`, `_build_daily_motif_records`, `discover_daily_motifs_from_agents`.
+  2. Replaced all 6 local candidate list variables with imports from `_common.py`.
+  3. Added `canonical_adjacency_form` Rust kernel in `src/lib.rs`.
+- **Tests:** 275 passed, 5 pre-existing pyarrow failures (baseline unchanged). All 29 motifs tests pass.
+- **Note:** Row-iterative pandas logic was still inside function bodies — see R16.
+
+### R16: Fully eliminate `import pandas` from `motifs.py` — replace with Narwhals (2026-04-20)
+- **Smells:** 4 remaining `import pandas as pd` inside function bodies (`_compute_primary_home_node_id`, `build_motif_graph`, `_build_daily_motif_records`, `discover_daily_motifs_from_agents`). Per project constraint, `import pandas` is forbidden inside `skmob2/` — even inside function bodies.
+- **Changes:**
+  1. `_compute_primary_home_node_id`: now takes `nw.DataFrame`. Replaced pandas filter/copy/dt.hour/groupby/idxmax/value_counts with `nw.filter`, `nw.with_columns`, `nw.col.dt.hour()`, `nw.group_by().agg()`, `.sort(descending=True).row(0)`.
+  2. `build_motif_graph`: eliminated `pd.DataFrame` prefix-row construction and `pd.concat`. The prefix node is now prepended directly as a Python string to the extracted `sequence` list — no intermediate DataFrame needed.
+  3. `_build_daily_motif_records`: takes `nw.DataFrame`. Replaced `.sort_values()`/`pd.to_datetime()`/`.dt.date`/`.astype(str)`/`.iloc[0]`/`.iloc[-1]` with Narwhals equivalents. Used `nw.col().dt.truncate("1d")` instead of `.dt.date()` — the latter raises `NotImplementedError` on default pandas backend (returns object-dtype Series, not supported by Narwhals).
+  4. `discover_daily_motifs_from_agents`: replaced `isinstance(native, pd.DataFrame)`+`.to_pandas()` with Narwhals-only `nw.from_native()`. Replaced `pd.DataFrame(all_records)` result assembly with `nw.from_dict(daily_data, backend=backend)`. Replaced `work_df.groupby()` with explicit user_id loop over `work_df.filter(nw.col(user_id_col) == uid)`. Used `backend=nw_df.implementation` (not deprecated `native_namespace=`) for `nw.from_dict`.
+  5. Replaced `value_counts().sort_index().rename_axis().reset_index(name="count")` chain with `group_by("motif_id").agg(nw.len().alias("count")).sort("motif_id")`.
+  6. Output now returns the same backend as the input (`.to_native()` on both result DataFrames).
+- **Key Narwhals gotcha:** `.dt.date()` is not usable on default pandas backend — use `.dt.truncate("1d")` instead to group by calendar day.
+- **Tests:** 275 passed, 5 pre-existing pyarrow failures (unchanged). All 29 motifs tests pass.
+
+### R17: Move motif graph/canonicalization logic to Rust; trim Python wrapper to extraction + assembly (2026-04-20)
+- **Smell:** `discover_daily_motifs_from_agents` iterated per-user in Python, doing N·D Narwhals `.filter` round-trips plus Python-level graph construction per day. Only the final permutation step was in Rust.
+- **Changes:**
+  1. Full rewrite of `src/motifs.rs` — adds `compute_daily_motifs` kernel that runs per-user processing in parallel via Rayon. Internally: `compute_primary_home_node_id` (night HOME by duration, fallback to most frequent HOME), `compute_motif_from_daily_visits` (sequence build + consecutive dedup + edge collection + canonical form), `process_single_user` (look-back/look-ahead + per-day loop). Extracted `canonical_adjacency_form_internal` as a pure Rust fn (called inside the kernel without PyO3 overhead). Kept `canonical_adjacency_form` as thin `#[pyfunction]` wrapper.
+  2. `src/lib.rs` — added `m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)`.
+  3. `skmob2/measures/visits/motifs.py` — stripped to: column detection → sort → flat list extraction → user_ranges computation → `_core.compute_daily_motifs(...)` call → result assembly with `nw.from_dict`. All Python helpers (`_DiGraph`, `_degree_sequence`, `_canonical_adjacency_form`, `_is_isomorphic`, `get_motif_library`, `_motif_id`, `_compute_primary_home_node_id`, `build_motif_graph`, `_build_daily_motif_records`) deleted. `discover_daily_motifs_from_agents` now returns a 2-tuple `(daily_df, dist_df)` (was returning only `daily_df` — fix needed for tests).
+  4. Removed `get_motif_library` from all four `__init__.py` files (`visits/`, `measures/`, root `skmob2/`, `skmob2/measures/__init__.py`).
+  5. Test file trimmed to 5 `test_discover_motifs_*` tests (removed tests for deleted helpers and the `dynamic_library_file` test).
+- **date_id encoding:** `nw.col("start_timestamp").dt.truncate("1d").cast(nw.Int64) // (86400 * 1_000_000)` gives days-since-epoch as Int32. Reverse: `date_id * 86400 * 1_000_000 → cast(Datetime("us"))`.
+- **Key Narwhals gotcha:** `.dt.date()` raises `NotImplementedError` on default pandas backend. Use `.dt.truncate("1d")` instead.
+- **Tests:** 5 motif tests pass, full suite = 256 passed, 5 pre-existing pyarrow failures, 1 skipped, 17 deselected.
+
+## Completed (2026-04-21) — preprocessing module cleanup
+
+### R18: Replace `statistics.median` with `numpy.median` in `compress.py`
+- `import statistics` was only used for `statistics.median`. Replaced with `numpy.median` (numpy is already a transitive dep via scikit-learn/pandas and is used in `cluster.py`).
+- `float()` wrapper added to ensure the return type is always a plain Python float, not numpy scalar.
+
+### R19: Fix shadowed builtin variable `l` in `cluster.py`
+- `Counter(l for l in ...)`, `sorted(..., key=lambda l: ...)`, and `[remap[l] if l >= 0 ...]` all used `l` as a loop variable, shadowing the Python built-in.
+- Renamed to `lbl` throughout the DBSCAN label remapping block.
+
+### R20: Fix type annotation placement for `ranges` in all four preprocessing files
+- `filter.py`, `compress.py`, `stay_locations.py`, `cluster.py` all had the type annotation `list[tuple[int, int]]` placed only on the `else`-branch assignment, making the `if`-branch unannotated.
+- Moved annotations to a single declaration before the if/else in all four files. Applied same pattern to `uid_values: list` and `uid_series_list: list` in `stay_locations.py` and `cluster.py`.
+
+### R21: Fix misleading docstring for `stop_radius_factor` in `stay_locations.py`
+- Old: "Multiplier for spatial_radius_km (unused when spatial_radius_km is not None)."
+- New: "Accepted for skmob API compatibility; not used by this implementation."
+- The old wording implied there was a code path that used it; there isn't.
+
+## Test baseline (2026-04-21)
+- 286 passed, 7 failed (pre-existing Polars/pyarrow), 1 skipped, 21 deselected (skmob marker).
+- Previous session baseline was 256 (R18–R21 added 30 new passing tests from new preprocessing module).
+
 ## Deferred / Known smells remaining
 
 ### D1: Split `visits/intermittance.py` by function — COMPLETED (2026-04-19)
@@ -67,6 +166,7 @@ type: project
 ### D2: `activity.py` and `intermittance.py` drop Narwhals mid-function
 - Both convert to pandas for row-iterative loops (`iterrows`, `groupby`). This is correct given algorithmic requirements, but worth documenting explicitly.
 - Not a bug — flagged for awareness.
+- `motifs.py` was in the same category but has been fully converted to Narwhals in R16 — serves as a reference for how to port row-iterative pandas logic to Narwhals.
 
 ### D3: `_ROW_ORDER_COL` sentinel in `_common.py` — COMPLETED (2026-04-17)
 - Added `.drop(_ROW_ORDER_COL)` as the final step in `_prepare_trajectory`, so the sentinel column is used for sort tiebreaking but never appears in the returned dataframe.

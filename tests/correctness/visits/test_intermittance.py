@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 import pytest
-from skmob2.measures.visits.intermittance import intermittance_and_degree_of_return
+from skmob2.measures.visits.intermittance_and_degree_of_return import intermittance_and_degree_of_return
 
 
 def _agent_visits():

@@ -1,3 +1,7 @@
+from .preprocessing.filter import filter
+from .preprocessing.compress import compress
+from .preprocessing.stay_locations import stay_locations
+from .preprocessing.cluster import cluster
 from .measures.spatial.jump_lengths import jump_lengths
 from .measures.spatial.radius_of_gyration import radius_of_gyration
 from .measures.spatial.k_radius_of_gyration import k_radius_of_gyration
@@ -17,7 +21,7 @@ from .measures.flows.visits_per_time_unit import visits_per_time_unit
 from .measures.flows.mean_square_displacement import mean_square_displacement
 from .measures.fitting.mobility_laws import log_truncated_powerlaw, fit_values_to_truncated_powerlaw
 from .measures.visits.activity import activity_transition_matrix
-from .measures.visits.intermittance import intermittance_and_degree_of_return
+from .measures.visits.intermittance_and_degree_of_return import intermittance_and_degree_of_return
 from .measures.visits.regularity import regularity
 from .measures.visits.fast_diversity import fast_diversity
 from .measures.visits.diversity import diversity
@@ -30,9 +34,7 @@ from .measures.visits.individual_mobility_network import individual_mobility_net
 from .measures.visits.location_frequency import location_frequency
 from .measures.visits.real_entropy import real_entropy
 from .measures.visits.motifs import (
-    get_motif_library,
     discover_daily_motifs_from_agents,
-    classify_or_add_motif_v2,
 )
 from .measures.evaluation import (
     common_part_of_commuters,
@@ -49,6 +51,10 @@ from .measures.evaluation import (
 )
 
 __all__ = [
+    "filter",
+    "compress",
+    "stay_locations",
+    "cluster",
     "jump_lengths",
     "radius_of_gyration",
     "k_radius_of_gyration",
@@ -83,9 +89,7 @@ __all__ = [
     "individual_mobility_network",
     "location_frequency",
     "real_entropy",
-    "get_motif_library",
     "discover_daily_motifs_from_agents",
-    "classify_or_add_motif_v2",
     "common_part_of_commuters",
     "common_part_of_links",
     "r_squared",

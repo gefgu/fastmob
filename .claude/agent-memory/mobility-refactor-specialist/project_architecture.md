@@ -6,6 +6,11 @@ type: project
 
 ## Layout
 - `src/lib.rs` — Rust kernels compiled to `skmob2/_core.*.so` via maturin
+- `skmob2/preprocessing/` — preprocessing functions (filter, compress, stay_locations, cluster); each in its own file mirrored by `tests/correctness/preprocessing/`
+  - `filter.py` — `filter_trajectory_batch` Rust kernel via `src/filter_traj.rs` (uses Rayon)
+  - `compress.py` — `compress_trajectory_batch` Rust kernel via `src/compress_traj.rs`
+  - `stay_locations.py` — `detect_stay_locations_batch` Rust kernel via `src/stay_locations_rs.rs`
+  - `cluster.py` — pure Python using scikit-learn DBSCAN with Haversine metric
 - `skmob2/measures/` — measures organized into subfolders:
   - `skmob2/measures/_common.py` — shared utilities: candidate lists, `_pick_existing_column`, `_detect_trajectory_columns`, `_prepare_trajectory`
   - `skmob2/measures/spatial/` — `jump_lengths.py`, `radius_of_gyration.py`
@@ -27,6 +32,10 @@ type: project
 - `od.py` intentionally returns pandas (pivot_table requires it); `import pandas as pd` is deferred inside the function body, not at module level.
 - Preserve `backend=df.implementation` when constructing output dicts so result backend matches input.
 
+## Shared pure-Python helpers in `_common.py`
+- `_shannon_entropy(counts: list[int]) -> float` — Shannon entropy in bits; shared by `uncorrelated_entropy.py` and `uncorrelated_location_entropy.py`.
+- `import math` added to `_common.py`.
+
 ## Column auto-detection
 All authoritative candidate lists live in `skmob2/measures/_common.py`:
 - `DATETIME_CANDIDATES`, `LAT_CANDIDATES`, `LNG_CANDIDATES`, `UID_CANDIDATES` — trajectory measures
@@ -44,8 +53,14 @@ All authoritative candidate lists live in `skmob2/measures/_common.py`:
 3. Call Rust kernel.
 4. Reassemble result dataframe in original backend.
 
+## Rust/Python boundary conventions
+- Rust kernels receive flat Python lists (Vec<String>, Vec<u32>, etc.) + per-user index ranges (Vec<(usize, usize)>) — same pattern as `waiting_times_seconds` and `radius_of_gyration_batch_km`.
+- `compute_daily_motifs` signature: `(unique_ids, purposes, start_hours, end_hours, date_ids, durations, user_ranges, user_id_labels) → (Vec<String>, Vec<i32>, Vec<String>)` — parallel flat-column output.
+- date_id encoding: days since Unix epoch as Int32. Convert: `.dt.truncate("1d").cast(Int64) // (86400 * 1_000_000)`. Reverse: `date_id * 86400 * 1_000_000 → cast(Datetime("us"))`.
+- `canonical_adjacency_form_internal` is kept as a non-PyO3 fn in motifs.rs so it can be called by `compute_daily_motifs` without overhead. `canonical_adjacency_form` is the thin `#[pyfunction]` wrapper around it.
+
 ## Test strategy
 - Run: `source .venv/bin/activate && pytest tests/correctness/ -m "not skmob" -q`
-- 131 tests pass (as of 2026-04-17 after R6 subfolder refactor); 5 pre-existing failures (pyarrow missing in venv — unrelated to our code).
+- Current baseline: 256 passed, 5 pre-existing failures (pyarrow missing — unrelated to our code), 1 skipped, 17 deselected (skmob marker).
 - `@pytest.mark.skmob` tests require `skmob` package and Brightkite dataset download.
 - `conftest.py` fixtures: `synthetic_tdf` (pandas, 3 users × 5 pts), `synthetic_tdf_polars` (same in Polars), `brightkite_skmob`.

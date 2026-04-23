@@ -17,7 +17,7 @@ from .flows.visits_per_time_unit import visits_per_time_unit
 from .flows.mean_square_displacement import mean_square_displacement
 from .fitting.mobility_laws import log_truncated_powerlaw, fit_values_to_truncated_powerlaw
 from .visits.activity import activity_transition_matrix
-from .visits.intermittance import intermittance_and_degree_of_return
+from .visits.intermittance_and_degree_of_return import intermittance_and_degree_of_return
 from .visits.regularity import regularity
 from .visits.fast_diversity import fast_diversity
 from .visits.diversity import diversity
@@ -30,9 +30,7 @@ from .visits.individual_mobility_network import individual_mobility_network
 from .visits.location_frequency import location_frequency
 from .visits.real_entropy import real_entropy
 from .visits.motifs import (
-    get_motif_library,
     discover_daily_motifs_from_agents,
-    classify_or_add_motif_v2,
 )
 from .evaluation import (
     common_part_of_commuters,
@@ -83,9 +81,7 @@ __all__ = [
     "individual_mobility_network",
     "location_frequency",
     "real_entropy",
-    "get_motif_library",
     "discover_daily_motifs_from_agents",
-    "classify_or_add_motif_v2",
     "common_part_of_commuters",
     "common_part_of_links",
     "r_squared",

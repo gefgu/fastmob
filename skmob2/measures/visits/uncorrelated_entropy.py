@@ -5,7 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _prepare_trajectory, _shannon_entropy
 
 
 def uncorrelated_entropy(
@@ -78,18 +78,6 @@ def uncorrelated_entropy(
         ).alias(loc_key_col)
     )
 
-    def _shannon(counts: list[int]) -> float:
-        """Compute Shannon entropy in bits for a list of visit counts."""
-        total = sum(counts)
-        if total == 0:
-            return 0.0
-        entropy = 0.0
-        for c in counts:
-            if c > 0:
-                p = c / total
-                entropy -= p * math.log2(p)
-        return entropy
-
     def _compute_entropy_for_user(user_df: nw.DataFrame) -> float:
         """Compute uncorrelated entropy for rows belonging to a single user."""
         loc_series = user_df.get_column(loc_key_col)
@@ -97,7 +85,7 @@ def uncorrelated_entropy(
         counts: dict[str, int] = {}
         for loc in loc_list:
             counts[loc] = counts.get(loc, 0) + 1
-        entropy = _shannon(list(counts.values()))
+        entropy = _shannon_entropy(list(counts.values()))
         if normalize:
             n = len(counts)
             if n > 1:

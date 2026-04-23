@@ -149,3 +149,52 @@ class TestPrepareTrajectory:
         df_in = pd.DataFrame({"datetime": [], "lat": []})
         with pytest.raises(ValueError, match="longitude"):
             _prepare_trajectory(df_in)
+
+
+# ---------------------------------------------------------------------------
+# _shannon_entropy
+# ---------------------------------------------------------------------------
+
+class TestShannonEntropy:
+    def test_equal_counts_two_items(self):
+        """Two items with equal counts -> 1 bit of entropy."""
+        from skmob2.measures._common import _shannon_entropy
+        import math
+        assert abs(_shannon_entropy([1, 1]) - 1.0) < 1e-12
+
+    def test_single_item(self):
+        """One item -> 0 bits (no uncertainty)."""
+        from skmob2.measures._common import _shannon_entropy
+        assert _shannon_entropy([5]) == 0.0
+
+    def test_empty_list(self):
+        """Empty list -> 0.0 without error."""
+        from skmob2.measures._common import _shannon_entropy
+        assert _shannon_entropy([]) == 0.0
+
+    def test_zero_total(self):
+        """All-zero counts -> 0.0 without division error."""
+        from skmob2.measures._common import _shannon_entropy
+        assert _shannon_entropy([0, 0, 0]) == 0.0
+
+    def test_uniform_five_items(self):
+        """Five equal-count items -> log2(5) bits."""
+        from skmob2.measures._common import _shannon_entropy
+        import math
+        result = _shannon_entropy([1, 1, 1, 1, 1])
+        assert abs(result - math.log2(5)) < 1e-12
+
+    def test_skewed_distribution(self):
+        """p=0.75, p=0.25 -> hand-computed value."""
+        from skmob2.measures._common import _shannon_entropy
+        import math
+        p1, p2 = 0.75, 0.25
+        expected = -(p1 * math.log2(p1) + p2 * math.log2(p2))
+        result = _shannon_entropy([3, 1])
+        assert abs(result - expected) < 1e-12
+
+    def test_zeros_ignored(self):
+        """Zero-count items do not affect entropy (0*log(0) = 0)."""
+        from skmob2.measures._common import _shannon_entropy
+        # [1, 1] and [1, 1, 0] should give the same entropy.
+        assert abs(_shannon_entropy([1, 1]) - _shannon_entropy([1, 1, 0])) < 1e-12
