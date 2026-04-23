@@ -36,6 +36,7 @@ from .measures.visits.real_entropy import real_entropy
 from .measures.visits.motifs import (
     discover_daily_motifs_from_agents,
 )
+from .measures.wasserstein_distance import wasserstein_distance
 from .measures.evaluation import (
     common_part_of_commuters,
     common_part_of_links,
@@ -90,6 +91,7 @@ __all__ = [
     "location_frequency",
     "real_entropy",
     "discover_daily_motifs_from_agents",
+    "wasserstein_distance",
     "common_part_of_commuters",
     "common_part_of_links",
     "r_squared",

@@ -12,3 +12,5 @@ crate-type = ["cdylib"]
 pyo3 = "0.28.2"
 geo = "0.32.0"
 rayon = "1.12"
+wass = "0.2.0"
+ndarray = "0.16"
