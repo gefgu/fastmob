@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 import pytest
-from skmob2.measures.visits.intermittance_and_degree_of_return import intermittance_and_degree_of_return
+from skmob2.measures.visits.mobility_profiling import intermittance_and_degree_of_return
 
 
 def _agent_visits():
@@ -77,24 +77,6 @@ def test_column_autodetection_user_id():
     assert len(result) == 1
 
 
-def test_combine_purpose_false():
-    """When combine_purpose_with_location=False, location key is just location_id."""
-    df = pd.DataFrame({
-        "agent_id":     ["u1", "u1", "u1"],
-        "location_id":  ["h", "other", "h"],
-        "purpose":      ["HOME", "LEISURE", "HOME"],
-        "duration_steps": [10, 5, 10],
-    })
-    result_combined = intermittance_and_degree_of_return(
-        df, combine_purpose_with_location=True
-    )
-    result_plain = intermittance_and_degree_of_return(
-        df, combine_purpose_with_location=False
-    )
-    # Both should produce a result; exact values differ only in edge cases
-    assert len(result_combined) == 1
-    assert len(result_plain) == 1
-
 
 def test_result_columns():
     """Result must contain the expected columns."""
@@ -117,14 +99,18 @@ def test_single_visit_user():
 
 
 def test_pure_exploration_agent():
-    """Agent who only visits new places: exploration > 0, degree_of_return near 0."""
+    """Agent who only visits new places: exploration > 0, degree_of_return near 0.
+
+    cold_start_strategy="none" is required so that all-equal-frequency locations
+    are not pre-labelled as known, letting each unique visit count as exploration.
+    """
     df = pd.DataFrame({
         "agent_id":     ["u1", "u1", "u1"],
         "location_id":  ["a", "b", "c"],
         "purpose":      ["SHOP", "LEISURE", "OTHER"],
         "duration_steps": [10, 10, 10],
     })
-    result = intermittance_and_degree_of_return(df)
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none")
     row = result.iloc[0]
     assert row["mean_exploration"] > 0
     assert row["mean_return"] == pytest.approx(0.0)

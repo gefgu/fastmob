@@ -17,7 +17,7 @@ from .flows.visits_per_time_unit import visits_per_time_unit
 from .flows.mean_square_displacement import mean_square_displacement
 from .fitting.mobility_laws import log_truncated_powerlaw, fit_values_to_truncated_powerlaw
 from .visits.activity import activity_transition_matrix
-from .visits.intermittance_and_degree_of_return import intermittance_and_degree_of_return
+from .visits.mobility_profiling import intermittance_and_degree_of_return, exploration_profiling
 from .visits.regularity import regularity
 from .visits.fast_diversity import fast_diversity
 from .visits.diversity import diversity
@@ -70,6 +70,7 @@ __all__ = [
     "fit_values_to_truncated_powerlaw",
     "activity_transition_matrix",
     "intermittance_and_degree_of_return",
+    "exploration_profiling",
     "regularity",
     "fast_diversity",
     "diversity",

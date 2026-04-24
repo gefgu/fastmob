@@ -1,103 +1,135 @@
-"""Spatio-temporal Wasserstein distance between two GPS trajectories."""
+"""Spatio-temporal Wasserstein distance between two spatial distributions."""
 from __future__ import annotations
 
 from typing import Any
 
+import narwhals as nw
+
 from skmob2._core import wasserstein_emd
 
-from ._common import _prepare_trajectory
+_TIME_CANDIDATES = ["time_bin", "time", "hour", "timestamp"]
+_WEIGHT_CANDIDATES = ["mean_volume", "volume", "weight", "count", "density"]
+_CENTROID_CANDIDATES = ["centroid", "geometry", "point"]
+
+
+def _detect_column(columns: list[str], candidates: list[str], role: str) -> str:
+    for c in candidates:
+        if c in columns:
+            return c
+    raise ValueError(
+        f"Could not find a {role!r} column. "
+        f"Tried: {candidates}. Available: {columns}"
+    )
+
+
+def _point_xy(val: Any) -> tuple[float, float]:
+    """Extract (x, y) from a Shapely-like object or WKT string 'POINT (x y)'."""
+    if hasattr(val, "x") and hasattr(val, "y"):
+        return float(val.x), float(val.y)
+    s = str(val).strip()
+    inner = s[s.index("(") + 1 : s.rindex(")")]
+    x_str, y_str = inner.split()
+    return float(x_str), float(y_str)
+
+
+def _hhmm_to_minutes(val: Any) -> float:
+    h, m = str(val).split(":", 1)
+    return float(h) * 60 + float(m)
 
 
 def wasserstein_distance(
-    traj_a: Any,
-    traj_b: Any,
-    reg: float = 0.1,
-    max_iter: int = 100,
+    dist_a: Any,
+    dist_b: Any,
+    alpha: float = 10.0,
+    cyclical_period: float = 1440.0,
+    reg: float = 0.01,
+    max_iter: int = 1000,
     *,
-    datetime_col: str | None = None,
-    lat_col: str | None = None,
-    lng_col: str | None = None,
-    uid_col: str | None = None,
+    time_col: str | None = None,
+    weight_col: str | None = None,
+    centroid_col: str | None = None,
 ) -> float:
-    """Compute the Wasserstein Earth Mover's Distance between two GPS point clouds.
+    """Compute the spatio-temporal Wasserstein distance between two distributions.
 
-    Builds a pairwise Haversine cost matrix between the two trajectories and
-    solves the optimal transport problem via the Sinkhorn log-domain algorithm.
-    Both trajectories are treated as uniform discrete distributions over their
-    GPS fixes (equal weight per point).
+    Each input is a DataFrame representing a spatial-temporal distribution with
+    columns for a time bin (HH:MM string), a weight/volume value, and a centroid
+    geometry in a projected coordinate system.  Centroids may be WKT strings
+    (``'POINT (x y)'``) or objects with ``.x`` / ``.y`` attributes.
+
+    The cost between two cells is::
+
+        sqrt((dx_m)^2 + (alpha * dt_cyclic_min)^2)
+
+    where ``dx_m`` is the Euclidean distance in metres between centroids and
+    ``dt_cyclic_min`` is the cyclical time difference in minutes
+    (``min(|t1-t2|, cyclical_period - |t1-t2|)``).
 
     Parameters
     ----------
-    traj_a:
-        First trajectory; any Narwhals-compatible eager dataframe (pandas,
-        polars, …).  Must contain lat/lng columns (auto-detected or explicit).
-    traj_b:
-        Second trajectory; same format as ``traj_a``.
+    dist_a, dist_b:
+        Any Narwhals-compatible eager DataFrame (pandas, polars, …).
+    alpha:
+        Space-time tradeoff: 1 minute equals ``alpha`` metres. Default ``10.0``.
+    cyclical_period:
+        Wrap-around period in minutes. Default ``1440`` (one day).
     reg:
-        Sinkhorn regularisation parameter (``> 0``).  Smaller values give a
-        more exact transport distance but converge more slowly.  Default ``0.1``.
+        Sinkhorn regularisation parameter (must be > 0). Smaller values give a
+        more exact result at the cost of convergence speed. Default ``0.01``.
     max_iter:
-        Maximum number of Sinkhorn iterations.  Default ``100``.
-    datetime_col:
-        Explicit datetime column name for both trajectories.  Auto-detected
-        when None.
-    lat_col:
-        Explicit latitude column name.  Auto-detected when None.
-    lng_col:
-        Explicit longitude column name.  Auto-detected when None.
-    uid_col:
-        Explicit user-ID column name.  Auto-detected when None.  When absent
-        the whole frame is treated as a single individual.
+        Maximum Sinkhorn iterations. Default ``1000``.
+    time_col:
+        Explicit time column name. Auto-detected when ``None``.
+    weight_col:
+        Explicit weight column name. Auto-detected when ``None``.
+    centroid_col:
+        Explicit centroid column name. Auto-detected when ``None``.
 
     Returns
     -------
     float
-        The Wasserstein distance in km between the two spatial distributions.
-
-    Raises
-    ------
-    ValueError
-        When required columns cannot be found, when either trajectory is empty,
-        or when ``reg <= 0``.
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> from skmob2.measures.wasserstein_distance import wasserstein_distance
-    >>> df_a = pd.DataFrame({
-    ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-    ...     "lat": [0.0, 1.0, 2.0],
-    ...     "lng": [0.0, 0.0, 0.0],
-    ... })
-    >>> df_b = pd.DataFrame({
-    ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-    ...     "lat": [0.0, 1.0, 2.0],
-    ...     "lng": [0.0, 0.0, 0.0],
-    ... })
-    >>> wasserstein_distance(df_a, df_b)
-    0.0
+        Spatio-temporal Wasserstein distance in metres.
     """
     if reg <= 0:
         raise ValueError(f"reg must be positive, got {reg}")
 
-    df_a, _, lat_col_a, lng_col_a, _ = _prepare_trajectory(
-        traj_a,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-    )
-    df_b, _, lat_col_b, lng_col_b, _ = _prepare_trajectory(
-        traj_b,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-    )
+    nw_a = nw.from_native(dist_a, eager_only=True)
+    nw_b = nw.from_native(dist_b, eager_only=True)
 
-    lats_a = df_a.get_column(lat_col_a).to_list()
-    lons_a = df_a.get_column(lng_col_a).to_list()
-    lats_b = df_b.get_column(lat_col_b).to_list()
-    lons_b = df_b.get_column(lng_col_b).to_list()
+    cols_a = nw_a.columns
+    cols_b = nw_b.columns
 
-    return wasserstein_emd(lats_a, lons_a, lats_b, lons_b, reg, max_iter)
+    tc = time_col or _detect_column(cols_a, _TIME_CANDIDATES, "time")
+    wc = weight_col or _detect_column(cols_a, _WEIGHT_CANDIDATES, "weight")
+    cc = centroid_col or _detect_column(cols_a, _CENTROID_CANDIDATES, "centroid")
+
+    for col, role in [(tc, "time"), (wc, "weight"), (cc, "centroid")]:
+        if col not in cols_b:
+            raise ValueError(f"Column {col!r} ({role}) not found in dist_b")
+
+    xy_a = [_point_xy(v) for v in nw_a.get_column(cc).to_list()]
+    xy_b = [_point_xy(v) for v in nw_b.get_column(cc).to_list()]
+    xs_a = [p[0] for p in xy_a]
+    ys_a = [p[1] for p in xy_a]
+    xs_b = [p[0] for p in xy_b]
+    ys_b = [p[1] for p in xy_b]
+
+    times_a = [_hhmm_to_minutes(v) for v in nw_a.get_column(tc).to_list()]
+    times_b = [_hhmm_to_minutes(v) for v in nw_b.get_column(tc).to_list()]
+
+    weights_a = nw_a.get_column(wc).cast(nw.Float64).to_list()
+    weights_b = nw_b.get_column(wc).cast(nw.Float64).to_list()
+
+    return wasserstein_emd(
+        xs_a,
+        ys_a,
+        times_a,
+        weights_a,
+        xs_b,
+        ys_b,
+        times_b,
+        weights_b,
+        alpha,
+        cyclical_period,
+        reg,
+        max_iter,
+    )

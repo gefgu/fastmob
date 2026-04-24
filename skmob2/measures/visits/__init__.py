@@ -1,5 +1,5 @@
 from .activity import activity_transition_matrix
-from .intermittance_and_degree_of_return import intermittance_and_degree_of_return
+from .mobility_profiling import intermittance_and_degree_of_return, exploration_profiling
 from .regularity import regularity
 from .fast_diversity import fast_diversity
 from .diversity import diversity
@@ -17,6 +17,7 @@ from .real_entropy import real_entropy
 
 __all__ = [
     "activity_transition_matrix",
+    "mobility_profiling",
     "intermittance_and_degree_of_return",
     "regularity",
     "fast_diversity",
