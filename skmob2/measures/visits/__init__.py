@@ -14,6 +14,7 @@ from .frequency_rank import frequency_rank
 from .individual_mobility_network import individual_mobility_network
 from .location_frequency import location_frequency
 from .real_entropy import real_entropy
+from .mean_area_volume import mean_area_volume
 
 __all__ = [
     "activity_transition_matrix",
@@ -32,4 +33,5 @@ __all__ = [
     "individual_mobility_network",
     "location_frequency",
     "real_entropy",
+    "mean_area_volume",
 ]

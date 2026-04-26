@@ -11,7 +11,7 @@ mod waiting_times;
 mod filter_traj;
 mod compress_traj;
 mod stay_locations_rs;
-mod wasserstein_emd;
+mod stvd_emd;
 mod clustering;
 
 use pyo3::prelude::*;
@@ -33,7 +33,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(filter_traj::filter_trajectory_batch, m)?)?;
     m.add_function(wrap_pyfunction!(compress_traj::compress_trajectory_batch, m)?)?;
     m.add_function(wrap_pyfunction!(stay_locations_rs::detect_stay_locations_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(wasserstein_emd::wasserstein_emd, m)?)?;
+    m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     Ok(())

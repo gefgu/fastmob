@@ -33,10 +33,11 @@ from .measures.visits.frequency_rank import frequency_rank
 from .measures.visits.individual_mobility_network import individual_mobility_network
 from .measures.visits.location_frequency import location_frequency
 from .measures.visits.real_entropy import real_entropy
+from .measures.visits.mean_area_volume import mean_area_volume
 from .measures.visits.motifs import (
     discover_daily_motifs_from_agents,
 )
-from .measures.wasserstein_distance import wasserstein_distance
+from .measures.stvd_emd import stvd_emd
 from .measures.evaluation import (
     common_part_of_commuters,
     common_part_of_links,
@@ -92,7 +93,8 @@ __all__ = [
     "location_frequency",
     "real_entropy",
     "discover_daily_motifs_from_agents",
-    "wasserstein_distance",
+    "mean_area_volume",
+    "stvd_emd",
     "common_part_of_commuters",
     "common_part_of_links",
     "r_squared",
