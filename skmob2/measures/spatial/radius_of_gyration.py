@@ -3,9 +3,27 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import radius_of_gyration_km, radius_of_gyration_batch_km
+from skmob2._core import radius_of_gyration_arrow, radius_of_gyration_numpy
 
 from .._common import _build_user_ranges, _prepare_trajectory
+
+
+def _is_polars_backed(nw_df: nw.DataFrame) -> bool:
+    native = nw_df.to_native()
+    return hasattr(native, "lazy")
+
+
+def _route_and_call(
+    lats: nw.Series,
+    lngs: nw.Series,
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+) -> list[float]:
+    if use_arrow:
+        return radius_of_gyration_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
+
+    return radius_of_gyration_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
 
 
 def radius_of_gyration(
@@ -70,16 +88,17 @@ def radius_of_gyration(
         uid_col=uid_col,
     )
 
-    lats_full = df.get_column(lat_col).to_list()
-    lngs_full = df.get_column(lng_col).to_list()
+    lats_full = df.get_column(lat_col)
+    lngs_full = df.get_column(lng_col)
+    use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
-        rg = radius_of_gyration_km(list(zip(lats_full, lngs_full)))
+        (rg,) = _route_and_call(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow)
         return nw.from_dict({"radius_of_gyration": [rg]}, backend=df.implementation).to_native()
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
     # Single Rust call covering all users — eliminates per-user boundary crossings
-    rog_values = radius_of_gyration_batch_km(lats_full, lngs_full, ranges)
+    rog_values = _route_and_call(lats_full, lngs_full, ranges, use_arrow=use_arrow)
 
     result = nw.from_dict(
         {uid_col: uid_values, "radius_of_gyration": rog_values},

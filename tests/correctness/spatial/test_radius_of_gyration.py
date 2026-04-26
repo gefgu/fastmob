@@ -230,6 +230,78 @@ def test_radius_of_gyration_polars_pandas_agree():
         )
 
 
+def test_radius_of_gyration_numpy_helper_matches_batch_helper():
+    """Zero-copy numpy helper must match the compatibility batch helper."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_batch_km, radius_of_gyration_numpy
+
+    lats = _SKMOB_TEST_LATS_LNGS[:, 0].astype(np.float64)
+    lngs = _SKMOB_TEST_LATS_LNGS[:, 1].astype(np.float64)
+    ranges = [(0, 5), (5, 8), (8, 9)]
+
+    result = radius_of_gyration_numpy(lats, lngs, ranges)
+    expected = radius_of_gyration_batch_km(lats.tolist(), lngs.tolist(), ranges)
+
+    np.testing.assert_allclose(result, expected, rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_arrow_helper_matches_numpy_helper():
+    """Arrow helper must match the numpy helper."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import radius_of_gyration_arrow, radius_of_gyration_numpy
+
+    lats_np = _SKMOB_TEST_LATS_LNGS[:, 0].astype(np.float64)
+    lngs_np = _SKMOB_TEST_LATS_LNGS[:, 1].astype(np.float64)
+    ranges = [(0, 5), (5, 8), (8, 9)]
+
+    result_arrow = radius_of_gyration_arrow(
+        pa.array(lats_np, type=pa.float64()),
+        pa.array(lngs_np, type=pa.float64()),
+        ranges,
+    )
+    result_numpy = radius_of_gyration_numpy(lats_np, lngs_np, ranges)
+
+    np.testing.assert_allclose(result_arrow, result_numpy, rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_numpy_non_contiguous_raises():
+    """Non-contiguous numpy arrays must raise before copying."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_numpy
+
+    arr = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
+    non_contig = arr[::2]
+
+    with pytest.raises((ValueError, BufferError, TypeError)):
+        radius_of_gyration_numpy(non_contig, non_contig, [(0, len(non_contig))])
+
+
+def test_radius_of_gyration_numpy_mismatched_lengths_raise():
+    """Latitude/longitude arrays must have matching lengths."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_numpy
+
+    lats = np.array([0.0, 1.0], dtype=np.float64)
+    lngs = np.array([0.0], dtype=np.float64)
+
+    with pytest.raises(ValueError, match="same length"):
+        radius_of_gyration_numpy(lats, lngs, [(0, 1)])
+
+
+def test_radius_of_gyration_arrow_nulls_raise():
+    """Arrow helper rejects nulls because the Rust slice path cannot represent them."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import radius_of_gyration_arrow
+
+    lats = pa.array([0.0, None], type=pa.float64())
+    lngs = pa.array([0.0, 1.0], type=pa.float64())
+
+    with pytest.raises(ValueError, match="must not contain nulls"):
+        radius_of_gyration_arrow(lats, lngs, [(0, 2)])
+
+
 @pytest.mark.skmob
 def test_radius_of_gyration_matches_skmob(brightkite_skmob):
     """skmob2 RoG must agree with skmob's reference implementation within 0.02 km."""
