@@ -23,6 +23,7 @@ fitting = ["scipy"]
 diversity = ["pydivsufsort"]
 dev = [
     "memray",
+    "pre-commit",
     "pytest-memray",
     "pytest",
     "pytest-benchmark",
