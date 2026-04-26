@@ -29,7 +29,7 @@ pub(crate) fn cluster_kmeans(
             "need at least {n_clusters} samples, got {n}"
         )));
     }
-    let arr = to_f32_array2(values).map_err(|e| PyValueError::new_err(e))?;
+    let arr = to_f32_array2(values).map_err(PyValueError::new_err)?;
     let dataset = DatasetBase::from(arr);
     let rng = StdRng::seed_from_u64(seed);
     let model = KMeans::params_with_rng(n_clusters, rng)
@@ -57,7 +57,7 @@ pub(crate) fn cluster_gmm(
             "need at least {n_clusters} samples, got {n}"
         )));
     }
-    let arr = to_f32_array2(values).map_err(|e| PyValueError::new_err(e))?;
+    let arr = to_f32_array2(values).map_err(PyValueError::new_err)?;
     let dataset = DatasetBase::from(arr);
     let rng = StdRng::seed_from_u64(seed);
     let model = GaussianMixtureModel::params(n_clusters)

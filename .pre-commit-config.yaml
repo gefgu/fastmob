@@ -5,3 +5,11 @@ repos:
       - id: ruff-check
         args: [--fix]
         files: ^(skmob2|scripts|tests)/.*\.py$
+  - repo: local
+    hooks:
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --all-targets --all-features -- -D warnings
+        language: system
+        pass_filenames: false
+        files: ^(Cargo\.(toml|lock)|src/.*\.rs)$

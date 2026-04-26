@@ -7,6 +7,7 @@ use pyo3_arrow::PyArray;
 use std::f64::consts::PI;
 use wass::sliced_wasserstein;
 
+#[allow(clippy::too_many_arguments)]
 fn _stvd_emd_impl(
     xs_a: &[f64],
     ys_a: &[f64],
@@ -90,12 +91,13 @@ fn as_f64_array(arr: PyArray) -> PyResult<PrimitiveArray<Float64Type>> {
     array_ref
         .as_any()
         .downcast_ref::<Float64Array>()
-        .map(|a| a.clone())
+        .cloned()
         .ok_or_else(|| PyValueError::new_err("expected float64 Arrow array"))
 }
 
 #[pyfunction]
 #[pyo3(signature = (xs_a, ys_a, times_a, weights_a, xs_b, ys_b, times_b, weights_b, alpha=10.0, cyclical_period=1440.0, num_projections=50))]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn stvd_emd_numpy(
     xs_a: PyReadonlyArray1<f64>,
     ys_a: PyReadonlyArray1<f64>,
@@ -126,6 +128,7 @@ pub(crate) fn stvd_emd_numpy(
 
 #[pyfunction]
 #[pyo3(signature = (xs_a, ys_a, times_a, weights_a, xs_b, ys_b, times_b, weights_b, alpha=10.0, cyclical_period=1440.0, num_projections=50))]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn stvd_emd_arrow(
     xs_a: PyArray,
     ys_a: PyArray,

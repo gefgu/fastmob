@@ -2,6 +2,8 @@ use pyo3::prelude::*;
 
 use crate::haversine::haversine_km;
 
+type StayLocationsBatchResult = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<usize>);
+
 struct Stop {
     lat: f64,
     lng: f64,
@@ -134,7 +136,7 @@ fn median(v: &[f64]) -> f64 {
     let mut sorted = v.to_vec();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let mid = sorted.len() / 2;
-    if sorted.len() % 2 == 0 {
+    if sorted.len().is_multiple_of(2) {
         (sorted[mid - 1] + sorted[mid]) / 2.0
     } else {
         sorted[mid]
@@ -142,6 +144,7 @@ fn median(v: &[f64]) -> f64 {
 }
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn detect_stay_locations_batch(
     latitudes: Vec<f64>,
     longitudes: Vec<f64>,
@@ -151,7 +154,7 @@ pub(crate) fn detect_stay_locations_batch(
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
-) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<usize>)> {
+) -> PyResult<StayLocationsBatchResult> {
     let mut out_lats: Vec<f64> = Vec::new();
     let mut out_lngs: Vec<f64> = Vec::new();
     let mut entry_times: Vec<f64> = Vec::new();

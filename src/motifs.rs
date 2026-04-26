@@ -105,8 +105,7 @@ fn canonical_adjacency_form_internal(n_nodes: usize, edges: &[(u32, u32)]) -> Re
 
 #[pyfunction]
 pub(crate) fn canonical_adjacency_form(n_nodes: u32, edges: Vec<(u32, u32)>) -> PyResult<i64> {
-    canonical_adjacency_form_internal(n_nodes as usize, &edges)
-        .map_err(|e| PyValueError::new_err(e))
+    canonical_adjacency_form_internal(n_nodes as usize, &edges).map_err(PyValueError::new_err)
 }
 
 // ---------------------------------------------------------------------------
@@ -232,10 +231,7 @@ fn compute_motif_from_daily_visits<'a>(
     let motif_id: i64 = if n_nodes > 6 {
         -1
     } else {
-        match canonical_adjacency_form_internal(n_nodes, &edges) {
-            Ok(packed_id) => packed_id,
-            Err(_) => -1,
-        }
+        canonical_adjacency_form_internal(n_nodes, &edges).unwrap_or(-1)
     };
 
     DailyMotifResult {
@@ -318,6 +314,7 @@ fn process_single_user<'a>(user_id: &str, visits: &[Visit<'a>]) -> Vec<DailyMoti
 // ---------------------------------------------------------------------------
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn compute_daily_motifs(
     unique_ids: Vec<String>,
     purposes: Vec<String>,

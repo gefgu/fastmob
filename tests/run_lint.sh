@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Run Ruff lint and format checks.
+# Run Ruff and Clippy lint checks.
 #
 # Usage:
 #   bash tests/run_lint.sh           # check only
-#   bash tests/run_lint.sh --fix     # apply Ruff fixes and formatting
+#   bash tests/run_lint.sh --fix     # apply Ruff fixes/formatting and Clippy fixes
 #
 # Any extra arguments are forwarded directly to `ruff check`.
 
@@ -32,7 +32,9 @@ done
 if [ "$FIX" -eq 1 ]; then
     ruff check --fix skmob2 scripts tests "${CHECK_ARGS[@]}"
     ruff format skmob2 scripts tests
+    cargo clippy --fix --all-targets --all-features --allow-dirty -- -D warnings
 else
     ruff check skmob2 scripts tests "${CHECK_ARGS[@]}"
     ruff format --check skmob2 scripts tests
+    cargo clippy --all-targets --all-features -- -D warnings
 fi

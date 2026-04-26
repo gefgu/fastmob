@@ -3,6 +3,7 @@ use rayon::prelude::*;
 
 use crate::haversine::haversine_km;
 
+#[allow(clippy::too_many_arguments)]
 fn filter_user_slice(
     lats: &[f64],
     lngs: &[f64],
@@ -132,6 +133,7 @@ fn filter_user_slice(
 }
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn filter_trajectory_batch(
     latitudes: Vec<f64>,
     longitudes: Vec<f64>,
