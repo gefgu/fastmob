@@ -3,10 +3,10 @@
 Data directory: tests/benchmarks/data/
 Shared with correctness suite so the Brightkite file is downloaded only once.
 """
+
 from __future__ import annotations
 
 import urllib.request
-from pathlib import Path
 
 import pandas as pd
 import pytest

@@ -1,4 +1,5 @@
 """Low-level suffix-array diversity primitive."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -37,9 +38,7 @@ def fast_diversity(sequence) -> float:
         When ``pydivsufsort`` is not installed.
     """
     if _divsufsort is None:
-        raise ImportError(
-            "pydivsufsort is required: pip install skmob2[diversity]"
-        )
+        raise ImportError("pydivsufsort is required: pip install skmob2[diversity]")
 
     items = list(sequence)
     n = len(items)

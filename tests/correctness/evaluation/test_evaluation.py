@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.measures.evaluation."""
+
 from __future__ import annotations
 
 import math
@@ -24,6 +25,7 @@ from skmob2.measures.evaluation import (
 # Use a module-level flag so each test can reference it with a simple decorator.
 try:
     import scipy  # noqa: F401
+
     _HAS_SCIPY = True
 except ImportError:
     _HAS_SCIPY = False

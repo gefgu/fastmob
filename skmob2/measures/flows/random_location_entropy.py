@@ -61,14 +61,8 @@ def random_location_entropy(
 
     if uid_col is None:
         # Single user: each location is visited by exactly 1 user -> entropy = 0.
-        locs = (
-            df.select([lat_col, lng_col])
-            .unique()
-            .sort([lat_col, lng_col])
-        )
-        result = locs.with_columns(
-            nw.lit(0.0).alias("random_entropy")
-        )
+        locs = df.select([lat_col, lng_col]).unique().sort([lat_col, lng_col])
+        result = locs.with_columns(nw.lit(0.0).alias("random_entropy"))
         return result.to_native()
 
     # Count distinct users per (lat, lng) location.

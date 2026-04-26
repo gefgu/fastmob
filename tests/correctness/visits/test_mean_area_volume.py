@@ -1,4 +1,5 @@
 """Correctness tests for mean_area_volume."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -160,9 +161,7 @@ def test_zero_duration_single_bin():
 
 
 def test_empty_dataframe():
-    df = pd.DataFrame(
-        columns=["area", "user_id", "start_timestamp", "end_timestamp"]
-    )
+    df = pd.DataFrame(columns=["area", "user_id", "start_timestamp", "end_timestamp"])
     result = mean_area_volume(df)
     assert list(result.columns) == ["area", "time_bin", "mean_volume"]
     assert len(result) == 0
@@ -265,7 +264,5 @@ def test_polars_backend():
     )
     result = mean_area_volume(df)
     assert isinstance(result, pl.DataFrame)
-    row = result.filter(
-        (pl.col("area") == "A") & (pl.col("time_bin") == "08:00")
-    )
+    row = result.filter((pl.col("area") == "A") & (pl.col("time_bin") == "08:00"))
     assert row["mean_volume"][0] == pytest.approx(2.0 / 7.0)

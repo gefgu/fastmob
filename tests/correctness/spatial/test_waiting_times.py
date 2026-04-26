@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/spatial/waiting_times.py."""
+
 from __future__ import annotations
 
 import pytest
@@ -45,11 +46,13 @@ def test_waiting_times_single_user():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.spatial.waiting_times import waiting_times
 
-    df = pd.DataFrame({
-        "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-        "lat": [0.0, 1.0, 2.0],
-        "lng": [0.0, 0.0, 0.0],
-    })
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+            "lat": [0.0, 1.0, 2.0],
+            "lng": [0.0, 0.0, 0.0],
+        }
+    )
     result = waiting_times(df)
     nw_result = nw.from_native(result, eager_only=True)
     assert "waiting_times" in nw_result.columns
@@ -65,12 +68,14 @@ def test_waiting_times_single_point_returns_empty_list():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.spatial.waiting_times import waiting_times
 
-    df = pd.DataFrame({
-        "uid": ["a"],
-        "datetime": [pd.Timestamp("2020-01-01")],
-        "lat": [0.0],
-        "lng": [0.0],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["a"],
+            "datetime": [pd.Timestamp("2020-01-01")],
+            "lat": [0.0],
+            "lng": [0.0],
+        }
+    )
     result = waiting_times(df)
     mapping = _to_dict(result)
     assert mapping["a"] == []
@@ -104,9 +109,7 @@ def test_waiting_times_matches_skmob(brightkite_skmob):
     skmob2_input = pd.DataFrame(brightkite_skmob).copy()
     skmob2_result = skmob2_wt(skmob2_input)
 
-    skmob_dict = dict(
-        zip(skmob_result["uid"].tolist(), skmob_result["waiting_times"].tolist())
-    )
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["waiting_times"].tolist()))
     skmob2_dict = _to_dict(skmob2_result)
 
     common = set(skmob_dict) & set(skmob2_dict)
@@ -114,10 +117,6 @@ def test_waiting_times_matches_skmob(brightkite_skmob):
     for uid in common:
         left = sorted(skmob_dict[uid])
         right = sorted(skmob2_dict[uid])
-        assert len(left) == len(right), (
-            f"uid={uid}: skmob n={len(left)}, skmob2 n={len(right)}"
-        )
+        assert len(left) == len(right), f"uid={uid}: skmob n={len(left)}, skmob2 n={len(right)}"
         for a, b in zip(left, right):
-            assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, (
-                f"uid={uid}: skmob wt={a}, skmob2 wt={b}"
-            )
+            assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, f"uid={uid}: skmob wt={a}, skmob2 wt={b}"

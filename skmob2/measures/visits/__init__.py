@@ -20,6 +20,7 @@ __all__ = [
     "activity_transition_matrix",
     "mobility_profiling",
     "intermittance_and_degree_of_return",
+    "exploration_profiling",
     "regularity",
     "fast_diversity",
     "diversity",

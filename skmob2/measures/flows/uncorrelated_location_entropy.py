@@ -64,14 +64,8 @@ def uncorrelated_location_entropy(
 
     if uid_col is None:
         # Single user: each location has probability 1 -> entropy = 0.
-        locs = (
-            df.select([lat_col, lng_col])
-            .unique()
-            .sort([lat_col, lng_col])
-        )
-        result = locs.with_columns(
-            nw.lit(0.0).alias("uncorrelated_entropy")
-        )
+        locs = df.select([lat_col, lng_col]).unique().sort([lat_col, lng_col])
+        result = locs.with_columns(nw.lit(0.0).alias("uncorrelated_entropy"))
         return result.to_native()
 
     # Count visits per (uid, lat, lng) triplet, then collect into Python dicts
@@ -84,7 +78,6 @@ def uncorrelated_location_entropy(
         .sort([lat_col, lng_col])
     )
 
-    uid_list = visit_counts.get_column(uid_col).to_list()
     lat_list = visit_counts.get_column(lat_col).to_list()
     lng_list = visit_counts.get_column(lng_col).to_list()
     cnt_list = visit_counts.get_column("__visits__").to_list()

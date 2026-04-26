@@ -1,4 +1,5 @@
 """Spatio-temporal Wasserstein distance between two spatial distributions."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -18,10 +19,7 @@ def _detect_column(columns: list[str], candidates: list[str], role: str) -> str:
     for c in candidates:
         if c in columns:
             return c
-    raise ValueError(
-        f"Could not find a {role!r} column. "
-        f"Tried: {candidates}. Available: {columns}"
-    )
+    raise ValueError(f"Could not find a {role!r} column. Tried: {candidates}. Available: {columns}")
 
 
 def _point_xy(val: Any) -> tuple[float, float]:
@@ -136,10 +134,7 @@ def stvd_emd(
 
         # Parse HH:MM in-vector to reduce Python-level per-row overhead.
         t_col = df.get_column(time_col)
-        times = (
-            t_col.str.slice(0, 2).cast(nw.Float64) * 60
-            + t_col.str.slice(3, 5).cast(nw.Float64)
-        )
+        times = t_col.str.slice(0, 2).cast(nw.Float64) * 60 + t_col.str.slice(3, 5).cast(nw.Float64)
 
         c_col = df.get_column(centroid_col)
         native_series = c_col.to_native()
@@ -164,9 +159,7 @@ def stvd_emd(
 
         weights = df.get_column(weight_col).cast(nw.Float64)
 
-        print(
-            f"Extraction of {centroid_col} took {time.perf_counter() - t_extract:.3f}s"
-        )
+        print(f"Extraction of {centroid_col} took {time.perf_counter() - t_extract:.3f}s")
         return xs, ys, times, weights
 
     arrays_a = prepare_arrays(nw_a, tc, cc, wc)

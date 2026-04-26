@@ -1,4 +1,5 @@
 """Origin-Destination matrix measures."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -105,10 +106,16 @@ def od_metrics_per_area(
     nw_df = nw.from_native(od_df, eager_only=True)
     origin_col, destination_col = _detect_od_columns(nw_df, origin_col, destination_col)
 
-    all_areas = nw.concat([
-        nw_df.select(nw.col(origin_col).alias("area_code")),
-        nw_df.select(nw.col(destination_col).alias("area_code")),
-    ]).unique().sort("area_code")
+    all_areas = (
+        nw.concat(
+            [
+                nw_df.select(nw.col(origin_col).alias("area_code")),
+                nw_df.select(nw.col(destination_col).alias("area_code")),
+            ]
+        )
+        .unique()
+        .sort("area_code")
+    )
 
     self_loops = (
         nw_df.filter(nw.col(origin_col) == nw.col(destination_col))
@@ -120,22 +127,17 @@ def od_metrics_per_area(
     cross_trips = nw_df.filter(nw.col(origin_col) != nw.col(destination_col))
 
     outgoing = (
-        cross_trips
-        .group_by(origin_col)
-        .agg(nw.col("count").sum().alias("OutGoing"))
-        .rename({origin_col: "area_code"})
+        cross_trips.group_by(origin_col).agg(nw.col("count").sum().alias("OutGoing")).rename({origin_col: "area_code"})
     )
 
     incoming = (
-        cross_trips
-        .group_by(destination_col)
+        cross_trips.group_by(destination_col)
         .agg(nw.col("count").sum().alias("InComing"))
         .rename({destination_col: "area_code"})
     )
 
     result = (
-        all_areas
-        .join(self_loops, on="area_code", how="left")
+        all_areas.join(self_loops, on="area_code", how="left")
         .join(outgoing, on="area_code", how="left")
         .join(incoming, on="area_code", how="left")
         .with_columns(
@@ -143,9 +145,7 @@ def od_metrics_per_area(
             nw.col("OutGoing").fill_null(0).cast(nw.Int64),
             nw.col("InComing").fill_null(0).cast(nw.Int64),
         )
-        .with_columns(
-            (nw.col("MoveInside") + nw.col("InComing") + nw.col("OutGoing")).alias("Total")
-        )
+        .with_columns((nw.col("MoveInside") + nw.col("InComing") + nw.col("OutGoing")).alias("Total"))
         .select(["area_code", "MoveInside", "InComing", "OutGoing", "Total"])
         .sort("area_code")
     )

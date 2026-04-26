@@ -1,4 +1,5 @@
 """Trajectory entropy and predictability measures (Kontoyiannis + Fano)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -18,6 +19,7 @@ from .._common import (
 # ---------------------------------------------------------------------------
 # Private helpers — entropy subsystem
 # ---------------------------------------------------------------------------
+
 
 def _kontoyiannis_entropy(sequence: list) -> float:
     """Kontoyiannis (1998) entropy estimator on a pre-tokenized sequence.
@@ -138,6 +140,7 @@ def _solve_max_predictability_with_fano(
 # Public measures
 # ---------------------------------------------------------------------------
 
+
 def trajectory_entropy(
     visits: Any,
     user_id_col: str | None = None,
@@ -198,11 +201,7 @@ def trajectory_entropy(
 
     def _build_sequence(user_df: pd.DataFrame) -> list:
         if location_id_col and location_type_col:
-            return (
-                user_df[location_id_col].astype(str)
-                + "_"
-                + user_df[location_type_col].astype(str)
-            ).tolist()
+            return (user_df[location_id_col].astype(str) + "_" + user_df[location_type_col].astype(str)).tolist()
         elif location_id_col:
             return user_df[location_id_col].astype(str).tolist()
         return []
@@ -290,11 +289,7 @@ def trajectory_predictability(
 
     def _build_sequence(user_df: pd.DataFrame) -> list:
         if location_id_col and location_type_col:
-            return (
-                user_df[location_id_col].astype(str)
-                + "_"
-                + user_df[location_type_col].astype(str)
-            ).tolist()
+            return (user_df[location_id_col].astype(str) + "_" + user_df[location_type_col].astype(str)).tolist()
         elif location_id_col:
             return user_df[location_id_col].astype(str).tolist()
         return []

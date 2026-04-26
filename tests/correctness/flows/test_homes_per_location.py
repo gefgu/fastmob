@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.measures.flows.homes_per_location."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -11,18 +12,22 @@ from skmob2.measures.flows.homes_per_location import homes_per_location
 def night_traj():
     """Two users; both have nighttime records at (0,0), u2 also visits (1,0)."""
     # Nighttime is 22:00-07:00; these records are at 23:00.
-    return pd.DataFrame({
-        "uid": ["u1", "u1", "u2", "u2", "u2"],
-        "datetime": pd.to_datetime([
-            "2020-01-01 23:00",
-            "2020-01-02 00:00",
-            "2020-01-01 23:00",
-            "2020-01-02 00:00",
-            "2020-01-02 01:00",
-        ]),
-        "lat": [0.0, 0.0, 0.0, 0.0, 1.0],
-        "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
-    })
+    return pd.DataFrame(
+        {
+            "uid": ["u1", "u1", "u2", "u2", "u2"],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-01 23:00",
+                    "2020-01-02 00:00",
+                    "2020-01-01 23:00",
+                    "2020-01-02 00:00",
+                    "2020-01-02 01:00",
+                ]
+            ),
+            "lat": [0.0, 0.0, 0.0, 0.0, 1.0],
+            "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
+        }
+    )
 
 
 def test_homes_per_location_shared_home(night_traj):

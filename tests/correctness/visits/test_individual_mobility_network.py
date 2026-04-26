@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/visits/individual_mobility_network.py."""
+
 from __future__ import annotations
 
 import narwhals as nw
@@ -89,9 +90,7 @@ def test_imn_self_loops_included():
     df = pd.DataFrame(
         {
             "uid": ["a", "a", "a"],
-            "datetime": pd.to_datetime(
-                ["2020-01-01 00:00", "2020-01-01 01:00", "2020-01-01 02:00"]
-            ),
+            "datetime": pd.to_datetime(["2020-01-01 00:00", "2020-01-01 01:00", "2020-01-01 02:00"]),
             "lat": [1.0, 1.0, 2.0],
             "lng": [0.0, 0.0, 0.0],
         }
@@ -192,6 +191,5 @@ def test_imn_matches_skmob(brightkite_skmob):
         common_edges = set(skmob_dict[uid]) & set(skmob2_dict[uid])
         for edge in common_edges:
             assert skmob_dict[uid][edge] == skmob2_dict[uid][edge], (
-                f"uid={uid}, edge={edge}: "
-                f"skmob={skmob_dict[uid][edge]}, skmob2={skmob2_dict[uid][edge]}"
+                f"uid={uid}, edge={edge}: skmob={skmob_dict[uid][edge]}, skmob2={skmob2_dict[uid][edge]}"
             )

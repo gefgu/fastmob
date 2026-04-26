@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.preprocessing.compress."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -60,12 +61,14 @@ def test_compress_output_datetime_is_first_of_group(compress_tdf):
 
 def test_compress_single_point_user():
     """Single-point user passes through unchanged."""
-    df = pd.DataFrame({
-        "uid": ["u1"],
-        "datetime": [pd.Timestamp("2020-01-01")],
-        "lat": [48.8566],
-        "lng": [2.3522],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"],
+            "datetime": [pd.Timestamp("2020-01-01")],
+            "lat": [48.8566],
+            "lng": [2.3522],
+        }
+    )
     result = compress(df, spatial_radius_km=0.2)
     assert len(result) == 1
 
@@ -79,6 +82,7 @@ def test_compress_returns_same_backend_type(compress_tdf):
 def test_compress_polars_backend(compress_tdf_polars):
     """Polars input → Polars output with correct row count."""
     import polars as pl
+
     result = compress(compress_tdf_polars, spatial_radius_km=0.2)
     assert isinstance(result, pl.DataFrame)
     dense = result.filter(pl.col("uid") == "user_dense")
@@ -96,7 +100,6 @@ def test_compress_multiuser_all_users_processed(compress_tdf):
 @pytest.mark.skmob
 def test_compress_matches_skmob(brightkite_skmob):
     """Row count must match skmob on Brightkite dataset."""
-    import skmob
     from skmob.preprocessing import compression as skmob_compression
     import pandas as pd
 

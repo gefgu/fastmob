@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.measures.flows.visits_per_time_unit."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -10,19 +11,23 @@ from skmob2.measures.flows.visits_per_time_unit import visits_per_time_unit
 @pytest.fixture()
 def hourly_traj():
     """6 records spread across 3 hours (2 per hour)."""
-    return pd.DataFrame({
-        "uid": ["u1", "u1", "u2", "u2", "u1", "u2"],
-        "datetime": pd.to_datetime([
-            "2020-01-01 00:00",
-            "2020-01-01 00:30",
-            "2020-01-01 01:00",
-            "2020-01-01 01:30",
-            "2020-01-01 02:00",
-            "2020-01-01 02:30",
-        ]),
-        "lat": [0.0] * 6,
-        "lng": [0.0] * 6,
-    })
+    return pd.DataFrame(
+        {
+            "uid": ["u1", "u1", "u2", "u2", "u1", "u2"],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-01 00:00",
+                    "2020-01-01 00:30",
+                    "2020-01-01 01:00",
+                    "2020-01-01 01:30",
+                    "2020-01-01 02:00",
+                    "2020-01-01 02:30",
+                ]
+            ),
+            "lat": [0.0] * 6,
+            "lng": [0.0] * 6,
+        }
+    )
 
 
 def test_visits_per_time_unit_hourly_counts(hourly_traj):
@@ -53,15 +58,19 @@ def test_visits_per_time_unit_no_empty_bins(hourly_traj):
 
 def test_visits_per_time_unit_daily_freq():
     """Daily frequency bins all records from one day into one row."""
-    traj = pd.DataFrame({
-        "datetime": pd.to_datetime([
-            "2020-01-01 08:00",
-            "2020-01-01 12:00",
-            "2020-01-01 18:00",
-        ]),
-        "lat": [0.0, 0.0, 0.0],
-        "lng": [0.0, 0.0, 0.0],
-    })
+    traj = pd.DataFrame(
+        {
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-01 08:00",
+                    "2020-01-01 12:00",
+                    "2020-01-01 18:00",
+                ]
+            ),
+            "lat": [0.0, 0.0, 0.0],
+            "lng": [0.0, 0.0, 0.0],
+        }
+    )
     result = visits_per_time_unit(traj, freq="1D")
     assert len(result) == 1
     assert result["n_visits"].iloc[0] == 3

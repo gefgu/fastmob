@@ -98,6 +98,26 @@ pytest-benchmark compare baseline 0001
 
 Benchmarks are parametrized over three dataset sizes (1k / 10k / 100k / 1M / 4M rows) and run both `skmob` and `skmob2` side by side. The Brightkite check-in dataset (~4M rows) is downloaded on first run and cached to `tests/shared/data/`.
 
+## Profiling
+
+```bash
+# CPU flamegraph with py-spy and native Rust frames
+bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration
+
+# Memory flamegraph with pytest-memray and native Rust frames
+bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
+
+# Direct pytest-memray usage for one workload
+pytest tests/profiling/test_brightkite_memray.py::test_memray_brightkite_workload \
+  --profile-workload radius_of_gyration \
+  --profile-rows 10000 \
+  --memray \
+  --native \
+  --memray-bin-path .profiles/memray/manual
+```
+
+Profiling outputs are written to `.profiles/py-spy/` and `.profiles/memray/`. Run `maturin develop` first when invoking pytest directly so `skmob2._core` and native symbols are available.
+
 ## Narwhals API notes
 
 When writing new measures, use `nw.from_native(traj, eager_only=True)` to accept any dataframe. Use `.to_native()` to return a result in the caller's original backend.

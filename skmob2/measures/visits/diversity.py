@@ -1,4 +1,5 @@
 """Trajectory diversity measure using suffix-array entropy."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -61,11 +62,7 @@ def diversity(
 
     def _get_sequence(user_df: pd.DataFrame) -> list:
         if location_id_col and location_type_col:
-            return (
-                user_df[location_id_col].astype(str)
-                + "_"
-                + user_df[location_type_col].astype(str)
-            ).tolist()
+            return (user_df[location_id_col].astype(str) + "_" + user_df[location_type_col].astype(str)).tolist()
         elif location_id_col:
             return user_df[location_id_col].astype(str).tolist()
         else:

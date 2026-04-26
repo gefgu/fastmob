@@ -71,11 +71,7 @@ def uncorrelated_entropy(
 
     loc_key_col = "__skmob2_loc_key__"
     df = df.with_columns(
-        (
-            nw.col(lat_col).cast(nw.String)
-            + nw.lit("_")
-            + nw.col(lng_col).cast(nw.String)
-        ).alias(loc_key_col)
+        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
     )
 
     def _compute_entropy_for_user(user_df: nw.DataFrame) -> float:

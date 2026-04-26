@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/spatial/distance_straight_line.py."""
+
 from __future__ import annotations
 
 import pytest
@@ -8,9 +9,9 @@ import pandas as pd
 # Pre-computed expected total distances for the shared synthetic fixture
 # (3 users, 5 GPS points each, 1-degree steps equator/meridian, Paris cluster).
 EXPECTED_TOTAL_DIST: dict[str, float] = {
-    "user_a": 444.7803209341316,   # 4 × ~111.195 km along equator
-    "user_b": 444.7803209341316,   # 4 × ~111.195 km along meridian
-    "user_c": 3.440787203829053,   # sum of 4 small Paris steps
+    "user_a": 444.7803209341316,  # 4 × ~111.195 km along equator
+    "user_b": 444.7803209341316,  # 4 × ~111.195 km along meridian
+    "user_c": 3.440787203829053,  # sum of 4 small Paris steps
 }
 
 
@@ -21,9 +22,7 @@ def _to_dict(df) -> dict[str, float]:
     uid_col = next((c for c in ("uid", "user", "user_id") if c in columns), None)
     if uid_col is None:
         raise AssertionError("Result lacks uid/user/user_id column")
-    return {
-        row[uid_col]: row["distance_straight_line"] for row in nw_df.rows(named=True)
-    }
+    return {row[uid_col]: row["distance_straight_line"] for row in nw_df.rows(named=True)}
 
 
 def test_distance_straight_line_known_values(synthetic_tdf):
@@ -36,9 +35,7 @@ def test_distance_straight_line_known_values(synthetic_tdf):
 
     assert set(mapping.keys()) == set(EXPECTED_TOTAL_DIST.keys())
     for uid, expected in EXPECTED_TOTAL_DIST.items():
-        assert abs(mapping[uid] - expected) < 1e-6, (
-            f"uid={uid!r}: got {mapping[uid]}, expected {expected}"
-        )
+        assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected}"
 
 
 def test_distance_straight_line_single_user():
@@ -46,11 +43,13 @@ def test_distance_straight_line_single_user():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.spatial.distance_straight_line import distance_straight_line
 
-    df = pd.DataFrame({
-        "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-        "lat": [0.0, 1.0, 0.0],
-        "lng": [0.0, 0.0, 0.0],
-    })
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+            "lat": [0.0, 1.0, 0.0],
+            "lng": [0.0, 0.0, 0.0],
+        }
+    )
     result = distance_straight_line(df)
     nw_result = nw.from_native(result, eager_only=True)
     assert "distance_straight_line" in nw_result.columns
@@ -70,9 +69,7 @@ def test_distance_straight_line_polars_known_values(synthetic_tdf_polars):
 
     assert set(mapping.keys()) == set(EXPECTED_TOTAL_DIST.keys())
     for uid, expected in EXPECTED_TOTAL_DIST.items():
-        assert abs(mapping[uid] - expected) < 1e-6, (
-            f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
-        )
+        assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
 
 
 @pytest.mark.skmob

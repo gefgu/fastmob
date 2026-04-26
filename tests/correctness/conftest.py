@@ -1,4 +1,5 @@
 """Fixtures and constants for correctness tests."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -42,46 +43,55 @@ EXPECTED_JUMP_LENGTHS: dict[str, list[float]] = {
 def _generate_synthetic_rows():
     """Centralized logic for generating test trajectory data."""
     rows = []
-    
+
     # user_a: moves along the equator (1-degree steps)
     for i, lon in enumerate([0.0, 1.0, 2.0, 3.0, 4.0]):
-        rows.append({
-            "uid": "user_a",
-            "datetime": pd.Timestamp(f"2020-01-01 0{i}:00:00"),
-            "lat": 0.0,
-            "lng": float(lon),
-        })
+        rows.append(
+            {
+                "uid": "user_a",
+                "datetime": pd.Timestamp(f"2020-01-01 0{i}:00:00"),
+                "lat": 0.0,
+                "lng": float(lon),
+            }
+        )
 
     # user_b: moves along a meridian (1-degree steps)
     for i, lat in enumerate([10.0, 11.0, 12.0, 13.0, 14.0]):
-        rows.append({
-            "uid": "user_b",
-            "datetime": pd.Timestamp(f"2020-01-01 0{i}:00:00"),
-            "lat": float(lat),
-            "lng": 20.0,
-        })
+        rows.append(
+            {
+                "uid": "user_b",
+                "datetime": pd.Timestamp(f"2020-01-01 0{i}:00:00"),
+                "lat": float(lat),
+                "lng": 20.0,
+            }
+        )
 
     # user_c: small movements in Paris area
     lats = [48.8566, 48.8600, 48.8650, 48.8700, 48.8750]
     lons = [2.3522, 2.3600, 2.3700, 2.3800, 2.3900]
     for i, (lat, lon) in enumerate(zip(lats, lons)):
-        rows.append({
-            "uid": "user_c",
-            "datetime": pd.Timestamp(f"2020-01-01 0{i}:00:00"),
-            "lat": lat,
-            "lng": lon,
-        })
+        rows.append(
+            {
+                "uid": "user_c",
+                "datetime": pd.Timestamp(f"2020-01-01 0{i}:00:00"),
+                "lat": lat,
+                "lng": lon,
+            }
+        )
     return rows
+
 
 @pytest.fixture(scope="session")
 def synthetic_rows():
     """Raw data as a list of dicts to be shared across frameworks."""
     return _generate_synthetic_rows()
 
+
 @pytest.fixture(scope="session")
 def synthetic_tdf(synthetic_rows) -> pd.DataFrame:
     """Small Pandas DataFrame with 3 users, 5 GPS points each."""
     return pd.DataFrame(synthetic_rows)
+
 
 @pytest.fixture(scope="session")
 def synthetic_tdf_polars(synthetic_rows):

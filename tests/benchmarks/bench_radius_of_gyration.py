@@ -1,4 +1,5 @@
 """Benchmarks for skmob2/measures/radius_of_gyration.py."""
+
 from __future__ import annotations
 
 import numpy as np

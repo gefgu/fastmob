@@ -63,11 +63,7 @@ def random_entropy(
     # Encode each (lat, lng) pair as a single string key for n_unique counting.
     loc_key_col = "__skmob2_loc_key__"
     df = df.with_columns(
-        (
-            nw.col(lat_col).cast(nw.String)
-            + nw.lit("_")
-            + nw.col(lng_col).cast(nw.String)
-        ).alias(loc_key_col)
+        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
     )
 
     if uid_col is None:
@@ -79,11 +75,7 @@ def random_entropy(
         ).to_native()
 
     # Group by user, count distinct locations, apply log2 in Python.
-    grouped = (
-        df.group_by(uid_col)
-        .agg(nw.col(loc_key_col).n_unique().alias("__n_locs__"))
-        .sort(uid_col)
-    )
+    grouped = df.group_by(uid_col).agg(nw.col(loc_key_col).n_unique().alias("__n_locs__")).sort(uid_col)
 
     uid_vals = grouped.get_column(uid_col).to_list()
     n_locs_vals = grouped.get_column("__n_locs__").to_list()

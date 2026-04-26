@@ -1,4 +1,5 @@
 """Benchmarks for skmob2/measures/stvd_emd.py — zero-copy numpy vs arrow paths."""
+
 from __future__ import annotations
 
 import numpy as np

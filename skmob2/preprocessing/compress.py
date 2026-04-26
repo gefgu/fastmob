@@ -50,9 +50,7 @@ def compress(
 
     _, ranges = _build_user_ranges(df, uid_col)
 
-    groups: list[tuple[int, int]] = _compress_trajectory_batch(
-        lats, lngs, ranges, spatial_radius_km
-    )
+    groups: list[tuple[int, int]] = _compress_trajectory_batch(lats, lngs, ranges, spatial_radius_km)
 
     # Build output rows: for each group (start, end), compute median lat/lng
     # and take datetime + extra columns from the first row of the group.

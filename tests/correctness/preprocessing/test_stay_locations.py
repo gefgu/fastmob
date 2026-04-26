@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.preprocessing.stay_locations."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -88,12 +89,14 @@ def test_stay_locations_leaving_datetime_after_entry(stops_tdf):
 
 def test_stay_locations_single_point_user_zero_stops():
     """Single-point user can never form a stop."""
-    df = pd.DataFrame({
-        "uid": ["u1"],
-        "datetime": [pd.Timestamp("2020-01-01")],
-        "lat": [48.8566],
-        "lng": [2.3522],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"],
+            "datetime": [pd.Timestamp("2020-01-01")],
+            "lat": [48.8566],
+            "lng": [2.3522],
+        }
+    )
     result = stay_locations(df, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     assert len(result) == 0
 
@@ -116,6 +119,7 @@ def test_stay_locations_returns_same_backend(stops_tdf):
 def test_stay_locations_polars_backend(stops_tdf_polars):
     """Polars input → Polars output with correct stop count."""
     import polars as pl
+
     stationary = stops_tdf_polars.filter(pl.col("uid") == "user_stationary")
     result = stay_locations(stationary, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     assert isinstance(result, pl.DataFrame)
@@ -124,23 +128,24 @@ def test_stay_locations_polars_backend(stops_tdf_polars):
 
 def test_stay_locations_no_data_gap_resets_stop():
     """A long gap (no_data_for_minutes) should break stop accumulation."""
-    df = pd.DataFrame({
-        "uid": ["u1"] * 6,
-        "datetime": [
-            pd.Timestamp("2020-01-01 08:00"),
-            pd.Timestamp("2020-01-01 08:10"),
-            pd.Timestamp("2020-01-01 08:20"),
-            # Large gap: 2 hours → resets
-            pd.Timestamp("2020-01-01 10:21"),
-            pd.Timestamp("2020-01-01 10:31"),
-            pd.Timestamp("2020-01-01 10:41"),
-        ],
-        "lat": [48.856] * 6,
-        "lng": [2.352] * 6,
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"] * 6,
+            "datetime": [
+                pd.Timestamp("2020-01-01 08:00"),
+                pd.Timestamp("2020-01-01 08:10"),
+                pd.Timestamp("2020-01-01 08:20"),
+                # Large gap: 2 hours → resets
+                pd.Timestamp("2020-01-01 10:21"),
+                pd.Timestamp("2020-01-01 10:31"),
+                pd.Timestamp("2020-01-01 10:41"),
+            ],
+            "lat": [48.856] * 6,
+            "lng": [2.352] * 6,
+        }
+    )
     # With no_data_for_minutes=30, the 2h gap resets → two potential stops
-    result = stay_locations(df, spatial_radius_km=0.2, minutes_for_a_stop=15.0,
-                            no_data_for_minutes=30.0)
+    result = stay_locations(df, spatial_radius_km=0.2, minutes_for_a_stop=15.0, no_data_for_minutes=30.0)
     # After the gap the new group has 3 points → 21 min → qualifies
     assert len(result) >= 1
 
@@ -148,13 +153,10 @@ def test_stay_locations_no_data_gap_resets_stop():
 @pytest.mark.skmob
 def test_stay_locations_matches_skmob(brightkite_skmob):
     """Stop count must match skmob on Brightkite dataset."""
-    import skmob
     from skmob.preprocessing import detection as skmob_detection
     import pandas as pd
 
-    skmob_result = skmob_detection.stay_locations(
-        brightkite_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0
-    )
+    skmob_result = skmob_detection.stay_locations(brightkite_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     our_result = stay_locations(
         pd.DataFrame(brightkite_skmob),
         spatial_radius_km=0.2,

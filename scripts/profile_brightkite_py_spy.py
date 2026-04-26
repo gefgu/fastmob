@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Run py-spy flamegraph profiling for Brightkite-backed skmob2 workloads."""
+
 from __future__ import annotations
 
 import argparse
@@ -92,10 +93,7 @@ def run_profiles(args: argparse.Namespace) -> int:
     py_spy_bin = getattr(args, "py_spy_bin", "py-spy")
 
     if shutil.which(py_spy_bin) is None and not args.dry_run:
-        raise SystemExit(
-            f"{py_spy_bin!r} is not installed or not on PATH. "
-            "Install the dev extras first."
-        )
+        raise SystemExit(f"{py_spy_bin!r} is not installed or not on PATH. Install the dev extras first.")
 
     manifest_rows: list[dict[str, Any]] = []
     exit_code = 0
@@ -124,9 +122,7 @@ def run_profiles(args: argparse.Namespace) -> int:
                 exit_code = returncode
                 if not args.continue_on_error:
                     elapsed = time.perf_counter() - started
-                    manifest_rows.append(
-                        _manifest_row(args, profile, status, returncode, elapsed, error)
-                    )
+                    manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
                     break
 
         elapsed = time.perf_counter() - started

@@ -63,7 +63,6 @@ def homes_per_location(
     )
 
     nw_home = nw.from_native(home_df, eager_only=True)
-    backend = nw_home.implementation
 
     cols = nw_home.columns
     detected_lat = _pick_existing_column(cols, LAT_CANDIDATES)

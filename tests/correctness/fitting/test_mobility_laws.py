@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.measures.fitting.mobility_laws — power-law fitting."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -9,8 +10,8 @@ import pytest
 # Helper: rejection sampler for the Gonzalez truncated power-law
 # ---------------------------------------------------------------------------
 
-def _sample_truncated_powerlaw(n, beta=1.75, r0=1.5, kappa=400.0,
-                                x_max=1000.0, seed=0):
+
+def _sample_truncated_powerlaw(n, beta=1.75, r0=1.5, kappa=400.0, x_max=1000.0, seed=0):
     """Rejection sampler for the Gonzalez truncated power-law.
 
     Proposal: Pareto with shape (beta-1) shifted by r0, truncated at x_max.
@@ -35,6 +36,7 @@ def _sample_truncated_powerlaw(n, beta=1.75, r0=1.5, kappa=400.0,
 # ---------------------------------------------------------------------------
 # Tests for log_truncated_powerlaw
 # ---------------------------------------------------------------------------
+
 
 def test_log_truncated_powerlaw_is_log_of_powerlaw():
     """log_truncated_powerlaw(x, c, r0, b, k) == log(c*(x+r0)^-b * exp(-x/k))."""
@@ -62,6 +64,7 @@ def test_log_truncated_powerlaw_scalar_inputs():
 # Tests for fit_values_to_truncated_powerlaw
 # ---------------------------------------------------------------------------
 
+
 def test_fit_truncated_powerlaw_recovers_beta():
     """Fit on synthetic Gonzalez sample recovers beta within ±0.05."""
     pytest.importorskip("scipy", reason="scipy not installed")
@@ -72,15 +75,12 @@ def test_fit_truncated_powerlaw_recovers_beta():
     TRUE_R0 = 1.5
     N = 50_000
 
-    samples = _sample_truncated_powerlaw(N, beta=TRUE_BETA, r0=TRUE_R0,
-                                          kappa=TRUE_KAPPA, seed=42)
+    samples = _sample_truncated_powerlaw(N, beta=TRUE_BETA, r0=TRUE_R0, kappa=TRUE_KAPPA, seed=42)
 
     popt, x_data, y_data = fit_values_to_truncated_powerlaw(samples, bins=100)
     _c_fit, _r0_fit, beta_fit, _kappa_fit = popt
 
-    assert abs(beta_fit - TRUE_BETA) < 0.05, (
-        f"Recovered beta={beta_fit:.4f}, expected {TRUE_BETA} ± 0.05"
-    )
+    assert abs(beta_fit - TRUE_BETA) < 0.05, f"Recovered beta={beta_fit:.4f}, expected {TRUE_BETA} ± 0.05"
 
 
 def test_fit_truncated_powerlaw_returns_correct_shapes():
@@ -100,6 +100,7 @@ def test_fit_truncated_powerlaw_returns_correct_shapes():
 def test_fit_truncated_powerlaw_raises_without_scipy(monkeypatch):
     """fit_values_to_truncated_powerlaw raises ImportError when scipy is absent."""
     import skmob2.measures.fitting.mobility_laws as mod
+
     original = mod._scipy_curve_fit
     monkeypatch.setattr(mod, "_scipy_curve_fit", None)
     with pytest.raises(ImportError, match="scipy"):

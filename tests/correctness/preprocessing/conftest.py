@@ -1,4 +1,5 @@
 """Fixtures for preprocessing correctness tests."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -11,26 +12,31 @@ import pytest
 # user_clean: 5 points moving slowly (~0.5 km apart, 1h spacing) → all survive
 # user_noisy: same but point at index 2 is teleported to lat=0,lng=0 → speed >> 500 km/h → filtered
 
+
 def _filter_rows():
     rows = []
     # user_clean: Paris → Paris+0.005° lat per step (≈0.55 km)
     for i in range(5):
-        rows.append({
-            "uid": "user_clean",
-            "datetime": pd.Timestamp(f"2020-01-01 {i:02d}:00:00"),
-            "lat": 48.8566 + i * 0.005,
-            "lng": 2.3522,
-        })
+        rows.append(
+            {
+                "uid": "user_clean",
+                "datetime": pd.Timestamp(f"2020-01-01 {i:02d}:00:00"),
+                "lat": 48.8566 + i * 0.005,
+                "lng": 2.3522,
+            }
+        )
     # user_noisy: same trajectory but index 2 teleported to null island
     for i in range(5):
         lat = 0.0 if i == 2 else (48.8566 + i * 0.005)
         lng = 0.0 if i == 2 else 2.3522
-        rows.append({
-            "uid": "user_noisy",
-            "datetime": pd.Timestamp(f"2020-01-01 {i:02d}:00:00"),
-            "lat": lat,
-            "lng": lng,
-        })
+        rows.append(
+            {
+                "uid": "user_noisy",
+                "datetime": pd.Timestamp(f"2020-01-01 {i:02d}:00:00"),
+                "lat": lat,
+                "lng": lng,
+            }
+        )
     return rows
 
 
@@ -53,36 +59,41 @@ def filter_tdf_polars():
 #   At spatial_radius=0.2 km → compresses to 2 output points.
 # user_sparse: 5 points each ~0.5 km apart → no compression, 5 rows out.
 
+
 def _compress_rows():
     rows = []
     # user_dense group 1: small jitter around (48.860, 2.350)
-    base = [(48.8600, 2.3500), (48.8601, 2.3502), (48.8599, 2.3498),
-            (48.8602, 2.3501), (48.8598, 2.3499)]
+    base = [(48.8600, 2.3500), (48.8601, 2.3502), (48.8599, 2.3498), (48.8602, 2.3501), (48.8598, 2.3499)]
     for i, (lat, lng) in enumerate(base):
-        rows.append({
-            "uid": "user_dense",
-            "datetime": pd.Timestamp("2020-01-01") + pd.Timedelta(minutes=i),
-            "lat": lat,
-            "lng": lng,
-        })
+        rows.append(
+            {
+                "uid": "user_dense",
+                "datetime": pd.Timestamp("2020-01-01") + pd.Timedelta(minutes=i),
+                "lat": lat,
+                "lng": lng,
+            }
+        )
     # user_dense group 2: ~5 km jump north, small jitter around (48.905, 2.400)
-    base2 = [(48.9050, 2.4000), (48.9051, 2.4002), (48.9049, 2.3998),
-             (48.9052, 2.4001), (48.9048, 2.3999)]
+    base2 = [(48.9050, 2.4000), (48.9051, 2.4002), (48.9049, 2.3998), (48.9052, 2.4001), (48.9048, 2.3999)]
     for i, (lat, lng) in enumerate(base2):
-        rows.append({
-            "uid": "user_dense",
-            "datetime": pd.Timestamp("2020-01-01") + pd.Timedelta(minutes=10 + i),
-            "lat": lat,
-            "lng": lng,
-        })
+        rows.append(
+            {
+                "uid": "user_dense",
+                "datetime": pd.Timestamp("2020-01-01") + pd.Timedelta(minutes=10 + i),
+                "lat": lat,
+                "lng": lng,
+            }
+        )
     # user_sparse: 5 points ~0.55 km apart
     for i in range(5):
-        rows.append({
-            "uid": "user_sparse",
-            "datetime": pd.Timestamp(f"2020-01-01 {i:02d}:00:00"),
-            "lat": 48.8566 + i * 0.005,
-            "lng": 2.3522,
-        })
+        rows.append(
+            {
+                "uid": "user_sparse",
+                "datetime": pd.Timestamp(f"2020-01-01 {i:02d}:00:00"),
+                "lat": 48.8566 + i * 0.005,
+                "lng": 2.3522,
+            }
+        )
     return rows
 
 
@@ -104,30 +115,41 @@ def compress_tdf_polars():
 #   → 1 stop at spatial_radius=0.2, minutes_for_a_stop=20
 # user_moving: 5 points 5 km apart, 5-min spacing → 0 stops
 
+
 def _stops_rows():
     rows = []
     # user_stationary: tiny jitter around Paris centre, 1 per 6 minutes
     base = [
-        (48.8560, 2.3520), (48.8561, 2.3522), (48.8559, 2.3518),
-        (48.8562, 2.3521), (48.8558, 2.3519), (48.8563, 2.3523),
-        (48.8557, 2.3517), (48.8564, 2.3524), (48.8556, 2.3516),
+        (48.8560, 2.3520),
+        (48.8561, 2.3522),
+        (48.8559, 2.3518),
+        (48.8562, 2.3521),
+        (48.8558, 2.3519),
+        (48.8563, 2.3523),
+        (48.8557, 2.3517),
+        (48.8564, 2.3524),
+        (48.8556, 2.3516),
         (48.8565, 2.3525),
     ]
     for i, (lat, lng) in enumerate(base):
-        rows.append({
-            "uid": "user_stationary",
-            "datetime": pd.Timestamp("2020-01-01 08:00:00") + pd.Timedelta(minutes=6 * i),
-            "lat": lat,
-            "lng": lng,
-        })
+        rows.append(
+            {
+                "uid": "user_stationary",
+                "datetime": pd.Timestamp("2020-01-01 08:00:00") + pd.Timedelta(minutes=6 * i),
+                "lat": lat,
+                "lng": lng,
+            }
+        )
     # user_moving: 5 km steps, 5-min spacing → never accumulates 20 min within 0.2 km
     for i in range(5):
-        rows.append({
-            "uid": "user_moving",
-            "datetime": pd.Timestamp("2020-01-01 08:00:00") + pd.Timedelta(minutes=5 * i),
-            "lat": 48.8566 + i * 0.045,  # ~5 km per step
-            "lng": 2.3522,
-        })
+        rows.append(
+            {
+                "uid": "user_moving",
+                "datetime": pd.Timestamp("2020-01-01 08:00:00") + pd.Timedelta(minutes=5 * i),
+                "lat": 48.8566 + i * 0.045,  # ~5 km per step
+                "lng": 2.3522,
+            }
+        )
     return rows
 
 
@@ -148,6 +170,7 @@ def stops_tdf_polars():
 # Pre-built stops for clustering:
 #   A and B within 0.05 km → one cluster (2 visits → label 0)
 #   C is 5 km away → separate cluster (1 visit → label 1)
+
 
 def _cluster_rows():
     return [

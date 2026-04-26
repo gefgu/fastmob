@@ -66,9 +66,7 @@ def home_location(
     backend = df.implementation
 
     # Extract hour from datetime column via Narwhals dt accessor.
-    df = df.with_columns(
-        nw.col(datetime_col).dt.hour().alias("__hour__")
-    )
+    df = df.with_columns(nw.col(datetime_col).dt.hour().alias("__hour__"))
 
     # Build nighttime mask: hours >= start_night OR hours < end_night.
     night_mask = (nw.col("__hour__") >= start_night) | (nw.col("__hour__") < end_night)
@@ -80,25 +78,16 @@ def home_location(
         """Return the most-visited (lat, lng) per group, ties broken by first occurrence."""
         # Attach a sequential index so we can identify the first occurrence of each location.
         frame = frame.with_row_index("__loc_idx__")
-        visit_counts = (
-            frame
-            .group_by(group_keys + [lat_col, lng_col])
-            .agg(
-                nw.len().alias("__count__"),
-                nw.col("__loc_idx__").min().alias("__first_idx__"),
-            )
+        visit_counts = frame.group_by(group_keys + [lat_col, lng_col]).agg(
+            nw.len().alias("__count__"),
+            nw.col("__loc_idx__").min().alias("__first_idx__"),
         )
         if uid_col is not None:
             # For each user find the max visit count, then pick the location with
             # that count and the smallest first-occurrence index (stable tie-break).
-            max_counts = (
-                visit_counts
-                .group_by([uid_col])
-                .agg(nw.col("__count__").max().alias("__max_count__"))
-            )
+            max_counts = visit_counts.group_by([uid_col]).agg(nw.col("__count__").max().alias("__max_count__"))
             best_per_user = (
-                visit_counts
-                .join(max_counts, on=[uid_col])
+                visit_counts.join(max_counts, on=[uid_col])
                 .filter(nw.col("__count__") == nw.col("__max_count__"))
                 .sort([uid_col, "__first_idx__"])
                 .group_by([uid_col])
@@ -111,11 +100,7 @@ def home_location(
         else:
             # Single-user case: pick the (lat, lng) with the highest count,
             # then lowest first-occurrence index for tie-breaking.
-            best = (
-                visit_counts
-                .sort(["__count__", "__first_idx__"], descending=[True, False])
-                .rows(named=True)[0]
-            )
+            best = visit_counts.sort(["__count__", "__first_idx__"], descending=[True, False]).rows(named=True)[0]
             return nw.from_dict(
                 {lat_col: [best[lat_col]], lng_col: [best[lng_col]]},
                 backend=backend,

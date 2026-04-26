@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/visits/real_entropy.py."""
+
 from __future__ import annotations
 
 import math
@@ -30,10 +31,7 @@ def _to_dict(df) -> dict:
     uid_col = next((c for c in ("uid", "user", "user_id") if c in columns), None)
     if uid_col is None:
         raise AssertionError("Result lacks uid/user/user_id column")
-    return {
-        row[uid_col]: row["real_entropy"]
-        for row in nw_df.rows(named=True)
-    }
+    return {row[uid_col]: row["real_entropy"] for row in nw_df.rows(named=True)}
 
 
 # ---------------------------------------------------------------------------
@@ -50,9 +48,7 @@ def test_real_entropy_known_values(synthetic_tdf):
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
     for uid, val in mapping.items():
-        assert math.isclose(val, EXPECTED_ENTROPY, rel_tol=1e-9), (
-            f"uid={uid!r}: got {val}, expected {EXPECTED_ENTROPY}"
-        )
+        assert math.isclose(val, EXPECTED_ENTROPY, rel_tol=1e-9), f"uid={uid!r}: got {val}, expected {EXPECTED_ENTROPY}"
 
 
 def test_real_entropy_repeated_location():
@@ -162,9 +158,7 @@ def test_real_entropy_output_backend_matches_input(synthetic_tdf):
     from skmob2.measures.visits.real_entropy import real_entropy
 
     result = real_entropy(synthetic_tdf)
-    assert isinstance(result, pd.DataFrame), (
-        f"Expected pandas DataFrame, got {type(result)}"
-    )
+    assert isinstance(result, pd.DataFrame), f"Expected pandas DataFrame, got {type(result)}"
 
 
 @pytest.mark.skmob

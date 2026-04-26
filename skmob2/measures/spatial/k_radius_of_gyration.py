@@ -81,9 +81,7 @@ def k_radius_of_gyration(
         lats = df.get_column(lat_col).to_list()
         lngs = df.get_column(lng_col).to_list()
         krg = _k_rog_for_sequence(lats, lngs, k)
-        return nw.from_dict(
-            {"k_radius_of_gyration": [krg]}, backend=df.implementation
-        ).to_native()
+        return nw.from_dict({"k_radius_of_gyration": [krg]}, backend=df.implementation).to_native()
 
     # Build per-user index ranges from the already-sorted dataframe.
     uid_series = df.get_column(uid_col).to_list()

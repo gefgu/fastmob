@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/visits/random_entropy.py."""
+
 from __future__ import annotations
 
 import math
@@ -26,10 +27,7 @@ def _to_dict(df) -> dict:
     uid_col = next((c for c in ("uid", "user", "user_id") if c in columns), None)
     if uid_col is None:
         raise AssertionError("Result lacks uid/user/user_id column")
-    return {
-        row[uid_col]: row["random_entropy"]
-        for row in nw_df.rows(named=True)
-    }
+    return {row[uid_col]: row["random_entropy"] for row in nw_df.rows(named=True)}
 
 
 # ---------------------------------------------------------------------------
@@ -46,9 +44,7 @@ def test_random_entropy_known_values(synthetic_tdf):
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
     for uid, val in mapping.items():
-        assert math.isclose(val, EXPECTED_ENTROPY, rel_tol=1e-9), (
-            f"uid={uid!r}: got {val}, expected {EXPECTED_ENTROPY}"
-        )
+        assert math.isclose(val, EXPECTED_ENTROPY, rel_tol=1e-9), f"uid={uid!r}: got {val}, expected {EXPECTED_ENTROPY}"
 
 
 def test_random_entropy_repeated_locations():
@@ -130,9 +126,7 @@ def test_random_entropy_matches_skmob(brightkite_skmob):
     skmob2_input = pd.DataFrame(brightkite_skmob).copy()
     skmob2_result = skmob2_re(skmob2_input)
 
-    skmob_dict = dict(
-        zip(skmob_result["uid"].tolist(), skmob_result["random_entropy"].tolist())
-    )
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["random_entropy"].tolist()))
     skmob2_dict = _to_dict(skmob2_result)
 
     common = set(skmob_dict) & set(skmob2_dict)

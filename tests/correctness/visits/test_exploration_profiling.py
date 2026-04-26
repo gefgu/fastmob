@@ -1,4 +1,5 @@
 """Correctness tests for exploration_profiling in skmob2.measures.visits."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -49,8 +50,7 @@ def test_output_columns():
 
     df = _make_visits()
     result = exploration_profiling(df, cold_start_strategy="none")
-    for col in ["agent_id", "intermittency", "degree_of_return",
-                "mean_return", "mean_exploration", "profile"]:
+    for col in ["agent_id", "intermittency", "degree_of_return", "mean_return", "mean_exploration", "profile"]:
         assert col in result.columns
 
 
@@ -113,10 +113,12 @@ def test_too_few_users_raises():
     _skip_if_no_core()
     from skmob2.measures.visits.mobility_profiling import exploration_profiling
 
-    df = pd.DataFrame({
-        "agent_id":    ["u1", "u2"],
-        "location_id": ["a",  "b"],
-    })
+    df = pd.DataFrame(
+        {
+            "agent_id": ["u1", "u2"],
+            "location_id": ["a", "b"],
+        }
+    )
     with pytest.raises(ValueError, match="at least 3"):
         exploration_profiling(df, cold_start_strategy="none")
 
@@ -150,22 +152,22 @@ def test_polars_parity():
 
     # Build polars DataFrame directly (no pyarrow required)
     df_pd = _make_visits()
-    df_pl = polars.DataFrame({
-        "agent_id": df_pd["agent_id"].tolist(),
-        "location_id": df_pd["location_id"].tolist(),
-    })
-
-    result_pd = (
-        exploration_profiling(df_pd, cold_start_strategy="none")
-        .sort_values("agent_id")
-        .reset_index(drop=True)
+    df_pl = polars.DataFrame(
+        {
+            "agent_id": df_pd["agent_id"].tolist(),
+            "location_id": df_pd["location_id"].tolist(),
+        }
     )
+
+    result_pd = exploration_profiling(df_pd, cold_start_strategy="none").sort_values("agent_id").reset_index(drop=True)
     result_pl_native = exploration_profiling(df_pl, cold_start_strategy="none")
     result_pl = (
-        pd.DataFrame({
-            "agent_id": result_pl_native["agent_id"].to_list(),
-            "profile": result_pl_native["profile"].to_list(),
-        })
+        pd.DataFrame(
+            {
+                "agent_id": result_pl_native["agent_id"].to_list(),
+                "profile": result_pl_native["profile"].to_list(),
+            }
+        )
         .sort_values("agent_id")
         .reset_index(drop=True)
     )
@@ -179,5 +181,6 @@ def test_polars_parity():
 def test_top_level_import():
     """exploration_profiling is accessible from the top-level skmob2 namespace."""
     import skmob2
+
     assert hasattr(skmob2, "exploration_profiling")
     assert callable(skmob2.exploration_profiling)

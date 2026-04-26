@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/stvd_emd.py."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -13,9 +14,7 @@ def _skip_if_no_core():
 
 
 def _dist_df(centroid: str, time_bin: str, mean_volume: float) -> pd.DataFrame:
-    return pd.DataFrame(
-        {"centroid": [centroid], "time_bin": [time_bin], "mean_volume": [mean_volume]}
-    )
+    return pd.DataFrame({"centroid": [centroid], "time_bin": [time_bin], "mean_volume": [mean_volume]})
 
 
 def test_identical_single_point_zero_distance():
@@ -190,6 +189,7 @@ def test_measures_import():
 # Zero-copy numpy helper tests
 # ---------------------------------------------------------------------------
 
+
 def test_stvd_emd_numpy_helper():
     """stvd_emd_numpy in _core must accept numpy arrays and return the same result."""
     _skip_if_no_core()
@@ -213,6 +213,7 @@ def test_stvd_emd_numpy_helper():
 # ---------------------------------------------------------------------------
 # Zero-copy arrow helper tests
 # ---------------------------------------------------------------------------
+
 
 def test_stvd_emd_arrow_helper():
     """stvd_emd_arrow in _core must accept PyArrow float64 arrays."""
@@ -249,7 +250,15 @@ def test_stvd_emd_numpy_non_contiguous_raises():
 
     with pytest.raises((ValueError, BufferError, TypeError)):
         stvd_emd_numpy(
-            non_contig, non_contig, non_contig, non_contig,
-            non_contig, non_contig, non_contig, non_contig,
-            10.0, 1440.0, 50,
+            non_contig,
+            non_contig,
+            non_contig,
+            non_contig,
+            non_contig,
+            non_contig,
+            non_contig,
+            non_contig,
+            10.0,
+            1440.0,
+            50,
         )

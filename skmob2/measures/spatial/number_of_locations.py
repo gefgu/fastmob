@@ -57,11 +57,7 @@ def number_of_locations(
     # Narwhals n_unique() can count distinct locations without nw.struct support.
     loc_key_col = "__skmob2_loc_key__"
     df = df.with_columns(
-        (
-            nw.col(lat_col).cast(nw.String)
-            + nw.lit("_")
-            + nw.col(lng_col).cast(nw.String)
-        ).alias(loc_key_col)
+        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
     )
 
     if uid_col is None:
@@ -71,10 +67,6 @@ def number_of_locations(
             backend=df.implementation,
         ).to_native()
 
-    result = (
-        df.group_by(uid_col)
-        .agg(nw.col(loc_key_col).n_unique().alias("number_of_locations"))
-        .sort(uid_col)
-    )
+    result = df.group_by(uid_col).agg(nw.col(loc_key_col).n_unique().alias("number_of_locations")).sort(uid_col)
 
     return result.to_native()

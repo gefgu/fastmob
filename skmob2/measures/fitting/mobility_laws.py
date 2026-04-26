@@ -1,4 +1,5 @@
 """Mobility law measures: power-law fitting and related utilities."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -74,16 +75,12 @@ def fit_values_to_truncated_powerlaw(
         When scipy is not installed.
     """
     if _scipy_curve_fit is None:
-        raise ImportError(
-            "scipy is required for power-law fitting: pip install skmob2[fitting]"
-        )
+        raise ImportError("scipy is required for power-law fitting: pip install skmob2[fitting]")
 
     values_array = np.asarray(values, dtype=float)
     values_array = values_array[values_array > 0]
 
-    bins_edges = np.logspace(
-        np.log10(values_array.min()), np.log10(values_array.max()), num=bins
-    )
+    bins_edges = np.logspace(np.log10(values_array.min()), np.log10(values_array.max()), num=bins)
     hist, bin_edges = np.histogram(values_array, bins=bins_edges, density=True)
 
     bin_centers = np.sqrt(bin_edges[:-1] * bin_edges[1:])
@@ -98,8 +95,11 @@ def fit_values_to_truncated_powerlaw(
     bounds = ([1e-5, 1e-5, 0, 1e-5], [np.inf, np.inf, np.inf, np.inf])
 
     popt, _pcov = _scipy_curve_fit(
-        log_truncated_powerlaw, x_data, log_y_data,
-        p0=initial_guess, bounds=bounds,
+        log_truncated_powerlaw,
+        x_data,
+        log_y_data,
+        p0=initial_guess,
+        bounds=bounds,
     )
 
     return popt, x_data, y_data

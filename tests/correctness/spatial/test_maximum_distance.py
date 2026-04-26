@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/spatial/maximum_distance.py."""
+
 from __future__ import annotations
 
 import pytest
@@ -8,8 +9,8 @@ import pandas as pd
 # Pre-computed expected maximum distances for the shared synthetic fixture
 # (3 users, 5 GPS points each, 1-degree steps equator/meridian, Paris cluster).
 EXPECTED_MAX_DIST: dict[str, float] = {
-    "user_a": 111.1950802335329,   # 1-degree step on equator
-    "user_b": 111.1950802335329,   # 1-degree step on meridian
+    "user_a": 111.1950802335329,  # 1-degree step on equator
+    "user_b": 111.1950802335329,  # 1-degree step on meridian
     "user_c": 0.9188177472926384,  # largest consecutive step in Paris cluster
 }
 
@@ -34,9 +35,7 @@ def test_maximum_distance_known_values(synthetic_tdf):
 
     assert set(mapping.keys()) == set(EXPECTED_MAX_DIST.keys())
     for uid, expected in EXPECTED_MAX_DIST.items():
-        assert abs(mapping[uid] - expected) < 1e-6, (
-            f"uid={uid!r}: got {mapping[uid]}, expected {expected}"
-        )
+        assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected}"
 
 
 def test_maximum_distance_single_user():
@@ -44,11 +43,13 @@ def test_maximum_distance_single_user():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.spatial.maximum_distance import maximum_distance
 
-    df = pd.DataFrame({
-        "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-        "lat": [0.0, 1.0, 0.0],
-        "lng": [0.0, 0.0, 0.0],
-    })
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+            "lat": [0.0, 1.0, 0.0],
+            "lng": [0.0, 0.0, 0.0],
+        }
+    )
     result = maximum_distance(df)
     nw_result = nw.from_native(result, eager_only=True)
     assert "maximum_distance" in nw_result.columns
@@ -68,9 +69,7 @@ def test_maximum_distance_polars_known_values(synthetic_tdf_polars):
 
     assert set(mapping.keys()) == set(EXPECTED_MAX_DIST.keys())
     for uid, expected in EXPECTED_MAX_DIST.items():
-        assert abs(mapping[uid] - expected) < 1e-6, (
-            f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
-        )
+        assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
 
 
 @pytest.mark.skmob
@@ -84,9 +83,7 @@ def test_maximum_distance_matches_skmob(brightkite_skmob):
     skmob2_input = pd.DataFrame(brightkite_skmob).copy()
     skmob2_result = skmob2_md(skmob2_input)
 
-    skmob_dict = dict(
-        zip(skmob_result["uid"].tolist(), skmob_result["maximum_distance"].tolist())
-    )
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["maximum_distance"].tolist()))
     skmob2_dict = _to_dict(skmob2_result)
 
     common = set(skmob_dict) & set(skmob2_dict)

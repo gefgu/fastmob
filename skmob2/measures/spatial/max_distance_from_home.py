@@ -85,9 +85,7 @@ def max_distance_from_home(
     if uid_col is None:
         home_lat = home_df.get_column(lat_col).to_list()[0]
         home_lng = home_df.get_column(lng_col).to_list()[0]
-        values = max_distance_from_point_batch_km(
-            [home_lat], [home_lng], lats_full, lngs_full, [(0, len(lats_full))]
-        )
+        values = max_distance_from_point_batch_km([home_lat], [home_lng], lats_full, lngs_full, [(0, len(lats_full))])
         return nw.from_dict(
             {"max_distance_from_home": values},
             backend=df.implementation,
@@ -119,9 +117,7 @@ def max_distance_from_home(
             home_lats.append(h_lat)
             home_lngs.append(h_lng)
 
-    max_distances = max_distance_from_point_batch_km(
-        home_lats, home_lngs, lats_full, lngs_full, ranges
-    )
+    max_distances = max_distance_from_point_batch_km(home_lats, home_lngs, lats_full, lngs_full, ranges)
 
     return nw.from_dict(
         {uid_col: uid_values, "max_distance_from_home": max_distances},

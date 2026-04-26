@@ -60,9 +60,7 @@ def waiting_times(
     # Extract Unix timestamps in seconds via millisecond intermediate to avoid
     # backend-specific nanosecond vs microsecond differences.
     timestamps_s: list[float] = (
-        df.with_columns(
-            (nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")
-        )
+        df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__"))
         .get_column("__ts_s__")
         .to_list()
     )

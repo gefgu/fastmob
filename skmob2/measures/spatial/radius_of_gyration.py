@@ -75,9 +75,7 @@ def radius_of_gyration(
 
     if uid_col is None:
         rg = radius_of_gyration_km(list(zip(lats_full, lngs_full)))
-        return nw.from_dict(
-            {"radius_of_gyration": [rg]}, backend=df.implementation
-        ).to_native()
+        return nw.from_dict({"radius_of_gyration": [rg]}, backend=df.implementation).to_native()
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
     # Single Rust call covering all users — eliminates per-user boundary crossings

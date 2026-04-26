@@ -61,10 +61,6 @@ def number_of_visits(
             backend=df.implementation,
         ).to_native()
 
-    result = (
-        df.group_by(uid_col)
-        .agg(nw.len().alias("number_of_visits"))
-        .sort(uid_col)
-    )
+    result = df.group_by(uid_col).agg(nw.len().alias("number_of_visits")).sort(uid_col)
 
     return result.to_native()

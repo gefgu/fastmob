@@ -17,6 +17,7 @@ from .._common import (
 COLD_START_STRATEGIES = Literal["frequency", "baseline", "max_frequency", "suffix", "none"]
 CLUSTERING_METHODS = Literal["kmeans", "gmm"]
 
+
 def _apply_cold_start_strategy(
     nw_df: Any,
     user_id_col: str,
@@ -26,18 +27,16 @@ def _apply_cold_start_strategy(
     timestamp_col: str | None = None,
 ) -> tuple[Any, Any]:
     """Apply cold-start logic and return updated dataframe + known-location expression."""
-    
+
     if cold_start_strategy == "frequency":
         # Paper's Algorithm 2: Visitation-frequency-based identification
         loc_counts = nw_df.group_by([user_id_col, "location_key"]).agg(
             nw.col("location_key").count().alias("_visit_count")
         )
-        
+
         # Find the average visitation frequency per user
-        mean_counts = loc_counts.group_by(user_id_col).agg(
-            nw.col("_visit_count").mean().alias("_mean_count")
-        )
-        
+        mean_counts = loc_counts.group_by(user_id_col).agg(nw.col("_visit_count").mean().alias("_mean_count"))
+
         # Filter for locations >= mean * level (0.8)
         loc_counts = loc_counts.join(mean_counts, on=user_id_col)
         cold_start_locs = loc_counts.filter(
@@ -55,28 +54,20 @@ def _apply_cold_start_strategy(
         # Paper's Algorithm 1: Papandrea et al. Relevance score
         if timestamp_col is None:
             raise ValueError("The 'baseline' strategy requires a 'timestamp_col' to calculate daily relevance.")
-            
+
         # Truncate datetime to day boundary so n_unique() counts distinct active days.
         # dt.truncate("1d") is cross-backend (pandas + polars) unlike dt.date().
-        nw_df = nw_df.with_columns(
-            _date=nw.col(timestamp_col).dt.truncate("1d")
-        )
-        
+        nw_df = nw_df.with_columns(_date=nw.col(timestamp_col).dt.truncate("1d"))
+
         # d_visit(id_i, u): Number of days user visited the specific location
-        d_visit = nw_df.group_by([user_id_col, "location_key"]).agg(
-            nw.col("_date").n_unique().alias("d_visit")
-        )
-        
+        d_visit = nw_df.group_by([user_id_col, "location_key"]).agg(nw.col("_date").n_unique().alias("d_visit"))
+
         # d_total(u): Total number of days the user has been active
-        d_total = nw_df.group_by(user_id_col).agg(
-            nw.col("_date").n_unique().alias("d_total")
-        )
-        
+        d_total = nw_df.group_by(user_id_col).agg(nw.col("_date").n_unique().alias("d_total"))
+
         # Calculate Relevance R_u(id_i) = d_visit / d_total
-        relevance_df = d_visit.join(d_total, on=user_id_col).with_columns(
-            R_u=nw.col("d_visit") / nw.col("d_total")
-        )
-        
+        relevance_df = d_visit.join(d_total, on=user_id_col).with_columns(R_u=nw.col("d_visit") / nw.col("d_total"))
+
         # Papandrea et al. Algorithm 1, line 6: k-means with 3 components classifies
         # each user's locations into MVP (Mostly Visited Places), OVP (Occasionally
         # Visited Places), and EVP (Exceptionally Visited Places) by R_u score.
@@ -85,9 +76,7 @@ def _apply_cold_start_strategy(
 
         relevance_native = relevance_df.to_native()
         if not isinstance(relevance_native, pd.DataFrame):
-            relevance_native = pd.DataFrame(
-                {c: relevance_native[c].to_list() for c in relevance_native.columns}
-            )
+            relevance_native = pd.DataFrame({c: relevance_native[c].to_list() for c in relevance_native.columns})
 
         known_rows = []
         for uid, group in relevance_native.groupby(user_id_col, sort=False):
@@ -95,10 +84,7 @@ def _apply_cold_start_strategy(
             n = len(r_values)
             k = min(3, n)  # paper uses 3 (MVP/OVP/EVP); fall back gracefully
             labels = _cluster_kmeans(r_values, n_clusters=k)
-            cluster_means = {
-                c: np.mean([v for v, l in zip(r_values, labels) if l == c])
-                for c in set(labels)
-            }
+            cluster_means = {c: np.mean([v for v, label in zip(r_values, labels) if label == c]) for c in set(labels)}
             # MVP = cluster with highest mean R_u
             mvp_cluster = max(cluster_means, key=cluster_means.get)
             for loc_key in group.loc[np.array(labels) == mvp_cluster, "location_key"]:
@@ -125,14 +111,12 @@ def _apply_cold_start_strategy(
             nw.col("location_key").count().alias("_visit_count")
         )
 
-        max_counts = loc_counts.group_by(user_id_col).agg(
-            nw.col("_visit_count").max().alias("_max_count")
-        )
+        max_counts = loc_counts.group_by(user_id_col).agg(nw.col("_visit_count").max().alias("_max_count"))
 
         loc_counts = loc_counts.join(max_counts, on=user_id_col)
-        cold_start_locs = loc_counts.filter(
-            nw.col("_visit_count") >= (nw.col("_max_count") * 0.9)
-        ).with_columns(_is_cold_start=nw.lit(True))
+        cold_start_locs = loc_counts.filter(nw.col("_visit_count") >= (nw.col("_max_count") * 0.9)).with_columns(
+            _is_cold_start=nw.lit(True)
+        )
 
         nw_df = nw_df.join(
             cold_start_locs.select(user_id_col, "location_key", "_is_cold_start"),
@@ -150,6 +134,7 @@ def _apply_cold_start_strategy(
         is_known_expr = nw.lit(False)
 
     return nw_df, is_known_expr
+
 
 def intermittance_and_degree_of_return(
     visits: Any,
@@ -211,16 +196,10 @@ def intermittance_and_degree_of_return(
     nw_df = nw_df.with_columns(location_key=location_expr)
 
     # 2. Assign an absolute sequential row index to preserve the temporal order natively
-    nw_df = (
-        nw_df.with_columns(_dummy=nw.lit(1))
-        .with_columns(_row_idx=nw.col("_dummy").cum_sum())
-        .drop("_dummy")
-    )
+    nw_df = nw_df.with_columns(_dummy=nw.lit(1)).with_columns(_row_idx=nw.col("_dummy").cum_sum()).drop("_dummy")
 
     # 3. Find the global first occurrence of each location per user
-    first_visits = nw_df.group_by([user_id_col, "location_key"]).agg(
-        nw.col("_row_idx").min().alias("_first_idx")
-    )
+    first_visits = nw_df.group_by([user_id_col, "location_key"]).agg(nw.col("_row_idx").min().alias("_first_idx"))
     nw_df = nw_df.join(first_visits, on=[user_id_col, "location_key"])
 
     # 4. State tracking: apply cold-start strategy
@@ -233,55 +212,48 @@ def intermittance_and_degree_of_return(
     )
 
     # 5. A place is known if its current index > its first seen index, OR if it triggers the cold start
-    nw_df = nw_df.with_columns(
-        is_known=(nw.col("_row_idx") > nw.col("_first_idx")) | is_known_expr
-    )
+    nw_df = nw_df.with_columns(is_known=(nw.col("_row_idx") > nw.col("_first_idx")) | is_known_expr)
 
     # 6. Sort chronologically per user to isolate sequential blocks
     nw_df = nw_df.sort([user_id_col, "_row_idx"])
 
     # 7. Detect state alternations (Exploration <-> Return) using rolling shifts
     nw_df = nw_df.with_columns(
-        is_known_shifted=nw.col("is_known").shift(1),
-        user_id_shifted=nw.col(user_id_col).shift(1)
+        is_known_shifted=nw.col("is_known").shift(1), user_id_shifted=nw.col(user_id_col).shift(1)
     )
 
     nw_df = nw_df.with_columns(
         block_change=(
-            (nw.col("is_known") != nw.col("is_known_shifted")) |
-            (nw.col(user_id_col) != nw.col("user_id_shifted"))
-        ).fill_null(True).cast(nw.Int32)
+            (nw.col("is_known") != nw.col("is_known_shifted")) | (nw.col(user_id_col) != nw.col("user_id_shifted"))
+        )
+        .fill_null(True)
+        .cast(nw.Int32)
     )
 
     # Generate isolated block IDs
     nw_df = nw_df.with_columns(block_id=nw.col("block_change").cum_sum())
 
     # 8. Aggregate block volumes (counting pure visits as per the paper, discarding duration)
-    blocks = nw_df.group_by([user_id_col, "block_id", "is_known"]).agg(
-        nw.col("block_id").count().alias("block_length")
-    )
+    blocks = nw_df.group_by([user_id_col, "block_id", "is_known"]).agg(nw.col("block_id").count().alias("block_length"))
 
     # 9. Compute the mean sequential lengths (#U and #R)
-    explorations = blocks.filter(~nw.col("is_known")).group_by(user_id_col).agg(
-        nw.col("block_length").mean().alias("mean_exploration")
+    explorations = (
+        blocks.filter(~nw.col("is_known"))
+        .group_by(user_id_col)
+        .agg(nw.col("block_length").mean().alias("mean_exploration"))
     )
-    returns = blocks.filter(nw.col("is_known")).group_by(user_id_col).agg(
-        nw.col("block_length").mean().alias("mean_return")
+    returns = (
+        blocks.filter(nw.col("is_known")).group_by(user_id_col).agg(nw.col("block_length").mean().alias("mean_return"))
     )
 
     # 10. Merge aggregations per unique user and zero-fill null edge cases
     users = nw_df.select(user_id_col).unique()
     res = users.join(explorations, on=user_id_col, how="left").join(returns, on=user_id_col, how="left")
 
-    res = res.with_columns(
-        nw.col("mean_exploration").fill_null(0.0),
-        nw.col("mean_return").fill_null(0.0)
-    )
+    res = res.with_columns(nw.col("mean_exploration").fill_null(0.0), nw.col("mean_return").fill_null(0.0))
 
     # 11. Intermittency calculation directly in Narwhals
-    res = res.with_columns(
-        intermittency=(nw.col("mean_exploration") + nw.col("mean_return")).alias("intermittency")
-    )
+    res = res.with_columns(intermittency=(nw.col("mean_exploration") + nw.col("mean_return")).alias("intermittency"))
 
     # 12. Convert to a pure Python dictionary of lists
     data_dict = res.to_dict(as_series=False)
@@ -299,12 +271,9 @@ def intermittance_and_degree_of_return(
 
     # Return final structured DataFrame safely to its native type
     return final_nw_df.select(
-        user_id_col, 
-        "intermittency", 
-        "degree_of_return", 
-        "mean_return", 
-        "mean_exploration"
+        user_id_col, "intermittency", "degree_of_return", "mean_return", "mean_exploration"
     ).to_native()
+
 
 def exploration_profiling(
     visits: Any,
@@ -373,10 +342,7 @@ def exploration_profiling(
 
     valid_methods = get_args(CLUSTERING_METHODS)
     if clustering_method not in valid_methods:
-        raise ValueError(
-            f"Unknown clustering_method {clustering_method!r}. "
-            f"Choose one of {valid_methods}."
-        )
+        raise ValueError(f"Unknown clustering_method {clustering_method!r}. Choose one of {valid_methods}.")
 
     nw_visits = nw.from_native(visits, eager_only=True)
     if user_id_col is None:
@@ -395,37 +361,27 @@ def exploration_profiling(
 
     n_users = len(stats) if hasattr(stats, "__len__") else stats.shape[0]
     if n_users < 3:
-        raise ValueError(
-            f"exploration_profiling requires at least 3 users to form 3 clusters, "
-            f"got {n_users}."
-        )
+        raise ValueError(f"exploration_profiling requires at least 3 users to form 3 clusters, got {n_users}.")
 
     stats_nw = nw.from_native(stats, eager_only=True)
     dor_values: list[float] = stats_nw["degree_of_return"].to_list()
 
     if clustering_method == "kmeans":
-        labels: list[int] = cluster_kmeans(
-            dor_values, n_clusters=3, max_iter=n_iterations, seed=random_seed
-        )
+        labels: list[int] = cluster_kmeans(dor_values, n_clusters=3, max_iter=n_iterations, seed=random_seed)
     else:
-        labels = cluster_gmm(
-            dor_values, n_clusters=3, max_iter=n_iterations, seed=random_seed
-        )
+        labels = cluster_gmm(dor_values, n_clusters=3, max_iter=n_iterations, seed=random_seed)
 
     # Map numeric labels to profile names: sort clusters by mean degree_of_return.
     # Lowest mean → "scouters", middle → "regulars", highest → "routiners".
     cluster_ids = sorted(set(labels))
-    cluster_means = {
-        c: float(np.mean([v for v, l in zip(dor_values, labels) if l == c]))
-        for c in cluster_ids
-    }
+    cluster_means = {c: float(np.mean([v for v, label in zip(dor_values, labels) if label == c])) for c in cluster_ids}
     sorted_clusters = sorted(cluster_means.items(), key=lambda x: x[1])
     label_to_profile = {
         sorted_clusters[0][0]: "scouters",
         sorted_clusters[1][0]: "regulars",
         sorted_clusters[2][0]: "routiners",
     }
-    profiles = [label_to_profile[l] for l in labels]
+    profiles = [label_to_profile[label] for label in labels]
 
     ns = nw.get_native_namespace(stats_nw)
     data = stats_nw.to_dict(as_series=False)

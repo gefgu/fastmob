@@ -1,4 +1,5 @@
 """Mean area volume measure for visit data."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -72,7 +73,6 @@ def mean_area_volume(
       date on which each bin falls.
     """
     nw_df = nw.from_native(visits, eager_only=True)
-    backend = nw_df.implementation
     cols = nw_df.columns
 
     if area_col is None:
@@ -95,10 +95,7 @@ def mean_area_volume(
         if val is None
     ]
     if missing:
-        raise ValueError(
-            f"Could not detect required column(s): {missing}. "
-            f"Available columns: {cols}"
-        )
+        raise ValueError(f"Could not detect required column(s): {missing}. Available columns: {cols}")
 
     if len(nw_df) == 0:
         return nw.from_dict(

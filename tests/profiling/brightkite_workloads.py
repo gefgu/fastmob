@@ -1,4 +1,5 @@
 """Brightkite-backed workloads used by the py-spy profiling runner."""
+
 from __future__ import annotations
 
 import argparse
@@ -71,12 +72,8 @@ def trajectory_to_visits(traj: Any) -> pd.DataFrame:
         fallback_end,
     )
     bad_end = visits["end_timestamp"] <= visits["start_timestamp"]
-    visits.loc[bad_end, "end_timestamp"] = visits.loc[
-        bad_end, "start_timestamp"
-    ] + pd.Timedelta(minutes=30)
-    visits["duration_minutes"] = (
-        visits["end_timestamp"] - visits["start_timestamp"]
-    ).dt.total_seconds() / 60.0
+    visits.loc[bad_end, "end_timestamp"] = visits.loc[bad_end, "start_timestamp"] + pd.Timedelta(minutes=30)
+    visits["duration_minutes"] = (visits["end_timestamp"] - visits["start_timestamp"]).dt.total_seconds() / 60.0
     visits["day_of_week"] = visits["start_timestamp"].dt.day_name().str.lower()
     visits["purpose"] = _purpose_from_location(visits["location_id"])
     visits["location_type"] = visits["purpose"]
@@ -102,18 +99,8 @@ def trajectory_to_stvd_distributions(traj: Any) -> tuple[pd.DataFrame, pd.DataFr
     df["time_bin"] = df["datetime"].dt.floor("10min").dt.strftime("%H:%M")
     df["lat_bucket"] = df["lat"].round(2)
     df["lng_bucket"] = df["lng"].round(2)
-    grouped = (
-        df.groupby(["lat_bucket", "lng_bucket", "time_bin"], sort=False)
-        .size()
-        .reset_index(name="mean_volume")
-    )
-    grouped["centroid"] = (
-        "POINT ("
-        + grouped["lng_bucket"].astype(str)
-        + " "
-        + grouped["lat_bucket"].astype(str)
-        + ")"
-    )
+    grouped = df.groupby(["lat_bucket", "lng_bucket", "time_bin"], sort=False).size().reset_index(name="mean_volume")
+    grouped["centroid"] = "POINT (" + grouped["lng_bucket"].astype(str) + " " + grouped["lat_bucket"].astype(str) + ")"
     dist = grouped[["centroid", "time_bin", "mean_volume"]]
     if len(dist) < 2:
         dist = pd.concat([dist, dist], ignore_index=True)
@@ -126,9 +113,7 @@ def trajectory_to_stvd_distributions(traj: Any) -> tuple[pd.DataFrame, pd.DataFr
 
 def _purpose_from_location(location_ids: pd.Series) -> pd.Series:
     codes = pd.factorize(location_ids, sort=False)[0] % 4
-    return pd.Series(codes, index=location_ids.index).map(
-        {0: "HOME", 1: "WORK", 2: "SHOP", 3: "OTHER"}
-    )
+    return pd.Series(codes, index=location_ids.index).map({0: "HOME", 1: "WORK", 2: "SHOP", 3: "OTHER"})
 
 
 def _to_pandas(data: Any) -> pd.DataFrame:
@@ -165,9 +150,7 @@ def _trajectory_workloads() -> dict[str, Workload]:
     return {
         "filter": make("filter", "skmob2.preprocessing.filter.filter"),
         "compress": make("compress", "skmob2.preprocessing.compress.compress"),
-        "stay_locations": make(
-            "stay_locations", "skmob2.preprocessing.stay_locations.stay_locations"
-        ),
+        "stay_locations": make("stay_locations", "skmob2.preprocessing.stay_locations.stay_locations"),
         "cluster": make("cluster", "skmob2.preprocessing.cluster.cluster"),
         "jump_lengths": make(
             "jump_lengths",
@@ -184,26 +167,18 @@ def _trajectory_workloads() -> dict[str, Workload]:
             "skmob2.measures.spatial.k_radius_of_gyration.k_radius_of_gyration",
             {"show_progress": False},
         ),
-        "number_of_visits": make(
-            "number_of_visits", "skmob2.measures.spatial.number_of_visits.number_of_visits"
-        ),
+        "number_of_visits": make("number_of_visits", "skmob2.measures.spatial.number_of_visits.number_of_visits"),
         "number_of_locations": make(
             "number_of_locations",
             "skmob2.measures.spatial.number_of_locations.number_of_locations",
         ),
-        "maximum_distance": make(
-            "maximum_distance", "skmob2.measures.spatial.maximum_distance.maximum_distance"
-        ),
+        "maximum_distance": make("maximum_distance", "skmob2.measures.spatial.maximum_distance.maximum_distance"),
         "distance_straight_line": make(
             "distance_straight_line",
             "skmob2.measures.spatial.distance_straight_line.distance_straight_line",
         ),
-        "waiting_times": make(
-            "waiting_times", "skmob2.measures.spatial.waiting_times.waiting_times"
-        ),
-        "home_location": make(
-            "home_location", "skmob2.measures.spatial.home_location.home_location"
-        ),
+        "waiting_times": make("waiting_times", "skmob2.measures.spatial.waiting_times.waiting_times"),
+        "home_location": make("home_location", "skmob2.measures.spatial.home_location.home_location"),
         "max_distance_from_home": make(
             "max_distance_from_home",
             "skmob2.measures.spatial.max_distance_from_home.max_distance_from_home",
@@ -232,22 +207,14 @@ def _trajectory_workloads() -> dict[str, Workload]:
             "uncorrelated_location_entropy",
             "skmob2.measures.flows.uncorrelated_location_entropy.uncorrelated_location_entropy",
         ),
-        "random_entropy": make(
-            "random_entropy", "skmob2.measures.visits.random_entropy.random_entropy"
-        ),
+        "random_entropy": make("random_entropy", "skmob2.measures.visits.random_entropy.random_entropy"),
         "uncorrelated_entropy": make(
             "uncorrelated_entropy",
             "skmob2.measures.visits.uncorrelated_entropy.uncorrelated_entropy",
         ),
-        "real_entropy": make(
-            "real_entropy", "skmob2.measures.visits.real_entropy.real_entropy"
-        ),
-        "frequency_rank": make(
-            "frequency_rank", "skmob2.measures.visits.frequency_rank.frequency_rank"
-        ),
-        "recency_rank": make(
-            "recency_rank", "skmob2.measures.visits.recency_rank.recency_rank"
-        ),
+        "real_entropy": make("real_entropy", "skmob2.measures.visits.real_entropy.real_entropy"),
+        "frequency_rank": make("frequency_rank", "skmob2.measures.visits.frequency_rank.frequency_rank"),
+        "recency_rank": make("recency_rank", "skmob2.measures.visits.recency_rank.recency_rank"),
         "location_frequency": make(
             "location_frequency",
             "skmob2.measures.visits.location_frequency.location_frequency",
@@ -276,9 +243,7 @@ def _visit_workloads() -> dict[str, Workload]:
             "skmob2.measures.visits.activity.activity_transition_matrix",
         ),
         "diversity": make("diversity", "skmob2.measures.visits.diversity.diversity"),
-        "regularity": make(
-            "regularity", "skmob2.measures.visits.regularity.regularity"
-        ),
+        "regularity": make("regularity", "skmob2.measures.visits.regularity.regularity"),
         "trajectory_entropy": make(
             "trajectory_entropy",
             "skmob2.measures.visits.entropy.trajectory_entropy",
@@ -296,9 +261,7 @@ def _visit_workloads() -> dict[str, Workload]:
             "skmob2.measures.visits.mobility_profiling.exploration_profiling",
             {"random_seed": 0},
         ),
-        "mean_area_volume": make(
-            "mean_area_volume", "skmob2.measures.visits.mean_area_volume.mean_area_volume"
-        ),
+        "mean_area_volume": make("mean_area_volume", "skmob2.measures.visits.mean_area_volume.mean_area_volume"),
         "discover_daily_motifs_from_agents": make(
             "discover_daily_motifs_from_agents",
             "skmob2.measures.visits.motifs.discover_daily_motifs_from_agents",

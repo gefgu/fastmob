@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/visits/uncorrelated_entropy.py."""
+
 from __future__ import annotations
 
 import math
@@ -28,10 +29,7 @@ def _to_dict(df) -> dict:
     uid_col = next((c for c in ("uid", "user", "user_id") if c in columns), None)
     if uid_col is None:
         raise AssertionError("Result lacks uid/user/user_id column")
-    return {
-        row[uid_col]: row["uncorrelated_entropy"]
-        for row in nw_df.rows(named=True)
-    }
+    return {row[uid_col]: row["uncorrelated_entropy"] for row in nw_df.rows(named=True)}
 
 
 # ---------------------------------------------------------------------------
@@ -48,9 +46,7 @@ def test_uncorrelated_entropy_known_values(synthetic_tdf):
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
     for uid, val in mapping.items():
-        assert math.isclose(val, EXPECTED_ENTROPY, rel_tol=1e-9), (
-            f"uid={uid!r}: got {val}, expected {EXPECTED_ENTROPY}"
-        )
+        assert math.isclose(val, EXPECTED_ENTROPY, rel_tol=1e-9), f"uid={uid!r}: got {val}, expected {EXPECTED_ENTROPY}"
 
 
 def test_uncorrelated_entropy_unequal_visits():

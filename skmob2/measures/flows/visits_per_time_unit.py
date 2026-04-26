@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import narwhals as nw
 
 from .._common import _prepare_trajectory
 
@@ -74,13 +73,7 @@ def visits_per_time_unit(
     # Ensure the datetime column is a proper pandas datetime type.
     pandas_df[datetime_col] = pd.to_datetime(pandas_df[datetime_col])
 
-    counts = (
-        pandas_df.set_index(datetime_col)
-        .resample(freq)
-        .size()
-        .rename("n_visits")
-        .reset_index()
-    )
+    counts = pandas_df.set_index(datetime_col).resample(freq).size().rename("n_visits").reset_index()
     # Keep only bins that have at least one visit.
     counts = counts[counts["n_visits"] > 0].reset_index(drop=True)
 

@@ -1,4 +1,5 @@
 """Real entropy of individual mobility trajectories (Kontoyiannis estimator)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -65,11 +66,7 @@ def real_entropy(
     # Encode each (lat, lng) pair as a string token for the LZ estimator.
     loc_key_col = "__skmob2_loc_key__"
     df = df.with_columns(
-        (
-            nw.col(lat_col).cast(nw.String)
-            + nw.lit("_")
-            + nw.col(lng_col).cast(nw.String)
-        ).alias(loc_key_col)
+        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
     )
 
     if uid_col is None:

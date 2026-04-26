@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.preprocessing.filter."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -39,12 +40,14 @@ def test_filter_full_df_noisy_user_filtered(filter_tdf):
 
 def test_filter_single_point_user():
     """A single-point trajectory is returned unchanged."""
-    df = pd.DataFrame({
-        "uid": ["u1"],
-        "datetime": [pd.Timestamp("2020-01-01")],
-        "lat": [48.8566],
-        "lng": [2.3522],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"],
+            "datetime": [pd.Timestamp("2020-01-01")],
+            "lat": [48.8566],
+            "lng": [2.3522],
+        }
+    )
     result = traj_filter(df, max_speed_kmh=500.0)
     assert len(result) == 1
 
@@ -58,6 +61,7 @@ def test_filter_returns_same_backend_type(filter_tdf):
 def test_filter_polars_backend(filter_tdf_polars):
     """Polars input produces a Polars output with the same filtering result."""
     import polars as pl
+
     result = traj_filter(filter_tdf_polars, max_speed_kmh=500.0)
     assert isinstance(result, pl.DataFrame)
     clean = result.filter(pl.col("uid") == "user_clean")
@@ -68,16 +72,18 @@ def test_filter_polars_backend(filter_tdf_polars):
 
 def test_filter_zero_dt_removes_duplicate_timestamps():
     """Two points at the same timestamp trigger ZeroDivisionError → remove second."""
-    df = pd.DataFrame({
-        "uid": ["u1", "u1", "u1"],
-        "datetime": [
-            pd.Timestamp("2020-01-01 00:00:00"),
-            pd.Timestamp("2020-01-01 00:00:00"),  # same timestamp as prev → ZeroDivision
-            pd.Timestamp("2020-01-01 01:00:00"),
-        ],
-        "lat": [48.856, 48.900, 48.856],  # big jump at same timestamp
-        "lng": [2.352, 2.352, 2.352],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["u1", "u1", "u1"],
+            "datetime": [
+                pd.Timestamp("2020-01-01 00:00:00"),
+                pd.Timestamp("2020-01-01 00:00:00"),  # same timestamp as prev → ZeroDivision
+                pd.Timestamp("2020-01-01 01:00:00"),
+            ],
+            "lat": [48.856, 48.900, 48.856],  # big jump at same timestamp
+            "lng": [2.352, 2.352, 2.352],
+        }
+    )
     result = traj_filter(df, max_speed_kmh=500.0)
     # The duplicate-timestamp point should be removed
     assert len(result) == 2
@@ -86,7 +92,6 @@ def test_filter_zero_dt_removes_duplicate_timestamps():
 @pytest.mark.skmob
 def test_filter_matches_skmob(brightkite_skmob):
     """Results must match the original skmob implementation on Brightkite data."""
-    import skmob
     from skmob.preprocessing import filtering as skmob_filtering
     import pandas as pd
 

@@ -1,4 +1,5 @@
 """Tests for the fast_diversity low-level primitive."""
+
 import pytest
 
 pydivsufsort = pytest.importorskip(
@@ -6,7 +7,7 @@ pydivsufsort = pytest.importorskip(
     reason="pydivsufsort not installed; install with: pip install skmob2[diversity]",
 )
 
-from skmob2.measures.visits.fast_diversity import fast_diversity
+from skmob2.measures.visits.fast_diversity import fast_diversity  # noqa: E402
 
 
 def test_fast_diversity_constant_sequence_lower_than_varied():
@@ -17,7 +18,7 @@ def test_fast_diversity_constant_sequence_lower_than_varied():
     strictly lower than a fully unique sequence of the same length.
     """
     constant = fast_diversity(["A", "A", "A", "A"])
-    varied   = fast_diversity(["A", "B", "C", "D"])
+    varied = fast_diversity(["A", "B", "C", "D"])
     assert constant < varied
 
 
@@ -69,7 +70,7 @@ def test_fast_diversity_two_elements():
 def test_fast_diversity_longer_unique_beats_short_unique():
     """Longer uniform sequence has lower diversity than varied one of same length."""
     uniform = ["A", "A", "A", "A", "A"]
-    varied  = ["A", "B", "C", "A", "B"]
+    varied = ["A", "B", "C", "A", "B"]
     assert fast_diversity(uniform) < fast_diversity(varied)
 
 
@@ -77,6 +78,7 @@ def test_fast_diversity_raises_without_pydivsufsort(monkeypatch):
     """ImportError raised when pydivsufsort is None."""
     import sys
     import importlib
+
     # Ensure the submodule is loaded, then grab it directly from sys.modules
     # to avoid the name collision with the re-exported function in visits/__init__.py
     importlib.import_module("skmob2.measures.visits.fast_diversity")

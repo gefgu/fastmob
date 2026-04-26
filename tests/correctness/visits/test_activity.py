@@ -1,20 +1,22 @@
 """Correctness tests for skmob2.measures.visits.activity."""
+
 from __future__ import annotations
 
 import pandas as pd
-import numpy as np
 import pytest
 from skmob2.measures.visits.activity import activity_transition_matrix
 
 
 def _simple_visits():
     """Two users with predictable activity sequences."""
-    return pd.DataFrame({
-        "user_id": [1, 1, 1, 1, 2, 2, 2],
-        "start_timestamp": pd.date_range("2020-01-01", periods=7, freq="2h"),
-        "purpose": ["HOME", "WORK", "HOME", "WORK", "HOME", "WORK", "HOME"],
-        "day_of_week": ["monday"] * 7,
-    })
+    return pd.DataFrame(
+        {
+            "user_id": [1, 1, 1, 1, 2, 2, 2],
+            "start_timestamp": pd.date_range("2020-01-01", periods=7, freq="2h"),
+            "purpose": ["HOME", "WORK", "HOME", "WORK", "HOME", "WORK", "HOME"],
+            "day_of_week": ["monday"] * 7,
+        }
+    )
 
 
 def test_transition_matrix_shape_and_labels():
@@ -44,9 +46,7 @@ def test_transition_matrix_sums_to_100():
 
 def test_transition_matrix_day_filter_weekdays():
     df = _simple_visits()
-    df["day_of_week"] = (
-        ["monday", "monday", "monday", "monday", "saturday", "saturday", "saturday"]
-    )
+    df["day_of_week"] = ["monday", "monday", "monday", "monday", "saturday", "saturday", "saturday"]
     result_all = activity_transition_matrix(df)
     result_weekdays = activity_transition_matrix(df, day_filter="weekdays")
     # Weekday-only result excludes Saturday transitions
@@ -69,12 +69,14 @@ def test_transition_matrix_missing_day_col_raises_when_day_filter_set():
 
 def test_transition_matrix_weekend_filter():
     """Weekend filter keeps only Saturday/Sunday rows."""
-    df = pd.DataFrame({
-        "user_id": [1, 1, 1, 1, 1],
-        "start_timestamp": pd.date_range("2020-01-01", periods=5, freq="2h"),
-        "purpose": ["HOME", "WORK", "HOME", "SHOP", "HOME"],
-        "day_of_week": ["monday", "saturday", "saturday", "sunday", "sunday"],
-    })
+    df = pd.DataFrame(
+        {
+            "user_id": [1, 1, 1, 1, 1],
+            "start_timestamp": pd.date_range("2020-01-01", periods=5, freq="2h"),
+            "purpose": ["HOME", "WORK", "HOME", "SHOP", "HOME"],
+            "day_of_week": ["monday", "saturday", "saturday", "sunday", "sunday"],
+        }
+    )
     result = activity_transition_matrix(df, day_filter="weekends")
     # Should not contain monday transitions
     assert result.values.sum() == pytest.approx(100.0, abs=1e-6)
@@ -82,11 +84,13 @@ def test_transition_matrix_weekend_filter():
 
 def test_transition_matrix_single_activity():
     """With a single activity type, no transitions exist — empty result or zero matrix."""
-    df = pd.DataFrame({
-        "user_id": [1, 1, 1],
-        "start_timestamp": pd.date_range("2020-01-01", periods=3, freq="1h"),
-        "purpose": ["HOME", "HOME", "HOME"],
-    })
+    df = pd.DataFrame(
+        {
+            "user_id": [1, 1, 1],
+            "start_timestamp": pd.date_range("2020-01-01", periods=3, freq="1h"),
+            "purpose": ["HOME", "HOME", "HOME"],
+        }
+    )
     result = activity_transition_matrix(df)
     # Only HOME -> HOME transitions (self-loop only)
     assert set(result.index) == {"HOME"}

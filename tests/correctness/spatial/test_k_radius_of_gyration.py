@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/spatial/k_radius_of_gyration.py."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -35,7 +36,10 @@ def test_k_radius_of_gyration_known_values_k2_pandas(synthetic_tdf):
         assert len(row) == 1, f"Expected exactly one row for uid={uid!r}"
         actual = float(row["k_radius_of_gyration"].iloc[0])
         np.testing.assert_allclose(
-            actual, expected, rtol=1e-5, atol=1e-5,
+            actual,
+            expected,
+            rtol=1e-5,
+            atol=1e-5,
             err_msg=f"k-RoG (k=2) mismatch for uid={uid!r}",
         )
 
@@ -55,7 +59,10 @@ def test_k_radius_of_gyration_known_values_k3_pandas(synthetic_tdf):
         assert len(row) == 1, f"Expected exactly one row for uid={uid!r}"
         actual = float(row["k_radius_of_gyration"].iloc[0])
         np.testing.assert_allclose(
-            actual, expected, rtol=1e-5, atol=1e-5,
+            actual,
+            expected,
+            rtol=1e-5,
+            atol=1e-5,
             err_msg=f"k-RoG (k=3) mismatch for uid={uid!r}",
         )
 
@@ -66,11 +73,13 @@ def test_k_radius_of_gyration_no_uid_column():
     from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
 
     # loc (0,0) visited twice, (1,0) once, (2,0) once => top-2 are (0,0) and (1,0)
-    df = pd.DataFrame({
-        "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
-        "lat": [0.0, 1.0, 0.0, 2.0],
-        "lng": [0.0, 0.0, 0.0, 0.0],
-    })
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
+            "lat": [0.0, 1.0, 0.0, 2.0],
+            "lng": [0.0, 0.0, 0.0, 0.0],
+        }
+    )
     result = k_radius_of_gyration(df, k=2)
     assert "k_radius_of_gyration" in result.columns
     assert len(result) == 1
@@ -87,15 +96,16 @@ def test_k_radius_of_gyration_k_exceeds_locations():
     """When k >= number of distinct locations, result equals regular RoG for those locations."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
-    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     # Only 2 distinct locations; k=10 should yield the same as using all locations
-    df = pd.DataFrame({
-        "uid": ["u1"] * 5,
-        "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
-        "lat": [0.0, 1.0, 0.0, 1.0, 0.0],
-        "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"] * 5,
+            "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
+            "lat": [0.0, 1.0, 0.0, 1.0, 0.0],
+            "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
+        }
+    )
     result_k10 = k_radius_of_gyration(df, k=10)
     uid_col = next(c for c in ("uid", "user", "user_id") if c in result_k10.columns)
     val_k10 = float(result_k10[result_k10[uid_col] == "u1"]["k_radius_of_gyration"].iloc[0])
@@ -112,12 +122,14 @@ def test_k_radius_of_gyration_single_location():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
 
-    df = pd.DataFrame({
-        "uid": ["u1"] * 3,
-        "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-        "lat": [10.0, 10.0, 10.0],
-        "lng": [50.0, 50.0, 50.0],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"] * 3,
+            "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+            "lat": [10.0, 10.0, 10.0],
+            "lng": [50.0, 50.0, 50.0],
+        }
+    )
     result = k_radius_of_gyration(df, k=2)
     uid_col = next(c for c in ("uid", "user", "user_id") if c in result.columns)
     val = float(result[result[uid_col] == "u1"]["k_radius_of_gyration"].iloc[0])
@@ -139,7 +151,10 @@ def test_k_radius_of_gyration_pandas_polars_agree(synthetic_tdf, synthetic_tdf_p
         val_pd = float(res_pd[res_pd[uid_col] == uid]["k_radius_of_gyration"].iloc[0])
         val_pl = float(res_pl[res_pl[uid_col] == uid]["k_radius_of_gyration"].iloc[0])
         np.testing.assert_allclose(
-            val_pd, val_pl, rtol=1e-12, atol=1e-12,
+            val_pd,
+            val_pl,
+            rtol=1e-12,
+            atol=1e-12,
             err_msg=f"pandas/polars disagree for uid={uid}",
         )
 

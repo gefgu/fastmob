@@ -11,6 +11,7 @@ scipy is an optional dependency:
 If scipy is absent the module still imports cleanly; errors are raised only
 when the affected functions are called.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -272,10 +273,7 @@ def kullback_leibler_divergence(true, pred) -> float:
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     if _scipy_stats is None:
-        raise ImportError(
-            "scipy is required for kullback_leibler_divergence: "
-            "pip install skmob2[fitting]"
-        )
+        raise ImportError("scipy is required for kullback_leibler_divergence: pip install skmob2[fitting]")
     return float(_scipy_stats.entropy(true, pred))
 
 
@@ -308,9 +306,7 @@ def pearson_correlation(true, pred) -> tuple[float, float]:
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     if _scipy_stats is None:
-        raise ImportError(
-            "scipy is required for pearson_correlation: pip install skmob2[fitting]"
-        )
+        raise ImportError("scipy is required for pearson_correlation: pip install skmob2[fitting]")
     result = _scipy_stats.pearsonr(true, pred)
     return (float(result[0]), float(result[1]))
 
@@ -339,8 +335,6 @@ def spearman_correlation(true, pred) -> tuple[float, float]:
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     if _scipy_stats is None:
-        raise ImportError(
-            "scipy is required for spearman_correlation: pip install skmob2[fitting]"
-        )
+        raise ImportError("scipy is required for spearman_correlation: pip install skmob2[fitting]")
     result = _scipy_stats.spearmanr(true, pred)
     return (float(result[0]), float(result[1]))

@@ -143,9 +143,7 @@ def _detect_trajectory_columns(
             "latitude": LAT_CANDIDATES,
             "longitude": LNG_CANDIDATES,
         }
-        details = "; ".join(
-            f"'{m}' (looked for: {hints[m]})" for m in missing
-        )
+        details = "; ".join(f"'{m}' (looked for: {hints[m]})" for m in missing)
         raise ValueError(
             f"Could not find required column(s): {details}. "
             f"Available columns: {columns}. "
@@ -213,11 +211,7 @@ def _prepare_trajectory(
         uid_col=uid_col,
     )
 
-    sort_cols = (
-        [uid_col, datetime_col, _ROW_ORDER_COL]
-        if uid_col
-        else [datetime_col, _ROW_ORDER_COL]
-    )
+    sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
     df = (
         nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
         .sort(*sort_cols)
@@ -231,9 +225,7 @@ def _prepare_trajectory(
     return df, datetime_col, lat_col, lng_col, uid_col
 
 
-def _build_user_ranges(
-    df: nw.DataFrame, uid_col: str | None
-) -> tuple[list, list[tuple[int, int]]]:
+def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, list[tuple[int, int]]]:
     """Split a uid-sorted DataFrame into per-user (uid_value, index_range) pairs.
 
     Returns

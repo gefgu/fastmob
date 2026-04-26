@@ -128,18 +128,13 @@ def discover_daily_motifs_from_agents(
     work_df = work_df.with_columns(
         nw.col("start_timestamp").cast(nw.Datetime("us")).alias("start_timestamp"),
         nw.col("end_timestamp").cast(nw.Datetime("us")).alias("end_timestamp"),
-        (
-            nw.col(location_id_col).cast(nw.String)
-            + nw.lit("_")
-            + nw.col("purpose").cast(nw.String)
-        ).alias("unique_id"),
+        (nw.col(location_id_col).cast(nw.String) + nw.lit("_") + nw.col("purpose").cast(nw.String)).alias("unique_id"),
     ).with_columns(
         nw.col("start_timestamp").dt.hour().cast(nw.UInt32).alias("start_hour"),
         nw.col("end_timestamp").dt.hour().cast(nw.UInt32).alias("end_hour"),
-        (
-            nw.col("start_timestamp").dt.truncate("1d").cast(nw.Int64)
-            // (86400 * 1_000_000)
-        ).cast(nw.Int32).alias("date_id"),
+        (nw.col("start_timestamp").dt.truncate("1d").cast(nw.Int64) // (86400 * 1_000_000))
+        .cast(nw.Int32)
+        .alias("date_id"),
     )
 
     # Sort by [user_id, start_timestamp] so visits within each user are
@@ -203,7 +198,7 @@ def discover_daily_motifs_from_agents(
     # motif_id format: "m{n_nodes}:{bits}" or "-1"
     num_nodes_list: list[int] = []
     num_edges_list: list[int] = []
-    
+
     for mid in motif_ids_out:
         if mid == -1:
             num_nodes_list.append(-1)
@@ -212,30 +207,33 @@ def discover_daily_motifs_from_agents(
             # 1. Extract n_nodes by shifting right 36 bits
             n_nodes = mid >> 36
             num_nodes_list.append(n_nodes)
-            
+
             # 2. Mask the lower 36 bits to get the adjacency matrix integer
             mask = (1 << 36) - 1
             adjacency_matrix = mid & mask
-            
+
             # 3. Count the active bits (edges) natively in Python 3.10+
             num_edges_list.append(adjacency_matrix.bit_count())
 
     # Convert date_ids_out (days since epoch) back to Datetime(us)
     # date_id * 86400 * 1_000_000 microseconds → Datetime('us')
-    daily_nw = nw.from_dict(
-        {
-            user_id_col: user_ids_out,
-            "date_id_raw": date_ids_out,
-            "motif_id": motif_ids_out,
-            "num_nodes": num_nodes_list,
-            "num_edges": num_edges_list,
-        },
-        backend=backend,
-    ).with_columns(
-        (nw.col("date_id_raw").cast(nw.Int64) * (86400 * 1_000_000))
-        .cast(nw.Datetime("us"))
-        .alias("date")
-    ).drop("date_id_raw").sort([user_id_col, "date"])
+    daily_nw = (
+        nw.from_dict(
+            {
+                user_id_col: user_ids_out,
+                "date_id_raw": date_ids_out,
+                "motif_id": motif_ids_out,
+                "num_nodes": num_nodes_list,
+                "num_edges": num_edges_list,
+            },
+            backend=backend,
+        )
+        .with_columns(
+            (nw.col("date_id_raw").cast(nw.Int64) * (86400 * 1_000_000)).cast(nw.Datetime("us")).alias("date")
+        )
+        .drop("date_id_raw")
+        .sort([user_id_col, "date"])
+    )
 
     daily_df = daily_nw.to_native()
     dist_df = compute_daily_motifs_distribution(daily_df)

@@ -1,4 +1,5 @@
 """Benchmarks for skmob2/measures/jump_lengths.py."""
+
 from __future__ import annotations
 
 import pytest

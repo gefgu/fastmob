@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/spatial/number_of_locations.py."""
+
 from __future__ import annotations
 
 import narwhals as nw
@@ -30,10 +31,7 @@ def _to_dict(df) -> dict[str, int]:
     if uid_col is None:
         raise AssertionError("Result lacks uid/user/user_id column")
 
-    return {
-        row[uid_col]: row["number_of_locations"]
-        for row in nw_df.rows(named=True)
-    }
+    return {row[uid_col]: row["number_of_locations"] for row in nw_df.rows(named=True)}
 
 
 # ---------------------------------------------------------------------------
@@ -50,9 +48,7 @@ def test_number_of_locations_known_values(synthetic_tdf):
 
     assert set(mapping.keys()) == set(EXPECTED_LOCATIONS.keys())
     for uid, expected in EXPECTED_LOCATIONS.items():
-        assert mapping[uid] == expected, (
-            f"uid={uid!r}: got {mapping[uid]}, expected {expected}"
-        )
+        assert mapping[uid] == expected, f"uid={uid!r}: got {mapping[uid]}, expected {expected}"
 
 
 def test_number_of_locations_deduplicates_repeated():
@@ -102,9 +98,7 @@ def test_number_of_locations_polars_known_values(synthetic_tdf_polars):
 
     assert set(mapping.keys()) == set(EXPECTED_LOCATIONS.keys())
     for uid, expected in EXPECTED_LOCATIONS.items():
-        assert mapping[uid] == expected, (
-            f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
-        )
+        assert mapping[uid] == expected, f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
 
 
 @pytest.mark.skmob
@@ -120,14 +114,10 @@ def test_number_of_locations_matches_skmob(brightkite_skmob):
     skmob2_input = pd.DataFrame(brightkite_skmob).copy()
     skmob2_result = skmob2_nol(skmob2_input)
 
-    skmob_dict = dict(
-        zip(skmob_result["uid"].tolist(), skmob_result["number_of_locations"].tolist())
-    )
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["number_of_locations"].tolist()))
     skmob2_dict = _to_dict(skmob2_result)
 
     common = set(skmob_dict) & set(skmob2_dict)
     assert len(common) > 0
     for uid in common:
-        assert skmob_dict[uid] == skmob2_dict[uid], (
-            f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
-        )
+        assert skmob_dict[uid] == skmob2_dict[uid], f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"

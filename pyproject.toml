@@ -22,10 +22,13 @@ dynamic = ["version"]
 fitting = ["scipy"]
 diversity = ["pydivsufsort"]
 dev = [
+    "memray",
+    "pytest-memray",
     "pytest",
     "pytest-benchmark",
     "py-spy",
     "polars",
+    "ruff",
     "tqdm",
     "scipy",
     "pydivsufsort",
@@ -46,6 +49,11 @@ docs = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "bench_*.py"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+src = ["skmob2", "scripts", "tests"]
 
 [tool.maturin]
 module-name = "skmob2._core"

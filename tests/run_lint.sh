@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Run Ruff lint and format checks.
+#
+# Usage:
+#   bash tests/run_lint.sh           # check only
+#   bash tests/run_lint.sh --fix     # apply Ruff fixes and formatting
+#
+# Any extra arguments are forwarded directly to `ruff check`.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT"
+
+if [ ! -f ".venv/bin/activate" ]; then
+    echo "ERROR: virtual environment not found. Run 'bash tests/setup_env.sh' first."
+    exit 1
+fi
+
+source .venv/bin/activate
+
+FIX=0
+CHECK_ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--fix" ]; then
+        FIX=1
+    else
+        CHECK_ARGS+=("$arg")
+    fi
+done
+
+if [ "$FIX" -eq 1 ]; then
+    ruff check --fix skmob2 scripts tests "${CHECK_ARGS[@]}"
+    ruff format skmob2 scripts tests
+else
+    ruff check skmob2 scripts tests "${CHECK_ARGS[@]}"
+    ruff format --check skmob2 scripts tests
+fi

@@ -77,11 +77,7 @@ def jump_lengths(
 
     if len(lat_buffer) < 2:
         # Not enough points to compute jump lengths
-        return (
-            nw.from_dict({uid_col: [], "jump_lengths": []}).to_native()
-            if not merge
-            else []
-        )
+        return nw.from_dict({uid_col: [], "jump_lengths": []}).to_native() if not merge else []
 
     flat_jump_lengths = jump_lengths_km(lat_buffer, lon_buffer)
 
@@ -92,9 +88,7 @@ def jump_lengths(
     if uid_col is None:
         if merge:
             return flat_jump_lengths
-        return nw.from_dict(
-            {"jump_lengths": [flat_jump_lengths]}, backend=df.implementation
-        ).to_native()
+        return nw.from_dict({"jump_lengths": [flat_jump_lengths]}, backend=df.implementation).to_native()
 
     jumps_df = nw.from_dict(
         {uid_col: df.get_column(uid_col), "jump_lengths": padded_jump_lengths},

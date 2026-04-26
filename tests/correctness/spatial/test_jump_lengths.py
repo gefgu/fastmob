@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/jump_lengths.py."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -56,8 +57,7 @@ def test_jump_lengths_known_values(synthetic_tdf):
     normalized = _normalize_result(result)
 
     assert set(normalized.keys()) == set(EXPECTED_JUMP_LENGTHS.keys()), (
-        f"UID mismatch: got {set(normalized.keys())}, "
-        f"expected {set(EXPECTED_JUMP_LENGTHS.keys())}"
+        f"UID mismatch: got {set(normalized.keys())}, expected {set(EXPECTED_JUMP_LENGTHS.keys())}"
     )
 
     for uid, expected in EXPECTED_JUMP_LENGTHS.items():
@@ -117,8 +117,7 @@ def test_jump_lengths_polars_known_values(synthetic_tdf_polars):
     normalized = _normalize_result(result)
 
     assert set(normalized.keys()) == set(EXPECTED_JUMP_LENGTHS.keys()), (
-        f"UID mismatch: got {set(normalized.keys())}, "
-        f"expected {set(EXPECTED_JUMP_LENGTHS.keys())}"
+        f"UID mismatch: got {set(normalized.keys())}, expected {set(EXPECTED_JUMP_LENGTHS.keys())}"
     )
 
     for uid, expected in EXPECTED_JUMP_LENGTHS.items():
@@ -165,12 +164,14 @@ def test_jump_lengths_polars_vs_pandas_skmob2():
     import pandas as pd
     from skmob2.measures.spatial.jump_lengths import jump_lengths as skmob2_jl
 
-    df_pandas = pd.DataFrame({
-        "user": [1, 1, 1, 2, 2, 2],
-        "datetime": pd.date_range("2020-01-01", periods=6, freq="h"),
-        "lat": [0.0, 0.1, 0.2, 10.0, 10.1, 10.2],
-        "lng": [0.0, 0.0, 0.0, 20.0, 20.0, 20.0],
-    })
+    df_pandas = pd.DataFrame(
+        {
+            "user": [1, 1, 1, 2, 2, 2],
+            "datetime": pd.date_range("2020-01-01", periods=6, freq="h"),
+            "lat": [0.0, 0.1, 0.2, 10.0, 10.1, 10.2],
+            "lng": [0.0, 0.0, 0.0, 20.0, 20.0, 20.0],
+        }
+    )
     df_polars = polars.from_pandas(df_pandas)
 
     result_pandas = skmob2_jl(df_pandas, show_progress=False, merge=False)
@@ -185,9 +186,7 @@ def test_jump_lengths_polars_vs_pandas_skmob2():
         left = pandas_norm[uid]
         right = polars_norm[uid]
         assert left.shape == right.shape, f"Shape mismatch for uid={uid}"
-        assert np.allclose(left, right, rtol=1e-10, atol=1e-10), (
-            f"Polars and pandas should be identical for uid={uid}"
-        )
+        assert np.allclose(left, right, rtol=1e-10, atol=1e-10), f"Polars and pandas should be identical for uid={uid}"
 
 
 @pytest.mark.skmob
@@ -212,6 +211,4 @@ def test_jump_lengths_matches_skmob(brightkite_skmob):
         left = baseline[uid]
         right = candidate[uid]
         assert left.shape == right.shape, f"Shape mismatch for uid={uid}"
-        assert np.allclose(left, right, rtol=1e-5, atol=1e-5), (
-            f"Value mismatch for uid={uid}"
-        )
+        assert np.allclose(left, right, rtol=1e-5, atol=1e-5), f"Value mismatch for uid={uid}"

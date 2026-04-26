@@ -1,4 +1,5 @@
 """Regularity measure for visit trajectories."""
+
 from __future__ import annotations
 
 from typing import Any

@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/visits/location_frequency.py."""
+
 from __future__ import annotations
 
 import narwhals as nw
@@ -177,6 +178,5 @@ def test_location_frequency_matches_skmob(brightkite_skmob):
         common_locs = set(skmob_dict[uid]) & set(skmob2_dict[uid])
         for loc in common_locs:
             assert abs(skmob_dict[uid][loc] - skmob2_dict[uid][loc]) < 1e-5, (
-                f"uid={uid}, loc={loc}: "
-                f"skmob={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
+                f"uid={uid}, loc={loc}: skmob={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
             )

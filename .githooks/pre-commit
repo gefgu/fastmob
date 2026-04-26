@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Run project lint checks before each commit.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+bash tests/run_lint.sh

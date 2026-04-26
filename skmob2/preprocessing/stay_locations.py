@@ -63,9 +63,7 @@ def stay_locations(
     )
 
     timestamps_s: list[float] = (
-        df.with_columns(
-            (nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")
-        )
+        df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__"))
         .get_column("__ts_s__")
         .to_list()
     )
@@ -76,17 +74,15 @@ def stay_locations(
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
-    out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = (
-        _detect_stay_locations_batch(
-            lats,
-            lngs,
-            timestamps_s,
-            ranges,
-            spatial_radius_km,
-            minutes_for_a_stop,
-            no_data_for_minutes,
-            effective_min_speed,
-        )
+    out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _detect_stay_locations_batch(
+        lats,
+        lngs,
+        timestamps_s,
+        ranges,
+        spatial_radius_km,
+        minutes_for_a_stop,
+        no_data_for_minutes,
+        effective_min_speed,
     )
 
     if len(out_lats) == 0:

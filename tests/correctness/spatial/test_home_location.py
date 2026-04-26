@@ -1,4 +1,5 @@
 """Correctness tests for skmob2/measures/spatial/home_location.py."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -11,8 +12,8 @@ import narwhals as nw
 # window (22:00-07:00), so the home is the first visited location (each
 # location appears once — tie-broken by first occurrence).
 EXPECTED_HOME: dict[str, tuple[float, float]] = {
-    "user_a": (0.0, 0.0),       # lat=0.0, lng=0.0
-    "user_b": (10.0, 20.0),     # lat=10.0, lng=20.0
+    "user_a": (0.0, 0.0),  # lat=0.0, lng=0.0
+    "user_b": (10.0, 20.0),  # lat=10.0, lng=20.0
     "user_c": (48.8566, 2.3522),  # lat=48.8566, lng=2.3522
 }
 
@@ -47,11 +48,13 @@ def test_home_location_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
     from skmob2.measures.spatial.home_location import home_location
 
-    df = pd.DataFrame({
-        "datetime": pd.date_range("2020-01-01 22:00", periods=3, freq="h"),
-        "lat": [1.0, 2.0, 1.0],
-        "lng": [10.0, 20.0, 10.0],
-    })
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01 22:00", periods=3, freq="h"),
+            "lat": [1.0, 2.0, 1.0],
+            "lng": [10.0, 20.0, 10.0],
+        }
+    )
     result = home_location(df)
     nw_result = nw.from_native(result, eager_only=True)
     assert len(nw_result) == 1
@@ -66,16 +69,18 @@ def test_home_location_fallback_to_all_hours():
     from skmob2.measures.spatial.home_location import home_location
 
     # All records at noon — no nighttime data.
-    df = pd.DataFrame({
-        "uid": ["a", "a", "a"],
-        "datetime": [
-            pd.Timestamp("2020-01-01 12:00"),
-            pd.Timestamp("2020-01-01 13:00"),
-            pd.Timestamp("2020-01-01 12:00"),
-        ],
-        "lat": [1.0, 2.0, 1.0],
-        "lng": [10.0, 20.0, 10.0],
-    })
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a"],
+            "datetime": [
+                pd.Timestamp("2020-01-01 12:00"),
+                pd.Timestamp("2020-01-01 13:00"),
+                pd.Timestamp("2020-01-01 12:00"),
+            ],
+            "lat": [1.0, 2.0, 1.0],
+            "lng": [10.0, 20.0, 10.0],
+        }
+    )
     result = home_location(df)
     nw_result = nw.from_native(result, eager_only=True)
     assert len(nw_result) == 1
@@ -95,12 +100,8 @@ def test_home_location_polars_known_values(synthetic_tdf_polars):
     assert set(mapping.keys()) == set(EXPECTED_HOME.keys())
     for uid, (exp_lat, exp_lng) in EXPECTED_HOME.items():
         got_lat, got_lng = mapping[uid]
-        assert abs(got_lat - exp_lat) < 1e-6, (
-            f"uid={uid!r}: lat got {got_lat}, expected {exp_lat} (Polars)"
-        )
-        assert abs(got_lng - exp_lng) < 1e-6, (
-            f"uid={uid!r}: lng got {got_lng}, expected {exp_lng} (Polars)"
-        )
+        assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid!r}: lat got {got_lat}, expected {exp_lat} (Polars)"
+        assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid!r}: lng got {got_lng}, expected {exp_lng} (Polars)"
 
 
 @pytest.mark.skmob
@@ -113,10 +114,7 @@ def test_home_location_matches_skmob(brightkite_skmob):
     skmob2_input = pd.DataFrame(brightkite_skmob).copy()
     skmob2_result = skmob2_hl(skmob2_input)
 
-    skmob_dict = {
-        row["uid"]: (row["lat"], row["lng"])
-        for row in skmob_result.to_dict(orient="records")
-    }
+    skmob_dict = {row["uid"]: (row["lat"], row["lng"]) for row in skmob_result.to_dict(orient="records")}
     skmob2_dict = _to_dict(skmob2_result)
 
     common = set(skmob_dict) & set(skmob2_dict)
@@ -124,9 +122,5 @@ def test_home_location_matches_skmob(brightkite_skmob):
     for uid in common:
         exp_lat, exp_lng = skmob_dict[uid]
         got_lat, got_lng = skmob2_dict[uid]
-        assert abs(got_lat - exp_lat) < 1e-6, (
-            f"uid={uid}: lat skmob={exp_lat}, skmob2={got_lat}"
-        )
-        assert abs(got_lng - exp_lng) < 1e-6, (
-            f"uid={uid}: lng skmob={exp_lng}, skmob2={got_lng}"
-        )
+        assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat skmob={exp_lat}, skmob2={got_lat}"
+        assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng skmob={exp_lng}, skmob2={got_lng}"

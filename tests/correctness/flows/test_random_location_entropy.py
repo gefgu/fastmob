@@ -1,4 +1,5 @@
 """Correctness tests for skmob2.measures.flows.random_location_entropy."""
+
 from __future__ import annotations
 
 import math
@@ -12,18 +13,22 @@ from skmob2.measures.flows.random_location_entropy import random_location_entrop
 @pytest.fixture()
 def traj_multi_user():
     """Two users share one location, each has one unique location."""
-    return pd.DataFrame({
-        "uid": ["u1", "u1", "u2", "u2", "u2"],
-        "datetime": pd.to_datetime([
-            "2020-01-01 01:00",
-            "2020-01-01 02:00",
-            "2020-01-01 01:00",
-            "2020-01-01 03:00",
-            "2020-01-01 04:00",
-        ]),
-        "lat": [0.0, 1.0, 0.0, 2.0, 2.0],
-        "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
-    })
+    return pd.DataFrame(
+        {
+            "uid": ["u1", "u1", "u2", "u2", "u2"],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-01 01:00",
+                    "2020-01-01 02:00",
+                    "2020-01-01 01:00",
+                    "2020-01-01 03:00",
+                    "2020-01-01 04:00",
+                ]
+            ),
+            "lat": [0.0, 1.0, 0.0, 2.0, 2.0],
+            "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
+        }
+    )
 
 
 def test_random_location_entropy_shared_location(traj_multi_user):
@@ -52,11 +57,13 @@ def test_random_location_entropy_columns(traj_multi_user):
 
 def test_random_location_entropy_no_uid():
     """Without a uid column all rows are one user; entropy is 0 everywhere."""
-    traj = pd.DataFrame({
-        "datetime": pd.to_datetime(["2020-01-01", "2020-01-02"]),
-        "lat": [0.0, 1.0],
-        "lng": [0.0, 1.0],
-    })
+    traj = pd.DataFrame(
+        {
+            "datetime": pd.to_datetime(["2020-01-01", "2020-01-02"]),
+            "lat": [0.0, 1.0],
+            "lng": [0.0, 1.0],
+        }
+    )
     result = random_location_entropy(traj)
     assert (result["random_entropy"] == 0.0).all()
 
@@ -69,12 +76,14 @@ def test_random_location_entropy_returns_pandas(traj_multi_user):
 
 def test_random_location_entropy_three_users():
     """Location visited by 3 distinct users has entropy log2(3)."""
-    traj = pd.DataFrame({
-        "uid": ["u1", "u2", "u3"],
-        "datetime": pd.to_datetime(["2020-01-01", "2020-01-01", "2020-01-01"]),
-        "lat": [0.0, 0.0, 0.0],
-        "lng": [0.0, 0.0, 0.0],
-    })
+    traj = pd.DataFrame(
+        {
+            "uid": ["u1", "u2", "u3"],
+            "datetime": pd.to_datetime(["2020-01-01", "2020-01-01", "2020-01-01"]),
+            "lat": [0.0, 0.0, 0.0],
+            "lng": [0.0, 0.0, 0.0],
+        }
+    )
     result = random_location_entropy(traj)
     assert len(result) == 1
     assert abs(result["random_entropy"].iloc[0] - math.log2(3)) < 1e-10
