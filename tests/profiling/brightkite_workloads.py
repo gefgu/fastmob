@@ -162,6 +162,11 @@ def _trajectory_workloads() -> dict[str, Workload]:
             "skmob2.measures.spatial.radius_of_gyration.radius_of_gyration",
             {"show_progress": False},
         ),
+        "skmob_radius_of_gyration": make(
+            "skmob_radius_of_gyration",
+            "skmob.measures.individual.radius_of_gyration",
+            {"show_progress": False},
+        ),
         "k_radius_of_gyration": make(
             "k_radius_of_gyration",
             "skmob2.measures.spatial.k_radius_of_gyration.k_radius_of_gyration",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Run py-spy flamegraph profiling for Brightkite-backed skmob2 workloads."""
+"""Run py-spy profiling for Brightkite-backed skmob2 workloads."""
 
 from __future__ import annotations
 
@@ -24,7 +24,9 @@ DEFAULT_OUTPUT_DIR = Path(".profiles") / "py-spy"
 class ProfileCommand:
     workload: str
     output_path: Path
+    speedscope_output_path: Path
     command: list[str]
+    speedscope_command: list[str]
 
 
 def select_workloads(requested: list[str] | None) -> list[str]:
@@ -48,6 +50,18 @@ def build_profile_command(
     py_spy_bin: str = "py-spy",
 ) -> ProfileCommand:
     output_path = output_dir / f"{workload}.svg"
+    speedscope_output_path = output_dir / f"{workload}.speedscope.json"
+    workload_command = [
+        sys.executable,
+        "-m",
+        "tests.profiling.brightkite_workloads",
+        "--workload",
+        workload,
+        "--rows",
+        str(rows),
+        "--backend",
+        backend,
+    ]
     command = [
         py_spy_bin,
         "record",
@@ -59,17 +73,28 @@ def build_profile_command(
         "-o",
         str(output_path),
         "--",
-        sys.executable,
-        "-m",
-        "tests.profiling.brightkite_workloads",
-        "--workload",
-        workload,
-        "--rows",
-        str(rows),
-        "--backend",
-        backend,
+        *workload_command,
     ]
-    return ProfileCommand(workload=workload, output_path=output_path, command=command)
+    speedscope_command = [
+        py_spy_bin,
+        "record",
+        "--native",
+        "--format",
+        "speedscope",
+        "--rate",
+        str(rate),
+        "-o",
+        str(speedscope_output_path),
+        "--",
+        *workload_command,
+    ]
+    return ProfileCommand(
+        workload=workload,
+        output_path=output_path,
+        speedscope_output_path=speedscope_output_path,
+        command=command,
+        speedscope_command=speedscope_command,
+    )
 
 
 def write_manifest(output_dir: Path, rows: list[dict[str, Any]]) -> None:
@@ -112,6 +137,7 @@ def run_profiles(args: argparse.Namespace) -> int:
         error = ""
         if args.dry_run:
             print(" ".join(profile.command))
+            print(" ".join(profile.speedscope_command))
         else:
             print(f"Profiling {workload} -> {profile.output_path}")
             completed = subprocess.run(profile.command, check=False)
@@ -124,6 +150,18 @@ def run_profiles(args: argparse.Namespace) -> int:
                     elapsed = time.perf_counter() - started
                     manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
                     break
+            else:
+                print(f"Profiling {workload} -> {profile.speedscope_output_path}")
+                completed = subprocess.run(profile.speedscope_command, check=False)
+                returncode = completed.returncode
+                status = "ok" if returncode == 0 else "failed"
+                if returncode != 0:
+                    error = f"py-spy speedscope exited with {returncode}"
+                    exit_code = returncode
+                    if not args.continue_on_error:
+                        elapsed = time.perf_counter() - started
+                        manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
+                        break
 
         elapsed = time.perf_counter() - started
         manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
@@ -148,7 +186,9 @@ def _manifest_row(
         "returncode": returncode,
         "duration_seconds": round(elapsed, 6),
         "output_path": str(profile.output_path),
+        "speedscope_output_path": str(profile.speedscope_output_path),
         "command": " ".join(profile.command),
+        "speedscope_command": " ".join(profile.speedscope_command),
         "error": error,
     }
 
@@ -157,7 +197,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
         epilog=(
-            "Run `maturin develop` before profiling. The runner always passes "
+            "Run `maturin develop` before profiling. The runner writes SVG "
+            "flamegraphs and Speedscope JSON files, and always passes "
             "`--native` to py-spy so Rust frames from skmob2._core can appear "
             "when native symbols are available."
         ),

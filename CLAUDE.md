@@ -101,7 +101,7 @@ Benchmarks are parametrized over three dataset sizes (1k / 10k / 100k / 1M / 4M 
 ## Profiling
 
 ```bash
-# CPU flamegraph with py-spy and native Rust frames
+# CPU flamegraph and Speedscope JSON with py-spy and native Rust frames
 bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration
 
 # Memory flamegraph with pytest-memray and native Rust frames
@@ -116,7 +116,7 @@ pytest tests/profiling/test_brightkite_memray.py::test_memray_brightkite_workloa
   --memray-bin-path .profiles/memray/manual
 ```
 
-Profiling outputs are written to `.profiles/py-spy/` and `.profiles/memray/`. Run `maturin develop` first when invoking pytest directly so `skmob2._core` and native symbols are available.
+Profiling outputs are written to `.profiles/py-spy/` and `.profiles/memray/`. Py-spy writes both `<workload>.svg` and `<workload>.speedscope.json`. Run `maturin develop` first when invoking pytest directly so `skmob2._core` and native symbols are available.
 
 ## Narwhals API notes
 

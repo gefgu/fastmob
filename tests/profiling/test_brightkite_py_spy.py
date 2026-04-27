@@ -81,6 +81,7 @@ def test_build_profile_command_uses_native_py_spy(tmp_path):
         rate=100,
     )
     assert profile.output_path == tmp_path / "radius_of_gyration.svg"
+    assert profile.speedscope_output_path == tmp_path / "radius_of_gyration.speedscope.json"
     assert profile.command[:6] == [
         "py-spy",
         "record",
@@ -89,7 +90,16 @@ def test_build_profile_command_uses_native_py_spy(tmp_path):
         "flamegraph",
         "--rate",
     ]
+    assert profile.speedscope_command[:6] == [
+        "py-spy",
+        "record",
+        "--native",
+        "--format",
+        "speedscope",
+        "--rate",
+    ]
     assert "tests.profiling.brightkite_workloads" in profile.command
+    assert "tests.profiling.brightkite_workloads" in profile.speedscope_command
 
 
 def test_runner_dry_run_writes_manifest(tmp_path):
@@ -107,3 +117,4 @@ def test_runner_dry_run_writes_manifest(tmp_path):
     assert manifest[0]["workload"] == "radius_of_gyration"
     assert manifest[0]["status"] == "dry-run"
     assert manifest[0]["output_path"].endswith("radius_of_gyration.svg")
+    assert manifest[0]["speedscope_output_path"].endswith("radius_of_gyration.speedscope.json")

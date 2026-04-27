@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run Brightkite py-spy profiling jobs.
-# Flame graphs and manifests are written to .profiles/py-spy/ by default.
+# Flame graphs, Speedscope JSON files, and manifests are written to .profiles/py-spy/ by default.
 #
 # Usage:
 #   bash tests/run_py_spy_profiles.sh --list
