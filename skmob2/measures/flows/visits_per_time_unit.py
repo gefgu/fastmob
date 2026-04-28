@@ -8,6 +8,7 @@ from .._common import _prepare_trajectory
 
 def visits_per_time_unit(
     traj: Any,
+    time_unit: str | None = None,
     *,
     freq: str = "1h",
     datetime_col: str | None = None,
@@ -31,6 +32,9 @@ def visits_per_time_unit(
     traj:
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
+    time_unit:
+        Alias for ``freq`` (skmob compatibility).  When provided, overrides
+        ``freq``.
     freq:
         Pandas-compatible offset alias for the time bin width.  Default: ``"1h"``.
     datetime_col:
@@ -57,6 +61,8 @@ def visits_per_time_unit(
         original backend, because Narwhals does not provide time-resampling.
         The return type is always a pandas DataFrame.
     """
+    if time_unit is not None:
+        freq = time_unit
     import pandas as pd  # noqa: PLC0415 — import inside function because pandas conversion is intentional
 
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(

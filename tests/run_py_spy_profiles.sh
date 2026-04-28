@@ -6,6 +6,8 @@
 #   bash tests/run_py_spy_profiles.sh --list
 #   bash tests/run_py_spy_profiles.sh --dry-run --rows 10000 --workload radius_of_gyration
 #   bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration
+#   bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
+#   bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
 #   bash tests/run_py_spy_profiles.sh                              # full 4M-row sweep
 #
 # Any extra arguments are forwarded directly to scripts/profile_brightkite_py_spy.py.

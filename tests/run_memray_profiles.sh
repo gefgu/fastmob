@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Run Brightkite pytest-memray profiling jobs.
+# Run Brightkite memray profiling jobs.
 # Binary dumps, flame graphs, and manifests are written to .profiles/memray/ by default.
 #
 # Usage:
 #   bash tests/run_memray_profiles.sh --list
 #   bash tests/run_memray_profiles.sh --dry-run --rows 10000 --workload radius_of_gyration
 #   bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
+#   bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
+#   bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
 #   bash tests/run_memray_profiles.sh                              # full 4M-row sweep
 #
 # Any extra arguments are forwarded directly to scripts/profile_brightkite_memray.py.

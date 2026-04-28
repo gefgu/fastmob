@@ -36,6 +36,7 @@ from .stvd_emd import stvd_emd
 from .evaluation import (
     common_part_of_commuters,
     common_part_of_links,
+    common_part_of_commuters_distance,
     r_squared,
     mse,
     rmse,
@@ -87,6 +88,7 @@ __all__ = [
     "stvd_emd",
     "common_part_of_commuters",
     "common_part_of_links",
+    "common_part_of_commuters_distance",
     "r_squared",
     "mse",
     "rmse",

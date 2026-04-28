@@ -9,8 +9,9 @@ from .._common import _prepare_trajectory
 
 def location_frequency(
     traj: Any,
+    normalize: bool = True,
+    as_ranks: bool = False,
     *,
-    normalize: bool = False,
     datetime_col: str | None = None,
     lat_col: str | None = None,
     lng_col: str | None = None,
@@ -30,10 +31,16 @@ def location_frequency(
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
     normalize:
-        When ``True``, the ``"frequency"`` column contains the probability
-        of visiting that location (count / total_visits), so each user's
-        frequencies sum to 1.0.  When ``False`` (default) raw visit counts
+        When ``True`` (default), the ``"location_frequency"`` column contains
+        the probability of visiting that location (count / total_visits), so
+        each user's frequencies sum to 1.0.  When ``False``, raw visit counts
         are returned.
+    as_ranks:
+        When ``True``, return a Python list where element *i* is the mean
+        visit frequency of the *i*-th most-visited location across all users
+        (rank-1 = most visited).  The list length equals the maximum number
+        of distinct locations visited by any single user.  When ``False``
+        (default), return a DataFrame.
     datetime_col:
         Explicit datetime column name.  Auto-detected when None.
     lat_col:
@@ -45,12 +52,12 @@ def location_frequency(
 
     Returns
     -------
-    DataFrame
-        One row per ``(user, location)`` pair with columns
-        ``[uid_col, lat_col, lng_col, "frequency"]``.
-        When ``uid_col`` is None the uid column is omitted.
-        Rows are sorted by user then by frequency descending.
-        The returned backend matches the input backend.
+    DataFrame or list
+        When ``as_ranks=False``: one row per ``(user, location)`` pair with
+        columns ``[uid_col, lat_col, lng_col, "location_frequency"]``.
+        When ``as_ranks=True``: a flat Python ``list[float]`` of mean
+        per-rank frequencies.
+        The returned DataFrame backend matches the input backend.
 
     @usedBy
         skmob2.measures.visits.__init__, skmob2.measures.__init__,
@@ -65,11 +72,6 @@ def location_frequency(
     )
 
     def _freq_for_user(user_df: nw.DataFrame) -> tuple[list, list, list]:
-        """Compute per-location visit frequencies for a single user.
-
-        Returns three parallel lists: lats, lngs, frequencies — one entry
-        per distinct location, sorted by frequency descending.
-        """
         lat_list = user_df.get_column(lat_col).to_list()
         lng_list = user_df.get_column(lng_col).to_list()
 
@@ -92,8 +94,10 @@ def location_frequency(
 
     if uid_col is None:
         lats, lngs, freqs = _freq_for_user(df)
+        if as_ranks:
+            return freqs
         return nw.from_dict(
-            {lat_col: lats, lng_col: lngs, "frequency": freqs},
+            {lat_col: lats, lng_col: lngs, "location_frequency": freqs},
             backend=df.implementation,
         ).to_native()
 
@@ -101,6 +105,7 @@ def location_frequency(
     lats_all: list = []
     lngs_all: list = []
     freqs_all: list = []
+    per_user_freqs: list[list] = []
 
     uid_list = df.get_column(uid_col).unique().sort().to_list()
     for uid in uid_list:
@@ -110,13 +115,22 @@ def location_frequency(
         lats_all.extend(lats)
         lngs_all.extend(lngs)
         freqs_all.extend(freqs)
+        per_user_freqs.append(freqs)
+
+    if as_ranks:
+        max_locs = max(len(f) for f in per_user_freqs) if per_user_freqs else 0
+        ranks: list[list] = [[] for _ in range(max_locs)]
+        for user_freqs in per_user_freqs:
+            for rank_idx, freq in enumerate(user_freqs):
+                ranks[rank_idx].append(freq)
+        return [sum(r) / len(r) for r in ranks if r]
 
     return nw.from_dict(
         {
             uid_col: uid_vals_all,
             lat_col: lats_all,
             lng_col: lngs_all,
-            "frequency": freqs_all,
+            "location_frequency": freqs_all,
         },
         backend=df.implementation,
     ).to_native()

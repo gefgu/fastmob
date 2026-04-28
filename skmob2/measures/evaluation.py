@@ -88,6 +88,40 @@ def common_part_of_links(values1, values2) -> float:
     return 2.0 * numerator / denom
 
 
+def common_part_of_commuters_distance(values1, values2) -> float:
+    """Return the common part of commuters by distance (CPCD).
+
+    Bins both distance arrays into histograms with bin width 2 and returns
+    the fraction of values1 that overlaps with values2 bin-by-bin:
+    CPCD = sum_k(min(hist1_k, hist2_k)) / sum(values1).
+
+    Parameters
+    ----------
+    values1:
+        First array of distance values (e.g. observed commuting distances in km).
+    values2:
+        Second array of distance values (e.g. predicted commuting distances in km).
+
+    Returns
+    -------
+    float
+        CPCD value; 0.0 when values1 sums to zero or there is no bin overlap.
+
+    @usedBy
+        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
+    """
+    v1 = np.asarray(values1, dtype=float)
+    v2 = np.asarray(values2, dtype=float)
+    n = float(v1.sum())
+    if n == 0.0:
+        return 0.0
+    max_val = max(float(v1.max()), float(v2.max()))
+    bins = np.arange(0, max_val, 2)
+    hist1, _ = np.histogram(v1, bins)
+    hist2, _ = np.histogram(v2, bins)
+    return float(np.sum(np.minimum(hist1, hist2))) / n
+
+
 # ---------------------------------------------------------------------------
 # Regression loss functions (pure numpy)
 # ---------------------------------------------------------------------------

@@ -98,6 +98,20 @@ def test_waiting_times_polars_known_values(synthetic_tdf_polars):
             )
 
 
+def test_waiting_times_merge_returns_flat_list(synthetic_tdf):
+    """merge=True returns a single flat list of all waiting times."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.waiting_times import waiting_times
+
+    result = waiting_times(synthetic_tdf, merge=True)
+
+    assert isinstance(result, list)
+    # 3 users × 4 intervals = 12 waiting times total.
+    assert len(result) == 3 * EXPECTED_N_WAITS
+    for wt in result:
+        assert abs(wt - EXPECTED_WAITING_TIME_S) < 1.0
+
+
 @pytest.mark.skmob
 def test_waiting_times_matches_skmob(brightkite_skmob):
     """skmob2 result matches skmob on the Brightkite dataset."""

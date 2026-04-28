@@ -22,3 +22,10 @@ def pytest_addoption(parser):
         choices=("pandas", "polars"),
         help="DataFrame backend to use for profiling workloads.",
     )
+    group.addoption(
+        "--profile-implementation",
+        action="store",
+        default="skmob2",
+        choices=("skmob2", "skmob"),
+        help="Implementation to use for profiling workloads.",
+    )

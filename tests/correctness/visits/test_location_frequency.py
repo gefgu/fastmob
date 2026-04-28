@@ -24,7 +24,7 @@ def _to_freq_dict(df) -> dict:
     for row in nw_df.rows(named=True):
         uid = row[uid_col] if uid_col else "__single__"
         loc = (row[lat_col], row[lng_col])
-        result.setdefault(uid, {})[loc] = row["frequency"]
+        result.setdefault(uid, {})[loc] = row["location_frequency"]
     return result
 
 
@@ -34,10 +34,10 @@ def _to_freq_dict(df) -> dict:
 
 
 def test_location_frequency_known_values(synthetic_tdf):
-    """Each user visits 5 distinct locations once: all frequencies should be 1."""
+    """Each user visits 5 distinct locations once: raw counts are all 1."""
     from skmob2.measures.visits.location_frequency import location_frequency
 
-    result = location_frequency(synthetic_tdf)
+    result = location_frequency(synthetic_tdf, normalize=False)
     freq_dict = _to_freq_dict(result)
 
     assert set(freq_dict.keys()) == {"user_a", "user_b", "user_c"}
@@ -71,7 +71,7 @@ def test_location_frequency_repeated_visits():
             "lng": [0.0, 0.0, 0.0, 0.0],
         }
     )
-    result = location_frequency(df)
+    result = location_frequency(df, normalize=False)
     freq_dict = _to_freq_dict(result)
 
     assert freq_dict["a"][(1.0, 0.0)] == 3.0
@@ -108,13 +108,13 @@ def test_location_frequency_no_uid():
             "lng": [0.0, 0.0, 0.0],
         }
     )
-    result = location_frequency(df)
+    result = location_frequency(df, normalize=False)
     nw_result = nw.from_native(result, eager_only=True)
 
-    assert "frequency" in nw_result.columns
+    assert "location_frequency" in nw_result.columns
     # 2 distinct locations.
     assert len(nw_result) == 2
-    rows = {(row["lat"], row["lng"]): row["frequency"] for row in nw_result.rows(named=True)}
+    rows = {(row["lat"], row["lng"]): row["location_frequency"] for row in nw_result.rows(named=True)}
     assert rows[(1.0, 0.0)] == 2.0
     assert rows[(2.0, 0.0)] == 1.0
 
@@ -131,9 +131,9 @@ def test_location_frequency_sorted_descending():
             "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
         }
     )
-    result = location_frequency(df)
+    result = location_frequency(df, normalize=False)
     nw_result = nw.from_native(result, eager_only=True)
-    freqs = nw_result.filter(nw.col("uid") == "a").get_column("frequency").to_list()
+    freqs = nw_result.filter(nw.col("uid") == "a").get_column("location_frequency").to_list()
     # Frequencies must be non-increasing.
     assert freqs == sorted(freqs, reverse=True)
 
@@ -142,13 +142,57 @@ def test_location_frequency_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same frequency values as pandas."""
     from skmob2.measures.visits.location_frequency import location_frequency
 
-    result = location_frequency(synthetic_tdf_polars)
+    result = location_frequency(synthetic_tdf_polars, normalize=False)
     freq_dict = _to_freq_dict(result)
 
     assert set(freq_dict.keys()) == {"user_a", "user_b", "user_c"}
     for uid, loc_freqs in freq_dict.items():
         assert len(loc_freqs) == 5
         assert all(v == 1.0 for v in loc_freqs.values())
+
+
+def test_location_frequency_default_is_normalized():
+    """Default normalize=True matches skmob's default; probabilities sum to 1."""
+    from skmob2.measures.visits.location_frequency import location_frequency
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a", "a"],
+            "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
+            "lat": [1.0, 1.0, 2.0, 1.0],
+            "lng": [0.0, 0.0, 0.0, 0.0],
+        }
+    )
+    result = location_frequency(df)  # normalize=True by default
+    freq_dict = _to_freq_dict(result)
+
+    total = sum(freq_dict["a"].values())
+    assert abs(total - 1.0) < 1e-9
+
+
+def test_location_frequency_as_ranks_returns_list():
+    """as_ranks=True returns a Python list of mean per-rank frequencies."""
+    from skmob2.measures.visits.location_frequency import location_frequency
+
+    # User "a": 3 visits to loc A (rank 0) and 1 to loc B (rank 1).
+    # User "b": 2 visits to loc C (rank 0) and 2 to loc D (rank 1).
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a", "a", "b", "b", "b", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=8, freq="h"),
+            "lat": [1.0, 1.0, 2.0, 1.0, 3.0, 3.0, 4.0, 4.0],
+            "lng": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        }
+    )
+    ranks = location_frequency(df, as_ranks=True)
+
+    assert isinstance(ranks, list)
+    # Both users have 2 distinct locations → 2 ranks.
+    assert len(ranks) == 2
+    # Rank-0 mean: user "a" has prob 0.75, user "b" has prob 0.5 → mean = 0.625
+    assert abs(ranks[0] - 0.625) < 1e-9
+    # Rank-1 mean: user "a" has prob 0.25, user "b" has prob 0.5 → mean = 0.375
+    assert abs(ranks[1] - 0.375) < 1e-9
 
 
 @pytest.mark.skmob

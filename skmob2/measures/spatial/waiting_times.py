@@ -10,6 +10,7 @@ from .._common import _build_user_ranges, _prepare_trajectory
 
 def waiting_times(
     traj: Any,
+    merge: bool = False,
     *,
     datetime_col: str | None = None,
     lat_col: str | None = None,
@@ -29,6 +30,10 @@ def waiting_times(
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
+    merge:
+        When ``True``, return a single flat Python list of all waiting times
+        across all users concatenated together.  When ``False`` (default),
+        return a DataFrame with one row per user.
     datetime_col:
         Explicit datetime column name.  Auto-detected when None.
     lat_col:
@@ -40,10 +45,11 @@ def waiting_times(
 
     Returns
     -------
-    DataFrame
-        One row per user with columns ``[uid_col, "waiting_times"]``.
-        Each cell in ``"waiting_times"`` is a list of floats (seconds).
-        The returned backend matches the input backend.
+    DataFrame or list
+        When ``merge=False``: one row per user with columns
+        ``[uid_col, "waiting_times"]``; each cell is a list of floats (seconds).
+        When ``merge=True``: a flat Python ``list[float]`` of all waiting times.
+        The returned DataFrame backend matches the input backend.
 
     @usedBy
         skmob2.measures.spatial.__init__, skmob2.measures.__init__,
@@ -67,6 +73,8 @@ def waiting_times(
 
     if uid_col is None:
         wt_list = _waiting_times_seconds_rust(timestamps_s, [(0, len(timestamps_s))])
+        if merge:
+            return wt_list[0]
         return nw.from_dict(
             {"waiting_times": wt_list},
             backend=df.implementation,
@@ -74,6 +82,12 @@ def waiting_times(
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
     wt_lists = _waiting_times_seconds_rust(timestamps_s, ranges)
+
+    if merge:
+        flat: list = []
+        for wt in wt_lists:
+            flat.extend(wt)
+        return flat
 
     return nw.from_dict(
         {uid_col: uid_values, "waiting_times": wt_lists},

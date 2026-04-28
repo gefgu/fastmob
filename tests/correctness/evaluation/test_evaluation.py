@@ -9,6 +9,7 @@ import pytest
 
 from skmob2.measures.evaluation import (
     common_part_of_commuters,
+    common_part_of_commuters_distance,
     common_part_of_links,
     information_gain,
     kullback_leibler_divergence,
@@ -98,6 +99,44 @@ def test_cpl_partial_overlap():
 def test_cpl_zero_inputs_returns_zero():
     """CPL of all-zero arrays returns 0.0 without division error."""
     assert common_part_of_links([0.0], [0.0]) == pytest.approx(0.0)
+
+
+# ---------------------------------------------------------------------------
+# common_part_of_commuters_distance
+# ---------------------------------------------------------------------------
+
+
+def test_cpcd_no_overlap():
+    """CPCD is 0.0 when the two arrays fall into non-overlapping bins."""
+    # v1=[3] → bin [2,4); v2=[5] → outside all bins (max_val=5, bins=[0,2,4])
+    assert common_part_of_commuters_distance([3.0], [5.0]) == pytest.approx(0.0)
+
+
+def test_cpcd_known_value():
+    """CPCD matches hand-computed value for a partial-overlap case.
+
+    v1=[3,5,7,9], v2=[3,7,9,11], max_val=11, bins=[0,2,4,6,8,10].
+    hist1=[0,1,1,1,1], hist2=[0,1,0,1,1] (11 falls outside last bin).
+    sum_min=3, N=24 → CPCD=0.125.
+    """
+    v1 = [3.0, 5.0, 7.0, 9.0]
+    v2 = [3.0, 7.0, 9.0, 11.0]
+    assert common_part_of_commuters_distance(v1, v2) == pytest.approx(0.125)
+
+
+def test_cpcd_zero_sum_returns_zero():
+    """CPCD returns 0.0 without error when sum(values1) is zero."""
+    assert common_part_of_commuters_distance([0.0, 0.0], [3.0, 5.0]) == pytest.approx(0.0)
+
+
+@pytest.mark.skmob
+def test_cpcd_matches_skmob():
+    """CPCD matches skmob reference within rtol=1e-5."""
+    from skmob.measures.evaluation import common_part_of_commuters_distance as skmob_cpcd
+
+    v1 = [3.0, 5.0, 7.0, 9.0]
+    v2 = [3.0, 7.0, 9.0, 11.0]
+    assert common_part_of_commuters_distance(v1, v2) == pytest.approx(skmob_cpcd(v1, v2), rel=1e-5)
 
 
 # ---------------------------------------------------------------------------

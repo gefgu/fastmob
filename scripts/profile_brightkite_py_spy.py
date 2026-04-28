@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-"""Run py-spy profiling for Brightkite-backed skmob2 workloads."""
+"""Run py-spy profiling for Brightkite-backed workloads."""
 
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import select
 import shutil
 import subprocess
 import sys
@@ -14,30 +15,61 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tests.profiling.brightkite_workloads import DEFAULT_ROWS, workload_registry
+from tests.profiling.brightkite_workloads import DEFAULT_ROWS, IMPLEMENTATIONS, workload_registry
 
 
 DEFAULT_OUTPUT_DIR = Path(".profiles") / "py-spy"
+SCOPES = ("function", "full")
 
 
 @dataclass(frozen=True)
 class ProfileCommand:
     workload: str
+    implementation: str
+    scope: str
     output_path: Path
     speedscope_output_path: Path
     command: list[str]
     speedscope_command: list[str]
+    child_command: list[str] | None = None
 
 
-def select_workloads(requested: list[str] | None) -> list[str]:
-    registry = workload_registry()
+def _implementations(requested: str) -> list[str]:
+    if requested == "both":
+        return list(IMPLEMENTATIONS)
+    return [requested]
+
+
+def select_workloads(requested: list[str] | None, implementation: str = "skmob2") -> list[str]:
+    registry = workload_registry(implementation)
     if not requested:
         return list(registry)
     unknown = sorted(set(requested) - set(registry))
     if unknown:
-        available = ", ".join(registry)
-        raise SystemExit(f"Unknown workload(s): {', '.join(unknown)}. Available: {available}")
+        available = ", ".join(registry) or "none"
+        raise SystemExit(
+            f"Unknown workload(s) for {implementation}: {', '.join(unknown)}. Available: {available}"
+        )
     return requested
+
+
+def _workload_command(workload: str, *, rows: int, backend: str, implementation: str, prepared_child: bool) -> list[str]:
+    command = [
+        sys.executable,
+        "-m",
+        "tests.profiling.brightkite_workloads",
+        "--workload",
+        workload,
+        "--rows",
+        str(rows),
+        "--backend",
+        backend,
+        "--implementation",
+        implementation,
+    ]
+    if prepared_child:
+        command.append("--prepared-child")
+    return command
 
 
 def build_profile_command(
@@ -48,52 +80,85 @@ def build_profile_command(
     output_dir: Path,
     rate: int,
     py_spy_bin: str = "py-spy",
+    implementation: str = "skmob2",
+    scope: str = "function",
 ) -> ProfileCommand:
-    output_path = output_dir / f"{workload}.svg"
-    speedscope_output_path = output_dir / f"{workload}.speedscope.json"
-    workload_command = [
-        sys.executable,
-        "-m",
-        "tests.profiling.brightkite_workloads",
-        "--workload",
+    profile_dir = output_dir / implementation
+    suffix = "" if scope == "function" else ".full"
+    output_path = profile_dir / f"{workload}{suffix}.svg"
+    speedscope_output_path = profile_dir / f"{workload}{suffix}.speedscope.json"
+    child_command = _workload_command(
         workload,
-        "--rows",
-        str(rows),
-        "--backend",
-        backend,
-    ]
-    command = [
-        py_spy_bin,
-        "record",
-        "--native",
-        "--format",
-        "flamegraph",
-        "--rate",
-        str(rate),
-        "-o",
-        str(output_path),
-        "--",
-        *workload_command,
-    ]
-    speedscope_command = [
-        py_spy_bin,
-        "record",
-        "--native",
-        "--format",
-        "speedscope",
-        "--rate",
-        str(rate),
-        "-o",
-        str(speedscope_output_path),
-        "--",
-        *workload_command,
-    ]
+        rows=rows,
+        backend=backend,
+        implementation=implementation,
+        prepared_child=scope == "function",
+    )
+
+    if scope == "function":
+        command = [
+            py_spy_bin,
+            "record",
+            "--native",
+            "--format",
+            "flamegraph",
+            "--rate",
+            str(rate),
+            "-o",
+            str(output_path),
+            "--pid",
+            "<prepared-child-pid>",
+        ]
+        speedscope_command = [
+            py_spy_bin,
+            "record",
+            "--native",
+            "--format",
+            "speedscope",
+            "--rate",
+            str(rate),
+            "-o",
+            str(speedscope_output_path),
+            "--pid",
+            "<prepared-child-pid>",
+        ]
+    else:
+        command = [
+            py_spy_bin,
+            "record",
+            "--native",
+            "--format",
+            "flamegraph",
+            "--rate",
+            str(rate),
+            "-o",
+            str(output_path),
+            "--",
+            *child_command,
+        ]
+        speedscope_command = [
+            py_spy_bin,
+            "record",
+            "--native",
+            "--format",
+            "speedscope",
+            "--rate",
+            str(rate),
+            "-o",
+            str(speedscope_output_path),
+            "--",
+            *child_command,
+        ]
+
     return ProfileCommand(
         workload=workload,
+        implementation=implementation,
+        scope=scope,
         output_path=output_path,
         speedscope_output_path=speedscope_output_path,
         command=command,
         speedscope_command=speedscope_command,
+        child_command=child_command if scope == "function" else None,
     )
 
 
@@ -112,17 +177,22 @@ def write_manifest(output_dir: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def run_profiles(args: argparse.Namespace) -> int:
-    selected = select_workloads(args.workload)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     py_spy_bin = getattr(args, "py_spy_bin", "py-spy")
+    scope = getattr(args, "scope", "function")
 
     if shutil.which(py_spy_bin) is None and not args.dry_run:
         raise SystemExit(f"{py_spy_bin!r} is not installed or not on PATH. Install the dev extras first.")
 
     manifest_rows: list[dict[str, Any]] = []
     exit_code = 0
-    for workload in selected:
+    jobs = [
+        (implementation, workload)
+        for implementation in _implementations(args.implementation)
+        for workload in select_workloads(args.workload, implementation)
+    ]
+    for implementation, workload in jobs:
         profile = build_profile_command(
             workload,
             rows=args.rows,
@@ -130,44 +200,145 @@ def run_profiles(args: argparse.Namespace) -> int:
             output_dir=output_dir,
             rate=args.rate,
             py_spy_bin=py_spy_bin,
+            implementation=implementation,
+            scope=scope,
         )
+        profile.output_path.parent.mkdir(parents=True, exist_ok=True)
+
         started = time.perf_counter()
         status = "dry-run"
         returncode = 0
         error = ""
         if args.dry_run:
+            if profile.child_command:
+                print(" ".join(profile.child_command))
             print(" ".join(profile.command))
             print(" ".join(profile.speedscope_command))
         else:
-            print(f"Profiling {workload} -> {profile.output_path}")
-            completed = subprocess.run(profile.command, check=False)
-            returncode = completed.returncode
+            print(f"Profiling {implementation}:{workload} ({scope}) -> {profile.output_path}")
+            if scope == "function":
+                returncode, error = _run_function_profile(profile, profile.command)
+            else:
+                completed = subprocess.run(profile.command, check=False)
+                returncode = completed.returncode
+                error = "" if returncode == 0 else f"py-spy exited with {returncode}"
+
             status = "ok" if returncode == 0 else "failed"
             if returncode != 0:
-                error = f"py-spy exited with {returncode}"
                 exit_code = returncode
                 if not args.continue_on_error:
                     elapsed = time.perf_counter() - started
                     manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
                     break
+
+            print(f"Profiling {implementation}:{workload} ({scope}) -> {profile.speedscope_output_path}")
+            if scope == "function":
+                returncode, error = _run_function_profile(profile, profile.speedscope_command)
             else:
-                print(f"Profiling {workload} -> {profile.speedscope_output_path}")
                 completed = subprocess.run(profile.speedscope_command, check=False)
                 returncode = completed.returncode
-                status = "ok" if returncode == 0 else "failed"
-                if returncode != 0:
-                    error = f"py-spy speedscope exited with {returncode}"
-                    exit_code = returncode
-                    if not args.continue_on_error:
-                        elapsed = time.perf_counter() - started
-                        manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
-                        break
+                error = "" if returncode == 0 else f"py-spy speedscope exited with {returncode}"
+
+            status = "ok" if returncode == 0 else "failed"
+            if returncode != 0:
+                exit_code = returncode
+                if not args.continue_on_error:
+                    elapsed = time.perf_counter() - started
+                    manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
+                    break
 
         elapsed = time.perf_counter() - started
         manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
 
     write_manifest(output_dir, manifest_rows)
     return exit_code
+
+
+def _run_function_profile(profile: ProfileCommand, command_template: list[str]) -> tuple[int, str]:
+    if profile.child_command is None:
+        raise RuntimeError("function profiling requires a prepared child command")
+
+    child = subprocess.Popen(
+        profile.child_command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=None,
+        text=True,
+        bufsize=1,
+    )
+    try:
+        assert child.stdout is not None
+        ready, error = _wait_until_ready(child)
+        if not ready:
+            return 1, error
+
+        command = [str(child.pid) if part == "<prepared-child-pid>" else part for part in command_template]
+        profiler = subprocess.Popen(command, stderr=subprocess.PIPE, text=True)
+        attached, attach_error = _wait_for_profiler_attach(profiler)
+        if not attached:
+            returncode = profiler.wait()
+            return returncode or 1, attach_error
+
+        assert child.stdin is not None
+        child.stdin.write("\n")
+        child.stdin.flush()
+        child_returncode = child.wait()
+        remaining_stderr = profiler.communicate()[1]
+        if remaining_stderr:
+            sys.stderr.write(remaining_stderr)
+        profiler_returncode = profiler.returncode
+        if child_returncode != 0:
+            return child_returncode, f"prepared child exited with {child_returncode}"
+        if profiler_returncode != 0:
+            return profiler_returncode, f"py-spy exited with {profiler_returncode}"
+        return 0, ""
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+
+
+def _wait_for_profiler_attach(profiler: subprocess.Popen[str], timeout: float = 10.0) -> tuple[bool, str]:
+    if profiler.stderr is None:
+        time.sleep(1.0)
+        return profiler.poll() is None, "py-spy exited before the workload was released"
+
+    deadline = time.monotonic() + timeout
+    stderr_fd = profiler.stderr.fileno()
+    while time.monotonic() < deadline:
+        if profiler.poll() is not None:
+            rest = profiler.stderr.read()
+            if rest:
+                sys.stderr.write(rest)
+            return False, f"py-spy exited before attaching (returncode={profiler.returncode})"
+
+        ready, _, _ = select.select([stderr_fd], [], [], 0.1)
+        if not ready:
+            continue
+
+        line = profiler.stderr.readline()
+        if not line:
+            continue
+        sys.stderr.write(line)
+        if "Sampling process" in line or "Press Control-C" in line:
+            return True, ""
+
+    return True, ""
+
+
+def _wait_until_ready(child: subprocess.Popen[str]) -> tuple[bool, str]:
+    assert child.stdout is not None
+    while True:
+        line = child.stdout.readline()
+        if not line:
+            returncode = child.wait()
+            return False, f"prepared child exited before ready (returncode={returncode})"
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") == "ready":
+            return True, ""
 
 
 def _manifest_row(
@@ -178,10 +349,13 @@ def _manifest_row(
     elapsed: float,
     error: str,
 ) -> dict[str, Any]:
-    return {
+    row = {
         "workload": profile.workload,
         "rows": args.rows,
         "backend": args.backend,
+        "implementation": profile.implementation,
+        "scope": profile.scope,
+        "profiled_phase": "function" if profile.scope == "function" else "full",
         "status": status,
         "returncode": returncode,
         "duration_seconds": round(elapsed, 6),
@@ -191,16 +365,17 @@ def _manifest_row(
         "speedscope_command": " ".join(profile.speedscope_command),
         "error": error,
     }
+    if profile.child_command:
+        row["child_command"] = " ".join(profile.child_command)
+    return row
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
         epilog=(
-            "Run `maturin develop` before profiling. The runner writes SVG "
-            "flamegraphs and Speedscope JSON files, and always passes "
-            "`--native` to py-spy so Rust frames from skmob2._core can appear "
-            "when native symbols are available."
+            "Function scope is the default: data loading, imports, and setup happen "
+            "before py-spy attaches. Use --scope full for legacy whole-process profiling."
         ),
     )
     parser.add_argument("--rows", type=int, default=DEFAULT_ROWS)
@@ -210,6 +385,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rate", type=int, default=100)
     parser.add_argument("--py-spy-bin", default="py-spy")
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
+    parser.add_argument("--scope", choices=SCOPES, default="function")
+    parser.add_argument("--implementation", choices=("skmob2", "skmob", "both"), default="skmob2")
     parser.add_argument(
         "--continue-on-error",
         dest="continue_on_error",
@@ -231,8 +408,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.list:
-        for name, workload in workload_registry().items():
-            print(f"{name}\t{workload.dataset}\t{workload.description}")
+        for implementation in _implementations(args.implementation):
+            for name, workload in workload_registry(implementation).items():
+                print(f"{name}\t{workload.dataset}\t{implementation}\t{workload.description}")
         return 0
     return run_profiles(args)
 

@@ -101,22 +101,21 @@ Benchmarks are parametrized over three dataset sizes (1k / 10k / 100k / 1M / 4M 
 ## Profiling
 
 ```bash
-# CPU flamegraph and Speedscope JSON with py-spy and native Rust frames
+# CPU flamegraph and Speedscope JSON with py-spy and native Rust frames.
+# By default, only the target function call and result materialization are profiled.
 bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration
 
-# Memory flamegraph with pytest-memray and native Rust frames
+# Memory flamegraph with memray and native Rust frames; defaults to function-only profiling.
 bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
 
-# Direct pytest-memray usage for one workload
-pytest tests/profiling/test_brightkite_memray.py::test_memray_brightkite_workload \
-  --profile-workload radius_of_gyration \
-  --profile-rows 10000 \
-  --memray \
-  --native \
-  --memray-bin-path .profiles/memray/manual
+# Compare skmob2 and skmob where a skmob equivalent exists.
+bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
+
+# Legacy whole-process profiling, including imports and data loading.
+bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
 ```
 
-Profiling outputs are written to `.profiles/py-spy/` and `.profiles/memray/`. Py-spy writes both `<workload>.svg` and `<workload>.speedscope.json`. Run `maturin develop` first when invoking pytest directly so `skmob2._core` and native symbols are available.
+Profiling outputs are written to implementation-specific folders under `.profiles/py-spy/` and `.profiles/memray/`. Py-spy writes both `<workload>.svg` and `<workload>.speedscope.json`. Run `maturin develop` first when invoking profiling modules directly so `skmob2._core` and native symbols are available.
 
 ## Narwhals API notes
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Run pytest-memray flamegraph profiling for Brightkite-backed skmob2 workloads."""
+"""Run memray flamegraph profiling for Brightkite-backed workloads."""
 
 from __future__ import annotations
 
@@ -14,32 +14,44 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tests.profiling.brightkite_workloads import DEFAULT_ROWS, workload_registry
+from tests.profiling.brightkite_workloads import DEFAULT_ROWS, IMPLEMENTATIONS, workload_registry
 
 
 DEFAULT_OUTPUT_DIR = Path(".profiles") / "memray"
 PROFILE_TEST = "tests/profiling/test_brightkite_memray.py::test_memray_brightkite_workload"
+SCOPES = ("function", "full")
 
 
 @dataclass(frozen=True)
 class ProfileCommand:
     workload: str
+    implementation: str
+    scope: str
     bin_dir: Path
     bin_prefix: str
     bin_path: Path
     flamegraph_path: Path
     pytest_command: list[str]
+    function_command: list[str]
     flamegraph_command: list[str]
 
 
-def select_workloads(requested: list[str] | None) -> list[str]:
-    registry = workload_registry()
+def _implementations(requested: str) -> list[str]:
+    if requested == "both":
+        return list(IMPLEMENTATIONS)
+    return [requested]
+
+
+def select_workloads(requested: list[str] | None, implementation: str = "skmob2") -> list[str]:
+    registry = workload_registry(implementation)
     if not requested:
         return list(registry)
     unknown = sorted(set(requested) - set(registry))
     if unknown:
-        available = ", ".join(registry)
-        raise SystemExit(f"Unknown workload(s): {', '.join(unknown)}. Available: {available}")
+        available = ", ".join(registry) or "none"
+        raise SystemExit(
+            f"Unknown workload(s) for {implementation}: {', '.join(unknown)}. Available: {available}"
+        )
     return requested
 
 
@@ -51,12 +63,16 @@ def build_profile_command(
     output_dir: Path,
     pytest_bin: str = "pytest",
     memray_bin: str = "memray",
+    implementation: str = "skmob2",
+    scope: str = "function",
 ) -> ProfileCommand:
-    bin_dir = output_dir / "bins"
-    flamegraph_dir = output_dir / "flamegraphs"
-    bin_prefix = workload
+    profile_dir = output_dir / implementation
+    bin_dir = profile_dir / "bins"
+    flamegraph_dir = profile_dir / "flamegraphs"
+    suffix = "" if scope == "function" else ".full"
+    bin_prefix = f"{workload}{suffix}"
     bin_path = bin_dir / f"{bin_prefix}.bin"
-    flamegraph_path = flamegraph_dir / f"{workload}.html"
+    flamegraph_path = flamegraph_dir / f"{workload}{suffix}.html"
     pytest_command = [
         pytest_bin,
         PROFILE_TEST,
@@ -66,12 +82,29 @@ def build_profile_command(
         str(rows),
         "--profile-backend",
         backend,
+        "--profile-implementation",
+        implementation,
         "--memray",
         "--native",
         "--memray-bin-path",
         str(bin_dir),
         "--memray-bin-prefix",
         bin_prefix,
+    ]
+    function_command = [
+        sys.executable,
+        "-m",
+        "tests.profiling.brightkite_workloads",
+        "--workload",
+        workload,
+        "--rows",
+        str(rows),
+        "--backend",
+        backend,
+        "--implementation",
+        implementation,
+        "--memray-bin-path",
+        str(bin_path),
     ]
     flamegraph_command = [
         memray_bin,
@@ -82,11 +115,14 @@ def build_profile_command(
     ]
     return ProfileCommand(
         workload=workload,
+        implementation=implementation,
+        scope=scope,
         bin_dir=bin_dir,
         bin_prefix=bin_prefix,
         bin_path=bin_path,
         flamegraph_path=flamegraph_path,
         pytest_command=pytest_command,
+        function_command=function_command,
         flamegraph_command=flamegraph_command,
     )
 
@@ -106,19 +142,25 @@ def write_manifest(output_dir: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def run_profiles(args: argparse.Namespace) -> int:
-    selected = select_workloads(args.workload)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     pytest_bin = getattr(args, "pytest_bin", "pytest")
     memray_bin = getattr(args, "memray_bin", "memray")
+    scope = getattr(args, "scope", "function")
 
     if not args.dry_run:
-        _require_executable(pytest_bin, "pytest")
+        if scope == "full":
+            _require_executable(pytest_bin, "pytest")
         _require_executable(memray_bin, "memray")
 
     manifest_rows: list[dict[str, Any]] = []
     exit_code = 0
-    for workload in selected:
+    jobs = [
+        (implementation, workload)
+        for implementation in _implementations(args.implementation)
+        for workload in select_workloads(args.workload, implementation)
+    ]
+    for implementation, workload in jobs:
         profile = build_profile_command(
             workload,
             rows=args.rows,
@@ -126,6 +168,8 @@ def run_profiles(args: argparse.Namespace) -> int:
             output_dir=output_dir,
             pytest_bin=pytest_bin,
             memray_bin=memray_bin,
+            implementation=implementation,
+            scope=scope,
         )
         profile.bin_dir.mkdir(parents=True, exist_ok=True)
         profile.flamegraph_path.parent.mkdir(parents=True, exist_ok=True)
@@ -136,12 +180,13 @@ def run_profiles(args: argparse.Namespace) -> int:
         error = ""
         actual_bin_path = profile.bin_path
         if args.dry_run:
-            print(" ".join(profile.pytest_command))
+            print(" ".join(profile.function_command if scope == "function" else profile.pytest_command))
             print(" ".join(profile.flamegraph_command))
         else:
             _clear_previous_bins(profile)
-            print(f"Profiling {workload} -> {profile.flamegraph_path}")
-            completed = subprocess.run(profile.pytest_command, check=False)
+            print(f"Profiling {implementation}:{workload} ({scope}) -> {profile.flamegraph_path}")
+            profile_command = profile.function_command if scope == "function" else profile.pytest_command
+            completed = subprocess.run(profile_command, check=False)
             returncode = completed.returncode
             status = "ok" if returncode == 0 else "failed"
             if returncode == 0:
@@ -161,7 +206,8 @@ def run_profiles(args: argparse.Namespace) -> int:
                     returncode = 1
                     error = str(exc)
             else:
-                error = f"pytest-memray exited with {returncode}"
+                profiler = "memray function profiler" if scope == "function" else "pytest-memray"
+                error = f"{profiler} exited with {returncode}"
 
             if returncode != 0:
                 exit_code = returncode
@@ -198,9 +244,9 @@ def _find_memray_bin(profile: ProfileCommand) -> Path:
     if len(matches) == 1:
         return matches[0]
     if not matches:
-        raise RuntimeError(f"pytest-memray did not create a bin file for {profile.workload!r}")
+        raise RuntimeError(f"memray did not create a bin file for {profile.implementation}:{profile.workload}")
     names = ", ".join(str(path) for path in matches)
-    raise RuntimeError(f"pytest-memray created multiple bin files for {profile.workload!r}: {names}")
+    raise RuntimeError(f"memray created multiple bin files for {profile.implementation}:{profile.workload}: {names}")
 
 
 def _manifest_row(
@@ -217,12 +263,16 @@ def _manifest_row(
         "workload": profile.workload,
         "rows": args.rows,
         "backend": args.backend,
+        "implementation": profile.implementation,
+        "scope": profile.scope,
+        "profiled_phase": "function" if profile.scope == "function" else "full",
         "status": status,
         "returncode": returncode,
         "duration_seconds": round(elapsed, 6),
         "bin_path": str(bin_path),
         "flamegraph_path": str(profile.flamegraph_path),
         "pytest_command": " ".join(profile.pytest_command),
+        "function_command": " ".join(profile.function_command),
         "flamegraph_command": " ".join(flamegraph_command),
         "error": error,
     }
@@ -232,9 +282,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
         epilog=(
-            "Run `maturin develop` before profiling. The runner always passes "
-            "`--native` to pytest-memray so Rust frames from skmob2._core can appear "
-            "when native symbols are available."
+            "Function scope is the default: memray.Tracker wraps only the target "
+            "function and result materialization. Use --scope full for legacy pytest-memray profiling."
         ),
     )
     parser.add_argument("--rows", type=int, default=DEFAULT_ROWS)
@@ -244,6 +293,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pytest-bin", default="pytest")
     parser.add_argument("--memray-bin", default="memray")
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
+    parser.add_argument("--scope", choices=SCOPES, default="function")
+    parser.add_argument("--implementation", choices=("skmob2", "skmob", "both"), default="skmob2")
     parser.add_argument(
         "--continue-on-error",
         dest="continue_on_error",
@@ -260,13 +311,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print pytest-memray commands and write manifests without launching pytest.",
+        help="Print memray commands and write manifests without launching profilers.",
     )
     args = parser.parse_args(argv)
 
     if args.list:
-        for name, workload in workload_registry().items():
-            print(f"{name}\t{workload.dataset}\t{workload.description}")
+        for implementation in _implementations(args.implementation):
+            for name, workload in workload_registry(implementation).items():
+                print(f"{name}\t{workload.dataset}\t{implementation}\t{workload.description}")
         return 0
     return run_profiles(args)
 

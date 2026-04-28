@@ -1,9 +1,12 @@
-"""Brightkite-backed workloads used by the py-spy profiling runner."""
+"""Brightkite-backed workloads used by profiling runners."""
 
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
+import os
+import platform
 import sys
 import urllib.request
 from dataclasses import dataclass
@@ -15,6 +18,7 @@ from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
 
 
 DEFAULT_ROWS = 4_000_000
+IMPLEMENTATIONS = ("skmob2", "skmob")
 WorkloadFunc = Callable[[Any], Any]
 
 
@@ -22,12 +26,23 @@ WorkloadFunc = Callable[[Any], Any]
 class Workload:
     name: str
     dataset: str
-    func: WorkloadFunc
+    import_path: str
+    kwargs: dict[str, Any]
     description: str
 
 
+@dataclass(frozen=True)
+class PreparedWorkload:
+    workload: Workload
+    implementation: str
+    rows: int
+    backend: str
+    data: Any
+    func: WorkloadFunc
+
+
 def load_brightkite(rows: int = DEFAULT_ROWS, *, backend: str = "pandas") -> Any:
-    """Load and normalize Brightkite check-ins for skmob2 trajectory APIs."""
+    """Load and normalize Brightkite check-ins for trajectory APIs."""
     _BRIGHTKITE_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not _BRIGHTKITE_PATH.exists():
         urllib.request.urlretrieve(_BRIGHTKITE_URL, _BRIGHTKITE_PATH)
@@ -136,215 +151,431 @@ def _materialize(result: Any) -> None:
         _ = len(result)
 
 
-def _trajectory_workloads() -> dict[str, Workload]:
-    def make(name: str, import_path: str, kwargs: dict[str, Any] | None = None) -> Workload:
-        kwargs = kwargs or {}
+def _make_workload(name: str, dataset: str, import_path: str, description: str, **kwargs: Any) -> Workload:
+    return Workload(name, dataset, import_path, kwargs, description)
 
-        def run(traj: Any) -> Any:
-            module_name, func_name = import_path.rsplit(".", 1)
-            module = __import__(module_name, fromlist=[func_name])
-            return getattr(module, func_name)(traj, **kwargs)
 
-        return Workload(name, "trajectory", run, f"{import_path} on Brightkite")
-
-    return {
-        "filter": make("filter", "skmob2.preprocessing.filter.filter"),
-        "compress": make("compress", "skmob2.preprocessing.compress.compress"),
-        "stay_locations": make("stay_locations", "skmob2.preprocessing.stay_locations.stay_locations"),
-        "cluster": make("cluster", "skmob2.preprocessing.cluster.cluster"),
-        "jump_lengths": make(
+def _skmob2_workloads() -> dict[str, Workload]:
+    workloads = {
+        "filter": _make_workload("filter", "trajectory", "skmob2.preprocessing.filter.filter", "skmob2 filter"),
+        "compress": _make_workload("compress", "trajectory", "skmob2.preprocessing.compress.compress", "skmob2 compress"),
+        "stay_locations": _make_workload(
+            "stay_locations",
+            "trajectory",
+            "skmob2.preprocessing.stay_locations.stay_locations",
+            "skmob2 stay locations",
+        ),
+        "cluster": _make_workload("cluster", "trajectory", "skmob2.preprocessing.cluster.cluster", "skmob2 cluster"),
+        "jump_lengths": _make_workload(
             "jump_lengths",
+            "trajectory",
             "skmob2.measures.spatial.jump_lengths.jump_lengths",
-            {"show_progress": False, "merge": False},
+            "skmob2 jump lengths",
+            show_progress=False,
+            merge=False,
         ),
-        "radius_of_gyration": make(
+        "radius_of_gyration": _make_workload(
             "radius_of_gyration",
+            "trajectory",
             "skmob2.measures.spatial.radius_of_gyration.radius_of_gyration",
-            {"show_progress": False},
+            "skmob2 radius of gyration",
+            show_progress=False,
         ),
-        "skmob_radius_of_gyration": make(
-            "skmob_radius_of_gyration",
-            "skmob.measures.individual.radius_of_gyration",
-            {"show_progress": False},
-        ),
-        "k_radius_of_gyration": make(
+        "k_radius_of_gyration": _make_workload(
             "k_radius_of_gyration",
+            "trajectory",
             "skmob2.measures.spatial.k_radius_of_gyration.k_radius_of_gyration",
-            {"show_progress": False},
+            "skmob2 k radius of gyration",
+            show_progress=False,
         ),
-        "number_of_visits": make("number_of_visits", "skmob2.measures.spatial.number_of_visits.number_of_visits"),
-        "number_of_locations": make(
+        "number_of_visits": _make_workload(
+            "number_of_visits",
+            "trajectory",
+            "skmob2.measures.spatial.number_of_visits.number_of_visits",
+            "skmob2 number of visits",
+        ),
+        "number_of_locations": _make_workload(
             "number_of_locations",
+            "trajectory",
             "skmob2.measures.spatial.number_of_locations.number_of_locations",
+            "skmob2 number of locations",
         ),
-        "maximum_distance": make("maximum_distance", "skmob2.measures.spatial.maximum_distance.maximum_distance"),
-        "distance_straight_line": make(
+        "maximum_distance": _make_workload(
+            "maximum_distance",
+            "trajectory",
+            "skmob2.measures.spatial.maximum_distance.maximum_distance",
+            "skmob2 maximum distance",
+        ),
+        "distance_straight_line": _make_workload(
             "distance_straight_line",
+            "trajectory",
             "skmob2.measures.spatial.distance_straight_line.distance_straight_line",
+            "skmob2 distance straight line",
         ),
-        "waiting_times": make("waiting_times", "skmob2.measures.spatial.waiting_times.waiting_times"),
-        "home_location": make("home_location", "skmob2.measures.spatial.home_location.home_location"),
-        "max_distance_from_home": make(
+        "waiting_times": _make_workload(
+            "waiting_times",
+            "trajectory",
+            "skmob2.measures.spatial.waiting_times.waiting_times",
+            "skmob2 waiting times",
+        ),
+        "home_location": _make_workload(
+            "home_location",
+            "trajectory",
+            "skmob2.measures.spatial.home_location.home_location",
+            "skmob2 home location",
+        ),
+        "max_distance_from_home": _make_workload(
             "max_distance_from_home",
+            "trajectory",
             "skmob2.measures.spatial.max_distance_from_home.max_distance_from_home",
+            "skmob2 max distance from home",
         ),
-        "visits_per_location": make(
+        "visits_per_location": _make_workload(
             "visits_per_location",
+            "trajectory",
             "skmob2.measures.flows.visits_per_location.visits_per_location",
+            "skmob2 visits per location",
         ),
-        "homes_per_location": make(
+        "homes_per_location": _make_workload(
             "homes_per_location",
+            "trajectory",
             "skmob2.measures.flows.homes_per_location.homes_per_location",
+            "skmob2 homes per location",
         ),
-        "visits_per_time_unit": make(
+        "visits_per_time_unit": _make_workload(
             "visits_per_time_unit",
+            "trajectory",
             "skmob2.measures.flows.visits_per_time_unit.visits_per_time_unit",
+            "skmob2 visits per time unit",
         ),
-        "mean_square_displacement": make(
+        "mean_square_displacement": _make_workload(
             "mean_square_displacement",
+            "trajectory",
             "skmob2.measures.flows.mean_square_displacement.mean_square_displacement",
+            "skmob2 mean square displacement",
         ),
-        "random_location_entropy": make(
+        "random_location_entropy": _make_workload(
             "random_location_entropy",
+            "trajectory",
             "skmob2.measures.flows.random_location_entropy.random_location_entropy",
+            "skmob2 random location entropy",
         ),
-        "uncorrelated_location_entropy": make(
+        "uncorrelated_location_entropy": _make_workload(
             "uncorrelated_location_entropy",
+            "trajectory",
             "skmob2.measures.flows.uncorrelated_location_entropy.uncorrelated_location_entropy",
+            "skmob2 uncorrelated location entropy",
         ),
-        "random_entropy": make("random_entropy", "skmob2.measures.visits.random_entropy.random_entropy"),
-        "uncorrelated_entropy": make(
+        "random_entropy": _make_workload(
+            "random_entropy", "trajectory", "skmob2.measures.visits.random_entropy.random_entropy", "skmob2 random entropy"
+        ),
+        "uncorrelated_entropy": _make_workload(
             "uncorrelated_entropy",
+            "trajectory",
             "skmob2.measures.visits.uncorrelated_entropy.uncorrelated_entropy",
+            "skmob2 uncorrelated entropy",
         ),
-        "real_entropy": make("real_entropy", "skmob2.measures.visits.real_entropy.real_entropy"),
-        "frequency_rank": make("frequency_rank", "skmob2.measures.visits.frequency_rank.frequency_rank"),
-        "recency_rank": make("recency_rank", "skmob2.measures.visits.recency_rank.recency_rank"),
-        "location_frequency": make(
+        "real_entropy": _make_workload(
+            "real_entropy", "trajectory", "skmob2.measures.visits.real_entropy.real_entropy", "skmob2 real entropy"
+        ),
+        "frequency_rank": _make_workload(
+            "frequency_rank",
+            "trajectory",
+            "skmob2.measures.visits.frequency_rank.frequency_rank",
+            "skmob2 frequency rank",
+        ),
+        "recency_rank": _make_workload(
+            "recency_rank", "trajectory", "skmob2.measures.visits.recency_rank.recency_rank", "skmob2 recency rank"
+        ),
+        "location_frequency": _make_workload(
             "location_frequency",
+            "trajectory",
             "skmob2.measures.visits.location_frequency.location_frequency",
+            "skmob2 location frequency",
         ),
-        "individual_mobility_network": make(
+        "individual_mobility_network": _make_workload(
             "individual_mobility_network",
+            "trajectory",
             "skmob2.measures.visits.individual_mobility_network.individual_mobility_network",
+            "skmob2 individual mobility network",
         ),
-    }
-
-
-def _visit_workloads() -> dict[str, Workload]:
-    def make(name: str, import_path: str, kwargs: dict[str, Any] | None = None) -> Workload:
-        kwargs = kwargs or {}
-
-        def run(visits: pd.DataFrame) -> Any:
-            module_name, func_name = import_path.rsplit(".", 1)
-            module = __import__(module_name, fromlist=[func_name])
-            return getattr(module, func_name)(visits, **kwargs)
-
-        return Workload(name, "visits", run, f"{import_path} on derived Brightkite visits")
-
-    return {
-        "activity_transition_matrix": make(
+        "activity_transition_matrix": _make_workload(
             "activity_transition_matrix",
+            "visits",
             "skmob2.measures.visits.activity.activity_transition_matrix",
+            "skmob2 activity transition matrix",
         ),
-        "diversity": make("diversity", "skmob2.measures.visits.diversity.diversity"),
-        "regularity": make("regularity", "skmob2.measures.visits.regularity.regularity"),
-        "trajectory_entropy": make(
+        "diversity": _make_workload("diversity", "visits", "skmob2.measures.visits.diversity.diversity", "skmob2 diversity"),
+        "regularity": _make_workload(
+            "regularity", "visits", "skmob2.measures.visits.regularity.regularity", "skmob2 regularity"
+        ),
+        "trajectory_entropy": _make_workload(
             "trajectory_entropy",
+            "visits",
             "skmob2.measures.visits.entropy.trajectory_entropy",
+            "skmob2 trajectory entropy",
         ),
-        "trajectory_predictability": make(
+        "trajectory_predictability": _make_workload(
             "trajectory_predictability",
+            "visits",
             "skmob2.measures.visits.entropy.trajectory_predictability",
+            "skmob2 trajectory predictability",
         ),
-        "intermittance_and_degree_of_return": make(
+        "intermittance_and_degree_of_return": _make_workload(
             "intermittance_and_degree_of_return",
+            "visits",
             "skmob2.measures.visits.mobility_profiling.intermittance_and_degree_of_return",
+            "skmob2 intermittance and degree of return",
         ),
-        "exploration_profiling": make(
+        "exploration_profiling": _make_workload(
             "exploration_profiling",
+            "visits",
             "skmob2.measures.visits.mobility_profiling.exploration_profiling",
-            {"random_seed": 0},
+            "skmob2 exploration profiling",
+            random_seed=0,
         ),
-        "mean_area_volume": make("mean_area_volume", "skmob2.measures.visits.mean_area_volume.mean_area_volume"),
-        "discover_daily_motifs_from_agents": make(
+        "mean_area_volume": _make_workload(
+            "mean_area_volume",
+            "visits",
+            "skmob2.measures.visits.mean_area_volume.mean_area_volume",
+            "skmob2 mean area volume",
+        ),
+        "discover_daily_motifs_from_agents": _make_workload(
             "discover_daily_motifs_from_agents",
+            "visits",
             "skmob2.measures.visits.motifs.discover_daily_motifs_from_agents",
+            "skmob2 daily motifs",
         ),
-    }
-
-
-def _special_workloads() -> dict[str, Workload]:
-    def od_matrix_run(trips: pd.DataFrame) -> Any:
-        from skmob2.measures.flows.od import od_matrix
-
-        return od_matrix(trips)
-
-    def od_metrics_run(trips: pd.DataFrame) -> Any:
-        from skmob2.measures.flows.od import od_matrix, od_metrics_per_area
-
-        return od_metrics_per_area(od_matrix(trips))
-
-    def stvd_run(distributions: tuple[pd.DataFrame, pd.DataFrame]) -> float:
-        from skmob2.measures.stvd_emd import stvd_emd
-
-        left, right = distributions
-        return stvd_emd(left, right)
-
-    return {
-        "od_matrix": Workload("od_matrix", "od", od_matrix_run, "OD matrix from Brightkite transitions"),
-        "od_metrics_per_area": Workload(
+        "od_matrix": _make_workload("od_matrix", "od", "skmob2.measures.flows.od.od_matrix", "skmob2 OD matrix"),
+        "od_metrics_per_area": _make_workload(
             "od_metrics_per_area",
-            "od",
-            od_metrics_run,
-            "OD metrics from Brightkite transitions",
+            "od_metrics",
+            "skmob2.measures.flows.od.od_metrics_per_area",
+            "skmob2 OD metrics per area",
         ),
-        "stvd_emd": Workload(
-            "stvd_emd",
-            "stvd",
-            stvd_run,
-            "STVD-EMD on derived Brightkite distributions",
-        ),
+        "stvd_emd": _make_workload("stvd_emd", "stvd", "skmob2.measures.stvd_emd.stvd_emd", "skmob2 STVD-EMD"),
     }
-
-
-def workload_registry() -> dict[str, Workload]:
-    workloads = {}
-    workloads.update(_trajectory_workloads())
-    workloads.update(_visit_workloads())
-    workloads.update(_special_workloads())
     return dict(sorted(workloads.items()))
 
 
-def build_dataset_for_workload(workload: Workload, rows: int, backend: str) -> Any:
-    traj = load_brightkite(rows, backend=backend)
+def _skmob_workload_candidates() -> dict[str, Workload]:
+    def individual(name: str, skmob_name: str | None = None, **kwargs: Any) -> Workload:
+        skmob_name = skmob_name or name
+        return _make_workload(
+            name,
+            "trajectory",
+            f"skmob.measures.individual.{skmob_name}",
+            f"skmob {skmob_name}",
+            **kwargs,
+        )
+
+    candidates = {
+        "jump_lengths": individual("jump_lengths", show_progress=False, merge=False),
+        "radius_of_gyration": individual("radius_of_gyration", show_progress=False),
+        "k_radius_of_gyration": individual("k_radius_of_gyration", show_progress=False),
+        "number_of_visits": individual("number_of_visits"),
+        "number_of_locations": individual("number_of_locations"),
+        "maximum_distance": individual("maximum_distance"),
+        "distance_straight_line": individual("distance_straight_line"),
+        "waiting_times": individual("waiting_times"),
+        "home_location": individual("home_location"),
+        "max_distance_from_home": individual("max_distance_from_home"),
+        "random_entropy": individual("random_entropy"),
+        "uncorrelated_entropy": individual("uncorrelated_entropy"),
+        "real_entropy": individual("real_entropy"),
+        "frequency_rank": individual("frequency_rank", show_progress=False),
+        "recency_rank": individual("recency_rank", show_progress=False),
+        "location_frequency": individual("location_frequency", show_progress=False),
+        "individual_mobility_network": individual("individual_mobility_network"),
+    }
+    return dict(sorted(candidates.items()))
+
+
+def _resolve_import(import_path: str) -> WorkloadFunc:
+    module_name, func_name = import_path.rsplit(".", 1)
+    module = __import__(module_name, fromlist=[func_name])
+    return getattr(module, func_name)
+
+
+def workload_registry(implementation: str = "skmob2") -> dict[str, Workload]:
+    if implementation == "skmob2":
+        return _skmob2_workloads()
+    if implementation != "skmob":
+        raise ValueError(f"Unsupported implementation: {implementation!r}")
+
+    available = {}
+    for name, workload in _skmob_workload_candidates().items():
+        try:
+            _resolve_import(workload.import_path)
+        except (ImportError, AttributeError):
+            continue
+        available[name] = workload
+    return available
+
+
+def available_workloads(implementation: str = "skmob2") -> list[str]:
+    return list(workload_registry(implementation))
+
+
+def build_dataset_for_workload(workload: Workload, rows: int, backend: str, implementation: str = "skmob2") -> Any:
+    load_backend = "pandas" if implementation == "skmob" else backend
+    traj = load_brightkite(rows, backend=load_backend)
+
+    if implementation == "skmob":
+        if workload.dataset != "trajectory":
+            raise ValueError(f"skmob profiling only supports trajectory workloads, got {workload.dataset!r}")
+        import skmob
+
+        return skmob.TrajDataFrame(
+            _to_pandas(traj),
+            latitude="lat",
+            longitude="lng",
+            datetime="datetime",
+            user_id="uid",
+        )
+
     if workload.dataset == "trajectory":
         return traj
     if workload.dataset == "visits":
         return trajectory_to_visits(traj)
     if workload.dataset == "od":
         return trajectory_to_od(traj)
+    if workload.dataset == "od_metrics":
+        from skmob2.measures.flows.od import od_matrix
+
+        return od_matrix(trajectory_to_od(traj))
     if workload.dataset == "stvd":
         return trajectory_to_stvd_distributions(traj)
     raise ValueError(f"Unknown workload dataset kind: {workload.dataset!r}")
 
 
-def run_workload(name: str, *, rows: int = DEFAULT_ROWS, backend: str = "pandas") -> dict[str, Any]:
-    workloads = workload_registry()
+def prepare_workload(
+    name: str,
+    *,
+    rows: int = DEFAULT_ROWS,
+    backend: str = "pandas",
+    implementation: str = "skmob2",
+) -> PreparedWorkload:
+    workloads = workload_registry(implementation)
     if name not in workloads:
-        available = ", ".join(workloads)
-        raise SystemExit(f"Unknown workload {name!r}. Available workloads: {available}")
+        available = ", ".join(workloads) or "none"
+        raise SystemExit(
+            f"Unknown workload {name!r} for {implementation}. "
+            f"Available {implementation} workloads: {available}"
+        )
 
-    try:
-        import skmob2._core  # noqa: F401
-    except ImportError as exc:
-        raise SystemExit("skmob2._core is not importable. Run `maturin develop` first.") from exc
+    if implementation == "skmob2":
+        try:
+            import skmob2._core  # noqa: F401
+        except ImportError as exc:
+            raise SystemExit("skmob2._core is not importable. Run `maturin develop` first.") from exc
 
     workload = workloads[name]
-    data = build_dataset_for_workload(workload, rows, backend)
-    result = workload.func(data)
+    data = build_dataset_for_workload(workload, rows, backend, implementation)
+    func = _resolve_import(workload.import_path)
+    return PreparedWorkload(workload, implementation, rows, backend, data, func)
+
+
+def execute_prepared_workload(prepared: PreparedWorkload) -> None:
+    if prepared.workload.dataset == "stvd":
+        left, right = prepared.data
+        result = prepared.func(left, right, **prepared.workload.kwargs)
+    else:
+        result = prepared.func(prepared.data, **prepared.workload.kwargs)
     _materialize(result)
-    return {"workload": name, "rows": rows, "backend": backend, "dataset": workload.dataset}
+
+
+def run_workload(
+    name: str,
+    *,
+    rows: int = DEFAULT_ROWS,
+    backend: str = "pandas",
+    implementation: str = "skmob2",
+) -> dict[str, Any]:
+    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
+    execute_prepared_workload(prepared)
+    return {
+        "workload": name,
+        "rows": rows,
+        "backend": backend,
+        "implementation": implementation,
+        "dataset": prepared.workload.dataset,
+        "profiled_phase": "full",
+    }
+
+
+def run_prepared_child(
+    name: str,
+    *,
+    rows: int = DEFAULT_ROWS,
+    backend: str = "pandas",
+    implementation: str = "skmob2",
+) -> int:
+    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
+    _allow_external_profiler_attach()
+    ready = {
+        "event": "ready",
+        "pid": os.getpid(),
+        "workload": name,
+        "rows": rows,
+        "backend": backend,
+        "implementation": implementation,
+        "dataset": prepared.workload.dataset,
+    }
+    print(json.dumps(ready), flush=True)
+    sys.stdin.readline()
+    execute_prepared_workload(prepared)
+    print(
+        json.dumps(
+            {
+                "event": "done",
+                "workload": name,
+                "rows": rows,
+                "backend": backend,
+                "implementation": implementation,
+                "dataset": prepared.workload.dataset,
+            }
+        ),
+        flush=True,
+    )
+    return 0
+
+
+def _allow_external_profiler_attach() -> None:
+    """Allow sibling py-spy processes to attach on Linux with ptrace_scope=1."""
+    if platform.system() != "Linux":
+        return
+    try:
+        libc = ctypes.CDLL(None)
+        pr_set_ptracer = 0x59616D61
+        pr_set_ptracer_any = ctypes.c_ulong(-1).value
+        libc.prctl(pr_set_ptracer, pr_set_ptracer_any, 0, 0, 0)
+    except Exception:
+        return
+
+
+def run_memray_function_profile(
+    name: str,
+    *,
+    rows: int = DEFAULT_ROWS,
+    backend: str = "pandas",
+    implementation: str = "skmob2",
+    bin_path: str,
+    native: bool = True,
+) -> dict[str, Any]:
+    import memray
+
+    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
+    with memray.Tracker(bin_path, native_traces=native):
+        execute_prepared_workload(prepared)
+    return {
+        "workload": name,
+        "rows": rows,
+        "backend": backend,
+        "implementation": implementation,
+        "dataset": prepared.workload.dataset,
+        "profiled_phase": "function",
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -352,18 +583,41 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workload", required=False, help="Workload name to run.")
     parser.add_argument("--rows", type=int, default=DEFAULT_ROWS)
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
+    parser.add_argument("--implementation", choices=IMPLEMENTATIONS, default="skmob2")
     parser.add_argument("--list", action="store_true", help="List workload names and exit.")
+    parser.add_argument("--prepared-child", action="store_true", help="Prepare workload, wait on stdin, then execute.")
+    parser.add_argument("--memray-bin-path", help="Run function-only memray profiling to this bin path.")
+    parser.add_argument("--no-native", action="store_true", help="Disable native traces for direct memray profiling.")
     args = parser.parse_args(argv)
 
-    workloads = workload_registry()
+    workloads = workload_registry(args.implementation)
     if args.list:
         for name, workload in workloads.items():
-            print(f"{name}\t{workload.dataset}\t{workload.description}")
+            print(f"{name}\t{workload.dataset}\t{args.implementation}\t{workload.description}")
         return 0
     if not args.workload:
         parser.error("--workload is required unless --list is used")
 
-    print(json.dumps(run_workload(args.workload, rows=args.rows, backend=args.backend)))
+    if args.prepared_child:
+        return run_prepared_child(
+            args.workload,
+            rows=args.rows,
+            backend=args.backend,
+            implementation=args.implementation,
+        )
+    if args.memray_bin_path:
+        result = run_memray_function_profile(
+            args.workload,
+            rows=args.rows,
+            backend=args.backend,
+            implementation=args.implementation,
+            bin_path=args.memray_bin_path,
+            native=not args.no_native,
+        )
+    else:
+        result = run_workload(args.workload, rows=args.rows, backend=args.backend, implementation=args.implementation)
+
+    print(json.dumps(result))
     return 0
 
 
