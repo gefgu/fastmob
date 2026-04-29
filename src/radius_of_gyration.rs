@@ -1,10 +1,16 @@
-use arrow_array::{types::Float64Type, Array, Float64Array, PrimitiveArray};
+use arrow_array::{
+    types::{Float64Type, Int32Type, Int64Type, UInt32Type, UInt64Type},
+    Array, Float64Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray,
+    UInt32Array, UInt64Array,
+};
 use geo::{Distance, Haversine, Point};
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
+
+type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
 
 #[pyfunction]
 pub(crate) fn radius_of_gyration_km(coords: Vec<(f64, f64)>) -> PyResult<f64> {
@@ -192,6 +198,59 @@ fn radius_of_gyration_indexed_impl(
     Ok(results)
 }
 
+fn ranges_from_sorted_indices<T: PartialEq>(values: &[T], indices: &[usize]) -> Vec<(usize, usize)> {
+    if indices.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ranges = Vec::new();
+    let mut start = 0usize;
+    for pos in 1..indices.len() {
+        if values[indices[pos]] != values[indices[pos - 1]] {
+            ranges.push((start, pos));
+            start = pos;
+        }
+    }
+    ranges.push((start, indices.len()));
+    ranges
+}
+
+fn user_indices_for_ord_values<T: Ord>(values: &[T]) -> UserIndexRanges {
+    let mut indices: Vec<usize> = (0..values.len()).collect();
+    indices.sort_by(|&left, &right| values[left].cmp(&values[right]).then(left.cmp(&right)));
+    let ranges = ranges_from_sorted_indices(values, &indices);
+    (indices, ranges)
+}
+
+fn compare_f64_values(left: f64, right: f64) -> std::cmp::Ordering {
+    left.total_cmp(&right)
+}
+
+fn user_indices_for_f64_values(values: &[f64]) -> UserIndexRanges {
+    let mut indices: Vec<usize> = (0..values.len()).collect();
+    indices.sort_by(|&left, &right| {
+        compare_f64_values(values[left], values[right]).then(left.cmp(&right))
+    });
+    let ranges = ranges_from_sorted_indices(values, &indices);
+    (indices, ranges)
+}
+
+fn primitive_option_values<T>(array: &PrimitiveArray<T>) -> Vec<Option<T::Native>>
+where
+    T: arrow_array::types::ArrowPrimitiveType,
+    T::Native: Copy,
+{
+    (0..array.len())
+        .map(|idx| {
+            if array.is_null(idx) {
+                None
+            } else {
+                Some(array.value(idx))
+            }
+        })
+        .collect()
+}
+
 #[pyfunction]
 pub(crate) fn radius_of_gyration_batch_km(
     latitudes: Vec<f64>,
@@ -223,6 +282,31 @@ pub(crate) fn radius_of_gyration_indexed_numpy(
         &indices,
         &ranges,
     )
+}
+
+#[pyfunction]
+pub(crate) fn radius_of_gyration_user_indices_numpy(
+    uids: &Bound<'_, PyAny>,
+) -> PyResult<UserIndexRanges> {
+    if let Ok(array) = uids.extract::<PyReadonlyArray1<i64>>() {
+        return Ok(user_indices_for_ord_values(array.as_slice()?));
+    }
+    if let Ok(array) = uids.extract::<PyReadonlyArray1<i32>>() {
+        return Ok(user_indices_for_ord_values(array.as_slice()?));
+    }
+    if let Ok(array) = uids.extract::<PyReadonlyArray1<u64>>() {
+        return Ok(user_indices_for_ord_values(array.as_slice()?));
+    }
+    if let Ok(array) = uids.extract::<PyReadonlyArray1<u32>>() {
+        return Ok(user_indices_for_ord_values(array.as_slice()?));
+    }
+    if let Ok(array) = uids.extract::<PyReadonlyArray1<f64>>() {
+        return Ok(user_indices_for_f64_values(array.as_slice()?));
+    }
+
+    Err(PyValueError::new_err(
+        "unsupported numpy uid dtype for indexed radius_of_gyration",
+    ))
 }
 
 fn as_f64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Float64Type>> {
@@ -259,6 +343,59 @@ pub(crate) fn radius_of_gyration_arrow(
     let lng_slice = &longitudes.values()[lng_start..lng_end];
 
     radius_of_gyration_batch_impl(lat_slice, lng_slice, &ranges)
+}
+
+#[pyfunction]
+pub(crate) fn radius_of_gyration_user_indices_arrow(
+    uids: PyArray,
+) -> PyResult<UserIndexRanges> {
+    let (array_ref, _field) = uids.into_inner();
+    let array = array_ref.as_any();
+
+    if let Some(array) = array.downcast_ref::<Int64Array>() {
+        let values = primitive_option_values::<Int64Type>(array);
+        return Ok(user_indices_for_ord_values(&values));
+    }
+    if let Some(array) = array.downcast_ref::<Int32Array>() {
+        let values = primitive_option_values::<Int32Type>(array);
+        return Ok(user_indices_for_ord_values(&values));
+    }
+    if let Some(array) = array.downcast_ref::<UInt64Array>() {
+        let values = primitive_option_values::<UInt64Type>(array);
+        return Ok(user_indices_for_ord_values(&values));
+    }
+    if let Some(array) = array.downcast_ref::<UInt32Array>() {
+        let values = primitive_option_values::<UInt32Type>(array);
+        return Ok(user_indices_for_ord_values(&values));
+    }
+    if let Some(array) = array.downcast_ref::<StringArray>() {
+        let values: Vec<Option<&str>> = (0..array.len())
+            .map(|idx| {
+                if array.is_null(idx) {
+                    None
+                } else {
+                    Some(array.value(idx))
+                }
+            })
+            .collect();
+        return Ok(user_indices_for_ord_values(&values));
+    }
+    if let Some(array) = array.downcast_ref::<LargeStringArray>() {
+        let values: Vec<Option<&str>> = (0..array.len())
+            .map(|idx| {
+                if array.is_null(idx) {
+                    None
+                } else {
+                    Some(array.value(idx))
+                }
+            })
+            .collect();
+        return Ok(user_indices_for_ord_values(&values));
+    }
+
+    Err(PyValueError::new_err(
+        "unsupported Arrow uid type for indexed radius_of_gyration",
+    ))
 }
 
 #[pyfunction]

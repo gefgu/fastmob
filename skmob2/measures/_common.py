@@ -6,6 +6,7 @@ from typing import Iterable
 import narwhals as nw
 
 _ROW_ORDER_COL = "__skmob2_row_order__"
+_USER_RANGE_START_COL = "__skmob2_user_range_start__"
 
 # ---------------------------------------------------------------------------
 # Authoritative candidate lists for column auto-detection.
@@ -246,15 +247,17 @@ def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, lis
     n = len(df)
     if uid_col is None:
         return [None], [(0, n)]
-    uid_series = df.get_column(uid_col).to_list()
-    uid_values: list = []
-    ranges: list[tuple[int, int]] = []
-    i = 0
-    while i < n:
-        current_uid = uid_series[i]
-        start = i
-        while i < n and uid_series[i] == current_uid:
-            i += 1
-        uid_values.append(current_uid)
-        ranges.append((start, i))
+    if n == 0:
+        return [], []
+
+    starts_df = (
+        df.select([uid_col])
+        .with_row_index(_USER_RANGE_START_COL)
+        .filter((nw.col(uid_col) != nw.col(uid_col).shift(1)).fill_null(True))
+    )
+    starts = starts_df.get_column(_USER_RANGE_START_COL).to_list()
+    uid_values = starts_df.get_column(uid_col).to_list()
+    ends = starts[1:] + [n]
+    ranges = list(zip(starts, ends))
+
     return uid_values, ranges

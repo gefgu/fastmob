@@ -304,6 +304,71 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
         np.testing.assert_allclose(actual[uid], expected[uid], rtol=0.0, atol=1e-12)
 
 
+def test_build_indexed_user_ranges_sorts_stable_row_indices():
+    """Indexed grouping keeps original row order within each sorted uid group."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    import narwhals as nw
+    from skmob2.measures.spatial.radius_of_gyration import _build_indexed_user_ranges
+
+    df = nw.from_native(pd.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}), eager_only=True)
+
+    uid_values, indices, ranges = _build_indexed_user_ranges(df, "uid")
+
+    assert uid_values == ["a", "b", "c"]
+    assert indices == [1, 4, 0, 2, 3, 5]
+    assert ranges == [(0, 2), (2, 4), (4, 6)]
+
+
+def test_build_indexed_user_ranges_handles_empty_dataframe():
+    """Indexed grouping handles empty inputs without touching backend sort."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    import narwhals as nw
+    from skmob2.measures.spatial.radius_of_gyration import _build_indexed_user_ranges
+
+    df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
+
+    assert _build_indexed_user_ranges(df, "uid") == ([], [], [])
+
+
+def test_radius_of_gyration_user_indices_numpy_helper():
+    """Rust NumPy uid-index helper groups sorted stable row indexes."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_user_indices_numpy
+
+    indices, ranges = radius_of_gyration_user_indices_numpy(np.array([2, 1, 2, 3, 1, 3], dtype=np.int64))
+
+    assert indices == [1, 4, 0, 2, 3, 5]
+    assert ranges == [(0, 2), (2, 4), (4, 6)]
+
+
+def test_radius_of_gyration_user_indices_arrow_helper():
+    """Rust Arrow uid-index helper supports string uid arrays."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import radius_of_gyration_user_indices_arrow
+
+    indices, ranges = radius_of_gyration_user_indices_arrow(pa.array(["b", "a", "b", "c", "a", "c"]))
+
+    assert indices == [1, 4, 0, 2, 3, 5]
+    assert ranges == [(0, 2), (2, 4), (4, 6)]
+
+
+def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
+    """Indexed grouping keeps string uid support on the Arrow-backed path."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    import narwhals as nw
+    from skmob2.measures.spatial.radius_of_gyration import _build_indexed_user_ranges
+
+    df = nw.from_native(pl.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}), eager_only=True)
+
+    uid_values, indices, ranges = _build_indexed_user_ranges(df, "uid")
+
+    assert uid_values == ["a", "b", "c"]
+    assert indices == [1, 4, 0, 2, 3, 5]
+    assert ranges == [(0, 2), (2, 4), (4, 6)]
+
+
 def test_radius_of_gyration_presorted_returns_input_group_order():
     """Presorted trusts contiguous input groups instead of sorting users."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")

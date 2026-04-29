@@ -8,6 +8,8 @@ from skmob2._core import (
     radius_of_gyration_indexed_arrow,
     radius_of_gyration_indexed_numpy,
     radius_of_gyration_numpy,
+    radius_of_gyration_user_indices_arrow,
+    radius_of_gyration_user_indices_numpy,
 )
 
 from .._common import _build_user_ranges, _prepare_trajectory
@@ -59,6 +61,28 @@ def _validate_sort_strategy(sort_strategy: str) -> SortStrategy:
 
 
 def _build_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, list[int], list[tuple[int, int]]]:
+    n = len(df)
+    if n == 0:
+        return [], [], []
+
+    uid_series = df.get_column(uid_col)
+    try:
+        if _is_polars_backed(df):
+            # 1. Call to_arrow exactly once
+            uid_arrow = uid_series.to_arrow()
+            indices, ranges = radius_of_gyration_user_indices_arrow(uid_arrow)
+            
+            # 2. Skip .take() and Arrow's compute overhead by using Python list comprehension directly 
+            # on the Arrow array, which supports __getitem__ indexing.
+            uid_values = [uid_arrow[indices[start]].as_py() for start, _ in ranges]
+        else:
+            indices, ranges = radius_of_gyration_user_indices_numpy(uid_series.to_numpy())
+            start_indices = [indices[start] for start, _ in ranges]
+            uid_values = uid_series.to_numpy()[start_indices].tolist()
+        return uid_values, indices, ranges
+    except ValueError:
+        pass
+
     index_df = (
         df.select([uid_col])
         .with_row_index(_ROG_ROW_INDEX_COL)

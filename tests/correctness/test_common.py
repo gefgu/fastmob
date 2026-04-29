@@ -198,6 +198,40 @@ class TestPrepareTrajectory:
 
 
 # ---------------------------------------------------------------------------
+# _build_user_ranges
+# ---------------------------------------------------------------------------
+
+
+class TestBuildUserRanges:
+    def test_builds_ranges_from_contiguous_uid_groups(self):
+        import narwhals as nw
+        from skmob2.measures._common import _build_user_ranges
+
+        df = nw.from_native(pd.DataFrame({"uid": ["a", "a", "b", "b", "b", "c"]}), eager_only=True)
+
+        uid_values, ranges = _build_user_ranges(df, "uid")
+
+        assert uid_values == ["a", "b", "c"]
+        assert ranges == [(0, 2), (2, 5), (5, 6)]
+
+    def test_builds_empty_ranges_for_empty_uid_dataframe(self):
+        import narwhals as nw
+        from skmob2.measures._common import _build_user_ranges
+
+        df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
+
+        assert _build_user_ranges(df, "uid") == ([], [])
+
+    def test_builds_single_range_without_uid_column(self):
+        import narwhals as nw
+        from skmob2.measures._common import _build_user_ranges
+
+        df = nw.from_native(pd.DataFrame({"lat": [1.0, 2.0, 3.0]}), eager_only=True)
+
+        assert _build_user_ranges(df, None) == ([None], [(0, 3)])
+
+
+# ---------------------------------------------------------------------------
 # _shannon_entropy
 # ---------------------------------------------------------------------------
 
