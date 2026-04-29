@@ -1,7 +1,7 @@
 use arrow_array::{
-    types::{Float64Type, Int32Type, Int64Type, UInt32Type, UInt64Type},
     Array, Float64Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray,
     UInt32Array, UInt64Array,
+    types::{Float64Type, Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
 use geo::{Distance, Haversine, Point};
 use numpy::PyReadonlyArray1;
@@ -198,7 +198,10 @@ fn radius_of_gyration_indexed_impl(
     Ok(results)
 }
 
-fn ranges_from_sorted_indices<T: PartialEq>(values: &[T], indices: &[usize]) -> Vec<(usize, usize)> {
+fn ranges_from_sorted_indices<T: PartialEq>(
+    values: &[T],
+    indices: &[usize],
+) -> Vec<(usize, usize)> {
     if indices.is_empty() {
         return Vec::new();
     }
@@ -346,9 +349,7 @@ pub(crate) fn radius_of_gyration_arrow(
 }
 
 #[pyfunction]
-pub(crate) fn radius_of_gyration_user_indices_arrow(
-    uids: PyArray,
-) -> PyResult<UserIndexRanges> {
+pub(crate) fn radius_of_gyration_user_indices_arrow(uids: PyArray) -> PyResult<UserIndexRanges> {
     let (array_ref, _field) = uids.into_inner();
     let array = array_ref.as_any();
 

@@ -3,9 +3,31 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import waiting_times_seconds as _waiting_times_seconds_rust
+from skmob2._core import (
+    waiting_times_arrow,
+    waiting_times_flat_arrow,
+    waiting_times_flat_numpy,
+    waiting_times_numpy,
+)
 
-from .._common import _build_user_ranges, _prepare_trajectory
+from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
+
+
+def _route_waiting_times(
+    timestamps_s: nw.Series,
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+    merge: bool,
+) -> list[float] | list[list[float]]:
+    if use_arrow:
+        if merge:
+            return waiting_times_flat_arrow(timestamps_s.to_arrow(), ranges)
+        return waiting_times_arrow(timestamps_s.to_arrow(), ranges)
+
+    if merge:
+        return waiting_times_flat_numpy(timestamps_s.to_numpy(), ranges)
+    return waiting_times_numpy(timestamps_s.to_numpy(), ranges)
 
 
 def waiting_times(
@@ -65,29 +87,26 @@ def waiting_times(
 
     # Extract Unix timestamps in seconds via millisecond intermediate to avoid
     # backend-specific nanosecond vs microsecond differences.
-    timestamps_s: list[float] = (
+    timestamps_s = (
         df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__"))
         .get_column("__ts_s__")
-        .to_list()
     )
+    use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
-        wt_list = _waiting_times_seconds_rust(timestamps_s, [(0, len(timestamps_s))])
+        wt_list = _route_waiting_times(timestamps_s, [(0, len(df))], use_arrow=use_arrow, merge=merge)
         if merge:
-            return wt_list[0]
+            return wt_list
         return nw.from_dict(
             {"waiting_times": wt_list},
             backend=df.implementation,
         ).to_native()
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
-    wt_lists = _waiting_times_seconds_rust(timestamps_s, ranges)
+    wt_lists = _route_waiting_times(timestamps_s, ranges, use_arrow=use_arrow, merge=merge)
 
     if merge:
-        flat: list = []
-        for wt in wt_lists:
-            flat.extend(wt)
-        return flat
+        return wt_lists
 
     return nw.from_dict(
         {uid_col: uid_values, "waiting_times": wt_lists},

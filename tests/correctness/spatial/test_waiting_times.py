@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 import narwhals as nw
+import numpy as np
 import pandas as pd
 
 # The synthetic fixture has points spaced 1 hour apart, so all waiting times
@@ -110,6 +111,32 @@ def test_waiting_times_merge_returns_flat_list(synthetic_tdf):
     assert len(result) == 3 * EXPECTED_N_WAITS
     for wt in result:
         assert abs(wt - EXPECTED_WAITING_TIME_S) < 1.0
+
+
+def test_waiting_times_numpy_and_arrow_helpers_match_batch_helper():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2._core import waiting_times_arrow, waiting_times_flat_numpy, waiting_times_numpy, waiting_times_seconds
+
+    timestamps = np.array([0.0, 60.0, 90.0, 1000.0, 1060.0], dtype=np.float64)
+    ranges = [(0, 3), (3, 5)]
+
+    expected = waiting_times_seconds(timestamps.tolist(), ranges)
+    result_numpy = waiting_times_numpy(timestamps, ranges)
+    result_arrow = waiting_times_arrow(pl.Series(timestamps).to_arrow(), ranges)
+
+    assert result_numpy == expected
+    assert result_arrow == expected
+    assert waiting_times_flat_numpy(timestamps, ranges) == expected[0] + expected[1]
+
+
+def test_waiting_times_numpy_helper_validation_errors():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import waiting_times_numpy
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+    with pytest.raises(ValueError, match="range end"):
+        waiting_times_numpy(arr, [(0, 3)])
 
 
 @pytest.mark.skmob

@@ -3,9 +3,32 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import jump_lengths_km
+from skmob2._core import (
+    jump_lengths_arrow,
+    jump_lengths_flat_arrow,
+    jump_lengths_flat_numpy,
+    jump_lengths_numpy,
+)
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
+
+
+def _route_jump_lengths(
+    lats: nw.Series,
+    lngs: nw.Series,
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+    merge: bool,
+) -> list[float] | list[list[float]]:
+    if use_arrow:
+        if merge:
+            return jump_lengths_flat_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
+        return jump_lengths_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
+
+    if merge:
+        return jump_lengths_flat_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
+    return jump_lengths_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
 
 
 def jump_lengths(
@@ -69,43 +92,21 @@ def jump_lengths(
         uid_col=uid_col,
     )
 
-    lat_buffer = df.get_column(lat_col).to_numpy()
-    lon_buffer = df.get_column(lng_col).to_numpy()
-
-    if len(lat_buffer) < 2:
-        # Not enough points to compute jump lengths
-        return nw.from_dict({uid_col: [], "jump_lengths": []}).to_native() if not merge else []
-
-    flat_jump_lengths = jump_lengths_km(lat_buffer, lon_buffer)
-
-    # Pad with 0.0 at the start so the array length matches the dataframe.
-    # The jump at index `i` becomes the distance traveled from row `i-1` to row `i`.
-    padded_jump_lengths = [0.0] + flat_jump_lengths
+    lats_full = df.get_column(lat_col)
+    lngs_full = df.get_column(lng_col)
+    use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
+        ranges = [(0, len(df))]
+        jump_values = _route_jump_lengths(lats_full, lngs_full, ranges, use_arrow=use_arrow, merge=merge)
         if merge:
-            return flat_jump_lengths
-        return nw.from_dict({"jump_lengths": [flat_jump_lengths]}, backend=df.implementation).to_native()
+            return jump_values
+        return nw.from_dict({"jump_lengths": jump_values}, backend=df.implementation).to_native()
 
-    jumps_df = nw.from_dict(
-        {uid_col: df.get_column(uid_col), "jump_lengths": padded_jump_lengths},
-        backend=df.implementation,
-    )
-
-    # Mask out boundaries (identify where the jump bridged two different users)
-    jumps_df = jumps_df.with_columns(nw.col(uid_col).shift(1).alias("__uid_prev"))
-    valid_jumps_df = jumps_df.filter(nw.col(uid_col) == nw.col("__uid_prev"))
-
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    jump_values = _route_jump_lengths(lats_full, lngs_full, ranges, use_arrow=use_arrow, merge=merge)
     if merge:
-        return valid_jumps_df.get_column("jump_lengths").to_list()
-
-    jump_dict = {}
-    for keys, group in valid_jumps_df.group_by(uid_col):
-        jump_dict[keys[0]] = group.get_column("jump_lengths").to_list()
-
-    # Maintain original user order; users with only 1 point get an empty list
-    uid_values = df.select(uid_col).unique(maintain_order=True).get_column(uid_col).to_list()
-    jump_values = [jump_dict.get(uid, []) for uid in uid_values]
+        return jump_values
 
     result = nw.from_dict(
         {uid_col: uid_values, "jump_lengths": jump_values},

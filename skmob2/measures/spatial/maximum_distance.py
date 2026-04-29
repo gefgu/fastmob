@@ -3,9 +3,21 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import maximum_distance_batch_km
+from skmob2._core import maximum_distance_arrow, maximum_distance_numpy
 
-from .._common import _build_user_ranges, _prepare_trajectory
+from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
+
+
+def _route_maximum_distance(
+    lats: nw.Series,
+    lngs: nw.Series,
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+) -> list[float]:
+    if use_arrow:
+        return maximum_distance_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
+    return maximum_distance_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
 
 
 def maximum_distance(
@@ -56,18 +68,19 @@ def maximum_distance(
         uid_col=uid_col,
     )
 
-    lats_full = df.get_column(lat_col).to_list()
-    lngs_full = df.get_column(lng_col).to_list()
+    lats_full = df.get_column(lat_col)
+    lngs_full = df.get_column(lng_col)
+    use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
-        values = maximum_distance_batch_km(lats_full, lngs_full, [(0, len(lats_full))])
+        values = _route_maximum_distance(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow)
         return nw.from_dict(
             {"maximum_distance": values},
             backend=df.implementation,
         ).to_native()
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
-    max_distances = maximum_distance_batch_km(lats_full, lngs_full, ranges)
+    max_distances = _route_maximum_distance(lats_full, lngs_full, ranges, use_arrow=use_arrow)
 
     return nw.from_dict(
         {uid_col: uid_values, "maximum_distance": max_distances},

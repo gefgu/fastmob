@@ -52,6 +52,7 @@ def number_of_visits(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
     if uid_col is None:

@@ -3,8 +3,8 @@ use linfa_clustering::{GaussianMixtureModel, KMeans};
 use ndarray015::Array2;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 fn to_f32_array2(values: Vec<f64>) -> Result<Array2<f32>, String> {
     let n = values.len();

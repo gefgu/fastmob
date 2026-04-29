@@ -189,6 +189,50 @@ def test_jump_lengths_polars_vs_pandas_skmob2():
         assert np.allclose(left, right, rtol=1e-10, atol=1e-10), f"Polars and pandas should be identical for uid={uid}"
 
 
+def test_jump_lengths_numpy_helper_groups_by_ranges():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_flat_numpy, jump_lengths_km, jump_lengths_numpy
+
+    lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
+    lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
+    ranges = [(0, 3), (3, 5)]
+
+    grouped = jump_lengths_numpy(lats, lngs, ranges)
+    expected = [jump_lengths_km(lats[start:end].tolist(), lngs[start:end].tolist()) for start, end in ranges]
+
+    assert len(grouped) == 2
+    for actual, expected_values in zip(grouped, expected):
+        np.testing.assert_allclose(actual, expected_values, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(jump_lengths_flat_numpy(lats, lngs, ranges), expected[0] + expected[1], rtol=0.0, atol=1e-12)
+
+
+def test_jump_lengths_arrow_helper_matches_numpy_helper():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pl = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2._core import jump_lengths_arrow, jump_lengths_numpy
+
+    lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
+    lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
+    ranges = [(0, 3), (3, 5)]
+
+    result_arrow = jump_lengths_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ranges)
+    result_numpy = jump_lengths_numpy(lats, lngs, ranges)
+
+    for actual, expected in zip(result_arrow, result_numpy):
+        np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-12)
+
+
+def test_jump_lengths_numpy_helper_validation_errors():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_numpy
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+    with pytest.raises(ValueError, match="same length"):
+        jump_lengths_numpy(arr, arr[:1], [(0, 1)])
+    with pytest.raises(ValueError, match="range end"):
+        jump_lengths_numpy(arr, arr, [(0, 3)])
+
+
 @pytest.mark.skmob
 def test_jump_lengths_matches_skmob(brightkite_skmob):
     pytest.importorskip(

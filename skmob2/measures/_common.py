@@ -74,6 +74,12 @@ def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str 
     return None
 
 
+def _is_polars_backed(nw_df: nw.DataFrame) -> bool:
+    """Return True when a Narwhals DataFrame is backed by a Polars object."""
+    native = nw_df.to_native()
+    return hasattr(native, "lazy")
+
+
 def _detect_trajectory_columns(
     nw_df: nw.DataFrame,
     datetime_col: str | None = None,

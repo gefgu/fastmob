@@ -12,14 +12,9 @@ from skmob2._core import (
     radius_of_gyration_user_indices_numpy,
 )
 
-from .._common import _build_user_ranges, _prepare_trajectory
+from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
 
 _ROG_ROW_INDEX_COL = "__skmob2_rog_row_index__"
-
-
-def _is_polars_backed(nw_df: nw.DataFrame) -> bool:
-    native = nw_df.to_native()
-    return hasattr(native, "lazy")
 
 
 def _route_and_call(

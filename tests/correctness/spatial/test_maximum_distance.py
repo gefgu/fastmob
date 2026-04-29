@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 import narwhals as nw
+import numpy as np
 import pandas as pd
 
 # Pre-computed expected maximum distances for the shared synthetic fixture
@@ -70,6 +71,34 @@ def test_maximum_distance_polars_known_values(synthetic_tdf_polars):
     assert set(mapping.keys()) == set(EXPECTED_MAX_DIST.keys())
     for uid, expected in EXPECTED_MAX_DIST.items():
         assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
+
+
+def test_maximum_distance_numpy_and_arrow_helpers_match_batch_helper():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
+
+    lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
+    lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
+    ranges = [(0, 3), (3, 5)]
+
+    expected = maximum_distance_batch_km(lats.tolist(), lngs.tolist(), ranges)
+    result_numpy = maximum_distance_numpy(lats, lngs, ranges)
+    result_arrow = maximum_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ranges)
+
+    np.testing.assert_allclose(result_numpy, expected, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(result_arrow, expected, rtol=0.0, atol=1e-12)
+
+
+def test_maximum_distance_numpy_helper_validation_errors():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import maximum_distance_numpy
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+    with pytest.raises(ValueError, match="same length"):
+        maximum_distance_numpy(arr, arr[:1], [(0, 1)])
+    with pytest.raises(ValueError, match="range end"):
+        maximum_distance_numpy(arr, arr, [(0, 3)])
 
 
 @pytest.mark.skmob

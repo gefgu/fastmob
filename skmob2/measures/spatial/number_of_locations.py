@@ -51,6 +51,7 @@ def number_of_locations(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
     # Build a single string key per row encoding the (lat, lng) pair so that

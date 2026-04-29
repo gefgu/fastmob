@@ -87,7 +87,7 @@ fn filter_user_slice(
         let imax = dr_dt
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap())
+            .max_by(|a, b| a.1.0.partial_cmp(&b.1.0).unwrap())
             .map(|(idx, _)| idx)
             .unwrap_or(0);
 

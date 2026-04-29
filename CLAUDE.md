@@ -41,6 +41,10 @@ maturin build --release
 
 After `maturin develop` the compiled `.so` is placed directly in `skmob2/`, so the package is importable from the repo root without a pip install.
 
+## Formatting
+
+Leave formatter output as the tools produce it. If `cargo fmt`, Ruff, or another project formatter rewrites nearby code or import ordering, keep that formatting instead of manually undoing it to minimize diff shape. Prefer a clean, tool-formatted tree over hand-preserving previous style.
+
 ## Test environment setup
 
 First-time setup (creates `.venv` at repo root, builds the Rust extension, installs all dev deps):
