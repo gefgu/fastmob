@@ -2,6 +2,7 @@ from .preprocessing.filter import filter
 from .preprocessing.compress import compress
 from .preprocessing.stay_locations import stay_locations
 from .preprocessing.cluster import cluster
+from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
 from .measures.spatial.jump_lengths import jump_lengths
 from .measures.spatial.radius_of_gyration import radius_of_gyration
 from .measures.spatial.k_radius_of_gyration import k_radius_of_gyration
@@ -58,6 +59,8 @@ __all__ = [
     "compress",
     "stay_locations",
     "cluster",
+    "cdr_to_visitation_df",
+    "cdr_to_trips_df",
     "jump_lengths",
     "radius_of_gyration",
     "k_radius_of_gyration",
