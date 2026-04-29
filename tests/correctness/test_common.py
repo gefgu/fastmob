@@ -170,6 +170,25 @@ class TestPrepareTrajectory:
         b_indices = [i for i, u in enumerate(uids) if u == "b"]
         assert max(a_indices) < min(b_indices)
 
+    def test_sort_false_preserves_row_order_after_dropping_nulls(self):
+        import narwhals as nw
+        from skmob2.measures._common import _prepare_trajectory
+
+        df_in = pd.DataFrame(
+            {
+                "uid": ["b", "a", "b", "a"],
+                "datetime": pd.to_datetime(["2020-01-02", "2020-01-02", "2020-01-01", "2020-01-01"]),
+                "lat": [0, 1, None, 3],
+                "lng": [10, 11, 12, 13],
+            }
+        )
+        df, _, lat_col, lng_col, uid_col = _prepare_trajectory(df_in, sort=False)
+
+        assert df.get_column(uid_col).to_list() == ["b", "a", "a"]
+        assert df.get_column(lat_col).to_list() == [0.0, 1.0, 3.0]
+        assert df.get_column(lat_col).dtype == nw.Float64
+        assert df.get_column(lng_col).dtype == nw.Float64
+
     def test_raises_on_missing_column(self):
         from skmob2.measures._common import _prepare_trajectory
 

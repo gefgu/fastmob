@@ -76,6 +76,37 @@ def skmob_ref_traj_pl(skmob_ref_traj_pd):
     return pl.from_pandas(skmob_ref_traj_pd)
 
 
+def _as_pandas_result(result):
+    if hasattr(result, "to_pandas"):
+        return result.to_pandas()
+    return result
+
+
+def _rog_map(result) -> dict:
+    result = _as_pandas_result(result)
+    uid_col = next(c for c in ("uid", "user", "user_id") if c in result.columns)
+    return dict(zip(result[uid_col], result["radius_of_gyration"]))
+
+
+def _grouped_strategy_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "uid": ["b", "b", "a", "a", "c"],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-02 00:00:00",
+                    "2020-01-01 00:00:00",
+                    "2020-01-03 00:00:00",
+                    "2020-01-01 00:00:00",
+                    "2020-01-04 00:00:00",
+                ]
+            ),
+            "lat": [10.0, 11.0, 0.0, 1.0, 20.0],
+            "lng": [30.0, 31.0, 0.0, 1.0, 40.0],
+        }
+    )
+
+
 def test_radius_of_gyration_known_values_pandas(synthetic_tdf):
     """RoG on synthetic fixture (pandas backend), hardcoded expected values."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -230,6 +261,72 @@ def test_radius_of_gyration_polars_pandas_agree():
         )
 
 
+@pytest.mark.parametrize("backend", ["pandas", "polars"])
+@pytest.mark.parametrize("sort_strategy", ["sort", "indexed", "presorted"])
+def test_radius_of_gyration_sort_strategies_agree_for_grouped_input(backend, sort_strategy):
+    """All strategies agree when presorted's contiguous-group precondition holds."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    df_pd = _grouped_strategy_df()
+    traj = df_pd
+    if backend == "polars":
+        pl = pytest.importorskip("polars", reason="Polars not installed")
+        traj = pl.from_pandas(df_pd)
+
+    expected = _rog_map(radius_of_gyration(df_pd, sort_strategy="sort"))
+    actual = _rog_map(radius_of_gyration(traj, sort_strategy=sort_strategy))
+
+    assert actual.keys() == expected.keys()
+    for uid in expected:
+        np.testing.assert_allclose(actual[uid], expected[uid], rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_indexed_handles_interleaved_users():
+    """The indexed strategy groups by uid without sorting the full dataframe."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    df = pd.DataFrame(
+        {
+            "uid": ["b", "a", "b", "c", "a", "c"],
+            "datetime": pd.date_range("2020-01-01", periods=6, freq="h"),
+            "lat": [10.0, 0.0, 11.0, 20.0, 1.0, 21.0],
+            "lng": [30.0, 0.0, 31.0, 40.0, 1.0, 41.0],
+        }
+    )
+
+    expected = _rog_map(radius_of_gyration(df, sort_strategy="sort"))
+    actual = _rog_map(radius_of_gyration(df, sort_strategy="indexed"))
+
+    assert actual.keys() == expected.keys()
+    for uid in expected:
+        np.testing.assert_allclose(actual[uid], expected[uid], rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_presorted_returns_input_group_order():
+    """Presorted trusts contiguous input groups instead of sorting users."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    df = _grouped_strategy_df()
+    result = radius_of_gyration(df, sort_strategy="presorted")
+
+    assert result["uid"].tolist() == ["b", "a", "c"]
+    expected = _rog_map(radius_of_gyration(df, sort_strategy="sort"))
+    actual = _rog_map(result)
+    for uid in expected:
+        np.testing.assert_allclose(actual[uid], expected[uid], rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_invalid_sort_strategy_raises():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    with pytest.raises(ValueError, match="sort_strategy"):
+        radius_of_gyration(_grouped_strategy_df(), sort_strategy="memory")
+
+
 def test_radius_of_gyration_numpy_helper_matches_batch_helper():
     """Zero-copy numpy helper must match the compatibility batch helper."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -265,6 +362,46 @@ def test_radius_of_gyration_arrow_helper_matches_numpy_helper():
     np.testing.assert_allclose(result_arrow, result_numpy, rtol=0.0, atol=1e-12)
 
 
+def test_radius_of_gyration_indexed_numpy_helper_matches_contiguous_helper():
+    """Indexed helper must match contiguous helper when indexes encode the groups."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_indexed_numpy, radius_of_gyration_numpy
+
+    lats = np.array([10.0, 0.0, 11.0, 20.0, 1.0, 21.0], dtype=np.float64)
+    lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
+    indices = [1, 4, 0, 2, 3, 5]
+    indexed_ranges = [(0, 2), (2, 4), (4, 6)]
+
+    result = radius_of_gyration_indexed_numpy(lats, lngs, indices, indexed_ranges)
+    expected_lats = np.array([0.0, 1.0, 10.0, 11.0, 20.0, 21.0], dtype=np.float64)
+    expected_lngs = np.array([0.0, 1.0, 30.0, 31.0, 40.0, 41.0], dtype=np.float64)
+    expected = radius_of_gyration_numpy(expected_lats, expected_lngs, indexed_ranges)
+
+    np.testing.assert_allclose(result, expected, rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_indexed_arrow_helper_matches_numpy_helper():
+    """Arrow indexed helper must match the NumPy indexed helper."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import radius_of_gyration_indexed_arrow, radius_of_gyration_indexed_numpy
+
+    lats = np.array([10.0, 0.0, 11.0, 20.0, 1.0, 21.0], dtype=np.float64)
+    lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
+    indices = [1, 4, 0, 2, 3, 5]
+    ranges = [(0, 2), (2, 4), (4, 6)]
+
+    result_arrow = radius_of_gyration_indexed_arrow(
+        pa.array(lats, type=pa.float64()),
+        pa.array(lngs, type=pa.float64()),
+        indices,
+        ranges,
+    )
+    result_numpy = radius_of_gyration_indexed_numpy(lats, lngs, indices, ranges)
+
+    np.testing.assert_allclose(result_arrow, result_numpy, rtol=0.0, atol=1e-12)
+
+
 def test_radius_of_gyration_numpy_non_contiguous_raises():
     """Non-contiguous numpy arrays must raise before copying."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -287,6 +424,40 @@ def test_radius_of_gyration_numpy_mismatched_lengths_raise():
 
     with pytest.raises(ValueError, match="same length"):
         radius_of_gyration_numpy(lats, lngs, [(0, 1)])
+
+
+def test_radius_of_gyration_indexed_numpy_mismatched_lengths_raise():
+    """Indexed helper validates latitude/longitude lengths."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_indexed_numpy
+
+    lats = np.array([0.0, 1.0], dtype=np.float64)
+    lngs = np.array([0.0], dtype=np.float64)
+
+    with pytest.raises(ValueError, match="same length"):
+        radius_of_gyration_indexed_numpy(lats, lngs, [0], [(0, 1)])
+
+
+def test_radius_of_gyration_indexed_numpy_range_bounds_raise():
+    """Indexed helper validates that ranges address the index array."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_indexed_numpy
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+
+    with pytest.raises(ValueError, match="index array bounds"):
+        radius_of_gyration_indexed_numpy(arr, arr, [0], [(0, 2)])
+
+
+def test_radius_of_gyration_indexed_numpy_index_bounds_raise():
+    """Indexed helper validates that each index addresses coordinates."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_indexed_numpy
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+
+    with pytest.raises(ValueError, match="coordinate array bounds"):
+        radius_of_gyration_indexed_numpy(arr, arr, [0, 2], [(0, 2)])
 
 
 def test_radius_of_gyration_arrow_nulls_raise():

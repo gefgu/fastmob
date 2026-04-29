@@ -26,6 +26,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(radius_of_gyration::radius_of_gyration_batch_km, m)?)?;
     m.add_function(wrap_pyfunction!(radius_of_gyration::radius_of_gyration_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(radius_of_gyration::radius_of_gyration_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(radius_of_gyration::radius_of_gyration_indexed_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(radius_of_gyration::radius_of_gyration_indexed_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(maximum_distance::maximum_distance_batch_km, m)?)?;
     m.add_function(wrap_pyfunction!(total_distance::total_distance_batch_km, m)?)?;
     m.add_function(wrap_pyfunction!(k_radius_of_gyration::k_radius_of_gyration_km, m)?)?;

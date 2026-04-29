@@ -179,6 +179,13 @@ def _skmob2_workloads() -> dict[str, Workload]:
             "skmob2.measures.spatial.radius_of_gyration.radius_of_gyration",
             "skmob2 radius of gyration",
         ),
+        "radius_of_gyration_indexed": _make_workload(
+            "radius_of_gyration_indexed",
+            "trajectory",
+            "skmob2.measures.spatial.radius_of_gyration.radius_of_gyration",
+            "skmob2 radius of gyration using sort_strategy='indexed'",
+            sort_strategy="indexed",
+        ),
         "k_radius_of_gyration": _make_workload(
             "k_radius_of_gyration",
             "trajectory",

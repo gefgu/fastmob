@@ -42,6 +42,7 @@ def test_workload_registry_contains_expected_public_workloads():
     registry = workload_registry()
     expected = {
         "radius_of_gyration",
+        "radius_of_gyration_indexed",
         "jump_lengths",
         "stay_locations",
         "activity_transition_matrix",

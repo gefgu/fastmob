@@ -159,8 +159,9 @@ def _prepare_trajectory(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sort: bool = True,
 ) -> tuple[nw.DataFrame, str, str, str, str | None]:
-    """Wrap, detect columns, sort, and cast a raw trajectory into a clean DataFrame.
+    """Wrap, detect columns, optionally sort, and cast a raw trajectory into a clean DataFrame.
 
     This is the standard preprocessing pipeline shared by all trajectory-based
     measures (jump lengths, radius of gyration, etc.).  It:
@@ -168,8 +169,8 @@ def _prepare_trajectory(
     1. Wraps the input in Narwhals (accepting any eager backend).
     2. Auto-detects column names (with optional overrides).
     3. Drops nulls in the required coordinate/datetime columns.
-    4. Sorts by ``[uid, datetime]`` (with a stable row-order tiebreaker) to
-       ensure chronological order within each user.
+    4. Optionally sorts by ``[uid, datetime]`` (with a stable row-order
+       tiebreaker) to ensure chronological order within each user.
     5. Casts lat/lng to ``Float64``.
 
     Parameters
@@ -178,6 +179,9 @@ def _prepare_trajectory(
         Raw trajectory dataframe (any Narwhals-compatible backend).
     datetime_col, lat_col, lng_col, uid_col:
         Optional explicit column overrides; auto-detected when None.
+    sort:
+        Whether to sort by user and datetime. When False, rows keep their
+        input order after null rows are dropped.
 
     Returns
     -------
@@ -211,10 +215,13 @@ def _prepare_trajectory(
         uid_col=uid_col,
     )
 
-    sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
+    df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
+    if sort:
+        sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
+        df = df.sort(*sort_cols)
+
     df = (
-        nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
-        .sort(*sort_cols)
+        df
         .with_columns(
             nw.col(lat_col).cast(nw.Float64),
             nw.col(lng_col).cast(nw.Float64),

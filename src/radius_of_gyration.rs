@@ -62,6 +62,39 @@ fn rog_for_parallel_slices(latitudes: &[f64], longitudes: &[f64], start: usize, 
     (sum_sq / n as f64).sqrt()
 }
 
+fn rog_for_indexed_slice(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    indices: &[usize],
+    start: usize,
+    end: usize,
+) -> f64 {
+    let n = end - start;
+    if n == 0 {
+        return 0.0;
+    }
+
+    let (lat_sum, lng_sum) = indices[start..end]
+        .iter()
+        .fold((0.0f64, 0.0f64), |(ls, ns), &idx| {
+            (ls + latitudes[idx], ns + longitudes[idx])
+        });
+    let cm_lat = lat_sum / n as f64;
+    let cm_lng = lng_sum / n as f64;
+    let cm = Point::new(cm_lng, cm_lat);
+
+    let sum_sq: f64 = indices[start..end]
+        .iter()
+        .map(|&idx| {
+            let p = Point::new(longitudes[idx], latitudes[idx]);
+            let d = Haversine.distance(p, cm) / 1000.0;
+            d * d
+        })
+        .sum();
+
+    (sum_sq / n as f64).sqrt()
+}
+
 fn validate_inputs(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -90,6 +123,44 @@ fn validate_inputs(
     Ok(())
 }
 
+fn validate_indexed_inputs(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    indices: &[usize],
+    ranges: &[(usize, usize)],
+) -> PyResult<()> {
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    let n_indices = indices.len();
+    for &(start, end) in ranges {
+        if start > end {
+            return Err(PyValueError::new_err(
+                "range start must be less than or equal to range end",
+            ));
+        }
+        if end > n_indices {
+            return Err(PyValueError::new_err(
+                "range end must be within index array bounds",
+            ));
+        }
+    }
+
+    let n_coords = latitudes.len();
+    for &idx in indices {
+        if idx >= n_coords {
+            return Err(PyValueError::new_err(
+                "index must be within coordinate array bounds",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn radius_of_gyration_batch_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -100,6 +171,22 @@ fn radius_of_gyration_batch_impl(
     let results: Vec<f64> = ranges
         .par_iter()
         .map(|&(start, end)| rog_for_parallel_slices(latitudes, longitudes, start, end))
+        .collect();
+
+    Ok(results)
+}
+
+fn radius_of_gyration_indexed_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    indices: &[usize],
+    ranges: &[(usize, usize)],
+) -> PyResult<Vec<f64>> {
+    validate_indexed_inputs(latitudes, longitudes, indices, ranges)?;
+
+    let results: Vec<f64> = ranges
+        .par_iter()
+        .map(|&(start, end)| rog_for_indexed_slice(latitudes, longitudes, indices, start, end))
         .collect();
 
     Ok(results)
@@ -121,6 +208,21 @@ pub(crate) fn radius_of_gyration_numpy(
     ranges: Vec<(usize, usize)>,
 ) -> PyResult<Vec<f64>> {
     radius_of_gyration_batch_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)
+}
+
+#[pyfunction]
+pub(crate) fn radius_of_gyration_indexed_numpy(
+    latitudes: PyReadonlyArray1<f64>,
+    longitudes: PyReadonlyArray1<f64>,
+    indices: Vec<usize>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    radius_of_gyration_indexed_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        &indices,
+        &ranges,
+    )
 }
 
 fn as_f64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Float64Type>> {
@@ -157,4 +259,24 @@ pub(crate) fn radius_of_gyration_arrow(
     let lng_slice = &longitudes.values()[lng_start..lng_end];
 
     radius_of_gyration_batch_impl(lat_slice, lng_slice, &ranges)
+}
+
+#[pyfunction]
+pub(crate) fn radius_of_gyration_indexed_arrow(
+    latitudes: PyArray,
+    longitudes: PyArray,
+    indices: Vec<usize>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    let latitudes = as_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_f64_array(longitudes, "longitudes")?;
+
+    let lat_start = latitudes.offset();
+    let lng_start = longitudes.offset();
+    let lat_end = lat_start + latitudes.len();
+    let lng_end = lng_start + longitudes.len();
+    let lat_slice = &latitudes.values()[lat_start..lat_end];
+    let lng_slice = &longitudes.values()[lng_start..lng_end];
+
+    radius_of_gyration_indexed_impl(lat_slice, lng_slice, &indices, &ranges)
 }
