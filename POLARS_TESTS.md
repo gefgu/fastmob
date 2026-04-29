@@ -127,7 +127,7 @@ df_polars = pl.DataFrame({
 })
 
 # Call jump_lengths() directly - it works with Polars!
-result = jump_lengths(df_polars, show_progress=False, merge=False)
+result = jump_lengths(df_polars, merge=False)
 
 # Result is also a Polars DataFrame
 print(type(result))  # <class 'polars.dataframe.frame.DataFrame'>

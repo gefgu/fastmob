@@ -37,7 +37,7 @@ def test_radius_of_gyration_skmob2_pandas(benchmark, bench_slice_pandas):
     )
     from skmob2.measures.radius_of_gyration import radius_of_gyration as skmob2_rog
 
-    benchmark(skmob2_rog, bench_slice_pandas, show_progress=False)
+    benchmark(skmob2_rog, bench_slice_pandas)
 
 
 def test_radius_of_gyration_skmob(benchmark, bench_slice_skmob):
@@ -58,7 +58,7 @@ def test_radius_of_gyration_skmob2_polars(benchmark, bench_slice_polars):
     )
     from skmob2.measures.radius_of_gyration import radius_of_gyration as skmob2_rog
 
-    benchmark(skmob2_rog, bench_slice_polars, show_progress=False)
+    benchmark(skmob2_rog, bench_slice_polars)
 
 
 @pytest.mark.movingpandas

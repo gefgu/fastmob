@@ -53,7 +53,7 @@ def test_jump_lengths_known_values(synthetic_tdf):
     )
     from skmob2.measures.spatial.jump_lengths import jump_lengths
 
-    result = jump_lengths(synthetic_tdf, show_progress=False, merge=False)
+    result = jump_lengths(synthetic_tdf, merge=False)
     normalized = _normalize_result(result)
 
     assert set(normalized.keys()) == set(EXPECTED_JUMP_LENGTHS.keys()), (
@@ -78,7 +78,7 @@ def test_jump_lengths_merge_returns_flat_list(synthetic_tdf):
     )
     from skmob2.measures.spatial.jump_lengths import jump_lengths
 
-    result = jump_lengths(synthetic_tdf, show_progress=False, merge=True)
+    result = jump_lengths(synthetic_tdf, merge=True)
     assert isinstance(result, list), "merge=True should return a plain list"
     # 3 users × 4 jumps each = 12
     assert len(result) == 12
@@ -100,7 +100,7 @@ def test_jump_lengths_no_uid_column():
             "lng": [0.0, 1.0, 2.0, 3.0],
         }
     )
-    result = jump_lengths(df, show_progress=False, merge=False)
+    result = jump_lengths(df, merge=False)
     assert "jump_lengths" in result.columns
     assert len(result) == 1  # single row, no uid column
 
@@ -113,7 +113,7 @@ def test_jump_lengths_polars_known_values(synthetic_tdf_polars):
     )
     from skmob2.measures.spatial.jump_lengths import jump_lengths
 
-    result = jump_lengths(synthetic_tdf_polars, show_progress=False, merge=False)
+    result = jump_lengths(synthetic_tdf_polars, merge=False)
     normalized = _normalize_result(result)
 
     assert set(normalized.keys()) == set(EXPECTED_JUMP_LENGTHS.keys()), (
@@ -149,7 +149,7 @@ def test_jump_lengths_polars_no_uid_column():
         }
     )
     df_polars = polars.from_pandas(df_pandas)
-    result = jump_lengths(df_polars, show_progress=False, merge=False)
+    result = jump_lengths(df_polars, merge=False)
     assert "jump_lengths" in result.columns
     assert len(result) == 1  # single row, no uid column
 
@@ -174,8 +174,8 @@ def test_jump_lengths_polars_vs_pandas_skmob2():
     )
     df_polars = polars.from_pandas(df_pandas)
 
-    result_pandas = skmob2_jl(df_pandas, show_progress=False, merge=False)
-    result_polars = skmob2_jl(df_polars, show_progress=False, merge=False)
+    result_pandas = skmob2_jl(df_pandas, merge=False)
+    result_polars = skmob2_jl(df_polars, merge=False)
     result_polars_pd = result_polars.to_pandas()
 
     pandas_norm = _normalize_result(result_pandas)
@@ -201,7 +201,7 @@ def test_jump_lengths_matches_skmob(brightkite_skmob):
 
     skmob_result = skmob_jl(brightkite_skmob, show_progress=False, merge=False)
     skmob2_input = pd.DataFrame(brightkite_skmob).copy()
-    skmob2_result = skmob2_jl(skmob2_input, show_progress=False, merge=False)
+    skmob2_result = skmob2_jl(skmob2_input, merge=False)
 
     baseline = _normalize_result(skmob_result)
     candidate = _normalize_result(skmob2_result)

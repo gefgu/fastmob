@@ -11,7 +11,6 @@ from .._common import _prepare_trajectory
 def k_radius_of_gyration(
     traj: Any,
     k: int = 2,
-    show_progress: bool = True,
     *,
     datetime_col: str | None = None,
     lat_col: str | None = None,
@@ -40,8 +39,6 @@ def k_radius_of_gyration(
         as a single individual.
     k:
         Number of most-visited locations to consider.  Defaults to 2.
-    show_progress:
-        Accepted for API compatibility with skmob; currently unused.
     datetime_col:
         Explicit datetime column name.  Auto-detected when None.
     lat_col:

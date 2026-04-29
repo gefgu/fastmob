@@ -28,7 +28,6 @@ def _route_and_call(
 
 def radius_of_gyration(
     traj: Any,
-    show_progress: bool = True,
     *,
     datetime_col: str | None = None,
     lat_col: str | None = None,
@@ -51,8 +50,6 @@ def radius_of_gyration(
         polars, …).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    show_progress:
-        Accepted for API compatibility with skmob; currently unused.
     datetime_col:
         Explicit datetime column name.  Auto-detected when None.
     lat_col:

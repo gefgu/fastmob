@@ -13,7 +13,7 @@ def test_jump_lengths_skmob2_pandas(benchmark, bench_slice_pandas):
     )
     from skmob2.measures.jump_lengths import jump_lengths as skmob2_jl
 
-    benchmark(skmob2_jl, bench_slice_pandas, show_progress=False, merge=False)
+    benchmark(skmob2_jl, bench_slice_pandas, merge=False)
 
 
 def test_jump_lengths_skmob(benchmark, bench_slice_skmob):
@@ -34,7 +34,7 @@ def test_jump_lengths_skmob2_polars(benchmark, bench_slice_polars):
     )
     from skmob2.measures.jump_lengths import jump_lengths as skmob2_jl
 
-    benchmark(skmob2_jl, bench_slice_polars, show_progress=False, merge=False)
+    benchmark(skmob2_jl, bench_slice_polars, merge=False)
 
 
 @pytest.mark.movingpandas

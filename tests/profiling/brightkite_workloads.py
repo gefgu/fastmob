@@ -171,7 +171,6 @@ def _skmob2_workloads() -> dict[str, Workload]:
             "trajectory",
             "skmob2.measures.spatial.jump_lengths.jump_lengths",
             "skmob2 jump lengths",
-            show_progress=False,
             merge=False,
         ),
         "radius_of_gyration": _make_workload(
@@ -179,14 +178,12 @@ def _skmob2_workloads() -> dict[str, Workload]:
             "trajectory",
             "skmob2.measures.spatial.radius_of_gyration.radius_of_gyration",
             "skmob2 radius of gyration",
-            show_progress=False,
         ),
         "k_radius_of_gyration": _make_workload(
             "k_radius_of_gyration",
             "trajectory",
             "skmob2.measures.spatial.k_radius_of_gyration.k_radius_of_gyration",
             "skmob2 k radius of gyration",
-            show_progress=False,
         ),
         "number_of_visits": _make_workload(
             "number_of_visits",

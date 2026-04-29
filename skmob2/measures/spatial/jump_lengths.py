@@ -10,7 +10,6 @@ from .._common import _prepare_trajectory
 
 def jump_lengths(
     traj: Any,
-    show_progress: bool = True,
     merge: bool = False,
     *,
     datetime_col: str | None = None,
@@ -30,8 +29,6 @@ def jump_lengths(
         polars, …).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    show_progress:
-        Accepted for API compatibility with skmob; currently unused.
     merge:
         When True, return a flat ``list[float]`` of all jump lengths across
         all users.  When False (default), return a per-user dataframe.
