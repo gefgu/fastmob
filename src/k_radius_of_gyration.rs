@@ -27,9 +27,11 @@ pub(crate) fn k_radius_of_gyration_km(
         return Ok(0.0);
     }
 
-    let (lat_sum, lng_sum) = top_k.iter().fold((0.0f64, 0.0f64), |(ls, ns), &((lat, lng), w)| {
-        (ls + lat * w as f64, ns + lng * w as f64)
-    });
+    let (lat_sum, lng_sum) = top_k
+        .iter()
+        .fold((0.0f64, 0.0f64), |(ls, ns), &((lat, lng), w)| {
+            (ls + lat * w as f64, ns + lng * w as f64)
+        });
     let cm_lat = lat_sum / total_weight;
     let cm_lng = lng_sum / total_weight;
     let cm = Point::new(cm_lng, cm_lat);

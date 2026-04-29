@@ -180,5 +180,11 @@ pub(crate) fn detect_stay_locations_batch(
         }
     }
 
-    Ok((out_lats, out_lngs, entry_times, leaving_times, user_range_idx))
+    Ok((
+        out_lats,
+        out_lngs,
+        entry_times,
+        leaving_times,
+        user_range_idx,
+    ))
 }

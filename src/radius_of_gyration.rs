@@ -1,4 +1,4 @@
-use arrow_array::{Array, Float64Array, PrimitiveArray, types::Float64Type};
+use arrow_array::{types::Float64Type, Array, Float64Array, PrimitiveArray};
 use geo::{Distance, Haversine, Point};
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;

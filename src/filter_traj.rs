@@ -107,9 +107,9 @@ fn filter_user_slice(
         let imin = inside[0];
 
         // Compute sum of Dr and Dt for the loop portion [0..imin]
-        let (total_dr, total_dt) = dr_dt[..imin].iter().fold((0.0, 0.0), |acc, &(d, t)| {
-            (acc.0 + d, acc.1 + t)
-        });
+        let (total_dr, total_dt) = dr_dt[..imin]
+            .iter()
+            .fold((0.0, 0.0), |acc, &(d, t)| (acc.0 + d, acc.1 + t));
 
         if total_dt > 0.0 && total_dr / total_dt * 3600.0 > speed_kmh {
             // Delete the point at kept_idx[ci + 1 + imax]
