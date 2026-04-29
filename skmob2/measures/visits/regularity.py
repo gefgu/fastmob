@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pandas as pd
 import narwhals as nw
 
 from .._common import (
-    _pick_existing_column,
-    USER_ID_CANDIDATES,
     LOCATION_CANDIDATES,
     LOCATION_TYPE_CANDIDATES,
+    USER_ID_CANDIDATES,
+    _pick_existing_column,
 )
 
 
@@ -20,7 +19,7 @@ def regularity(
     user_id_col: str | None = None,
     location_id_col: str | None = None,
     location_type_col: str | None = None,
-) -> pd.DataFrame:
+) -> Any:
     """Compute regularity per user.
 
     Regularity measures how repetitively a user visits the same places.
@@ -47,8 +46,9 @@ def regularity(
 
     Returns
     -------
-    pd.DataFrame
+    DataFrame
         One row per user with columns ``[user_id_col, "regularity"]``.
+        The returned backend matches the input backend.
     """
     nw_df = nw.from_native(visits, eager_only=True)
 
@@ -59,31 +59,40 @@ def regularity(
     if location_type_col is None:
         location_type_col = _pick_existing_column(nw_df.columns, LOCATION_TYPE_CANDIDATES)
 
-    # Convert to pandas for groupby logic
-    df = nw_df.to_native()
-    if not isinstance(df, pd.DataFrame):
-        df = pd.DataFrame(df)
-
-    def _compute_single_regularity(user_df: pd.DataFrame) -> float:
-        total = len(user_df)
-        if total == 0:
-            return 0.0
-        if location_id_col and location_type_col:
-            unique = user_df[[location_id_col, location_type_col]].drop_duplicates().shape[0]
-        elif location_id_col:
-            unique = user_df[location_id_col].nunique()
-        else:
-            unique = 0
-        return 1.0 - unique / total
-
-    results = []
-    if user_id_col:
-        for uid, group in df.groupby(user_id_col, sort=False):
-            reg = _compute_single_regularity(group)
-            results.append({user_id_col: uid, "regularity": reg})
-        out_df = pd.DataFrame(results)
+    if location_id_col and location_type_col:
+        key_cols = [location_id_col, location_type_col]
+    elif location_id_col:
+        key_cols = [location_id_col]
     else:
-        reg = _compute_single_regularity(df)
-        out_df = pd.DataFrame([{"regularity": reg}])
+        key_cols = []
 
-    return out_df
+    if len(nw_df) == 0:
+        columns = [user_id_col, "regularity"] if user_id_col else ["regularity"]
+        return nw.from_dict({col: [] for col in columns}, backend=nw_df.implementation).to_native()
+
+    if user_id_col:
+        totals = nw_df.group_by(user_id_col).agg(nw.len().alias("__total__"))
+        if key_cols:
+            uniques = (
+                nw_df.select([user_id_col, *key_cols])
+                .unique()
+                .group_by(user_id_col)
+                .agg(nw.len().alias("__unique__"))
+            )
+            result = totals.join(uniques, on=user_id_col, how="left")
+        else:
+            result = totals.with_columns(nw.lit(0).alias("__unique__"))
+
+        result = (
+            result.with_columns((nw.lit(1.0) - nw.col("__unique__") / nw.col("__total__")).alias("regularity"))
+            .select([user_id_col, "regularity"])
+            .sort(user_id_col)
+        )
+        return result.to_native()
+
+    total = len(nw_df)
+    unique = len(nw_df.select(key_cols).unique()) if key_cols else 0
+    return nw.from_dict(
+        {"regularity": [1.0 - unique / total if total else 0.0]},
+        backend=nw_df.implementation,
+    ).to_native()

@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import k_radius_of_gyration_km
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 
 
 def k_radius_of_gyration(
@@ -74,32 +74,18 @@ def k_radius_of_gyration(
         uid_col=uid_col,
     )
 
-    if uid_col is None:
-        lats = df.get_column(lat_col).to_list()
-        lngs = df.get_column(lng_col).to_list()
-        krg = _k_rog_for_sequence(lats, lngs, k)
-        return nw.from_dict({"k_radius_of_gyration": [krg]}, backend=df.implementation).to_native()
-
-    # Build per-user index ranges from the already-sorted dataframe.
-    uid_series = df.get_column(uid_col).to_list()
     lats_full = df.get_column(lat_col).to_list()
     lngs_full = df.get_column(lng_col).to_list()
 
-    uid_values: list = []
-    krg_values: list = []
+    if uid_col is None:
+        krg = _k_rog_for_sequence(lats_full, lngs_full, k)
+        return nw.from_dict({"k_radius_of_gyration": [krg]}, backend=df.implementation).to_native()
 
-    i = 0
-    n = len(uid_series)
-    while i < n:
-        current_uid = uid_series[i]
-        start = i
-        while i < n and uid_series[i] == current_uid:
-            i += 1
-        lats = lats_full[start:i]
-        lngs = lngs_full[start:i]
-        krg = _k_rog_for_sequence(lats, lngs, k)
-        uid_values.append(current_uid)
-        krg_values.append(krg)
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    krg_values = [
+        _k_rog_for_sequence(lats_full[start:end], lngs_full[start:end], k)
+        for start, end in ranges
+    ]
 
     result = nw.from_dict(
         {uid_col: uid_values, "k_radius_of_gyration": krg_values},

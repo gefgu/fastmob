@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Literal, get_args
 
-import numpy as np
-import pandas as pd
-import narwhals as nw
 import math
+import numpy as np
+import narwhals as nw
 
 from .._common import (
     _pick_existing_column,
@@ -74,26 +73,40 @@ def _apply_cold_start_strategy(
         # Cold-start "known" places = MVP (highest R_u cluster).
         from skmob2._core import cluster_kmeans as _cluster_kmeans
 
-        relevance_native = relevance_df.to_native()
-        if not isinstance(relevance_native, pd.DataFrame):
-            relevance_native = pd.DataFrame({c: relevance_native[c].to_list() for c in relevance_native.columns})
-
         known_rows = []
-        for uid, group in relevance_native.groupby(user_id_col, sort=False):
-            r_values = group["R_u"].tolist()
+        relevance_df = relevance_df.sort(user_id_col)
+        uid_values = relevance_df.get_column(user_id_col).to_list()
+        loc_values = relevance_df.get_column("location_key").to_list()
+        r_all = relevance_df.get_column("R_u").to_list()
+
+        start = 0
+        while start < len(uid_values):
+            end = start + 1
+            while end < len(uid_values) and uid_values[end] == uid_values[start]:
+                end += 1
+            uid = uid_values[start]
+            r_values = r_all[start:end]
+            loc_keys = loc_values[start:end]
             n = len(r_values)
             k = min(3, n)  # paper uses 3 (MVP/OVP/EVP); fall back gracefully
             labels = _cluster_kmeans(r_values, n_clusters=k)
             cluster_means = {c: np.mean([v for v, label in zip(r_values, labels) if label == c]) for c in set(labels)}
             # MVP = cluster with highest mean R_u
             mvp_cluster = max(cluster_means, key=cluster_means.get)
-            for loc_key in group.loc[np.array(labels) == mvp_cluster, "location_key"]:
-                known_rows.append({user_id_col: uid, "location_key": loc_key})
+            for loc_key, label in zip(loc_keys, labels):
+                if label == mvp_cluster:
+                    known_rows.append({user_id_col: uid, "location_key": loc_key})
+            start = end
 
         if known_rows:
-            known_pd = pd.DataFrame(known_rows)
-            known_pd["_is_cold_start"] = True
-            known_nw = nw.from_native(known_pd, eager_only=True)
+            known_nw = nw.from_dict(
+                {
+                    user_id_col: [row[user_id_col] for row in known_rows],
+                    "location_key": [row["location_key"] for row in known_rows],
+                    "_is_cold_start": [True] * len(known_rows),
+                },
+                backend=nw_df.implementation,
+            )
             nw_df = nw_df.join(
                 known_nw.select(user_id_col, "location_key", "_is_cold_start"),
                 on=[user_id_col, "location_key"],
@@ -143,7 +156,7 @@ def intermittance_and_degree_of_return(
     datetime_col: str | None = None,
     cold_start_strategy: COLD_START_STRATEGIES = "frequency",
     known_suffixes: tuple[str, ...] = ("_HOME", "_WORK"),
-) -> pd.DataFrame:
+) -> Any:
     """Compute intermittancy and degree of return per user using vectorized operations.
 
     For each user, partitions the visit sequence into alternating blocks of
@@ -177,10 +190,10 @@ def intermittance_and_degree_of_return(
 
     Returns
     -------
-    pd.DataFrame
+    DataFrame
         One row per user with columns
         ``[user_id_col, "intermittency", "degree_of_return", "mean_return",
-        "mean_exploration"]``.
+        "mean_exploration"]``. The returned backend matches the input backend.
     """
     nw_df = nw.from_native(visits, eager_only=True)
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 from ..._core import square_displacement_km2
 
 
@@ -71,38 +71,30 @@ def mean_square_displacement(
         uid_col=uid_col,
     )
 
-    # _prepare_trajectory already sorts by [uid, datetime], so within each user
-    # rows are in ascending time order.
-    records = df.to_native()
+    if len(df) == 0:
+        return 0.0
 
-    # Identify the uid groups. When there is no uid column _prepare_trajectory
-    # returns uid_col=None; we treat the whole frame as one group.
-    if uid_col is None:
-        groups = {"__all__": records}
-    else:
-        groups = {uid: grp for uid, grp in records.groupby(uid_col, sort=False)}
-
+    _uid_values, ranges = _build_user_ranges(df, uid_col)
+    datetimes = df.get_column(datetime_col).to_list()
+    lats = df.get_column(lat_col).to_list()
+    lngs = df.get_column(lng_col).to_list()
     sq_displacements: list[float] = []
-    for uid, grp in groups.items():
-        # Ensure rows are time-sorted (groupby in pandas does not guarantee order).
-        grp = grp.sort_values(datetime_col)
-
-        r0 = grp.iloc[0]
-        t_limit = r0[datetime_col] + delta_t
-
-        # Last point within the time window.
-        window = grp[grp[datetime_col] <= t_limit]
-        if window.empty:
-            # No rows satisfy the constraint; use r0 as rt (displacement = 0).
-            rt = r0
-        else:
-            rt = window.iloc[-1]
+    for start, end in ranges:
+        if start == end:
+            continue
+        t_limit = datetimes[start] + delta_t
+        rt_idx = start
+        for idx in range(start, end):
+            if datetimes[idx] <= t_limit:
+                rt_idx = idx
+            else:
+                break
 
         d2 = square_displacement_km2(
-            float(r0[lat_col]),
-            float(r0[lng_col]),
-            float(rt[lat_col]),
-            float(rt[lng_col]),
+            float(lats[start]),
+            float(lngs[start]),
+            float(lats[rt_idx]),
+            float(lngs[rt_idx]),
         )
         sq_displacements.append(d2)
 

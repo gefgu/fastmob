@@ -74,6 +74,14 @@ def test_regularity_result_shape():
     assert "regularity" in result.columns
 
 
+def test_regularity_polars_backend_matches_input():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    result = regularity(pl.from_pandas(_uniform_visits()))
+    assert isinstance(result, pl.DataFrame)
+    assert set(result.columns) == {"agent_id", "regularity"}
+    assert result.height == 3
+
+
 def test_regularity_values_in_range():
     """Regularity must be in [0, 1] for any input."""
     df = _uniform_visits()

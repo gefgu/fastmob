@@ -28,6 +28,14 @@ def test_transition_matrix_shape_and_labels():
     assert set(result.columns) == {"HOME", "WORK"}
 
 
+def test_transition_matrix_polars_backend_matches_input():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    result = activity_transition_matrix(pl.from_pandas(_simple_visits()))
+    assert isinstance(result, pl.DataFrame)
+    assert "activity" in result.columns
+    assert set(result.get_column("activity").to_list()) == {"HOME", "WORK"}
+
+
 def test_transition_matrix_no_self_loops():
     """With alternating sequences there are only HOME->WORK and WORK->HOME."""
     df = _simple_visits()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import narwhals as nw
 
 from .._common import _prepare_trajectory
 
@@ -22,10 +23,9 @@ def visits_per_time_unit(
     the number of records (visits) in each bin.  The result covers only bins
     that contain at least one record.
 
-    Narwhals does not expose a time-frequency groupby operation, so this
-    function converts to pandas internally and returns a pandas DataFrame.
     The ``freq`` parameter follows pandas offset alias syntax (e.g. ``"1h"``,
-    ``"1D"``, ``"15min"``).
+    ``"1D"``, ``"15min"``).  Results are returned using the same dataframe
+    backend as the input.
 
     Parameters
     ----------
@@ -48,7 +48,7 @@ def visits_per_time_unit(
 
     Returns
     -------
-    pandas.DataFrame
+    DataFrame
         One row per non-empty time bin with columns
         ``[datetime_col, "n_visits"]``, sorted chronologically.
 
@@ -56,14 +56,10 @@ def visits_per_time_unit(
         skmob2.measures.flows.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)
 
-    Side effects
-        Converts the input to a pandas DataFrame internally regardless of the
-        original backend, because Narwhals does not provide time-resampling.
-        The return type is always a pandas DataFrame.
     """
     if time_unit is not None:
         freq = time_unit
-    import pandas as pd  # noqa: PLC0415 — import inside function because pandas conversion is intentional
+    import pandas as pd  # noqa: PLC0415 - pandas offset aliases are the public compatibility contract
 
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,
@@ -73,14 +69,23 @@ def visits_per_time_unit(
         uid_col=uid_col,
     )
 
-    # Convert to pandas for resample support.
-    pandas_df = pd.DataFrame(df.to_native())
+    native = df.select([datetime_col]).to_native()
+    if isinstance(native, pd.DataFrame):
+        pandas_df = native.copy()
+    else:
+        pandas_df = pd.DataFrame({datetime_col: df.get_column(datetime_col).to_list()})
 
-    # Ensure the datetime column is a proper pandas datetime type.
     pandas_df[datetime_col] = pd.to_datetime(pandas_df[datetime_col])
-
     counts = pandas_df.set_index(datetime_col).resample(freq).size().rename("n_visits").reset_index()
-    # Keep only bins that have at least one visit.
     counts = counts[counts["n_visits"] > 0].reset_index(drop=True)
 
-    return counts
+    if isinstance(df.to_native(), pd.DataFrame):
+        return counts
+
+    return nw.from_dict(
+        {
+            datetime_col: counts[datetime_col].tolist(),
+            "n_visits": counts["n_visits"].astype("int64").tolist(),
+        },
+        backend=df.implementation,
+    ).to_native()

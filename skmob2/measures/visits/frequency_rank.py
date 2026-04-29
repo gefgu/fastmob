@@ -4,7 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 
 
 def frequency_rank(
@@ -58,16 +58,12 @@ def frequency_rank(
         uid_col=uid_col,
     )
 
-    def _rank_for_user(user_df: nw.DataFrame) -> tuple[list, list, list[int]]:
+    def _rank_for_values(lat_list: list, lng_list: list) -> tuple[list, list, list[int]]:
         """Compute frequency ranks for a single user's trajectory rows.
 
         Returns three parallel lists: lats, lngs, ranks — one entry per
         distinct location, ordered by most-frequent-first.
         """
-        lat_list = user_df.get_column(lat_col).to_list()
-        lng_list = user_df.get_column(lng_col).to_list()
-
-        # Count visits per (lat, lng) location, preserving insertion order.
         counts: dict[tuple, int] = {}
         for lat, lng in zip(lat_list, lng_list):
             key = (lat, lng)
@@ -82,7 +78,7 @@ def frequency_rank(
         return lats, lngs, ranks
 
     if uid_col is None:
-        lats, lngs, ranks = _rank_for_user(df)
+        lats, lngs, ranks = _rank_for_values(df.get_column(lat_col).to_list(), df.get_column(lng_col).to_list())
         return nw.from_dict(
             {lat_col: lats, lng_col: lngs, "frequency_rank": ranks},
             backend=df.implementation,
@@ -93,10 +89,11 @@ def frequency_rank(
     lngs_all: list = []
     ranks_all: list[int] = []
 
-    uid_list = df.get_column(uid_col).unique().sort().to_list()
-    for uid in uid_list:
-        user_df = df.filter(nw.col(uid_col) == uid)
-        lats, lngs, ranks = _rank_for_user(user_df)
+    lat_full = df.get_column(lat_col).to_list()
+    lng_full = df.get_column(lng_col).to_list()
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    for uid, (start, end) in zip(uid_values, ranges):
+        lats, lngs, ranks = _rank_for_values(lat_full[start:end], lng_full[start:end])
         uid_vals_all.extend([uid] * len(lats))
         lats_all.extend(lats)
         lngs_all.extend(lngs)

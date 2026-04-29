@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable
+from collections.abc import Callable
+from typing import Any, Iterable
 
 import narwhals as nw
 
@@ -78,6 +79,44 @@ def _is_polars_backed(nw_df: nw.DataFrame) -> bool:
     """Return True when a Narwhals DataFrame is backed by a Polars object."""
     native = nw_df.to_native()
     return hasattr(native, "lazy")
+
+
+def _is_pandas_backed(nw_df: nw.DataFrame) -> bool:
+    """Return True when a Narwhals DataFrame is backed by pandas."""
+    native = nw_df.to_native()
+    return hasattr(native, "iloc") and hasattr(native, "dtypes")
+
+
+def _empty_like(nw_df: nw.DataFrame, columns: list[str]) -> Any:
+    """Build an empty native DataFrame using the same backend as ``nw_df``."""
+    return nw.from_dict({col: [] for col in columns}, backend=nw_df.implementation).to_native()
+
+
+def _route_series_kernel(
+    series: nw.Series,
+    numpy_kernel: Callable,
+    arrow_kernel: Callable,
+    *args,
+    use_arrow: bool,
+) -> Any:
+    """Call an Arrow or NumPy kernel for one Narwhals series."""
+    if use_arrow:
+        return arrow_kernel(series.to_arrow(), *args)
+    return numpy_kernel(series.to_numpy(), *args)
+
+
+def _route_two_series_kernel(
+    left: nw.Series,
+    right: nw.Series,
+    numpy_kernel: Callable,
+    arrow_kernel: Callable,
+    *args,
+    use_arrow: bool,
+) -> Any:
+    """Call an Arrow or NumPy kernel for two Narwhals series."""
+    if use_arrow:
+        return arrow_kernel(left.to_arrow(), right.to_arrow(), *args)
+    return numpy_kernel(left.to_numpy(), right.to_numpy(), *args)
 
 
 def _detect_trajectory_columns(
@@ -267,3 +306,26 @@ def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, lis
     ranges = list(zip(starts, ends))
 
     return uid_values, ranges
+
+
+def _build_indexed_user_ranges(
+    df: nw.DataFrame,
+    uid_col: str,
+    *,
+    row_index_col: str = "__skmob2_indexed_row_index__",
+) -> tuple[list, list[int], list[tuple[int, int]]]:
+    """Build stable row indices and user ranges without reordering the input frame.
+
+    This is the reusable version of the radius-of-gyration indexed grouping
+    pattern.  It sorts a narrow ``uid + row_index`` projection, preserving
+    stable row-order ties, then returns indices into the original frame plus
+    contiguous ranges over that index vector.
+    """
+    n = len(df)
+    if n == 0:
+        return [], [], []
+
+    index_df = df.select([uid_col]).with_row_index(row_index_col).sort(uid_col, row_index_col)
+    uid_values, ranges = _build_user_ranges(index_df, uid_col)
+    indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
+    return uid_values, indices, ranges

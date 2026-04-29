@@ -12,7 +12,8 @@ from skmob2._core import (
     radius_of_gyration_user_indices_numpy,
 )
 
-from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
+from .._common import _build_indexed_user_ranges as _common_build_indexed_user_ranges
+from .._common import _is_polars_backed, _prepare_trajectory
 
 _ROG_ROW_INDEX_COL = "__skmob2_rog_row_index__"
 
@@ -63,14 +64,7 @@ def _build_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, li
     except ValueError:
         pass
 
-    index_df = (
-        df.select([uid_col])
-        .with_row_index(_ROG_ROW_INDEX_COL)
-        .sort(uid_col, _ROG_ROW_INDEX_COL)
-    )
-    uid_values, ranges = _build_user_ranges(index_df, uid_col)
-    indices = [int(idx) for idx in index_df.get_column(_ROG_ROW_INDEX_COL).to_list()]
-    return uid_values, indices, ranges
+    return _common_build_indexed_user_ranges(df, uid_col, row_index_col=_ROG_ROW_INDEX_COL)
 
 
 def radius_of_gyration(

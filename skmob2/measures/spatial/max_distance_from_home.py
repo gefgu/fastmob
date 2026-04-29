@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import max_distance_from_point_batch_km
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 from .home_location import home_location
 
 
@@ -96,23 +96,16 @@ def max_distance_from_home(
     for row in home_df.rows(named=True):
         home_map[row[uid_col]] = (row[lat_col], row[lng_col])
 
-    # Build per-user index ranges from the already-sorted trajectory dataframe.
-    uid_series = df.get_column(uid_col).to_list()
+    uid_values_all, ranges_all = _build_user_ranges(df, uid_col)
     uid_values: list = []
     ranges: list[tuple[int, int]] = []
     home_lats: list[float] = []
     home_lngs: list[float] = []
 
-    i = 0
-    n = len(uid_series)
-    while i < n:
-        current_uid = uid_series[i]
-        start = i
-        while i < n and uid_series[i] == current_uid:
-            i += 1
+    for current_uid, user_range in zip(uid_values_all, ranges_all):
         if current_uid in home_map:
             uid_values.append(current_uid)
-            ranges.append((start, i))
+            ranges.append(user_range)
             h_lat, h_lng = home_map[current_uid]
             home_lats.append(h_lat)
             home_lngs.append(h_lng)

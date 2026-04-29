@@ -36,6 +36,14 @@ def test_diversity_result_shape():
     assert "diversity" in result.columns
 
 
+def test_diversity_polars_backend_matches_input():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    result = diversity(pl.from_pandas(_diversity_visits()))
+    assert isinstance(result, pl.DataFrame)
+    assert set(result.columns) == {"agent_id", "diversity"}
+    assert result.height == 2
+
+
 def test_diversity_range():
     """diversity values must be in [0, 1]."""
     df = _diversity_visits()

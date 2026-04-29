@@ -27,7 +27,7 @@ def activity_transition_matrix(
     timestamp_col: str | None = None,
     day_col: str | None = None,
     day_filter: str | None = None,
-) -> pd.DataFrame:
+) -> Any:
     """Compute the activity transition matrix for a visits DataFrame.
 
     Counts how often each activity-type transition (from -> to) occurs across
@@ -55,8 +55,11 @@ def activity_transition_matrix(
 
     Returns
     -------
-    pd.DataFrame
-        Transition matrix as percentages (rows = from, columns = to).
+    DataFrame
+        Transition matrix as percentages. Pandas inputs return a pandas matrix
+        with activity labels as index/columns; other backends return a native
+        dataframe with an ``activity`` label column plus one column per target
+        activity.
 
     Raises
     ------
@@ -80,65 +83,80 @@ def activity_transition_matrix(
             f"Tried: {DAY_CANDIDATES}. Available columns: {nw_df.columns}"
         )
 
-    # Convert to pandas for the row-iterative transition-counting loop
-    df = nw_df.to_native()
-    if not isinstance(df, pd.DataFrame):
-        df = pd.DataFrame(df)
+    is_pandas_input = isinstance(nw_df.to_native(), pd.DataFrame)
 
-    # Apply day filter
     if day_filter == "weekdays":
-        df = df[df[day_col].str.lower().isin(_WEEKDAYS)].copy()
+        allowed_days = _WEEKDAYS
     elif day_filter == "weekends":
-        df = df[df[day_col].str.lower().isin(_WEEKENDS)].copy()
+        allowed_days = _WEEKENDS
+    else:
+        allowed_days = None
 
-    # Sort by [user_id, timestamp] when both are available
+    work_cols = [activity_col] if activity_col else []
+    if user_id_col:
+        work_cols.append(user_id_col)
+    if timestamp_col:
+        work_cols.append(timestamp_col)
+    if day_col and allowed_days is not None:
+        work_cols.append(day_col)
+    work_cols = list(dict.fromkeys(work_cols))
+
+    df = nw_df.select(work_cols) if work_cols else nw_df
+    if activity_col:
+        df = df.drop_nulls(subset=[activity_col])
+
+    if allowed_days is not None and day_col:
+        days = df.get_column(day_col).to_list()
+        keep = [str(day).lower() in allowed_days for day in days]
+        df = df.with_columns(nw.new_series("__skmob2_keep__", keep, backend=df.implementation))
+        df = df.filter(nw.col("__skmob2_keep__")).drop("__skmob2_keep__")
+
     sort_cols = []
     if user_id_col:
         sort_cols.append(user_id_col)
     if timestamp_col:
         sort_cols.append(timestamp_col)
     if sort_cols:
-        df = df.sort_values(sort_cols).reset_index(drop=True)
-
-    # Drop rows with null activity
-    if activity_col:
-        df = df[df[activity_col].notna()].copy()
+        df = df.sort(sort_cols)
 
     if len(df) == 0 or activity_col is None:
-        return pd.DataFrame()
+        if is_pandas_input:
+            return pd.DataFrame()
+        return nw.from_dict({"activity": []}, backend=nw_df.implementation).to_native()
 
-    # Collect sorted unique activity labels
-    activities = sorted(df[activity_col].unique())
+    activities = sorted(df.get_column(activity_col).unique().to_list())
     n_activities = len(activities)
     act_idx = {a: i for i, a in enumerate(activities)}
 
     transition_matrix = np.zeros((n_activities, n_activities))
 
-    # Count transitions per user
     if user_id_col:
-        for _uid, user_visits in df.groupby(user_id_col, sort=False):
-            _count_transitions(user_visits, activity_col, act_idx, transition_matrix)
+        uid_values = df.get_column(user_id_col).to_list()
+        act_values = df.get_column(activity_col).to_list()
+        start = 0
+        while start < len(act_values):
+            end = start + 1
+            while end < len(act_values) and uid_values[end] == uid_values[start]:
+                end += 1
+            _count_transition_values(act_values[start:end], act_idx, transition_matrix)
+            start = end
     else:
-        _count_transitions(df, activity_col, act_idx, transition_matrix)
+        _count_transition_values(df.get_column(activity_col).to_list(), act_idx, transition_matrix)
 
-    transition_df = pd.DataFrame(transition_matrix, index=activities, columns=activities)
-
-    total = transition_df.values.sum()
+    total = transition_matrix.sum()
     if total > 0:
-        transition_df = (transition_df / total) * 100.0
+        transition_matrix = (transition_matrix / total) * 100.0
 
-    return transition_df
+    if is_pandas_input:
+        return pd.DataFrame(transition_matrix, index=activities, columns=activities)
+
+    output: dict[str, list[Any]] = {"activity": activities}
+    for idx, activity in enumerate(activities):
+        output[str(activity)] = transition_matrix[:, idx].tolist()
+    return nw.from_dict(output, backend=nw_df.implementation).to_native()
 
 
-def _count_transitions(
-    user_visits: pd.DataFrame,
-    activity_col: str,
-    act_idx: dict,
-    matrix: np.ndarray,
-) -> None:
-    """Accumulate transition counts from a single user's visit sequence."""
-    acts = user_visits[activity_col].tolist()
+def _count_transition_values(acts: list[Any], act_idx: dict, matrix: np.ndarray) -> None:
+    """Accumulate transition counts from one already-sorted activity sequence."""
     for i in range(len(acts) - 1):
-        from_idx = act_idx[acts[i]]
-        to_idx = act_idx[acts[i + 1]]
-        matrix[from_idx, to_idx] += 1
+        matrix[act_idx[acts[i]], act_idx[acts[i + 1]]] += 1

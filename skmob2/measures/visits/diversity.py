@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-import pandas as pd
 import narwhals as nw
 
 from .._common import (
-    _pick_existing_column,
-    USER_ID_CANDIDATES,
     LOCATION_CANDIDATES,
     LOCATION_TYPE_CANDIDATES,
+    USER_ID_CANDIDATES,
+    _build_user_ranges,
+    _pick_existing_column,
 )
 from .fast_diversity import fast_diversity
 
@@ -21,7 +21,7 @@ def diversity(
     user_id_col: str | None = None,
     location_id_col: str | None = None,
     location_type_col: str | None = None,
-) -> pd.DataFrame:
+) -> Any:
     """Compute trajectory diversity per user using suffix-array entropy.
 
     Per-user: factorize the composite location string
@@ -43,8 +43,9 @@ def diversity(
 
     Returns
     -------
-    pd.DataFrame
+    DataFrame
         One row per user with columns ``[user_id_col, "diversity"]``.
+        The returned backend matches the input backend.
     """
     nw_df = nw.from_native(visits, eager_only=True)
 
@@ -55,29 +56,30 @@ def diversity(
     if location_type_col is None:
         location_type_col = _pick_existing_column(nw_df.columns, LOCATION_TYPE_CANDIDATES)
 
-    # Convert to pandas for groupby logic
-    df = nw_df.to_native()
-    if not isinstance(df, pd.DataFrame):
-        df = pd.DataFrame(df)
-
-    def _get_sequence(user_df: pd.DataFrame) -> list:
-        if location_id_col and location_type_col:
-            return (user_df[location_id_col].astype(str) + "_" + user_df[location_type_col].astype(str)).tolist()
-        elif location_id_col:
-            return user_df[location_id_col].astype(str).tolist()
-        else:
-            return []
-
-    results = []
-    if user_id_col:
-        for uid, group in df.groupby(user_id_col, sort=False):
-            seq = _get_sequence(group)
-            div = fast_diversity(seq) if seq else 0.0
-            results.append({user_id_col: uid, "diversity": div})
-        out_df = pd.DataFrame(results)
+    location_key_col = "__skmob2_location_key__"
+    if location_id_col and location_type_col:
+        nw_df = nw_df.with_columns(
+            (
+                nw.col(location_id_col).cast(nw.String)
+                + nw.lit("_")
+                + nw.col(location_type_col).cast(nw.String)
+            ).alias(location_key_col)
+        )
+    elif location_id_col:
+        nw_df = nw_df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
     else:
-        seq = _get_sequence(df)
-        div = fast_diversity(seq) if seq else 0.0
-        out_df = pd.DataFrame([{"diversity": div}])
+        nw_df = nw_df.with_columns(nw.lit(None).alias(location_key_col))
 
-    return out_df
+    if user_id_col:
+        nw_df = nw_df.sort(user_id_col)
+        uid_values, ranges = _build_user_ranges(nw_df, user_id_col)
+        tokens = nw_df.get_column(location_key_col).to_list()
+        values = [fast_diversity(tokens[start:end]) if start < end and location_id_col else 0.0 for start, end in ranges]
+        return nw.from_dict(
+            {user_id_col: uid_values, "diversity": values},
+            backend=nw_df.implementation,
+        ).to_native()
+
+    tokens = nw_df.get_column(location_key_col).to_list() if location_id_col else []
+    div = fast_diversity(tokens) if tokens else 0.0
+    return nw.from_dict({"diversity": [div]}, backend=nw_df.implementation).to_native()

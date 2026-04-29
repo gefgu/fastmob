@@ -92,6 +92,13 @@ def test_result_columns():
         assert col in result.columns
 
 
+def test_polars_backend_matches_input():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    result = intermittance_and_degree_of_return(pl.from_pandas(_agent_visits()))
+    assert isinstance(result, pl.DataFrame)
+    assert "degree_of_return" in result.columns
+
+
 def test_single_visit_user():
     """User with a single visit: no transitions, should still return a row."""
     df = pd.DataFrame(

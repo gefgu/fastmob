@@ -4,7 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 
 
 def recency_rank(
@@ -58,23 +58,18 @@ def recency_rank(
         uid_col=uid_col,
     )
 
-    def _rank_for_user(user_df: nw.DataFrame) -> tuple[list, list, list[int]]:
+    def _rank_for_values(lat_list: list, lng_list: list) -> tuple[list, list, list[int]]:
         """Compute recency ranks for a single user's trajectory rows.
 
         Returns three parallel lists: lats, lngs, ranks — one entry per
         distinct location, ordered by most-recent-first.
         """
-        # Sort descending by datetime so the first occurrence of each location
-        # is its most recent visit.
-        sorted_df = user_df.sort(datetime_col, descending=True)
-
-        # Keep first occurrence of each (lat, lng) — that is, the latest visit.
+        # Values arrive chronologically sorted, so walking backwards keeps the
+        # first occurrence of each location as its latest visit.
         seen: set[tuple] = set()
         lats: list = []
         lngs: list = []
-        lat_list = sorted_df.get_column(lat_col).to_list()
-        lng_list = sorted_df.get_column(lng_col).to_list()
-        for lat, lng in zip(lat_list, lng_list):
+        for lat, lng in zip(reversed(lat_list), reversed(lng_list)):
             key = (lat, lng)
             if key not in seen:
                 seen.add(key)
@@ -85,7 +80,7 @@ def recency_rank(
         return lats, lngs, ranks
 
     if uid_col is None:
-        lats, lngs, ranks = _rank_for_user(df)
+        lats, lngs, ranks = _rank_for_values(df.get_column(lat_col).to_list(), df.get_column(lng_col).to_list())
         return nw.from_dict(
             {lat_col: lats, lng_col: lngs, "recency_rank": ranks},
             backend=df.implementation,
@@ -96,10 +91,11 @@ def recency_rank(
     lngs_all: list = []
     ranks_all: list[int] = []
 
-    uid_list = df.get_column(uid_col).unique().sort().to_list()
-    for uid in uid_list:
-        user_df = df.filter(nw.col(uid_col) == uid)
-        lats, lngs, ranks = _rank_for_user(user_df)
+    lat_full = df.get_column(lat_col).to_list()
+    lng_full = df.get_column(lng_col).to_list()
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    for uid, (start, end) in zip(uid_values, ranges):
+        lats, lngs, ranks = _rank_for_values(lat_full[start:end], lng_full[start:end])
         uid_vals_all.extend([uid] * len(lats))
         lats_all.extend(lats)
         lngs_all.extend(lngs)

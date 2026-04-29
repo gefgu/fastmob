@@ -4,7 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 
 
 def individual_mobility_network(
@@ -67,16 +67,12 @@ def individual_mobility_network(
         uid_col=uid_col,
     )
 
-    def _network_for_user(user_df: nw.DataFrame) -> tuple[list, list, list, list, list[int]]:
+    def _network_for_values(lat_list: list, lng_list: list) -> tuple[list, list, list, list, list[int]]:
         """Build directed transition counts for a single user.
 
         Returns five parallel lists: lat_origins, lng_origins, lat_dests,
         lng_dests, n_trips — one entry per unique directed edge.
         """
-        lat_list = user_df.get_column(lat_col).to_list()
-        lng_list = user_df.get_column(lng_col).to_list()
-
-        # Count transitions between consecutive locations.
         edge_counts: dict[tuple, int] = {}
         for i in range(len(lat_list) - 1):
             origin = (lat_list[i], lng_list[i])
@@ -101,7 +97,10 @@ def individual_mobility_network(
         return lat_origins, lng_origins, lat_dests, lng_dests, n_trips
 
     if uid_col is None:
-        lat_origins, lng_origins, lat_dests, lng_dests, n_trips = _network_for_user(df)
+        lat_origins, lng_origins, lat_dests, lng_dests, n_trips = _network_for_values(
+            df.get_column(lat_col).to_list(),
+            df.get_column(lng_col).to_list(),
+        )
         return nw.from_dict(
             {
                 "lat_origin": lat_origins,
@@ -120,10 +119,14 @@ def individual_mobility_network(
     lng_dests_all: list = []
     n_trips_all: list[int] = []
 
-    uid_list = df.get_column(uid_col).unique().sort().to_list()
-    for uid in uid_list:
-        user_df = df.filter(nw.col(uid_col) == uid)
-        lat_origins, lng_origins, lat_dests, lng_dests, n_trips = _network_for_user(user_df)
+    lat_full = df.get_column(lat_col).to_list()
+    lng_full = df.get_column(lng_col).to_list()
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    for uid, (start, end) in zip(uid_values, ranges):
+        lat_origins, lng_origins, lat_dests, lng_dests, n_trips = _network_for_values(
+            lat_full[start:end],
+            lng_full[start:end],
+        )
         n = len(n_trips)
         uid_vals_all.extend([uid] * n)
         lat_origins_all.extend(lat_origins)

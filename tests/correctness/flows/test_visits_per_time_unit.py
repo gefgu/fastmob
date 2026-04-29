@@ -50,6 +50,13 @@ def test_visits_per_time_unit_columns(hourly_traj):
     assert "datetime" in result.columns
 
 
+def test_visits_per_time_unit_polars_backend_matches_input(hourly_traj):
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    result = visits_per_time_unit(pl.from_pandas(hourly_traj), freq="1h")
+    assert isinstance(result, pl.DataFrame)
+    assert result.get_column("n_visits").to_list() == [2, 2, 2]
+
+
 def test_visits_per_time_unit_no_empty_bins(hourly_traj):
     """Bins with zero visits are not included in the result."""
     result = visits_per_time_unit(hourly_traj, freq="1h")

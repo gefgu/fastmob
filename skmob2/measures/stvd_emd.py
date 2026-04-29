@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from typing import Any
-import time
 
 import narwhals as nw
 
 from skmob2._core import stvd_emd_arrow as _stvd_emd_arrow
 from skmob2._core import stvd_emd_numpy as _stvd_emd_numpy
+from ._common import _is_polars_backed
 
 _TIME_CANDIDATES = ["time_bin", "time", "hour", "timestamp"]
 _WEIGHT_CANDIDATES = ["mean_volume", "volume", "weight", "count", "density"]
@@ -35,11 +35,6 @@ def _point_xy(val: Any) -> tuple[float, float]:
 def _hhmm_to_minutes(val: Any) -> float:
     h, m = str(val).split(":", 1)
     return float(h) * 60 + float(m)
-
-
-def _is_polars_backed(nw_df: nw.DataFrame) -> bool:
-    native = nw_df.to_native()
-    return hasattr(native, "lazy")
 
 
 def _route_and_call(
@@ -122,16 +117,12 @@ def stvd_emd(
         if col not in cols_b:
             raise ValueError(f"Column {col!r} ({role}) not found in dist_b")
 
-    t0 = time.perf_counter()
-
     def prepare_arrays(
         df: nw.DataFrame,
         time_col: str,
         centroid_col: str,
         weight_col: str,
     ) -> tuple[nw.Series, nw.Series, nw.Series, nw.Series]:
-        t_extract = time.perf_counter()
-
         # Parse HH:MM in-vector to reduce Python-level per-row overhead.
         t_col = df.get_column(time_col)
         times = t_col.str.slice(0, 2).cast(nw.Float64) * 60 + t_col.str.slice(3, 5).cast(nw.Float64)
@@ -151,15 +142,14 @@ def stvd_emd(
                 xs = nw.new_series("x", [p[0] for p in xy], backend=df.implementation)
                 ys = nw.new_series("y", [p[1] for p in xy], backend=df.implementation)
             else:
-                # Fast path for WKT 'POINT (x y)' strings.
-                clean_c = c_col.str.replace("POINT (", "").str.replace(")", "")
-                coords = clean_c.str.split(" ")
-                xs = coords.list.get(0).cast(nw.Float64)
-                ys = coords.list.get(1).cast(nw.Float64)
+                # WKT fallback. Keep parsing explicit because Narwhals string
+                # replacement is regex-backed on some pandas Arrow strings.
+                xy = [_point_xy(v) for v in c_col.to_list()]
+                xs = nw.new_series("x", [p[0] for p in xy], backend=df.implementation)
+                ys = nw.new_series("y", [p[1] for p in xy], backend=df.implementation)
 
         weights = df.get_column(weight_col).cast(nw.Float64)
 
-        print(f"Extraction of {centroid_col} took {time.perf_counter() - t_extract:.3f}s")
         return xs, ys, times, weights
 
     arrays_a = prepare_arrays(nw_a, tc, cc, wc)
@@ -167,9 +157,7 @@ def stvd_emd(
 
     use_arrow = _is_polars_backed(nw_a)
 
-    t1 = time.perf_counter()
-
-    result = _route_and_call(
+    return _route_and_call(
         arrays_a,
         arrays_b,
         alpha,
@@ -177,10 +165,3 @@ def stvd_emd(
         num_projections,
         use_arrow=use_arrow,
     )
-
-    t2 = time.perf_counter()
-
-    print(f"Preprocessing time: {t1 - t0:.3f} seconds")
-    print(f"STVD-EMD computation time: {t2 - t1:.3f} seconds")
-
-    return result
