@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 import narwhals as nw
 from skmob2._core import (
@@ -14,8 +14,6 @@ from skmob2._core import (
 
 from .._common import _build_user_ranges, _prepare_trajectory
 
-SortStrategy = Literal["sort", "indexed", "presorted"]
-_SORT_STRATEGIES = {"sort", "indexed", "presorted"}
 _ROG_ROW_INDEX_COL = "__skmob2_rog_row_index__"
 
 
@@ -51,15 +49,6 @@ def _route_and_call_indexed(
     return radius_of_gyration_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, ranges)
 
 
-def _validate_sort_strategy(sort_strategy: str) -> SortStrategy:
-    if sort_strategy not in _SORT_STRATEGIES:
-        raise ValueError(
-            "sort_strategy must be one of 'sort', 'indexed', or 'presorted'; "
-            f"got {sort_strategy!r}"
-        )
-    return sort_strategy  # type: ignore[return-value]
-
-
 def _build_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, list[int], list[tuple[int, int]]]:
     n = len(df)
     if n == 0:
@@ -68,12 +57,8 @@ def _build_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, li
     uid_series = df.get_column(uid_col)
     try:
         if _is_polars_backed(df):
-            # 1. Call to_arrow exactly once
             uid_arrow = uid_series.to_arrow()
             indices, ranges = radius_of_gyration_user_indices_arrow(uid_arrow)
-            
-            # 2. Skip .take() and Arrow's compute overhead by using Python list comprehension directly 
-            # on the Arrow array, which supports __getitem__ indexing.
             uid_values = [uid_arrow[indices[start]].as_py() for start, _ in ranges]
         else:
             indices, ranges = radius_of_gyration_user_indices_numpy(uid_series.to_numpy())
@@ -100,7 +85,6 @@ def radius_of_gyration(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sort_strategy: SortStrategy = "sort",
 ):
     """Compute the radius of gyration (km) for each user in the trajectory.
 
@@ -110,6 +94,9 @@ def radius_of_gyration(
         rg(u) = sqrt( mean_i( haversine(r_i, r_cm)^2 ) )
 
     where ``r_cm`` is the arithmetic mean of the user's lat/lng coordinates.
+
+    Radius of gyration is order-independent, so chronological sorting is not
+    required for correctness; grouping rows by user is what matters.
 
     Parameters
     ----------
@@ -126,21 +113,6 @@ def radius_of_gyration(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sort_strategy:
-        Strategy used to group trajectory rows by user:
-
-        - ``"sort"`` sorts the dataframe by user and datetime first. This is
-          the fastest general-purpose path, but has the highest peak memory
-          usage.
-        - ``"indexed"`` keeps the dataframe in input order and sorts only a
-          skinny user/index table. It uses less peak memory, but can be slower
-          because coordinates are read through scattered indexes.
-        - ``"presorted"`` keeps the dataframe in input order and assumes rows
-          are already grouped contiguously by user. This is a fast low-memory
-          path, but wrong grouping can produce wrong or duplicate user rows.
-
-        Radius of gyration is order-independent, so chronological sorting is
-        not required for correctness; grouping rows by user is what matters.
 
     Returns
     -------
@@ -160,14 +132,13 @@ def radius_of_gyration(
     ... })
     >>> radius_of_gyration(df)
     """
-    sort_strategy = _validate_sort_strategy(sort_strategy)
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
-        sort=sort_strategy == "sort",
+        sort=False,
     )
 
     lats_full = df.get_column(lat_col)
@@ -178,13 +149,8 @@ def radius_of_gyration(
         (rg,) = _route_and_call(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow)
         return nw.from_dict({"radius_of_gyration": [rg]}, backend=df.implementation).to_native()
 
-    if sort_strategy == "indexed":
-        uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col)
-        rog_values = _route_and_call_indexed(lats_full, lngs_full, indices, ranges, use_arrow=use_arrow)
-    else:
-        uid_values, ranges = _build_user_ranges(df, uid_col)
-        # Single Rust call covering all users eliminates per-user boundary crossings.
-        rog_values = _route_and_call(lats_full, lngs_full, ranges, use_arrow=use_arrow)
+    uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col)
+    rog_values = _route_and_call_indexed(lats_full, lngs_full, indices, ranges, use_arrow=use_arrow)
 
     result = nw.from_dict(
         {uid_col: uid_values, "radius_of_gyration": rog_values},

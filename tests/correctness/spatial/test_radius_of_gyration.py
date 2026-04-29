@@ -88,25 +88,6 @@ def _rog_map(result) -> dict:
     return dict(zip(result[uid_col], result["radius_of_gyration"]))
 
 
-def _grouped_strategy_df() -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            "uid": ["b", "b", "a", "a", "c"],
-            "datetime": pd.to_datetime(
-                [
-                    "2020-01-02 00:00:00",
-                    "2020-01-01 00:00:00",
-                    "2020-01-03 00:00:00",
-                    "2020-01-01 00:00:00",
-                    "2020-01-04 00:00:00",
-                ]
-            ),
-            "lat": [10.0, 11.0, 0.0, 1.0, 20.0],
-            "lng": [30.0, 31.0, 0.0, 1.0, 40.0],
-        }
-    )
-
-
 def test_radius_of_gyration_known_values_pandas(synthetic_tdf):
     """RoG on synthetic fixture (pandas backend), hardcoded expected values."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -261,30 +242,10 @@ def test_radius_of_gyration_polars_pandas_agree():
         )
 
 
-@pytest.mark.parametrize("backend", ["pandas", "polars"])
-@pytest.mark.parametrize("sort_strategy", ["sort", "indexed", "presorted"])
-def test_radius_of_gyration_sort_strategies_agree_for_grouped_input(backend, sort_strategy):
-    """All strategies agree when presorted's contiguous-group precondition holds."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
-
-    df_pd = _grouped_strategy_df()
-    traj = df_pd
-    if backend == "polars":
-        pl = pytest.importorskip("polars", reason="Polars not installed")
-        traj = pl.from_pandas(df_pd)
-
-    expected = _rog_map(radius_of_gyration(df_pd, sort_strategy="sort"))
-    actual = _rog_map(radius_of_gyration(traj, sort_strategy=sort_strategy))
-
-    assert actual.keys() == expected.keys()
-    for uid in expected:
-        np.testing.assert_allclose(actual[uid], expected[uid], rtol=0.0, atol=1e-12)
-
-
 def test_radius_of_gyration_indexed_handles_interleaved_users():
-    """The indexed strategy groups by uid without sorting the full dataframe."""
+    """RoG groups by uid without sorting the full dataframe."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_km
     from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame(
@@ -296,12 +257,16 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
         }
     )
 
-    expected = _rog_map(radius_of_gyration(df, sort_strategy="sort"))
-    actual = _rog_map(radius_of_gyration(df, sort_strategy="indexed"))
+    result = radius_of_gyration(df)
+    actual = _rog_map(result)
 
-    assert actual.keys() == expected.keys()
-    for uid in expected:
-        np.testing.assert_allclose(actual[uid], expected[uid], rtol=0.0, atol=1e-12)
+    assert list(result["uid"]) == ["a", "b", "c"]
+    expected = {
+        uid: radius_of_gyration_km(list(map(tuple, df.loc[df["uid"] == uid, ["lat", "lng"]].to_numpy())))
+        for uid in ["a", "b", "c"]
+    }
+    for uid, expected_value in expected.items():
+        np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
 
 
 def test_build_indexed_user_ranges_sorts_stable_row_indices():
@@ -367,29 +332,6 @@ def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
     assert uid_values == ["a", "b", "c"]
     assert indices == [1, 4, 0, 2, 3, 5]
     assert ranges == [(0, 2), (2, 4), (4, 6)]
-
-
-def test_radius_of_gyration_presorted_returns_input_group_order():
-    """Presorted trusts contiguous input groups instead of sorting users."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
-
-    df = _grouped_strategy_df()
-    result = radius_of_gyration(df, sort_strategy="presorted")
-
-    assert result["uid"].tolist() == ["b", "a", "c"]
-    expected = _rog_map(radius_of_gyration(df, sort_strategy="sort"))
-    actual = _rog_map(result)
-    for uid in expected:
-        np.testing.assert_allclose(actual[uid], expected[uid], rtol=0.0, atol=1e-12)
-
-
-def test_radius_of_gyration_invalid_sort_strategy_raises():
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
-
-    with pytest.raises(ValueError, match="sort_strategy"):
-        radius_of_gyration(_grouped_strategy_df(), sort_strategy="memory")
 
 
 def test_radius_of_gyration_numpy_helper_matches_batch_helper():
