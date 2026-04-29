@@ -6,9 +6,12 @@ from typing import Any
 
 import numpy as np
 import narwhals as nw
+from skmob2._core import trajectory_entropy_batch as _trajectory_entropy_batch_rust
+from skmob2._core import trajectory_predictability_batch as _trajectory_predictability_batch_rust
 
 from .._common import (
     _pick_existing_column,
+    _build_user_ranges,
     USER_ID_CANDIDATES,
     LOCATION_CANDIDATES,
     LOCATION_TYPE_CANDIDATES,
@@ -136,6 +139,39 @@ def _solve_max_predictability_with_fano(
     return float(0.5 * (low + high))
 
 
+def _sort_visits(
+    df: nw.DataFrame,
+    user_id_col: str | None,
+    timestamp_col: str | None,
+) -> nw.DataFrame:
+    """Sort visits chronologically while keeping user trajectories together."""
+    if user_id_col and timestamp_col:
+        return df.sort([user_id_col, timestamp_col])
+    if timestamp_col:
+        return df.sort(timestamp_col)
+    return df
+
+
+def _with_location_key(
+    df: nw.DataFrame,
+    location_id_col: str | None,
+    location_type_col: str | None,
+    location_key_col: str,
+) -> nw.DataFrame:
+    """Add the token column consumed by the trajectory entropy estimator."""
+    if location_id_col and location_type_col:
+        return df.with_columns(
+            (
+                nw.col(location_id_col).cast(nw.String)
+                + nw.lit("_")
+                + nw.col(location_type_col).cast(nw.String)
+            ).alias(location_key_col)
+        )
+    if location_id_col:
+        return df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
+    return df
+
+
 # ---------------------------------------------------------------------------
 # Public measures
 # ---------------------------------------------------------------------------
@@ -171,13 +207,10 @@ def trajectory_entropy(
 
     Returns
     -------
-    pandas.DataFrame
+    DataFrame
         One row per user with columns ``[user_id_col, "entropy"]``.
-        Always returns a pandas DataFrame because the internal algorithm
-        requires pandas groupby iteration.
+        The returned backend matches the input backend.
     """
-    import pandas as pd  # noqa: PLC0415 — deferred: pandas iteration is unavoidable here
-
     nw_df = nw.from_native(visits, eager_only=True)
 
     if user_id_col is None:
@@ -189,44 +222,26 @@ def trajectory_entropy(
     if timestamp_col is None:
         timestamp_col = _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
 
-    df = nw_df.to_native()
-    if not isinstance(df, pd.DataFrame):
-        df = pd.DataFrame(df)
+    location_key_col = "__skmob2_location_key__"
+    has_location_key = bool(location_id_col)
+    df = _sort_visits(nw_df, user_id_col, timestamp_col)
+    df = _with_location_key(df, location_id_col, location_type_col, location_key_col)
 
-    # Sort by [user, timestamp] if timestamp is available
-    if user_id_col and timestamp_col:
-        df = df.sort_values([user_id_col, timestamp_col])
-    elif timestamp_col:
-        df = df.sort_values(timestamp_col)
+    tokens = df.get_column(location_key_col).to_list() if has_location_key else []
 
-    def _build_sequence(user_df: pd.DataFrame) -> list:
-        if location_id_col and location_type_col:
-            return (user_df[location_id_col].astype(str) + "_" + user_df[location_type_col].astype(str)).tolist()
-        elif location_id_col:
-            return user_df[location_id_col].astype(str).tolist()
-        return []
-
-    def _compute_entropy(user_df: pd.DataFrame) -> float:
-        seq = _build_sequence(user_df)
-        n = len(seq)
-        raw = _kontoyiannis_entropy(seq)
-        if not normalized:
-            return raw
-        if n <= 1:
-            return 0.0
-        return float(np.clip(raw / np.log2(n), 0.0, 1.0))
-
-    results = []
     if user_id_col:
-        for uid, group in df.groupby(user_id_col, sort=False):
-            entropy = _compute_entropy(group)
-            results.append({user_id_col: uid, "entropy": entropy})
-        out_df = pd.DataFrame(results)
-    else:
-        entropy = _compute_entropy(df)
-        out_df = pd.DataFrame([{"entropy": entropy}])
+        uid_values, ranges = _build_user_ranges(df, user_id_col)
+        entropies = _trajectory_entropy_batch_rust(tokens, ranges, normalized)
+        return nw.from_dict(
+            {user_id_col: uid_values, "entropy": entropies},
+            backend=df.implementation,
+        ).to_native()
 
-    return out_df
+    entropies = _trajectory_entropy_batch_rust(tokens, [(0, len(tokens))], normalized)
+    return nw.from_dict(
+        {"entropy": entropies},
+        backend=df.implementation,
+    ).to_native()
 
 
 def trajectory_predictability(
@@ -258,15 +273,12 @@ def trajectory_predictability(
 
     Returns
     -------
-    pandas.DataFrame
+    DataFrame
         One row per user with columns
         ``[user_id_col, "real_entropy", "predictability",
         "n_unique_locations", "n_steps"]``.
-        Always returns a pandas DataFrame because the internal algorithm
-        requires pandas groupby iteration.
+        The returned backend matches the input backend.
     """
-    import pandas as pd  # noqa: PLC0415 — deferred: pandas iteration is unavoidable here
-
     nw_df = nw.from_native(visits, eager_only=True)
 
     if user_id_col is None:
@@ -278,47 +290,40 @@ def trajectory_predictability(
     if timestamp_col is None:
         timestamp_col = _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
 
-    df = nw_df.to_native()
-    if not isinstance(df, pd.DataFrame):
-        df = pd.DataFrame(df)
+    location_key_col = "__skmob2_location_key__"
+    has_location_key = bool(location_id_col)
+    df = _sort_visits(nw_df, user_id_col, timestamp_col)
+    df = _with_location_key(df, location_id_col, location_type_col, location_key_col)
 
-    if user_id_col and timestamp_col:
-        df = df.sort_values([user_id_col, timestamp_col])
-    elif timestamp_col:
-        df = df.sort_values(timestamp_col)
+    tokens = df.get_column(location_key_col).to_list() if has_location_key else []
 
-    def _build_sequence(user_df: pd.DataFrame) -> list:
-        if location_id_col and location_type_col:
-            return (user_df[location_id_col].astype(str) + "_" + user_df[location_type_col].astype(str)).tolist()
-        elif location_id_col:
-            return user_df[location_id_col].astype(str).tolist()
-        return []
-
-    def _compute_single(user_df: pd.DataFrame) -> dict:
-        seq = _build_sequence(user_df)
-        n_steps = len(seq)
-        n_unique = len(set(seq))
-        real_entropy = _kontoyiannis_entropy(seq)
-        predictability = _solve_max_predictability_with_fano(real_entropy, n_unique)
-        return {
-            "real_entropy": float(real_entropy),
-            "predictability": float(predictability),
-            "n_unique_locations": int(n_unique),
-            "n_steps": int(n_steps),
-        }
-
-    results = []
     if user_id_col:
-        for uid, group in df.groupby(user_id_col, sort=False):
-            row = _compute_single(group)
-            row[user_id_col] = uid
-            results.append(row)
-        out_df = pd.DataFrame(results)
-        # Reorder columns to put user_id first
-        cols = [user_id_col, "real_entropy", "predictability", "n_unique_locations", "n_steps"]
-        out_df = out_df[cols]
-    else:
-        row = _compute_single(df)
-        out_df = pd.DataFrame([row])
+        uid_values, ranges = _build_user_ranges(df, user_id_col)
+        real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(
+            tokens,
+            ranges,
+        )
+        return nw.from_dict(
+            {
+                user_id_col: uid_values,
+                "real_entropy": real_entropies,
+                "predictability": predictabilities,
+                "n_unique_locations": n_unique_locations,
+                "n_steps": n_steps,
+            },
+            backend=df.implementation,
+        ).to_native()
 
-    return out_df
+    real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(
+        tokens,
+        [(0, len(tokens))],
+    )
+    return nw.from_dict(
+        {
+            "real_entropy": real_entropies,
+            "predictability": predictabilities,
+            "n_unique_locations": n_unique_locations,
+            "n_steps": n_steps,
+        },
+        backend=df.implementation,
+    ).to_native()
