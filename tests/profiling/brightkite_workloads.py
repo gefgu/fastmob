@@ -394,12 +394,23 @@ def _resolve_import(import_path: str) -> WorkloadFunc:
     return getattr(module, func_name)
 
 
+def _patch_skmob_shapely_compat() -> None:
+    """Let scikit-mobility import with Shapely 2, which removed cascaded_union."""
+    try:
+        import shapely.ops as shapely_ops
+    except ImportError:
+        return
+    if not hasattr(shapely_ops, "cascaded_union") and hasattr(shapely_ops, "unary_union"):
+        shapely_ops.cascaded_union = shapely_ops.unary_union
+
+
 def workload_registry(implementation: str = "skmob2") -> dict[str, Workload]:
     if implementation == "skmob2":
         return _skmob2_workloads()
     if implementation != "skmob":
         raise ValueError(f"Unsupported implementation: {implementation!r}")
 
+    _patch_skmob_shapely_compat()
     available = {}
     for name, workload in _skmob_workload_candidates().items():
         try:
@@ -421,6 +432,7 @@ def build_dataset_for_workload(workload: Workload, rows: int, backend: str, impl
     if implementation == "skmob":
         if workload.dataset != "trajectory":
             raise ValueError(f"skmob profiling only supports trajectory workloads, got {workload.dataset!r}")
+        _patch_skmob_shapely_compat()
         import skmob
 
         return skmob.TrajDataFrame(
@@ -575,6 +587,31 @@ def run_memray_function_profile(
     }
 
 
+def run_scalene_function_profile(
+    name: str,
+    *,
+    rows: int = DEFAULT_ROWS,
+    backend: str = "pandas",
+    implementation: str = "skmob2",
+) -> dict[str, Any]:
+    from scalene import scalene_profiler
+
+    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
+    scalene_profiler.start()
+    try:
+        execute_prepared_workload(prepared)
+    finally:
+        scalene_profiler.stop()
+    return {
+        "workload": name,
+        "rows": rows,
+        "backend": backend,
+        "implementation": implementation,
+        "dataset": prepared.workload.dataset,
+        "profiled_phase": "function",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workload", required=False, help="Workload name to run.")
@@ -585,6 +622,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--prepared-child", action="store_true", help="Prepare workload, wait on stdin, then execute.")
     parser.add_argument("--memray-bin-path", help="Run function-only memray profiling to this bin path.")
     parser.add_argument("--no-native", action="store_true", help="Disable native traces for direct memray profiling.")
+    parser.add_argument("--scalene-function-profile", action="store_true", help="Profile only workload execution with Scalene.")
     args = parser.parse_args(argv)
 
     workloads = workload_registry(args.implementation)
@@ -610,6 +648,13 @@ def main(argv: list[str] | None = None) -> int:
             implementation=args.implementation,
             bin_path=args.memray_bin_path,
             native=not args.no_native,
+        )
+    elif args.scalene_function_profile:
+        result = run_scalene_function_profile(
+            args.workload,
+            rows=args.rows,
+            backend=args.backend,
+            implementation=args.implementation,
         )
     else:
         result = run_workload(args.workload, rows=args.rows, backend=args.backend, implementation=args.implementation)

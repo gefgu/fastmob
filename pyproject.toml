@@ -30,11 +30,13 @@ dev = [
     "py-spy",
     "polars",
     "ruff",
+    "scalene",
     "tqdm",
     "scipy",
     "pydivsufsort",
 ]
 dev-skmob = [
+    "fiona",
     "scikit-mobility",
 ]
 dev-movingpandas = [
