@@ -4,10 +4,35 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import narwhals as nw
 
 from .._common import _prepare_trajectory
-from .entropy import _kontoyiannis_entropy
+
+
+def _skmob_true_entropy(sequence: list) -> float:
+    """Match scikit-mobility's private _true_entropy estimator."""
+    n = len(sequence)
+    if n <= 1:
+        return 0.0
+
+    sum_lambda = 3.0
+
+    def in_seq(prefix: list, candidate: list) -> bool:
+        for i in range(len(prefix) - len(candidate) + 1):
+            if prefix[i : i + len(candidate)] == candidate:
+                return True
+        return False
+
+    for i in range(1, n - 1):
+        j = i + 1
+        while j < n and in_seq(sequence[:i], sequence[i:j]):
+            j += 1
+        if j == n:
+            j += 1
+        sum_lambda += j - i
+
+    return float(n * np.log2(n) / sum_lambda)
 
 
 def real_entropy(
@@ -71,7 +96,7 @@ def real_entropy(
 
     if uid_col is None:
         sequence = df.get_column(loc_key_col).to_list()
-        entropy = _kontoyiannis_entropy(sequence)
+        entropy = _skmob_true_entropy(sequence)
         return nw.from_dict(
             {"real_entropy": [entropy]},
             backend=df.implementation,
@@ -91,7 +116,7 @@ def real_entropy(
         user_sequences[uid_val].append(loc)
 
     uid_vals = user_order
-    entropies = [_kontoyiannis_entropy(user_sequences[u]) for u in uid_vals]
+    entropies = [_skmob_true_entropy(user_sequences[u]) for u in uid_vals]
 
     return nw.from_dict(
         {uid_col: uid_vals, "real_entropy": entropies},

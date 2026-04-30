@@ -67,6 +67,26 @@ def test_frequency_rank_unequal_visits():
     assert mapping["a"][(2.0, 0.0)] == 2
 
 
+def test_frequency_rank_ties_follow_skmob_pandas_order():
+    """Equal-frequency ties match skmob's pandas groupby/sort behavior."""
+    from skmob2.measures.visits.frequency_rank import frequency_rank
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a"],
+            "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+            "lat": [5.0, 1.0, 3.0],
+            "lng": [0.0, 0.0, 0.0],
+        }
+    )
+    result = frequency_rank(df)
+    mapping = _to_dict(result)
+
+    assert mapping["a"][(1.0, 0.0)] == 1
+    assert mapping["a"][(3.0, 0.0)] == 2
+    assert mapping["a"][(5.0, 0.0)] == 3
+
+
 def test_frequency_rank_single_location():
     """A user who visits only one location gets that location rank 1."""
     from skmob2.measures.visits.frequency_rank import frequency_rank

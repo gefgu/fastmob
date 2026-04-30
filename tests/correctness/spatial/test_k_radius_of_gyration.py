@@ -117,6 +117,33 @@ def test_k_radius_of_gyration_k_exceeds_locations():
     np.testing.assert_allclose(val_k10, val_k2, rtol=1e-10, atol=1e-10)
 
 
+def test_k_radius_of_gyration_top_k_ties_use_first_datetime():
+    """Equal-count top-k ties match skmob's first-visit datetime ordering."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import k_radius_of_gyration_km
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration
+
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"] * 6,
+            "datetime": [
+                pd.Timestamp("2020-01-01 03:00"),
+                pd.Timestamp("2020-01-01 01:00"),
+                pd.Timestamp("2020-01-01 02:00"),
+                pd.Timestamp("2020-01-01 04:00"),
+                pd.Timestamp("2020-01-01 05:00"),
+                pd.Timestamp("2020-01-01 06:00"),
+            ],
+            "lat": [0.0, 10.0, 20.0, 0.0, 10.0, 20.0],
+            "lng": [0.0] * 6,
+        }
+    )
+    result = k_radius_of_gyration(df, k=2)
+    value = float(result["k_radius_of_gyration"].iloc[0])
+    expected = k_radius_of_gyration_km([(10.0, 0.0), (20.0, 0.0)], [2, 2], 2)
+    np.testing.assert_allclose(value, expected, rtol=1e-12, atol=1e-12)
+
+
 def test_k_radius_of_gyration_single_location():
     """A user who visits only one location should have k-RoG = 0."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -173,9 +200,13 @@ def test_k_radius_of_gyration_matches_skmob(brightkite_skmob):
 
     skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)
     skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
+    skmob_value_col = next(c for c in (f"{k}k_radius_of_gyration", "k_radius_of_gyration") if c in skmob_result.columns)
+    skmob2_value_col = next(
+        c for c in ("k_radius_of_gyration", f"{k}k_radius_of_gyration") if c in skmob2_result.columns
+    )
 
-    skmob_map = dict(zip(skmob_result[skmob_uid], skmob_result["k_radius_of_gyration"]))
-    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result["k_radius_of_gyration"]))
+    skmob_map = dict(zip(skmob_result[skmob_uid], skmob_result[skmob_value_col]))
+    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result[skmob2_value_col]))
 
     assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
     for uid in skmob_map:
@@ -183,5 +214,6 @@ def test_k_radius_of_gyration_matches_skmob(brightkite_skmob):
             skmob2_map[uid],
             skmob_map[uid],
             rtol=1e-5,
+            atol=1e-12,
             err_msg=f"k-RoG mismatch for uid={uid}",
         )

@@ -12,16 +12,12 @@ import pytest
 # ---------------------------------------------------------------------------
 # Known-value assertions.
 #
-# The synthetic fixture has 3 users, 5 GPS points each.  All 5 locations
-# per user are distinct and visited exactly once.  The Kontoyiannis (LZ)
-# estimator on any length-5 sequence of 5 fully distinct tokens converges
-# to log2(5) ≈ 2.3219.
-#
-# Verified by running _kontoyiannis_entropy on representative sequences:
-#   _kontoyiannis_entropy(['a', 'b', 'c', 'd', 'e']) == log2(5)
+# The synthetic fixture has 3 users, 5 GPS points each. All 5 locations per
+# user are distinct and visited exactly once. The value below matches
+# scikit-mobility's private _true_entropy estimator for length-5 sequences.
 # ---------------------------------------------------------------------------
 
-EXPECTED_ENTROPY: float = math.log2(5)  # ≈ 2.321928094887362
+EXPECTED_ENTROPY: float = 5 * math.log2(5) / 6
 
 
 def _to_dict(df) -> dict:
@@ -54,7 +50,7 @@ def test_real_entropy_known_values(synthetic_tdf):
 def test_real_entropy_repeated_location():
     """A sequence with repeated visits captures temporal correlations."""
     from skmob2.measures.visits.real_entropy import real_entropy
-    from skmob2.measures.visits.entropy import _kontoyiannis_entropy
+    from skmob2.measures.visits.real_entropy import _skmob_true_entropy
 
     # User "a": alternates between two locations — strong temporal structure
     df = pd.DataFrame(
@@ -69,7 +65,7 @@ def test_real_entropy_repeated_location():
     mapping = _to_dict(result)
 
     seq = ["1.0_0.0", "2.0_0.0", "1.0_0.0", "2.0_0.0", "1.0_0.0", "2.0_0.0"]
-    expected = _kontoyiannis_entropy(seq)
+    expected = _skmob_true_entropy(seq)
     assert math.isclose(mapping["a"], expected, rel_tol=1e-9)
 
 
@@ -95,7 +91,7 @@ def test_real_entropy_single_location():
 def test_real_entropy_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
     from skmob2.measures.visits.real_entropy import real_entropy
-    from skmob2.measures.visits.entropy import _kontoyiannis_entropy
+    from skmob2.measures.visits.real_entropy import _skmob_true_entropy
 
     df = pd.DataFrame(
         {
@@ -110,7 +106,7 @@ def test_real_entropy_no_uid():
     assert len(nw_result) == 1
 
     seq = ["1.0_0.0", "2.0_0.0", "3.0_0.0", "4.0_0.0"]
-    expected = _kontoyiannis_entropy(seq)
+    expected = _skmob_true_entropy(seq)
     row = nw_result.rows(named=True)[0]
     assert math.isclose(row["real_entropy"], expected, rel_tol=1e-9)
 
@@ -118,7 +114,7 @@ def test_real_entropy_no_uid():
 def test_real_entropy_multiple_users_independent():
     """Each user's entropy is computed independently from others."""
     from skmob2.measures.visits.real_entropy import real_entropy
-    from skmob2.measures.visits.entropy import _kontoyiannis_entropy
+    from skmob2.measures.visits.real_entropy import _skmob_true_entropy
 
     df = pd.DataFrame(
         {
@@ -131,9 +127,9 @@ def test_real_entropy_multiple_users_independent():
     result = real_entropy(df)
     mapping = _to_dict(result)
 
-    # Expected values from the Kontoyiannis estimator applied per-user.
-    expected_a = _kontoyiannis_entropy(["1.0_0.0", "2.0_0.0"])
-    expected_b = _kontoyiannis_entropy(["10.0_0.0", "10.0_0.0", "10.0_0.0"])
+    # Expected values from the skmob-compatible estimator applied per-user.
+    expected_a = _skmob_true_entropy(["1.0_0.0", "2.0_0.0"])
+    expected_b = _skmob_true_entropy(["10.0_0.0", "10.0_0.0", "10.0_0.0"])
 
     assert math.isclose(mapping["a"], expected_a, rel_tol=1e-9)
     assert math.isclose(mapping["b"], expected_b, rel_tol=1e-9)

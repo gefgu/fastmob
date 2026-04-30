@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import narwhals as nw
@@ -74,6 +75,8 @@ def maximum_distance(
 
     if uid_col is None:
         values = _route_maximum_distance(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow)
+        if len(df) < 2:
+            values = [math.nan]
         return nw.from_dict(
             {"maximum_distance": values},
             backend=df.implementation,
@@ -81,6 +84,7 @@ def maximum_distance(
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
     max_distances = _route_maximum_distance(lats_full, lngs_full, ranges, use_arrow=use_arrow)
+    max_distances = [math.nan if end - start < 2 else value for value, (start, end) in zip(max_distances, ranges)]
 
     return nw.from_dict(
         {uid_col: uid_values, "maximum_distance": max_distances},

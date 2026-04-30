@@ -60,6 +60,24 @@ def test_maximum_distance_single_user():
     assert abs(val - 111.1950802335329) < 1e-5
 
 
+def test_maximum_distance_single_point_returns_nan():
+    """A single-point user matches skmob's undefined maximum-distance result."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.maximum_distance import maximum_distance
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a"],
+            "datetime": [pd.Timestamp("2020-01-01")],
+            "lat": [0.0],
+            "lng": [0.0],
+        }
+    )
+    result = maximum_distance(df)
+    mapping = _to_dict(result)
+    assert np.isnan(mapping["a"])
+
+
 def test_maximum_distance_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -118,6 +136,8 @@ def test_maximum_distance_matches_skmob(brightkite_skmob):
     common = set(skmob_dict) & set(skmob2_dict)
     assert len(common) > 0
     for uid in common:
+        if np.isnan(skmob_dict[uid]) and np.isnan(skmob2_dict[uid]):
+            continue
         assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
             f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
         )

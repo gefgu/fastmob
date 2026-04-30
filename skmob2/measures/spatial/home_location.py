@@ -4,7 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _is_pandas_backed, _prepare_trajectory
 
 
 def home_location(
@@ -65,6 +65,35 @@ def home_location(
 
     backend = df.implementation
 
+    if _is_pandas_backed(df):
+        pd_df = df.to_native()
+        start_time = f"{start_night:02d}:00" if isinstance(start_night, int) else start_night
+        end_time = f"{end_night:02d}:00" if isinstance(end_night, int) else end_night
+
+        def _home_pandas(frame):
+            night_visits = frame.set_index(pd.DatetimeIndex(frame[datetime_col])).between_time(start_time, end_time)
+            source = night_visits if len(night_visits) != 0 else frame
+            lat, lng = (
+                source.groupby([lat_col, lng_col])
+                .count()
+                .sort_values(by=datetime_col, ascending=False)
+                .iloc[0]
+                .name
+            )
+            return lat, lng
+
+        import pandas as pd
+
+        if uid_col is None:
+            lat, lng = _home_pandas(pd_df)
+            return pd.DataFrame({lat_col: [lat], lng_col: [lng]})
+
+        rows = []
+        for uid, group in pd_df.groupby(uid_col):
+            lat, lng = _home_pandas(group)
+            rows.append({uid_col: uid, lat_col: lat, lng_col: lng})
+        return pd.DataFrame(rows, columns=[uid_col, lat_col, lng_col])
+
     # Extract hour from datetime column via Narwhals dt accessor.
     df = df.with_columns(nw.col(datetime_col).dt.hour().alias("__hour__"))
 
@@ -72,24 +101,17 @@ def home_location(
     night_mask = (nw.col("__hour__") >= start_night) | (nw.col("__hour__") < end_night)
     night_df = df.filter(night_mask)
 
-    # For each user, count visits per (lat, lng) location and record the first
-    # row index of each location so ties can be broken deterministically.
     def _most_visited(frame: nw.DataFrame, group_keys: list[str]) -> nw.DataFrame:
-        """Return the most-visited (lat, lng) per group, ties broken by first occurrence."""
-        # Attach a sequential index so we can identify the first occurrence of each location.
-        frame = frame.with_row_index("__loc_idx__")
+        """Return the most-visited (lat, lng) per group, matching skmob ties."""
         visit_counts = frame.group_by(group_keys + [lat_col, lng_col]).agg(
             nw.len().alias("__count__"),
-            nw.col("__loc_idx__").min().alias("__first_idx__"),
         )
         if uid_col is not None:
-            # For each user find the max visit count, then pick the location with
-            # that count and the smallest first-occurrence index (stable tie-break).
-            max_counts = visit_counts.group_by([uid_col]).agg(nw.col("__count__").max().alias("__max_count__"))
+            # skmob uses pandas groupby(...).count().sort_values(count, descending)
+            # and then iloc[0], so equal-count ties follow groupby's sorted
+            # coordinate order.
             best_per_user = (
-                visit_counts.join(max_counts, on=[uid_col])
-                .filter(nw.col("__count__") == nw.col("__max_count__"))
-                .sort([uid_col, "__first_idx__"])
+                visit_counts.sort([uid_col, "__count__", lat_col, lng_col], descending=[False, True, False, False])
                 .group_by([uid_col])
                 .agg(
                     nw.col(lat_col).first().alias(lat_col),
@@ -98,9 +120,7 @@ def home_location(
             )
             return best_per_user.select([uid_col, lat_col, lng_col])
         else:
-            # Single-user case: pick the (lat, lng) with the highest count,
-            # then lowest first-occurrence index for tie-breaking.
-            best = visit_counts.sort(["__count__", "__first_idx__"], descending=[True, False]).rows(named=True)[0]
+            best = visit_counts.sort(["__count__", lat_col, lng_col], descending=[True, False, False]).rows(named=True)[0]
             return nw.from_dict(
                 {lat_col: [best[lat_col]], lng_col: [best[lng_col]]},
                 backend=backend,

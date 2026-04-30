@@ -9,8 +9,7 @@ import narwhals as nw
 
 # Expected home locations for the shared synthetic fixture.
 # All timestamps are in hours 0-4, which fall within the default nighttime
-# window (22:00-07:00), so the home is the first visited location (each
-# location appears once — tie-broken by first occurrence).
+# window (22:00-07:00), so ties follow skmob's pandas groupby/sort order.
 EXPECTED_HOME: dict[str, tuple[float, float]] = {
     "user_a": (0.0, 0.0),  # lat=0.0, lng=0.0
     "user_b": (10.0, 20.0),  # lat=10.0, lng=20.0
@@ -62,6 +61,26 @@ def test_home_location_no_uid():
     # lat=1.0, lng=10.0 appears twice; lat=2.0, lng=20.0 appears once.
     assert abs(row["lat"] - 1.0) < 1e-9
     assert abs(row["lng"] - 10.0) < 1e-9
+
+
+def test_home_location_ties_follow_skmob_pandas_order():
+    """Equal-count nighttime ties match skmob's pandas groupby/sort behavior."""
+    from skmob2.measures.spatial.home_location import home_location
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a"],
+            "datetime": [
+                pd.Timestamp("2020-01-01 22:00"),
+                pd.Timestamp("2020-01-01 23:00"),
+            ],
+            "lat": [5.0, 1.0],
+            "lng": [0.0, 0.0],
+        }
+    )
+    result = home_location(df)
+    mapping = _to_dict(result)
+    assert mapping["a"] == (1.0, 0.0)
 
 
 def test_home_location_fallback_to_all_hours():

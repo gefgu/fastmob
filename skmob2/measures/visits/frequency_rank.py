@@ -4,7 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _build_user_ranges, _prepare_trajectory
+from .._common import _build_user_ranges, _is_pandas_backed, _prepare_trajectory
 
 
 def frequency_rank(
@@ -58,6 +58,33 @@ def frequency_rank(
         uid_col=uid_col,
     )
 
+    if _is_pandas_backed(df):
+        pd_df = df.to_native()
+
+        def _rank_pandas(frame):
+            ranked = (
+                frame.groupby([lat_col, lng_col])
+                .count()
+                .sort_values(by=datetime_col, ascending=False)
+                .reset_index()
+            )
+            ranked["frequency_rank"] = range(1, len(ranked) + 1)
+            return ranked[[lat_col, lng_col, "frequency_rank"]]
+
+        if uid_col is None:
+            return _rank_pandas(pd_df)
+
+        pieces = []
+        for uid, group in pd_df.groupby(uid_col):
+            ranked = _rank_pandas(group)
+            ranked.insert(0, uid_col, uid)
+            pieces.append(ranked)
+        if not pieces:
+            return pd_df[[uid_col, lat_col, lng_col]].assign(frequency_rank=[]).iloc[0:0]
+        import pandas as pd
+
+        return pd.concat(pieces, ignore_index=True)
+
     def _rank_for_values(lat_list: list, lng_list: list) -> tuple[list, list, list[int]]:
         """Compute frequency ranks for a single user's trajectory rows.
 
@@ -69,8 +96,8 @@ def frequency_rank(
             key = (lat, lng)
             counts[key] = counts.get(key, 0) + 1
 
-        # Sort by count descending (stable: ties keep insertion order).
-        sorted_locs = sorted(counts.items(), key=lambda item: item[1], reverse=True)
+        # Non-pandas backends use a deterministic equivalent for equal-count ties.
+        sorted_locs = sorted(counts.items(), key=lambda item: (-item[1], item[0][0], item[0][1]))
 
         lats = [loc[0] for loc, _ in sorted_locs]
         lngs = [loc[1] for loc, _ in sorted_locs]

@@ -76,14 +76,15 @@ def k_radius_of_gyration(
 
     lats_full = df.get_column(lat_col).to_list()
     lngs_full = df.get_column(lng_col).to_list()
+    datetimes_full = df.get_column(datetime_col).to_list()
 
     if uid_col is None:
-        krg = _k_rog_for_sequence(lats_full, lngs_full, k)
+        krg = _k_rog_for_sequence(lats_full, lngs_full, datetimes_full, k)
         return nw.from_dict({"k_radius_of_gyration": [krg]}, backend=df.implementation).to_native()
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
     krg_values = [
-        _k_rog_for_sequence(lats_full[start:end], lngs_full[start:end], k)
+        _k_rog_for_sequence(lats_full[start:end], lngs_full[start:end], datetimes_full[start:end], k)
         for start, end in ranges
     ]
 
@@ -94,7 +95,7 @@ def k_radius_of_gyration(
     return result.to_native()
 
 
-def _k_rog_for_sequence(lats: list[float], lngs: list[float], k: int) -> float:
+def _k_rog_for_sequence(lats: list[float], lngs: list[float], datetimes: list, k: int) -> float:
     """Compute k-radius of gyration for one user's trajectory sequence.
 
     Counts visits per distinct (lat, lng) location, then delegates to the
@@ -116,14 +117,22 @@ def _k_rog_for_sequence(lats: list[float], lngs: list[float], k: int) -> float:
 
     @usedBy skmob2/measures/spatial/k_radius_of_gyration.py
     """
-    # Count visits per distinct location using an ordered dict for determinism.
-    from collections import Counter
+    loc_stats: dict[tuple[float, float], list] = {}
+    for order, (lat, lng, timestamp) in enumerate(zip(lats, lngs, datetimes)):
+        key = (lat, lng)
+        if key not in loc_stats:
+            loc_stats[key] = [0, timestamp, order]
+        loc_stats[key][0] += 1
 
-    counts: Counter[tuple[float, float]] = Counter(zip(lats, lngs))
-    if not counts:
+    if not loc_stats:
         return 0.0
 
-    coords = list(counts.keys())
-    visit_counts = [counts[c] for c in coords]
+    sorted_locs = sorted(
+        loc_stats.items(),
+        key=lambda item: (-item[1][0], item[1][1], item[1][2]),
+    )
+    top_locs = sorted_locs[: min(k, len(sorted_locs))]
+    coords = [loc for loc, _ in top_locs]
+    visit_counts = [stats[0] for _, stats in top_locs]
 
-    return k_radius_of_gyration_km(coords, visit_counts, k)
+    return k_radius_of_gyration_km(coords, visit_counts, len(coords))

@@ -129,6 +129,13 @@ def brightkite_skmob():
         nrows=100_000,
         names=["user", "check-in_time", "latitude", "longitude", "location id"],
     )
+    # skmob sorts per-user trajectories by datetime only. Rows that share the
+    # same user and timestamp therefore have backend/version-dependent order in
+    # order-sensitive measures, so remove that ambiguity for exact comparisons.
+    df = df.sort_values(["user", "check-in_time", "latitude", "longitude", "location id"]).drop_duplicates(
+        ["user", "check-in_time"],
+        keep="first",
+    )
     return skmob.TrajDataFrame(
         df,
         latitude="latitude",
