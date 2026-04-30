@@ -43,4 +43,10 @@ nav:
   - Getting Started: getting-started.md
   - API Reference:
     - Overview: api/index.md
-    - Measures: api/measures.md
+    - Preprocessing: api/preprocessing.md
+    - Spatial Measures: api/spatial.md
+    - Flow Measures: api/flows.md
+    - Visit Measures: api/visits.md
+    - Fitting: api/fitting.md
+    - Evaluation: api/evaluation.md
+    - STVD-EMD: api/stvd-emd.md
