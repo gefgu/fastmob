@@ -255,4 +255,6 @@ def test_jump_lengths_matches_skmob(brightkite_skmob):
         left = baseline[uid]
         right = candidate[uid]
         assert left.shape == right.shape, f"Shape mismatch for uid={uid}"
-        assert np.allclose(left, right, rtol=1e-5, atol=1e-5), f"Value mismatch for uid={uid}"
+        # skmob uses its Python gislib Haversine implementation; skmob2 uses
+        # Rust geo::Haversine. Individual long jumps can differ by metres.
+        assert np.allclose(left, right, rtol=2e-5, atol=1e-2), f"Value mismatch for uid={uid}"

@@ -180,7 +180,7 @@ def test_imn_matches_skmob(brightkite_skmob):
     skmob_result = skmob_result.reset_index()
     for _, row in skmob_result.iterrows():
         uid = row["uid"]
-        edge = (row["lat"], row["lng"], row["lat_dest"], row["lng_dest"])
+        edge = (row["lat_origin"], row["lng_origin"], row["lat_dest"], row["lng_dest"])
         skmob_dict.setdefault(uid, {})[edge] = int(row["n_trips"])
 
     skmob2_dict = _to_edge_dict(skmob2_result)

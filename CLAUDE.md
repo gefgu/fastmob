@@ -62,12 +62,29 @@ Dev dependencies (`pytest`, `pytest-benchmark`, `skmob`, `polars`, `tqdm`) are d
 # Correctness only — fast, no network, no optional deps (default)
 bash tests/run_correctness.sh
 
-# Include skmob-comparison tests (requires skmob installed)
-bash tests/run_correctness.sh -m skmob
-
 # Or run directly with pytest
 pytest tests/correctness/ -m "not skmob"
 ```
+
+### skmob comparison correctness tests
+
+Run the `@pytest.mark.skmob` comparison tests from the dedicated `.venv-skmob` environment, not the normal `.venv`. `scikit-mobility` depends on older geo packages; the known-good local stack is Python 3.10 with `scikit-mobility 1.3.1`, `geopandas 0.10.2`, and `Shapely 1.8.5.post1`. Shapely 2.x breaks `skmob` imports because `shapely.ops.cascaded_union` was removed.
+
+If your shell has Conda active, unset `CONDA_PREFIX` before invoking `maturin`; otherwise `maturin` can refuse to choose between Conda and the virtualenv.
+
+```bash
+# Build skmob2._core for the skmob comparison environment
+source .venv-skmob/bin/activate
+unset CONDA_PREFIX
+maturin develop
+
+# Run only the skmob comparison correctness tests
+python -m pytest tests/correctness -m skmob -vv
+```
+
+Avoid `bash tests/run_correctness.sh -m skmob` for these comparisons unless it has been updated to use `.venv-skmob`; that helper currently activates `.venv`, whose modern Shapely stack is intended for normal development and can make `skmob` fail to import.
+
+The skmob comparison tests should usually be strict, but the Brightkite tests for `filter`, `distance_straight_line`, and `jump_lengths` intentionally allow a narrow tolerance. `skmob` computes distances with `skmob.utils.gislib.getDistanceByHaversine` and `earthradius = 6371.0`, while `skmob2` uses the Rust `geo::Haversine` kernel. This can move threshold-adjacent filtering points across the speed cutoff and can create metre-scale differences on long jumps. Keep that relaxation limited to those tests unless another comparison shows the same distance-kernel-only cause.
 
 ## Documentation
 
