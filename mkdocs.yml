@@ -6,6 +6,10 @@ repo_name: gefgu/skmob2
 
 docs_dir: docs/src
 
+# Use the documentation assets folder for site branding
+site_logo: assets/logo.png
+site_favicon: assets/icon.png
+
 theme:
   name: material
   font:
