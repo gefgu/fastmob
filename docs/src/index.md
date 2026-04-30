@@ -1,5 +1,9 @@
 # skmob2
 
+<p align="center">
+  <img src="assets/logo.png" alt="skmob2 logo" width="280">
+</p>
+
 **skmob2** is a high-performance reimplementation of the [skmob](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library.
 
 It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/) so any eager dataframe (pandas, polars, …) is accepted as input.
