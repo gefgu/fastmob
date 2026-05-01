@@ -27,6 +27,8 @@ dev = [
     "pytest-memray",
     "pytest",
     "pytest-benchmark",
+    "pytest-cov",
+    "pyarrow",
     "py-spy",
     "polars",
     "ruff",
@@ -52,6 +54,14 @@ docs = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "bench_*.py"]
+
+[tool.coverage.run]
+branch = true
+source = ["skmob2"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
 
 [tool.ruff]
 target-version = "py38"

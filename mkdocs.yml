@@ -71,6 +71,16 @@ plugins:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Tutorials:
+    - Overview: tutorials/index.md
+    - Analyze a Simple Trajectory: tutorials/analyze-a-simple-trajectory.md
+  - How-To Guides:
+    - Overview: how-to-guides/index.md
+    - Use Custom Columns and DataFrame Backends: how-to-guides/use-custom-columns-and-dataframe-backends.md
+  - Explanations:
+    - Overview: explanations/index.md
+    - Backend-Agnostic, Rust-Accelerated Design: explanations/backend-agnostic-rust-accelerated-design.md
+    - Correctness, Coverage, and Benchmarking: explanations/correctness-coverage-and-benchmarking.md
   - API Reference:
     - Overview: api/index.md
     - Preprocessing: api/preprocessing.md

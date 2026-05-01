@@ -1,4 +1,4 @@
-"""Benchmarks for skmob2/measures/jump_lengths.py."""
+"""Benchmarks for skmob2/measures/spatial/jump_lengths.py."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ def test_jump_lengths_skmob2_pandas(benchmark, bench_slice_pandas):
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
     )
-    from skmob2.measures.jump_lengths import jump_lengths as skmob2_jl
+    from skmob2.measures.spatial.jump_lengths import jump_lengths as skmob2_jl
 
     benchmark(skmob2_jl, bench_slice_pandas, merge=False)
 
@@ -32,7 +32,7 @@ def test_jump_lengths_skmob2_polars(benchmark, bench_slice_polars):
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
     )
-    from skmob2.measures.jump_lengths import jump_lengths as skmob2_jl
+    from skmob2.measures.spatial.jump_lengths import jump_lengths as skmob2_jl
 
     benchmark(skmob2_jl, bench_slice_polars, merge=False)
 

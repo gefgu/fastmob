@@ -1,4 +1,4 @@
-"""Benchmarks for skmob2/measures/radius_of_gyration.py."""
+"""Benchmarks for skmob2/measures/spatial/radius_of_gyration.py."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def test_radius_of_gyration_skmob2_pandas(benchmark, bench_slice_pandas):
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
     )
-    from skmob2.measures.radius_of_gyration import radius_of_gyration as skmob2_rog
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration as skmob2_rog
 
     benchmark(skmob2_rog, bench_slice_pandas)
 
@@ -56,7 +56,7 @@ def test_radius_of_gyration_skmob2_polars(benchmark, bench_slice_polars):
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
     )
-    from skmob2.measures.radius_of_gyration import radius_of_gyration as skmob2_rog
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration as skmob2_rog
 
     benchmark(skmob2_rog, bench_slice_polars)
 

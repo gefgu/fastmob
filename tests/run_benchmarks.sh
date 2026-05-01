@@ -24,6 +24,7 @@ if [ ! -f ".venv/bin/activate" ]; then
 fi
 
 source .venv/bin/activate
-maturin develop
+unset CONDA_PREFIX
+maturin develop --uv
 
 pytest tests/benchmarks/ -v "$@"
