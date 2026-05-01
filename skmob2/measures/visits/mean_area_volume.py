@@ -71,6 +71,31 @@ def mean_area_volume(
     - A stay where ``start > end`` produces no bins and is silently skipped.
     - Stays spanning midnight are handled correctly: bins are attributed to the
       date on which each bin falls.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import mean_area_volume
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u2", "u1"],
+    ...         "area": ["home", "home", "work"],
+    ...         "start_timestamp": pd.to_datetime(
+    ...             ["2020-01-01 08:00", "2020-01-01 08:10", "2020-01-01 09:00"]
+    ...         ),
+    ...         "end_timestamp": pd.to_datetime(
+    ...             ["2020-01-01 08:20", "2020-01-01 08:20", "2020-01-01 09:10"]
+    ...         ),
+    ...     }
+    ... )
+    >>> result = mean_area_volume(visits)
+    >>> print(result.round({"mean_volume": 3}).to_string(index=False))
+    area time_bin  mean_volume
+    home    08:00        0.143
+    home    08:10        0.286
+    home    08:20        0.286
+    work    09:00        0.143
+    work    09:10        0.143
     """
     nw_df = nw.from_native(visits, eager_only=True)
     cols = nw_df.columns

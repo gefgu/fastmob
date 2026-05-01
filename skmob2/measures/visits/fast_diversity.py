@@ -36,6 +36,13 @@ def fast_diversity(sequence) -> float:
     ------
     ImportError
         When ``pydivsufsort`` is not installed.
+
+    Examples
+    --------
+    >>> from skmob2.measures.visits import fast_diversity
+    >>> sequence = ["home", "work", "home", "gym"]
+    >>> print(round(fast_diversity(sequence), 3))
+    0.9
     """
     if _divsufsort is None:
         raise ImportError("pydivsufsort is required: pip install skmob2[diversity]")

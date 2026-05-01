@@ -113,6 +113,53 @@ def cdr_to_visitation_df(
     Consecutive records at the same venue for the same user are collapsed into
     one stay.  The stay end time is estimated from approximate travel time to
     the next stay, clamped to the observed gap between venue changes.
+
+    Parameters
+    ----------
+    trajectory_df:
+        Raw CDR-like records in any Narwhals-compatible eager dataframe.
+    user_id_column:
+        Column containing user IDs.
+    timestamp_column:
+        Column containing observation timestamps.
+    venue_column:
+        Column containing venue or cell-tower IDs.
+    lat_column:
+        Latitude column.
+    lon_column:
+        Longitude column.
+    avg_speed_kmh:
+        Assumed average travel speed used to estimate stay end times.
+    circuity:
+        Multiplier applied to straight-line travel distance.
+
+    Returns
+    -------
+    DataFrame
+        NetMob-like visitation dataframe in the caller's original backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.preprocessing import cdr_to_visitation_df
+    >>> cdr = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u1"],
+    ...         "timestamp": pd.to_datetime(
+    ...             ["2020-01-01 08:00", "2020-01-01 08:15", "2020-01-01 09:00", "2020-01-01 10:00"]
+    ...         ),
+    ...         "venueId": ["home", "home", "work", "home"],
+    ...         "lat": [0.0, 0.0, 0.01, 0.0],
+    ...         "long": [0.0, 0.0, 0.01, 0.0],
+    ...     }
+    ... )
+    >>> result = cdr_to_visitation_df(cdr)
+    >>> preview = result[["user_id", "area", "start_timestamp", "end_timestamp", "duration_minutes"]]
+    >>> print(preview.round({"duration_minutes": 2}).to_string(index=False))
+    user_id area     start_timestamp              end_timestamp  duration_minutes
+         u1 home 2020-01-01 08:00:00 2020-01-01 08:57:44.132898             57.74
+         u1 work 2020-01-01 09:00:00 2020-01-01 09:57:44.132898             57.74
+         u1 home 2020-01-01 10:00:00                        NaT               NaN
     """
     _validate_travel_parameters(avg_speed_kmh, circuity)
 
@@ -202,7 +249,47 @@ def cdr_to_trips_df(
     avg_speed_kmh: float = 50.0,
     circuity: float = 1.2,
 ) -> Any:
-    """Derive a CDR trips dataframe from ``cdr_to_visitation_df`` output."""
+    """Derive a CDR trips dataframe from ``cdr_to_visitation_df`` output.
+
+    Parameters
+    ----------
+    visitation_df:
+        Visitation dataframe produced by :func:`cdr_to_visitation_df`.
+    user_id_column:
+        Column containing user IDs.
+    avg_speed_kmh:
+        Assumed average travel speed used to estimate trip durations.
+    circuity:
+        Multiplier applied to straight-line travel distance.
+
+    Returns
+    -------
+    DataFrame
+        NetMob-like trips dataframe in the caller's original backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.preprocessing import cdr_to_trips_df, cdr_to_visitation_df
+    >>> cdr = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u1"],
+    ...         "timestamp": pd.to_datetime(
+    ...             ["2020-01-01 08:00", "2020-01-01 08:15", "2020-01-01 09:00", "2020-01-01 10:00"]
+    ...         ),
+    ...         "venueId": ["home", "home", "work", "home"],
+    ...         "lat": [0.0, 0.0, 0.01, 0.0],
+    ...         "long": [0.0, 0.0, 0.01, 0.0],
+    ...     }
+    ... )
+    >>> visits = cdr_to_visitation_df(cdr)
+    >>> result = cdr_to_trips_df(visits)
+    >>> preview = result[["user_id", "trip_number", "origin_area", "destination_area", "duration_minutes"]]
+    >>> print(preview.round({"duration_minutes": 2}).to_string(index=False))
+    user_id  trip_number origin_area destination_area  duration_minutes
+         u1            1        home             work              2.26
+         u1            2        work             home              2.26
+    """
     _validate_travel_parameters(avg_speed_kmh, circuity)
 
     df = nw.from_native(visitation_df, eager_only=True).with_row_index(_ROW_ORDER_COL)

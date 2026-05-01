@@ -46,6 +46,22 @@ def diversity(
     DataFrame
         One row per user with columns ``[user_id_col, "diversity"]``.
         The returned backend matches the input backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import diversity
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u1", "u2", "u2", "u2"],
+    ...         "location_id": ["home", "work", "home", "gym", "home", "shop", "home"],
+    ...     }
+    ... )
+    >>> result = diversity(visits)
+    >>> print(result.round(3).to_string(index=False))
+    user_id  diversity
+         u1      0.900
+         u2      0.833
     """
     nw_df = nw.from_native(visits, eager_only=True)
 

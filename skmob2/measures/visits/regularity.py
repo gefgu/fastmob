@@ -49,6 +49,22 @@ def regularity(
     DataFrame
         One row per user with columns ``[user_id_col, "regularity"]``.
         The returned backend matches the input backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import regularity
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u1", "u2", "u2", "u2"],
+    ...         "location_id": ["home", "work", "home", "gym", "home", "shop", "home"],
+    ...     }
+    ... )
+    >>> result = regularity(visits)
+    >>> print(result.round(3).to_string(index=False))
+    user_id  regularity
+         u1       0.250
+         u2       0.333
     """
     nw_df = nw.from_native(visits, eager_only=True)
 

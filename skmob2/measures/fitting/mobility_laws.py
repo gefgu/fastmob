@@ -44,6 +44,15 @@ def log_truncated_powerlaw(
     -------
     np.ndarray
         \\(\\log f(x)\\) evaluated at each element of x.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from skmob2.measures.fitting.mobility_laws import log_truncated_powerlaw
+    >>> x = np.array([1.0, 2.0, 5.0, 10.0])
+    >>> values = log_truncated_powerlaw(x, c=2.0, r0=1.0, beta=1.5, kappa=20.0)
+    >>> print(np.round(values, 3))
+    [-0.397 -1.055 -2.244 -3.404]
     """
     return np.log(c) - beta * np.log(x + r0) - (x / kappa)
 
@@ -78,6 +87,19 @@ def fit_values_to_truncated_powerlaw(
     ------
     ImportError
         When scipy is not installed.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from skmob2.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
+    >>> values = np.array([1, 1.2, 1.5, 2, 2.5, 3, 4, 6, 8, 13, 21, 34])
+    >>> popt, x_data, y_data = fit_values_to_truncated_powerlaw(values, bins=6)
+    >>> print(popt.shape)
+    (4,)
+    >>> print(np.round(x_data[:3], 3))
+    [1.423 2.88  5.831]
+    >>> print(np.round(y_data[:3], 3))
+    [0.325 0.121 0.04 ]
     """
     if _scipy_curve_fit is None:
         raise ImportError("scipy is required for power-law fitting: pip install skmob2[fitting]")

@@ -65,6 +65,33 @@ def activity_transition_matrix(
     ------
     ValueError
         When ``day_filter`` is requested but no day-of-week column can be found.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import activity_transition_matrix
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u2", "u2", "u2"],
+    ...         "start_timestamp": pd.to_datetime(
+    ...             [
+    ...                 "2020-01-01 08:00",
+    ...                 "2020-01-01 09:00",
+    ...                 "2020-01-01 18:00",
+    ...                 "2020-01-01 07:30",
+    ...                 "2020-01-01 12:00",
+    ...                 "2020-01-01 19:00",
+    ...             ]
+    ...         ),
+    ...         "purpose": ["HOME", "WORK", "HOME", "HOME", "SHOP", "HOME"],
+    ...     }
+    ... )
+    >>> result = activity_transition_matrix(visits)
+    >>> print(result.round(1).to_string())
+          HOME  SHOP  WORK
+    HOME   0.0  25.0  25.0
+    SHOP  25.0   0.0   0.0
+    WORK  25.0   0.0   0.0
     """
     nw_df = nw.from_native(visits, eager_only=True)
 

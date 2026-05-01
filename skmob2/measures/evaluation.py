@@ -48,6 +48,14 @@ def common_part_of_commuters(values1, values2) -> float:
     float
         CPC in the range [0, 1] where 1 indicates perfect agreement.
 
+    Examples
+    --------
+    >>> from skmob2 import common_part_of_commuters
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(common_part_of_commuters(observed, predicted), 3))
+    0.95
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
@@ -82,6 +90,14 @@ def common_part_of_links(values1, values2) -> float:
     -------
     float
         CPL in the range [0, 1] where 1 means identical link sets.
+
+    Examples
+    --------
+    >>> from skmob2 import common_part_of_links
+    >>> observed = [10, 0, 30, 0]
+    >>> predicted = [5, 7, 0, 0]
+    >>> print(round(common_part_of_links(observed, predicted), 3))
+    0.5
 
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
@@ -120,6 +136,14 @@ def common_part_of_commuters_distance(values1, values2) -> float:
     -------
     float
         CPCD value; 0.0 when values1 sums to zero or there is no bin overlap.
+
+    Examples
+    --------
+    >>> from skmob2 import common_part_of_commuters_distance
+    >>> observed = [1, 2, 4, 8]
+    >>> predicted = [1, 3, 5, 9]
+    >>> print(round(common_part_of_commuters_distance(observed, predicted), 3))
+    0.2
 
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
@@ -166,6 +190,14 @@ def r_squared(true, pred) -> float:
     float
         R² score. Best possible value is 1.0; can be negative.
 
+    Examples
+    --------
+    >>> from skmob2 import r_squared
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(r_squared(observed, predicted), 3))
+    0.948
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
@@ -193,6 +225,14 @@ def mse(true, pred) -> float:
     float
         Non-negative MSE; 0.0 is the best possible value.
 
+    Examples
+    --------
+    >>> from skmob2 import mse
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(mse(observed, predicted), 3))
+    6.5
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
@@ -216,6 +256,14 @@ def rmse(true, pred) -> float:
     float
         Non-negative RMSE; 0.0 is the best possible value.
 
+    Examples
+    --------
+    >>> from skmob2 import rmse
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(rmse(observed, predicted), 3))
+    2.55
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
@@ -236,6 +284,14 @@ def nrmse(true, pred) -> float:
     -------
     float
         Non-negative NRMSE; 0.0 is the best possible value.
+
+    Examples
+    --------
+    >>> from skmob2 import nrmse
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(nrmse(observed, predicted), 3))
+    0.025
 
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
@@ -261,6 +317,14 @@ def max_error(true, pred) -> float:
     -------
     float
         Maximum element-wise difference true - pred.
+
+    Examples
+    --------
+    >>> from skmob2 import max_error
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(max_error(observed, predicted), 3))
+    3.0
 
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
@@ -295,6 +359,14 @@ def information_gain(true, pred) -> float:
     -------
     float
         Information gain value; 0.0 when the distributions are identical.
+
+    Examples
+    --------
+    >>> from skmob2 import information_gain
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(information_gain(observed, predicted), 3))
+    0.005
 
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
@@ -333,6 +405,14 @@ def kullback_leibler_divergence(true, pred) -> float:
     ImportError
         When scipy is not installed.
 
+    Examples
+    --------
+    >>> from skmob2 import kullback_leibler_divergence
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> print(round(kullback_leibler_divergence(observed, predicted), 3))
+    0.005
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
@@ -366,6 +446,15 @@ def pearson_correlation(true, pred) -> tuple[float, float]:
     ImportError
         When scipy is not installed.
 
+    Examples
+    --------
+    >>> from skmob2 import pearson_correlation
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> r, p_value = pearson_correlation(observed, predicted)
+    >>> print(round(r, 3), round(p_value, 3))
+    0.975 0.025
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
@@ -394,6 +483,15 @@ def spearman_correlation(true, pred) -> tuple[float, float]:
     ------
     ImportError
         When scipy is not installed.
+
+    Examples
+    --------
+    >>> from skmob2 import spearman_correlation
+    >>> observed = [10, 20, 30, 40]
+    >>> predicted = [12, 18, 33, 37]
+    >>> rho, p_value = spearman_correlation(observed, predicted)
+    >>> print(round(rho, 3), round(p_value, 3))
+    1.0 0.0
 
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)

@@ -61,6 +61,25 @@ def od_matrix(
         Long-format OD counts with columns
         ``[origin_col, destination_col, "count"]``,
         returned in the caller's original backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.flows import od_matrix
+    >>> trips = pd.DataFrame(
+    ...     {
+    ...         "origin_area": ["A", "A", "A", "B", "B", "C"],
+    ...         "destination_area": ["A", "B", "B", "A", "C", "A"],
+    ...     }
+    ... )
+    >>> result = od_matrix(trips)
+    >>> print(result.to_string(index=False))
+    origin_area destination_area  count
+              A                A      1
+              A                B      2
+              B                A      1
+              B                C      1
+              C                A      1
     """
     nw_df = nw.from_native(trips, eager_only=True)
     origin_col, destination_col = _detect_od_columns(nw_df, origin_col, destination_col)
@@ -102,6 +121,24 @@ def od_metrics_per_area(
         DataFrame with columns ``["area_code", "MoveInside", "InComing",
         "OutGoing", "Total"]``, one row per area, returned in the caller's
         original backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.flows import od_matrix, od_metrics_per_area
+    >>> trips = pd.DataFrame(
+    ...     {
+    ...         "origin_area": ["A", "A", "A", "B", "B", "C"],
+    ...         "destination_area": ["A", "B", "B", "A", "C", "A"],
+    ...     }
+    ... )
+    >>> od = od_matrix(trips)
+    >>> result = od_metrics_per_area(od)
+    >>> print(result.to_string(index=False))
+    area_code  MoveInside  InComing  OutGoing  Total
+            A           1         2         2      5
+            B           0         2         2      4
+            C           0         1         1      2
     """
     nw_df = nw.from_native(od_df, eager_only=True)
     origin_col, destination_col = _detect_od_columns(nw_df, origin_col, destination_col)

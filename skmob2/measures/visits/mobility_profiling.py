@@ -194,6 +194,33 @@ def intermittance_and_degree_of_return(
         One row per user with columns
         ``[user_id_col, "intermittency", "degree_of_return", "mean_return",
         "mean_exploration"]``. The returned backend matches the input backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import intermittance_and_degree_of_return
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u1", "u2", "u2", "u2"],
+    ...         "start_timestamp": pd.to_datetime(
+    ...             [
+    ...                 "2020-01-01 08:00",
+    ...                 "2020-01-01 09:00",
+    ...                 "2020-01-01 18:00",
+    ...                 "2020-01-02 08:00",
+    ...                 "2020-01-01 07:30",
+    ...                 "2020-01-01 12:00",
+    ...                 "2020-01-01 19:00",
+    ...             ]
+    ...         ),
+    ...         "location_id": ["home", "work", "home", "gym", "home", "shop", "home"],
+    ...     }
+    ... )
+    >>> result = intermittance_and_degree_of_return(visits, cold_start_strategy="none")
+    >>> print(result.round(3).to_string(index=False))
+    user_id  intermittency  degree_of_return  mean_return  mean_exploration
+         u1            2.5             0.588          1.0               1.5
+         u2            3.0             0.464          1.0               2.0
     """
     nw_df = nw.from_native(visits, eager_only=True)
 
@@ -350,6 +377,37 @@ def exploration_profiling(
     ImportError
         If the compiled ``skmob2._core`` extension is not available (run
         ``maturin develop`` first).
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import exploration_profiling
+    >>> rows = []
+    >>> patterns = {
+    ...     "u1": ["a", "b", "c", "d", "a"],
+    ...     "u2": ["a", "b", "a", "c", "a", "d"],
+    ...     "u3": ["a", "a", "b", "a", "c", "a"],
+    ...     "u4": ["a", "b", "c", "a", "b", "c"],
+    ...     "u5": ["a", "b", "a", "b", "a", "b"],
+    ... }
+    >>> for uid, locations in patterns.items():
+    ...     for i, location in enumerate(locations):
+    ...         rows.append(
+    ...             {
+    ...                 "user_id": uid,
+    ...                 "start_timestamp": pd.Timestamp("2020-01-01") + pd.Timedelta(hours=i),
+    ...                 "location_id": location,
+    ...             }
+    ...         )
+    >>> visits = pd.DataFrame(rows)
+    >>> result = exploration_profiling(visits, cold_start_strategy="none", random_seed=7)
+    >>> print(result.round(3).to_string(index=False))
+    user_id  intermittency  degree_of_return  mean_return  mean_exploration   profile
+         u1          5.000             0.245          1.0             4.000  scouters
+         u2          2.333             0.644          1.0             1.333  regulars
+         u3          2.000             0.785          1.0             1.000  regulars
+         u4          6.000             0.785          3.0             3.000  regulars
+         u5          6.000             1.107          4.0             2.000 routiners
     """
     from skmob2._core import cluster_kmeans, cluster_gmm
 

@@ -210,6 +210,33 @@ def trajectory_entropy(
     DataFrame
         One row per user with columns ``[user_id_col, "entropy"]``.
         The returned backend matches the input backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import trajectory_entropy
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u1", "u2", "u2", "u2"],
+    ...         "start_timestamp": pd.to_datetime(
+    ...             [
+    ...                 "2020-01-01 08:00",
+    ...                 "2020-01-01 09:00",
+    ...                 "2020-01-01 18:00",
+    ...                 "2020-01-02 08:00",
+    ...                 "2020-01-01 07:30",
+    ...                 "2020-01-01 12:00",
+    ...                 "2020-01-01 19:00",
+    ...             ]
+    ...         ),
+    ...         "location_id": ["home", "work", "home", "gym", "home", "shop", "home"],
+    ...     }
+    ... )
+    >>> result = trajectory_entropy(visits)
+    >>> print(result.round(3).to_string(index=False))
+    user_id  entropy
+         u1      0.8
+         u2      1.0
     """
     nw_df = nw.from_native(visits, eager_only=True)
 
@@ -278,6 +305,33 @@ def trajectory_predictability(
         ``[user_id_col, "real_entropy", "predictability",
         "n_unique_locations", "n_steps"]``.
         The returned backend matches the input backend.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.visits import trajectory_predictability
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u1", "u1", "u2", "u2", "u2"],
+    ...         "start_timestamp": pd.to_datetime(
+    ...             [
+    ...                 "2020-01-01 08:00",
+    ...                 "2020-01-01 09:00",
+    ...                 "2020-01-01 18:00",
+    ...                 "2020-01-02 08:00",
+    ...                 "2020-01-01 07:30",
+    ...                 "2020-01-01 12:00",
+    ...                 "2020-01-01 19:00",
+    ...             ]
+    ...         ),
+    ...         "location_id": ["home", "work", "home", "gym", "home", "shop", "home"],
+    ...     }
+    ... )
+    >>> result = trajectory_predictability(visits)
+    >>> print(result.round(3).to_string(index=False))
+    user_id  real_entropy  predictability  n_unique_locations  n_steps
+         u1         1.600           0.333                   3        4
+         u2         1.585           0.500                   2        3
     """
     nw_df = nw.from_native(visits, eager_only=True)
 

@@ -99,6 +99,27 @@ def stvd_emd(
     -------
     float
         Spatio-temporal Wasserstein distance in metres.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.measures.stvd_emd import stvd_emd
+    >>> dist_a = pd.DataFrame(
+    ...     {
+    ...         "time_bin": ["08:00", "08:10"],
+    ...         "mean_volume": [2.0, 1.0],
+    ...         "centroid": ["POINT (0 0)", "POINT (100 0)"],
+    ...     }
+    ... )
+    >>> dist_b = pd.DataFrame(
+    ...     {
+    ...         "time_bin": ["08:00", "08:10"],
+    ...         "mean_volume": [1.0, 2.0],
+    ...         "centroid": ["POINT (0 0)", "POINT (200 0)"],
+    ...     }
+    ... )
+    >>> print(round(stvd_emd(dist_a, dist_b, num_projections=10), 3))
+    19.052
     """
     if num_projections <= 0:
         raise ValueError(f"num_projections must be positive, got {num_projections}")
