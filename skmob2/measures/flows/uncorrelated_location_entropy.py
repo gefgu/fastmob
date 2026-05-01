@@ -18,12 +18,14 @@ def uncorrelated_location_entropy(
     """Return the uncorrelated entropy for each distinct location across all users.
 
     For each location ``l``, computes the Shannon entropy over the distribution
-    of visit probabilities::
+    of visit probabilities:
 
-        S_unc(l) = -sum_u p(u, l) * log2(p(u, l))
+    \\[
+    S_\\mathrm{unc}(l) = -\\sum_u p(u, l) \\log_2(p(u, l))
+    \\]
 
-    where ``p(u, l)`` is the fraction of all visits to ``l`` that belong to
-    user ``u``.  A location is a unique exact ``(lat, lng)`` pair.
+    where \\(p(u, l)\\) is the fraction of all visits to \\(l\\) that belong to
+    user \\(u\\).  A location is a unique exact ``(lat, lng)`` pair.
 
     Parameters
     ----------

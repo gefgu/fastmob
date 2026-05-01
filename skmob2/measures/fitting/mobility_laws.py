@@ -19,8 +19,13 @@ def log_truncated_powerlaw(
 ) -> np.ndarray:
     """Log of a truncated power-law (Gonzalez et al. 2008).
 
-    f(x) = c * (x + r0)^{-beta} * exp(-x / kappa)
-    log f(x) = log(c) - beta * log(x + r0) - x / kappa
+    \\[
+    f(x) = c (x + r_0)^{-\\beta} \\exp\\left(-\\frac{x}{\\kappa}\\right)
+    \\]
+
+    \\[
+    \\log f(x) = \\log(c) - \\beta \\log(x + r_0) - \\frac{x}{\\kappa}
+    \\]
 
     Parameters
     ----------
@@ -38,7 +43,7 @@ def log_truncated_powerlaw(
     Returns
     -------
     np.ndarray
-        log f(x) evaluated at each element of x.
+        \\(\\log f(x)\\) evaluated at each element of x.
     """
     return np.log(c) - beta * np.log(x + r0) - (x / kappa)
 

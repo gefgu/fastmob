@@ -18,7 +18,7 @@ def random_location_entropy(
 ) -> Any:
     """Return the random entropy for each distinct location across all users.
 
-    Random location entropy is ``log2(n)`` where ``n`` is the number of
+    Random location entropy is \\(\\log_2(n)\\), where \\(n\\) is the number of
     distinct users who visited the location.  A location is a unique exact
     ``(lat, lng)`` pair — matching the skmob convention.
 

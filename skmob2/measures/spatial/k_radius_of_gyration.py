@@ -20,15 +20,18 @@ def k_radius_of_gyration(
     """Compute the k-radius of gyration (km) for each user in the trajectory.
 
     The k-radius of gyration is the radius of gyration computed using only the
-    k most-visited locations for each user.  Formally::
+    k most-visited locations for each user. Formally:
 
-        krg(u, k) = sqrt(
-            sum_{i in top-k}( w_i * haversine(r_i, r_cm)^2 )
-            / sum_{i in top-k}( w_i )
-        )
+    \\[
+    r_g^{(k)}(u) =
+    \\sqrt{
+        \\frac{\\sum_{i \\in \\mathrm{top}\\text{-}k} w_i d_\\mathrm{haversine}(r_i, r_\\mathrm{cm})^2}
+             {\\sum_{i \\in \\mathrm{top}\\text{-}k} w_i}
+    }
+    \\]
 
-    where ``r_cm`` is the weighted center of mass over the top-k locations and
-    ``w_i`` is the visit count of location i.
+    where \\(r_\\mathrm{cm}\\) is the weighted center of mass over the top-k
+    locations and \\(w_i\\) is the visit count of location \\(i\\).
 
     Parameters
     ----------

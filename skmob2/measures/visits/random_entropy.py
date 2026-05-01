@@ -18,12 +18,12 @@ def random_entropy(
 ) -> Any:
     """Return the random entropy of mobility for each user.
 
-    Random entropy is defined as ``log2(n)`` where ``n`` is the number of
+    Random entropy is defined as \\(\\log_2(n)\\), where \\(n\\) is the number of
     distinct locations visited by the user.  A location is a unique exact
     ``(lat, lng)`` pair — matching the skmob convention (float equality,
     no spatial clustering).
 
-    This is the maximum possible entropy for a user who visits ``n``
+    This is the maximum possible entropy for a user who visits \\(n\\)
     distinct places, assuming all locations are equally likely.
 
     Parameters

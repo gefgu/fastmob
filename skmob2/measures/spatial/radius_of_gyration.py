@@ -78,11 +78,15 @@ def radius_of_gyration(
     """Compute the radius of gyration (km) for each user in the trajectory.
 
     The radius of gyration captures how far a user typically roams from their
-    center of mass.  Formally::
+    center of mass. Formally:
 
-        rg(u) = sqrt( mean_i( haversine(r_i, r_cm)^2 ) )
+    \\[
+    r_g(u) =
+    \\sqrt{\\frac{1}{n_u} \\sum_i d_\\mathrm{haversine}(r_i, r_\\mathrm{cm})^2}
+    \\]
 
-    where ``r_cm`` is the arithmetic mean of the user's lat/lng coordinates.
+    where \\(r_\\mathrm{cm}\\) is the arithmetic mean of the user's lat/lng
+    coordinates.
 
     Radius of gyration is order-independent, so chronological sorting is not
     required for correctness; grouping rows by user is what matters.

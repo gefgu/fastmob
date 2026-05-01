@@ -30,7 +30,11 @@ except ImportError:
 def common_part_of_commuters(values1, values2) -> float:
     """Return the common part of commuters (CPC) between two flow arrays.
 
-    CPC = 2 * sum(min(v1_i, v2_i)) / (sum(v1) + sum(v2)).
+    \\[
+    \\mathrm{CPC} =
+    \\frac{2 \\sum_i \\min(v_{1,i}, v_{2,i})}
+         {\\sum_i v_{1,i} + \\sum_i v_{2,i}}
+    \\]
 
     Parameters
     ----------
@@ -58,9 +62,14 @@ def common_part_of_commuters(values1, values2) -> float:
 def common_part_of_links(values1, values2) -> float:
     """Return the common part of links (CPL) between two flow arrays.
 
-    CPL counts links that are active (> 0) in both arrays and normalises by
+    CPL counts links that are active (\\(> 0\\)) in both arrays and normalises by
     the total number of active links across both arrays:
-    CPL = 2 * |{i : v1_i > 0 and v2_i > 0}| / (|{i : v1_i > 0}| + |{i : v2_i > 0}|).
+
+    \\[
+    \\mathrm{CPL} =
+    \\frac{2 \\left|\\{i : v_{1,i} > 0 \\land v_{2,i} > 0\\}\\right|}
+         {\\left|\\{i : v_{1,i} > 0\\}\\right| + \\left|\\{i : v_{2,i} > 0\\}\\right|}
+    \\]
 
     Parameters
     ----------
@@ -93,7 +102,12 @@ def common_part_of_commuters_distance(values1, values2) -> float:
 
     Bins both distance arrays into histograms with bin width 2 and returns
     the fraction of values1 that overlaps with values2 bin-by-bin:
-    CPCD = sum_k(min(hist1_k, hist2_k)) / sum(values1).
+
+    \\[
+    \\mathrm{CPCD} =
+    \\frac{\\sum_k \\min(\\mathrm{hist}_{1,k}, \\mathrm{hist}_{2,k})}
+         {\\sum_i v_{1,i}}
+    \\]
 
     Parameters
     ----------
@@ -130,7 +144,15 @@ def common_part_of_commuters_distance(values1, values2) -> float:
 def r_squared(true, pred) -> float:
     """Return the coefficient of determination R².
 
-    R² = 1 - SS_res / SS_tot where SS_tot = sum((true - mean(true))^2).
+    \\[
+    R^2 = 1 - \\frac{SS_\\mathrm{res}}{SS_\\mathrm{tot}}
+    \\]
+
+    where
+
+    \\[
+    SS_\\mathrm{tot} = \\sum_i (y_i - \\bar{y})^2
+    \\]
 
     Parameters
     ----------
@@ -256,7 +278,11 @@ def max_error(true, pred) -> float:
 def information_gain(true, pred) -> float:
     """Return the information gain (KL divergence variant) of true over pred.
 
-    IG = sum((true_i / N) * log(true_i / pred_i)) where N = sum(true).
+    \\[
+    \\mathrm{IG} = \\sum_i \\frac{y_i}{N} \\log\\left(\\frac{y_i}{\\hat{y}_i}\\right)
+    \\]
+
+    where \\(N = \\sum_i y_i\\).
 
     Parameters
     ----------
@@ -282,9 +308,13 @@ def information_gain(true, pred) -> float:
 
 
 def kullback_leibler_divergence(true, pred) -> float:
-    """Return the Kullback–Leibler divergence D_KL(true || pred).
+    """Return the Kullback–Leibler divergence \\(D_\\mathrm{KL}(\\mathrm{true}\\,\\|\\,\\mathrm{pred})\\).
 
-    D_KL = sum(pk * log(pk / qk)) computed via scipy.stats.entropy.
+    \\[
+    D_\\mathrm{KL}(P \\,\\|\\, Q) = \\sum_k p_k \\log\\left(\\frac{p_k}{q_k}\\right)
+    \\]
+
+    Computed via scipy.stats.entropy.
 
     Parameters
     ----------

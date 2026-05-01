@@ -20,14 +20,16 @@ def uncorrelated_entropy(
     """Return the uncorrelated entropy of mobility for each user.
 
     Uncorrelated entropy is the Shannon entropy over the distribution of
-    visit probabilities across distinct locations::
+    visit probabilities across distinct locations:
 
-        S_unc = -sum(p_i * log2(p_i))
+    \\[
+    S_\\mathrm{unc} = -\\sum_i p_i \\log_2(p_i)
+    \\]
 
-    where ``p_i`` is the fraction of visits to location ``i`` out of the
+    where \\(p_i\\) is the fraction of visits to location \\(i\\) out of the
     user's total visits.  A location is a unique exact ``(lat, lng)`` pair.
 
-    When ``normalize=True`` the result is divided by ``log2(n)`` (the
+    When ``normalize=True`` the result is divided by \\(\\log_2(n)\\) (the
     random entropy) so the output lies in ``[0, 1]``.  If the user visits
     only one distinct location the entropy is 0; dividing by 0 is avoided
     by returning 0 directly.
@@ -40,7 +42,7 @@ def uncorrelated_entropy(
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
     normalize:
-        When True, divide the Shannon entropy by ``log2(n_distinct_locations)``
+        When True, divide the Shannon entropy by \\(\\log_2(n_\\mathrm{distinct})\\)
         to normalise into ``[0, 1]``.  Default False.
     datetime_col:
         Explicit datetime column name.  Auto-detected when None.
