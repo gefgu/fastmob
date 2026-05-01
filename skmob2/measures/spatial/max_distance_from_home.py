@@ -54,6 +54,11 @@ def max_distance_from_home(
         Distance values are in kilometres.  The returned backend matches the
         input backend.
 
+
+    References
+    ----------
+    - [CM2015] Canzian, L. & Musolesi, M. (2015) Trajectories of depression: unobtrusive monitoring of depressive states by means of smartphone mobility traces analysis. Proceedings of the 2015 ACM International Joint Conference on Pervasive and Ubiquitous Computing, 1293-1304, https://dl.acm.org/citation.cfm?id=2805845
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """

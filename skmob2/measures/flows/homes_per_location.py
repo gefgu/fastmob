@@ -48,6 +48,11 @@ def homes_per_location(
         ``[lat_col, lng_col, "n_homes"]``, sorted by descending count.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [PRS2016] Pappalardo, L., Rinzivillo, S. & Simini, F. (2016) Human Mobility Modelling: exploration and preferential return meet the gravity model. Procedia Computer Science 83, 934-939, http://dx.doi.org/10.1016/j.procs.2016.04.188
+
     @usedBy
         skmob2.measures.flows.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)

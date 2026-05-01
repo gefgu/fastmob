@@ -76,6 +76,11 @@ def real_entropy(
         One row per user with columns ``[uid_col, "real_entropy"]``.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [SQBB2010] Song, C., Qu, Z., Blumm, N. & Barabasi, A. L. (2010) Limits of Predictability in Human Mobility. Science 327(5968), 1018-1021, https://science.sciencemag.org/content/327/5968/1018
+
     @usedBy
         skmob2.measures.visits.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)

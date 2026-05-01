@@ -46,6 +46,11 @@ def frequency_rank(
         Rank 1 is the most frequently visited location.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [BDEM2015] Barbosa, H., de Lima-Neto, F. B., Evsukoff, A., Menezes, R. (2015) The effect of recency to human mobility, EPJ Data Science 4(21), https://epjdatascience.springeropen.com/articles/10.1140/epjds/s13688-015-0059-8
+
     @usedBy
         skmob2.measures.visits.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)

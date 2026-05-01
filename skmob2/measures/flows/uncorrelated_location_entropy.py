@@ -50,6 +50,11 @@ def uncorrelated_location_entropy(
         ``[lat_col, lng_col, "uncorrelated_entropy"]``.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [CML2011] Cho, E., Myers, S. A. & Leskovec, J. (2011) Friendship and mobility: user movement in location-based social networks. In Proceedings of the 17th ACM SIGKDD international conference on Knowledge discovery and data mining, 1082-1090, https://dl.acm.org/citation.cfm?id=2020579
+
     @usedBy
         skmob2.measures.flows.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)

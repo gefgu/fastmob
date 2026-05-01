@@ -57,6 +57,11 @@ def k_radius_of_gyration(
         One row per user with columns ``[uid_col, "k_radius_of_gyration"]``.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [PSRPGB2015] Pappalardo, L., Simini, F. Rinzivillo, S., Pedreschi, D. Giannotti, F. & Barabasi, A. L. (2015) Returners and Explorers dichotomy in human mobility. Nature Communications 6, https://www.nature.com/articles/ncomms9166
+
     Examples
     --------
     >>> import pandas as pd

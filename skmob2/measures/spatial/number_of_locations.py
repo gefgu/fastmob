@@ -42,6 +42,11 @@ def number_of_locations(
         One row per user with columns ``[uid_col, "number_of_locations"]``.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [GHB2008] Gonzalez, M. C., Hidalgo, C. A. & Barabasi, A. L. (2008) Understanding individual human mobility patterns. Nature, 453, 779-782, https://www.nature.com/articles/nature06958.
+
     @usedBy
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """

@@ -43,6 +43,11 @@ def visits_per_location(
         ``[lat_col, lng_col, "n_visits"]``, sorted by descending visit count.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [PF2018] Pappalardo, L. & Simini, F. (2018) Data-driven generation of spatio-temporal routines in human mobility. Data Mining and Knowledge Discovery 32, 787-829, https://link.springer.com/article/10.1007/s10618-017-0548-4
+
     @usedBy
         skmob2.measures.flows.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)

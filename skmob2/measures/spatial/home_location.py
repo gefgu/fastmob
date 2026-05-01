@@ -51,6 +51,12 @@ def home_location(
         the detected column names).  The returned backend matches the input
         backend.
 
+
+    References
+    ----------
+    - [CBTDHVSB2012] Csaji, B. C., Browet, A., Traag, V. A., Delvenne, J.-C., Huens, E., Van Dooren, P., Smoreda, Z. & Blondel, V. D. (2012) Exploring the Mobility of Mobile Phone Users. Physica A: Statistical Mechanics and its Applications 392(6), 1459-1473, https://www.sciencedirect.com/science/article/pii/S0378437112010059
+    - [PSO2012] Phithakkitnukoon, S., Smoreda, Z. & Olivier, P. (2012) Socio-geography of human mobility: A study using longitudinal mobile phone data. PLOS ONE 7(6): e39253. https://doi.org/10.1371/journal.pone.0039253
+
     @usedBy
         skmob2.measures.spatial.max_distance_from_home,
         skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)

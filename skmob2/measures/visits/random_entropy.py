@@ -48,6 +48,12 @@ def random_entropy(
         One row per user with columns ``[uid_col, "random_entropy"]``.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [EP2009] Eagle, N. & Pentland, A. S. (2009) Eigenbehaviors: identifying structure in routine. Behavioral Ecology and Sociobiology 63(7), 1057-1066, https://link.springer.com/article/10.1007/s00265-009-0830-6
+    - [SQBB2010] Song, C., Qu, Z., Blumm, N. & Barabasi, A. L. (2010) Limits of Predictability in Human Mobility. Science 327(5968), 1018-1021, https://science.sciencemag.org/content/327/5968/1018
+
     @usedBy
         skmob2.measures.visits.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)

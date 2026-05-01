@@ -43,6 +43,12 @@ def cluster(
     -------
     DataFrame
         Input dataframe with an added 'cluster' integer column.
+
+    References
+    ----------
+    - [DBSCAN] DBSCAN implementation, scikit-learn, https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
+    - [RT2004] Ramaswamy, H. & Toyama, K. (2004) Project Lachesis: parsing and modeling location histories. In International Conference on Geographic Information Science, 106-124, http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf
+
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

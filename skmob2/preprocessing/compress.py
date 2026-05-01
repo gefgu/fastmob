@@ -36,6 +36,11 @@ def compress(
     -------
     DataFrame
         Compressed trajectory in the same backend as input.
+
+    References
+    ----------
+    - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), https://dl.acm.org/citation.cfm?id=2743025
+
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

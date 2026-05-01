@@ -53,6 +53,12 @@ def stay_locations(
     DataFrame
         Stop locations in the same backend as input.
         Schema: [uid_col, lat_col, lng_col, datetime_col, (leaving_datetime)]
+
+    References
+    ----------
+    - [RT2004] Ramaswamy, H. & Toyama, K. (2004) Project Lachesis: parsing and modeling location histories. In International Conference on Geographic Information Science, 106-124, http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf
+    - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), https://dl.acm.org/citation.cfm?id=2743025
+
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

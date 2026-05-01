@@ -59,6 +59,13 @@ def uncorrelated_entropy(
         One row per user with columns ``[uid_col, "uncorrelated_entropy"]``.
         The returned backend matches the input backend.
 
+
+    References
+    ----------
+    - [EP2009] Eagle, N. & Pentland, A. S. (2009) Eigenbehaviors: identifying structure in routine. Behavioral Ecology and Sociobiology 63(7), 1057-1066, https://link.springer.com/article/10.1007/s00265-009-0830-6
+    - [SQBB2010] Song, C., Qu, Z., Blumm, N. & Barabasi, A. L. (2010) Limits of Predictability in Human Mobility. Science 327(5968), 1018-1021, https://science.sciencemag.org/content/327/5968/1018
+    - [PVGSPG2016] Pappalardo, L., Vanhoof, M., Gabrielli, L., Smoreda, Z., Pedreschi, D. & Giannotti, F. (2016) An analytical framework to nowcast well-being using mobile phone data. International Journal of Data Science and Analytics 2(75), 75-92, https://link.springer.com/article/10.1007/s41060-016-0013-2
+
     @usedBy
         skmob2.measures.visits.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)
