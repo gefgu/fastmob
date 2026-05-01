@@ -45,6 +45,40 @@ def random_location_entropy(
         ``[lat_col, lng_col, "random_entropy"]``.
         The returned backend matches the input backend.
 
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import skmob2
+    >>> url = skmob2.utils.constants.BRIGHTKITE_SAMPLE
+    >>> df = pd.read_csv(
+    ...     url,
+    ...     sep="\\t",
+    ...     header=0,
+    ...     nrows=5000,
+    ...     names=["uid", "datetime", "lat", "lng", "location id"],
+    ... )
+    >>> df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+    >>> df["location_id"] = df["location id"].astype("string")
+    >>> df = df.dropna(subset=["uid", "datetime", "lat", "lng"])[
+    ...     ["uid", "datetime", "lat", "lng", "location_id"]
+    ... ]
+    >>> print(df.head().to_string(index=False))
+     uid                  datetime       lat         lng                              location_id
+       0 2010-10-16 06:02:04+00:00 39.891383 -105.070814         7a0f88982aa015062b95e3b4843f9ca2
+       0 2010-10-16 03:48:54+00:00 39.891077 -105.068532         dd7cd3d264c2d063832db506fba8bf79
+       0 2010-10-14 18:25:51+00:00 39.750469 -104.999073 9848afcc62e500a01cf6fbf24b797732f8963683
+       0 2010-10-14 00:21:47+00:00 39.752713 -104.996337         2ef143e12038c870038df53e0478cefc
+       0 2010-10-13 23:31:51+00:00 39.752508 -104.996637         424eb3dd143292f9e013efa00486c907
+    >>> from skmob2 import random_location_entropy
+    >>> result = random_location_entropy(df)
+    >>> print(result.round({"random_entropy": 3}).head().to_string(index=False))
+          lat        lng  random_entropy
+     0.000000   0.000000           1.585
+    29.532220 -98.300914           0.000
+    29.942673 -90.064455           0.000
+    29.948116 -90.063436           0.000
+    29.948125 -90.063510           0.000
+
     @usedBy
         skmob2.measures.flows.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)

@@ -56,6 +56,41 @@ def individual_mobility_network(
         The returned backend matches the input backend.
 
 
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import skmob2
+    >>> url = skmob2.utils.constants.BRIGHTKITE_SAMPLE
+    >>> df = pd.read_csv(
+    ...     url,
+    ...     sep="\\t",
+    ...     header=0,
+    ...     nrows=5000,
+    ...     names=["uid", "datetime", "lat", "lng", "location id"],
+    ... )
+    >>> df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+    >>> df["location_id"] = df["location id"].astype("string")
+    >>> df = df.dropna(subset=["uid", "datetime", "lat", "lng"])[
+    ...     ["uid", "datetime", "lat", "lng", "location_id"]
+    ... ]
+    >>> print(df.head().to_string(index=False))
+     uid                  datetime       lat         lng                              location_id
+       0 2010-10-16 06:02:04+00:00 39.891383 -105.070814         7a0f88982aa015062b95e3b4843f9ca2
+       0 2010-10-16 03:48:54+00:00 39.891077 -105.068532         dd7cd3d264c2d063832db506fba8bf79
+       0 2010-10-14 18:25:51+00:00 39.750469 -104.999073 9848afcc62e500a01cf6fbf24b797732f8963683
+       0 2010-10-14 00:21:47+00:00 39.752713 -104.996337         2ef143e12038c870038df53e0478cefc
+       0 2010-10-13 23:31:51+00:00 39.752508 -104.996637         424eb3dd143292f9e013efa00486c907
+    >>> from skmob2 import individual_mobility_network
+    >>> result = individual_mobility_network(df)
+    >>> print(result.round({"lat_origin": 3, "lng_origin": 3, "lat_dest": 3, "lng_dest": 3}).head().to_string(index=False))
+     uid  lat_origin  lng_origin  lat_dest  lng_dest  n_trips
+       0      37.775    -122.419    37.601  -122.382        1
+       0      37.601    -122.382    37.615  -122.390        1
+       0      37.615    -122.390    39.879  -104.682        1
+       0      39.879    -104.682    39.739  -104.985        1
+       0      39.739    -104.985    39.762  -104.982       19
+
     References
     ----------
     - [RGNPPG2014] Rinzivillo, S., Gabrielli, L., Nanni, M., Pappalardo, L., Pedreschi, D. & Giannotti, F. (2012) The purpose of motion: Learning activities from Individual Mobility Networks. Proceedings of the 2014 IEEE International Conference on Data Science and Advanced Analytics, 312-318, https://ieeexplore.ieee.org/document/7058090

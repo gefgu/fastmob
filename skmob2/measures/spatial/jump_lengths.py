@@ -73,23 +73,47 @@ def jump_lengths(
         When ``merge=True``: a flat ``list[float]`` of all jump lengths.
 
 
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import skmob2
+    >>> url = skmob2.utils.constants.BRIGHTKITE_SAMPLE
+    >>> df = pd.read_csv(
+    ...     url,
+    ...     sep="\\t",
+    ...     header=0,
+    ...     nrows=5000,
+    ...     names=["uid", "datetime", "lat", "lng", "location id"],
+    ... )
+    >>> df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+    >>> df["location_id"] = df["location id"].astype("string")
+    >>> df = df.dropna(subset=["uid", "datetime", "lat", "lng"])[
+    ...     ["uid", "datetime", "lat", "lng", "location_id"]
+    ... ]
+    >>> print(df.head().to_string(index=False))
+     uid                  datetime       lat         lng                              location_id
+       0 2010-10-16 06:02:04+00:00 39.891383 -105.070814         7a0f88982aa015062b95e3b4843f9ca2
+       0 2010-10-16 03:48:54+00:00 39.891077 -105.068532         dd7cd3d264c2d063832db506fba8bf79
+       0 2010-10-14 18:25:51+00:00 39.750469 -104.999073 9848afcc62e500a01cf6fbf24b797732f8963683
+       0 2010-10-14 00:21:47+00:00 39.752713 -104.996337         2ef143e12038c870038df53e0478cefc
+       0 2010-10-13 23:31:51+00:00 39.752508 -104.996637         424eb3dd143292f9e013efa00486c907
+    >>> from skmob2 import jump_lengths
+    >>> result = jump_lengths(df)
+    >>> preview = result.assign(n_jumps=result["jump_lengths"].str.len())
+    >>> print(preview[["uid", "n_jumps"]].head().to_string(index=False))
+     uid  n_jumps
+       0     2098
+       1     1209
+       2     1690
+
     References
     ----------
     - [BHG2006] Brockmann, D., Hufnagel, L. & Geisel, T. (2006) The scaling laws of human travel. Nature 439, 462-465, https://www.nature.com/articles/nature04292
     - [GHB2008] Gonzalez, M. C., Hidalgo, C. A. & Barabasi, A. L. (2008) Understanding individual human mobility patterns. Nature, 453, 779-782, https://www.nature.com/articles/nature06958.
     - [PRQPG2013] Pappalardo, L., Rinzivillo, S., Qu, Z., Pedreschi, D. & Giannotti, F. (2013) Understanding the patterns of car travel. European Physics Journal Special Topics 215(1), 61-73, https://link.springer.com/article/10.1140%2Fepjst%2Fe2013-01715-5
 
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> from skmob2.measures import jump_lengths
-    >>> df = pd.DataFrame({
-    ...     "uid": ["a", "a", "a"],
-    ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-    ...     "lat": [0.0, 1.0, 2.0],
-    ...     "lng": [0.0, 0.0, 0.0],
-    ... })
-    >>> jump_lengths(df)
+
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,
