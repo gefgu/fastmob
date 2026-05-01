@@ -45,6 +45,10 @@ After `maturin develop` the compiled `.so` is placed directly in `skmob2/`, so t
 
 Leave formatter output as the tools produce it. If `cargo fmt`, Ruff, or another project formatter rewrites nearby code or import ordering, keep that formatting instead of manually undoing it to minimize diff shape. Prefer a clean, tool-formatted tree over hand-preserving previous style.
 
+## Completion workflow
+
+At the end of each completed assigned task, review the final diff, run the relevant verification, and create a focused git commit for the completed work. Do not include unrelated user changes in that commit. If the auto-review finds a blocking issue, fix it and re-check before committing; if verification cannot be run, note that in the final response.
+
 ## Test environment setup
 
 First-time setup (creates `.venv` at repo root, builds the Rust extension, installs all dev deps):
