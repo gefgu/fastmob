@@ -1,5 +1,4 @@
 mod cdr;
-mod utils;
 mod clustering;
 mod compress_traj;
 mod entropy;
@@ -15,6 +14,7 @@ mod square_displacement;
 mod stay_locations_rs;
 mod stvd_emd;
 mod total_distance;
+mod utils;
 mod waiting_times;
 
 use pyo3::prelude::*;
@@ -27,6 +27,54 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_flat_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_flat_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_indexed_flat_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_indexed_flat_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_flat_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_flat_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_single_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_single_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_single_flat_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::jump_lengths_time_ordered_single_flat_arrow,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         radius_of_gyration::radius_of_gyration_km,
         m

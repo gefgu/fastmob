@@ -64,6 +64,122 @@ def test_jump_lengths_merge_returns_flat_list(synthetic_tdf):
     assert len(result) == 12
 
 
+def test_jump_lengths_sorts_by_user_time_without_full_dataframe_ordering():
+    """Interleaved input rows are ordered chronologically within each user."""
+    pytest.importorskip(
+        "skmob2._core",
+        reason="Build the skmob2 extension first (maturin develop)",
+    )
+    import pandas as pd
+    from skmob2._core import jump_lengths_km
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
+
+    df = pd.DataFrame(
+        {
+            "uid": ["b", "a", "b", "a", "a", "b"],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-01 02:00:00",
+                    "2020-01-01 02:00:00",
+                    "2020-01-01 00:00:00",
+                    "2020-01-01 00:00:00",
+                    "2020-01-01 01:00:00",
+                    "2020-01-01 01:00:00",
+                ]
+            ),
+            "lat": [10.0, 0.0, 10.0, 0.0, 0.0, 10.0],
+            "lng": [4.0, 3.0, 0.0, 0.0, 1.0, 2.0],
+            "payload": ["large-string-column"] * 6,
+        }
+    )
+
+    result = _normalize_result(jump_lengths(df, merge=False))
+
+    np.testing.assert_allclose(
+        result["a"],
+        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
+        rtol=0.0,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        result["b"],
+        jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]),
+        rtol=0.0,
+        atol=1e-12,
+    )
+
+
+def test_jump_lengths_polars_sorts_by_user_time_without_full_dataframe_ordering():
+    """Polars input uses Rust-side user/time ordering."""
+    pytest.importorskip(
+        "skmob2._core",
+        reason="Build the skmob2 extension first (maturin develop)",
+    )
+    polars = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2._core import jump_lengths_km
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
+
+    df = polars.DataFrame(
+        {
+            "uid": ["b", "a", "b", "a", "a", "b"],
+            "datetime": [
+                "2020-01-01 02:00:00",
+                "2020-01-01 02:00:00",
+                "2020-01-01 00:00:00",
+                "2020-01-01 00:00:00",
+                "2020-01-01 01:00:00",
+                "2020-01-01 01:00:00",
+            ],
+            "lat": [10.0, 0.0, 10.0, 0.0, 0.0, 10.0],
+            "lng": [4.0, 3.0, 0.0, 0.0, 1.0, 2.0],
+            "payload": ["large-string-column"] * 6,
+        }
+    ).with_columns(polars.col("datetime").str.to_datetime())
+
+    result = _normalize_result(jump_lengths(df, merge=False))
+
+    np.testing.assert_allclose(
+        result["a"],
+        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
+        rtol=0.0,
+        atol=1e-12,
+    )
+    np.testing.assert_allclose(
+        result["b"],
+        jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]),
+        rtol=0.0,
+        atol=1e-12,
+    )
+
+
+def test_jump_lengths_equal_timestamps_keep_input_order():
+    """Rows tied on timestamp keep their original post-cleaning order."""
+    pytest.importorskip(
+        "skmob2._core",
+        reason="Build the skmob2 extension first (maturin develop)",
+    )
+    import pandas as pd
+    from skmob2._core import jump_lengths_km
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
+
+    df = pd.DataFrame(
+        {
+            "uid": [1, 1, 1],
+            "datetime": pd.to_datetime(["2020-01-01 00:00", "2020-01-01 00:00", "2020-01-01 01:00"]),
+            "lat": [0.0, 0.0, 0.0],
+            "lng": [0.0, 2.0, 3.0],
+        }
+    )
+
+    result = _normalize_result(jump_lengths(df, merge=False))
+    np.testing.assert_allclose(
+        result[1],
+        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 2.0, 3.0]),
+        rtol=0.0,
+        atol=1e-12,
+    )
+
+
 def test_jump_lengths_no_uid_column():
     """When no uid column is present the whole frame is treated as one user."""
     pytest.importorskip(
@@ -83,6 +199,33 @@ def test_jump_lengths_no_uid_column():
     result = jump_lengths(df, merge=False)
     assert "jump_lengths" in result.columns
     assert len(result) == 1  # single row, no uid column
+
+
+def test_jump_lengths_no_uid_column_sorts_by_time():
+    """Without uid, the whole trajectory is still ordered by timestamp."""
+    pytest.importorskip(
+        "skmob2._core",
+        reason="Build the skmob2 extension first (maturin develop)",
+    )
+    import pandas as pd
+    from skmob2._core import jump_lengths_km
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
+
+    df = pd.DataFrame(
+        {
+            "datetime": pd.to_datetime(["2020-01-01 02:00", "2020-01-01 00:00", "2020-01-01 01:00"]),
+            "lat": [0.0, 0.0, 0.0],
+            "lng": [3.0, 0.0, 1.0],
+        }
+    )
+
+    result = jump_lengths(df, merge=False)
+    np.testing.assert_allclose(
+        result["jump_lengths"].iloc[0],
+        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
+        rtol=0.0,
+        atol=1e-12,
+    )
 
 
 def test_jump_lengths_polars_known_values(synthetic_tdf_polars):
@@ -202,6 +345,73 @@ def test_jump_lengths_arrow_helper_matches_numpy_helper():
         np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-12)
 
 
+def test_jump_lengths_time_ordered_numpy_helper_groups_and_sorts_by_time():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_km, jump_lengths_time_ordered_numpy
+
+    uids = np.array([2, 1, 2, 1, 1, 2], dtype=np.int64)
+    timestamps = np.array([2.0, 2.0, 0.0, 0.0, 1.0, 1.0], dtype=np.float64)
+    lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
+    lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
+
+    indices, ranges, grouped = jump_lengths_time_ordered_numpy(uids, timestamps, lats, lngs)
+
+    assert indices == [3, 4, 1, 2, 5, 0]
+    assert ranges == [(0, 3), (3, 6)]
+    expected = [
+        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
+        jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]),
+    ]
+    for actual, expected_values in zip(grouped, expected):
+        np.testing.assert_allclose(actual, expected_values, rtol=0.0, atol=1e-12)
+
+
+def test_jump_lengths_time_ordered_flat_numpy_helper():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_km, jump_lengths_time_ordered_flat_numpy
+
+    uids = np.array([2, 1, 2, 1], dtype=np.int64)
+    timestamps = np.array([1.0, 1.0, 0.0, 0.0], dtype=np.float64)
+    lats = np.array([10.0, 0.0, 10.0, 0.0], dtype=np.float64)
+    lngs = np.array([2.0, 1.0, 0.0, 0.0], dtype=np.float64)
+
+    indices, ranges, flat = jump_lengths_time_ordered_flat_numpy(uids, timestamps, lats, lngs)
+
+    assert indices == [3, 1, 2, 0]
+    assert ranges == [(0, 2), (2, 4)]
+    expected = jump_lengths_km([0.0, 0.0], [0.0, 1.0]) + jump_lengths_km([10.0, 10.0], [0.0, 2.0])
+    np.testing.assert_allclose(flat, expected, rtol=0.0, atol=1e-12)
+
+
+def test_jump_lengths_time_ordered_single_numpy_helper():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_km, jump_lengths_time_ordered_single_numpy
+
+    timestamps = np.array([2.0, 0.0, 1.0], dtype=np.float64)
+    lats = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+    lngs = np.array([3.0, 0.0, 1.0], dtype=np.float64)
+
+    (result,) = jump_lengths_time_ordered_single_numpy(timestamps, lats, lngs)
+    np.testing.assert_allclose(result, jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]), rtol=0.0, atol=1e-12)
+
+
+def test_jump_lengths_time_ordered_arrow_helper_supports_strings():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import jump_lengths_time_ordered_arrow
+
+    indices, ranges, grouped = jump_lengths_time_ordered_arrow(
+        pa.array(["b", "a", "b", "a"]),
+        pa.array([1.0, 1.0, 0.0, 0.0]),
+        pa.array([10.0, 0.0, 10.0, 0.0]),
+        pa.array([2.0, 1.0, 0.0, 0.0]),
+    )
+
+    assert indices == [3, 1, 2, 0]
+    assert ranges == [(0, 2), (2, 4)]
+    assert len(grouped) == 2
+
+
 def test_jump_lengths_numpy_helper_validation_errors():
     pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
     from skmob2._core import jump_lengths_numpy
@@ -211,6 +421,15 @@ def test_jump_lengths_numpy_helper_validation_errors():
         jump_lengths_numpy(arr, arr[:1], [(0, 1)])
     with pytest.raises(ValueError, match="range end"):
         jump_lengths_numpy(arr, arr, [(0, 3)])
+
+
+def test_jump_lengths_time_ordered_numpy_helper_validation_errors():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_time_ordered_single_numpy
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+    with pytest.raises(ValueError, match="same length"):
+        jump_lengths_time_ordered_single_numpy(arr[:1], arr, arr)
 
 
 @pytest.mark.skmob

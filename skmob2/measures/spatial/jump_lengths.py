@@ -4,18 +4,27 @@ from typing import Any
 
 import narwhals as nw
 from skmob2._core import (
-    jump_lengths_arrow,
-    jump_lengths_flat_arrow,
-    jump_lengths_flat_numpy,
-    jump_lengths_numpy,
+    jump_lengths_indexed_arrow,
+    jump_lengths_indexed_flat_arrow,
+    jump_lengths_indexed_flat_numpy,
+    jump_lengths_indexed_numpy,
+    jump_lengths_time_ordered_arrow,
+    jump_lengths_time_ordered_flat_arrow,
+    jump_lengths_time_ordered_flat_numpy,
+    jump_lengths_time_ordered_numpy,
+    jump_lengths_time_ordered_single_arrow,
+    jump_lengths_time_ordered_single_flat_arrow,
+    jump_lengths_time_ordered_single_flat_numpy,
+    jump_lengths_time_ordered_single_numpy,
 )
 
-from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
+from .._common import _ROW_ORDER_COL, _build_user_ranges, _is_polars_backed, _prepare_trajectory
 
 
-def _route_jump_lengths(
+def _route_indexed_jump_lengths(
     lats: nw.Series,
     lngs: nw.Series,
+    indices: list[int],
     ranges: list[tuple[int, int]],
     *,
     use_arrow: bool,
@@ -23,12 +32,88 @@ def _route_jump_lengths(
 ) -> list[float] | list[list[float]]:
     if use_arrow:
         if merge:
-            return jump_lengths_flat_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
-        return jump_lengths_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
+            return jump_lengths_indexed_flat_arrow(lats.to_arrow(), lngs.to_arrow(), indices, ranges)
+        return jump_lengths_indexed_arrow(lats.to_arrow(), lngs.to_arrow(), indices, ranges)
 
     if merge:
-        return jump_lengths_flat_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
-    return jump_lengths_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
+        return jump_lengths_indexed_flat_numpy(lats.to_numpy(), lngs.to_numpy(), indices, ranges)
+    return jump_lengths_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, ranges)
+
+
+def _route_time_ordered_single_jump_lengths(
+    timestamps: nw.Series,
+    lats: nw.Series,
+    lngs: nw.Series,
+    *,
+    use_arrow: bool,
+    merge: bool,
+) -> list[float] | list[list[float]]:
+    if use_arrow:
+        if merge:
+            return jump_lengths_time_ordered_single_flat_arrow(
+                timestamps.to_arrow(),
+                lats.to_arrow(),
+                lngs.to_arrow(),
+            )
+        return jump_lengths_time_ordered_single_arrow(timestamps.to_arrow(), lats.to_arrow(), lngs.to_arrow())
+
+    if merge:
+        return jump_lengths_time_ordered_single_flat_numpy(timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
+    return jump_lengths_time_ordered_single_numpy(timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
+
+
+def _route_time_ordered_jump_lengths(
+    uids: nw.Series,
+    timestamps: nw.Series,
+    lats: nw.Series,
+    lngs: nw.Series,
+    *,
+    use_arrow: bool,
+    merge: bool,
+) -> tuple[list[int], list[tuple[int, int]], list[float] | list[list[float]]]:
+    if use_arrow:
+        if merge:
+            return jump_lengths_time_ordered_flat_arrow(
+                uids.to_arrow(),
+                timestamps.to_arrow(),
+                lats.to_arrow(),
+                lngs.to_arrow(),
+            )
+        return jump_lengths_time_ordered_arrow(uids.to_arrow(), timestamps.to_arrow(), lats.to_arrow(), lngs.to_arrow())
+
+    if merge:
+        return jump_lengths_time_ordered_flat_numpy(uids.to_numpy(), timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
+    return jump_lengths_time_ordered_numpy(uids.to_numpy(), timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
+
+
+def _uid_values_from_ranges(
+    uids: nw.Series,
+    indices: list[int],
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+) -> list:
+    if use_arrow:
+        uid_arrow = uids.to_arrow()
+        return [uid_arrow[indices[start]].as_py() for start, _ in ranges]
+
+    uid_values = uids.to_numpy()
+    return [uid_values[indices[start]] for start, _ in ranges]
+
+
+def _build_time_ordered_ranges_fallback(
+    df: nw.DataFrame,
+    uid_col: str,
+    datetime_col: str,
+) -> tuple[list, list[int], list[tuple[int, int]]]:
+    index_df = (
+        df.select([uid_col, datetime_col])
+        .with_row_index(_ROW_ORDER_COL)
+        .sort(uid_col, datetime_col, _ROW_ORDER_COL)
+    )
+    uid_values, ranges = _build_user_ranges(index_df, uid_col)
+    indices = [int(idx) for idx in index_df.get_column(_ROW_ORDER_COL).to_list()]
+    return uid_values, indices, ranges
 
 
 def jump_lengths(
@@ -121,21 +206,52 @@ def jump_lengths(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
+    timestamps = df.with_columns((nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)).alias("__ts_ms__")).get_column(
+        "__ts_ms__"
+    )
     lats_full = df.get_column(lat_col)
     lngs_full = df.get_column(lng_col)
     use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
-        ranges = [(0, len(df))]
-        jump_values = _route_jump_lengths(lats_full, lngs_full, ranges, use_arrow=use_arrow, merge=merge)
+        jump_values = _route_time_ordered_single_jump_lengths(
+            timestamps,
+            lats_full,
+            lngs_full,
+            use_arrow=use_arrow,
+            merge=merge,
+        )
         if merge:
             return jump_values
         return nw.from_dict({"jump_lengths": jump_values}, backend=df.implementation).to_native()
 
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    jump_values = _route_jump_lengths(lats_full, lngs_full, ranges, use_arrow=use_arrow, merge=merge)
+    uids = df.get_column(uid_col)
+    try:
+        indices, ranges, jump_values = _route_time_ordered_jump_lengths(
+            uids,
+            timestamps,
+            lats_full,
+            lngs_full,
+            use_arrow=use_arrow,
+            merge=merge,
+        )
+        uid_values = _uid_values_from_ranges(uids, indices, ranges, use_arrow=use_arrow)
+    except ValueError as exc:
+        if "unsupported" not in str(exc):
+            raise
+        uid_values, indices, ranges = _build_time_ordered_ranges_fallback(df, uid_col, datetime_col)
+        jump_values = _route_indexed_jump_lengths(
+            lats_full,
+            lngs_full,
+            indices,
+            ranges,
+            use_arrow=use_arrow,
+            merge=merge,
+        )
+
     if merge:
         return jump_values
 
