@@ -5,19 +5,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import total_distance_arrow, total_distance_numpy
 
-from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
-
-
-def _route_total_distance(
-    lats: nw.Series,
-    lngs: nw.Series,
-    ranges: list[tuple[int, int]],
-    *,
-    use_arrow: bool,
-) -> list[float]:
-    if use_arrow:
-        return total_distance_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
-    return total_distance_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
+from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory, _route_two_series_kernel
 
 
 def distance_straight_line(
@@ -112,14 +100,14 @@ def distance_straight_line(
     use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
-        values = _route_total_distance(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow)
+        values = _route_two_series_kernel(lats_full, lngs_full, total_distance_numpy, total_distance_arrow, [(0, len(df))], use_arrow=use_arrow)
         return nw.from_dict(
             {"distance_straight_line": values},
             backend=df.implementation,
         ).to_native()
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
-    total_distances = _route_total_distance(lats_full, lngs_full, ranges, use_arrow=use_arrow)
+    total_distances = _route_two_series_kernel(lats_full, lngs_full, total_distance_numpy, total_distance_arrow, ranges, use_arrow=use_arrow)
 
     return nw.from_dict(
         {uid_col: uid_values, "distance_straight_line": total_distances},

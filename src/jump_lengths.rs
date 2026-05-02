@@ -1,4 +1,3 @@
-use arrow_array::{Array, Float64Array, PrimitiveArray, types::Float64Type};
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -6,34 +5,7 @@ use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
 use crate::haversine::haversine_km;
-
-fn validate_inputs(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    ranges: &[(usize, usize)],
-) -> PyResult<()> {
-    if latitudes.len() != longitudes.len() {
-        return Err(PyValueError::new_err(
-            "latitudes and longitudes must have the same length",
-        ));
-    }
-
-    let n = latitudes.len();
-    for &(start, end) in ranges {
-        if start > end {
-            return Err(PyValueError::new_err(
-                "range start must be less than or equal to range end",
-            ));
-        }
-        if end > n {
-            return Err(PyValueError::new_err(
-                "range end must be within coordinate array bounds",
-            ));
-        }
-    }
-
-    Ok(())
-}
+use crate::utils::{as_f64_array, arrow_values, validate_coord_ranges};
 
 fn jump_lengths_for_range(
     latitudes: &[f64],
@@ -62,7 +34,7 @@ fn jump_lengths_batch_impl(
     longitudes: &[f64],
     ranges: &[(usize, usize)],
 ) -> PyResult<Vec<Vec<f64>>> {
-    validate_inputs(latitudes, longitudes, ranges)?;
+    validate_coord_ranges(latitudes, longitudes, ranges)?;
 
     Ok(ranges
         .par_iter()
@@ -75,35 +47,12 @@ fn jump_lengths_flat_impl(
     longitudes: &[f64],
     ranges: &[(usize, usize)],
 ) -> PyResult<Vec<f64>> {
-    validate_inputs(latitudes, longitudes, ranges)?;
+    validate_coord_ranges(latitudes, longitudes, ranges)?;
 
     Ok(ranges
         .iter()
         .flat_map(|&(start, end)| jump_lengths_for_range(latitudes, longitudes, start, end))
         .collect())
-}
-
-fn as_f64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Float64Type>> {
-    let (array_ref, _field) = arr.into_inner();
-    let array = array_ref
-        .as_any()
-        .downcast_ref::<Float64Array>()
-        .cloned()
-        .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))?;
-
-    if array.null_count() > 0 {
-        return Err(PyValueError::new_err(format!(
-            "Arrow array for {name} must not contain nulls"
-        )));
-    }
-
-    Ok(array)
-}
-
-fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
-    let start = array.offset();
-    let end = start + array.len();
-    &array.values()[start..end]
 }
 
 #[pyfunction]

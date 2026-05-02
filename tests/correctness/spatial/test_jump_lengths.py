@@ -5,27 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-# Pre-computed expected jump lengths — keep in sync with conftest.EXPECTED_JUMP_LENGTHS.
-EXPECTED_JUMP_LENGTHS: dict[str, list[float]] = {
-    "user_a": [
-        111.1950802335329,
-        111.1950802335329,
-        111.1950802335329,
-        111.1950802335329,
-    ],
-    "user_b": [
-        111.1950802335329,
-        111.1950802335329,
-        111.1950802335329,
-        111.1950802335329,
-    ],
-    "user_c": [
-        0.6845085181899847,
-        0.9188177472926384,
-        0.9187595626478804,
-        0.9187013756985495,
-    ],
-}
+from tests.correctness.conftest import EXPECTED_JUMP_LENGTHS
 
 
 def _normalize_result(df) -> dict:

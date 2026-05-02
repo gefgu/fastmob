@@ -12,8 +12,7 @@ from skmob2._core import (
     radius_of_gyration_user_indices_numpy,
 )
 
-from .._common import _build_indexed_user_ranges as _common_build_indexed_user_ranges
-from .._common import _is_polars_backed, _prepare_trajectory
+from .._common import _build_indexed_user_ranges, _is_polars_backed, _prepare_trajectory
 
 _ROG_ROW_INDEX_COL = "__skmob2_rog_row_index__"
 
@@ -45,7 +44,7 @@ def _route_and_call_indexed(
     return radius_of_gyration_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, ranges)
 
 
-def _build_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, list[int], list[tuple[int, int]]]:
+def _build_rog_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, list[int], list[tuple[int, int]]]:
     n = len(df)
     if n == 0:
         return [], [], []
@@ -64,7 +63,7 @@ def _build_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, li
     except ValueError:
         pass
 
-    return _common_build_indexed_user_ranges(df, uid_col, row_index_col=_ROG_ROW_INDEX_COL)
+    return _build_indexed_user_ranges(df, uid_col, row_index_col=_ROG_ROW_INDEX_COL)
 
 
 def radius_of_gyration(
@@ -171,7 +170,7 @@ def radius_of_gyration(
         (rg,) = _route_and_call(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow)
         return nw.from_dict({"radius_of_gyration": [rg]}, backend=df.implementation).to_native()
 
-    uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col)
+    uid_values, indices, ranges = _build_rog_indexed_user_ranges(df, uid_col)
     rog_values = _route_and_call_indexed(lats_full, lngs_full, indices, ranges, use_arrow=use_arrow)
 
     result = nw.from_dict(

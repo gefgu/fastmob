@@ -1,4 +1,5 @@
 mod cdr;
+mod utils;
 mod clustering;
 mod compress_traj;
 mod entropy;

@@ -3,25 +3,10 @@ use pyo3::prelude::*;
 use rayon::prelude::*;
 
 use crate::haversine::haversine_km;
+use crate::utils::validate_ranges;
 
 type VisitationBatchResult = (Vec<usize>, Vec<usize>, Vec<f64>, Vec<bool>);
 type TripBatchResult = (Vec<usize>, Vec<usize>);
-
-fn validate_ranges(n: usize, ranges: &[(usize, usize)]) -> PyResult<()> {
-    for &(start, end) in ranges {
-        if start > end {
-            return Err(PyValueError::new_err(
-                "range start must be less than or equal to range end",
-            ));
-        }
-        if end > n {
-            return Err(PyValueError::new_err(
-                "range end must be within array bounds",
-            ));
-        }
-    }
-    Ok(())
-}
 
 #[pyfunction]
 pub(crate) fn cdr_approx_travel_minutes(

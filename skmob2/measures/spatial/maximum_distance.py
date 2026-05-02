@@ -6,19 +6,7 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import maximum_distance_arrow, maximum_distance_numpy
 
-from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
-
-
-def _route_maximum_distance(
-    lats: nw.Series,
-    lngs: nw.Series,
-    ranges: list[tuple[int, int]],
-    *,
-    use_arrow: bool,
-) -> list[float]:
-    if use_arrow:
-        return maximum_distance_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
-    return maximum_distance_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
+from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory, _route_two_series_kernel
 
 
 def maximum_distance(
@@ -113,7 +101,7 @@ def maximum_distance(
     use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
-        values = _route_maximum_distance(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow)
+        values = _route_two_series_kernel(lats_full, lngs_full, maximum_distance_numpy, maximum_distance_arrow, [(0, len(df))], use_arrow=use_arrow)
         if len(df) < 2:
             values = [math.nan]
         return nw.from_dict(
@@ -122,7 +110,7 @@ def maximum_distance(
         ).to_native()
 
     uid_values, ranges = _build_user_ranges(df, uid_col)
-    max_distances = _route_maximum_distance(lats_full, lngs_full, ranges, use_arrow=use_arrow)
+    max_distances = _route_two_series_kernel(lats_full, lngs_full, maximum_distance_numpy, maximum_distance_arrow, ranges, use_arrow=use_arrow)
     max_distances = [math.nan if end - start < 2 else value for value, (start, end) in zip(max_distances, ranges)]
 
     return nw.from_dict(

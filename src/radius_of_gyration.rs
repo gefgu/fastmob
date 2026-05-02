@@ -1,7 +1,7 @@
 use arrow_array::{
-    Array, Float64Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray,
+    Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray,
     UInt32Array, UInt64Array,
-    types::{Float64Type, Int32Type, Int64Type, UInt32Type, UInt64Type},
+    types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
 use geo::{Distance, Haversine, Point};
 use numpy::PyReadonlyArray1;
@@ -9,6 +9,8 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
+
+use crate::utils::{as_f64_array, arrow_values, validate_coord_ranges};
 
 type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
 
@@ -101,34 +103,6 @@ fn rog_for_indexed_slice(
     (sum_sq / n as f64).sqrt()
 }
 
-fn validate_inputs(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    ranges: &[(usize, usize)],
-) -> PyResult<()> {
-    if latitudes.len() != longitudes.len() {
-        return Err(PyValueError::new_err(
-            "latitudes and longitudes must have the same length",
-        ));
-    }
-
-    let n = latitudes.len();
-    for &(start, end) in ranges {
-        if start > end {
-            return Err(PyValueError::new_err(
-                "range start must be less than or equal to range end",
-            ));
-        }
-        if end > n {
-            return Err(PyValueError::new_err(
-                "range end must be within coordinate array bounds",
-            ));
-        }
-    }
-
-    Ok(())
-}
-
 fn validate_indexed_inputs(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -172,7 +146,7 @@ fn radius_of_gyration_batch_impl(
     longitudes: &[f64],
     ranges: &[(usize, usize)],
 ) -> PyResult<Vec<f64>> {
-    validate_inputs(latitudes, longitudes, ranges)?;
+    validate_coord_ranges(latitudes, longitudes, ranges)?;
 
     let results: Vec<f64> = ranges
         .par_iter()
@@ -312,23 +286,6 @@ pub(crate) fn radius_of_gyration_user_indices_numpy(
     ))
 }
 
-fn as_f64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Float64Type>> {
-    let (array_ref, _field) = arr.into_inner();
-    let array = array_ref
-        .as_any()
-        .downcast_ref::<Float64Array>()
-        .cloned()
-        .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))?;
-
-    if array.null_count() > 0 {
-        return Err(PyValueError::new_err(format!(
-            "Arrow array for {name} must not contain nulls"
-        )));
-    }
-
-    Ok(array)
-}
-
 #[pyfunction]
 pub(crate) fn radius_of_gyration_arrow(
     latitudes: PyArray,
@@ -338,14 +295,7 @@ pub(crate) fn radius_of_gyration_arrow(
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
 
-    let lat_start = latitudes.offset();
-    let lng_start = longitudes.offset();
-    let lat_end = lat_start + latitudes.len();
-    let lng_end = lng_start + longitudes.len();
-    let lat_slice = &latitudes.values()[lat_start..lat_end];
-    let lng_slice = &longitudes.values()[lng_start..lng_end];
-
-    radius_of_gyration_batch_impl(lat_slice, lng_slice, &ranges)
+    radius_of_gyration_batch_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)
 }
 
 #[pyfunction]
@@ -409,12 +359,5 @@ pub(crate) fn radius_of_gyration_indexed_arrow(
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
 
-    let lat_start = latitudes.offset();
-    let lng_start = longitudes.offset();
-    let lat_end = lat_start + latitudes.len();
-    let lng_end = lng_start + longitudes.len();
-    let lat_slice = &latitudes.values()[lat_start..lat_end];
-    let lng_slice = &longitudes.values()[lng_start..lng_end];
-
-    radius_of_gyration_indexed_impl(lat_slice, lng_slice, &indices, &ranges)
+    radius_of_gyration_indexed_impl(arrow_values(&latitudes), arrow_values(&longitudes), &indices, &ranges)
 }
