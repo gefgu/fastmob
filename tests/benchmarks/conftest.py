@@ -27,13 +27,15 @@ def brightkite_raw() -> pd.DataFrame:
     else:
         print(f"\nUsing cached dataset at {_BRIGHTKITE_PATH}")
 
-    return pd.read_csv(
+    df = pd.read_csv(
         _BRIGHTKITE_PATH,
         sep="\t",
         header=0,
         # nrows=100_000,
         names=["user", "check-in_time", "latitude", "longitude", "location id"],
     )
+    df["check-in_time"] = pd.to_datetime(df["check-in_time"], errors="coerce")
+    return df
 
 
 @pytest.fixture(scope="session")

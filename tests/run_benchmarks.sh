@@ -25,6 +25,11 @@ fi
 
 source .venv/bin/activate
 unset CONDA_PREFIX
-maturin develop --uv
 
-pytest tests/benchmarks/ -v "$@"
+if ! python -m pip --version >/dev/null 2>&1; then
+    python -m ensurepip --upgrade
+fi
+
+python -m maturin develop
+
+python -m pytest tests/benchmarks/ -v "$@"

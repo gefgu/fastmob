@@ -23,7 +23,12 @@ fi
 
 source .venv/bin/activate
 unset CONDA_PREFIX
-maturin develop --uv
+
+if ! python -m pip --version >/dev/null 2>&1; then
+    python -m ensurepip --upgrade
+fi
+
+python -m maturin develop
 
 # Default: skip skmob-comparison tests unless the caller overrides -m
 MARKER_ARGS=("-m" "not skmob")
@@ -36,7 +41,7 @@ for arg in "$@"; do
     EXTRA_ARGS+=("$arg")
 done
 
-pytest tests/correctness/ \
+python -m pytest tests/correctness/ \
     --cov=skmob2 \
     --cov-branch \
     --cov-report=term-missing \
