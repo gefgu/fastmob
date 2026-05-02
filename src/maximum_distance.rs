@@ -4,7 +4,7 @@ use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
 use crate::haversine::haversine_km;
-use crate::utils::{as_f64_array, arrow_values, validate_coord_ranges};
+use crate::utils::{arrow_values, as_f64_array, validate_coord_ranges};
 
 fn maximum_distance_impl(
     latitudes: &[f64],

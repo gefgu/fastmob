@@ -1,6 +1,6 @@
 use arrow_array::{
-    Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray,
-    UInt32Array, UInt64Array,
+    Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray, UInt32Array,
+    UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
 use geo::{Distance, Haversine, Point};
@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
-use crate::utils::{as_f64_array, arrow_values, validate_coord_ranges};
+use crate::utils::{arrow_values, as_f64_array, validate_coord_ranges};
 
 type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
 
@@ -359,5 +359,10 @@ pub(crate) fn radius_of_gyration_indexed_arrow(
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
 
-    radius_of_gyration_indexed_impl(arrow_values(&latitudes), arrow_values(&longitudes), &indices, &ranges)
+    radius_of_gyration_indexed_impl(
+        arrow_values(&latitudes),
+        arrow_values(&longitudes),
+        &indices,
+        &ranges,
+    )
 }

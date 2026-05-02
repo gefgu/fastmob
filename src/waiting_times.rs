@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
-use crate::utils::{as_f64_array, arrow_values, validate_ranges};
+use crate::utils::{arrow_values, as_f64_array, validate_ranges};
 
 fn waiting_times_for_range(timestamps_s: &[f64], start: usize, end: usize) -> Vec<f64> {
     if end - start < 2 {
