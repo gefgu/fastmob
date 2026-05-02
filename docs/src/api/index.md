@@ -94,6 +94,10 @@ See [Privacy Attacks](privacy.md) for signatures and parameters.
 |---|---|---|
 | `log_truncated_powerlaw` | `skmob2.measures.fitting.mobility_laws` | Log of the truncated power-law model. |
 | `fit_values_to_truncated_powerlaw` | `skmob2.measures.fitting.mobility_laws` | Fit positive values to the truncated power-law model. |
+| `compute_visitation_law_data` | `skmob2.measures.fitting.mobility_laws` | Compute per-user, per-location visitation-law data. |
+| `bin_visitation_law_data` | `skmob2.measures.fitting.mobility_laws` | Aggregate visitation-law data into binned `(rf, rho)` values. |
+| `fit_visitation_law` | `skmob2.measures.fitting.mobility_laws` | Fit the universal visitation law in log-log space. |
+| `visitation_law_curve` | `skmob2.measures.fitting.mobility_laws` | Build a smooth fitted visitation-law curve. |
 
 See [Fitting](fitting.md) for signatures and parameters.
 

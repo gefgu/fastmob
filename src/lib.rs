@@ -15,6 +15,7 @@ mod stay_locations_rs;
 mod stvd_emd;
 mod total_distance;
 mod utils;
+mod visitation_law;
 mod waiting_times;
 
 use pyo3::prelude::*;
@@ -22,6 +23,18 @@ use pyo3::prelude::*;
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(haversine::haversine_km, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        visitation_law::visitation_distances_km,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        visitation_law::visitation_distances_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        visitation_law::visitation_distances_arrow,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_km, m)?)?;
     m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_arrow, m)?)?;

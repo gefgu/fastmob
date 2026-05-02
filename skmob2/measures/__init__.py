@@ -15,7 +15,14 @@ from .flows.visits_per_location import visits_per_location
 from .flows.homes_per_location import homes_per_location
 from .flows.visits_per_time_unit import visits_per_time_unit
 from .flows.mean_square_displacement import mean_square_displacement
-from .fitting.mobility_laws import log_truncated_powerlaw, fit_values_to_truncated_powerlaw
+from .fitting.mobility_laws import (
+    bin_visitation_law_data,
+    compute_visitation_law_data,
+    fit_values_to_truncated_powerlaw,
+    fit_visitation_law,
+    log_truncated_powerlaw,
+    visitation_law_curve,
+)
 from .visits.activity import activity_transition_matrix
 from .visits.mobility_profiling import intermittance_and_degree_of_return, exploration_profiling
 from .visits.regularity import regularity
@@ -69,6 +76,10 @@ __all__ = [
     "mean_square_displacement",
     "log_truncated_powerlaw",
     "fit_values_to_truncated_powerlaw",
+    "compute_visitation_law_data",
+    "bin_visitation_law_data",
+    "fit_visitation_law",
+    "visitation_law_curve",
     "activity_transition_matrix",
     "intermittance_and_degree_of_return",
     "exploration_profiling",
