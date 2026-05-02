@@ -90,6 +90,7 @@ nav:
     - Spatial Measures: api/spatial.md
     - Flow Measures: api/flows.md
     - Visit Measures: api/visits.md
+    - Privacy Attacks: api/privacy.md
     - Fitting: api/fitting.md
     - Evaluation: api/evaluation.md
     - STVD-EMD: api/stvd-emd.md

@@ -73,6 +73,21 @@ See [Flow Measures](flows.md) for signatures and parameters.
 
 See [Visit Measures](visits.md) for signatures and parameters.
 
+## Privacy Attacks
+
+| Class | Module | Description |
+|---|---|---|
+| `LocationAttack` | `skmob2.privacy` | Privacy risk from known visited locations. |
+| `LocationSequenceAttack` | `skmob2.privacy` | Privacy risk from known ordered location sequences. |
+| `LocationTimeAttack` | `skmob2.privacy` | Privacy risk from known locations at a selected time precision. |
+| `UniqueLocationAttack` | `skmob2.privacy` | Privacy risk from known unique locations. |
+| `LocationFrequencyAttack` | `skmob2.privacy` | Privacy risk from known locations and visit frequencies. |
+| `LocationProbabilityAttack` | `skmob2.privacy` | Privacy risk from known locations and visit probabilities. |
+| `LocationProportionAttack` | `skmob2.privacy` | Privacy risk from relative visit-frequency proportions. |
+| `HomeWorkAttack` | `skmob2.privacy` | Privacy risk from the top-two frequent locations. |
+
+See [Privacy Attacks](privacy.md) for signatures and parameters.
+
 ## Fitting
 
 | Function | Module | Description |
