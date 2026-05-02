@@ -92,5 +92,6 @@ nav:
     - Visit Measures: api/visits.md
     - Privacy Attacks: api/privacy.md
     - Fitting: api/fitting.md
+    - Generation Models: api/models.md
     - Evaluation: api/evaluation.md
     - STVD-EMD: api/stvd-emd.md

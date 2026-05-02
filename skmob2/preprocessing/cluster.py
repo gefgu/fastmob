@@ -5,11 +5,18 @@ from typing import Any
 
 import numpy as np
 import narwhals as nw
-from sklearn.cluster import DBSCAN
 
 from ..measures._common import _build_user_ranges, _prepare_trajectory
 
 _KMS_PER_RADIAN = 6371.0088
+
+
+def _dbscan_cls():
+    try:
+        from sklearn.cluster import DBSCAN
+    except ImportError as exc:
+        raise ImportError("scikit-learn is required for cluster: pip install skmob2[ai]") from exc
+    return DBSCAN
 
 
 def cluster(
@@ -95,6 +102,7 @@ def cluster(
     )
 
     eps_rad = cluster_radius_km / _KMS_PER_RADIAN
+    DBSCAN = _dbscan_cls()
 
     _, ranges = _build_user_ranges(df, uid_col)
 

@@ -56,5 +56,8 @@ print(result)
 | [`od_metrics_per_area`][skmob2.measures.flows.od.od_metrics_per_area] | Per-area flow metrics from an OD matrix |
 | [`log_truncated_powerlaw`][skmob2.measures.fitting.mobility_laws.log_truncated_powerlaw] | Log of the truncated power-law (Gonzalez et al. 2008) |
 | [`fit_values_to_truncated_powerlaw`][skmob2.measures.fitting.mobility_laws.fit_values_to_truncated_powerlaw] | Fit a 1-D array to the truncated power-law model |
+| [`Gravity`][skmob2.models.gravity.Gravity] | Gravity flow generation model |
+| [`Radiation`][skmob2.models.radiation.Radiation] | Radiation flow generation model |
+| [`EPR`][skmob2.models.epr.EPR] | Exploration and preferential return trajectory generator |
 | [`activity_transition_matrix`][skmob2.measures.visits.activity.activity_transition_matrix] | Activity-type transition probabilities |
 | [`intermittance_and_degree_of_return`][skmob2.measures.visits.mobility_profiling.intermittance_and_degree_of_return] | Intermittancy and degree-of-return per user |

@@ -1,6 +1,6 @@
 # API Reference
 
-skmob2 exposes 56 public functions from the package root.
+skmob2 exposes 56 public functions from the package root and generation model classes from `skmob2.models`.
 
 The public API is defined by `skmob2.__all__`. Most DataFrame functions accept any Narwhals-compatible eager DataFrame, such as pandas or polars, and return a result in the same backend as the input.
 
@@ -96,6 +96,22 @@ See [Privacy Attacks](privacy.md) for signatures and parameters.
 | `fit_values_to_truncated_powerlaw` | `skmob2.measures.fitting.mobility_laws` | Fit positive values to the truncated power-law model. |
 
 See [Fitting](fitting.md) for signatures and parameters.
+
+## Generation Models
+
+| Class or Function | Module | Description |
+|---|---|---|
+| `Gravity` | `skmob2.models.gravity` | Gravity flow generation model. |
+| `Radiation` | `skmob2.models.radiation` | Radiation flow generation model. |
+| `EPR` | `skmob2.models.epr` | Exploration and preferential return trajectory model. |
+| `DensityEPR` | `skmob2.models.epr` | Density-aware EPR trajectory model. |
+| `SpatialEPR` | `skmob2.models.epr` | Spatial EPR trajectory model. |
+| `Ditras` | `skmob2.models.epr` | Diary-based trajectory simulator. |
+| `MarkovDiaryGenerator` | `skmob2.models.markov_diary_generator` | Markov mobility diary learner and generator. |
+| `GeoSim` | `skmob2.models.geosim` | Social trajectory generation model. |
+| `STS_epr` | `skmob2.models.sts_epr` | Spatial, temporal, and social EPR model. |
+
+See [Generation Models](models.md) for signatures and parameters.
 
 ## Evaluation
 
