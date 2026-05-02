@@ -7,6 +7,7 @@
 #   bash tests/run_scalene_profiles.sh --dry-run --rows 10000 --workload jump_lengths --implementation both
 #   bash tests/run_scalene_profiles.sh --rows 10000 --workload jump_lengths --implementation both
 #   bash tests/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2
+#   bash tests/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2 --backend polars
 #   bash tests/run_scalene_profiles.sh                              # jump_lengths skmob2 vs skmob on full 4M-row sweep
 #
 # Any extra arguments are forwarded directly to scripts/profile_brightkite_scalene.py.

@@ -38,6 +38,23 @@ def test_build_profile_command_uses_scalene_run_and_view(tmp_path):
     ]
 
 
+def test_build_profile_command_separates_skmob2_polars_outputs(tmp_path):
+    profile = build_profile_command(
+        "jump_lengths",
+        rows=10_000,
+        backend="polars",
+        output_dir=tmp_path,
+        scalene_bin="scalene",
+        implementation="skmob2",
+    )
+
+    assert profile.profile_dir == tmp_path / "skmob2" / "polars"
+    assert profile.json_path == tmp_path / "skmob2" / "polars" / "jump_lengths.json"
+    assert profile.html_path == tmp_path / "skmob2" / "polars" / "jump_lengths.html"
+    assert "--backend" in profile.run_command
+    assert "polars" in profile.run_command
+
+
 def test_runner_dry_run_writes_manifest(tmp_path):
     args = Namespace(
         rows=10_000,

@@ -79,6 +79,8 @@ def build_profile_command(
     implementation: str = "skmob2",
 ) -> ProfileCommand:
     profile_dir = output_dir / implementation
+    if implementation == "skmob2" and backend != "pandas":
+        profile_dir = profile_dir / backend
     json_path = profile_dir / f"{workload}.json"
     html_path = profile_dir / f"{workload}.html"
     workload_command = [
