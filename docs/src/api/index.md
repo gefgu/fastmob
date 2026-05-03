@@ -133,6 +133,13 @@ See [Generation Models](models.md) for signatures and parameters.
 | `pearson_correlation` | `skmob2.measures.evaluation` | Pearson correlation and p-value. |
 | `spearman_correlation` | `skmob2.measures.evaluation` | Spearman correlation and p-value. |
 | `max_error` | `skmob2.measures.evaluation` | Maximum absolute error. |
+| `jensen_shannon_divergence` | `skmob2.measures.comparison` | Jensen-Shannon divergence between distributions. |
+| `wasserstein_distance` | `skmob2.measures.comparison` | Rust-backed 1D Wasserstein distance between samples. |
+| `column_distribution_jensen_shannon_divergence` | `skmob2.measures.comparison` | Grouped dataframe distribution comparison with JSD. |
+| `column_distribution_wasserstein_distance` | `skmob2.measures.comparison` | Grouped dataframe distribution comparison with Wasserstein distance. |
+| `visits_per_user_jensen_shannon_divergence` | `skmob2.measures.comparison` | Visits-per-user comparison with JSD. |
+| `visits_per_user_wasserstein_distance` | `skmob2.measures.comparison` | Visits-per-user comparison with Wasserstein distance. |
+| `od_matrix_common_part_of_commuters` | `skmob2.measures.comparison` | Common part of commuters between OD matrices. |
 
 See [Evaluation](evaluation.md) for signatures and parameters.
 

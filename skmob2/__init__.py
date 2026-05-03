@@ -62,6 +62,23 @@ from .measures.evaluation import (
     spearman_correlation,
     max_error,
 )
+from .measures.comparison import (
+    activity_distribution_jensen_shannon_divergence,
+    activity_transition_matrix_jensen_shannon_divergence,
+    column_distribution_jensen_shannon_divergence,
+    column_distribution_wasserstein_distance,
+    histogram_jensen_shannon_divergence,
+    jensen_shannon_divergence,
+    matrix_jensen_shannon_divergence,
+    motif_distribution_jensen_shannon_divergence,
+    od_matrix_common_part_of_commuters,
+    profile_metric_wasserstein_distance,
+    radius_of_gyration_wasserstein_distance,
+    time_bin_matrix_jensen_shannon_divergence,
+    visits_per_user_jensen_shannon_divergence,
+    visits_per_user_wasserstein_distance,
+    wasserstein_distance,
+)
 
 __all__ = [
     "filter",
@@ -126,4 +143,19 @@ __all__ = [
     "pearson_correlation",
     "spearman_correlation",
     "max_error",
+    "jensen_shannon_divergence",
+    "matrix_jensen_shannon_divergence",
+    "time_bin_matrix_jensen_shannon_divergence",
+    "histogram_jensen_shannon_divergence",
+    "wasserstein_distance",
+    "column_distribution_jensen_shannon_divergence",
+    "column_distribution_wasserstein_distance",
+    "visits_per_user_jensen_shannon_divergence",
+    "visits_per_user_wasserstein_distance",
+    "od_matrix_common_part_of_commuters",
+    "activity_distribution_jensen_shannon_divergence",
+    "activity_transition_matrix_jensen_shannon_divergence",
+    "motif_distribution_jensen_shannon_divergence",
+    "profile_metric_wasserstein_distance",
+    "radius_of_gyration_wasserstein_distance",
 ]

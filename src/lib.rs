@@ -17,6 +17,7 @@ mod total_distance;
 mod utils;
 mod visitation_law;
 mod waiting_times;
+mod wasserstein;
 
 use pyo3::prelude::*;
 
@@ -182,6 +183,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(wasserstein::wasserstein_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(wasserstein::wasserstein_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     Ok(())
