@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+import numpy as np
 from skmob2._core import (
     jump_lengths_indexed_arrow,
     jump_lengths_indexed_flat_arrow,
@@ -18,26 +19,34 @@ from skmob2._core import (
     jump_lengths_time_ordered_single_numpy,
 )
 
-from .._common import _ROW_ORDER_COL, _build_user_ranges, _is_polars_backed, _prepare_trajectory
+from .._common import (
+    _ROW_ORDER_COL,
+    _as_index_array,
+    _build_user_ranges,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _ranges_to_starts_ends,
+)
 
 
 def _route_indexed_jump_lengths(
     lats: nw.Series,
     lngs: nw.Series,
-    indices: list[int],
-    ranges: list[tuple[int, int]],
+    indices: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
     *,
     use_arrow: bool,
     merge: bool,
 ) -> list[float] | list[list[float]]:
     if use_arrow:
         if merge:
-            return jump_lengths_indexed_flat_arrow(lats.to_arrow(), lngs.to_arrow(), indices, ranges)
-        return jump_lengths_indexed_arrow(lats.to_arrow(), lngs.to_arrow(), indices, ranges)
+            return jump_lengths_indexed_flat_arrow(lats.to_arrow(), lngs.to_arrow(), indices, starts, ends)
+        return jump_lengths_indexed_arrow(lats.to_arrow(), lngs.to_arrow(), indices, starts, ends)
 
     if merge:
-        return jump_lengths_indexed_flat_numpy(lats.to_numpy(), lngs.to_numpy(), indices, ranges)
-    return jump_lengths_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, ranges)
+        return jump_lengths_indexed_flat_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
+    return jump_lengths_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
 
 
 def _route_time_ordered_single_jump_lengths(
@@ -70,7 +79,7 @@ def _route_time_ordered_jump_lengths(
     *,
     use_arrow: bool,
     merge: bool,
-) -> tuple[list[int], list[tuple[int, int]], list[float] | list[list[float]]]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[float] | list[list[float]]]:
     if use_arrow:
         if merge:
             return jump_lengths_time_ordered_flat_arrow(
@@ -88,17 +97,17 @@ def _route_time_ordered_jump_lengths(
 
 def _uid_values_from_ranges(
     uids: nw.Series,
-    indices: list[int],
-    ranges: list[tuple[int, int]],
+    indices: np.ndarray,
+    starts: np.ndarray,
     *,
     use_arrow: bool,
 ) -> list:
     if use_arrow:
         uid_arrow = uids.to_arrow()
-        return [uid_arrow[indices[start]].as_py() for start, _ in ranges]
+        return [uid_arrow[int(indices[int(start)])].as_py() for start in starts]
 
     uid_values = uids.to_numpy()
-    return [uid_values[indices[start]] for start, _ in ranges]
+    return uid_values[np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]].tolist()
 
 
 def _build_time_ordered_ranges_fallback(
@@ -230,7 +239,7 @@ def jump_lengths(
 
     uids = df.get_column(uid_col)
     try:
-        indices, ranges, jump_values = _route_time_ordered_jump_lengths(
+        indices, starts, ends, jump_values = _route_time_ordered_jump_lengths(
             uids,
             timestamps,
             lats_full,
@@ -238,16 +247,22 @@ def jump_lengths(
             use_arrow=use_arrow,
             merge=merge,
         )
-        uid_values = _uid_values_from_ranges(uids, indices, ranges, use_arrow=use_arrow)
+        indices = _as_index_array(indices)
+        starts = _as_index_array(starts)
+        ends = _as_index_array(ends)
+        uid_values = _uid_values_from_ranges(uids, indices, starts, use_arrow=use_arrow)
     except ValueError as exc:
         if "unsupported" not in str(exc):
             raise
         uid_values, indices, ranges = _build_time_ordered_ranges_fallback(df, uid_col, datetime_col)
+        starts, ends = _ranges_to_starts_ends(ranges)
+        indices = _as_index_array(indices)
         jump_values = _route_indexed_jump_lengths(
             lats_full,
             lngs_full,
             indices,
-            ranges,
+            starts,
+            ends,
             use_arrow=use_arrow,
             merge=merge,
         )

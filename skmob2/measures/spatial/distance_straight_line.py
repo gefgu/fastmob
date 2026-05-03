@@ -10,11 +10,9 @@ from skmob2._core import (
 
 from .._common import (
     _arrow_result_values,
-    _as_index_array,
     _build_time_ordered_user_ranges,
     _is_polars_backed,
     _prepare_trajectory,
-    _ranges_to_starts_ends,
     _route_two_series_kernel,
 )
 
@@ -113,9 +111,9 @@ def distance_straight_line(
     lats_full = df.get_column(lat_col)
     lngs_full = df.get_column(lng_col)
     use_arrow = _is_polars_backed(df)
-    uid_values, indices, ranges = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps, use_arrow=use_arrow)
-    starts, ends = _ranges_to_starts_ends(ranges)
-    index_array = _as_index_array(indices)
+    uid_values, index_array, starts, ends = _build_time_ordered_user_ranges(
+        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+    )
 
     if uid_col is None:
         values = _route_two_series_kernel(lats_full, lngs_full, total_distance_indexed_numpy, total_distance_indexed_arrow, index_array, starts, ends, use_arrow=use_arrow)

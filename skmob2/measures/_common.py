@@ -142,17 +142,17 @@ def _arrow_result_values(values: Any) -> Any:
 def _uid_values_from_index_ranges(
     uids: nw.Series,
     indices: Any,
-    ranges: list[tuple[int, int]],
+    starts: Any,
     *,
     use_arrow: bool,
 ) -> list:
     """Extract one UID label per indexed range without scanning all rows in Python."""
     if use_arrow:
         uid_arrow = uids.to_arrow()
-        return [uid_arrow[int(indices[start])].as_py() for start, _ in ranges]
+        return [uid_arrow[int(indices[int(start)])].as_py() for start in starts]
 
     uid_values = uids.to_numpy()
-    return [uid_values[int(indices[start])] for start, _ in ranges]
+    return uid_values[np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]].tolist()
 
 
 def _build_time_ordered_user_ranges(
@@ -163,7 +163,7 @@ def _build_time_ordered_user_ranges(
     *,
     use_arrow: bool,
     row_index_col: str = "__skmob2_time_order_row_index__",
-) -> tuple[list | None, Any, list[tuple[int, int]]]:
+) -> tuple[list | None, Any, np.ndarray, np.ndarray]:
     """Build stable time-ordered indexes/ranges without sorting the full dataframe."""
     from skmob2._core import (
         time_ordered_single_user_indices_arrow,
@@ -174,19 +174,22 @@ def _build_time_ordered_user_ranges(
 
     if uid_col is None:
         if use_arrow:
-            indices, ranges = time_ordered_single_user_indices_arrow(timestamps.to_arrow())
+            indices, starts, ends = time_ordered_single_user_indices_arrow(timestamps.to_arrow())
         else:
-            indices, ranges = time_ordered_single_user_indices_numpy(timestamps.to_numpy())
-        return None, indices, ranges
+            indices, starts, ends = time_ordered_single_user_indices_numpy(timestamps.to_numpy())
+        return None, _as_index_array(indices), _as_index_array(starts), _as_index_array(ends)
 
     uids = df.get_column(uid_col)
     try:
         if use_arrow:
-            indices, ranges = time_ordered_user_indices_arrow(uids.to_arrow(), timestamps.to_arrow())
+            indices, starts, ends = time_ordered_user_indices_arrow(uids.to_arrow(), timestamps.to_arrow())
         else:
-            indices, ranges = time_ordered_user_indices_numpy(uids.to_numpy(), timestamps.to_numpy())
-        uid_values = _uid_values_from_index_ranges(uids, indices, ranges, use_arrow=use_arrow)
-        return uid_values, indices, ranges
+            indices, starts, ends = time_ordered_user_indices_numpy(uids.to_numpy(), timestamps.to_numpy())
+        indices = _as_index_array(indices)
+        starts = _as_index_array(starts)
+        ends = _as_index_array(ends)
+        uid_values = _uid_values_from_index_ranges(uids, indices, starts, use_arrow=use_arrow)
+        return uid_values, indices, starts, ends
     except ValueError as exc:
         if "unsupported" not in str(exc):
             raise
@@ -198,7 +201,8 @@ def _build_time_ordered_user_ranges(
     )
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
-    return uid_values, indices, ranges
+    starts, ends = _ranges_to_starts_ends(ranges)
+    return uid_values, _as_index_array(indices), starts, ends
 
 
 def _build_indexed_user_ranges_fast(
@@ -223,8 +227,7 @@ def _build_indexed_user_ranges_fast(
             indices, starts, ends = radius_of_gyration_user_indices_arrow(uids.to_arrow())
         else:
             indices, starts, ends = radius_of_gyration_user_indices_numpy(uids.to_numpy())
-        ranges = list(zip(np.asarray(starts, dtype=np.uintp).tolist(), np.asarray(ends, dtype=np.uintp).tolist()))
-        uid_values = _uid_values_from_index_ranges(uids, indices, ranges, use_arrow=use_arrow)
+        uid_values = _uid_values_from_index_ranges(uids, indices, starts, use_arrow=use_arrow)
         return uid_values, _as_index_array(indices), _as_index_array(starts), _as_index_array(ends)
     except ValueError as exc:
         if "unsupported" not in str(exc):

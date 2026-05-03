@@ -12,11 +12,9 @@ from skmob2._core import (
 
 from .._common import (
     _arrow_result_values,
-    _as_index_array,
     _build_time_ordered_user_ranges,
     _is_polars_backed,
     _prepare_trajectory,
-    _ranges_to_starts_ends,
     _route_two_series_kernel,
 )
 
@@ -115,9 +113,9 @@ def maximum_distance(
     lats_full = df.get_column(lat_col)
     lngs_full = df.get_column(lng_col)
     use_arrow = _is_polars_backed(df)
-    uid_values, indices, ranges = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps, use_arrow=use_arrow)
-    starts, ends = _ranges_to_starts_ends(ranges)
-    index_array = _as_index_array(indices)
+    uid_values, index_array, starts, ends = _build_time_ordered_user_ranges(
+        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+    )
 
     if uid_col is None:
         values = _route_two_series_kernel(lats_full, lngs_full, maximum_distance_indexed_numpy, maximum_distance_indexed_arrow, index_array, starts, ends, use_arrow=use_arrow)
@@ -134,7 +132,7 @@ def maximum_distance(
     if use_arrow:
         max_distances = _arrow_result_values(max_distances)
     max_distances = np.asarray(max_distances, dtype=float)
-    short_mask = np.asarray([end - start < 2 for start, end in ranges], dtype=bool)
+    short_mask = np.asarray(ends, dtype=np.uintp) - np.asarray(starts, dtype=np.uintp) < 2
     max_distances[short_mask] = math.nan
 
     return nw.from_dict(

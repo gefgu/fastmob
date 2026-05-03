@@ -354,10 +354,12 @@ def test_jump_lengths_time_ordered_numpy_helper_groups_and_sorts_by_time():
     lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
     lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
 
-    indices, ranges, grouped = jump_lengths_time_ordered_numpy(uids, timestamps, lats, lngs)
+    indices, starts, ends, grouped = jump_lengths_time_ordered_numpy(uids, timestamps, lats, lngs)
 
-    assert indices == [3, 4, 1, 2, 5, 0]
-    assert ranges == [(0, 3), (3, 6)]
+    assert isinstance(indices, np.ndarray)
+    assert indices.tolist() == [3, 4, 1, 2, 5, 0]
+    assert starts.tolist() == [0, 3]
+    assert ends.tolist() == [3, 6]
     expected = [
         jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
         jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]),
@@ -375,10 +377,12 @@ def test_jump_lengths_time_ordered_flat_numpy_helper():
     lats = np.array([10.0, 0.0, 10.0, 0.0], dtype=np.float64)
     lngs = np.array([2.0, 1.0, 0.0, 0.0], dtype=np.float64)
 
-    indices, ranges, flat = jump_lengths_time_ordered_flat_numpy(uids, timestamps, lats, lngs)
+    indices, starts, ends, flat = jump_lengths_time_ordered_flat_numpy(uids, timestamps, lats, lngs)
 
-    assert indices == [3, 1, 2, 0]
-    assert ranges == [(0, 2), (2, 4)]
+    assert isinstance(indices, np.ndarray)
+    assert indices.tolist() == [3, 1, 2, 0]
+    assert starts.tolist() == [0, 2]
+    assert ends.tolist() == [2, 4]
     expected = jump_lengths_km([0.0, 0.0], [0.0, 1.0]) + jump_lengths_km([10.0, 10.0], [0.0, 2.0])
     np.testing.assert_allclose(flat, expected, rtol=0.0, atol=1e-12)
 
@@ -400,15 +404,17 @@ def test_jump_lengths_time_ordered_arrow_helper_supports_strings():
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from skmob2._core import jump_lengths_time_ordered_arrow
 
-    indices, ranges, grouped = jump_lengths_time_ordered_arrow(
+    indices, starts, ends, grouped = jump_lengths_time_ordered_arrow(
         pa.array(["b", "a", "b", "a"]),
         pa.array([1.0, 1.0, 0.0, 0.0]),
         pa.array([10.0, 0.0, 10.0, 0.0]),
         pa.array([2.0, 1.0, 0.0, 0.0]),
     )
 
-    assert indices == [3, 1, 2, 0]
-    assert ranges == [(0, 2), (2, 4)]
+    assert isinstance(indices, np.ndarray)
+    assert indices.tolist() == [3, 1, 2, 0]
+    assert starts.tolist() == [0, 2]
+    assert ends.tolist() == [2, 4]
     assert len(grouped) == 2
 
 
