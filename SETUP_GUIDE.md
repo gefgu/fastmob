@@ -2,55 +2,52 @@
 
 ## Problem Solved
 
-The original environment had **Python version incompatibility** issues:
-- Python 3.12 had wheels built with newer libraries (Shapely 2.0+)
-- scikit-mobility still uses `shapely.ops.cascaded_union` which was **removed in Shapely 2.0**
-- This caused import failures when trying to run the original skmob for benchmarking
+The benchmark suite spans packages that need incompatible geospatial stacks:
+- `skmob2` development uses the normal `.venv` and the current pandas/Shapely stack.
+- `skmob` comparisons need `.venv-skmob` with Python 3.10, `scikit-mobility 1.3.1`, `geopandas 0.10.2`, and `Shapely 1.8.5.post1`.
+- movingpandas comparisons should run only from an environment where `movingpandas` imports, normally `.venv` after installing the optional extra.
 
-## Solution
+`tests/run_benchmarks.sh` runs each benchmark group in the matching environment instead of trying to import every comparison package from one venv.
 
-Recreate the virtual environment with **Python 3.10** (compatible with the library versions from 2020-2021):
-
-### Initial Setup (First Time)
+### Initial Setup
 
 ```bash
-# 1. Remove the old venv with Python 3.12
-rm -rf .venv
-
-# 2. Create a fresh venv with Python 3.10
-python3.10 -m venv .venv
-
-# 3. Activate it
+# Normal skmob2 benchmark environment
+bash tests/setup_env.sh --movingpandas
 source .venv/bin/activate
 
-# 4. Run the setup script
-bash setup.env
+# Dedicated skmob comparison environment, created separately with the legacy stack
+# and rebuilt with the current skmob2 extension before skmob benchmarks.
+env -u CONDA_PREFIX \
+    VIRTUAL_ENV="$PWD/.venv-skmob" \
+    PATH="$PWD/.venv-skmob/bin:$PATH" \
+    .venv/bin/maturin develop
 ```
 
 ### After Setup (Normal Usage)
 
 ```bash
-# Just activate and run benchmarks
-source .venv/bin/activate
+# Run all benchmark groups in their compatible environments
 bash tests/run_benchmarks.sh
+
+# Run one workload family
+bash tests/run_benchmarks.sh -k radius_of_gyration
 ```
 
-## What setup.env Does
+## What tests/setup_env.sh Does
 
-The `setup.env` script:
+The `tests/setup_env.sh` script:
 1. ✓ Installs skmob2 development dependencies (pytest, pytest-benchmark, polars)
 2. ✓ Builds the Rust extension (`maturin develop`)
-3. ✓ Installs Shapely 1.8.5 (compatible with skmob's cascaded_union)
-4. ✓ Installs scikit-mobility 1.3.1
-5. ✓ Ensures numpy/pandas ABI compatibility
-6. ✓ Verifies both skmob and skmob2 can be imported
+3. ✓ Optionally installs movingpandas with `--movingpandas`
+4. ✓ Leaves skmob comparisons to `.venv-skmob`, because skmob requires Shapely < 2
 
 ## Benchmark Results
 
-Run the benchmarks to compare skmob2 vs original skmob:
+Run the benchmarks to compare skmob2, skmob, and movingpandas where available:
 
 ```bash
-# Run all dataset sizes (1k, 10k, 100k rows)
+# Run all dataset sizes
 bash tests/run_benchmarks.sh
 
 # Run only 1k rows (fast)
@@ -73,18 +70,18 @@ See `BENCHMARK_RESULTS.md` for detailed results.
 ## Troubleshooting
 
 **"ImportError: cannot import name 'cascaded_union'"**
-→ You're using Python 3.12+. Use Python 3.10 instead.
+→ The skmob benchmark is running outside `.venv-skmob`, or `.venv-skmob` has Shapely 2.x installed. Rebuild/use `.venv-skmob`.
 
 **"AttributeError: module 'shapely' has no attribute 'geos_version'"**
-→ Shapely 2.0+ is installed. Run: `pip install 'shapely<2.0'`
+→ The skmob environment has an incompatible Shapely version. Use the dedicated `.venv-skmob` legacy stack.
 
 **"ValueError: numpy.dtype size changed"**
-→ Numpy/pandas ABI mismatch. Run: `pip install 'numpy<2.0' 'pandas>=1.5.3,<2.0'`
+→ Numpy/pandas ABI mismatch. Recreate the affected environment instead of mixing Conda and venv packages.
 
-**Check your Python version:**
+**Check which environment is active:**
 ```bash
-python --version  # Should be 3.10.x
-which python      # Should be in .venv/bin/python
+.venv/bin/python --version
+.venv-skmob/bin/python --version
 ```
 
 ## Key Insights

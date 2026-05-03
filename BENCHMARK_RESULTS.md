@@ -52,6 +52,9 @@ bash setup.env
 # Run benchmarks
 bash tests/run_benchmarks.sh
 
+# The runner dispatches comparison groups to compatible virtual environments:
+# .venv for skmob2/movingpandas and .venv-skmob for skmob.
+
 # Save results to JSON
 bash tests/run_benchmarks.sh --benchmark-json=results.json
 

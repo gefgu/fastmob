@@ -191,5 +191,9 @@ def pytest_configure(config):
     """Register the movingpandas pytest marker for benchmark tests."""
     config.addinivalue_line(
         "markers",
+        "skmob: benchmarks that require scikit-mobility and its legacy geospatial stack",
+    )
+    config.addinivalue_line(
+        "markers",
         "movingpandas: benchmarks that require the movingpandas package to be installed",
     )

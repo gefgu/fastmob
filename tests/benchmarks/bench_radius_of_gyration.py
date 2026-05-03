@@ -40,6 +40,7 @@ def test_radius_of_gyration_skmob2_pandas(benchmark, bench_slice_pandas):
     benchmark(skmob2_rog, bench_slice_pandas)
 
 
+@pytest.mark.skmob
 def test_radius_of_gyration_skmob(benchmark, bench_slice_skmob):
     """Benchmark skmob.radius_of_gyration on a TrajDataFrame."""
     skmob_individual = pytest.importorskip(

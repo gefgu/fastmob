@@ -16,6 +16,7 @@ def test_jump_lengths_skmob2_pandas(benchmark, bench_slice_pandas):
     benchmark(skmob2_jl, bench_slice_pandas, merge=False)
 
 
+@pytest.mark.skmob
 def test_jump_lengths_skmob(benchmark, bench_slice_skmob):
     """Benchmark skmob.jump_lengths on a TrajDataFrame."""
     skmob_individual = pytest.importorskip(

@@ -36,7 +36,7 @@ The benchmark suite uses `pytest-benchmark` and includes Brightkite-sized slices
 bash tests/run_benchmarks.sh
 ```
 
-Some benchmarks compare skmob2 with skmob. Others exercise pandas and Polars inputs through the same public API. MovingPandas comparisons are included where the optional dependencies are installed, because they answer a different question: how skmob2 behaves next to another trajectory-analysis ecosystem rather than only next to its direct predecessor.
+Some benchmarks compare skmob2 with skmob. Others exercise pandas and Polars inputs through the same public API. MovingPandas comparisons are included where the optional dependencies are installed, because they answer a different question: how skmob2 behaves next to another trajectory-analysis ecosystem rather than only next to its direct predecessor. The benchmark runner dispatches those comparison groups to compatible virtual environments: `.venv` for skmob2 and movingpandas when installed there, and `.venv-skmob` for the legacy scikit-mobility stack.
 
 Benchmark numbers should be read as measurements from a particular environment, dataset slice, dependency set, and implementation version. They are useful for tracking regressions and comparing approaches, but they are not permanent guarantees about every machine or every trajectory dataset.
 

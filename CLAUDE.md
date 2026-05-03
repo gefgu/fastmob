@@ -121,6 +121,8 @@ MkDocs source pages live in `docs/src/`. The `docs/features/` subdirectory holds
 
 ## Benchmarks
 
+`tests/run_benchmarks.sh` is environment-aware. It rebuilds `skmob2._core` in `.venv`, runs skmob2 pandas/Polars benchmarks there, runs `@pytest.mark.skmob` comparison benchmarks in `.venv-skmob`, and runs `@pytest.mark.movingpandas` benchmarks only from an environment where `movingpandas` imports. Keep skmob comparisons out of `.venv`; that environment uses the modern Shapely stack and cannot import scikit-mobility.
+
 ```bash
 # Benchmark table printed to stdout
 bash tests/run_benchmarks.sh
@@ -131,11 +133,14 @@ bash tests/run_benchmarks.sh --benchmark-json=results.json
 # Save named snapshot for later comparison
 bash tests/run_benchmarks.sh --benchmark-save=baseline
 
+# Run one workload family across all compatible comparison environments
+bash tests/run_benchmarks.sh -k radius_of_gyration
+
 # Compare two snapshots
 pytest-benchmark compare baseline 0001
 ```
 
-Benchmarks are parametrized over three dataset sizes (1k / 10k / 100k / 1M / 4M rows) and run both `skmob` and `skmob2` side by side. The Brightkite check-in dataset (~4M rows) is downloaded on first run and cached to `tests/shared/data/`.
+Benchmarks are parametrized over five dataset sizes (1k / 10k / 100k / 1M / 4M rows) and run `skmob2`, `skmob`, and movingpandas comparisons where the matching environment is available. When using `--benchmark-json` or `--benchmark-save`, the script suffixes the output names per environment (`skmob2`, `skmob`, `movingpandas`) so repeated pytest invocations do not overwrite each other. The Brightkite check-in dataset (~4M rows) is downloaded on first run and cached to `tests/shared/data/`.
 
 ## Profiling
 

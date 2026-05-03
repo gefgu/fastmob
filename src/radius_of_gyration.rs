@@ -3,7 +3,6 @@ use arrow_array::{
     StringArray, UInt32Array, UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
-use geo::{Distance, Haversine, Point};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -38,13 +37,20 @@ pub(crate) fn rog_for_slice(coords: &[(f64, f64)]) -> f64 {
         });
     let cm_lat = lat_sum / n as f64;
     let cm_lng = lng_sum / n as f64;
-    let cm = Point::new(cm_lng, cm_lat);
+
+    let cm_lat_rad = cm_lat.to_radians();
+    let cm_lng_rad = cm_lng.to_radians();
+    let cos_cm_lat = cm_lat_rad.cos();
 
     let sum_sq: f64 = coords
         .iter()
         .map(|&(lat, lng)| {
-            let p = Point::new(lng, lat);
-            let d = Haversine.distance(p, cm) / 1000.0;
+            let lat_rad = lat.to_radians();
+            let dlat = lat_rad - cm_lat_rad;
+            let dlng = lng.to_radians() - cm_lng_rad;
+            let a = (dlat / 2.0).sin().powi(2)
+                + cos_cm_lat * lat_rad.cos() * (dlng / 2.0).sin().powi(2);
+            let d = 2.0 * a.sqrt().asin() * 6371.0088;
             d * d
         })
         .sum();
@@ -63,12 +69,19 @@ fn rog_for_parallel_slices(latitudes: &[f64], longitudes: &[f64], start: usize, 
     });
     let cm_lat = lat_sum / n as f64;
     let cm_lng = lng_sum / n as f64;
-    let cm = Point::new(cm_lng, cm_lat);
+
+    let cm_lat_rad = cm_lat.to_radians();
+    let cm_lng_rad = cm_lng.to_radians();
+    let cos_cm_lat = cm_lat_rad.cos();
 
     let sum_sq: f64 = (start..end)
         .map(|idx| {
-            let p = Point::new(longitudes[idx], latitudes[idx]);
-            let d = Haversine.distance(p, cm) / 1000.0;
+            let lat_rad = latitudes[idx].to_radians();
+            let dlat = lat_rad - cm_lat_rad;
+            let dlng = longitudes[idx].to_radians() - cm_lng_rad;
+            let a = (dlat / 2.0).sin().powi(2)
+                + cos_cm_lat * lat_rad.cos() * (dlng / 2.0).sin().powi(2);
+            let d = 2.0 * a.sqrt().asin() * 6371.0088;
             d * d
         })
         .sum();
@@ -95,13 +108,20 @@ fn rog_for_indexed_slice(
         });
     let cm_lat = lat_sum / n as f64;
     let cm_lng = lng_sum / n as f64;
-    let cm = Point::new(cm_lng, cm_lat);
+
+    let cm_lat_rad = cm_lat.to_radians();
+    let cm_lng_rad = cm_lng.to_radians();
+    let cos_cm_lat = cm_lat_rad.cos();
 
     let sum_sq: f64 = indices[start..end]
         .iter()
         .map(|&idx| {
-            let p = Point::new(longitudes[idx], latitudes[idx]);
-            let d = Haversine.distance(p, cm) / 1000.0;
+            let lat_rad = latitudes[idx].to_radians();
+            let dlat = lat_rad - cm_lat_rad;
+            let dlng = longitudes[idx].to_radians() - cm_lng_rad;
+            let a = (dlat / 2.0).sin().powi(2)
+                + cos_cm_lat * lat_rad.cos() * (dlng / 2.0).sin().powi(2);
+            let d = 2.0 * a.sqrt().asin() * 6371.0088;
             d * d
         })
         .sum();
