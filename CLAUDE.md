@@ -54,6 +54,7 @@ At the end of each completed assigned task, review the final diff, run the relev
 First-time setup (creates `.venv` at repo root, builds the Rust extension, installs all dev deps):
 
 ```bash
+# Normal development and correctness tests
 bash tests/setup_env.sh
 source .venv/bin/activate
 ```
@@ -62,31 +63,44 @@ Dev dependencies (`pytest`, `pytest-benchmark`, `skmob`, `polars`, `tqdm`) are d
 
 ## Tests
 
+Use the shell scripts under `tests/` for normal verification. They activate `.venv`, rebuild `skmob2._core` when needed, and forward any extra arguments to pytest or the underlying tool.
+
 ```bash
-# Correctness only — fast, no network, no optional deps (default)
+# Correctness only, excluding skmob comparisons by default
 bash tests/run_correctness.sh
 
-# Or run directly with pytest
-pytest tests/correctness/ -m "not skmob"
+# A focused correctness subset
+bash tests/run_correctness.sh tests/correctness/spatial/test_radius_of_gyration.py -v
+
+# Lint and format checks
+bash tests/run_lint.sh
+
+# Coverage over correctness tests
+bash tests/run_coverage.sh
+
+# Benchmarks
+bash tests/run_benchmarks.sh
 ```
 
 ### skmob comparison correctness tests
 
-Run the `@pytest.mark.skmob` comparison tests from the dedicated `.venv-skmob` environment, not the normal `.venv`. `scikit-mobility` depends on older geo packages; the known-good local stack is Python 3.10 with `scikit-mobility 1.3.1`, `geopandas 0.10.2`, and `Shapely 1.8.5.post1`. Shapely 2.x breaks `skmob` imports because `shapely.ops.cascaded_union` was removed.
+Run the `@pytest.mark.skmob` comparison tests from the dedicated `.venv-skmob` environment, not the normal `.venv` and not `tests/run_correctness.sh`. The normal correctness script intentionally uses `.venv`; that environment carries the modern Shapely stack and `skmob` fails to import there because `shapely.ops.cascaded_union` was removed.
+
+The known-good local skmob comparison stack is Python 3.10 with `scikit-mobility 1.3.1`, `geopandas 0.10.2`, and `Shapely 1.8.5.post1`.
 
 If your shell has Conda active, unset `CONDA_PREFIX` before invoking `maturin`; otherwise `maturin` can refuse to choose between Conda and the virtualenv.
 
 ```bash
-# Build skmob2._core for the skmob comparison environment
-source .venv-skmob/bin/activate
+# Build skmob2._core for the skmob comparison environment.
+# Use the normal .venv maturin binary if .venv-skmob does not have maturin installed.
 unset CONDA_PREFIX
-maturin develop
+VIRTUAL_ENV="$PWD/.venv-skmob" \
+PATH="$PWD/.venv-skmob/bin:$PATH" \
+    .venv/bin/maturin develop
 
 # Run only the skmob comparison correctness tests
-python -m pytest tests/correctness -m skmob -vv
+.venv-skmob/bin/python -m pytest tests/correctness -m skmob -vv
 ```
-
-Avoid `bash tests/run_correctness.sh -m skmob` for these comparisons unless it has been updated to use `.venv-skmob`; that helper currently activates `.venv`, whose modern Shapely stack is intended for normal development and can make `skmob` fail to import.
 
 The skmob comparison tests should usually be strict, but the Brightkite tests for `filter`, `distance_straight_line`, and `jump_lengths` intentionally allow a narrow tolerance. `skmob` computes distances with `skmob.utils.gislib.getDistanceByHaversine` and `earthradius = 6371.0`, while `skmob2` uses the Rust `geo::Haversine` kernel. This can move threshold-adjacent filtering points across the speed cutoff and can create metre-scale differences on long jumps. Keep that relaxation limited to those tests unless another comparison shows the same distance-kernel-only cause.
 

@@ -395,10 +395,12 @@ def test_radius_of_gyration_user_indices_numpy_helper():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2._core import radius_of_gyration_user_indices_numpy
 
-    indices, ranges = radius_of_gyration_user_indices_numpy(np.array([2, 1, 2, 3, 1, 3], dtype=np.int64))
+    indices, starts, ends = radius_of_gyration_user_indices_numpy(np.array([2, 1, 2, 3, 1, 3], dtype=np.int64))
 
-    assert indices == [1, 4, 0, 2, 3, 5]
-    assert ranges == [(0, 2), (2, 4), (4, 6)]
+    assert isinstance(indices, np.ndarray)
+    assert indices.tolist() == [1, 4, 0, 2, 3, 5]
+    assert starts.tolist() == [0, 2, 4]
+    assert ends.tolist() == [2, 4, 6]
 
 
 def test_radius_of_gyration_user_indices_arrow_helper():
@@ -407,10 +409,12 @@ def test_radius_of_gyration_user_indices_arrow_helper():
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from skmob2._core import radius_of_gyration_user_indices_arrow
 
-    indices, ranges = radius_of_gyration_user_indices_arrow(pa.array(["b", "a", "b", "c", "a", "c"]))
+    indices, starts, ends = radius_of_gyration_user_indices_arrow(pa.array(["b", "a", "b", "c", "a", "c"]))
 
-    assert indices == [1, 4, 0, 2, 3, 5]
-    assert ranges == [(0, 2), (2, 4), (4, 6)]
+    assert isinstance(indices, np.ndarray)
+    assert indices.tolist() == [1, 4, 0, 2, 3, 5]
+    assert starts.tolist() == [0, 2, 4]
+    assert ends.tolist() == [2, 4, 6]
 
 
 def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
@@ -471,10 +475,12 @@ def test_radius_of_gyration_indexed_numpy_helper_matches_contiguous_helper():
 
     lats = np.array([10.0, 0.0, 11.0, 20.0, 1.0, 21.0], dtype=np.float64)
     lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
-    indices = [1, 4, 0, 2, 3, 5]
+    indices = np.array([1, 4, 0, 2, 3, 5], dtype=np.uintp)
+    starts = np.array([0, 2, 4], dtype=np.uintp)
+    ends = np.array([2, 4, 6], dtype=np.uintp)
     indexed_ranges = [(0, 2), (2, 4), (4, 6)]
 
-    result = radius_of_gyration_indexed_numpy(lats, lngs, indices, indexed_ranges)
+    result = radius_of_gyration_indexed_numpy(lats, lngs, indices, starts, ends)
     expected_lats = np.array([0.0, 1.0, 10.0, 11.0, 20.0, 21.0], dtype=np.float64)
     expected_lngs = np.array([0.0, 1.0, 30.0, 31.0, 40.0, 41.0], dtype=np.float64)
     expected = radius_of_gyration_numpy(expected_lats, expected_lngs, indexed_ranges)
@@ -490,18 +496,20 @@ def test_radius_of_gyration_indexed_arrow_helper_matches_numpy_helper():
 
     lats = np.array([10.0, 0.0, 11.0, 20.0, 1.0, 21.0], dtype=np.float64)
     lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
-    indices = [1, 4, 0, 2, 3, 5]
-    ranges = [(0, 2), (2, 4), (4, 6)]
+    indices = np.array([1, 4, 0, 2, 3, 5], dtype=np.uintp)
+    starts = np.array([0, 2, 4], dtype=np.uintp)
+    ends = np.array([2, 4, 6], dtype=np.uintp)
 
     result_arrow = radius_of_gyration_indexed_arrow(
         pa.array(lats, type=pa.float64()),
         pa.array(lngs, type=pa.float64()),
         indices,
-        ranges,
+        starts,
+        ends,
     )
-    result_numpy = radius_of_gyration_indexed_numpy(lats, lngs, indices, ranges)
+    result_numpy = radius_of_gyration_indexed_numpy(lats, lngs, indices, starts, ends)
 
-    np.testing.assert_allclose(result_arrow, result_numpy, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(result_arrow), result_numpy, rtol=0.0, atol=1e-12)
 
 
 def test_radius_of_gyration_numpy_non_contiguous_raises():
@@ -537,7 +545,13 @@ def test_radius_of_gyration_indexed_numpy_mismatched_lengths_raise():
     lngs = np.array([0.0], dtype=np.float64)
 
     with pytest.raises(ValueError, match="same length"):
-        radius_of_gyration_indexed_numpy(lats, lngs, [0], [(0, 1)])
+        radius_of_gyration_indexed_numpy(
+            lats,
+            lngs,
+            np.array([0], dtype=np.uintp),
+            np.array([0], dtype=np.uintp),
+            np.array([1], dtype=np.uintp),
+        )
 
 
 def test_radius_of_gyration_indexed_numpy_range_bounds_raise():
@@ -548,7 +562,13 @@ def test_radius_of_gyration_indexed_numpy_range_bounds_raise():
     arr = np.array([0.0, 1.0], dtype=np.float64)
 
     with pytest.raises(ValueError, match="index array bounds"):
-        radius_of_gyration_indexed_numpy(arr, arr, [0], [(0, 2)])
+        radius_of_gyration_indexed_numpy(
+            arr,
+            arr,
+            np.array([0], dtype=np.uintp),
+            np.array([0], dtype=np.uintp),
+            np.array([2], dtype=np.uintp),
+        )
 
 
 def test_radius_of_gyration_indexed_numpy_index_bounds_raise():
@@ -559,7 +579,13 @@ def test_radius_of_gyration_indexed_numpy_index_bounds_raise():
     arr = np.array([0.0, 1.0], dtype=np.float64)
 
     with pytest.raises(ValueError, match="coordinate array bounds"):
-        radius_of_gyration_indexed_numpy(arr, arr, [0, 2], [(0, 2)])
+        radius_of_gyration_indexed_numpy(
+            arr,
+            arr,
+            np.array([0, 2], dtype=np.uintp),
+            np.array([0], dtype=np.uintp),
+            np.array([2], dtype=np.uintp),
+        )
 
 
 def test_radius_of_gyration_arrow_nulls_are_filtered():
@@ -571,7 +597,7 @@ def test_radius_of_gyration_arrow_nulls_are_filtered():
     lats = pa.array([0.0, None], type=pa.float64())
     lngs = pa.array([0.0, 1.0], type=pa.float64())
 
-    assert radius_of_gyration_arrow(lats, lngs, [(0, 2)]) == [0.0]
+    np.testing.assert_allclose(np.asarray(radius_of_gyration_arrow(lats, lngs, [(0, 2)])), [0.0], rtol=0.0, atol=1e-12)
 
 
 @pytest.mark.skmob

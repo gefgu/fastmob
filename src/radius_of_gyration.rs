@@ -1,18 +1,24 @@
 use arrow_array::{
-    Array, Float64Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray,
-    UInt32Array, UInt64Array,
+    Array, ArrayRef, Float64Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray,
+    StringArray, UInt32Array, UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
 use geo::{Distance, Haversine, Point};
-use numpy::PyReadonlyArray1;
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
+use pyo3_arrow::PyArray as ArrowPyArray;
 use rayon::prelude::*;
+use std::sync::Arc;
 
 use crate::utils::validate_coord_ranges;
 
 type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
+type PyUserIndexRanges<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+);
 
 #[pyfunction]
 pub(crate) fn radius_of_gyration_km(coords: Vec<(f64, f64)>) -> PyResult<f64> {
@@ -224,6 +230,49 @@ fn ranges_from_sorted_indices<T: PartialEq>(
     ranges
 }
 
+fn split_ranges(ranges: Vec<(usize, usize)>) -> (Vec<usize>, Vec<usize>) {
+    ranges.into_iter().unzip()
+}
+
+fn ranges_from_starts_ends(starts: &[usize], ends: &[usize]) -> PyResult<Vec<(usize, usize)>> {
+    if starts.len() != ends.len() {
+        return Err(PyValueError::new_err(
+            "range starts and ends must have the same length",
+        ));
+    }
+
+    starts
+        .iter()
+        .zip(ends)
+        .map(|(&start, &end)| {
+            if start > end {
+                Err(PyValueError::new_err(
+                    "range start must be less than or equal to range end",
+                ))
+            } else {
+                Ok((start, end))
+            }
+        })
+        .collect()
+}
+
+fn user_index_ranges_into_numpy<'py>(
+    py: Python<'py>,
+    (indices, ranges): UserIndexRanges,
+) -> PyUserIndexRanges<'py> {
+    let (starts, ends) = split_ranges(ranges);
+    (
+        indices.into_pyarray(py),
+        starts.into_pyarray(py),
+        ends.into_pyarray(py),
+    )
+}
+
+fn f64_results_into_arrow(results: Vec<f64>) -> ArrowPyArray {
+    let array: ArrayRef = Arc::new(Float64Array::from(results));
+    ArrowPyArray::from_array_ref(array)
+}
+
 fn user_indices_for_ord_values<T: Ord>(values: &[T]) -> UserIndexRanges {
     let mut indices: Vec<usize> = (0..values.len()).collect();
     indices.sort_by(|&left, &right| values[left].cmp(&values[right]).then(left.cmp(&right)));
@@ -302,47 +351,71 @@ pub(crate) fn radius_of_gyration_batch_km(
 }
 
 #[pyfunction]
-pub(crate) fn radius_of_gyration_numpy(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
+pub(crate) fn radius_of_gyration_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
     ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
-    radius_of_gyration_batch_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)
-}
-
-#[pyfunction]
-pub(crate) fn radius_of_gyration_indexed_numpy(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-    indices: Vec<usize>,
-    ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
-    radius_of_gyration_indexed_impl(
-        latitudes.as_slice()?,
-        longitudes.as_slice()?,
-        &indices,
-        &ranges,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    Ok(
+        radius_of_gyration_batch_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)?
+            .into_pyarray(py),
     )
 }
 
 #[pyfunction]
-pub(crate) fn radius_of_gyration_user_indices_numpy(
-    uids: &Bound<'_, PyAny>,
-) -> PyResult<UserIndexRanges> {
+pub(crate) fn radius_of_gyration_indexed_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    indices: PyReadonlyArray1<'py, usize>,
+    starts: PyReadonlyArray1<'py, usize>,
+    ends: PyReadonlyArray1<'py, usize>,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    Ok(radius_of_gyration_indexed_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        indices.as_slice()?,
+        &ranges,
+    )?
+    .into_pyarray(py))
+}
+
+#[pyfunction]
+pub(crate) fn radius_of_gyration_user_indices_numpy<'py>(
+    py: Python<'py>,
+    uids: &Bound<'py, PyAny>,
+) -> PyResult<PyUserIndexRanges<'py>> {
     if let Ok(array) = uids.extract::<PyReadonlyArray1<i64>>() {
-        return Ok(user_indices_for_ord_values(array.as_slice()?));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(array.as_slice()?),
+        ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<i32>>() {
-        return Ok(user_indices_for_ord_values(array.as_slice()?));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(array.as_slice()?),
+        ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<u64>>() {
-        return Ok(user_indices_for_ord_values(array.as_slice()?));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(array.as_slice()?),
+        ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<u32>>() {
-        return Ok(user_indices_for_ord_values(array.as_slice()?));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(array.as_slice()?),
+        ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<f64>>() {
-        return Ok(user_indices_for_f64_values(array.as_slice()?));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_f64_values(array.as_slice()?),
+        ));
     }
 
     Err(PyValueError::new_err(
@@ -351,11 +424,12 @@ pub(crate) fn radius_of_gyration_user_indices_numpy(
 }
 
 #[pyfunction]
-pub(crate) fn radius_of_gyration_valid_user_indices_numpy(
-    uids: &Bound<'_, PyAny>,
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-) -> PyResult<UserIndexRanges> {
+pub(crate) fn radius_of_gyration_valid_user_indices_numpy<'py>(
+    py: Python<'py>,
+    uids: &Bound<'py, PyAny>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+) -> PyResult<PyUserIndexRanges<'py>> {
     let latitudes = latitudes.as_slice()?;
     let longitudes = longitudes.as_slice()?;
     let valid_indices = valid_coord_indices(latitudes, longitudes)?;
@@ -366,9 +440,9 @@ pub(crate) fn radius_of_gyration_valid_user_indices_numpy(
                 "uids and coordinates must have the same length",
             ));
         }
-        return Ok(user_indices_for_ord_values_at_indices(
-            array.as_slice()?,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(array.as_slice()?, valid_indices),
         ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<i32>>() {
@@ -377,9 +451,9 @@ pub(crate) fn radius_of_gyration_valid_user_indices_numpy(
                 "uids and coordinates must have the same length",
             ));
         }
-        return Ok(user_indices_for_ord_values_at_indices(
-            array.as_slice()?,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(array.as_slice()?, valid_indices),
         ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<u64>>() {
@@ -388,9 +462,9 @@ pub(crate) fn radius_of_gyration_valid_user_indices_numpy(
                 "uids and coordinates must have the same length",
             ));
         }
-        return Ok(user_indices_for_ord_values_at_indices(
-            array.as_slice()?,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(array.as_slice()?, valid_indices),
         ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<u32>>() {
@@ -399,9 +473,9 @@ pub(crate) fn radius_of_gyration_valid_user_indices_numpy(
                 "uids and coordinates must have the same length",
             ));
         }
-        return Ok(user_indices_for_ord_values_at_indices(
-            array.as_slice()?,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(array.as_slice()?, valid_indices),
         ));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<f64>>() {
@@ -410,9 +484,9 @@ pub(crate) fn radius_of_gyration_valid_user_indices_numpy(
                 "uids and coordinates must have the same length",
             ));
         }
-        return Ok(user_indices_for_f64_values_at_indices(
-            array.as_slice()?,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_f64_values_at_indices(array.as_slice()?, valid_indices),
         ));
     }
 
@@ -421,7 +495,7 @@ pub(crate) fn radius_of_gyration_valid_user_indices_numpy(
     ))
 }
 
-fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float64Array> {
+fn as_nullable_f64_array(arr: ArrowPyArray, name: &str) -> PyResult<Float64Array> {
     let (array_ref, _field) = arr.into_inner();
     array_ref
         .as_any()
@@ -432,10 +506,10 @@ fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float64Array> {
 
 #[pyfunction]
 pub(crate) fn radius_of_gyration_arrow(
-    latitudes: PyArray,
-    longitudes: PyArray,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
+) -> PyResult<ArrowPyArray> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
     if latitudes.len() != longitudes.len() {
@@ -476,29 +550,48 @@ pub(crate) fn radius_of_gyration_arrow(
         valid_ranges.push((valid_start, valid_latitudes.len()));
     }
 
-    radius_of_gyration_batch_impl(&valid_latitudes, &valid_longitudes, &valid_ranges)
+    Ok(f64_results_into_arrow(radius_of_gyration_batch_impl(
+        &valid_latitudes,
+        &valid_longitudes,
+        &valid_ranges,
+    )?))
 }
 
 #[pyfunction]
-pub(crate) fn radius_of_gyration_user_indices_arrow(uids: PyArray) -> PyResult<UserIndexRanges> {
+pub(crate) fn radius_of_gyration_user_indices_arrow<'py>(
+    py: Python<'py>,
+    uids: ArrowPyArray,
+) -> PyResult<PyUserIndexRanges<'py>> {
     let (array_ref, _field) = uids.into_inner();
     let array = array_ref.as_any();
 
     if let Some(array) = array.downcast_ref::<Int64Array>() {
         let values = primitive_option_values::<Int64Type>(array);
-        return Ok(user_indices_for_ord_values(&values));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(&values),
+        ));
     }
     if let Some(array) = array.downcast_ref::<Int32Array>() {
         let values = primitive_option_values::<Int32Type>(array);
-        return Ok(user_indices_for_ord_values(&values));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(&values),
+        ));
     }
     if let Some(array) = array.downcast_ref::<UInt64Array>() {
         let values = primitive_option_values::<UInt64Type>(array);
-        return Ok(user_indices_for_ord_values(&values));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(&values),
+        ));
     }
     if let Some(array) = array.downcast_ref::<UInt32Array>() {
         let values = primitive_option_values::<UInt32Type>(array);
-        return Ok(user_indices_for_ord_values(&values));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(&values),
+        ));
     }
     if let Some(array) = array.downcast_ref::<StringArray>() {
         let values: Vec<Option<&str>> = (0..array.len())
@@ -510,7 +603,10 @@ pub(crate) fn radius_of_gyration_user_indices_arrow(uids: PyArray) -> PyResult<U
                 }
             })
             .collect();
-        return Ok(user_indices_for_ord_values(&values));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(&values),
+        ));
     }
     if let Some(array) = array.downcast_ref::<LargeStringArray>() {
         let values: Vec<Option<&str>> = (0..array.len())
@@ -522,7 +618,10 @@ pub(crate) fn radius_of_gyration_user_indices_arrow(uids: PyArray) -> PyResult<U
                 }
             })
             .collect();
-        return Ok(user_indices_for_ord_values(&values));
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values(&values),
+        ));
     }
 
     Err(PyValueError::new_err(
@@ -531,11 +630,12 @@ pub(crate) fn radius_of_gyration_user_indices_arrow(uids: PyArray) -> PyResult<U
 }
 
 #[pyfunction]
-pub(crate) fn radius_of_gyration_valid_user_indices_arrow(
-    uids: PyArray,
-    latitudes: PyArray,
-    longitudes: PyArray,
-) -> PyResult<UserIndexRanges> {
+pub(crate) fn radius_of_gyration_valid_user_indices_arrow<'py>(
+    py: Python<'py>,
+    uids: ArrowPyArray,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+) -> PyResult<PyUserIndexRanges<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
     if latitudes.len() != longitudes.len() {
@@ -563,30 +663,30 @@ pub(crate) fn radius_of_gyration_valid_user_indices_arrow(
 
     if let Some(array) = array.downcast_ref::<Int64Array>() {
         let values = primitive_option_values::<Int64Type>(array);
-        return Ok(user_indices_for_ord_values_at_indices(
-            &values,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(&values, valid_indices),
         ));
     }
     if let Some(array) = array.downcast_ref::<Int32Array>() {
         let values = primitive_option_values::<Int32Type>(array);
-        return Ok(user_indices_for_ord_values_at_indices(
-            &values,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(&values, valid_indices),
         ));
     }
     if let Some(array) = array.downcast_ref::<UInt64Array>() {
         let values = primitive_option_values::<UInt64Type>(array);
-        return Ok(user_indices_for_ord_values_at_indices(
-            &values,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(&values, valid_indices),
         ));
     }
     if let Some(array) = array.downcast_ref::<UInt32Array>() {
         let values = primitive_option_values::<UInt32Type>(array);
-        return Ok(user_indices_for_ord_values_at_indices(
-            &values,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(&values, valid_indices),
         ));
     }
     if let Some(array) = array.downcast_ref::<StringArray>() {
@@ -599,9 +699,9 @@ pub(crate) fn radius_of_gyration_valid_user_indices_arrow(
                 }
             })
             .collect();
-        return Ok(user_indices_for_ord_values_at_indices(
-            &values,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(&values, valid_indices),
         ));
     }
     if let Some(array) = array.downcast_ref::<LargeStringArray>() {
@@ -614,9 +714,9 @@ pub(crate) fn radius_of_gyration_valid_user_indices_arrow(
                 }
             })
             .collect();
-        return Ok(user_indices_for_ord_values_at_indices(
-            &values,
-            valid_indices,
+        return Ok(user_index_ranges_into_numpy(
+            py,
+            user_indices_for_ord_values_at_indices(&values, valid_indices),
         ));
     }
 
@@ -627,11 +727,12 @@ pub(crate) fn radius_of_gyration_valid_user_indices_arrow(
 
 #[pyfunction]
 pub(crate) fn radius_of_gyration_indexed_arrow(
-    latitudes: PyArray,
-    longitudes: PyArray,
-    indices: Vec<usize>,
-    ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    indices: PyReadonlyArray1<usize>,
+    starts: PyReadonlyArray1<usize>,
+    ends: PyReadonlyArray1<usize>,
+) -> PyResult<ArrowPyArray> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
     if latitudes.len() != longitudes.len() {
@@ -659,5 +760,12 @@ pub(crate) fn radius_of_gyration_indexed_arrow(
         })
         .collect();
 
-    radius_of_gyration_indexed_impl(&lat_values, &lng_values, &indices, &ranges)
+    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+
+    Ok(f64_results_into_arrow(radius_of_gyration_indexed_impl(
+        &lat_values,
+        &lng_values,
+        indices.as_slice()?,
+        &ranges,
+    )?))
 }
