@@ -7,10 +7,14 @@ from skmob2._core import (
     waiting_times_arrow,
     waiting_times_flat_arrow,
     waiting_times_flat_numpy,
+    waiting_times_indexed_arrow,
+    waiting_times_indexed_flat_arrow,
+    waiting_times_indexed_flat_numpy,
+    waiting_times_indexed_numpy,
     waiting_times_numpy,
 )
 
-from .._common import _build_user_ranges, _is_polars_backed, _prepare_trajectory
+from .._common import _build_time_ordered_user_ranges, _is_polars_backed, _prepare_trajectory
 
 
 def _route_waiting_times(
@@ -28,6 +32,24 @@ def _route_waiting_times(
     if merge:
         return waiting_times_flat_numpy(timestamps_s.to_numpy(), ranges)
     return waiting_times_numpy(timestamps_s.to_numpy(), ranges)
+
+
+def _route_indexed_waiting_times(
+    timestamps_s: nw.Series,
+    indices: list[int],
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+    merge: bool,
+) -> list[float] | list[list[float]]:
+    if use_arrow:
+        if merge:
+            return waiting_times_indexed_flat_arrow(timestamps_s.to_arrow(), indices, ranges)
+        return waiting_times_indexed_arrow(timestamps_s.to_arrow(), indices, ranges)
+
+    if merge:
+        return waiting_times_indexed_flat_numpy(timestamps_s.to_numpy(), indices, ranges)
+    return waiting_times_indexed_numpy(timestamps_s.to_numpy(), indices, ranges)
 
 
 def waiting_times(
@@ -123,6 +145,7 @@ def waiting_times(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
     # Extract Unix timestamps in seconds via millisecond intermediate to avoid
@@ -132,9 +155,10 @@ def waiting_times(
         .get_column("__ts_s__")
     )
     use_arrow = _is_polars_backed(df)
+    uid_values, indices, ranges = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_s, use_arrow=use_arrow)
 
     if uid_col is None:
-        wt_list = _route_waiting_times(timestamps_s, [(0, len(df))], use_arrow=use_arrow, merge=merge)
+        wt_list = _route_indexed_waiting_times(timestamps_s, indices, ranges, use_arrow=use_arrow, merge=merge)
         if merge:
             return wt_list
         return nw.from_dict(
@@ -142,8 +166,7 @@ def waiting_times(
             backend=df.implementation,
         ).to_native()
 
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    wt_lists = _route_waiting_times(timestamps_s, ranges, use_arrow=use_arrow, merge=merge)
+    wt_lists = _route_indexed_waiting_times(timestamps_s, indices, ranges, use_arrow=use_arrow, merge=merge)
 
     if merge:
         return wt_lists

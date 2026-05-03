@@ -4,12 +4,14 @@ mod compress_traj;
 mod entropy;
 mod filter_traj;
 mod haversine;
+mod home_location;
 mod jump_lengths;
 mod k_radius_of_gyration;
 mod max_distance_from_point;
 mod maximum_distance;
 mod motifs;
 mod radius_of_gyration;
+mod spatial_counts;
 mod square_displacement;
 mod stay_locations_rs;
 mod stvd_emd;
@@ -90,6 +92,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        jump_lengths::time_ordered_user_indices_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::time_ordered_user_indices_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::time_ordered_single_user_indices_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        jump_lengths::time_ordered_single_user_indices_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         radius_of_gyration::radius_of_gyration_km,
         m
     )?)?;
@@ -142,17 +160,73 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        maximum_distance::maximum_distance_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        maximum_distance::maximum_distance_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         total_distance::total_distance_batch_km,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(total_distance::total_distance_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(total_distance::total_distance_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
+        total_distance::total_distance_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        total_distance::total_distance_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         k_radius_of_gyration::k_radius_of_gyration_km,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        k_radius_of_gyration::k_radius_of_gyration_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        k_radius_of_gyration::k_radius_of_gyration_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        spatial_counts::number_of_visits_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        spatial_counts::number_of_visits_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        spatial_counts::number_of_locations_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        spatial_counts::number_of_locations_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         max_distance_from_point::max_distance_from_point_batch_km,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        max_distance_from_point::max_distance_from_point_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        max_distance_from_point::max_distance_from_point_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        home_location::home_location_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        home_location::home_location_indexed_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(waiting_times::waiting_times_seconds, m)?)?;
@@ -164,6 +238,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         waiting_times::waiting_times_flat_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        waiting_times::waiting_times_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        waiting_times::waiting_times_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        waiting_times::waiting_times_indexed_flat_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        waiting_times::waiting_times_indexed_flat_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

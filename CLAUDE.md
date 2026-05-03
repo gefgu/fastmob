@@ -182,8 +182,10 @@ What makes it fast:
 
 - **Do not sort the full dataframe unless the metric truly needs row order.** Radius of gyration is order-independent, so the wrapper calls `_prepare_trajectory(..., sort=False)` and preserves the input rows after null dropping and coordinate casting. This avoids the large temporary memory spike caused by sorting all columns.
 - **Group with sorted indexes instead of sorted rows.** For user-level results, build a sorted row-index vector and user ranges, then let the Rust kernel read coordinates through those indexes. Sorting a skinny index representation is much cheaper than materializing a fully sorted trajectory dataframe.
+- **Filter invalid rows while building grouped indexes.** If a metric ignores rows with null/invalid coordinates, prefer backend-specific Rust helpers that produce valid row indexes and user ranges in one pass (for example `radius_of_gyration_valid_user_indices_*`). Keep a narrow Narwhals fallback only for unsupported user dtypes; do not materialize a cleaned, fully sorted dataframe on the main performance path.
 - **Keep Python out of the hot loop.** Python should detect columns, prepare arrays, choose the backend route, and assemble the final dataframe. Per-row grouping, range validation, index validation, and numeric computation belong in Rust.
 - **Use backend-specific zero-copy-ish routes.** Polars-backed Narwhals data should go through Arrow (`to_arrow()` + Arrow Rust kernels). Other eager backends should go through NumPy (`to_numpy()` + NumPy Rust kernels). Avoid converting entire columns to Python lists on performance paths.
+- **Return kernel results in the same array backend.** Arrow routes should return Arrow-compatible arrays and NumPy routes should return NumPy arrays, then the Narwhals wrapper can build `nw.from_dict(..., backend=df.implementation)` without converting result values across backends.
 - **Batch across all users in one Rust call.** Build all user ranges once and call the kernel once for the whole dataframe. Avoid per-user Python calls into Rust; boundary crossings are cheap individually but expensive at scale.
 - **Extract result labels vectorized when possible.** For NumPy-backed data, gather user labels with array indexing (`uid_series.to_numpy()[start_indices].tolist()`). For Arrow-backed data, keep Arrow conversion to one call and gather only the needed unique labels.
 - **Preserve backend and API compatibility.** Keep Narwhals as the public dataframe boundary, return the caller's backend with `backend=df.implementation`, and keep required trajectory column handling consistent with the rest of the API even when a metric does not use chronological order.
@@ -191,7 +193,7 @@ What makes it fast:
 When adding a new measure, first ask whether the metric is order-dependent:
 
 - If order-dependent, use the shared preparation pipeline with sorting, then pass contiguous ranges to Rust.
-- If order-independent but grouped by user, prefer the radius-of-gyration pattern: clean without sorting, sort indexes/ranges only, and use an indexed Rust kernel.
+- If order-independent but grouped by user, prefer the radius-of-gyration pattern: clean only what the metric requires, build valid sorted indexes/ranges without sorting the full dataframe, and use an indexed Rust kernel.
 - If there is no user column, call a single contiguous Rust kernel over the whole coordinate array.
 
 The target shape is: small Narwhals wrapper, no pandas/polars imports, no Python per-row loops on large data, one batched Rust call, explicit validation in Rust, and correctness tests covering pandas and polars.

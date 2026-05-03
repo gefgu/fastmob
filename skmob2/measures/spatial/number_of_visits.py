@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+from skmob2._core import number_of_visits_indexed_arrow, number_of_visits_indexed_numpy
 
-from .._common import _prepare_trajectory
+from .._common import _arrow_result_values, _build_indexed_user_ranges_fast, _is_polars_backed, _prepare_trajectory
 
 
 def number_of_visits(
@@ -88,12 +89,24 @@ def number_of_visits(
     )
 
     if uid_col is None:
-        count = len(df)
+        use_arrow = _is_polars_backed(df)
+        _, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+        if use_arrow:
+            count_values = _arrow_result_values(number_of_visits_indexed_arrow(len(df), indices, starts, ends))
+        else:
+            count_values = number_of_visits_indexed_numpy(len(df), indices, starts, ends)
         return nw.from_dict(
-            {"number_of_visits": [count]},
+            {"number_of_visits": count_values},
             backend=df.implementation,
         ).to_native()
 
-    result = df.group_by(uid_col).agg(nw.len().alias("number_of_visits")).sort(uid_col)
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    if use_arrow:
+        counts = _arrow_result_values(number_of_visits_indexed_arrow(len(df), indices, starts, ends))
+    else:
+        counts = number_of_visits_indexed_numpy(len(df), indices, starts, ends)
+
+    result = nw.from_dict({uid_col: uid_values, "number_of_visits": counts}, backend=df.implementation)
 
     return result.to_native()

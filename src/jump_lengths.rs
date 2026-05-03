@@ -514,6 +514,21 @@ pub(crate) fn jump_lengths_time_ordered_numpy(
 }
 
 #[pyfunction]
+pub(crate) fn time_ordered_user_indices_numpy(
+    uids: &Bound<'_, PyAny>,
+    timestamps: PyReadonlyArray1<f64>,
+) -> PyResult<OrderedIndexRanges> {
+    time_ordered_indices_from_numpy_uids(uids, timestamps.as_slice()?)
+}
+
+#[pyfunction]
+pub(crate) fn time_ordered_single_user_indices_numpy(
+    timestamps: PyReadonlyArray1<f64>,
+) -> PyResult<OrderedIndexRanges> {
+    Ok(time_ordered_indices_single_user(timestamps.as_slice()?))
+}
+
+#[pyfunction]
 pub(crate) fn jump_lengths_time_ordered_flat_numpy(
     uids: &Bound<'_, PyAny>,
     timestamps: PyReadonlyArray1<f64>,
@@ -646,6 +661,23 @@ pub(crate) fn jump_lengths_time_ordered_arrow(
     let (indices, ranges) = time_ordered_indices_from_arrow_uids(uids, timestamps)?;
 
     time_ordered_values_impl(latitudes, longitudes, timestamps, indices, ranges)
+}
+
+#[pyfunction]
+pub(crate) fn time_ordered_user_indices_arrow(
+    uids: PyArray,
+    timestamps: PyArray,
+) -> PyResult<OrderedIndexRanges> {
+    let timestamps = as_f64_array(timestamps, "timestamps")?;
+    time_ordered_indices_from_arrow_uids(uids, arrow_values(&timestamps))
+}
+
+#[pyfunction]
+pub(crate) fn time_ordered_single_user_indices_arrow(
+    timestamps: PyArray,
+) -> PyResult<OrderedIndexRanges> {
+    let timestamps = as_f64_array(timestamps, "timestamps")?;
+    Ok(time_ordered_indices_single_user(arrow_values(&timestamps)))
 }
 
 #[pyfunction]

@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any, Iterable
 
 import narwhals as nw
+import numpy as np
 
 _ROW_ORDER_COL = "__skmob2_row_order__"
 _USER_RANGE_START_COL = "__skmob2_user_range_start__"
@@ -117,6 +118,121 @@ def _route_two_series_kernel(
     if use_arrow:
         return arrow_kernel(left.to_arrow(), right.to_arrow(), *args)
     return numpy_kernel(left.to_numpy(), right.to_numpy(), *args)
+
+
+def _as_index_array(values: Any) -> np.ndarray:
+    """Return unsigned pointer-sized indexes for Rust indexed kernels."""
+    return np.asarray(values, dtype=np.uintp)
+
+
+def _ranges_to_starts_ends(ranges: list[tuple[int, int]]) -> tuple[np.ndarray, np.ndarray]:
+    """Convert Python range tuples to NumPy start/end arrays."""
+    starts = np.fromiter((start for start, _ in ranges), dtype=np.uintp, count=len(ranges))
+    ends = np.fromiter((end for _, end in ranges), dtype=np.uintp, count=len(ranges))
+    return starts, ends
+
+
+def _arrow_result_values(values: Any) -> Any:
+    """Return a PyArrow value object when a pyo3-arrow wrapper is returned."""
+    if hasattr(values, "to_pyarrow"):
+        return values.to_pyarrow()
+    return values
+
+
+def _uid_values_from_index_ranges(
+    uids: nw.Series,
+    indices: Any,
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+) -> list:
+    """Extract one UID label per indexed range without scanning all rows in Python."""
+    if use_arrow:
+        uid_arrow = uids.to_arrow()
+        return [uid_arrow[int(indices[start])].as_py() for start, _ in ranges]
+
+    uid_values = uids.to_numpy()
+    return [uid_values[int(indices[start])] for start, _ in ranges]
+
+
+def _build_time_ordered_user_ranges(
+    df: nw.DataFrame,
+    uid_col: str | None,
+    datetime_col: str,
+    timestamps: nw.Series,
+    *,
+    use_arrow: bool,
+    row_index_col: str = "__skmob2_time_order_row_index__",
+) -> tuple[list | None, Any, list[tuple[int, int]]]:
+    """Build stable time-ordered indexes/ranges without sorting the full dataframe."""
+    from skmob2._core import (
+        time_ordered_single_user_indices_arrow,
+        time_ordered_single_user_indices_numpy,
+        time_ordered_user_indices_arrow,
+        time_ordered_user_indices_numpy,
+    )
+
+    if uid_col is None:
+        if use_arrow:
+            indices, ranges = time_ordered_single_user_indices_arrow(timestamps.to_arrow())
+        else:
+            indices, ranges = time_ordered_single_user_indices_numpy(timestamps.to_numpy())
+        return None, indices, ranges
+
+    uids = df.get_column(uid_col)
+    try:
+        if use_arrow:
+            indices, ranges = time_ordered_user_indices_arrow(uids.to_arrow(), timestamps.to_arrow())
+        else:
+            indices, ranges = time_ordered_user_indices_numpy(uids.to_numpy(), timestamps.to_numpy())
+        uid_values = _uid_values_from_index_ranges(uids, indices, ranges, use_arrow=use_arrow)
+        return uid_values, indices, ranges
+    except ValueError as exc:
+        if "unsupported" not in str(exc):
+            raise
+
+    index_df = (
+        df.select([uid_col, datetime_col])
+        .with_row_index(row_index_col)
+        .sort(uid_col, datetime_col, row_index_col)
+    )
+    uid_values, ranges = _build_user_ranges(index_df, uid_col)
+    indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
+    return uid_values, indices, ranges
+
+
+def _build_indexed_user_ranges_fast(
+    df: nw.DataFrame,
+    uid_col: str | None,
+    *,
+    use_arrow: bool,
+    row_index_col: str = "__skmob2_fast_row_index__",
+) -> tuple[list | None, Any, np.ndarray, np.ndarray]:
+    """Build grouped row indexes using Rust for supported UID dtypes."""
+    from skmob2._core import radius_of_gyration_user_indices_arrow, radius_of_gyration_user_indices_numpy
+
+    if uid_col is None:
+        indices = np.arange(len(df), dtype=np.uintp)
+        starts = np.array([0], dtype=np.uintp)
+        ends = np.array([len(df)], dtype=np.uintp)
+        return None, indices, starts, ends
+
+    uids = df.get_column(uid_col)
+    try:
+        if use_arrow:
+            indices, starts, ends = radius_of_gyration_user_indices_arrow(uids.to_arrow())
+        else:
+            indices, starts, ends = radius_of_gyration_user_indices_numpy(uids.to_numpy())
+        ranges = list(zip(np.asarray(starts, dtype=np.uintp).tolist(), np.asarray(ends, dtype=np.uintp).tolist()))
+        uid_values = _uid_values_from_index_ranges(uids, indices, ranges, use_arrow=use_arrow)
+        return uid_values, _as_index_array(indices), _as_index_array(starts), _as_index_array(ends)
+    except ValueError as exc:
+        if "unsupported" not in str(exc):
+            raise
+
+    uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col, row_index_col=row_index_col)
+    starts, ends = _ranges_to_starts_ends(ranges)
+    return uid_values, _as_index_array(indices), starts, ends
 
 
 def _detect_trajectory_columns(

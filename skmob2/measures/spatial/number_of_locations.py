@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+from skmob2._core import number_of_locations_indexed_arrow, number_of_locations_indexed_numpy
 
-from .._common import _prepare_trajectory
+from .._common import _arrow_result_values, _build_indexed_user_ranges_fast, _is_polars_backed, _prepare_trajectory
 
 
 def number_of_locations(
@@ -92,20 +93,29 @@ def number_of_locations(
         sort=False,
     )
 
-    # Build a single string key per row encoding the (lat, lng) pair so that
-    # Narwhals n_unique() can count distinct locations without nw.struct support.
-    loc_key_col = "__skmob2_loc_key__"
-    df = df.with_columns(
-        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
-    )
+    lats_full = df.get_column(lat_col)
+    lngs_full = df.get_column(lng_col)
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     if uid_col is None:
-        n_locs = df.get_column(loc_key_col).n_unique()
+        if use_arrow:
+            n_locs = _arrow_result_values(
+                number_of_locations_indexed_arrow(lats_full.to_arrow(), lngs_full.to_arrow(), indices, starts, ends)
+            )
+        else:
+            n_locs = number_of_locations_indexed_numpy(lats_full.to_numpy(), lngs_full.to_numpy(), indices, starts, ends)
         return nw.from_dict(
-            {"number_of_locations": [n_locs]},
+            {"number_of_locations": n_locs},
             backend=df.implementation,
         ).to_native()
 
-    result = df.group_by(uid_col).agg(nw.col(loc_key_col).n_unique().alias("number_of_locations")).sort(uid_col)
+    if use_arrow:
+        n_locs = _arrow_result_values(
+            number_of_locations_indexed_arrow(lats_full.to_arrow(), lngs_full.to_arrow(), indices, starts, ends)
+        )
+    else:
+        n_locs = number_of_locations_indexed_numpy(lats_full.to_numpy(), lngs_full.to_numpy(), indices, starts, ends)
+    result = nw.from_dict({uid_col: uid_values, "number_of_locations": n_locs}, backend=df.implementation)
 
     return result.to_native()

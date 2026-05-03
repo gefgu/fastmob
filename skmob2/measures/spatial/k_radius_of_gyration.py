@@ -3,9 +3,18 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import k_radius_of_gyration_km
+from skmob2._core import (
+    k_radius_of_gyration_indexed_arrow,
+    k_radius_of_gyration_indexed_numpy,
+    k_radius_of_gyration_km,
+)
 
-from .._common import _build_user_ranges, _prepare_trajectory
+from .._common import (
+    _arrow_result_values,
+    _build_indexed_user_ranges_fast,
+    _is_polars_backed,
+    _prepare_trajectory,
+)
 
 
 def k_radius_of_gyration(
@@ -103,21 +112,64 @@ def k_radius_of_gyration(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
-    lats_full = df.get_column(lat_col).to_list()
-    lngs_full = df.get_column(lng_col).to_list()
-    datetimes_full = df.get_column(datetime_col).to_list()
+    lats_full = df.get_column(lat_col)
+    lngs_full = df.get_column(lng_col)
+    timestamps = df.with_columns((nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)).alias("__ts_ms__")).get_column(
+        "__ts_ms__"
+    )
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     if uid_col is None:
-        krg = _k_rog_for_sequence(lats_full, lngs_full, datetimes_full, k)
-        return nw.from_dict({"k_radius_of_gyration": [krg]}, backend=df.implementation).to_native()
+        if use_arrow:
+            krg_values = _arrow_result_values(
+                k_radius_of_gyration_indexed_arrow(
+                    lats_full.to_arrow(),
+                    lngs_full.to_arrow(),
+                    timestamps.to_arrow(),
+                    indices,
+                    starts,
+                    ends,
+                    k,
+                )
+            )
+        else:
+            krg_values = k_radius_of_gyration_indexed_numpy(
+                lats_full.to_numpy(),
+                lngs_full.to_numpy(),
+                timestamps.to_numpy(),
+                indices,
+                starts,
+                ends,
+                k,
+            )
+        return nw.from_dict({"k_radius_of_gyration": krg_values}, backend=df.implementation).to_native()
 
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    krg_values = [
-        _k_rog_for_sequence(lats_full[start:end], lngs_full[start:end], datetimes_full[start:end], k)
-        for start, end in ranges
-    ]
+    if use_arrow:
+        krg_values = _arrow_result_values(
+            k_radius_of_gyration_indexed_arrow(
+                lats_full.to_arrow(),
+                lngs_full.to_arrow(),
+                timestamps.to_arrow(),
+                indices,
+                starts,
+                ends,
+                k,
+            )
+        )
+    else:
+        krg_values = k_radius_of_gyration_indexed_numpy(
+            lats_full.to_numpy(),
+            lngs_full.to_numpy(),
+            timestamps.to_numpy(),
+            indices,
+            starts,
+            ends,
+            k,
+        )
 
     result = nw.from_dict(
         {uid_col: uid_values, "k_radius_of_gyration": krg_values},

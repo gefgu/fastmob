@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
-use crate::utils::{arrow_values, as_f64_array, validate_ranges};
+use crate::utils::{arrow_values, as_f64_array, validate_indexed_ranges, validate_ranges};
 
 fn waiting_times_for_range(timestamps_s: &[f64], start: usize, end: usize) -> Vec<f64> {
     if end - start < 2 {
@@ -11,6 +11,20 @@ fn waiting_times_for_range(timestamps_s: &[f64], start: usize, end: usize) -> Ve
     }
     (start + 1..end)
         .map(|idx| timestamps_s[idx] - timestamps_s[idx - 1])
+        .collect()
+}
+
+fn waiting_times_for_indexed_range(
+    timestamps_s: &[f64],
+    indices: &[usize],
+    start: usize,
+    end: usize,
+) -> Vec<f64> {
+    if end - start < 2 {
+        return Vec::new();
+    }
+    (start + 1..end)
+        .map(|pos| timestamps_s[indices[pos]] - timestamps_s[indices[pos - 1]])
         .collect()
 }
 
@@ -29,6 +43,34 @@ fn waiting_times_flat_impl(timestamps_s: &[f64], ranges: &[(usize, usize)]) -> P
     Ok(ranges
         .iter()
         .flat_map(|&(start, end)| waiting_times_for_range(timestamps_s, start, end))
+        .collect())
+}
+
+fn waiting_times_indexed_impl(
+    timestamps_s: &[f64],
+    indices: &[usize],
+    ranges: &[(usize, usize)],
+) -> PyResult<Vec<Vec<f64>>> {
+    validate_indexed_ranges(timestamps_s.len(), indices, ranges)?;
+
+    Ok(ranges
+        .par_iter()
+        .map(|&(start, end)| waiting_times_for_indexed_range(timestamps_s, indices, start, end))
+        .collect())
+}
+
+fn waiting_times_indexed_flat_impl(
+    timestamps_s: &[f64],
+    indices: &[usize],
+    ranges: &[(usize, usize)],
+) -> PyResult<Vec<f64>> {
+    validate_indexed_ranges(timestamps_s.len(), indices, ranges)?;
+
+    Ok(ranges
+        .iter()
+        .flat_map(|&(start, end)| {
+            waiting_times_for_indexed_range(timestamps_s, indices, start, end)
+        })
         .collect())
 }
 
@@ -57,6 +99,24 @@ pub(crate) fn waiting_times_flat_numpy(
 }
 
 #[pyfunction]
+pub(crate) fn waiting_times_indexed_numpy(
+    timestamps_s: PyReadonlyArray1<f64>,
+    indices: Vec<usize>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<Vec<f64>>> {
+    waiting_times_indexed_impl(timestamps_s.as_slice()?, &indices, &ranges)
+}
+
+#[pyfunction]
+pub(crate) fn waiting_times_indexed_flat_numpy(
+    timestamps_s: PyReadonlyArray1<f64>,
+    indices: Vec<usize>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    waiting_times_indexed_flat_impl(timestamps_s.as_slice()?, &indices, &ranges)
+}
+
+#[pyfunction]
 pub(crate) fn waiting_times_arrow(
     timestamps_s: PyArray,
     ranges: Vec<(usize, usize)>,
@@ -72,4 +132,24 @@ pub(crate) fn waiting_times_flat_arrow(
 ) -> PyResult<Vec<f64>> {
     let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
     waiting_times_flat_impl(arrow_values(&timestamps_s), &ranges)
+}
+
+#[pyfunction]
+pub(crate) fn waiting_times_indexed_arrow(
+    timestamps_s: PyArray,
+    indices: Vec<usize>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<Vec<f64>>> {
+    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    waiting_times_indexed_impl(arrow_values(&timestamps_s), &indices, &ranges)
+}
+
+#[pyfunction]
+pub(crate) fn waiting_times_indexed_flat_arrow(
+    timestamps_s: PyArray,
+    indices: Vec<usize>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    waiting_times_indexed_flat_impl(arrow_values(&timestamps_s), &indices, &ranges)
 }

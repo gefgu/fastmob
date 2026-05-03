@@ -3,10 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import max_distance_from_point_batch_km
+from skmob2._core import (
+    home_location_indexed_arrow,
+    home_location_indexed_numpy,
+    max_distance_from_point_indexed_arrow,
+    max_distance_from_point_indexed_numpy,
+)
 
-from .._common import _build_user_ranges, _prepare_trajectory
-from .home_location import home_location
+from .._common import _arrow_result_values, _build_indexed_user_ranges_fast, _is_polars_backed, _prepare_trajectory
 
 
 def max_distance_from_home(
@@ -101,54 +105,61 @@ def max_distance_from_home(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
-    # Compute home locations using the same column names.
-    home_df = nw.from_native(
-        home_location(
-            traj,
-            start_night=start_night,
-            end_night=end_night,
-            datetime_col=datetime_col,
-            lat_col=lat_col,
-            lng_col=lng_col,
-            uid_col=uid_col,
-        ),
-        eager_only=True,
-    )
+    df = df.with_columns(nw.col(datetime_col).dt.hour().cast(nw.Float64).alias("__hour__"))
+    lats_full = df.get_column(lat_col)
+    lngs_full = df.get_column(lng_col)
+    hours = df.get_column("__hour__")
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-    lats_full = df.get_column(lat_col).to_list()
-    lngs_full = df.get_column(lng_col).to_list()
+    if use_arrow:
+        home_lats, home_lngs = home_location_indexed_arrow(
+            lats_full.to_arrow(),
+            lngs_full.to_arrow(),
+            hours.to_arrow(),
+            indices,
+            starts,
+            ends,
+            float(start_night),
+            float(end_night),
+        )
+        max_distances = _arrow_result_values(
+            max_distance_from_point_indexed_arrow(
+                home_lats,
+                home_lngs,
+                lats_full.to_arrow(),
+                lngs_full.to_arrow(),
+                indices,
+                starts,
+                ends,
+            )
+        )
+    else:
+        home_lats, home_lngs = home_location_indexed_numpy(
+            lats_full.to_numpy(),
+            lngs_full.to_numpy(),
+            hours.to_numpy(),
+            indices,
+            starts,
+            ends,
+            float(start_night),
+            float(end_night),
+        )
+        max_distances = max_distance_from_point_indexed_numpy(
+            home_lats,
+            home_lngs,
+            lats_full.to_numpy(),
+            lngs_full.to_numpy(),
+            indices,
+            starts,
+            ends,
+        )
 
     if uid_col is None:
-        home_lat = home_df.get_column(lat_col).to_list()[0]
-        home_lng = home_df.get_column(lng_col).to_list()[0]
-        values = max_distance_from_point_batch_km([home_lat], [home_lng], lats_full, lngs_full, [(0, len(lats_full))])
-        return nw.from_dict(
-            {"max_distance_from_home": values},
-            backend=df.implementation,
-        ).to_native()
-
-    # Build a dict of uid -> (home_lat, home_lng) from the home_location result.
-    home_map: dict = {}
-    for row in home_df.rows(named=True):
-        home_map[row[uid_col]] = (row[lat_col], row[lng_col])
-
-    uid_values_all, ranges_all = _build_user_ranges(df, uid_col)
-    uid_values: list = []
-    ranges: list[tuple[int, int]] = []
-    home_lats: list[float] = []
-    home_lngs: list[float] = []
-
-    for current_uid, user_range in zip(uid_values_all, ranges_all):
-        if current_uid in home_map:
-            uid_values.append(current_uid)
-            ranges.append(user_range)
-            h_lat, h_lng = home_map[current_uid]
-            home_lats.append(h_lat)
-            home_lngs.append(h_lng)
-
-    max_distances = max_distance_from_point_batch_km(home_lats, home_lngs, lats_full, lngs_full, ranges)
+        return nw.from_dict({"max_distance_from_home": max_distances}, backend=df.implementation).to_native()
 
     return nw.from_dict(
         {uid_col: uid_values, "max_distance_from_home": max_distances},
