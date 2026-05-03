@@ -153,7 +153,7 @@ class TestPrepareTrajectory:
         assert df.get_column(lng_col).dtype == nw.Float64
 
     def test_sorted_by_uid_then_datetime(self):
-        from skmob2.measures._common import _prepare_trajectory
+        from skmob2.measures._common import _ROW_ORDER_COL, _prepare_trajectory
 
         df_in = pd.DataFrame(
             {
@@ -164,6 +164,7 @@ class TestPrepareTrajectory:
             }
         )
         df, _, _, _, uid_col = _prepare_trajectory(df_in)
+        assert _ROW_ORDER_COL not in df.columns
         uids = df.get_column(uid_col).to_list()
         # All "a" rows come before all "b" rows
         a_indices = [i for i, u in enumerate(uids) if u == "a"]
@@ -172,7 +173,7 @@ class TestPrepareTrajectory:
 
     def test_sort_false_preserves_row_order_after_dropping_nulls(self):
         import narwhals as nw
-        from skmob2.measures._common import _prepare_trajectory
+        from skmob2.measures._common import _ROW_ORDER_COL, _prepare_trajectory
 
         df_in = pd.DataFrame(
             {
@@ -184,10 +185,17 @@ class TestPrepareTrajectory:
         )
         df, _, lat_col, lng_col, uid_col = _prepare_trajectory(df_in, sort=False)
 
+        assert _ROW_ORDER_COL not in df.columns
         assert df.get_column(uid_col).to_list() == ["b", "a", "a"]
         assert df.get_column(lat_col).to_list() == [0.0, 1.0, 3.0]
         assert df.get_column(lat_col).dtype == nw.Float64
         assert df.get_column(lng_col).dtype == nw.Float64
+
+    def test_drop_nulls_false_preserves_null_coordinate_rows(self):
+        from skmob2.measures._common import _prepare_trajectory
+
+        df, *_ = _prepare_trajectory(self._make_df(), sort=False, drop_nulls=False)
+        assert len(df) == 4
 
     def test_raises_on_missing_column(self):
         from skmob2.measures._common import _prepare_trajectory

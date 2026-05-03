@@ -269,6 +269,101 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
         np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
 
 
+def test_radius_of_gyration_pandas_filters_invalid_coordinates_in_rust():
+    """RoG ignores invalid coordinates without Python-side trajectory null drops."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_km
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    df = pd.DataFrame(
+        {
+            "uid": ["b", "a", "b", "c", "a", "c"],
+            "datetime": [pd.NaT] * 6,
+            "lat": [10.0, 0.0, np.nan, 20.0, 1.0, None],
+            "lng": [30.0, 0.0, 31.0, 40.0, 1.0, 41.0],
+        }
+    )
+
+    result = radius_of_gyration(df)
+    actual = _rog_map(result)
+
+    assert list(result["uid"]) == ["a", "b", "c"]
+    expected = {
+        uid: radius_of_gyration_km(list(map(tuple, rows[["lat", "lng"]].to_numpy())))
+        for uid, rows in df.dropna(subset=["lat", "lng"]).groupby("uid", sort=True)
+    }
+    assert set(actual) == set(expected)
+    for uid, expected_value in expected.items():
+        np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_polars_filters_invalid_coordinates_in_rust():
+    """Arrow RoG path ignores null coordinates."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    from skmob2._core import radius_of_gyration_km
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    df_pd = pd.DataFrame(
+        {
+            "uid": ["b", "a", "b", "c", "a", "c"],
+            "datetime": [pd.NaT] * 6,
+            "lat": [10.0, 0.0, None, 20.0, 1.0, None],
+            "lng": [30.0, 0.0, 31.0, 40.0, 1.0, 41.0],
+        }
+    )
+    result = radius_of_gyration(pl.from_pandas(df_pd)).to_pandas()
+    actual = _rog_map(result)
+
+    assert list(result["uid"]) == ["a", "b", "c"]
+    expected = {
+        uid: radius_of_gyration_km(list(map(tuple, rows[["lat", "lng"]].to_numpy())))
+        for uid, rows in df_pd.dropna(subset=["lat", "lng"]).groupby("uid", sort=True)
+    }
+    assert set(actual) == set(expected)
+    for uid, expected_value in expected.items():
+        np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_no_uid_filters_invalid_coordinates():
+    """No-uid RoG computes over valid coordinate rows only."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_km
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    df = pd.DataFrame(
+        {
+            "datetime": [pd.NaT] * 4,
+            "lat": [0.0, np.nan, 1.0, None],
+            "lng": [0.0, 1.0, 1.0, 2.0],
+        }
+    )
+
+    result = radius_of_gyration(df)
+    expected = radius_of_gyration_km(list(map(tuple, df.dropna(subset=["lat", "lng"])[["lat", "lng"]].to_numpy())))
+    np.testing.assert_allclose(float(result["radius_of_gyration"].iloc[0]), expected, rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_all_invalid_coordinates():
+    """All-invalid inputs produce the empty-coordinate behavior."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration
+
+    no_uid = pd.DataFrame(
+        {
+            "datetime": [pd.NaT, pd.NaT],
+            "lat": [np.nan, None],
+            "lng": [0.0, 1.0],
+        }
+    )
+    no_uid_result = radius_of_gyration(no_uid)
+    assert float(no_uid_result["radius_of_gyration"].iloc[0]) == 0.0
+
+    with_uid = no_uid.assign(uid=["a", "b"])
+    with_uid_result = radius_of_gyration(with_uid)
+    assert len(with_uid_result) == 0
+
+
 def test_build_indexed_user_ranges_sorts_stable_row_indices():
     """Indexed grouping keeps original row order within each sorted uid group."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -467,8 +562,8 @@ def test_radius_of_gyration_indexed_numpy_index_bounds_raise():
         radius_of_gyration_indexed_numpy(arr, arr, [0, 2], [(0, 2)])
 
 
-def test_radius_of_gyration_arrow_nulls_raise():
-    """Arrow helper rejects nulls because the Rust slice path cannot represent them."""
+def test_radius_of_gyration_arrow_nulls_are_filtered():
+    """Arrow helper skips null coordinates."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from skmob2._core import radius_of_gyration_arrow
@@ -476,8 +571,7 @@ def test_radius_of_gyration_arrow_nulls_raise():
     lats = pa.array([0.0, None], type=pa.float64())
     lngs = pa.array([0.0, 1.0], type=pa.float64())
 
-    with pytest.raises(ValueError, match="must not contain nulls"):
-        radius_of_gyration_arrow(lats, lngs, [(0, 2)])
+    assert radius_of_gyration_arrow(lats, lngs, [(0, 2)]) == [0.0]
 
 
 @pytest.mark.skmob

@@ -206,6 +206,7 @@ def _prepare_trajectory(
     lng_col: str | None = None,
     uid_col: str | None = None,
     sort: bool = True,
+    drop_nulls: bool = True,
 ) -> tuple[nw.DataFrame, str, str, str, str | None]:
     """Wrap, detect columns, optionally sort, and cast a raw trajectory into a clean DataFrame.
 
@@ -228,6 +229,8 @@ def _prepare_trajectory(
     sort:
         Whether to sort by user and datetime. When False, rows keep their
         input order after null rows are dropped.
+    drop_nulls:
+        Whether to drop rows with null datetime/lat/lng values before returning.
 
     Returns
     -------
@@ -251,7 +254,9 @@ def _prepare_trajectory(
     ... })
     >>> clean_df, dt, lat, lng, uid = _prepare_trajectory(df)
     """
-    nw_df = nw.from_native(traj, eager_only=True).with_row_index(_ROW_ORDER_COL)
+    nw_df = nw.from_native(traj, eager_only=True)
+    if sort:
+        nw_df = nw_df.with_row_index(_ROW_ORDER_COL)
 
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         nw_df,
@@ -261,19 +266,17 @@ def _prepare_trajectory(
         uid_col=uid_col,
     )
 
-    df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
+    df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col]) if drop_nulls else nw_df
     if sort:
         sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
         df = df.sort(*sort_cols)
 
-    df = (
-        df
-        .with_columns(
-            nw.col(lat_col).cast(nw.Float64),
-            nw.col(lng_col).cast(nw.Float64),
-        )
-        .drop(_ROW_ORDER_COL)
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
+    if sort:
+        df = df.drop(_ROW_ORDER_COL)
 
     return df, datetime_col, lat_col, lng_col, uid_col
 
