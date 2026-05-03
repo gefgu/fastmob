@@ -22,6 +22,7 @@ from skmob2._core import (
 from .._common import (
     _ROW_ORDER_COL,
     _as_index_array,
+    _arrow_result_values,
     _build_user_ranges,
     _is_polars_backed,
     _prepare_trajectory,
@@ -38,15 +39,52 @@ def _route_indexed_jump_lengths(
     *,
     use_arrow: bool,
     merge: bool,
-) -> list[float] | list[list[float]]:
+) -> Any:
     if use_arrow:
         if merge:
-            return jump_lengths_indexed_flat_arrow(lats.to_arrow(), lngs.to_arrow(), indices, starts, ends)
-        return jump_lengths_indexed_arrow(lats.to_arrow(), lngs.to_arrow(), indices, starts, ends)
+            return _arrow_flat_result_values(
+                jump_lengths_indexed_flat_arrow(lats.to_arrow(), lngs.to_arrow(), indices, starts, ends)
+            )
+        value_starts, value_ends, values = jump_lengths_indexed_arrow(
+            lats.to_arrow(),
+            lngs.to_arrow(),
+            indices,
+            starts,
+            ends,
+        )
+        return _grouped_arrow_values(value_starts, value_ends, values)
 
     if merge:
         return jump_lengths_indexed_flat_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
-    return jump_lengths_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
+    value_starts, value_ends, values = jump_lengths_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
+    return _grouped_numpy_values(value_starts, value_ends, values)
+
+
+def _arrow_flat_result_values(values: Any) -> Any:
+    values = _arrow_result_values(values)
+    if hasattr(values, "__arrow_c_array__"):
+        import pyarrow as pa
+
+        return pa.array(values)
+    return values
+
+
+def _grouped_numpy_values(value_starts: Any, value_ends: Any, values: Any) -> list[np.ndarray]:
+    starts = np.asarray(value_starts, dtype=np.uintp)
+    ends = np.asarray(value_ends, dtype=np.uintp)
+    values = np.asarray(values, dtype=np.float64)
+    return [values[int(start) : int(end)] for start, end in zip(starts, ends)]
+
+
+def _grouped_arrow_values(value_starts: Any, value_ends: Any, values: Any) -> Any:
+    import pyarrow as pa
+
+    starts = np.asarray(value_starts, dtype=np.int64)
+    ends = np.asarray(value_ends, dtype=np.int64)
+    offsets = np.empty(len(starts) + 1, dtype=np.int32)
+    offsets[:-1] = starts
+    offsets[-1] = ends[-1] if len(ends) else 0
+    return pa.ListArray.from_arrays(offsets, _arrow_flat_result_values(values))
 
 
 def _route_time_ordered_single_jump_lengths(
@@ -56,19 +94,31 @@ def _route_time_ordered_single_jump_lengths(
     *,
     use_arrow: bool,
     merge: bool,
-) -> list[float] | list[list[float]]:
+) -> Any:
     if use_arrow:
         if merge:
-            return jump_lengths_time_ordered_single_flat_arrow(
-                timestamps.to_arrow(),
-                lats.to_arrow(),
-                lngs.to_arrow(),
+            return _arrow_flat_result_values(
+                jump_lengths_time_ordered_single_flat_arrow(
+                    timestamps.to_arrow(),
+                    lats.to_arrow(),
+                    lngs.to_arrow(),
+                )
             )
-        return jump_lengths_time_ordered_single_arrow(timestamps.to_arrow(), lats.to_arrow(), lngs.to_arrow())
+        value_starts, value_ends, values = jump_lengths_time_ordered_single_arrow(
+            timestamps.to_arrow(),
+            lats.to_arrow(),
+            lngs.to_arrow(),
+        )
+        return _grouped_arrow_values(value_starts, value_ends, values)
 
     if merge:
         return jump_lengths_time_ordered_single_flat_numpy(timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
-    return jump_lengths_time_ordered_single_numpy(timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
+    value_starts, value_ends, values = jump_lengths_time_ordered_single_numpy(
+        timestamps.to_numpy(),
+        lats.to_numpy(),
+        lngs.to_numpy(),
+    )
+    return _grouped_numpy_values(value_starts, value_ends, values)
 
 
 def _route_time_ordered_jump_lengths(
@@ -79,20 +129,33 @@ def _route_time_ordered_jump_lengths(
     *,
     use_arrow: bool,
     merge: bool,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[float] | list[list[float]]]:
+) -> tuple[Any, Any, Any, Any]:
     if use_arrow:
         if merge:
-            return jump_lengths_time_ordered_flat_arrow(
+            indices, starts, ends, values = jump_lengths_time_ordered_flat_arrow(
                 uids.to_arrow(),
                 timestamps.to_arrow(),
                 lats.to_arrow(),
                 lngs.to_arrow(),
             )
-        return jump_lengths_time_ordered_arrow(uids.to_arrow(), timestamps.to_arrow(), lats.to_arrow(), lngs.to_arrow())
+            return indices, starts, ends, _arrow_flat_result_values(values)
+        indices, starts, ends, value_starts, value_ends, values = jump_lengths_time_ordered_arrow(
+            uids.to_arrow(),
+            timestamps.to_arrow(),
+            lats.to_arrow(),
+            lngs.to_arrow(),
+        )
+        return indices, starts, ends, _grouped_arrow_values(value_starts, value_ends, values)
 
     if merge:
         return jump_lengths_time_ordered_flat_numpy(uids.to_numpy(), timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
-    return jump_lengths_time_ordered_numpy(uids.to_numpy(), timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
+    indices, starts, ends, value_starts, value_ends, values = jump_lengths_time_ordered_numpy(
+        uids.to_numpy(),
+        timestamps.to_numpy(),
+        lats.to_numpy(),
+        lngs.to_numpy(),
+    )
+    return indices, starts, ends, _grouped_numpy_values(value_starts, value_ends, values)
 
 
 def _uid_values_from_ranges(
@@ -147,8 +210,9 @@ def jump_lengths(
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
     merge:
-        When True, return a flat ``list[float]`` of all jump lengths across
-        all users.  When False (default), return a per-user dataframe.
+        When True, return flat jump lengths across all users using a
+        backend-appropriate array object.  When False (default), return a
+        per-user dataframe.
     datetime_col:
         Explicit datetime column name.  Auto-detected when None.
     lat_col:
@@ -160,11 +224,13 @@ def jump_lengths(
 
     Returns
     -------
-    DataFrame | list[float]
+    DataFrame | array-like
         When ``merge=False``: a dataframe with columns ``[uid_col, "jump_lengths"]``
-        where each row holds a list of jump lengths for one user.  The returned
-        backend matches the input backend.
-        When ``merge=True``: a flat ``list[float]`` of all jump lengths.
+        where each row holds an array-like sequence of jump lengths for one
+        user.  The returned backend matches the input backend.
+        When ``merge=True``: flat jump lengths as a NumPy array for NumPy-backed
+        inputs or a PyArrow array for Arrow-backed inputs. Unsupported fallback
+        paths may return a Python list.
 
 
 

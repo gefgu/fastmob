@@ -10,7 +10,7 @@ use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
 use crate::haversine::haversine_km;
-use crate::utils::{arrow_values, as_f64_array, validate_coord_ranges};
+use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow, validate_coord_ranges};
 
 type IndexRanges = Vec<(usize, usize)>;
 type OrderedIndexRanges = (Vec<usize>, IndexRanges);
@@ -19,17 +19,43 @@ type PyOrderedIndexRanges<'py> = (
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
 );
+type PyGroupedJumpLengths<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<f64>>,
+);
+type PyGroupedJumpLengthsArrow<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    PyArray,
+);
 type PyTimeOrderedJumpLengths<'py> = (
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
-    Vec<Vec<f64>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<f64>>,
+);
+type PyTimeOrderedJumpLengthsArrow<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    PyArray,
 );
 type PyTimeOrderedFlatJumpLengths<'py> = (
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
-    Vec<f64>,
+    Bound<'py, PyArray1<f64>>,
+);
+type PyTimeOrderedFlatJumpLengthsArrow<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    PyArray,
 );
 
 fn jump_lengths_for_range(
@@ -178,6 +204,26 @@ fn ordered_index_ranges_into_numpy<'py>(
         starts.into_pyarray(py),
         ends.into_pyarray(py),
     )
+}
+
+fn jump_offsets_for_ranges(ranges: &[(usize, usize)]) -> (Vec<usize>, Vec<usize>) {
+    let mut starts = Vec::with_capacity(ranges.len());
+    let mut ends = Vec::with_capacity(ranges.len());
+    let mut offset = 0usize;
+    for &(start, end) in ranges {
+        starts.push(offset);
+        offset += end.saturating_sub(start).saturating_sub(1);
+        ends.push(offset);
+    }
+    (starts, ends)
+}
+
+fn value_offsets_into_numpy<'py>(
+    py: Python<'py>,
+    ranges: &[(usize, usize)],
+) -> (Bound<'py, PyArray1<usize>>, Bound<'py, PyArray1<usize>>) {
+    let (starts, ends) = jump_offsets_for_ranges(ranges);
+    (starts.into_pyarray(py), ends.into_pyarray(py))
 }
 
 fn compare_f64_values(left: f64, right: f64) -> std::cmp::Ordering {
@@ -339,19 +385,6 @@ fn time_ordered_indices_from_arrow_uids(
     ))
 }
 
-fn time_ordered_values_impl(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    timestamps: &[f64],
-    indices: Vec<usize>,
-    ranges: IndexRanges,
-) -> PyResult<(Vec<usize>, IndexRanges, Vec<Vec<f64>>)> {
-    validate_time_ordered_inputs(latitudes, longitudes, timestamps)?;
-    validate_indexed_inputs(latitudes, longitudes, &indices, &ranges)?;
-    let values = jump_lengths_indexed_batch_impl(latitudes, longitudes, &indices, &ranges)?;
-    Ok((indices, ranges, values))
-}
-
 fn time_ordered_flat_values_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -365,19 +398,6 @@ fn time_ordered_flat_values_impl(
     Ok((indices, ranges, values))
 }
 
-fn jump_lengths_batch_impl(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    ranges: &[(usize, usize)],
-) -> PyResult<Vec<Vec<f64>>> {
-    validate_coord_ranges(latitudes, longitudes, ranges)?;
-
-    Ok(ranges
-        .par_iter()
-        .map(|&(start, end)| jump_lengths_for_range(latitudes, longitudes, start, end))
-        .collect())
-}
-
 fn jump_lengths_flat_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -388,22 +408,6 @@ fn jump_lengths_flat_impl(
     Ok(ranges
         .iter()
         .flat_map(|&(start, end)| jump_lengths_for_range(latitudes, longitudes, start, end))
-        .collect())
-}
-
-fn jump_lengths_indexed_batch_impl(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    indices: &[usize],
-    ranges: &[(usize, usize)],
-) -> PyResult<Vec<Vec<f64>>> {
-    validate_indexed_inputs(latitudes, longitudes, indices, ranges)?;
-
-    Ok(ranges
-        .par_iter()
-        .map(|&(start, end)| {
-            jump_lengths_for_indexed_range(latitudes, longitudes, indices, start, end)
-        })
         .collect())
 }
 
@@ -450,85 +454,100 @@ pub(crate) fn jump_lengths_km(latitudes: Vec<f64>, longitudes: Vec<f64>) -> PyRe
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_numpy(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
+pub(crate) fn jump_lengths_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
     ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<Vec<f64>>> {
-    jump_lengths_batch_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)
+) -> PyResult<PyGroupedJumpLengths<'py>> {
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
+    let values = jump_lengths_flat_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)?;
+    Ok((value_starts, value_ends, values.into_pyarray(py)))
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_flat_numpy(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
+pub(crate) fn jump_lengths_flat_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
     ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
-    jump_lengths_flat_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)
-}
-
-#[pyfunction]
-pub(crate) fn jump_lengths_indexed_numpy(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-    indices: PyReadonlyArray1<usize>,
-    starts: PyReadonlyArray1<usize>,
-    ends: PyReadonlyArray1<usize>,
-) -> PyResult<Vec<Vec<f64>>> {
-    let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
-    jump_lengths_indexed_batch_impl(
-        latitudes.as_slice()?,
-        longitudes.as_slice()?,
-        indices.as_slice()?,
-        &ranges,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    Ok(
+        jump_lengths_flat_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)?
+            .into_pyarray(py),
     )
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_indexed_flat_numpy(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-    indices: PyReadonlyArray1<usize>,
-    starts: PyReadonlyArray1<usize>,
-    ends: PyReadonlyArray1<usize>,
-) -> PyResult<Vec<f64>> {
+pub(crate) fn jump_lengths_indexed_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    indices: PyReadonlyArray1<'py, usize>,
+    starts: PyReadonlyArray1<'py, usize>,
+    ends: PyReadonlyArray1<'py, usize>,
+) -> PyResult<PyGroupedJumpLengths<'py>> {
     let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
-    jump_lengths_indexed_flat_impl(
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
+    let values = jump_lengths_indexed_flat_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
         indices.as_slice()?,
         &ranges,
-    )
+    )?;
+    Ok((value_starts, value_ends, values.into_pyarray(py)))
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_time_ordered_single_numpy(
-    timestamps: PyReadonlyArray1<f64>,
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-) -> PyResult<Vec<Vec<f64>>> {
+pub(crate) fn jump_lengths_indexed_flat_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    indices: PyReadonlyArray1<'py, usize>,
+    starts: PyReadonlyArray1<'py, usize>,
+    ends: PyReadonlyArray1<'py, usize>,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    Ok(jump_lengths_indexed_flat_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        indices.as_slice()?,
+        &ranges,
+    )?
+    .into_pyarray(py))
+}
+
+#[pyfunction]
+pub(crate) fn jump_lengths_time_ordered_single_numpy<'py>(
+    py: Python<'py>,
+    timestamps: PyReadonlyArray1<'py, f64>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+) -> PyResult<PyGroupedJumpLengths<'py>> {
     let timestamps = timestamps.as_slice()?;
     let latitudes = latitudes.as_slice()?;
     let longitudes = longitudes.as_slice()?;
     let (indices, ranges) = time_ordered_indices_single_user(timestamps);
-    let (_, _, values) =
-        time_ordered_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
-    Ok(values)
+    let (_, ranges, values) =
+        time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
+    Ok((value_starts, value_ends, values.into_pyarray(py)))
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_time_ordered_single_flat_numpy(
-    timestamps: PyReadonlyArray1<f64>,
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-) -> PyResult<Vec<f64>> {
+pub(crate) fn jump_lengths_time_ordered_single_flat_numpy<'py>(
+    py: Python<'py>,
+    timestamps: PyReadonlyArray1<'py, f64>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
     let timestamps = timestamps.as_slice()?;
     let latitudes = latitudes.as_slice()?;
     let longitudes = longitudes.as_slice()?;
     let (indices, ranges) = time_ordered_indices_single_user(timestamps);
     let (_, _, values) =
         time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
-    Ok(values)
+    Ok(values.into_pyarray(py))
 }
 
 #[pyfunction]
@@ -547,9 +566,17 @@ pub(crate) fn jump_lengths_time_ordered_numpy<'py>(
     let (indices, ranges) = time_ordered_indices_from_numpy_uids(uids, timestamps)?;
 
     let (indices, ranges, values) =
-        time_ordered_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
+        time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
     let (indices, starts, ends) = ordered_index_ranges_into_numpy(py, (indices, ranges));
-    Ok((indices, starts, ends, values))
+    Ok((
+        indices,
+        starts,
+        ends,
+        value_starts,
+        value_ends,
+        values.into_pyarray(py),
+    ))
 }
 
 #[pyfunction]
@@ -593,18 +620,22 @@ pub(crate) fn jump_lengths_time_ordered_flat_numpy<'py>(
     let (indices, ranges, values) =
         time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
     let (indices, starts, ends) = ordered_index_ranges_into_numpy(py, (indices, ranges));
-    Ok((indices, starts, ends, values))
+    Ok((indices, starts, ends, values.into_pyarray(py)))
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_arrow(
+pub(crate) fn jump_lengths_arrow<'py>(
+    py: Python<'py>,
     latitudes: PyArray,
     longitudes: PyArray,
     ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<PyGroupedJumpLengthsArrow<'py>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    jump_lengths_batch_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
+    let values =
+        jump_lengths_flat_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)?;
+    Ok((value_starts, value_ends, f64_results_into_arrow(values)))
 }
 
 #[pyfunction]
@@ -612,29 +643,36 @@ pub(crate) fn jump_lengths_flat_arrow(
     latitudes: PyArray,
     longitudes: PyArray,
     ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
+) -> PyResult<PyArray> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    jump_lengths_flat_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)
+    Ok(f64_results_into_arrow(jump_lengths_flat_impl(
+        arrow_values(&latitudes),
+        arrow_values(&longitudes),
+        &ranges,
+    )?))
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_indexed_arrow(
+pub(crate) fn jump_lengths_indexed_arrow<'py>(
+    py: Python<'py>,
     latitudes: PyArray,
     longitudes: PyArray,
-    indices: PyReadonlyArray1<usize>,
-    starts: PyReadonlyArray1<usize>,
-    ends: PyReadonlyArray1<usize>,
-) -> PyResult<Vec<Vec<f64>>> {
+    indices: PyReadonlyArray1<'py, usize>,
+    starts: PyReadonlyArray1<'py, usize>,
+    ends: PyReadonlyArray1<'py, usize>,
+) -> PyResult<PyGroupedJumpLengthsArrow<'py>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
-    jump_lengths_indexed_batch_impl(
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
+    let values = jump_lengths_indexed_flat_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
         indices.as_slice()?,
         &ranges,
-    )
+    )?;
+    Ok((value_starts, value_ends, f64_results_into_arrow(values)))
 }
 
 #[pyfunction]
@@ -644,37 +682,39 @@ pub(crate) fn jump_lengths_indexed_flat_arrow(
     indices: PyReadonlyArray1<usize>,
     starts: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
-) -> PyResult<Vec<f64>> {
+) -> PyResult<PyArray> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
-    jump_lengths_indexed_flat_impl(
+    Ok(f64_results_into_arrow(jump_lengths_indexed_flat_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
         indices.as_slice()?,
         &ranges,
-    )
+    )?))
 }
 
 #[pyfunction]
-pub(crate) fn jump_lengths_time_ordered_single_arrow(
+pub(crate) fn jump_lengths_time_ordered_single_arrow<'py>(
+    py: Python<'py>,
     timestamps: PyArray,
     latitudes: PyArray,
     longitudes: PyArray,
-) -> PyResult<Vec<Vec<f64>>> {
+) -> PyResult<PyGroupedJumpLengthsArrow<'py>> {
     let timestamps = as_f64_array(timestamps, "timestamps")?;
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let timestamps = arrow_values(&timestamps);
     let (indices, ranges) = time_ordered_indices_single_user(timestamps);
-    let (_, _, values) = time_ordered_values_impl(
+    let (_, ranges, values) = time_ordered_flat_values_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
         timestamps,
         indices,
         ranges,
     )?;
-    Ok(values)
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
+    Ok((value_starts, value_ends, f64_results_into_arrow(values)))
 }
 
 #[pyfunction]
@@ -682,7 +722,7 @@ pub(crate) fn jump_lengths_time_ordered_single_flat_arrow(
     timestamps: PyArray,
     latitudes: PyArray,
     longitudes: PyArray,
-) -> PyResult<Vec<f64>> {
+) -> PyResult<PyArray> {
     let timestamps = as_f64_array(timestamps, "timestamps")?;
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
@@ -695,7 +735,7 @@ pub(crate) fn jump_lengths_time_ordered_single_flat_arrow(
         indices,
         ranges,
     )?;
-    Ok(values)
+    Ok(f64_results_into_arrow(values))
 }
 
 #[pyfunction]
@@ -705,7 +745,7 @@ pub(crate) fn jump_lengths_time_ordered_arrow<'py>(
     timestamps: PyArray,
     latitudes: PyArray,
     longitudes: PyArray,
-) -> PyResult<PyTimeOrderedJumpLengths<'py>> {
+) -> PyResult<PyTimeOrderedJumpLengthsArrow<'py>> {
     let timestamps = as_f64_array(timestamps, "timestamps")?;
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
@@ -717,9 +757,17 @@ pub(crate) fn jump_lengths_time_ordered_arrow<'py>(
     let (indices, ranges) = time_ordered_indices_from_arrow_uids(uids, timestamps)?;
 
     let (indices, ranges, values) =
-        time_ordered_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
+        time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
+    let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
     let (indices, starts, ends) = ordered_index_ranges_into_numpy(py, (indices, ranges));
-    Ok((indices, starts, ends, values))
+    Ok((
+        indices,
+        starts,
+        ends,
+        value_starts,
+        value_ends,
+        f64_results_into_arrow(values),
+    ))
 }
 
 #[pyfunction]
@@ -754,7 +802,7 @@ pub(crate) fn jump_lengths_time_ordered_flat_arrow<'py>(
     timestamps: PyArray,
     latitudes: PyArray,
     longitudes: PyArray,
-) -> PyResult<PyTimeOrderedFlatJumpLengths<'py>> {
+) -> PyResult<PyTimeOrderedFlatJumpLengthsArrow<'py>> {
     let timestamps = as_f64_array(timestamps, "timestamps")?;
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
@@ -768,5 +816,5 @@ pub(crate) fn jump_lengths_time_ordered_flat_arrow<'py>(
     let (indices, ranges, values) =
         time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)?;
     let (indices, starts, ends) = ordered_index_ranges_into_numpy(py, (indices, ranges));
-    Ok((indices, starts, ends, values))
+    Ok((indices, starts, ends, f64_results_into_arrow(values)))
 }
