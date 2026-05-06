@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
-import narwhals as nw
 from skmob2._core import home_location_indexed_arrow, home_location_indexed_numpy
 
-from .._common import _arrow_result_values, _build_indexed_user_ranges_fast, _is_polars_backed, _prepare_trajectory
+from .._common import (
+    _build_indexed_user_ranges_fast,
+    _dispatch_pair_kernel,
+    _extract_hours,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _to_native,
+)
 
 
 def home_location(
@@ -104,42 +110,22 @@ def home_location(
         sort=False,
     )
 
-    df = df.with_columns(nw.col(datetime_col).dt.hour().cast(nw.Float64).alias("__hour__"))
-    lats_full = df.get_column(lat_col)
-    lngs_full = df.get_column(lng_col)
-    hours = df.get_column("__hour__")
+    df, hours = _extract_hours(df, datetime_col)
     use_arrow = _is_polars_backed(df)
     uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-    if use_arrow:
-        home_lats, home_lngs = home_location_indexed_arrow(
-            lats_full.to_arrow(),
-            lngs_full.to_arrow(),
-            hours.to_arrow(),
-            indices,
-            starts,
-            ends,
-            float(start_night),
-            float(end_night),
-        )
-        home_lats = _arrow_result_values(home_lats)
-        home_lngs = _arrow_result_values(home_lngs)
-    else:
-        home_lats, home_lngs = home_location_indexed_numpy(
-            lats_full.to_numpy(),
-            lngs_full.to_numpy(),
-            hours.to_numpy(),
-            indices,
-            starts,
-            ends,
-            float(start_night),
-            float(end_night),
-        )
+    home_lats, home_lngs = _dispatch_pair_kernel(
+        home_location_indexed_numpy,
+        home_location_indexed_arrow,
+        [df.get_column(lat_col), df.get_column(lng_col), hours],
+        indices,
+        starts,
+        ends,
+        float(start_night),
+        float(end_night),
+        use_arrow=use_arrow,
+    )
 
     if uid_col is None:
-        return nw.from_dict({lat_col: home_lats, lng_col: home_lngs}, backend=df.implementation).to_native()
-
-    return nw.from_dict(
-        {uid_col: uid_values, lat_col: home_lats, lng_col: home_lngs},
-        backend=df.implementation,
-    ).to_native()
+        return _to_native({lat_col: home_lats, lng_col: home_lngs}, df)
+    return _to_native({uid_col: uid_values, lat_col: home_lats, lng_col: home_lngs}, df)

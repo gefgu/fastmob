@@ -24,9 +24,12 @@ from .._common import (
     _as_index_array,
     _arrow_result_values,
     _build_user_ranges,
+    _extract_timestamps_ms,
     _is_polars_backed,
     _prepare_trajectory,
     _ranges_to_starts_ends,
+    _to_native,
+    _uid_values_from_index_ranges,
 )
 
 
@@ -158,21 +161,6 @@ def _route_time_ordered_jump_lengths(
     return indices, starts, ends, _grouped_numpy_values(value_starts, value_ends, values)
 
 
-def _uid_values_from_ranges(
-    uids: nw.Series,
-    indices: np.ndarray,
-    starts: np.ndarray,
-    *,
-    use_arrow: bool,
-) -> list:
-    if use_arrow:
-        uid_arrow = uids.to_arrow()
-        return [uid_arrow[int(indices[int(start)])].as_py() for start in starts]
-
-    uid_values = uids.to_numpy()
-    return uid_values[np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]].tolist()
-
-
 def _build_time_ordered_ranges_fallback(
     df: nw.DataFrame,
     uid_col: str,
@@ -284,9 +272,7 @@ def jump_lengths(
         sort=False,
     )
 
-    timestamps = df.with_columns((nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)).alias("__ts_ms__")).get_column(
-        "__ts_ms__"
-    )
+    timestamps = _extract_timestamps_ms(df, datetime_col)
     lats_full = df.get_column(lat_col)
     lngs_full = df.get_column(lng_col)
     use_arrow = _is_polars_backed(df)
@@ -301,7 +287,7 @@ def jump_lengths(
         )
         if merge:
             return jump_values
-        return nw.from_dict({"jump_lengths": jump_values}, backend=df.implementation).to_native()
+        return _to_native({"jump_lengths": jump_values}, df)
 
     uids = df.get_column(uid_col)
     try:
@@ -316,7 +302,7 @@ def jump_lengths(
         indices = _as_index_array(indices)
         starts = _as_index_array(starts)
         ends = _as_index_array(ends)
-        uid_values = _uid_values_from_ranges(uids, indices, starts, use_arrow=use_arrow)
+        uid_values = _uid_values_from_index_ranges(uids, indices, starts, use_arrow=use_arrow)
     except ValueError as exc:
         if "unsupported" not in str(exc):
             raise
@@ -336,9 +322,4 @@ def jump_lengths(
     if merge:
         return jump_values
 
-    result = nw.from_dict(
-        {uid_col: uid_values, "jump_lengths": jump_values},
-        backend=df.implementation,
-    )
-
-    return result.to_native()
+    return _to_native({uid_col: uid_values, "jump_lengths": jump_values}, df)

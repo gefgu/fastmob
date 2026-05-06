@@ -5,34 +5,19 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 from skmob2._core import (
-    waiting_times_arrow,
-    waiting_times_flat_arrow,
-    waiting_times_flat_numpy,
     waiting_times_indexed_arrow,
     waiting_times_indexed_flat_arrow,
     waiting_times_indexed_flat_numpy,
     waiting_times_indexed_numpy,
-    waiting_times_numpy,
 )
 
-from .._common import _build_time_ordered_user_ranges, _is_polars_backed, _prepare_trajectory
-
-
-def _route_waiting_times(
-    timestamps_s: nw.Series,
-    ranges: list[tuple[int, int]],
-    *,
-    use_arrow: bool,
-    merge: bool,
-) -> list[float] | list[list[float]]:
-    if use_arrow:
-        if merge:
-            return waiting_times_flat_arrow(timestamps_s.to_arrow(), ranges)
-        return waiting_times_arrow(timestamps_s.to_arrow(), ranges)
-
-    if merge:
-        return waiting_times_flat_numpy(timestamps_s.to_numpy(), ranges)
-    return waiting_times_numpy(timestamps_s.to_numpy(), ranges)
+from .._common import (
+    _build_time_ordered_user_ranges,
+    _extract_timestamps_s,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _to_native,
+)
 
 
 def _route_indexed_waiting_times(
@@ -150,32 +135,17 @@ def waiting_times(
         sort=False,
     )
 
-    # Extract Unix timestamps in seconds via millisecond intermediate to avoid
-    # backend-specific nanosecond vs microsecond differences.
-    timestamps_s = (
-        df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__"))
-        .get_column("__ts_s__")
-    )
+    timestamps_s = _extract_timestamps_s(df, datetime_col)
     use_arrow = _is_polars_backed(df)
     uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_s, use_arrow=use_arrow
     )
-
-    if uid_col is None:
-        wt_list = _route_indexed_waiting_times(timestamps_s, indices, starts, ends, use_arrow=use_arrow, merge=merge)
-        if merge:
-            return wt_list
-        return nw.from_dict(
-            {"waiting_times": wt_list},
-            backend=df.implementation,
-        ).to_native()
-
-    wt_lists = _route_indexed_waiting_times(timestamps_s, indices, starts, ends, use_arrow=use_arrow, merge=merge)
+    wt_values = _route_indexed_waiting_times(
+        timestamps_s, indices, starts, ends, use_arrow=use_arrow, merge=merge
+    )
 
     if merge:
-        return wt_lists
-
-    return nw.from_dict(
-        {uid_col: uid_values, "waiting_times": wt_lists},
-        backend=df.implementation,
-    ).to_native()
+        return wt_values
+    if uid_col is None:
+        return _to_native({"waiting_times": wt_values}, df)
+    return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)

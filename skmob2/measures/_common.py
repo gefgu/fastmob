@@ -93,31 +93,50 @@ def _empty_like(nw_df: nw.DataFrame, columns: list[str]) -> Any:
     return nw.from_dict({col: [] for col in columns}, backend=nw_df.implementation).to_native()
 
 
-def _route_series_kernel(
-    series: nw.Series,
+def _dispatch_kernel(
     numpy_kernel: Callable,
     arrow_kernel: Callable,
-    *args,
+    series: Iterable[nw.Series],
+    *extra_args,
     use_arrow: bool,
+    convert_arrow_result: bool = True,
 ) -> Any:
-    """Call an Arrow or NumPy kernel for one Narwhals series."""
+    """Call the NumPy or Arrow kernel after converting input series.
+
+    When ``use_arrow`` is True the input series are converted via ``to_arrow``
+    and the (possibly pyo3-arrow-wrapped) result is unwrapped through
+    :func:`_arrow_result_values` unless ``convert_arrow_result=False`` (used
+    when the result is fed back into another Arrow kernel).
+    """
     if use_arrow:
-        return arrow_kernel(series.to_arrow(), *args)
-    return numpy_kernel(series.to_numpy(), *args)
+        result = arrow_kernel(*(s.to_arrow() for s in series), *extra_args)
+        return _arrow_result_values(result) if convert_arrow_result else result
+    return numpy_kernel(*(s.to_numpy() for s in series), *extra_args)
 
 
-def _route_two_series_kernel(
-    left: nw.Series,
-    right: nw.Series,
+def _dispatch_pair_kernel(
     numpy_kernel: Callable,
     arrow_kernel: Callable,
-    *args,
+    series: Iterable[nw.Series],
+    *extra_args,
     use_arrow: bool,
-) -> Any:
-    """Call an Arrow or NumPy kernel for two Narwhals series."""
+    convert_arrow_result: bool = True,
+) -> tuple[Any, Any]:
+    """Like :func:`_dispatch_kernel` but for kernels returning a 2-tuple."""
     if use_arrow:
-        return arrow_kernel(left.to_arrow(), right.to_arrow(), *args)
-    return numpy_kernel(left.to_numpy(), right.to_numpy(), *args)
+        first, second = arrow_kernel(*(s.to_arrow() for s in series), *extra_args)
+        if convert_arrow_result:
+            return _arrow_result_values(first), _arrow_result_values(second)
+        return first, second
+    return numpy_kernel(*(s.to_numpy() for s in series), *extra_args)
+
+
+def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
+    """Ensure a trajectory datetime column has a Narwhals datetime dtype."""
+    try:
+        return df.with_columns(nw.col(column).cast(nw.Datetime).alias(column))
+    except Exception:
+        return df.with_columns(nw.col(column).str.to_datetime().alias(column))
 
 
 def _as_index_array(values: Any) -> np.ndarray:
@@ -137,6 +156,42 @@ def _arrow_result_values(values: Any) -> Any:
     if hasattr(values, "to_pyarrow"):
         return values.to_pyarrow()
     return values
+
+
+def _result_scalar(values: Any) -> float:
+    """Extract a single Python float from a length-1 NumPy/Arrow result."""
+    if hasattr(values, "to_numpy"):
+        return float(values.to_numpy()[0])
+    return float(np.asarray(values)[0])
+
+
+def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
+    """Build a backend-matching result dataframe from a column dict."""
+    return nw.from_dict(values_dict, backend=df.implementation).to_native()
+
+
+def _extract_timestamps_ms(df: nw.DataFrame, datetime_col: str) -> nw.Series:
+    """Return a Float64 Narwhals Series of millisecond Unix timestamps."""
+    return df.with_columns(
+        nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64).alias("__ts_ms__")
+    ).get_column("__ts_ms__")
+
+
+def _extract_timestamps_s(df: nw.DataFrame, datetime_col: str) -> nw.Series:
+    """Return a Float64 Narwhals Series of second-resolution Unix timestamps.
+
+    Goes through the millisecond path so backends with nanosecond or
+    microsecond storage produce identical values.
+    """
+    return df.with_columns(
+        (nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")
+    ).get_column("__ts_s__")
+
+
+def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, nw.Series]:
+    """Add and return an ``__hour__`` Float64 column derived from datetime."""
+    df = df.with_columns(nw.col(datetime_col).dt.hour().cast(nw.Float64).alias("__hour__"))
+    return df, df.get_column("__hour__")
 
 
 def _uid_values_from_index_ranges(
@@ -384,6 +439,8 @@ def _prepare_trajectory(
         lng_col=lng_col,
         uid_col=uid_col,
     )
+
+    nw_df = _with_datetime_column(nw_df, datetime_col)
 
     df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col]) if drop_nulls else nw_df
     if sort:

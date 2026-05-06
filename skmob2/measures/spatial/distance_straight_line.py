@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from typing import Any
 
-import narwhals as nw
 from skmob2._core import (
     total_distance_indexed_arrow,
     total_distance_indexed_numpy,
 )
 
 from .._common import (
-    _arrow_result_values,
     _build_time_ordered_user_ranges,
+    _dispatch_kernel,
+    _extract_timestamps_ms,
     _is_polars_backed,
     _prepare_trajectory,
-    _route_two_series_kernel,
+    _to_native,
 )
 
 
@@ -105,30 +105,21 @@ def distance_straight_line(
         sort=False,
     )
 
-    timestamps = df.with_columns((nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)).alias("__ts_ms__")).get_column(
-        "__ts_ms__"
-    )
-    lats_full = df.get_column(lat_col)
-    lngs_full = df.get_column(lng_col)
+    timestamps = _extract_timestamps_ms(df, datetime_col)
     use_arrow = _is_polars_backed(df)
-    uid_values, index_array, starts, ends = _build_time_ordered_user_ranges(
+    uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+    )
+    distances = _dispatch_kernel(
+        total_distance_indexed_numpy,
+        total_distance_indexed_arrow,
+        [df.get_column(lat_col), df.get_column(lng_col)],
+        indices,
+        starts,
+        ends,
+        use_arrow=use_arrow,
     )
 
     if uid_col is None:
-        values = _route_two_series_kernel(lats_full, lngs_full, total_distance_indexed_numpy, total_distance_indexed_arrow, index_array, starts, ends, use_arrow=use_arrow)
-        if use_arrow:
-            values = _arrow_result_values(values)
-        return nw.from_dict(
-            {"distance_straight_line": values},
-            backend=df.implementation,
-        ).to_native()
-
-    total_distances = _route_two_series_kernel(lats_full, lngs_full, total_distance_indexed_numpy, total_distance_indexed_arrow, index_array, starts, ends, use_arrow=use_arrow)
-    if use_arrow:
-        total_distances = _arrow_result_values(total_distances)
-
-    return nw.from_dict(
-        {uid_col: uid_values, "distance_straight_line": total_distances},
-        backend=df.implementation,
-    ).to_native()
+        return _to_native({"distance_straight_line": distances}, df)
+    return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)

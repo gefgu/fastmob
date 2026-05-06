@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import narwhals as nw
 import numpy as np
 from skmob2._core import (
     maximum_distance_indexed_arrow,
@@ -11,11 +10,12 @@ from skmob2._core import (
 )
 
 from .._common import (
-    _arrow_result_values,
     _build_time_ordered_user_ranges,
+    _dispatch_kernel,
+    _extract_timestamps_ms,
     _is_polars_backed,
     _prepare_trajectory,
-    _route_two_series_kernel,
+    _to_native,
 )
 
 
@@ -107,35 +107,27 @@ def maximum_distance(
         sort=False,
     )
 
-    timestamps = df.with_columns((nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)).alias("__ts_ms__")).get_column(
-        "__ts_ms__"
-    )
-    lats_full = df.get_column(lat_col)
-    lngs_full = df.get_column(lng_col)
+    timestamps = _extract_timestamps_ms(df, datetime_col)
     use_arrow = _is_polars_backed(df)
-    uid_values, index_array, starts, ends = _build_time_ordered_user_ranges(
+    uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+    )
+    max_distances = _dispatch_kernel(
+        maximum_distance_indexed_numpy,
+        maximum_distance_indexed_arrow,
+        [df.get_column(lat_col), df.get_column(lng_col)],
+        indices,
+        starts,
+        ends,
+        use_arrow=use_arrow,
     )
 
     if uid_col is None:
-        values = _route_two_series_kernel(lats_full, lngs_full, maximum_distance_indexed_numpy, maximum_distance_indexed_arrow, index_array, starts, ends, use_arrow=use_arrow)
-        if use_arrow:
-            values = _arrow_result_values(values)
         if len(df) < 2:
-            values = [math.nan]
-        return nw.from_dict(
-            {"maximum_distance": values},
-            backend=df.implementation,
-        ).to_native()
+            return _to_native({"maximum_distance": [math.nan]}, df)
+        return _to_native({"maximum_distance": max_distances}, df)
 
-    max_distances = _route_two_series_kernel(lats_full, lngs_full, maximum_distance_indexed_numpy, maximum_distance_indexed_arrow, index_array, starts, ends, use_arrow=use_arrow)
-    if use_arrow:
-        max_distances = _arrow_result_values(max_distances)
     max_distances = np.asarray(max_distances, dtype=float)
     short_mask = np.asarray(ends, dtype=np.uintp) - np.asarray(starts, dtype=np.uintp) < 2
     max_distances[short_mask] = math.nan
-
-    return nw.from_dict(
-        {uid_col: uid_values, "maximum_distance": max_distances},
-        backend=df.implementation,
-    ).to_native()
+    return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)

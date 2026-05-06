@@ -368,7 +368,7 @@ def test_build_indexed_user_ranges_sorts_stable_row_indices():
     """Indexed grouping keeps original row order within each sorted uid group."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     import narwhals as nw
-    from skmob2.measures.spatial.radius_of_gyration import _build_indexed_user_ranges
+    from skmob2.measures._common import _build_indexed_user_ranges
 
     df = nw.from_native(pd.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}), eager_only=True)
 
@@ -383,7 +383,7 @@ def test_build_indexed_user_ranges_handles_empty_dataframe():
     """Indexed grouping handles empty inputs without touching backend sort."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     import narwhals as nw
-    from skmob2.measures.spatial.radius_of_gyration import _build_indexed_user_ranges
+    from skmob2.measures._common import _build_indexed_user_ranges
 
     df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
 
@@ -422,7 +422,7 @@ def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Polars not installed")
     import narwhals as nw
-    from skmob2.measures.spatial.radius_of_gyration import _build_indexed_user_ranges
+    from skmob2.measures._common import _build_indexed_user_ranges
 
     df = nw.from_native(pl.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}), eager_only=True)
 

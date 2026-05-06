@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from typing import Any
 
-import narwhals as nw
 from skmob2._core import (
     k_radius_of_gyration_indexed_arrow,
     k_radius_of_gyration_indexed_numpy,
-    k_radius_of_gyration_km,
 )
 
 from .._common import (
-    _arrow_result_values,
     _build_indexed_user_ranges_fast,
+    _dispatch_kernel,
+    _extract_timestamps_ms,
     _is_polars_backed,
     _prepare_trajectory,
+    _to_native,
 )
 
 
@@ -115,107 +115,23 @@ def k_radius_of_gyration(
         sort=False,
     )
 
-    lats_full = df.get_column(lat_col)
-    lngs_full = df.get_column(lng_col)
-    timestamps = df.with_columns((nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)).alias("__ts_ms__")).get_column(
-        "__ts_ms__"
-    )
+    lats = df.get_column(lat_col)
+    lngs = df.get_column(lng_col)
+    timestamps = _extract_timestamps_ms(df, datetime_col)
     use_arrow = _is_polars_backed(df)
     uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
+    krg_values = _dispatch_kernel(
+        k_radius_of_gyration_indexed_numpy,
+        k_radius_of_gyration_indexed_arrow,
+        [lats, lngs, timestamps],
+        indices,
+        starts,
+        ends,
+        k,
+        use_arrow=use_arrow,
+    )
+
     if uid_col is None:
-        if use_arrow:
-            krg_values = _arrow_result_values(
-                k_radius_of_gyration_indexed_arrow(
-                    lats_full.to_arrow(),
-                    lngs_full.to_arrow(),
-                    timestamps.to_arrow(),
-                    indices,
-                    starts,
-                    ends,
-                    k,
-                )
-            )
-        else:
-            krg_values = k_radius_of_gyration_indexed_numpy(
-                lats_full.to_numpy(),
-                lngs_full.to_numpy(),
-                timestamps.to_numpy(),
-                indices,
-                starts,
-                ends,
-                k,
-            )
-        return nw.from_dict({"k_radius_of_gyration": krg_values}, backend=df.implementation).to_native()
-
-    if use_arrow:
-        krg_values = _arrow_result_values(
-            k_radius_of_gyration_indexed_arrow(
-                lats_full.to_arrow(),
-                lngs_full.to_arrow(),
-                timestamps.to_arrow(),
-                indices,
-                starts,
-                ends,
-                k,
-            )
-        )
-    else:
-        krg_values = k_radius_of_gyration_indexed_numpy(
-            lats_full.to_numpy(),
-            lngs_full.to_numpy(),
-            timestamps.to_numpy(),
-            indices,
-            starts,
-            ends,
-            k,
-        )
-
-    result = nw.from_dict(
-        {uid_col: uid_values, "k_radius_of_gyration": krg_values},
-        backend=df.implementation,
-    )
-    return result.to_native()
-
-
-def _k_rog_for_sequence(lats: list[float], lngs: list[float], datetimes: list, k: int) -> float:
-    """Compute k-radius of gyration for one user's trajectory sequence.
-
-    Counts visits per distinct (lat, lng) location, then delegates to the
-    Rust kernel ``k_radius_of_gyration_km`` with the k most-visited locations.
-
-    Parameters
-    ----------
-    lats:
-        List of latitude values for a single user, sorted by datetime.
-    lngs:
-        List of longitude values for a single user, sorted by datetime.
-    k:
-        Number of most-visited locations to include.
-
-    Returns
-    -------
-    float
-        The k-radius of gyration in kilometres.
-
-    @usedBy skmob2/measures/spatial/k_radius_of_gyration.py
-    """
-    loc_stats: dict[tuple[float, float], list] = {}
-    for order, (lat, lng, timestamp) in enumerate(zip(lats, lngs, datetimes)):
-        key = (lat, lng)
-        if key not in loc_stats:
-            loc_stats[key] = [0, timestamp, order]
-        loc_stats[key][0] += 1
-
-    if not loc_stats:
-        return 0.0
-
-    sorted_locs = sorted(
-        loc_stats.items(),
-        key=lambda item: (-item[1][0], item[1][1], item[1][2]),
-    )
-    top_locs = sorted_locs[: min(k, len(sorted_locs))]
-    coords = [loc for loc, _ in top_locs]
-    visit_counts = [stats[0] for _, stats in top_locs]
-
-    return k_radius_of_gyration_km(coords, visit_counts, len(coords))
+        return _to_native({"k_radius_of_gyration": krg_values}, df)
+    return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)

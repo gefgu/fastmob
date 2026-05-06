@@ -2,130 +2,55 @@ from __future__ import annotations
 
 from typing import Any
 
-import narwhals as nw
 import numpy as np
 from skmob2._core import (
     radius_of_gyration_arrow,
     radius_of_gyration_indexed_arrow,
     radius_of_gyration_indexed_numpy,
+    radius_of_gyration_numpy,
     radius_of_gyration_valid_user_indices_arrow,
     radius_of_gyration_valid_user_indices_numpy,
-    radius_of_gyration_numpy,
-    radius_of_gyration_user_indices_arrow,
-    radius_of_gyration_user_indices_numpy,
 )
 
-from .._common import _build_indexed_user_ranges, _build_user_ranges, _is_polars_backed, _prepare_trajectory
+from .._common import (
+    _as_index_array,
+    _build_user_ranges,
+    _dispatch_kernel,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _ranges_to_starts_ends,
+    _result_scalar,
+    _to_native,
+    _uid_values_from_index_ranges,
+)
 
 _ROG_ROW_INDEX_COL = "__skmob2_rog_row_index__"
 
 
-def _route_and_call(
-    lats: nw.Series,
-    lngs: nw.Series,
-    ranges: list[tuple[int, int]],
-    *,
-    use_arrow: bool,
-) -> Any:
-    if use_arrow:
-        return radius_of_gyration_arrow(lats.to_arrow(), lngs.to_arrow(), ranges)
-
-    return radius_of_gyration_numpy(lats.to_numpy(), lngs.to_numpy(), ranges)
-
-
-def _route_and_call_indexed(
-    lats: nw.Series,
-    lngs: nw.Series,
-    indices: Any,
-    starts: Any,
-    ends: Any,
-    *,
-    use_arrow: bool,
-) -> Any:
-    if use_arrow:
-        return radius_of_gyration_indexed_arrow(lats.to_arrow(), lngs.to_arrow(), indices, starts, ends)
-
-    return radius_of_gyration_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
-
-
-def _as_index_array(values: Any) -> np.ndarray:
-    return np.asarray(values, dtype=np.uintp)
-
-
-def _ranges_to_starts_ends(ranges: list[tuple[int, int]]) -> tuple[np.ndarray, np.ndarray]:
-    starts = np.fromiter((start for start, _ in ranges), dtype=np.uintp, count=len(ranges))
-    ends = np.fromiter((end for _, end in ranges), dtype=np.uintp, count=len(ranges))
-    return starts, ends
-
-
-def _arrow_result_values(values: Any) -> Any:
-    if hasattr(values, "to_pyarrow"):
-        return values.to_pyarrow()
-    return values
-
-
-def _result_scalar(values: Any) -> float:
-    if hasattr(values, "to_numpy"):
-        return float(values.to_numpy()[0])
-    return float(np.asarray(values)[0])
-
-
-def _build_rog_indexed_user_ranges(df: nw.DataFrame, uid_col: str) -> tuple[list, Any, Any, Any]:
-    n = len(df)
-    if n == 0:
-        empty = np.array([], dtype=np.uintp)
-        return [], empty, empty, empty
-
-    uid_series = df.get_column(uid_col)
-    try:
-        if _is_polars_backed(df):
-            uid_arrow = uid_series.to_arrow()
-            indices, starts, ends = radius_of_gyration_user_indices_arrow(uid_arrow)
-            uid_values = [uid_arrow[int(indices[start])].as_py() for start in starts]
-        else:
-            indices, starts, ends = radius_of_gyration_user_indices_numpy(uid_series.to_numpy())
-            start_indices = indices[starts]
-            uid_values = uid_series.to_numpy()[start_indices].tolist()
-        return uid_values, indices, starts, ends
-    except ValueError:
-        pass
-
-    uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col, row_index_col=_ROG_ROW_INDEX_COL)
-    starts, ends = _ranges_to_starts_ends(ranges)
-    return uid_values, _as_index_array(indices), starts, ends
-
-
-def _build_rog_valid_indexed_user_ranges(
-    df: nw.DataFrame,
-    uid_col: str,
-    lat_col: str,
-    lng_col: str,
+def _build_valid_indexed_user_ranges(
+    df, uid_col: str, lat_col: str, lng_col: str
 ) -> tuple[list, Any, Any, Any]:
+    """Build sorted row indices and per-user ranges for rows with valid lat/lng.
+
+    Tries the Rust fast path first; falls back to a Narwhals filter+sort when
+    the UID dtype is not supported by the Rust kernel.
+    """
     n = len(df)
     if n == 0:
         empty = np.array([], dtype=np.uintp)
         return [], empty, empty, empty
 
+    use_arrow = _is_polars_backed(df)
     uid_series = df.get_column(uid_col)
-    lat_series = df.get_column(lat_col)
-    lng_series = df.get_column(lng_col)
     try:
-        if _is_polars_backed(df):
-            uid_arrow = uid_series.to_arrow()
-            indices, starts, ends = radius_of_gyration_valid_user_indices_arrow(
-                uid_arrow,
-                lat_series.to_arrow(),
-                lng_series.to_arrow(),
-            )
-            uid_values = [uid_arrow[int(indices[start])].as_py() for start in starts]
-        else:
-            indices, starts, ends = radius_of_gyration_valid_user_indices_numpy(
-                uid_series.to_numpy(),
-                lat_series.to_numpy(),
-                lng_series.to_numpy(),
-            )
-            start_indices = indices[starts]
-            uid_values = uid_series.to_numpy()[start_indices].tolist()
+        indices, starts, ends = _dispatch_kernel(
+            radius_of_gyration_valid_user_indices_numpy,
+            radius_of_gyration_valid_user_indices_arrow,
+            [uid_series, df.get_column(lat_col), df.get_column(lng_col)],
+            use_arrow=use_arrow,
+            convert_arrow_result=False,
+        )
+        uid_values = _uid_values_from_index_ranges(uid_series, indices, starts, use_arrow=use_arrow)
         return uid_values, indices, starts, ends
     except ValueError:
         pass
@@ -239,22 +164,30 @@ def radius_of_gyration(
         drop_nulls=False,
     )
 
-    lats_full = df.get_column(lat_col)
-    lngs_full = df.get_column(lng_col)
+    lats = df.get_column(lat_col)
+    lngs = df.get_column(lng_col)
     use_arrow = _is_polars_backed(df)
 
     if uid_col is None:
-        rg = _result_scalar(_route_and_call(lats_full, lngs_full, [(0, len(df))], use_arrow=use_arrow))
-        return nw.from_dict({"radius_of_gyration": [rg]}, backend=df.implementation).to_native()
+        rg = _result_scalar(
+            _dispatch_kernel(
+                radius_of_gyration_numpy,
+                radius_of_gyration_arrow,
+                [lats, lngs],
+                [(0, len(df))],
+                use_arrow=use_arrow,
+            )
+        )
+        return _to_native({"radius_of_gyration": [rg]}, df)
 
-    uid_values, indices, starts, ends = _build_rog_valid_indexed_user_ranges(df, uid_col, lat_col, lng_col)
-    rog_values = _route_and_call_indexed(lats_full, lngs_full, indices, starts, ends, use_arrow=use_arrow)
-    if use_arrow:
-        rog_values = _arrow_result_values(rog_values)
-
-    result = nw.from_dict(
-        {uid_col: uid_values, "radius_of_gyration": rog_values},
-        backend=df.implementation,
+    uid_values, indices, starts, ends = _build_valid_indexed_user_ranges(df, uid_col, lat_col, lng_col)
+    rog_values = _dispatch_kernel(
+        radius_of_gyration_indexed_numpy,
+        radius_of_gyration_indexed_arrow,
+        [lats, lngs],
+        indices,
+        starts,
+        ends,
+        use_arrow=use_arrow,
     )
-
-    return result.to_native()
+    return _to_native({uid_col: uid_values, "radius_of_gyration": rog_values}, df)
