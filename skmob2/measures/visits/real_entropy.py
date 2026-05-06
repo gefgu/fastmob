@@ -6,12 +6,18 @@ from typing import Any
 
 import numpy as np
 import narwhals as nw
+from skmob2._core import real_entropy_batch as _real_entropy_batch_rust
 
-from .._common import _prepare_trajectory
+from .._common import _build_user_ranges, _prepare_trajectory
 
 
 def _skmob_true_entropy(sequence: list) -> float:
-    """Match scikit-mobility's private _true_entropy estimator."""
+    """Match scikit-mobility's private _true_entropy estimator (LZ77 scan).
+
+    Kept as a public function for test compatibility and as a reference
+    implementation.  The measure itself uses the Rust batch kernel which
+    implements the same algorithm.
+    """
     n = len(sequence)
     if n <= 1:
         return 0.0
@@ -126,37 +132,23 @@ def real_entropy(
         uid_col=uid_col,
     )
 
-    # Encode each (lat, lng) pair as a string token for the LZ estimator.
     loc_key_col = "__skmob2_loc_key__"
     df = df.with_columns(
         (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
     )
+    tokens = df.get_column(loc_key_col).to_list()
 
     if uid_col is None:
-        sequence = df.get_column(loc_key_col).to_list()
-        entropy = _skmob_true_entropy(sequence)
+        entropies = _real_entropy_batch_rust(tokens, [(0, len(tokens))])
         return nw.from_dict(
-            {"real_entropy": [entropy]},
+            {"real_entropy": entropies},
             backend=df.implementation,
         ).to_native()
 
-    # Iterate per user in chronological order (already sorted by _prepare_trajectory).
-    uid_series = df.get_column(uid_col).to_list()
-    loc_series = df.get_column(loc_key_col).to_list()
-
-    # Collect per-user sequences preserving row order.
-    user_sequences: dict[Any, list[str]] = {}
-    user_order: list[Any] = []
-    for uid_val, loc in zip(uid_series, loc_series):
-        if uid_val not in user_sequences:
-            user_sequences[uid_val] = []
-            user_order.append(uid_val)
-        user_sequences[uid_val].append(loc)
-
-    uid_vals = user_order
-    entropies = [_skmob_true_entropy(user_sequences[u]) for u in uid_vals]
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    entropies = _real_entropy_batch_rust(tokens, ranges)
 
     return nw.from_dict(
-        {uid_col: uid_vals, "real_entropy": entropies},
+        {uid_col: uid_values, "real_entropy": entropies},
         backend=df.implementation,
     ).to_native()

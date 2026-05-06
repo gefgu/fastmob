@@ -7,7 +7,6 @@ from skmob2._core import location_frequency_indexed_arrow, location_frequency_in
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
-    _is_pandas_backed,
     _is_polars_backed,
     _prepare_trajectory,
     _to_native,
@@ -104,33 +103,6 @@ def frequency_rank(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-
-    if _is_pandas_backed(df):
-        pd_df = df.to_native()
-
-        def _rank_pandas(frame):
-            ranked = (
-                frame.groupby([lat_col, lng_col])
-                .count()
-                .sort_values(by=datetime_col, ascending=False)
-                .reset_index()
-            )
-            ranked["frequency_rank"] = range(1, len(ranked) + 1)
-            return ranked[[lat_col, lng_col, "frequency_rank"]]
-
-        if uid_col is None:
-            return _rank_pandas(pd_df)
-
-        pieces = []
-        for uid, group in pd_df.groupby(uid_col):
-            ranked = _rank_pandas(group)
-            ranked.insert(0, uid_col, uid)
-            pieces.append(ranked)
-        if not pieces:
-            return pd_df[[uid_col, lat_col, lng_col]].assign(frequency_rank=[]).iloc[0:0]
-        import pandas as pd
-
-        return pd.concat(pieces, ignore_index=True)
 
     use_arrow = _is_polars_backed(df)
     uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)

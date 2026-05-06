@@ -7,17 +7,18 @@ mod haversine;
 mod home_location;
 mod jump_lengths;
 mod k_radius_of_gyration;
+mod location_frequency;
 mod max_distance_from_point;
 mod maximum_distance;
 mod motifs;
 mod radius_of_gyration;
-mod location_frequency;
 mod recency_rank;
 mod spatial_counts;
 mod square_displacement;
 mod stay_locations_rs;
 mod stvd_emd;
 mod total_distance;
+mod uncorrelated_entropy;
 mod utils;
 mod visitation_law;
 mod waiting_times;
@@ -278,6 +279,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         square_displacement::square_displacement_km2,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(
+        square_displacement::mean_square_displacement_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        square_displacement::mean_square_displacement_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        uncorrelated_entropy::uncorrelated_entropy_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        uncorrelated_entropy::uncorrelated_entropy_indexed_arrow,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
     m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
     m.add_function(wrap_pyfunction!(filter_traj::filter_trajectory_batch, m)?)?;
@@ -293,6 +310,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         entropy::trajectory_predictability_batch,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_rs::detect_stay_locations_batch,
         m

@@ -6,6 +6,62 @@ use rayon::prelude::*;
 
 type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 
+// skmob-compatible LZ77 entropy estimator — matches scikit-mobility's _true_entropy.
+// Distinct from the LZ78 DP estimator used by trajectory_entropy_batch.
+fn skmob_lz77_entropy(sequence: &[String]) -> f64 {
+    let n = sequence.len();
+    if n <= 1 {
+        return 0.0;
+    }
+
+    // 3.0 accounts for the boundary positions (i=0 and i=n-1) that the loop skips.
+    let mut sum_lambda = 3.0f64;
+
+    for i in 1..(n - 1) {
+        let mut j = i + 1;
+        loop {
+            if j >= n {
+                j += 1; // reached sequence end; extend by 1 per skmob convention
+                break;
+            }
+            let candidate = &sequence[i..j];
+            let prefix = &sequence[..i];
+            let clen = candidate.len();
+            let found = if clen > prefix.len() {
+                false
+            } else {
+                (0..=(prefix.len() - clen)).any(|k| prefix[k..k + clen] == *candidate)
+            };
+            if found {
+                j += 1;
+            } else {
+                break;
+            }
+        }
+        sum_lambda += (j - i) as f64;
+    }
+
+    (n as f64) * (n as f64).log2() / sum_lambda
+}
+
+#[pyfunction]
+pub(crate) fn real_entropy_batch(
+    py: Python<'_>,
+    tokens: Vec<String>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Vec<f64>> {
+    validate_ranges(tokens.len(), &ranges)?;
+
+    let entropies = py.detach(|| {
+        ranges
+            .par_iter()
+            .map(|&(start, end)| skmob_lz77_entropy(&tokens[start..end]))
+            .collect()
+    });
+
+    Ok(entropies)
+}
+
 fn validate_ranges(n_tokens: usize, ranges: &[(usize, usize)]) -> PyResult<()> {
     for &(start, end) in ranges {
         if start > end || end > n_tokens {

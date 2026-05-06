@@ -3,9 +3,15 @@ from __future__ import annotations
 import math
 from typing import Any
 
-import narwhals as nw
+from skmob2._core import number_of_locations_indexed_arrow, number_of_locations_indexed_numpy
 
-from .._common import _prepare_trajectory
+from .._common import (
+    _arrow_result_values,
+    _build_indexed_user_ranges_fast,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _to_native,
+)
 
 
 def random_entropy(
@@ -97,30 +103,32 @@ def random_entropy(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
-    # Encode each (lat, lng) pair as a single string key for n_unique counting.
-    loc_key_col = "__skmob2_loc_key__"
-    df = df.with_columns(
-        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
-    )
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+
+    if use_arrow:
+        n_locs_raw = number_of_locations_indexed_arrow(
+            df.get_column(lat_col).to_arrow(),
+            df.get_column(lng_col).to_arrow(),
+            indices,
+            starts,
+            ends,
+        )
+        n_locs = _arrow_result_values(n_locs_raw).to_pylist()
+    else:
+        n_locs = number_of_locations_indexed_numpy(
+            df.get_column(lat_col).to_numpy(),
+            df.get_column(lng_col).to_numpy(),
+            indices,
+            starts,
+            ends,
+        ).tolist()
+
+    entropies = [math.log2(n) if n > 1 else 0.0 for n in n_locs]
 
     if uid_col is None:
-        n_locs = df.get_column(loc_key_col).n_unique()
-        entropy = math.log2(n_locs) if n_locs > 1 else 0.0
-        return nw.from_dict(
-            {"random_entropy": [entropy]},
-            backend=df.implementation,
-        ).to_native()
-
-    # Group by user, count distinct locations, apply log2 in Python.
-    grouped = df.group_by(uid_col).agg(nw.col(loc_key_col).n_unique().alias("__n_locs__")).sort(uid_col)
-
-    uid_vals = grouped.get_column(uid_col).to_list()
-    n_locs_vals = grouped.get_column("__n_locs__").to_list()
-    entropies = [math.log2(n) if n > 1 else 0.0 for n in n_locs_vals]
-
-    return nw.from_dict(
-        {uid_col: uid_vals, "random_entropy": entropies},
-        backend=df.implementation,
-    ).to_native()
+        return _to_native({"random_entropy": entropies}, df)
+    return _to_native({uid_col: uid_values, "random_entropy": entropies}, df)

@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-import math
 from typing import Any
 
-import narwhals as nw
+from skmob2._core import uncorrelated_entropy_indexed_arrow, uncorrelated_entropy_indexed_numpy
 
-from .._common import _prepare_trajectory, _shannon_entropy
+from .._common import (
+    _arrow_result_values,
+    _build_indexed_user_ranges_fast,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _to_native,
+)
 
 
 def uncorrelated_entropy(
@@ -109,43 +114,32 @@ def uncorrelated_entropy(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
-    loc_key_col = "__skmob2_loc_key__"
-    df = df.with_columns(
-        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
-    )
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-    def _compute_entropy_for_user(user_df: nw.DataFrame) -> float:
-        """Compute uncorrelated entropy for rows belonging to a single user."""
-        loc_series = user_df.get_column(loc_key_col)
-        loc_list = loc_series.to_list()
-        counts: dict[str, int] = {}
-        for loc in loc_list:
-            counts[loc] = counts.get(loc, 0) + 1
-        entropy = _shannon_entropy(list(counts.values()))
-        if normalize:
-            n = len(counts)
-            if n > 1:
-                entropy = entropy / math.log2(n)
-            else:
-                entropy = 0.0
-        return entropy
+    if use_arrow:
+        raw = uncorrelated_entropy_indexed_arrow(
+            df.get_column(lat_col).to_arrow(),
+            df.get_column(lng_col).to_arrow(),
+            indices,
+            starts,
+            ends,
+            normalize,
+        )
+        entropies = _arrow_result_values(raw).to_pylist()
+    else:
+        entropies = uncorrelated_entropy_indexed_numpy(
+            df.get_column(lat_col).to_numpy(),
+            df.get_column(lng_col).to_numpy(),
+            indices,
+            starts,
+            ends,
+            normalize,
+        ).tolist()
 
     if uid_col is None:
-        entropy = _compute_entropy_for_user(df)
-        return nw.from_dict(
-            {"uncorrelated_entropy": [entropy]},
-            backend=df.implementation,
-        ).to_native()
-
-    uid_vals = df.get_column(uid_col).unique().sort().to_list()
-    entropies = []
-    for uid in uid_vals:
-        user_df = df.filter(nw.col(uid_col) == uid)
-        entropies.append(_compute_entropy_for_user(user_df))
-
-    return nw.from_dict(
-        {uid_col: uid_vals, "uncorrelated_entropy": entropies},
-        backend=df.implementation,
-    ).to_native()
+        return _to_native({"uncorrelated_entropy": entropies}, df)
+    return _to_native({uid_col: uid_values, "uncorrelated_entropy": entropies}, df)

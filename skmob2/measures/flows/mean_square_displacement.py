@@ -3,8 +3,17 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from .._common import _build_user_ranges, _prepare_trajectory
-from ..._core import square_displacement_km2
+from skmob2._core import (
+    mean_square_displacement_indexed_arrow,
+    mean_square_displacement_indexed_numpy,
+)
+
+from .._common import (
+    _build_time_ordered_user_ranges,
+    _extract_timestamps_s,
+    _is_polars_backed,
+    _prepare_trajectory,
+)
 
 
 def mean_square_displacement(
@@ -98,7 +107,7 @@ def mean_square_displacement(
         skmob2.measures.flows.__init__, skmob2.measures.__init__,
         skmob2.__init__ (re-exported as public API)
     """
-    delta_t = timedelta(days=days, hours=hours, minutes=minutes)
+    delta_s = timedelta(days=days, hours=hours, minutes=minutes).total_seconds()
 
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,
@@ -106,36 +115,34 @@ def mean_square_displacement(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
     if len(df) == 0:
         return 0.0
 
-    _uid_values, ranges = _build_user_ranges(df, uid_col)
-    datetimes = df.get_column(datetime_col).to_list()
-    lats = df.get_column(lat_col).to_list()
-    lngs = df.get_column(lng_col).to_list()
-    sq_displacements: list[float] = []
-    for start, end in ranges:
-        if start == end:
-            continue
-        t_limit = datetimes[start] + delta_t
-        rt_idx = start
-        for idx in range(start, end):
-            if datetimes[idx] <= t_limit:
-                rt_idx = idx
-            else:
-                break
+    use_arrow = _is_polars_backed(df)
+    timestamps = _extract_timestamps_s(df, datetime_col)
+    _uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
+        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+    )
 
-        d2 = square_displacement_km2(
-            float(lats[start]),
-            float(lngs[start]),
-            float(lats[rt_idx]),
-            float(lngs[rt_idx]),
+    if use_arrow:
+        return mean_square_displacement_indexed_arrow(
+            df.get_column(lat_col).to_arrow(),
+            df.get_column(lng_col).to_arrow(),
+            timestamps.to_arrow(),
+            indices,
+            starts,
+            ends,
+            delta_s,
         )
-        sq_displacements.append(d2)
-
-    if not sq_displacements:
-        return 0.0
-
-    return sum(sq_displacements) / len(sq_displacements)
+    return mean_square_displacement_indexed_numpy(
+        df.get_column(lat_col).to_numpy(),
+        df.get_column(lng_col).to_numpy(),
+        timestamps.to_numpy(),
+        indices,
+        starts,
+        ends,
+        delta_s,
+    )
