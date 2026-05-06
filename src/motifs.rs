@@ -25,7 +25,7 @@ struct DailyMotifResult {
 }
 
 // ---------------------------------------------------------------------------
-// next_permutation helper (used by canonical_adjacency_form_internal)
+// next_permutation helper
 // ---------------------------------------------------------------------------
 
 fn next_permutation(v: &mut [usize]) -> bool {

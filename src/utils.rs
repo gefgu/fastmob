@@ -156,17 +156,12 @@ pub(crate) fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
 /// Splits a `Vec<(usize, usize)>` of ranges into two parallel `Vec<usize>` of starts and ends.
 ///
 /// Returns `(starts, ends)` where each element corresponds to one range.
-///
-/// Used by range-returning kernels in `radius_of_gyration.rs` and `jump_lengths.rs`.
 pub(crate) fn split_ranges(ranges: Vec<(usize, usize)>) -> (Vec<usize>, Vec<usize>) {
     ranges.into_iter().unzip()
 }
 
 /// Extracts each element of an Arrow `PrimitiveArray` as `Option<T::Native>`, mapping nulls to
 /// `None`.
-///
-/// Used by uid-dispatch code in `radius_of_gyration.rs` and `jump_lengths.rs` to obtain
-/// nullable integer or float uid slices for sorting.
 pub(crate) fn primitive_option_values<T>(array: &PrimitiveArray<T>) -> Vec<Option<T::Native>>
 where
     T: arrow_array::types::ArrowPrimitiveType,
@@ -191,8 +186,6 @@ where
 /// `values[indices[i]]` becomes one range `(start, end)` in the output.
 ///
 /// Returns an empty `Vec` when `indices` is empty.
-///
-/// Used by uid-grouping helpers in `radius_of_gyration.rs` and `jump_lengths.rs`.
 pub(crate) fn ranges_from_sorted_values<T: PartialEq>(
     values: &[T],
     indices: &[usize],
@@ -216,8 +209,6 @@ pub(crate) fn ranges_from_sorted_values<T: PartialEq>(
 /// Downcasts an Arrow `PyArray` to a `Float64Array`, allowing nulls.
 ///
 /// Returns a `PyValueError` when the array is not float64.
-///
-/// Used by Arrow-backed kernels in `radius_of_gyration.rs` and `jump_lengths.rs`.
 pub(crate) fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float64Array> {
     let (array_ref, _field) = arr.into_inner();
     array_ref
@@ -230,8 +221,6 @@ pub(crate) fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float6
 /// Validates that a uid array has the same length as the coordinate array.
 ///
 /// Returns a `PyValueError` with a message listing all four affected columns when lengths differ.
-///
-/// Used by uid-dispatch helpers in `jump_lengths.rs`.
 pub(crate) fn validate_uid_len(n: usize, uid_len: usize) -> PyResult<()> {
     if n != uid_len {
         return Err(PyValueError::new_err(

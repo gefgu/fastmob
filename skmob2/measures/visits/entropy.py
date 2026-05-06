@@ -80,7 +80,7 @@ def _kontoyiannis_entropy(sequence: list) -> float:
 
 
 def _fano_equation_term(predictability: float, real_entropy: float, n_unique: int) -> float:
-    """Fano inequality residual.  Used by the bisection solver."""
+    """Fano inequality residual."""
     p = float(np.clip(predictability, 1e-12, 1 - 1e-12))
     binary_entropy = -(p * np.log2(p) + (1 - p) * np.log2(1 - p))
     return binary_entropy + (1 - p) * np.log2(n_unique - 1) - real_entropy
