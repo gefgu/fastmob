@@ -1,6 +1,5 @@
 use arrow_array::{
-    Array, ArrayRef, Float64Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray,
-    StringArray, UInt32Array, UInt64Array,
+    Array, Int32Array, Int64Array, LargeStringArray, StringArray, UInt32Array, UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
@@ -8,9 +7,12 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 use rayon::prelude::*;
-use std::sync::Arc;
 
-use crate::utils::validate_coord_ranges;
+use crate::utils::{
+    as_nullable_f64_array, f64_results_into_arrow, primitive_option_values,
+    ranges_from_sorted_values, ranges_from_starts_ends, split_ranges, validate_coord_ranges,
+    validate_indexed_coord_ranges,
+};
 
 type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
 type PyUserIndexRanges<'py> = (
@@ -129,44 +131,6 @@ fn rog_for_indexed_slice(
     (sum_sq / n as f64).sqrt()
 }
 
-fn validate_indexed_inputs(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    indices: &[usize],
-    ranges: &[(usize, usize)],
-) -> PyResult<()> {
-    if latitudes.len() != longitudes.len() {
-        return Err(PyValueError::new_err(
-            "latitudes and longitudes must have the same length",
-        ));
-    }
-
-    let n_indices = indices.len();
-    for &(start, end) in ranges {
-        if start > end {
-            return Err(PyValueError::new_err(
-                "range start must be less than or equal to range end",
-            ));
-        }
-        if end > n_indices {
-            return Err(PyValueError::new_err(
-                "range end must be within index array bounds",
-            ));
-        }
-    }
-
-    let n_coords = latitudes.len();
-    for &idx in indices {
-        if idx >= n_coords {
-            return Err(PyValueError::new_err(
-                "index must be within coordinate array bounds",
-            ));
-        }
-    }
-
-    Ok(())
-}
-
 fn radius_of_gyration_batch_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -206,7 +170,7 @@ fn radius_of_gyration_indexed_impl(
     indices: &[usize],
     ranges: &[(usize, usize)],
 ) -> PyResult<Vec<f64>> {
-    validate_indexed_inputs(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
 
     let mut valid_indices = Vec::new();
     let mut valid_ranges = Vec::with_capacity(ranges.len());
@@ -230,52 +194,6 @@ fn radius_of_gyration_indexed_impl(
     Ok(results)
 }
 
-fn ranges_from_sorted_indices<T: PartialEq>(
-    values: &[T],
-    indices: &[usize],
-) -> Vec<(usize, usize)> {
-    if indices.is_empty() {
-        return Vec::new();
-    }
-
-    let mut ranges = Vec::new();
-    let mut start = 0usize;
-    for pos in 1..indices.len() {
-        if values[indices[pos]] != values[indices[pos - 1]] {
-            ranges.push((start, pos));
-            start = pos;
-        }
-    }
-    ranges.push((start, indices.len()));
-    ranges
-}
-
-fn split_ranges(ranges: Vec<(usize, usize)>) -> (Vec<usize>, Vec<usize>) {
-    ranges.into_iter().unzip()
-}
-
-fn ranges_from_starts_ends(starts: &[usize], ends: &[usize]) -> PyResult<Vec<(usize, usize)>> {
-    if starts.len() != ends.len() {
-        return Err(PyValueError::new_err(
-            "range starts and ends must have the same length",
-        ));
-    }
-
-    starts
-        .iter()
-        .zip(ends)
-        .map(|(&start, &end)| {
-            if start > end {
-                Err(PyValueError::new_err(
-                    "range start must be less than or equal to range end",
-                ))
-            } else {
-                Ok((start, end))
-            }
-        })
-        .collect()
-}
-
 fn user_index_ranges_into_numpy<'py>(
     py: Python<'py>,
     (indices, ranges): UserIndexRanges,
@@ -288,15 +206,10 @@ fn user_index_ranges_into_numpy<'py>(
     )
 }
 
-fn f64_results_into_arrow(results: Vec<f64>) -> ArrowPyArray {
-    let array: ArrayRef = Arc::new(Float64Array::from(results));
-    ArrowPyArray::from_array_ref(array)
-}
-
 fn user_indices_for_ord_values<T: Ord>(values: &[T]) -> UserIndexRanges {
     let mut indices: Vec<usize> = (0..values.len()).collect();
     indices.sort_by(|&left, &right| values[left].cmp(&values[right]).then(left.cmp(&right)));
-    let ranges = ranges_from_sorted_indices(values, &indices);
+    let ranges = ranges_from_sorted_values(values, &indices);
     (indices, ranges)
 }
 
@@ -305,20 +218,16 @@ fn user_indices_for_ord_values_at_indices<T: Ord>(
     mut indices: Vec<usize>,
 ) -> UserIndexRanges {
     indices.sort_by(|&left, &right| values[left].cmp(&values[right]).then(left.cmp(&right)));
-    let ranges = ranges_from_sorted_indices(values, &indices);
+    let ranges = ranges_from_sorted_values(values, &indices);
     (indices, ranges)
-}
-
-fn compare_f64_values(left: f64, right: f64) -> std::cmp::Ordering {
-    left.total_cmp(&right)
 }
 
 fn user_indices_for_f64_values(values: &[f64]) -> UserIndexRanges {
     let mut indices: Vec<usize> = (0..values.len()).collect();
     indices.sort_by(|&left, &right| {
-        compare_f64_values(values[left], values[right]).then(left.cmp(&right))
+        values[left].total_cmp(&values[right]).then(left.cmp(&right))
     });
-    let ranges = ranges_from_sorted_indices(values, &indices);
+    let ranges = ranges_from_sorted_values(values, &indices);
     (indices, ranges)
 }
 
@@ -327,9 +236,9 @@ fn user_indices_for_f64_values_at_indices(
     mut indices: Vec<usize>,
 ) -> UserIndexRanges {
     indices.sort_by(|&left, &right| {
-        compare_f64_values(values[left], values[right]).then(left.cmp(&right))
+        values[left].total_cmp(&values[right]).then(left.cmp(&right))
     });
-    let ranges = ranges_from_sorted_indices(values, &indices);
+    let ranges = ranges_from_sorted_values(values, &indices);
     (indices, ranges)
 }
 
@@ -343,22 +252,6 @@ fn valid_coord_indices(latitudes: &[f64], longitudes: &[f64]) -> PyResult<Vec<us
     Ok((0..latitudes.len())
         .filter(|&idx| !latitudes[idx].is_nan() && !longitudes[idx].is_nan())
         .collect())
-}
-
-fn primitive_option_values<T>(array: &PrimitiveArray<T>) -> Vec<Option<T::Native>>
-where
-    T: arrow_array::types::ArrowPrimitiveType,
-    T::Native: Copy,
-{
-    (0..array.len())
-        .map(|idx| {
-            if array.is_null(idx) {
-                None
-            } else {
-                Some(array.value(idx))
-            }
-        })
-        .collect()
 }
 
 #[pyfunction]
@@ -513,15 +406,6 @@ pub(crate) fn radius_of_gyration_valid_user_indices_numpy<'py>(
     Err(PyValueError::new_err(
         "unsupported numpy uid dtype for indexed radius_of_gyration",
     ))
-}
-
-fn as_nullable_f64_array(arr: ArrowPyArray, name: &str) -> PyResult<Float64Array> {
-    let (array_ref, _field) = arr.into_inner();
-    array_ref
-        .as_any()
-        .downcast_ref::<Float64Array>()
-        .cloned()
-        .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))
 }
 
 #[pyfunction]

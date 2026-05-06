@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use arrow_array::{Array, ArrayRef, Float64Array, PrimitiveArray, UInt64Array, types::Float64Type};
+use arrow_array::{
+    Array, ArrayRef, Float64Array, PrimitiveArray, UInt64Array, types::Float64Type,
+};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
@@ -70,7 +72,9 @@ pub(crate) fn validate_indexed_ranges(
 
     for &idx in indices {
         if idx >= value_len {
-            return Err(PyValueError::new_err("index must be within array bounds"));
+            return Err(PyValueError::new_err(
+                "index must be within coordinate array bounds",
+            ));
         }
     }
 
@@ -147,4 +151,92 @@ pub(crate) fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
     let start = array.offset();
     let end = start + array.len();
     &array.values()[start..end]
+}
+
+/// Splits a `Vec<(usize, usize)>` of ranges into two parallel `Vec<usize>` of starts and ends.
+///
+/// Returns `(starts, ends)` where each element corresponds to one range.
+///
+/// Used by range-returning kernels in `radius_of_gyration.rs` and `jump_lengths.rs`.
+pub(crate) fn split_ranges(ranges: Vec<(usize, usize)>) -> (Vec<usize>, Vec<usize>) {
+    ranges.into_iter().unzip()
+}
+
+/// Extracts each element of an Arrow `PrimitiveArray` as `Option<T::Native>`, mapping nulls to
+/// `None`.
+///
+/// Used by uid-dispatch code in `radius_of_gyration.rs` and `jump_lengths.rs` to obtain
+/// nullable integer or float uid slices for sorting.
+pub(crate) fn primitive_option_values<T>(array: &PrimitiveArray<T>) -> Vec<Option<T::Native>>
+where
+    T: arrow_array::types::ArrowPrimitiveType,
+    T::Native: Copy,
+{
+    (0..array.len())
+        .map(|idx| {
+            if array.is_null(idx) {
+                None
+            } else {
+                Some(array.value(idx))
+            }
+        })
+        .collect()
+}
+
+/// Builds contiguous `(start, end)` ranges from a slice of values that has been sorted by an
+/// index permutation, grouping consecutive equal values.
+///
+/// `values` is the original unsorted array; `indices` is a permutation such that
+/// `values[indices[i]]` is non-decreasing (ties broken by index). Each run of equal
+/// `values[indices[i]]` becomes one range `(start, end)` in the output.
+///
+/// Returns an empty `Vec` when `indices` is empty.
+///
+/// Used by uid-grouping helpers in `radius_of_gyration.rs` and `jump_lengths.rs`.
+pub(crate) fn ranges_from_sorted_values<T: PartialEq>(
+    values: &[T],
+    indices: &[usize],
+) -> Vec<(usize, usize)> {
+    if indices.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ranges = Vec::new();
+    let mut start = 0usize;
+    for pos in 1..indices.len() {
+        if values[indices[pos]] != values[indices[pos - 1]] {
+            ranges.push((start, pos));
+            start = pos;
+        }
+    }
+    ranges.push((start, indices.len()));
+    ranges
+}
+
+/// Downcasts an Arrow `PyArray` to a `Float64Array`, allowing nulls.
+///
+/// Returns a `PyValueError` when the array is not float64.
+///
+/// Used by Arrow-backed kernels in `radius_of_gyration.rs` and `jump_lengths.rs`.
+pub(crate) fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float64Array> {
+    let (array_ref, _field) = arr.into_inner();
+    array_ref
+        .as_any()
+        .downcast_ref::<Float64Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))
+}
+
+/// Validates that a uid array has the same length as the coordinate array.
+///
+/// Returns a `PyValueError` with a message listing all four affected columns when lengths differ.
+///
+/// Used by uid-dispatch helpers in `jump_lengths.rs`.
+pub(crate) fn validate_uid_len(n: usize, uid_len: usize) -> PyResult<()> {
+    if n != uid_len {
+        return Err(PyValueError::new_err(
+            "uids, latitudes, longitudes, and timestamps must have the same length",
+        ));
+    }
+    Ok(())
 }

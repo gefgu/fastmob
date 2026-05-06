@@ -1,6 +1,5 @@
 use arrow_array::{
-    Array, Int32Array, Int64Array, LargeStringArray, PrimitiveArray, StringArray, UInt32Array,
-    UInt64Array,
+    Array, Int32Array, Int64Array, LargeStringArray, StringArray, UInt32Array, UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
@@ -10,7 +9,11 @@ use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
 use crate::haversine::haversine_km;
-use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow, validate_coord_ranges};
+use crate::utils::{
+    arrow_values, as_f64_array, f64_results_into_arrow, primitive_option_values,
+    ranges_from_sorted_values, ranges_from_starts_ends, split_ranges, validate_coord_ranges,
+    validate_indexed_coord_ranges, validate_uid_len,
+};
 
 type IndexRanges = Vec<(usize, usize)>;
 type OrderedIndexRanges = (Vec<usize>, IndexRanges);
@@ -105,44 +108,6 @@ fn jump_lengths_for_indexed_range(
         .collect()
 }
 
-fn validate_indexed_inputs(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    indices: &[usize],
-    ranges: &[(usize, usize)],
-) -> PyResult<()> {
-    if latitudes.len() != longitudes.len() {
-        return Err(PyValueError::new_err(
-            "latitudes and longitudes must have the same length",
-        ));
-    }
-
-    let n_indices = indices.len();
-    for &(start, end) in ranges {
-        if start > end {
-            return Err(PyValueError::new_err(
-                "range start must be less than or equal to range end",
-            ));
-        }
-        if end > n_indices {
-            return Err(PyValueError::new_err(
-                "range end must be within index array bounds",
-            ));
-        }
-    }
-
-    let n_coords = latitudes.len();
-    for &idx in indices {
-        if idx >= n_coords {
-            return Err(PyValueError::new_err(
-                "index must be within coordinate array bounds",
-            ));
-        }
-    }
-
-    Ok(())
-}
-
 fn validate_time_ordered_inputs(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -161,38 +126,6 @@ fn validate_time_ordered_inputs(
     Ok(())
 }
 
-fn validate_uid_len(n: usize, uid_len: usize) -> PyResult<()> {
-    if n != uid_len {
-        return Err(PyValueError::new_err(
-            "uids, latitudes, longitudes, and timestamps must have the same length",
-        ));
-    }
-    Ok(())
-}
-
-fn ranges_from_sorted_uid_indices<T: PartialEq>(
-    uids: &[T],
-    indices: &[usize],
-) -> Vec<(usize, usize)> {
-    if indices.is_empty() {
-        return Vec::new();
-    }
-
-    let mut ranges = Vec::new();
-    let mut start = 0usize;
-    for pos in 1..indices.len() {
-        if uids[indices[pos]] != uids[indices[pos - 1]] {
-            ranges.push((start, pos));
-            start = pos;
-        }
-    }
-    ranges.push((start, indices.len()));
-    ranges
-}
-
-fn split_ranges(ranges: IndexRanges) -> (Vec<usize>, Vec<usize>) {
-    ranges.into_iter().unzip()
-}
 
 fn ordered_index_ranges_into_numpy<'py>(
     py: Python<'py>,
@@ -226,14 +159,10 @@ fn value_offsets_into_numpy<'py>(
     (starts.into_pyarray(py), ends.into_pyarray(py))
 }
 
-fn compare_f64_values(left: f64, right: f64) -> std::cmp::Ordering {
-    left.total_cmp(&right)
-}
-
 fn time_ordered_indices_single_user(timestamps: &[f64]) -> OrderedIndexRanges {
     let mut indices: Vec<usize> = (0..timestamps.len()).collect();
     indices.par_sort_by(|&left, &right| {
-        compare_f64_values(timestamps[left], timestamps[right]).then(left.cmp(&right))
+        timestamps[left].total_cmp(&timestamps[right]).then(left.cmp(&right))
     });
     let n = indices.len();
     (indices, vec![(0, n)])
@@ -247,38 +176,23 @@ fn time_ordered_indices_for_ord_uid_values<T: Ord + Sync>(
     indices.par_sort_by(|&left, &right| {
         uids[left]
             .cmp(&uids[right])
-            .then(compare_f64_values(timestamps[left], timestamps[right]))
+            .then(timestamps[left].total_cmp(&timestamps[right]))
             .then(left.cmp(&right))
     });
-    let ranges = ranges_from_sorted_uid_indices(uids, &indices);
+    let ranges = ranges_from_sorted_values(uids, &indices);
     (indices, ranges)
 }
 
 fn time_ordered_indices_for_f64_uid_values(uids: &[f64], timestamps: &[f64]) -> OrderedIndexRanges {
     let mut indices: Vec<usize> = (0..timestamps.len()).collect();
     indices.par_sort_by(|&left, &right| {
-        compare_f64_values(uids[left], uids[right])
-            .then(compare_f64_values(timestamps[left], timestamps[right]))
+        uids[left]
+            .total_cmp(&uids[right])
+            .then(timestamps[left].total_cmp(&timestamps[right]))
             .then(left.cmp(&right))
     });
-    let ranges = ranges_from_sorted_uid_indices(uids, &indices);
+    let ranges = ranges_from_sorted_values(uids, &indices);
     (indices, ranges)
-}
-
-fn primitive_option_values<T>(array: &PrimitiveArray<T>) -> Vec<Option<T::Native>>
-where
-    T: arrow_array::types::ArrowPrimitiveType,
-    T::Native: Copy,
-{
-    (0..array.len())
-        .map(|idx| {
-            if array.is_null(idx) {
-                None
-            } else {
-                Some(array.value(idx))
-            }
-        })
-        .collect()
 }
 
 fn time_ordered_indices_from_numpy_uids(
@@ -393,7 +307,7 @@ fn time_ordered_flat_values_impl(
     ranges: IndexRanges,
 ) -> PyResult<(Vec<usize>, IndexRanges, Vec<f64>)> {
     validate_time_ordered_inputs(latitudes, longitudes, timestamps)?;
-    validate_indexed_inputs(latitudes, longitudes, &indices, &ranges)?;
+    validate_indexed_coord_ranges(latitudes, longitudes, &indices, &ranges)?;
     let values = jump_lengths_indexed_flat_impl(latitudes, longitudes, &indices, &ranges)?;
     Ok((indices, ranges, values))
 }
@@ -406,7 +320,7 @@ fn jump_lengths_flat_impl(
     validate_coord_ranges(latitudes, longitudes, ranges)?;
 
     Ok(ranges
-        .iter()
+        .par_iter()
         .flat_map(|&(start, end)| jump_lengths_for_range(latitudes, longitudes, start, end))
         .collect())
 }
@@ -417,10 +331,10 @@ fn jump_lengths_indexed_flat_impl(
     indices: &[usize],
     ranges: &[(usize, usize)],
 ) -> PyResult<Vec<f64>> {
-    validate_indexed_inputs(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
 
     Ok(ranges
-        .iter()
+        .par_iter()
         .flat_map(|&(start, end)| {
             jump_lengths_for_indexed_range(latitudes, longitudes, indices, start, end)
         })
@@ -487,7 +401,7 @@ pub(crate) fn jump_lengths_indexed_numpy<'py>(
     starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<PyGroupedJumpLengths<'py>> {
-    let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
     let values = jump_lengths_indexed_flat_impl(
         latitudes.as_slice()?,
@@ -507,7 +421,7 @@ pub(crate) fn jump_lengths_indexed_flat_numpy<'py>(
     starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     Ok(jump_lengths_indexed_flat_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
@@ -664,7 +578,7 @@ pub(crate) fn jump_lengths_indexed_arrow<'py>(
 ) -> PyResult<PyGroupedJumpLengthsArrow<'py>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     let (value_starts, value_ends) = value_offsets_into_numpy(py, &ranges);
     let values = jump_lengths_indexed_flat_impl(
         arrow_values(&latitudes),
@@ -685,7 +599,7 @@ pub(crate) fn jump_lengths_indexed_flat_arrow(
 ) -> PyResult<PyArray> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let ranges = crate::utils::ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     Ok(f64_results_into_arrow(jump_lengths_indexed_flat_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
