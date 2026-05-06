@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-import narwhals as nw
+from skmob2._core import location_frequency_indexed_arrow, location_frequency_indexed_numpy
 
-from .._common import _build_user_ranges, _prepare_trajectory
+from .._common import (
+    _arrow_result_values,
+    _build_indexed_user_ranges_fast,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _to_native,
+)
 
 
 def location_frequency(
@@ -111,64 +117,69 @@ def location_frequency(
         uid_col=uid_col,
     )
 
-    def _freq_for_values(lat_list: list, lng_list: list) -> tuple[list, list, list]:
-        counts: dict[tuple, int] = {}
-        for lat, lng in zip(lat_list, lng_list):
-            key = (lat, lng)
-            counts[key] = counts.get(key, 0) + 1
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-        sorted_locs = sorted(counts.items(), key=lambda item: item[1], reverse=True)
+    if use_arrow:
+        raw = location_frequency_indexed_arrow(
+            df.get_column(lat_col).to_arrow(),
+            df.get_column(lng_col).to_arrow(),
+            indices,
+            starts,
+            ends,
+        )
+        out_lats: list = _arrow_result_values(raw[0]).to_pylist()
+        out_lngs: list = _arrow_result_values(raw[1]).to_pylist()
+        out_counts_list: list = _arrow_result_values(raw[2]).to_pylist()
+        out_starts, out_ends = raw[3], raw[4]
+    else:
+        out_lats_arr, out_lngs_arr, out_counts_arr, out_starts, out_ends = (
+            location_frequency_indexed_numpy(
+                df.get_column(lat_col).to_numpy(),
+                df.get_column(lng_col).to_numpy(),
+                indices,
+                starts,
+                ends,
+            )
+        )
+        out_lats = out_lats_arr.tolist()
+        out_lngs = out_lngs_arr.tolist()
+        out_counts_list = out_counts_arr.tolist()
 
-        total = sum(c for _, c in sorted_locs)
-        lats = [loc[0] for loc, _ in sorted_locs]
-        lngs = [loc[1] for loc, _ in sorted_locs]
+    freqs_all: list = []
+    per_user_freqs: list = []
+    uid_vals_all: list = []
+    for i, (s, e) in enumerate(zip(out_starts.tolist(), out_ends.tolist())):
+        seg = out_counts_list[s:e]
+        total = sum(seg)
         if normalize:
-            freqs: list = [c / total for _, c in sorted_locs]
+            user_freqs = [c / total for c in seg]
         else:
-            freqs = [float(c) for _, c in sorted_locs]
-
-        return lats, lngs, freqs
+            user_freqs = [float(c) for c in seg]
+        freqs_all.extend(user_freqs)
+        per_user_freqs.append(user_freqs)
+        if uid_values is not None:
+            uid_vals_all.extend([uid_values[i]] * len(seg))
 
     if uid_col is None:
-        lats, lngs, freqs = _freq_for_values(df.get_column(lat_col).to_list(), df.get_column(lng_col).to_list())
         if as_ranks:
-            return freqs
-        return nw.from_dict(
-            {lat_col: lats, lng_col: lngs, "location_frequency": freqs},
-            backend=df.implementation,
-        ).to_native()
-
-    uid_vals_all: list = []
-    lats_all: list = []
-    lngs_all: list = []
-    freqs_all: list = []
-    per_user_freqs: list[list] = []
-
-    lat_full = df.get_column(lat_col).to_list()
-    lng_full = df.get_column(lng_col).to_list()
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    for uid, (start, end) in zip(uid_values, ranges):
-        lats, lngs, freqs = _freq_for_values(lat_full[start:end], lng_full[start:end])
-        uid_vals_all.extend([uid] * len(lats))
-        lats_all.extend(lats)
-        lngs_all.extend(lngs)
-        freqs_all.extend(freqs)
-        per_user_freqs.append(freqs)
+            return per_user_freqs[0]
+        return _to_native({lat_col: out_lats, lng_col: out_lngs, "location_frequency": freqs_all}, df)
 
     if as_ranks:
         max_locs = max(len(f) for f in per_user_freqs) if per_user_freqs else 0
-        ranks: list[list] = [[] for _ in range(max_locs)]
+        ranks_lists: list = [[] for _ in range(max_locs)]
         for user_freqs in per_user_freqs:
             for rank_idx, freq in enumerate(user_freqs):
-                ranks[rank_idx].append(freq)
-        return [sum(r) / len(r) for r in ranks if r]
+                ranks_lists[rank_idx].append(freq)
+        return [sum(r) / len(r) for r in ranks_lists if r]
 
-    return nw.from_dict(
+    return _to_native(
         {
             uid_col: uid_vals_all,
-            lat_col: lats_all,
-            lng_col: lngs_all,
+            lat_col: out_lats,
+            lng_col: out_lngs,
             "location_frequency": freqs_all,
         },
-        backend=df.implementation,
-    ).to_native()
+        df,
+    )

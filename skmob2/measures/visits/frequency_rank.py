@@ -2,9 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
-import narwhals as nw
+from skmob2._core import location_frequency_indexed_arrow, location_frequency_indexed_numpy
 
-from .._common import _build_user_ranges, _is_pandas_backed, _prepare_trajectory
+from .._common import (
+    _arrow_result_values,
+    _build_indexed_user_ranges_fast,
+    _is_pandas_backed,
+    _is_polars_backed,
+    _prepare_trajectory,
+    _to_native,
+)
 
 
 def frequency_rank(
@@ -125,53 +132,42 @@ def frequency_rank(
 
         return pd.concat(pieces, ignore_index=True)
 
-    def _rank_for_values(lat_list: list, lng_list: list) -> tuple[list, list, list[int]]:
-        """Compute frequency ranks for a single user's trajectory rows.
+    use_arrow = _is_polars_backed(df)
+    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-        Returns three parallel lists: lats, lngs, ranks — one entry per
-        distinct location, ordered by most-frequent-first.
-        """
-        counts: dict[tuple, int] = {}
-        for lat, lng in zip(lat_list, lng_list):
-            key = (lat, lng)
-            counts[key] = counts.get(key, 0) + 1
+    if use_arrow:
+        raw = location_frequency_indexed_arrow(
+            df.get_column(lat_col).to_arrow(),
+            df.get_column(lng_col).to_arrow(),
+            indices,
+            starts,
+            ends,
+        )
+        out_lats: list = _arrow_result_values(raw[0]).to_pylist()
+        out_lngs: list = _arrow_result_values(raw[1]).to_pylist()
+        out_starts, out_ends = raw[3], raw[4]
+    else:
+        out_lats_arr, out_lngs_arr, _, out_starts, out_ends = location_frequency_indexed_numpy(
+            df.get_column(lat_col).to_numpy(),
+            df.get_column(lng_col).to_numpy(),
+            indices,
+            starts,
+            ends,
+        )
+        out_lats = out_lats_arr.tolist()
+        out_lngs = out_lngs_arr.tolist()
 
-        # Non-pandas backends use a deterministic equivalent for equal-count ties.
-        sorted_locs = sorted(counts.items(), key=lambda item: (-item[1], item[0][0], item[0][1]))
-
-        lats = [loc[0] for loc, _ in sorted_locs]
-        lngs = [loc[1] for loc, _ in sorted_locs]
-        ranks = list(range(1, len(lats) + 1))
-        return lats, lngs, ranks
+    ranks_all: list[int] = []
+    uid_vals_all: list = []
+    for i, (s, e) in enumerate(zip(out_starts.tolist(), out_ends.tolist())):
+        n = e - s
+        ranks_all.extend(range(1, n + 1))
+        if uid_values is not None:
+            uid_vals_all.extend([uid_values[i]] * n)
 
     if uid_col is None:
-        lats, lngs, ranks = _rank_for_values(df.get_column(lat_col).to_list(), df.get_column(lng_col).to_list())
-        return nw.from_dict(
-            {lat_col: lats, lng_col: lngs, "frequency_rank": ranks},
-            backend=df.implementation,
-        ).to_native()
-
-    uid_vals_all: list = []
-    lats_all: list = []
-    lngs_all: list = []
-    ranks_all: list[int] = []
-
-    lat_full = df.get_column(lat_col).to_list()
-    lng_full = df.get_column(lng_col).to_list()
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    for uid, (start, end) in zip(uid_values, ranges):
-        lats, lngs, ranks = _rank_for_values(lat_full[start:end], lng_full[start:end])
-        uid_vals_all.extend([uid] * len(lats))
-        lats_all.extend(lats)
-        lngs_all.extend(lngs)
-        ranks_all.extend(ranks)
-
-    return nw.from_dict(
-        {
-            uid_col: uid_vals_all,
-            lat_col: lats_all,
-            lng_col: lngs_all,
-            "frequency_rank": ranks_all,
-        },
-        backend=df.implementation,
-    ).to_native()
+        return _to_native({lat_col: out_lats, lng_col: out_lngs, "frequency_rank": ranks_all}, df)
+    return _to_native(
+        {uid_col: uid_vals_all, lat_col: out_lats, lng_col: out_lngs, "frequency_rank": ranks_all},
+        df,
+    )

@@ -211,7 +211,29 @@ The library auto-detects required columns by scanning a priority list:
 
 If a user-ID column is absent, the entire dataframe is treated as a single individual.
 
+## Variable-length-per-user output kernel pattern
+
+Measures that emit a variable number of output rows per user (e.g. `location_frequency`,
+`frequency_rank`, `recency_rank`) use a **flat output + user-boundary** convention:
+
+- The Rust kernel returns `(out_vals..., out_user_starts: Vec<usize>, out_user_ends: Vec<usize>)`.
+- `out_user_starts[i]` / `out_user_ends[i]` are slice boundaries into the flat output arrays for user `i`.
+- The Python wrapper reconstructs uid labels:
+  ```python
+  for i, (s, e) in enumerate(zip(out_starts.tolist(), out_ends.tolist())):
+      uid_vals_all.extend([uid_values[i]] * (e - s))
+  ```
+- For `uid_col=None`, `_build_indexed_user_ranges_fast` emits a single range `[0, N)`; the uid column is omitted from the result dict.
+- User-boundary arrays are always NumPy `usize` even in the Arrow route — they are index metadata, not data values.
+- Rust sorts per-user results before returning (e.g. by `-count, lat, lng` for frequency measures) so ranks are implicit (1, 2, … in output order) and computed in Python.
+- See `src/location_frequency.rs` and `src/recency_rank.rs` as reference implementations. Compare with `src/spatial_counts.rs` (scalar-per-user) and `src/jump_lengths.rs` (single flat value column + boundaries).
+
 ## Adding a new measure
+
+When adding a measure, choose the output pattern based on cardinality:
+
+- **Scalar per user** (e.g. `radius_of_gyration`, `number_of_locations`): use `_dispatch_kernel`, return one value per user. See `src/spatial_counts.rs`.
+- **Variable rows per user** (e.g. `location_frequency`, `recency_rank`): return flat arrays + `(out_user_starts, out_user_ends)` usize arrays from Rust. See `src/location_frequency.rs`.
 
 1. Add the Rust kernel to `src/lib.rs` and expose it via `m.add_function(...)` in the `_core` pymodule.
 2. Run `maturin develop` to rebuild.

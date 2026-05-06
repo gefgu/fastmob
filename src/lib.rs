@@ -11,6 +11,8 @@ mod max_distance_from_point;
 mod maximum_distance;
 mod motifs;
 mod radius_of_gyration;
+mod location_frequency;
+mod recency_rank;
 mod spatial_counts;
 mod square_displacement;
 mod stay_locations_rs;
@@ -207,6 +209,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         spatial_counts::number_of_locations_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::location_frequency_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::location_frequency_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        recency_rank::recency_rank_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        recency_rank::recency_rank_indexed_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
