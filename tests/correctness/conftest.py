@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from ..shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
+from ..shared.foursquare import FOURSQUARE_DEFAULT_ROWS, load_foursquare_pandas
 from ..shared.geolife import GEOLIFE_DEFAULT_ROWS, load_geolife_pandas
 
 # ---------------------------------------------------------------------------
@@ -112,7 +113,7 @@ def synthetic_tdf_polars(synthetic_rows):
 def _import_skmob_or_skip():
     try:
         return importlib.import_module("skmob")
-    except ImportError as exc:
+    except Exception as exc:
         pytest.skip(f"skmob is not importable: {exc}")
 
 
@@ -185,13 +186,45 @@ def geolife_skmob(pytestconfig):
     )
 
 
-@pytest.fixture(scope="session", params=["brightkite", "geolife"])
+@pytest.fixture(scope="session")
+def foursquare_pd(pytestconfig):
+    """Load Foursquare NYC data as a normalized pandas DataFrame."""
+    mode = pytestconfig.getoption("--foursquare-mode")
+    rows = pytestconfig.getoption("--foursquare-rows")
+    try:
+        return load_foursquare_pandas(mode=mode, rows=rows)
+    except Exception as exc:
+        pytest.skip(f"Foursquare NYC dataset is not available: {exc}")
+
+
+@pytest.fixture(scope="session")
+def foursquare_skmob(pytestconfig):
+    """Load Foursquare NYC data as skmob.TrajDataFrame; skipped when skmob is absent."""
+    skmob = _import_skmob_or_skip()
+    mode = pytestconfig.getoption("--foursquare-mode")
+    rows = pytestconfig.getoption("--foursquare-rows")
+    try:
+        foursquare_pd = load_foursquare_pandas(mode=mode, rows=rows)
+    except Exception as exc:
+        pytest.skip(f"Foursquare NYC dataset is not available: {exc}")
+    return skmob.TrajDataFrame(
+        foursquare_pd,
+        latitude="latitude",
+        longitude="longitude",
+        datetime="check-in_time",
+        user_id="user",
+    )
+
+
+@pytest.fixture(scope="session", params=["brightkite", "geolife", "foursquare"])
 def comparison_skmob(request):
     """Dataset-backed skmob.TrajDataFrame for skmob/skmob2 parity tests."""
     if request.param == "brightkite":
         return request.getfixturevalue("brightkite_skmob")
     if request.param == "geolife":
         return request.getfixturevalue("geolife_skmob")
+    if request.param == "foursquare":
+        return request.getfixturevalue("foursquare_skmob")
     raise AssertionError(f"Unknown comparison dataset: {request.param}")
 
 
@@ -215,6 +248,20 @@ def pytest_addoption(parser):
         type=int,
         default=GEOLIFE_DEFAULT_ROWS,
         help=f"Maximum GeoLife rows to load in slice mode. Defaults to {GEOLIFE_DEFAULT_ROWS}.",
+    )
+    group.addoption(
+        "--foursquare-mode",
+        action="store",
+        choices=("slice", "full"),
+        default="slice",
+        help="Foursquare NYC comparison mode for skmob correctness tests. Defaults to a deterministic slice.",
+    )
+    group.addoption(
+        "--foursquare-rows",
+        action="store",
+        type=int,
+        default=FOURSQUARE_DEFAULT_ROWS,
+        help=f"Maximum Foursquare NYC rows to load in slice mode. Defaults to {FOURSQUARE_DEFAULT_ROWS}.",
     )
 
 
