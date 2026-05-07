@@ -50,6 +50,19 @@ def test_summarize_times_handles_values_and_empty_list():
     assert suite.summarize_times([]) == {"average_seconds": None, "minimum_seconds": None}
 
 
+def test_summarize_memory_handles_values_and_empty_list():
+    assert suite.summarize_memory([3.0, 1.0, 2.0]) == {
+        "average_peak_memory_mb": pytest.approx(2.0),
+        "minimum_peak_memory_mb": 1.0,
+        "maximum_peak_memory_mb": 3.0,
+    }
+    assert suite.summarize_memory([]) == {
+        "average_peak_memory_mb": None,
+        "minimum_peak_memory_mb": None,
+        "maximum_peak_memory_mb": None,
+    }
+
+
 def test_output_path_matches_library_backend_and_timing_mode(tmp_path: Path):
     assert (
         suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas")
@@ -64,11 +77,24 @@ def test_output_path_matches_library_backend_and_timing_mode(tmp_path: Path):
         == tmp_path / "skmob_visits_speed_prebuilt_tdf.json"
     )
     assert suite.build_output_path(tmp_path, "movingpandas", "prebuilt_tdf") == tmp_path / "movingpandas_visits_speed.json"
+    assert (
+        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas", "memory")
+        == tmp_path / "skmob2_visits_memory_pandas.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf", profile="memory")
+        == tmp_path / "skmob_visits_memory_prebuilt_tdf.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "movingpandas", "prebuilt_tdf", profile="memory")
+        == tmp_path / "movingpandas_visits_memory.json"
+    )
 
 
 def test_parse_args_defaults_to_both_skmob2_backends():
     args = suite.parse_args(["--library", "skmob2"])
     assert args.backend == "both"
+    assert args.profile == "speed"
     assert tuple(suite.concrete_backends(args)) == ("pandas", "polars")
 
 
@@ -107,6 +133,61 @@ def test_benchmark_metric_records_import_skip(monkeypatch):
     assert result["times_seconds"] == []
     assert result["average_seconds"] is None
     assert result["minimum_seconds"] is None
+
+
+def test_memory_skip_uses_memory_result_schema(monkeypatch):
+    spec = suite.BenchmarkSpec("missing", "missing.module", "missing.module", "missing", {})
+
+    def raise_skip(_spec, _library):
+        raise suite.SkippedMetric("not installed")
+
+    monkeypatch.setattr(suite, "import_metric", raise_skip)
+
+    result = suite.benchmark_metric(
+        spec,
+        "skmob",
+        lambda: object(),
+        iterations=1,
+        sleep_seconds=0.0,
+        profile="memory",
+    )
+
+    assert result["status"] == "skipped"
+    assert result["peak_memory_mb"] == []
+    assert result["current_memory_mb"] == []
+    assert result["average_peak_memory_mb"] is None
+    assert "times_seconds" not in result
+
+
+def test_run_memory_call_tracks_each_iteration_with_tracemalloc(monkeypatch):
+    calls = {"func": 0, "start": 0, "get": 0, "stop": 0}
+
+    def fake_func(input_value, scale=1):
+        calls["func"] += 1
+        return input_value * scale
+
+    def fake_start():
+        calls["start"] += 1
+
+    def fake_get_traced_memory():
+        calls["get"] += 1
+        return calls["get"] * 1024 * 1024, calls["get"] * 2 * 1024 * 1024
+
+    def fake_stop():
+        calls["stop"] += 1
+
+    monkeypatch.setattr(suite.tracemalloc, "start", fake_start)
+    monkeypatch.setattr(suite.tracemalloc, "get_traced_memory", fake_get_traced_memory)
+    monkeypatch.setattr(suite.tracemalloc, "stop", fake_stop)
+
+    result = suite.run_memory_call(fake_func, lambda: 10, {"scale": 2}, iterations=2, sleep_seconds=0.0)
+
+    assert calls == {"func": 3, "start": 2, "get": 2, "stop": 2}
+    assert result["status"] == "ok"
+    assert result["current_memory_mb"] == [1.0, 2.0]
+    assert result["peak_memory_mb"] == [2.0, 4.0]
+    assert result["average_peak_memory_mb"] == pytest.approx(3.0)
+    assert "times_seconds" not in result
 
 
 def test_skmob_prebuilt_tdf_builds_once_outside_timing(monkeypatch):

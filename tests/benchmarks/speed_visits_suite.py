@@ -15,6 +15,7 @@ import json
 import platform
 import sys
 import time
+import tracemalloc
 import warnings
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -142,19 +143,39 @@ def summarize_times(times: list[float]) -> dict[str, float | None]:
     return {"average_seconds": sum(times) / len(times), "minimum_seconds": min(times)}
 
 
+def summarize_memory(peak_memory_mb: list[float]) -> dict[str, float | None]:
+    if not peak_memory_mb:
+        return {
+            "average_peak_memory_mb": None,
+            "minimum_peak_memory_mb": None,
+            "maximum_peak_memory_mb": None,
+        }
+    return {
+        "average_peak_memory_mb": sum(peak_memory_mb) / len(peak_memory_mb),
+        "minimum_peak_memory_mb": min(peak_memory_mb),
+        "maximum_peak_memory_mb": max(peak_memory_mb),
+    }
+
+
 def load_catalog(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def build_output_path(output_dir: Path, library: str, timing_mode: str, backend: str | None = None) -> Path:
+def build_output_path(
+    output_dir: Path,
+    library: str,
+    timing_mode: str,
+    backend: str | None = None,
+    profile: str = "speed",
+) -> Path:
     if library == "skmob2":
         if backend is None or backend == "both":
             raise ValueError("skmob2 output path requires a concrete backend")
-        filename = f"skmob2_visits_speed_{backend}.json"
+        filename = f"skmob2_visits_{profile}_{backend}.json"
     elif library == "skmob":
-        filename = f"skmob_visits_speed_{timing_mode}.json"
+        filename = f"skmob_visits_{profile}_{timing_mode}.json"
     else:
-        filename = "movingpandas_visits_speed.json"
+        filename = f"movingpandas_visits_{profile}.json"
     return output_dir / filename
 
 
@@ -270,6 +291,61 @@ def run_timed_call(
     }
 
 
+def run_memory_call(
+    func: Callable[..., Any],
+    make_input: Callable[[], Any],
+    kwargs: dict[str, Any],
+    *,
+    iterations: int,
+    sleep_seconds: float,
+) -> dict[str, Any]:
+    print("    Warming up...")
+    call_benchmark_func(func, make_input(), kwargs)
+
+    current_memory_mb: list[float] = []
+    peak_memory_mb: list[float] = []
+    for i in range(iterations):
+        if sleep_seconds:
+            time.sleep(sleep_seconds)
+        tracemalloc.start()
+        try:
+            call_benchmark_func(func, make_input(), kwargs)
+            current_bytes, peak_bytes = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        current_mb = current_bytes / (1024 * 1024)
+        peak_mb = peak_bytes / (1024 * 1024)
+        current_memory_mb.append(current_mb)
+        peak_memory_mb.append(peak_mb)
+        print(f"    Round {i + 1}: {peak_mb:.4f} MB peak")
+
+    summary = summarize_memory(peak_memory_mb)
+    print(f"    Average Peak Memory: {summary['average_peak_memory_mb']:.4f} MB")
+    print(f"    Minimum Peak Memory: {summary['minimum_peak_memory_mb']:.4f} MB")
+    print(f"    Maximum Peak Memory: {summary['maximum_peak_memory_mb']:.4f} MB")
+    return {
+        "status": "ok",
+        "peak_memory_mb": peak_memory_mb,
+        "current_memory_mb": current_memory_mb,
+        "iterations_completed": len(peak_memory_mb),
+        **summary,
+    }
+
+
+def run_profiled_call(
+    func: Callable[..., Any],
+    make_input: Callable[[], Any],
+    kwargs: dict[str, Any],
+    *,
+    profile: str,
+    iterations: int,
+    sleep_seconds: float,
+) -> dict[str, Any]:
+    if profile == "memory":
+        return run_memory_call(func, make_input, kwargs, iterations=iterations, sleep_seconds=sleep_seconds)
+    return run_timed_call(func, make_input, kwargs, iterations=iterations, sleep_seconds=sleep_seconds)
+
+
 def call_benchmark_func(func: Callable[..., Any], input_value: Any, kwargs: dict[str, Any]) -> Any:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
@@ -277,9 +353,18 @@ def call_benchmark_func(func: Callable[..., Any], input_value: Any, kwargs: dict
         return func(input_value, **kwargs)
 
 
-def skipped_result(reason: str) -> dict[str, Any]:
+def empty_profile_result(status: str, reason: str, profile: str) -> dict[str, Any]:
+    if profile == "memory":
+        return {
+            "status": status,
+            "reason": reason,
+            "peak_memory_mb": [],
+            "current_memory_mb": [],
+            "iterations_completed": 0,
+            **summarize_memory([]),
+        }
     return {
-        "status": "skipped",
+        "status": status,
         "reason": reason,
         "times_seconds": [],
         "iterations_completed": 0,
@@ -287,14 +372,12 @@ def skipped_result(reason: str) -> dict[str, Any]:
     }
 
 
-def error_result(reason: str) -> dict[str, Any]:
-    return {
-        "status": "error",
-        "reason": reason,
-        "times_seconds": [],
-        "iterations_completed": 0,
-        **summarize_times([]),
-    }
+def skipped_result(reason: str, profile: str = "speed") -> dict[str, Any]:
+    return empty_profile_result("skipped", reason, profile)
+
+
+def error_result(reason: str, profile: str = "speed") -> dict[str, Any]:
+    return empty_profile_result("error", reason, profile)
 
 
 def benchmark_metric(
@@ -304,28 +387,43 @@ def benchmark_metric(
     *,
     iterations: int,
     sleep_seconds: float,
+    profile: str = "speed",
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
     if library == "movingpandas":
         reason = "no benchmarkable MovingPandas analogue for visits/collective API"
         print(f"    skipped: {reason}")
-        return skipped_result(reason)
+        return skipped_result(reason, profile)
 
     try:
         func = import_metric(spec, library)
     except SkippedMetric as exc:
         print(f"    skipped: {exc}")
-        return skipped_result(str(exc))
+        return skipped_result(str(exc), profile)
 
     try:
         kwargs = metric_kwargs_for_library(spec, library, func)
-        return run_timed_call(func, make_input, kwargs, iterations=iterations, sleep_seconds=sleep_seconds)
+        return run_profiled_call(
+            func,
+            make_input,
+            kwargs,
+            profile=profile,
+            iterations=iterations,
+            sleep_seconds=sleep_seconds,
+        )
     except Exception as exc:
         print(f"    error: {exc}")
-        return error_result(str(exc))
+        return error_result(str(exc), profile)
 
 
-def benchmark_skmob2_size(df: Any, size: int, *, iterations: int, sleep_seconds: float) -> dict[str, Any]:
+def benchmark_skmob2_size(
+    df: Any,
+    size: int,
+    *,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str = "speed",
+) -> dict[str, Any]:
     size_df = df.head(size)
     print(f"\nSize {size_label(size)} ({len(size_df)} rows)")
     return {
@@ -337,6 +435,7 @@ def benchmark_skmob2_size(df: Any, size: int, *, iterations: int, sleep_seconds:
                 spec,
                 "skmob2",
                 lambda size_df=size_df: size_df,
+                profile=profile,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
@@ -353,6 +452,7 @@ def benchmark_skmob_size(
     timing_mode: str,
     iterations: int,
     sleep_seconds: float,
+    profile: str = "speed",
 ) -> dict[str, Any]:
     pandas_slice = raw_df.head(size).copy()
     print(f"\nSize {size_label(size)} ({len(pandas_slice)} rows)")
@@ -377,6 +477,7 @@ def benchmark_skmob_size(
                 spec,
                 "skmob",
                 make_input,
+                profile=profile,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
@@ -385,12 +486,14 @@ def benchmark_skmob_size(
     }
 
 
-def benchmark_movingpandas_size(size: int) -> dict[str, Any]:
+def benchmark_movingpandas_size(size: int, *, profile: str = "speed") -> dict[str, Any]:
     return {
         "size": size,
         "label": size_label(size),
         "rows": 0,
-        "metrics": {spec.name: skipped_result("no benchmarkable MovingPandas analogue") for spec in VISITS_METRICS},
+        "metrics": {
+            spec.name: skipped_result("no benchmarkable MovingPandas analogue", profile) for spec in VISITS_METRICS
+        },
     }
 
 
@@ -398,6 +501,7 @@ def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: st
     return {
         "suite": "visits",
         "library": args.library,
+        "profile": args.profile,
         "backend": backend,
         "timing_mode": timing_mode,
         "input_type": input_type,
@@ -431,14 +535,20 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             df = load_brightkite_polars(data_path)
             input_type = "polars.DataFrame"
         results = [
-            benchmark_skmob2_size(df, size, iterations=args.iterations, sleep_seconds=args.sleep_seconds)
+            benchmark_skmob2_size(
+                df,
+                size,
+                profile=args.profile,
+                iterations=args.iterations,
+                sleep_seconds=args.sleep_seconds,
+            )
             for size in args.sizes
         ]
         metadata = build_metadata(args, input_type=input_type, timing_mode="measure_only", backend=selected_backend)
         return {"metadata": metadata, "results": results}
 
     if args.library == "movingpandas":
-        results = [benchmark_movingpandas_size(size) for size in args.sizes]
+        results = [benchmark_movingpandas_size(size, profile=args.profile) for size in args.sizes]
         metadata = build_metadata(args, input_type="not_applicable", timing_mode="not_applicable", backend=None)
         return {"metadata": metadata, "results": results}
 
@@ -455,6 +565,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             skmob_module,
             size,
             timing_mode=args.timing_mode,
+            profile=args.profile,
             iterations=args.iterations,
             sleep_seconds=args.sleep_seconds,
         )
@@ -476,6 +587,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone visits/collective speed benchmarks.")
     parser.add_argument("--library", choices=["skmob2", "skmob", "movingpandas"], required=True)
     parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
+    parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
@@ -489,7 +601,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     for backend in concrete_backends(args):
         payload = run_suite(args, backend=backend)
-        output_path = build_output_path(Path(args.output_dir), args.library, args.timing_mode, backend)
+        output_path = build_output_path(Path(args.output_dir), args.library, args.timing_mode, backend, args.profile)
         write_json(payload, output_path)
         print(f"\nWrote results to {output_path}")
     return 0
