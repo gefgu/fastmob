@@ -85,3 +85,5 @@ scikit-mobility/
 .venv-skmob/
 
 TODO.md
+
+**/results/logs/*

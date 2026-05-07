@@ -1,0 +1,216 @@
+{
+  "catalog_version": 1,
+  "description": "Legacy scikit-mobility public APIs with direct skmob2 benchmark coverage.",
+  "source_library": "skmob",
+  "target_library": "skmob2",
+  "entries": [
+    {
+      "name": "distance_straight_line",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.distance_straight_line",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "home_location",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.home_location",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "jump_lengths",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.jump_lengths",
+      "default_kwargs": {"merge": false},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "k_radius_of_gyration",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.k_radius_of_gyration",
+      "default_kwargs": {"k": 2},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "max_distance_from_home",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.max_distance_from_home",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "maximum_distance",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.maximum_distance",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "number_of_locations",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.number_of_locations",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "number_of_visits",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.number_of_visits",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "radius_of_gyration",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.radius_of_gyration",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "waiting_times",
+      "suite": "spatial",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.spatial.waiting_times",
+      "default_kwargs": {"merge": false},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "filter",
+      "suite": "spatial",
+      "legacy_module": "skmob.preprocessing.filtering",
+      "skmob2_module": "skmob2.preprocessing.filter",
+      "default_kwargs": {},
+      "input_kind": "preprocessing"
+    },
+    {
+      "name": "compress",
+      "suite": "spatial",
+      "legacy_module": "skmob.preprocessing.compression",
+      "skmob2_module": "skmob2.preprocessing.compress",
+      "default_kwargs": {},
+      "input_kind": "preprocessing"
+    },
+    {
+      "name": "stay_locations",
+      "suite": "spatial",
+      "legacy_module": "skmob.preprocessing.detection",
+      "skmob2_module": "skmob2.preprocessing.stay_locations",
+      "default_kwargs": {},
+      "input_kind": "preprocessing"
+    },
+    {
+      "name": "random_entropy",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.visits.random_entropy",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "uncorrelated_entropy",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.visits.uncorrelated_entropy",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "real_entropy",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.visits.real_entropy",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "location_frequency",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.visits.location_frequency",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "individual_mobility_network",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.visits.individual_mobility_network",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "recency_rank",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.visits.recency_rank",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "frequency_rank",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.visits.frequency_rank",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "random_location_entropy",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.flows.random_location_entropy",
+      "default_kwargs": {},
+      "input_kind": "collective"
+    },
+    {
+      "name": "uncorrelated_location_entropy",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.flows.uncorrelated_location_entropy",
+      "default_kwargs": {},
+      "input_kind": "collective"
+    },
+    {
+      "name": "mean_square_displacement",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.flows.mean_square_displacement",
+      "default_kwargs": {},
+      "input_kind": "collective"
+    },
+    {
+      "name": "visits_per_location",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.flows.visits_per_location",
+      "default_kwargs": {},
+      "input_kind": "collective"
+    },
+    {
+      "name": "homes_per_location",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.flows.homes_per_location",
+      "default_kwargs": {},
+      "input_kind": "collective"
+    },
+    {
+      "name": "visits_per_time_unit",
+      "suite": "visits",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.flows.visits_per_time_unit",
+      "default_kwargs": {},
+      "input_kind": "collective"
+    }
+  ]
+}

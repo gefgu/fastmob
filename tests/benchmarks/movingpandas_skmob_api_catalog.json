@@ -1,0 +1,155 @@
+{
+  "catalog_version": 1,
+  "description": "MovingPandas APIs that are similar to original scikit-mobility APIs. Only benchmarkable=true entries are run by the standalone speed suites.",
+  "source_library": "skmob",
+  "comparison_library": "movingpandas",
+  "entries": [
+    {
+      "skmob_function": "skmob.measures.individual.distance_straight_line",
+      "movingpandas_api": "movingpandas.TrajectoryCollection.add_distance",
+      "relationship": "similar_operation",
+      "benchmarkable": true,
+      "notes": "MovingPandas adds per-segment distances; skmob sums total straight-line distance per user."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.jump_lengths",
+      "movingpandas_api": "movingpandas.TrajectoryCollection.add_distance",
+      "relationship": "close_analogue",
+      "benchmarkable": true,
+      "notes": "Both compute distances between consecutive trajectory points."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.waiting_times",
+      "movingpandas_api": "movingpandas.TrajectoryCollection.add_timedelta",
+      "relationship": "close_analogue",
+      "benchmarkable": true,
+      "notes": "Both compute elapsed time between consecutive trajectory points."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.radius_of_gyration",
+      "movingpandas_api": "custom_radius_of_gyration_over_TrajectoryCollection",
+      "relationship": "custom_adapter",
+      "benchmarkable": true,
+      "notes": "MovingPandas has no direct RoG API; benchmark uses the existing custom per-trajectory adapter."
+    },
+    {
+      "skmob_function": "skmob.preprocessing.compression.compress",
+      "movingpandas_api": "movingpandas.MinDistanceGeneralizer.generalize",
+      "relationship": "similar_operation",
+      "benchmarkable": true,
+      "notes": "Both reduce trajectory point density, but algorithms and output semantics differ."
+    },
+    {
+      "skmob_function": "skmob.preprocessing.detection.stay_locations",
+      "movingpandas_api": "movingpandas.TrajectoryStopDetector.get_stop_points",
+      "relationship": "similar_operation",
+      "benchmarkable": true,
+      "notes": "Both detect stops/stay points, with different parameter names and result schemas."
+    },
+    {
+      "skmob_function": "skmob.preprocessing.filtering.filter",
+      "movingpandas_api": "movingpandas.OutlierCleaner / movingpandas.SpeedSplitter",
+      "relationship": "loose_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas exposes cleaning/splitting primitives, but no single direct equivalent to skmob.filter."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.maximum_distance",
+      "movingpandas_api": "movingpandas.TrajectoryCollection.add_distance",
+      "relationship": "derived_from_similar_operation",
+      "benchmarkable": false,
+      "notes": "Maximum segment distance can be derived after add_distance, but is not a direct public API match."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.home_location",
+      "movingpandas_api": "movingpandas.TrajectoryCollection.get_start_locations / get_end_locations",
+      "relationship": "not_equivalent",
+      "benchmarkable": false,
+      "notes": "Start/end locations are not night-window home inference."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.max_distance_from_home",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "Requires skmob home-location semantics."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.k_radius_of_gyration",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "No direct top-k frequent-location radius-of-gyration API."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.number_of_locations",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "Can be derived from point data, but no direct MovingPandas API."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.number_of_visits",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "Can be derived from point data, but no direct MovingPandas API."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.random_entropy",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas does not expose skmob-style individual entropy measures."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.uncorrelated_entropy",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas does not expose skmob-style individual entropy measures."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.real_entropy",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas does not expose skmob-style individual entropy measures."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.location_frequency",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas does not expose skmob-style location-frequency ranking."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.individual_mobility_network",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas does not expose skmob-style individual mobility networks."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.recency_rank",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas does not expose skmob-style recency ranks."
+    },
+    {
+      "skmob_function": "skmob.measures.individual.frequency_rank",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas does not expose skmob-style frequency ranks."
+    },
+    {
+      "skmob_function": "skmob.measures.collective.*",
+      "movingpandas_api": "none",
+      "relationship": "no_close_analogue",
+      "benchmarkable": false,
+      "notes": "MovingPandas has trajectory operations, but not direct skmob collective flow/entropy APIs."
+    }
+  ]
+}

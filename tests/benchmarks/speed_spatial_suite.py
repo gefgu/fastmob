@@ -1,68 +1,144 @@
-"""Standalone spatial speed benchmark suite.
+"""Standalone spatial/preprocessing speed benchmark suite.
 
 Run from the repository root, for example:
 
-    python tests/benchmarks/speed_spatial_suite.py --library skmob2
+    python tests/benchmarks/speed_spatial_suite.py --library skmob2 --backend both
     python tests/benchmarks/speed_spatial_suite.py --library skmob
-    python tests/benchmarks/speed_spatial_suite.py --library skmob --timing-mode workflow_tdf
+    python tests/benchmarks/speed_spatial_suite.py --library movingpandas
 """
 
 from __future__ import annotations
 
 import argparse
-import inspect
 import importlib
+import inspect
 import json
+import math
 import platform
 import sys
 import time
+import warnings
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "results"
+SKMOB_CATALOG_PATH = Path(__file__).resolve().parent / "skmob_public_api_catalog.json"
+MOVINGPANDAS_CATALOG_PATH = Path(__file__).resolve().parent / "movingpandas_skmob_api_catalog.json"
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
 BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
 
 
 @dataclass(frozen=True)
-class MetricSpec:
+class BenchmarkSpec:
     name: str
-    module_path: str
+    skmob2_module_path: str
+    skmob_module_path: str
     func_name: str
     kwargs: dict[str, Any]
+    input_kind: str = "trajectory"
+    movingpandas_api: str | None = None
 
 
-SPATIAL_METRICS: tuple[MetricSpec, ...] = (
-    MetricSpec(
+SPATIAL_METRICS: tuple[BenchmarkSpec, ...] = (
+    BenchmarkSpec(
         "distance_straight_line",
         "skmob2.measures.spatial.distance_straight_line",
+        "skmob.measures.individual",
         "distance_straight_line",
         {},
+        movingpandas_api="TrajectoryCollection.add_distance",
     ),
-    MetricSpec("home_location", "skmob2.measures.spatial.home_location", "home_location", {}),
-    MetricSpec("jump_lengths", "skmob2.measures.spatial.jump_lengths", "jump_lengths", {"merge": False}),
-    MetricSpec(
+    BenchmarkSpec("home_location", "skmob2.measures.spatial.home_location", "skmob.measures.individual", "home_location", {}),
+    BenchmarkSpec(
+        "jump_lengths",
+        "skmob2.measures.spatial.jump_lengths",
+        "skmob.measures.individual",
+        "jump_lengths",
+        {"merge": False},
+        movingpandas_api="TrajectoryCollection.add_distance",
+    ),
+    BenchmarkSpec(
         "k_radius_of_gyration",
         "skmob2.measures.spatial.k_radius_of_gyration",
+        "skmob.measures.individual",
         "k_radius_of_gyration",
         {"k": 2},
     ),
-    MetricSpec(
+    BenchmarkSpec(
         "max_distance_from_home",
         "skmob2.measures.spatial.max_distance_from_home",
+        "skmob.measures.individual",
         "max_distance_from_home",
         {},
     ),
-    MetricSpec("maximum_distance", "skmob2.measures.spatial.maximum_distance", "maximum_distance", {}),
-    MetricSpec("number_of_locations", "skmob2.measures.spatial.number_of_locations", "number_of_locations", {}),
-    MetricSpec("number_of_visits", "skmob2.measures.spatial.number_of_visits", "number_of_visits", {}),
-    MetricSpec("radius_of_gyration", "skmob2.measures.spatial.radius_of_gyration", "radius_of_gyration", {}),
-    MetricSpec("waiting_times", "skmob2.measures.spatial.waiting_times", "waiting_times", {"merge": False}),
+    BenchmarkSpec(
+        "maximum_distance",
+        "skmob2.measures.spatial.maximum_distance",
+        "skmob.measures.individual",
+        "maximum_distance",
+        {},
+    ),
+    BenchmarkSpec(
+        "number_of_locations",
+        "skmob2.measures.spatial.number_of_locations",
+        "skmob.measures.individual",
+        "number_of_locations",
+        {},
+    ),
+    BenchmarkSpec(
+        "number_of_visits",
+        "skmob2.measures.spatial.number_of_visits",
+        "skmob.measures.individual",
+        "number_of_visits",
+        {},
+    ),
+    BenchmarkSpec(
+        "radius_of_gyration",
+        "skmob2.measures.spatial.radius_of_gyration",
+        "skmob.measures.individual",
+        "radius_of_gyration",
+        {},
+        movingpandas_api="custom_radius_of_gyration",
+    ),
+    BenchmarkSpec(
+        "waiting_times",
+        "skmob2.measures.spatial.waiting_times",
+        "skmob.measures.individual",
+        "waiting_times",
+        {"merge": False},
+        movingpandas_api="TrajectoryCollection.add_timedelta",
+    ),
+    BenchmarkSpec(
+        "filter",
+        "skmob2.preprocessing.filter",
+        "skmob.preprocessing.filtering",
+        "filter",
+        {},
+        input_kind="preprocessing",
+    ),
+    BenchmarkSpec(
+        "compress",
+        "skmob2.preprocessing.compress",
+        "skmob.preprocessing.compression",
+        "compress",
+        {},
+        input_kind="preprocessing",
+        movingpandas_api="MinDistanceGeneralizer.generalize",
+    ),
+    BenchmarkSpec(
+        "stay_locations",
+        "skmob2.preprocessing.stay_locations",
+        "skmob.preprocessing.detection",
+        "stay_locations",
+        {},
+        input_kind="preprocessing",
+        movingpandas_api="TrajectoryStopDetector.get_stop_points",
+    ),
 )
 
 
@@ -84,11 +160,19 @@ def summarize_times(times: list[float]) -> dict[str, float | None]:
     return {"average_seconds": sum(times) / len(times), "minimum_seconds": min(times)}
 
 
-def build_output_path(output_dir: Path, library: str, timing_mode: str) -> Path:
+def load_catalog(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def build_output_path(output_dir: Path, library: str, timing_mode: str, backend: str | None = None) -> Path:
     if library == "skmob2":
-        filename = "skmob2_spatial_speed.json"
-    else:
+        if backend is None or backend == "both":
+            raise ValueError("skmob2 output path requires a concrete backend")
+        filename = f"skmob2_spatial_speed_{backend}.json"
+    elif library == "skmob":
         filename = f"skmob_spatial_speed_{timing_mode}.json"
+    else:
+        filename = "movingpandas_spatial_speed.json"
     return output_dir / filename
 
 
@@ -112,12 +196,10 @@ def nonnegative_float(value: str) -> float:
     return parsed
 
 
-def import_metric(spec: MetricSpec, library: str) -> Callable[..., Any]:
+def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
     try:
-        if library == "skmob2":
-            module = importlib.import_module(spec.module_path)
-        else:
-            module = importlib.import_module("skmob.measures.individual")
+        module_path = spec.skmob2_module_path if library == "skmob2" else spec.skmob_module_path
+        module = importlib.import_module(module_path)
     except Exception as exc:
         raise SkippedMetric(f"import failed: {exc}") from exc
 
@@ -127,7 +209,7 @@ def import_metric(spec: MetricSpec, library: str) -> Callable[..., Any]:
         raise SkippedMetric(f"metric not available: {spec.func_name}") from exc
 
 
-def metric_kwargs_for_library(spec: MetricSpec, library: str, func: Callable[..., Any]) -> dict[str, Any]:
+def metric_kwargs_for_library(spec: BenchmarkSpec, library: str, func: Callable[..., Any]) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
     if library != "skmob":
         return kwargs
@@ -163,6 +245,25 @@ def load_brightkite_polars(data_path: Path):
     )
 
 
+def load_brightkite_movingpandas(data_path: Path, size: int) -> Any:
+    try:
+        import geopandas as gpd
+        import movingpandas as mpd
+        import pandas as pd
+    except Exception as exc:
+        raise SkippedMetric(f"movingpandas input setup failed: {exc}") from exc
+
+    df = load_brightkite_pandas(data_path).head(size).copy()
+    gdf = gpd.GeoDataFrame(
+        df,
+        geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
+        crs="EPSG:4326",
+    )
+    gdf["check-in_time"] = pd.to_datetime(gdf["check-in_time"])
+    gdf = gdf.set_index("check-in_time")
+    return mpd.TrajectoryCollection(gdf, traj_id_col="user")
+
+
 def make_skmob_tdf(skmob_module: Any, df: Any) -> Any:
     return skmob_module.TrajDataFrame(
         df.copy(),
@@ -171,6 +272,45 @@ def make_skmob_tdf(skmob_module: Any, df: Any) -> Any:
         datetime="check-in_time",
         user_id="user",
     )
+
+
+def movingpandas_radius_of_gyration(tc: Any) -> list[float]:
+    results: list[float] = []
+    for traj in tc.trajectories:
+        coords = [(point.y, point.x) for point in traj.df.geometry]
+        if not coords:
+            results.append(math.nan)
+            continue
+        center_lat = sum(lat for lat, _ in coords) / len(coords)
+        center_lng = sum(lng for _, lng in coords) / len(coords)
+        squared = [(lat - center_lat) ** 2 + (lng - center_lng) ** 2 for lat, lng in coords]
+        results.append(math.sqrt(sum(squared) / len(squared)))
+    return results
+
+
+def movingpandas_callable_for_spec(spec: BenchmarkSpec) -> tuple[Callable[[Any], Any], dict[str, Any]]:
+    if spec.name in {"distance_straight_line", "jump_lengths"}:
+        return lambda tc, **kwargs: tc.add_distance(**kwargs), {"overwrite": True, "units": "km"}
+    if spec.name == "waiting_times":
+        return lambda tc, **kwargs: tc.add_timedelta(**kwargs), {"overwrite": True}
+    if spec.name == "radius_of_gyration":
+        return movingpandas_radius_of_gyration, {}
+    if spec.name == "compress":
+        try:
+            import movingpandas as mpd
+        except Exception as exc:
+            raise SkippedMetric(f"movingpandas import failed: {exc}") from exc
+        return lambda tc, **kwargs: mpd.MinDistanceGeneralizer(tc).generalize(**kwargs), {"tolerance": 200}
+    if spec.name == "stay_locations":
+        try:
+            import movingpandas as mpd
+        except Exception as exc:
+            raise SkippedMetric(f"movingpandas import failed: {exc}") from exc
+        return (
+            lambda tc, **kwargs: mpd.TrajectoryStopDetector(tc).get_stop_points(**kwargs),
+            {"max_diameter": 200, "min_duration": timedelta(minutes=20)},
+        )
+    raise SkippedMetric("no benchmarkable MovingPandas analogue")
 
 
 def run_timed_call(
@@ -182,14 +322,14 @@ def run_timed_call(
     sleep_seconds: float,
 ) -> dict[str, Any]:
     print("    Warming up...")
-    func(make_input(), **kwargs)
+    call_benchmark_func(func, make_input(), kwargs)
 
     times: list[float] = []
     for i in range(iterations):
         if sleep_seconds:
             time.sleep(sleep_seconds)
         start = time.perf_counter()
-        func(make_input(), **kwargs)
+        call_benchmark_func(func, make_input(), kwargs)
         end = time.perf_counter()
         duration = end - start
         times.append(duration)
@@ -206,8 +346,35 @@ def run_timed_call(
     }
 
 
+def call_benchmark_func(func: Callable[..., Any], input_value: Any, kwargs: dict[str, Any]) -> Any:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        warnings.simplefilter("ignore", UserWarning)
+        return func(input_value, **kwargs)
+
+
+def skipped_result(reason: str) -> dict[str, Any]:
+    return {
+        "status": "skipped",
+        "reason": reason,
+        "times_seconds": [],
+        "iterations_completed": 0,
+        **summarize_times([]),
+    }
+
+
+def error_result(reason: str) -> dict[str, Any]:
+    return {
+        "status": "error",
+        "reason": reason,
+        "times_seconds": [],
+        "iterations_completed": 0,
+        **summarize_times([]),
+    }
+
+
 def benchmark_metric(
-    spec: MetricSpec,
+    spec: BenchmarkSpec,
     library: str,
     make_input: Callable[[], Any],
     *,
@@ -216,29 +383,20 @@ def benchmark_metric(
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
     try:
-        func = import_metric(spec, library)
+        if library == "movingpandas":
+            func, kwargs = movingpandas_callable_for_spec(spec)
+        else:
+            func = import_metric(spec, library)
+            kwargs = metric_kwargs_for_library(spec, library, func)
     except SkippedMetric as exc:
         print(f"    skipped: {exc}")
-        return {
-            "status": "skipped",
-            "reason": str(exc),
-            "times_seconds": [],
-            "iterations_completed": 0,
-            **summarize_times([]),
-        }
+        return skipped_result(str(exc))
 
     try:
-        kwargs = metric_kwargs_for_library(spec, library, func)
         return run_timed_call(func, make_input, kwargs, iterations=iterations, sleep_seconds=sleep_seconds)
     except Exception as exc:
         print(f"    error: {exc}")
-        return {
-            "status": "error",
-            "reason": str(exc),
-            "times_seconds": [],
-            "iterations_completed": 0,
-            **summarize_times([]),
-        }
+        return error_result(str(exc))
 
 
 def benchmark_skmob2_size(df: Any, size: int, *, iterations: int, sleep_seconds: float) -> dict[str, Any]:
@@ -301,9 +459,42 @@ def benchmark_skmob_size(
     }
 
 
-def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: str) -> dict[str, Any]:
+def benchmark_movingpandas_size(data_path: Path, size: int, *, iterations: int, sleep_seconds: float) -> dict[str, Any]:
+    print(f"\nSize {size_label(size)}")
+    try:
+        tc = load_brightkite_movingpandas(data_path, size)
+    except SkippedMetric as exc:
+        return {
+            "size": size,
+            "label": size_label(size),
+            "rows": 0,
+            "metrics": {spec.name: skipped_result(str(exc)) for spec in SPATIAL_METRICS},
+        }
+
+    rows = len(tc.to_point_gdf())
+    print(f"  MovingPandas rows: {rows}")
     return {
+        "size": size,
+        "label": size_label(size),
+        "rows": rows,
+        "metrics": {
+            spec.name: benchmark_metric(
+                spec,
+                "movingpandas",
+                lambda tc=tc: tc,
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+            )
+            for spec in SPATIAL_METRICS
+        },
+    }
+
+
+def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: str, backend: str | None) -> dict[str, Any]:
+    return {
+        "suite": "spatial",
         "library": args.library,
+        "backend": backend,
         "timing_mode": timing_mode,
         "input_type": input_type,
         "python_version": sys.version,
@@ -313,22 +504,46 @@ def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: st
         "iterations": args.iterations,
         "sleep_seconds": args.sleep_seconds,
         "sizes": args.sizes,
+        "skmob_catalog_path": str(SKMOB_CATALOG_PATH),
+        "movingpandas_catalog_path": str(MOVINGPANDAS_CATALOG_PATH),
     }
 
 
-def run_suite(args: argparse.Namespace) -> dict[str, Any]:
+def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[str, Any]:
     data_path = Path(args.data_path)
     if not data_path.exists():
         raise SystemExit(f"Dataset not found at {data_path}. Place the Brightkite file there before running.")
 
     if args.library == "skmob2":
-        print(f"Loading Brightkite into Polars from {data_path}...")
-        df = load_brightkite_polars(data_path)
+        selected_backend = backend or args.backend
+        if selected_backend == "both":
+            raise ValueError("run_suite requires a concrete backend when library is skmob2")
+        if selected_backend == "pandas":
+            print(f"Loading Brightkite into pandas from {data_path}...")
+            df = load_brightkite_pandas(data_path)
+            input_type = "pandas.DataFrame"
+        else:
+            print(f"Loading Brightkite into Polars from {data_path}...")
+            df = load_brightkite_polars(data_path)
+            input_type = "polars.DataFrame"
         results = [
             benchmark_skmob2_size(df, size, iterations=args.iterations, sleep_seconds=args.sleep_seconds)
             for size in args.sizes
         ]
-        metadata = build_metadata(args, input_type="polars.DataFrame", timing_mode="measure_only")
+        metadata = build_metadata(args, input_type=input_type, timing_mode="measure_only", backend=selected_backend)
+        return {"metadata": metadata, "results": results}
+
+    if args.library == "movingpandas":
+        results = [
+            benchmark_movingpandas_size(data_path, size, iterations=args.iterations, sleep_seconds=args.sleep_seconds)
+            for size in args.sizes
+        ]
+        metadata = build_metadata(
+            args,
+            input_type="movingpandas.TrajectoryCollection",
+            timing_mode="measure_only",
+            backend=None,
+        )
         return {"metadata": metadata, "results": results}
 
     print(f"Loading Brightkite into pandas from {data_path}...")
@@ -349,13 +564,22 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
         )
         for size in args.sizes
     ]
-    metadata = build_metadata(args, input_type="skmob.TrajDataFrame", timing_mode=args.timing_mode)
+    metadata = build_metadata(args, input_type="skmob.TrajDataFrame", timing_mode=args.timing_mode, backend=None)
     return {"metadata": metadata, "results": results}
 
 
+def concrete_backends(args: argparse.Namespace) -> Iterable[str | None]:
+    if args.library != "skmob2":
+        return (None,)
+    if args.backend == "both":
+        return ("pandas", "polars")
+    return (args.backend,)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run standalone spatial speed benchmarks.")
-    parser.add_argument("--library", choices=["skmob2", "skmob"], required=True)
+    parser = argparse.ArgumentParser(description="Run standalone spatial/preprocessing speed benchmarks.")
+    parser.add_argument("--library", choices=["skmob2", "skmob", "movingpandas"], required=True)
+    parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
     parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
@@ -367,10 +591,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    payload = run_suite(args)
-    output_path = build_output_path(Path(args.output_dir), args.library, args.timing_mode)
-    write_json(payload, output_path)
-    print(f"\nWrote results to {output_path}")
+    for backend in concrete_backends(args):
+        payload = run_suite(args, backend=backend)
+        output_path = build_output_path(Path(args.output_dir), args.library, args.timing_mode, backend)
+        write_json(payload, output_path)
+        print(f"\nWrote results to {output_path}")
     return 0
 
 

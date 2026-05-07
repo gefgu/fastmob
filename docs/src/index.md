@@ -13,7 +13,7 @@ It exposes the same measure API but replaces the Python/pandas internals with a 
 - **Backend-agnostic:** pass a pandas, polars, or any other Narwhals-compatible DataFrame — skmob2 works without changes.
 - **Rust-accelerated core:** Haversine distance calculations and other compute-heavy kernels run in compiled Rust via PyO3.
 - **Drop-in API:** function signatures mirror the original skmob library so migration is straightforward.
-- **Measured validation:** correctness tests, Python coverage, profiling, and pytest-benchmark workloads make compatibility and performance claims reproducible.
+- **Measured validation:** correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
 
 ## Installation
 
@@ -25,7 +25,7 @@ For development or building from source, see the [Getting Started](getting-start
 
 ## Validation and Performance
 
-skmob2 is tested as both a compatibility project and a performance project. The correctness suite covers the Python package, exercises pandas and Polars inputs, and includes optional comparisons with skmob where those dependencies are installed. The benchmark suite uses `pytest-benchmark` on representative mobility workloads, including Brightkite-derived data slices.
+skmob2 is tested as both a compatibility project and a performance project. The correctness suite covers the Python package, exercises pandas and Polars inputs, and includes optional comparisons with skmob where those dependencies are installed. The benchmark suite uses standalone perf-counter scripts on representative mobility workloads, including Brightkite-derived data slices.
 
 For the reasoning behind this validation model and the commands used to reproduce it, see [Correctness, coverage, and benchmarking](explanations/correctness-coverage-and-benchmarking.md).
 

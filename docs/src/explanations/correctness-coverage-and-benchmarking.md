@@ -30,13 +30,13 @@ That distinction matters because skmob2 has two implementation layers. The Pytho
 
 skmob2 exists because mobility analysis can become expensive on large trajectory datasets. Benchmarks make that design pressure visible. They show whether compiled kernels and backend-agnostic data preparation improve real workloads, rather than only making individual functions look elegant in isolation.
 
-The benchmark suite uses `pytest-benchmark` and includes Brightkite-sized slices where appropriate:
+The benchmark suite uses standalone `time.perf_counter()` scripts and includes Brightkite-sized slices where appropriate:
 
 ```bash
 bash tests/run_benchmarks.sh
 ```
 
-Some benchmarks compare skmob2 with skmob. Others exercise pandas and Polars inputs through the same public API. MovingPandas comparisons are included where the optional dependencies are installed, because they answer a different question: how skmob2 behaves next to another trajectory-analysis ecosystem rather than only next to its direct predecessor. The benchmark runner dispatches those comparison groups to compatible virtual environments: `.venv` for skmob2 and movingpandas when installed there, and `.venv-skmob` for the legacy scikit-mobility stack.
+Some benchmarks compare skmob2 with skmob. Others exercise pandas and Polars inputs through the same public API. MovingPandas comparisons are included where the optional dependencies are installed and a comparable operation exists, because they answer a different question: how skmob2 behaves next to another trajectory-analysis ecosystem rather than only next to its direct predecessor. The benchmark runner dispatches those comparison groups to compatible virtual environments: `.venv` for skmob2 and movingpandas when installed there, and `.venv-skmob` for the legacy scikit-mobility stack.
 
 Benchmark numbers should be read as measurements from a particular environment, dataset slice, dependency set, and implementation version. They are useful for tracking regressions and comparing approaches, but they are not permanent guarantees about every machine or every trajectory dataset.
 

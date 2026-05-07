@@ -1,22 +1,11 @@
 #!/usr/bin/env bash
-# Run benchmark tests using pytest-benchmark.
-# Results are printed as a table by default.
+# Run standalone perf-counter benchmark suites.
 #
 # Usage:
-#   bash tests/run_benchmarks.sh                                  # table output
-#   bash tests/run_benchmarks.sh --benchmark-json=results.json    # save JSON
-#   bash tests/run_benchmarks.sh --benchmark-save=baseline        # save named snapshot
-#   bash tests/run_benchmarks.sh -k 1k                            # only 1k-row size
-#   bash tests/run_benchmarks.sh -k radius_of_gyration            # one workload family
+#   bash tests/run_benchmarks.sh
+#   bash tests/run_benchmarks.sh --sizes 1000 --iterations 1 --sleep 0
 #
-# Compare saved snapshots:
-#   pytest-benchmark compare baseline 0001
-#
-# Any extra arguments are forwarded directly to pytest.
-# When comparison benchmarks are selected, this script runs each comparison in
-# the virtual environment with compatible dependencies:
-#   .venv        -> skmob2 pandas/Polars and movingpandas, when installed there
-#   .venv-skmob  -> skmob, which requires the legacy Shapely/geopandas stack
+# Any extra arguments are forwarded to each standalone speed suite.
 
 set -euo pipefail
 
@@ -47,55 +36,17 @@ can_import() {
     run_python "$venv" -c "import ${module}" >/dev/null 2>&1
 }
 
-pytest_args_for_env() {
-    local label="$1"
-    shift
-    local arg value path stem
-    for arg in "$@"; do
-        case "$arg" in
-            --benchmark-json=*)
-                value="${arg#--benchmark-json=}"
-                if [[ "$value" == *.json ]]; then
-                    stem="${value%.json}"
-                    printf '%s\n' "--benchmark-json=${stem}.${label}.json"
-                else
-                    printf '%s\n' "--benchmark-json=${value}.${label}"
-                fi
-                ;;
-            --benchmark-save=*)
-                value="${arg#--benchmark-save=}"
-                printf '%s\n' "--benchmark-save=${value}-${label}"
-                ;;
-            *)
-                printf '%s\n' "$arg"
-                ;;
-        esac
-    done
-}
-
-run_benchmarks() {
-    local label="$1"
-    local venv="$2"
-    local marker="$3"
-    shift 3
-    local args=()
-    mapfile -t args < <(pytest_args_for_env "$label" "$@")
-    run_python "$venv" -m pytest tests/benchmarks/ -v -m "$marker" "${args[@]}"
-}
-
-if ! run_python "$MAIN_VENV" -m pip --version >/dev/null 2>&1; then
-    run_python "$MAIN_VENV" -m ensurepip --upgrade
-fi
-
 echo "==> Building skmob2._core in .venv ..."
 run_python "$MAIN_VENV" -m maturin develop
 
-echo "==> Running skmob2 benchmarks in .venv ..."
-run_benchmarks "skmob2" "$MAIN_VENV" "not skmob and not movingpandas" "$@"
+echo "==> Running skmob2 pandas/Polars benchmark suites in .venv ..."
+run_python "$MAIN_VENV" tests/benchmarks/speed_spatial_suite.py --library skmob2 --backend both "$@"
+run_python "$MAIN_VENV" tests/benchmarks/speed_visits_suite.py --library skmob2 --backend both "$@"
 
 if [ -x "$SKMOB_VENV/bin/python" ]; then
-    echo "==> Running skmob comparison benchmarks in .venv-skmob ..."
-    run_benchmarks "skmob" "$SKMOB_VENV" "skmob" "$@"
+    echo "==> Running original skmob benchmark suites in .venv-skmob ..."
+    run_python "$SKMOB_VENV" tests/benchmarks/speed_spatial_suite.py --library skmob "$@"
+    run_python "$SKMOB_VENV" tests/benchmarks/speed_visits_suite.py --library skmob "$@"
 else
     echo "WARNING: .venv-skmob not found; skipping skmob comparison benchmarks."
     echo "         Create it with the legacy skmob stack before running skmob comparisons."
@@ -103,9 +54,9 @@ fi
 
 if [ -x "$MOVINGPANDAS_VENV/bin/python" ] && can_import "$MOVINGPANDAS_VENV" movingpandas; then
     label="${MOVINGPANDAS_VENV#$REPO_ROOT/}"
-    echo "==> Running movingpandas comparison benchmarks in ${label} ..."
-    run_benchmarks "movingpandas" "$MOVINGPANDAS_VENV" "movingpandas" "$@"
+    echo "==> Running MovingPandas spatial benchmark suite in ${label} ..."
+    run_python "$MOVINGPANDAS_VENV" tests/benchmarks/speed_spatial_suite.py --library movingpandas "$@"
 else
-    echo "WARNING: movingpandas is not importable in ${MOVINGPANDAS_VENV#$REPO_ROOT/}; skipping movingpandas benchmarks."
+    echo "WARNING: movingpandas is not importable in ${MOVINGPANDAS_VENV#$REPO_ROOT/}; skipping MovingPandas benchmarks."
     echo "         Install it with: source .venv/bin/activate && uv pip install -e '.[dev-movingpandas]'"
 fi

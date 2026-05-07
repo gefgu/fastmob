@@ -29,7 +29,6 @@ dev = [
     "pre-commit",
     "pytest-memray",
     "pytest",
-    "pytest-benchmark",
     "pytest-cov",
     "pyarrow",
     "py-spy",
@@ -65,7 +64,7 @@ docs = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py", "bench_*.py"]
+python_files = ["test_*.py"]
 
 [tool.coverage.run]
 branch = true
