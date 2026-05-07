@@ -152,6 +152,21 @@ class TestPrepareTrajectory:
         assert df.get_column(lat_col).dtype == nw.Float64
         assert df.get_column(lng_col).dtype == nw.Float64
 
+    def test_datetime_strings_are_converted(self):
+        import narwhals as nw
+        from skmob2.measures._common import _prepare_trajectory
+
+        df_in = pd.DataFrame(
+            {
+                "datetime": ["2020-01-01 01:00:00", "2020-01-01 00:00:00"],
+                "lat": [1.0, 2.0],
+                "lng": [10.0, 20.0],
+            }
+        )
+        df, datetime_col, *_ = _prepare_trajectory(df_in)
+        assert df.get_column(datetime_col).dtype == nw.Datetime
+        assert df.get_column("lat").to_list() == [2.0, 1.0]
+
     def test_sorted_by_uid_then_datetime(self):
         from skmob2.measures._common import _ROW_ORDER_COL, _prepare_trajectory
 
