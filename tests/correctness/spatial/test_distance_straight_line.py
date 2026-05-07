@@ -102,16 +102,16 @@ def test_total_distance_numpy_helper_validation_errors():
 
 
 @pytest.mark.skmob
-def test_distance_straight_line_matches_skmob(brightkite_skmob):
-    """skmob2 result closely matches skmob on the Brightkite dataset."""
+def test_distance_straight_line_matches_skmob(comparison_skmob):
+    """skmob2 result closely matches skmob on each comparison dataset."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob.measures.individual import distance_straight_line as skmob_dsl
     from skmob2.measures.spatial.distance_straight_line import (
         distance_straight_line as skmob2_dsl,
     )
 
-    skmob_result = skmob_dsl(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_dsl(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_dsl(skmob2_input)
 
     skmob_dict = dict(

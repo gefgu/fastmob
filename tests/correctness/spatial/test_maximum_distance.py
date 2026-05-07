@@ -120,14 +120,14 @@ def test_maximum_distance_numpy_helper_validation_errors():
 
 
 @pytest.mark.skmob
-def test_maximum_distance_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_maximum_distance_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob.measures.individual import maximum_distance as skmob_md
     from skmob2.measures.spatial.maximum_distance import maximum_distance as skmob2_md
 
-    skmob_result = skmob_md(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_md(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_md(skmob2_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["maximum_distance"].tolist()))

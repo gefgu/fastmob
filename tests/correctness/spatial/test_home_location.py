@@ -124,13 +124,13 @@ def test_home_location_polars_known_values(synthetic_tdf_polars):
 
 
 @pytest.mark.skmob
-def test_home_location_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_home_location_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     from skmob.measures.individual import home_location as skmob_hl
     from skmob2.measures.spatial.home_location import home_location as skmob2_hl
 
-    skmob_result = skmob_hl(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_hl(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_hl(skmob2_input)
 
     skmob_dict = {row["uid"]: (row["lat"], row["lng"]) for row in skmob_result.to_dict(orient="records")}

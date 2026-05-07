@@ -98,14 +98,14 @@ def test_compress_multiuser_all_users_processed(compress_tdf):
 
 
 @pytest.mark.skmob
-def test_compress_matches_skmob(brightkite_skmob):
-    """Row count must match skmob on Brightkite dataset."""
+def test_compress_matches_skmob(comparison_skmob):
+    """Row count must match skmob on each comparison dataset."""
     from skmob.preprocessing import compression as skmob_compression
     import pandas as pd
 
-    skmob_result = skmob_compression.compress(brightkite_skmob, spatial_radius_km=0.2)
+    skmob_result = skmob_compression.compress(comparison_skmob, spatial_radius_km=0.2)
     our_result = compress(
-        pd.DataFrame(brightkite_skmob),
+        pd.DataFrame(comparison_skmob),
         spatial_radius_km=0.2,
         datetime_col="datetime",
         lat_col="lat",

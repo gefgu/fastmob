@@ -140,14 +140,14 @@ def test_waiting_times_numpy_helper_validation_errors():
 
 
 @pytest.mark.skmob
-def test_waiting_times_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_waiting_times_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob.measures.individual import waiting_times as skmob_wt
     from skmob2.measures.spatial.waiting_times import waiting_times as skmob2_wt
 
-    skmob_result = skmob_wt(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_wt(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_wt(skmob2_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["waiting_times"].tolist()))

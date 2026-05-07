@@ -601,14 +601,14 @@ def test_radius_of_gyration_arrow_nulls_are_filtered():
 
 
 @pytest.mark.skmob
-def test_radius_of_gyration_matches_skmob(brightkite_skmob):
+def test_radius_of_gyration_matches_skmob(comparison_skmob):
     """skmob2 RoG must agree with skmob's reference implementation within 0.02 km."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob.measures.individual import radius_of_gyration as skmob_rog
     from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration as skmob2_rog
 
-    skmob_result = skmob_rog(brightkite_skmob, show_progress=False)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_rog(comparison_skmob, show_progress=False)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_rog(skmob2_input)
 
     skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)

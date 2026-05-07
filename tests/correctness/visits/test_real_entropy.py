@@ -158,14 +158,14 @@ def test_real_entropy_output_backend_matches_input(synthetic_tdf):
 
 
 @pytest.mark.skmob
-def test_real_entropy_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_real_entropy_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import real_entropy as skmob_re
     from skmob2.measures.visits.real_entropy import real_entropy as skmob2_re
 
-    skmob_result = skmob_re(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_re(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_re(skmob2_input)
 
     skmob_dict = dict(

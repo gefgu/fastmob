@@ -187,15 +187,15 @@ def test_k_radius_of_gyration_pandas_polars_agree(synthetic_tdf, synthetic_tdf_p
 
 
 @pytest.mark.skmob
-def test_k_radius_of_gyration_matches_skmob(brightkite_skmob):
+def test_k_radius_of_gyration_matches_skmob(comparison_skmob):
     """skmob2 k-RoG must agree with skmob's reference implementation within rtol=1e-5."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob.measures.individual import k_radius_of_gyration as skmob_krg
     from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration as skmob2_krg
 
     k = 2
-    skmob_result = skmob_krg(brightkite_skmob, k=k, show_progress=False)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_krg(comparison_skmob, k=k, show_progress=False)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_krg(skmob2_input, k=k)
 
     skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)

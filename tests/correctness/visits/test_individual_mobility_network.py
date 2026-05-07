@@ -163,16 +163,16 @@ def test_imn_polars_known_values(synthetic_tdf_polars):
 
 
 @pytest.mark.skmob
-def test_imn_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_imn_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import individual_mobility_network as skmob_imn
     from skmob2.measures.visits.individual_mobility_network import (
         individual_mobility_network as skmob2_imn,
     )
 
-    skmob_result = skmob_imn(brightkite_skmob, show_progress=False)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_imn(comparison_skmob, show_progress=False)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_imn(skmob2_input)
 
     # Build comparable dicts: {uid: {(lat_o,lng_o,lat_d,lng_d): n_trips}}.

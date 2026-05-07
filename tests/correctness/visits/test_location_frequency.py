@@ -196,14 +196,14 @@ def test_location_frequency_as_ranks_returns_list():
 
 
 @pytest.mark.skmob
-def test_location_frequency_matches_skmob(brightkite_skmob):
-    """skmob2 counts match skmob on the Brightkite dataset."""
+def test_location_frequency_matches_skmob(comparison_skmob):
+    """skmob2 counts match skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import location_frequency as skmob_lf
     from skmob2.measures.visits.location_frequency import location_frequency as skmob2_lf
 
-    skmob_result = skmob_lf(brightkite_skmob, show_progress=False)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_lf(comparison_skmob, show_progress=False)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_lf(skmob2_input)
 
     # Build comparable dicts: {uid: {(lat, lng): count}}.

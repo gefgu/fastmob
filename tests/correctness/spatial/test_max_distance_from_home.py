@@ -81,14 +81,14 @@ def test_max_distance_from_home_polars_known_values(synthetic_tdf_polars):
 
 
 @pytest.mark.skmob
-def test_max_distance_from_home_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_max_distance_from_home_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob.measures.individual import max_distance_from_home as skmob_mdfh
     from skmob2.measures.spatial.max_distance_from_home import max_distance_from_home as skmob2_mdfh
 
-    skmob_result = skmob_mdfh(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_mdfh(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_mdfh(skmob2_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["max_distance_from_home"].tolist()))

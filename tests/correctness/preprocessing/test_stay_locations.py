@@ -151,14 +151,14 @@ def test_stay_locations_no_data_gap_resets_stop():
 
 
 @pytest.mark.skmob
-def test_stay_locations_matches_skmob(brightkite_skmob):
-    """Stop count must match skmob on Brightkite dataset."""
+def test_stay_locations_matches_skmob(comparison_skmob):
+    """Stop count must match skmob on each comparison dataset."""
     from skmob.preprocessing import detection as skmob_detection
     import pandas as pd
 
-    skmob_result = skmob_detection.stay_locations(brightkite_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
+    skmob_result = skmob_detection.stay_locations(comparison_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     our_result = stay_locations(
-        pd.DataFrame(brightkite_skmob),
+        pd.DataFrame(comparison_skmob),
         spatial_radius_km=0.2,
         minutes_for_a_stop=20.0,
         datetime_col="datetime",

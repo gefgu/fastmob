@@ -158,16 +158,16 @@ def test_uncorrelated_entropy_polars_known_values(synthetic_tdf_polars):
 
 
 @pytest.mark.skmob
-def test_uncorrelated_entropy_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_uncorrelated_entropy_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import uncorrelated_entropy as skmob_ue
     from skmob2.measures.visits.uncorrelated_entropy import (
         uncorrelated_entropy as skmob2_ue,
     )
 
-    skmob_result = skmob_ue(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_ue(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_ue(skmob2_input)
 
     skmob_dict = dict(

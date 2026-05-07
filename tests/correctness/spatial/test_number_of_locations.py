@@ -102,16 +102,16 @@ def test_number_of_locations_polars_known_values(synthetic_tdf_polars):
 
 
 @pytest.mark.skmob
-def test_number_of_locations_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_number_of_locations_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import number_of_locations as skmob_nol
     from skmob2.measures.spatial.number_of_locations import (
         number_of_locations as skmob2_nol,
     )
 
-    skmob_result = skmob_nol(brightkite_skmob)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_nol(comparison_skmob)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_nol(skmob2_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["number_of_locations"].tolist()))

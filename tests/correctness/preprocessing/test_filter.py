@@ -90,16 +90,16 @@ def test_filter_zero_dt_removes_duplicate_timestamps():
 
 
 @pytest.mark.skmob
-def test_filter_matches_skmob(brightkite_skmob):
+def test_filter_matches_skmob(comparison_skmob):
     """Results must closely match skmob despite tiny Haversine threshold drift."""
     from skmob.preprocessing import filtering as skmob_filtering
     import pandas as pd
 
-    skmob_result = skmob_filtering.filter(brightkite_skmob, max_speed_kmh=500.0)
+    skmob_result = skmob_filtering.filter(comparison_skmob, max_speed_kmh=500.0)
     skmob_result_df = pd.DataFrame(skmob_result)
 
     our_result = traj_filter(
-        pd.DataFrame(brightkite_skmob),
+        pd.DataFrame(comparison_skmob),
         max_speed_kmh=500.0,
         datetime_col="datetime",
         lat_col="lat",

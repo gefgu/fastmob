@@ -6,6 +6,8 @@
 # Usage:
 #   bash tests/run_correctness.sh              # synthetic tests only
 #   bash tests/run_correctness.sh -m skmob     # skmob-comparison tests only
+#   bash tests/run_correctness.sh -m skmob --geolife-mode=slice
+#   bash tests/run_correctness.sh -m skmob --geolife-mode=full
 #   bash tests/run_correctness.sh -m ""        # all correctness tests
 #   bash tests/run_correctness.sh -v           # verbose output
 #

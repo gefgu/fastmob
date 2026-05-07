@@ -106,19 +106,19 @@ def test_cluster_polars_backend(cluster_tdf_polars):
 
 
 @pytest.mark.skmob
-def test_cluster_matches_skmob(brightkite_skmob):
-    """Cluster labels must match skmob on Brightkite stop data."""
+def test_cluster_matches_skmob(comparison_skmob):
+    """Cluster labels must match skmob on comparison stop data."""
     from skmob.preprocessing import detection as skmob_detection
     from skmob.preprocessing import clustering as skmob_clustering
     import pandas as pd
 
-    skmob_stops = skmob_detection.stay_locations(brightkite_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
+    skmob_stops = skmob_detection.stay_locations(comparison_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     skmob_result = skmob_clustering.cluster(skmob_stops, cluster_radius_km=0.1)
 
     from skmob2.preprocessing import stay_locations
 
     our_stops = stay_locations(
-        pd.DataFrame(brightkite_skmob),
+        pd.DataFrame(comparison_skmob),
         spatial_radius_km=0.2,
         minutes_for_a_stop=20.0,
         datetime_col="datetime",

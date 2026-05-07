@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import importlib
+
 import pandas as pd
 import pytest
 
 from ..shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
+from ..shared.geolife import GEOLIFE_DEFAULT_ROWS, load_geolife_pandas
 
 # ---------------------------------------------------------------------------
 # Pre-computed expected values
@@ -106,12 +109,19 @@ def synthetic_tdf_polars(synthetic_rows):
 # ---------------------------------------------------------------------------
 
 
+def _import_skmob_or_skip():
+    try:
+        return importlib.import_module("skmob")
+    except ImportError as exc:
+        pytest.skip(f"skmob is not importable: {exc}")
+
+
 @pytest.fixture(scope="session")
 def brightkite_skmob():
     """Load Brightkite data as skmob.TrajDataFrame; skipped when skmob is absent."""
     import urllib.request
 
-    skmob = pytest.importorskip("skmob")
+    skmob = _import_skmob_or_skip()
 
     _BRIGHTKITE_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not _BRIGHTKITE_PATH.exists():
@@ -145,9 +155,67 @@ def brightkite_skmob():
     )
 
 
+@pytest.fixture(scope="session")
+def geolife_pd(pytestconfig):
+    """Load GeoLife data as a normalized pandas DataFrame."""
+    mode = pytestconfig.getoption("--geolife-mode")
+    rows = pytestconfig.getoption("--geolife-rows")
+    try:
+        return load_geolife_pandas(mode=mode, rows=rows)
+    except Exception as exc:
+        pytest.skip(f"GeoLife dataset is not available: {exc}")
+
+
+@pytest.fixture(scope="session")
+def geolife_skmob(pytestconfig):
+    """Load GeoLife data as skmob.TrajDataFrame; skipped when skmob is absent."""
+    skmob = _import_skmob_or_skip()
+    mode = pytestconfig.getoption("--geolife-mode")
+    rows = pytestconfig.getoption("--geolife-rows")
+    try:
+        geolife_pd = load_geolife_pandas(mode=mode, rows=rows)
+    except Exception as exc:
+        pytest.skip(f"GeoLife dataset is not available: {exc}")
+    return skmob.TrajDataFrame(
+        geolife_pd,
+        latitude="latitude",
+        longitude="longitude",
+        datetime="check-in_time",
+        user_id="user",
+    )
+
+
+@pytest.fixture(scope="session", params=["brightkite", "geolife"])
+def comparison_skmob(request):
+    """Dataset-backed skmob.TrajDataFrame for skmob/skmob2 parity tests."""
+    if request.param == "brightkite":
+        return request.getfixturevalue("brightkite_skmob")
+    if request.param == "geolife":
+        return request.getfixturevalue("geolife_skmob")
+    raise AssertionError(f"Unknown comparison dataset: {request.param}")
+
+
 # ---------------------------------------------------------------------------
 # Marker registration
 # ---------------------------------------------------------------------------
+
+
+def pytest_addoption(parser):
+    group = parser.getgroup("skmob2 correctness")
+    group.addoption(
+        "--geolife-mode",
+        action="store",
+        choices=("slice", "full"),
+        default="slice",
+        help="GeoLife comparison mode for skmob correctness tests. Defaults to a deterministic slice.",
+    )
+    group.addoption(
+        "--geolife-rows",
+        action="store",
+        type=int,
+        default=GEOLIFE_DEFAULT_ROWS,
+        help=f"Maximum GeoLife rows to load in slice mode. Defaults to {GEOLIFE_DEFAULT_ROWS}.",
+    )
 
 
 def pytest_configure(config):

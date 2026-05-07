@@ -505,7 +505,7 @@ def test_jump_lengths_time_ordered_numpy_helper_validation_errors():
 
 
 @pytest.mark.skmob
-def test_jump_lengths_matches_skmob(brightkite_skmob):
+def test_jump_lengths_matches_skmob(comparison_skmob):
     pytest.importorskip(
         "skmob2._core",
         reason="Build the skmob2 extension first (maturin develop)",
@@ -514,8 +514,8 @@ def test_jump_lengths_matches_skmob(brightkite_skmob):
     from skmob.measures.individual import jump_lengths as skmob_jl
     from skmob2.measures.spatial.jump_lengths import jump_lengths as skmob2_jl
 
-    skmob_result = skmob_jl(brightkite_skmob, show_progress=False, merge=False)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_jl(comparison_skmob, show_progress=False, merge=False)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_jl(skmob2_input, merge=False)
 
     baseline = _normalize_result(skmob_result)

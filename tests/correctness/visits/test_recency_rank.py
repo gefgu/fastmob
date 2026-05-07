@@ -131,14 +131,14 @@ def test_recency_rank_polars_known_values(synthetic_tdf_polars):
 
 
 @pytest.mark.skmob
-def test_recency_rank_matches_skmob(brightkite_skmob):
-    """skmob2 result matches skmob on the Brightkite dataset."""
+def test_recency_rank_matches_skmob(comparison_skmob):
+    """skmob2 result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import recency_rank as skmob_rr
     from skmob2.measures.visits.recency_rank import recency_rank as skmob2_rr
 
-    skmob_result = skmob_rr(brightkite_skmob, show_progress=False)
-    skmob2_input = pd.DataFrame(brightkite_skmob).copy()
+    skmob_result = skmob_rr(comparison_skmob, show_progress=False)
+    skmob2_input = pd.DataFrame(comparison_skmob).copy()
     skmob2_result = skmob2_rr(skmob2_input)
 
     # Build comparable {uid: {(lat, lng): rank}} dicts.
