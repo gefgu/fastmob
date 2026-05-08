@@ -17,9 +17,11 @@ def test_build_profile_command_function_scope_uses_pid_placeholder(tmp_path):
     assert profile.scope == "function"
     assert profile.implementation == "skmob2"
     assert profile.output_path == tmp_path / "skmob2" / "radius_of_gyration.json.gz"
-    assert profile.command[:5] == [
+    assert profile.command[:7] == [
         "samply",
         "record",
+        "--save-only",
+        "--unstable-presymbolicate",
         "--no-open",
         "--rate",
         "1000",

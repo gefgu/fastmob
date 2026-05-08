@@ -96,6 +96,8 @@ def build_profile_command(
         command = [
             samply_bin,
             "record",
+            "--save-only",
+            "--unstable-presymbolicate",
             "--no-open",
             "--rate",
             str(rate),
@@ -108,6 +110,8 @@ def build_profile_command(
         command = [
             samply_bin,
             "record",
+            "--save-only",
+            "--unstable-presymbolicate",
             "--no-open",
             "--rate",
             str(rate),
