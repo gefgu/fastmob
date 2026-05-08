@@ -86,8 +86,8 @@ def compress(
         uid_col=uid_col,
     )
 
-    lats: list[float] = df.get_column(lat_col).to_list()
-    lngs: list[float] = df.get_column(lng_col).to_list()
+    lats = df.get_column(lat_col).to_numpy()
+    lngs = df.get_column(lng_col).to_numpy()
 
     _, ranges = _build_user_ranges(df, uid_col)
 

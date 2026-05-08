@@ -218,6 +218,26 @@ pub(crate) fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float6
         .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))
 }
 
+/// Computes the median of a mutable slice in-place using quickselect (O(n) average).
+///
+/// Mutates the slice order as a side effect — callers that need the original order
+/// must clone before calling. Returns `f64::NAN` for empty slices.
+pub(crate) fn median_slice_in_place(v: &mut [f64]) -> f64 {
+    let n = v.len();
+    if n == 0 {
+        return f64::NAN;
+    }
+    let mid = n / 2;
+    v.select_nth_unstable_by(mid, |a, b| a.total_cmp(b));
+    if n.is_multiple_of(2) {
+        // Left partition v[..mid] is unordered but all ≤ v[mid]; scan for max.
+        let left_max = v[..mid].iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        (left_max + v[mid]) / 2.0
+    } else {
+        v[mid]
+    }
+}
+
 /// Validates that a uid array has the same length as the coordinate array.
 ///
 /// Returns a `PyValueError` with a message listing all four affected columns when lengths differ.

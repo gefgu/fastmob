@@ -95,13 +95,13 @@ def filter(
         uid_col=uid_col,
     )
 
-    timestamps_s: list[float] = (
+    timestamps_s = (
         df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__"))
         .get_column("__ts_s__")
-        .to_list()
+        .to_numpy()
     )
-    lats: list[float] = df.get_column(lat_col).to_list()
-    lngs: list[float] = df.get_column(lng_col).to_list()
+    lats = df.get_column(lat_col).to_numpy()
+    lngs = df.get_column(lng_col).to_numpy()
 
     _, ranges = _build_user_ranges(df, uid_col)
 

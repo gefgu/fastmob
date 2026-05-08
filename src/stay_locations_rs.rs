@@ -1,6 +1,9 @@
+use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
+use rayon::prelude::*;
 
 use crate::haversine::haversine_km;
+use crate::utils::median_slice_in_place;
 
 type StayLocationsBatchResult = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<usize>);
 
@@ -31,6 +34,7 @@ fn detect_stops_for_user(
     let mut lon_0 = lngs[0];
     let mut t_0 = times[0];
 
+    // Reusable accumulators — cleared with .clear() to keep heap capacity.
     let mut sum_lat: Vec<f64> = vec![lat_0];
     let mut sum_lon: Vec<f64> = vec![lon_0];
     let mut sum_t: Vec<f64> = vec![t_0];
@@ -49,10 +53,10 @@ fn detect_stops_for_user(
             lat_0 = lat;
             lon_0 = lon;
             t_0 = t;
-            sum_lat = Vec::new();
-            sum_lon = Vec::new();
-            sum_t = Vec::new();
-            speeds_kmh = Vec::new();
+            sum_lat.clear();
+            sum_lon.clear();
+            sum_t.clear();
+            speeds_kmh.clear();
 
             sum_lat.push(lat);
             sum_lon.push(lon);
@@ -75,11 +79,12 @@ fn detect_stops_for_user(
         if dr > stop_radius_km || is_last {
             if dt_min > minutes_for_a_stop || is_last {
                 let mut final_t = t;
-                let mut effective_sum_lat = sum_lat.clone();
-                let mut effective_sum_lon = sum_lon.clone();
+                // Determine the end of the accumulator slice to use for median.
+                // Trimming avoids cloning the full accumulator — we just compute
+                // the endpoint and pass a mutable sub-slice to median_slice_in_place.
+                let mut lat_end = sum_lat.len();
 
                 if min_speed_kmh.is_finite() && !speeds_kmh.is_empty() {
-                    // Find how many trailing points exceed min_speed_kmh
                     let mut j = 0usize;
                     for k in 1..speeds_kmh.len() {
                         if speeds_kmh[speeds_kmh.len() - k] < min_speed_kmh {
@@ -88,20 +93,19 @@ fn detect_stops_for_user(
                         }
                     }
                     if j > 1 {
-                        // estimated_final_t = sum_t[-j + 1]
                         let trim_idx = sum_t.len().saturating_sub(j - 1);
                         if trim_idx > 0 && trim_idx < sum_t.len() {
                             final_t = sum_t[trim_idx];
-                            effective_sum_lat = effective_sum_lat[..trim_idx - 1].to_vec();
-                            effective_sum_lon = effective_sum_lon[..trim_idx - 1].to_vec();
+                            lat_end = trim_idx.saturating_sub(1);
                         }
                     }
                 }
 
                 let dur_min = (final_t - t_0) / 60.0;
-                if !effective_sum_lat.is_empty() && dur_min > minutes_for_a_stop {
-                    let stop_lat = median(&effective_sum_lat);
-                    let stop_lon = median(&effective_sum_lon);
+                if lat_end > 0 && dur_min > minutes_for_a_stop {
+                    // In-place quickselect: no clone, no sort.
+                    let stop_lat = median_slice_in_place(&mut sum_lat[..lat_end]);
+                    let stop_lon = median_slice_in_place(&mut sum_lon[..lat_end]);
                     stops.push(Stop {
                         lat: stop_lat,
                         lng: stop_lon,
@@ -111,14 +115,14 @@ fn detect_stops_for_user(
                 }
             }
 
-            // Reset accumulator
+            // Reset accumulator — clear() reuses heap capacity.
             lat_0 = lat;
             lon_0 = lon;
             t_0 = t;
-            sum_lat = Vec::new();
-            sum_lon = Vec::new();
-            sum_t = Vec::new();
-            speeds_kmh = Vec::new();
+            sum_lat.clear();
+            sum_lon.clear();
+            sum_t.clear();
+            speeds_kmh.clear();
         }
 
         sum_lat.push(lat);
@@ -129,48 +133,41 @@ fn detect_stops_for_user(
     stops
 }
 
-fn median(v: &[f64]) -> f64 {
-    if v.is_empty() {
-        return 0.0;
-    }
-    let mut sorted = v.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let mid = sorted.len() / 2;
-    if sorted.len().is_multiple_of(2) {
-        (sorted[mid - 1] + sorted[mid]) / 2.0
-    } else {
-        sorted[mid]
-    }
-}
-
-#[pyfunction]
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn detect_stay_locations_batch(
-    latitudes: Vec<f64>,
-    longitudes: Vec<f64>,
-    timestamps_s: Vec<f64>,
-    ranges: Vec<(usize, usize)>,
+fn detect_stay_locations_batch_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    timestamps_s: &[f64],
+    ranges: &[(usize, usize)],
     stop_radius_km: f64,
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
-) -> PyResult<StayLocationsBatchResult> {
-    let mut out_lats: Vec<f64> = Vec::new();
-    let mut out_lngs: Vec<f64> = Vec::new();
-    let mut entry_times: Vec<f64> = Vec::new();
-    let mut leaving_times: Vec<f64> = Vec::new();
-    let mut user_range_idx: Vec<usize> = Vec::new();
+) -> StayLocationsBatchResult {
+    // Parallel stop detection across users.
+    let per_user_stops: Vec<Vec<Stop>> = ranges
+        .par_iter()
+        .map(|&(start, end)| {
+            detect_stops_for_user(
+                &latitudes[start..end],
+                &longitudes[start..end],
+                &timestamps_s[start..end],
+                stop_radius_km,
+                minutes_for_a_stop,
+                no_data_for_minutes,
+                min_speed_kmh,
+            )
+        })
+        .collect();
 
-    for (range_idx, &(start, end)) in ranges.iter().enumerate() {
-        let stops = detect_stops_for_user(
-            &latitudes[start..end],
-            &longitudes[start..end],
-            &timestamps_s[start..end],
-            stop_radius_km,
-            minutes_for_a_stop,
-            no_data_for_minutes,
-            min_speed_kmh,
-        );
+    let n_stops: usize = per_user_stops.iter().map(|s| s.len()).sum();
+    let mut out_lats = Vec::with_capacity(n_stops);
+    let mut out_lngs = Vec::with_capacity(n_stops);
+    let mut entry_times = Vec::with_capacity(n_stops);
+    let mut leaving_times = Vec::with_capacity(n_stops);
+    let mut user_range_idx = Vec::with_capacity(n_stops);
+
+    for (range_idx, stops) in per_user_stops.iter().enumerate() {
         for stop in stops {
             out_lats.push(stop.lat);
             out_lngs.push(stop.lng);
@@ -180,11 +177,29 @@ pub(crate) fn detect_stay_locations_batch(
         }
     }
 
-    Ok((
-        out_lats,
-        out_lngs,
-        entry_times,
-        leaving_times,
-        user_range_idx,
+    (out_lats, out_lngs, entry_times, leaving_times, user_range_idx)
+}
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn detect_stay_locations_batch<'py>(
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    timestamps_s: PyReadonlyArray1<'py, f64>,
+    ranges: Vec<(usize, usize)>,
+    stop_radius_km: f64,
+    minutes_for_a_stop: f64,
+    no_data_for_minutes: f64,
+    min_speed_kmh: f64,
+) -> PyResult<StayLocationsBatchResult> {
+    Ok(detect_stay_locations_batch_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        timestamps_s.as_slice()?,
+        &ranges,
+        stop_radius_km,
+        minutes_for_a_stop,
+        no_data_for_minutes,
+        min_speed_kmh,
     ))
 }

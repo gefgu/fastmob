@@ -1,3 +1,4 @@
+use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 use rayon::prelude::*;
 
@@ -73,7 +74,8 @@ fn filter_user_slice(
 
         let orig_i = kept_idx[ci];
 
-        // Build DrDt for the next `ahead` kept points
+        // Build DrDt for the next `ahead` kept points.
+        // with_capacity avoids a realloc: the iterator size_hint is known.
         let dr_dt: Vec<(f64, f64)> = (1..=ahead)
             .map(|j| {
                 let orig_j = kept_idx[ci + j];
@@ -94,17 +96,15 @@ fn filter_user_slice(
         let max_dist = dr_dt[imax].0;
         let threshold = max_dist * ratio_max;
 
-        // Find the first index after imax where distance drops back below threshold
-        let inside: Vec<usize> = (imax..dr_dt.len())
-            .filter(|&k| dr_dt[k].0 < threshold)
-            .collect();
-
-        if inside.is_empty() {
-            ci += 1;
-            continue;
-        }
-
-        let imin = inside[0];
+        // Find the first index after imax where distance drops back below threshold.
+        // Use iterator .find() to avoid allocating a Vec<usize> for the inside set.
+        let imin = match (imax..dr_dt.len()).find(|&k| dr_dt[k].0 < threshold) {
+            Some(k) => k,
+            None => {
+                ci += 1;
+                continue;
+            }
+        };
 
         // Compute sum of Dr and Dt for the loop portion [0..imin]
         let (total_dr, total_dt) = dr_dt[..imin]
@@ -132,19 +132,18 @@ fn filter_user_slice(
     keep
 }
 
-#[pyfunction]
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn filter_trajectory_batch(
-    latitudes: Vec<f64>,
-    longitudes: Vec<f64>,
-    timestamps_s: Vec<f64>,
-    ranges: Vec<(usize, usize)>,
+fn filter_batch_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    timestamps_s: &[f64],
+    ranges: &[(usize, usize)],
     max_speed_kmh: f64,
     include_loops: bool,
     speed_kmh: f64,
     max_loop: usize,
     ratio_max: f64,
-) -> PyResult<Vec<bool>> {
+) -> Vec<bool> {
     let n = latitudes.len();
     let mut mask = vec![true; n];
 
@@ -171,12 +170,12 @@ pub(crate) fn filter_trajectory_batch(
         }
     }
 
-    Ok(mask)
+    mask
 }
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn filter_trajectory_indices_batch(
+pub(crate) fn filter_trajectory_batch(
     latitudes: Vec<f64>,
     longitudes: Vec<f64>,
     timestamps_s: Vec<f64>,
@@ -186,18 +185,44 @@ pub(crate) fn filter_trajectory_indices_batch(
     speed_kmh: f64,
     max_loop: usize,
     ratio_max: f64,
-) -> PyResult<Vec<usize>> {
-    let mask = filter_trajectory_batch(
-        latitudes,
-        longitudes,
-        timestamps_s,
-        ranges,
+) -> PyResult<Vec<bool>> {
+    Ok(filter_batch_impl(
+        &latitudes,
+        &longitudes,
+        &timestamps_s,
+        &ranges,
         max_speed_kmh,
         include_loops,
         speed_kmh,
         max_loop,
         ratio_max,
-    )?;
+    ))
+}
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn filter_trajectory_indices_batch<'py>(
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    timestamps_s: PyReadonlyArray1<'py, f64>,
+    ranges: Vec<(usize, usize)>,
+    max_speed_kmh: f64,
+    include_loops: bool,
+    speed_kmh: f64,
+    max_loop: usize,
+    ratio_max: f64,
+) -> PyResult<Vec<usize>> {
+    let mask = filter_batch_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        timestamps_s.as_slice()?,
+        &ranges,
+        max_speed_kmh,
+        include_loops,
+        speed_kmh,
+        max_loop,
+        ratio_max,
+    );
     Ok(mask
         .iter()
         .enumerate()
