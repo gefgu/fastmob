@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 import narwhals as nw
+import pandas as pd
 from skmob2._core import real_entropy_batch as _real_entropy_batch_rust
 
 from .._common import _build_user_ranges, _prepare_trajectory
@@ -132,11 +133,15 @@ def real_entropy(
         uid_col=uid_col,
     )
 
-    loc_key_col = "__skmob2_loc_key__"
-    df = df.with_columns(
-        (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
-    )
-    tokens = df.get_column(loc_key_col).to_list()
+    native = df.to_native()
+    if isinstance(native, pd.DataFrame):
+        tokens = (native[lat_col].astype(str) + "_" + native[lng_col].astype(str)).tolist()
+    else:
+        loc_key_col = "__skmob2_loc_key__"
+        df = df.with_columns(
+            (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
+        )
+        tokens = df.get_column(loc_key_col).to_list()
 
     if uid_col is None:
         entropies = _real_entropy_batch_rust(tokens, [(0, len(tokens))])

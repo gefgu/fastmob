@@ -87,7 +87,7 @@ fn filter_user_slice(
         let imax = dr_dt
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.0.partial_cmp(&b.1.0).unwrap())
+            .max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap())
             .map(|(idx, _)| idx)
             .unwrap_or(0);
 
@@ -172,4 +172,35 @@ pub(crate) fn filter_trajectory_batch(
     }
 
     Ok(mask)
+}
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn filter_trajectory_indices_batch(
+    latitudes: Vec<f64>,
+    longitudes: Vec<f64>,
+    timestamps_s: Vec<f64>,
+    ranges: Vec<(usize, usize)>,
+    max_speed_kmh: f64,
+    include_loops: bool,
+    speed_kmh: f64,
+    max_loop: usize,
+    ratio_max: f64,
+) -> PyResult<Vec<usize>> {
+    let mask = filter_trajectory_batch(
+        latitudes,
+        longitudes,
+        timestamps_s,
+        ranges,
+        max_speed_kmh,
+        include_loops,
+        speed_kmh,
+        max_loop,
+        ratio_max,
+    )?;
+    Ok(mask
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, keep)| keep.then_some(idx))
+        .collect())
 }

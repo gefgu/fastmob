@@ -299,7 +299,15 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
     m.add_function(wrap_pyfunction!(filter_traj::filter_trajectory_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
+        filter_traj::filter_trajectory_indices_batch,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         compress_traj::compress_trajectory_batch,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        compress_traj::compress_trajectory_representatives,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;

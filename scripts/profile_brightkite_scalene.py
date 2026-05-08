@@ -99,6 +99,7 @@ def build_profile_command(
     run_command = [
         scalene_bin,
         "run",
+        "--profile-all",
         "--off",
         "-o",
         str(json_path),
@@ -161,6 +162,8 @@ def run_profiles(args: argparse.Namespace) -> int:
         )
         profile.profile_dir.mkdir(parents=True, exist_ok=True)
 
+        reduced_json_path = ""
+
         started = time.perf_counter()
         status = "dry-run"
         returncode = 0
@@ -178,6 +181,22 @@ def run_profiles(args: argparse.Namespace) -> int:
                 print(f"Rendering Scalene HTML {implementation}:{workload} -> {profile.html_path}")
                 returncode, error = _render_html(profile)
                 status = "ok" if returncode == 0 else "failed"
+                # Optionally generate a reduced JSON summary
+                if returncode == 0 and getattr(args, "reduced", False):
+                    reducer = Path(__file__).resolve().parents[1] / ".agents" / "skills" / "profile-python-scalene" / "scripts" / "reduce_scalene_json.py"
+                    reduced_path = profile.profile_dir / f"{workload}.reduced.json"
+                    reduced_json_cmd = [sys.executable, str(reducer), str(profile.json_path), "--top", str(getattr(args, "reduced_top", 20)), "-o", str(reduced_path)]
+                    if args.dry_run:
+                        print(" ".join(reduced_json_cmd))
+                    else:
+                        print(f"Generating reduced JSON {implementation}:{workload} -> {reduced_path}")
+                        red = subprocess.run(reduced_json_cmd, check=False)
+                        if red.returncode != 0:
+                            error = f"reducer exited with {red.returncode}"
+                            returncode = red.returncode
+                            status = "failed"
+                        else:
+                            reduced_json_path = str(reduced_path)
             else:
                 error = f"scalene run exited with {returncode}"
 
@@ -185,11 +204,11 @@ def run_profiles(args: argparse.Namespace) -> int:
                 exit_code = returncode
                 if not args.continue_on_error:
                     elapsed = time.perf_counter() - started
-                    manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
+                    manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error, reduced_json_path))
                     break
 
         elapsed = time.perf_counter() - started
-        manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error))
+        manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error, reduced_json_path))
 
     write_manifest(output_dir, manifest_rows)
     return exit_code
@@ -227,6 +246,7 @@ def _manifest_row(
     returncode: int,
     elapsed: float,
     error: str,
+    reduced_json_path: str = "",
 ) -> dict[str, Any]:
     return {
         "workload": profile.workload,
@@ -237,6 +257,7 @@ def _manifest_row(
         "returncode": returncode,
         "duration_seconds": round(elapsed, 6),
         "json_path": str(profile.json_path),
+        "reduced_json_path": reduced_json_path,
         "html_path": str(profile.html_path),
         "run_command": " ".join(profile.run_command),
         "html_command": " ".join(profile.html_command),
@@ -259,6 +280,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scalene-bin", default="scalene")
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
     parser.add_argument("--implementation", choices=("skmob2", "skmob", "both"), default="both")
+    parser.add_argument(
+        "--reduced",
+        action="store_true",
+        help="Generate a reduced profile (only high CPU/memory lines).",
+    )
+    parser.add_argument(
+        "--reduced-top",
+        type=int,
+        default=20,
+        help="Number of top entries to keep when generating reduced profiles.",
+    )
     parser.add_argument(
         "--continue-on-error",
         dest="continue_on_error",

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import filter_trajectory_batch as _filter_trajectory_batch
+from skmob2._core import filter_trajectory_indices_batch as _filter_trajectory_indices_batch
 
 from ..measures._common import _build_user_ranges, _prepare_trajectory
 
@@ -105,7 +105,7 @@ def filter(
 
     _, ranges = _build_user_ranges(df, uid_col)
 
-    mask: list[bool] = _filter_trajectory_batch(
+    keep_indices: list[int] = _filter_trajectory_indices_batch(
         lats,
         lngs,
         timestamps_s,
@@ -117,5 +117,4 @@ def filter(
         ratio_max,
     )
 
-    keep_indices = [i for i, k in enumerate(mask) if k]
     return df[keep_indices].to_native()

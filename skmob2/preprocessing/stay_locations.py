@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
 from typing import Any
 
 import narwhals as nw
+import numpy as np
+import pandas as pd
 from skmob2._core import detect_stay_locations_batch as _detect_stay_locations_batch
 
 from ..measures._common import _build_user_ranges, _prepare_trajectory
@@ -139,11 +140,7 @@ def stay_locations(
     # Map user_range_idx → uid value
     stop_uids = [uid_values[idx] for idx in user_range_indices]
 
-    # Convert Unix seconds back to naive UTC datetime objects
-    def _ts_to_dt(ts: float) -> datetime:
-        return datetime.fromtimestamp(ts, tz=timezone.utc).replace(tzinfo=None)
-
-    entry_datetimes = [_ts_to_dt(ts) for ts in entry_times_s]
+    entry_datetimes = _seconds_to_naive_utc(entry_times_s)
 
     out_dict = {
         lat_col: out_lats,
@@ -154,8 +151,17 @@ def stay_locations(
         out_dict[uid_col] = stop_uids
 
     if leaving_time:
-        leaving_datetimes = [_ts_to_dt(ts) for ts in leaving_times_s]
+        leaving_datetimes = _seconds_to_naive_utc(leaving_times_s)
         out_dict["leaving_datetime"] = leaving_datetimes
 
     result = nw.from_dict(out_dict, backend=df.implementation)
     return result.to_native()
+
+
+def _seconds_to_naive_utc(seconds: list[float]) -> np.ndarray:
+    """Convert Unix seconds to naive UTC datetimes without a per-row Python loop."""
+    return (
+        pd.to_datetime(np.asarray(seconds, dtype="float64"), unit="s", utc=True)
+        .tz_convert(None)
+        .to_numpy(dtype="datetime64[ns]")
+    )
