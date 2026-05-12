@@ -102,10 +102,6 @@ def mean_square_displacement(
     - [FS2002] Frenkel, D. & Smit, B. (2002) Understanding molecular simulation: From algorithms to applications. Academic Press, 196 (2nd Ed.), https://www.sciencedirect.com/book/9780122673511/understanding-molecular-simulation.
     - [BHG2006] Brockmann, D., Hufnagel, L. & Geisel, T. (2006) The scaling laws of human travel. Nature 439, 462-465, https://www.nature.com/articles/nature04292
     - [SKWB2010] Song, C., Koren, T., Wang, P. & Barabasi, A.L. (2010) Modelling the scaling properties of human mobility. Nature Physics 6, 818-823, https://www.nature.com/articles/nphys1760
-
-    @usedBy
-        skmob2.measures.flows.__init__, skmob2.measures.__init__,
-        skmob2.__init__ (re-exported as public API)
     """
     delta_s = timedelta(days=days, hours=hours, minutes=minutes).total_seconds()
 

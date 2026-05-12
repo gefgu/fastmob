@@ -85,9 +85,6 @@ def number_of_locations(
     References
     ----------
     - [GHB2008] Gonzalez, M. C., Hidalgo, C. A. & Barabasi, A. L. (2008) Understanding individual human mobility patterns. Nature, 453, 779-782, https://www.nature.com/articles/nature06958.
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

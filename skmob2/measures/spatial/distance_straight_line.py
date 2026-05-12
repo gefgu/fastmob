@@ -91,10 +91,6 @@ def distance_straight_line(
     References
     ----------
     - [WTDED2015] Williams, N. E., Thomas, T. A., Dunbar, M., Eagle, N. & Dobra, A. (2015) Measures of Human Mobility Using Mobile Phone Records Enhanced with GIS Data. PLOS ONE 10(7): e0133630. https://doi.org/10.1371/journal.pone.0133630
-
-    @usedBy
-        skmob2.measures.spatial.__init__, skmob2.measures.__init__,
-        skmob2.__init__ (re-exported as public API)
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

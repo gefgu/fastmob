@@ -91,10 +91,6 @@ def recency_rank(
     References
     ----------
     - [BDEM2015] Barbosa, H., de Lima-Neto, F. B., Evsukoff, A., Menezes, R. (2015) The effect of recency to human mobility, EPJ Data Science 4(21), https://epjdatascience.springeropen.com/articles/10.1140/epjds/s13688-015-0059-8
-
-    @usedBy
-        skmob2.measures.visits.__init__, skmob2.measures.__init__,
-        skmob2.__init__ (re-exported as public API)
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

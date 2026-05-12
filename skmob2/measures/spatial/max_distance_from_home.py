@@ -100,9 +100,6 @@ def max_distance_from_home(
     References
     ----------
     - [CM2015] Canzian, L. & Musolesi, M. (2015) Trajectories of depression: unobtrusive monitoring of depressive states by means of smartphone mobility traces analysis. Proceedings of the 2015 ACM International Joint Conference on Pervasive and Ubiquitous Computing, 1293-1304, https://dl.acm.org/citation.cfm?id=2805845
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

@@ -93,10 +93,6 @@ def maximum_distance(
     ----------
     - [WTDED2015] Williams, N. E., Thomas, T. A., Dunbar, M., Eagle, N. & Dobra, A. (2015) Measures of Human Mobility Using Mobile Phone Records Enhanced with GIS Data. PLOS ONE 10(7): e0133630. https://doi.org/10.1371/journal.pone.0133630
     - [LBH2012] Lu, X., Bengtsson, L. & Holme, P. (2012) Predictability of population displacement after the 2010 haiti earthquake. Proceedings of the National Academy of Sciences 109 (29) 11576-11581; https://doi.org/10.1073/pnas.1203882109
-
-    @usedBy
-        skmob2.measures.spatial.__init__, skmob2.measures.__init__,
-        skmob2.__init__ (re-exported as public API)
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

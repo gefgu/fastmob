@@ -55,9 +55,6 @@ def common_part_of_commuters(values1, values2) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(common_part_of_commuters(observed, predicted), 3))
     0.95
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     v1 = np.asarray(values1, dtype=float)
     v2 = np.asarray(values2, dtype=float)
@@ -98,9 +95,6 @@ def common_part_of_links(values1, values2) -> float:
     >>> predicted = [5, 7, 0, 0]
     >>> print(round(common_part_of_links(observed, predicted), 3))
     0.5
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     v1 = np.asarray(values1, dtype=float)
     v2 = np.asarray(values2, dtype=float)
@@ -144,9 +138,6 @@ def common_part_of_commuters_distance(values1, values2) -> float:
     >>> predicted = [1, 3, 5, 9]
     >>> print(round(common_part_of_commuters_distance(observed, predicted), 3))
     0.2
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     v1 = np.asarray(values1, dtype=float)
     v2 = np.asarray(values2, dtype=float)
@@ -197,9 +188,6 @@ def r_squared(true, pred) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(r_squared(observed, predicted), 3))
     0.948
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     t = np.asarray(true, dtype=float)
     p = np.asarray(pred, dtype=float)
@@ -232,9 +220,6 @@ def mse(true, pred) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(mse(observed, predicted), 3))
     6.5
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     t = np.asarray(true, dtype=float)
     p = np.asarray(pred, dtype=float)
@@ -263,9 +248,6 @@ def rmse(true, pred) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(rmse(observed, predicted), 3))
     2.55
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     return float(np.sqrt(mse(true, pred)))
 
@@ -292,9 +274,6 @@ def nrmse(true, pred) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(nrmse(observed, predicted), 3))
     0.025
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     t = np.asarray(true, dtype=float)
     total = float(np.sum(t))
@@ -325,9 +304,6 @@ def max_error(true, pred) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(max_error(observed, predicted), 3))
     3.0
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     t = np.asarray(true, dtype=float)
     p = np.asarray(pred, dtype=float)
@@ -367,9 +343,6 @@ def information_gain(true, pred) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(information_gain(observed, predicted), 3))
     0.005
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     t = np.asarray(true, dtype=float)
     p = np.asarray(pred, dtype=float)
@@ -412,9 +385,6 @@ def kullback_leibler_divergence(true, pred) -> float:
     >>> predicted = [12, 18, 33, 37]
     >>> print(round(kullback_leibler_divergence(observed, predicted), 3))
     0.005
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     if _scipy_stats is None:
         raise ImportError("scipy is required for kullback_leibler_divergence: pip install skmob2[fitting]")
@@ -454,9 +424,6 @@ def pearson_correlation(true, pred) -> tuple[float, float]:
     >>> r, p_value = pearson_correlation(observed, predicted)
     >>> print(round(r, 3), round(p_value, 3))
     0.975 0.025
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     if _scipy_stats is None:
         raise ImportError("scipy is required for pearson_correlation: pip install skmob2[fitting]")
@@ -492,9 +459,6 @@ def spearman_correlation(true, pred) -> tuple[float, float]:
     >>> rho, p_value = spearman_correlation(observed, predicted)
     >>> print(round(rho, 3), round(p_value, 3))
     1.0 0.0
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     if _scipy_stats is None:
         raise ImportError("scipy is required for spearman_correlation: pip install skmob2[fitting]")

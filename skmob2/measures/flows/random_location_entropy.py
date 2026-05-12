@@ -78,10 +78,6 @@ def random_location_entropy(
     29.942673 -90.064455           0.000
     29.948116 -90.063436           0.000
     29.948125 -90.063510           0.000
-
-    @usedBy
-        skmob2.measures.flows.__init__, skmob2.measures.__init__,
-        skmob2.__init__ (re-exported as public API)
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,

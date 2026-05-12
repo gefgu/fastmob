@@ -80,9 +80,6 @@ def number_of_visits(
        0              2099
        1              1210
        2              1691
-
-    @usedBy
-        skmob2.measures.__init__, skmob2.__init__ (re-exported as public API)
     """
     df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
         traj,
