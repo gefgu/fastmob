@@ -1,8 +1,8 @@
-.md-typeset .doc.doc-heading {
+.doc.doc-heading {
   font-size: 1rem;
   line-height: 1.7;
 }
 
-.md-typeset .doc.doc-heading code {
+.doc.doc-heading code {
   font-size: 0.85rem;
 }

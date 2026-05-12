@@ -111,13 +111,13 @@ The skmob comparison tests should usually be strict, but the Brightkite tests fo
 uv sync --extra docs
 
 # Serve locally with live reload
-uv run mkdocs serve
+uv run zensical serve
 
-# Build and validate (strict mode, zero warnings)
-uv run mkdocs build --strict
+# Build
+uv run zensical build
 ```
 
-MkDocs source pages live in `docs/src/`. The `docs/features/` subdirectory holds internal planning files and is intentionally excluded from the published site nav.
+Documentation source pages live in `docs/src/`. The `docs/features/` subdirectory holds internal planning files and is intentionally excluded from the published site nav. `docs/DESIGN.md` is the Zensical design system reference.
 
 ## Benchmarks
 

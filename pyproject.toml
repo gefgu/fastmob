@@ -57,8 +57,7 @@ dev-movingpandas = [
     "geopandas",
 ]
 docs = [
-    "mkdocs>=1.6",
-    "mkdocs-material>=9.5",
+    "zensical>=0.0.41; python_version >= '3.10'",
     "mkdocstrings[python]>=0.25",
 ]
 

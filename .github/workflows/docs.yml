@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build-and-deploy:
@@ -30,9 +32,12 @@ jobs:
       - name: Build Rust extension
         run: uv run maturin develop
 
-      - name: Build docs (strict)
-        run: uv run mkdocs build --strict
+      - name: Build docs
+        run: uv run zensical build
 
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: uv run mkdocs gh-deploy --force
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
