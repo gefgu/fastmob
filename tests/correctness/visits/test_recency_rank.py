@@ -159,3 +159,29 @@ def test_recency_rank_matches_skmob(comparison_skmob):
             assert skmob_dict[uid][loc] == skmob2_dict[uid][loc], (
                 f"uid={uid}, loc={loc}: skmob={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
             )
+
+
+def test_recency_rank_matches_cached_reference(comparison_skmob_reference):
+    """recency_rank matches the cached skmob baseline without requiring the skmob environment."""
+    from skmob2.measures.visits.recency_rank import recency_rank as skmob2_rr
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("recency_rank")
+    skmob2_result = skmob2_rr(ref.input_df)
+
+    skmob_dict: dict = {}
+    for _, row in skmob_result.iterrows():
+        uid = row["uid"]
+        loc = (row["lat"], row["lng"])
+        skmob_dict.setdefault(uid, {})[loc] = int(row["recency_rank"])
+
+    skmob2_dict = _to_dict(skmob2_result)
+
+    common_uids = set(skmob_dict) & set(skmob2_dict)
+    assert len(common_uids) > 0
+    for uid in common_uids:
+        common_locs = set(skmob_dict[uid]) & set(skmob2_dict[uid])
+        for loc in common_locs:
+            assert skmob_dict[uid][loc] == skmob2_dict[uid][loc], (
+                f"uid={uid}, loc={loc}: cached={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
+            )

@@ -100,3 +100,23 @@ def test_max_distance_from_home_matches_skmob(comparison_skmob):
         assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
             f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
         )
+
+
+def test_max_distance_from_home_matches_cached_reference(comparison_skmob_reference):
+    """max_distance_from_home matches the cached skmob baseline without requiring the skmob environment."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.max_distance_from_home import max_distance_from_home as skmob2_mdfh
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("max_distance_from_home")
+    skmob2_result = skmob2_mdfh(ref.input_df)
+
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["max_distance_from_home"].tolist()))
+    skmob2_dict = _to_dict(skmob2_result)
+
+    common = set(skmob_dict) & set(skmob2_dict)
+    assert len(common) > 0
+    for uid in common:
+        assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
+            f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        )

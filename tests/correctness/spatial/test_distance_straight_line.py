@@ -130,3 +130,23 @@ def test_distance_straight_line_matches_skmob(comparison_skmob):
         assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 2e-5 + 1e-5, (
             f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
         )
+
+
+def test_distance_straight_line_matches_cached_reference(comparison_skmob_reference):
+    """distance_straight_line matches the cached skmob baseline without requiring the skmob environment."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.distance_straight_line import distance_straight_line as skmob2_dsl
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("distance_straight_line")
+    skmob2_result = skmob2_dsl(ref.input_df)
+
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["distance_straight_line"].tolist()))
+    skmob2_dict = _to_dict(skmob2_result)
+
+    common = set(skmob_dict) & set(skmob2_dict)
+    assert len(common) > 0
+    for uid in common:
+        assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 2e-5 + 1e-5, (
+            f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        )

@@ -224,3 +224,29 @@ def test_location_frequency_matches_skmob(comparison_skmob):
             assert abs(skmob_dict[uid][loc] - skmob2_dict[uid][loc]) < 1e-5, (
                 f"uid={uid}, loc={loc}: skmob={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
             )
+
+
+def test_location_frequency_matches_cached_reference(comparison_skmob_reference):
+    """location_frequency matches the cached skmob baseline without requiring the skmob environment."""
+    from skmob2.measures.visits.location_frequency import location_frequency as skmob2_lf
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("location_frequency")
+    skmob2_result = skmob2_lf(ref.input_df)
+
+    skmob_dict: dict = {}
+    for _, row in skmob_result.iterrows():
+        uid = row["uid"]
+        loc = (row["lat"], row["lng"])
+        skmob_dict.setdefault(uid, {})[loc] = float(row["location_frequency"])
+
+    skmob2_dict = _to_freq_dict(skmob2_result)
+
+    common_uids = set(skmob_dict) & set(skmob2_dict)
+    assert len(common_uids) > 0
+    for uid in common_uids:
+        common_locs = set(skmob_dict[uid]) & set(skmob2_dict[uid])
+        for loc in common_locs:
+            assert abs(skmob_dict[uid][loc] - skmob2_dict[uid][loc]) < 1e-5, (
+                f"uid={uid}, loc={loc}: cached={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
+            )

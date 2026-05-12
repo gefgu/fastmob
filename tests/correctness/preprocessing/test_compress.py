@@ -113,3 +113,18 @@ def test_compress_matches_skmob(comparison_skmob):
         uid_col="uid",
     )
     assert len(our_result) == len(skmob_result)
+
+
+def test_compress_matches_cached_reference(comparison_skmob_reference):
+    """Row count matches the cached skmob baseline without requiring the skmob environment."""
+    ref = comparison_skmob_reference
+    cached_count = ref.row_count("compress")
+    our_result = compress(
+        ref.input_df,
+        spatial_radius_km=0.2,
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        uid_col="uid",
+    )
+    assert len(our_result) == cached_count

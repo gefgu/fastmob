@@ -131,3 +131,29 @@ def test_cluster_matches_skmob(comparison_skmob):
     )
 
     assert len(our_result) == len(skmob_result)
+
+
+def test_cluster_matches_cached_reference(comparison_skmob_reference):
+    """Clustered stop count matches the cached skmob baseline without requiring the skmob environment."""
+    from skmob2.preprocessing import stay_locations
+
+    ref = comparison_skmob_reference
+    cached_count = ref.row_count("cluster")
+    our_stops = stay_locations(
+        ref.input_df,
+        spatial_radius_km=0.2,
+        minutes_for_a_stop=20.0,
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        uid_col="uid",
+    )
+    our_result = cluster(
+        our_stops,
+        cluster_radius_km=0.1,
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        uid_col="uid",
+    )
+    assert len(our_result) == cached_count

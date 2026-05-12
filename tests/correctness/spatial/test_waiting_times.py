@@ -161,3 +161,25 @@ def test_waiting_times_matches_skmob(comparison_skmob):
         assert len(left) == len(right), f"uid={uid}: skmob n={len(left)}, skmob2 n={len(right)}"
         for a, b in zip(left, right):
             assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, f"uid={uid}: skmob wt={a}, skmob2 wt={b}"
+
+
+def test_waiting_times_matches_cached_reference(comparison_skmob_reference):
+    """waiting_times matches the cached skmob baseline without requiring the skmob environment."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.waiting_times import waiting_times as skmob2_wt
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("waiting_times")
+    skmob2_result = skmob2_wt(ref.input_df)
+
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["waiting_times"].tolist()))
+    skmob2_dict = _to_dict(skmob2_result)
+
+    common = set(skmob_dict) & set(skmob2_dict)
+    assert len(common) > 0
+    for uid in common:
+        left = sorted(skmob_dict[uid])
+        right = sorted(skmob2_dict[uid])
+        assert len(left) == len(right), f"uid={uid}: cached n={len(left)}, skmob2 n={len(right)}"
+        for a, b in zip(left, right):
+            assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, f"uid={uid}: cached wt={a}, skmob2 wt={b}"

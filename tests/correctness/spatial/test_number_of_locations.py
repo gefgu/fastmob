@@ -121,3 +121,20 @@ def test_number_of_locations_matches_skmob(comparison_skmob):
     assert len(common) > 0
     for uid in common:
         assert skmob_dict[uid] == skmob2_dict[uid], f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+
+
+def test_number_of_locations_matches_cached_reference(comparison_skmob_reference):
+    """number_of_locations matches the cached skmob baseline without requiring the skmob environment."""
+    from skmob2.measures.spatial.number_of_locations import number_of_locations as skmob2_nol
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("number_of_locations")
+    skmob2_result = skmob2_nol(ref.input_df)
+
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["number_of_locations"].tolist()))
+    skmob2_dict = _to_dict(skmob2_result)
+
+    common = set(skmob_dict) & set(skmob2_dict)
+    assert len(common) > 0
+    for uid in common:
+        assert skmob_dict[uid] == skmob2_dict[uid], f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"

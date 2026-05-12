@@ -143,3 +143,23 @@ def test_home_location_matches_skmob(comparison_skmob):
         got_lat, got_lng = skmob2_dict[uid]
         assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat skmob={exp_lat}, skmob2={got_lat}"
         assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng skmob={exp_lng}, skmob2={got_lng}"
+
+
+def test_home_location_matches_cached_reference(comparison_skmob_reference):
+    """home_location matches the cached skmob baseline without requiring the skmob environment."""
+    from skmob2.measures.spatial.home_location import home_location as skmob2_hl
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("home_location")
+    skmob2_result = skmob2_hl(ref.input_df)
+
+    skmob_dict = {row["uid"]: (row["lat"], row["lng"]) for row in skmob_result.to_dict(orient="records")}
+    skmob2_dict = _to_dict(skmob2_result)
+
+    common = set(skmob_dict) & set(skmob2_dict)
+    assert len(common) > 0
+    for uid in common:
+        exp_lat, exp_lng = skmob_dict[uid]
+        got_lat, got_lng = skmob2_dict[uid]
+        assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat cached={exp_lat}, skmob2={got_lat}"
+        assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng cached={exp_lng}, skmob2={got_lng}"

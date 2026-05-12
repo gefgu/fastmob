@@ -111,3 +111,18 @@ def test_filter_matches_skmob(comparison_skmob):
     # the Rust geo kernel. Points whose speed is exactly near the threshold can
     # fall on different sides, so compare the retained count with a tiny budget.
     assert abs(len(our_result) - len(skmob_result_df)) <= 5
+
+
+def test_filter_matches_cached_reference(comparison_skmob_reference):
+    """Row count matches the cached skmob baseline without requiring the skmob environment."""
+    ref = comparison_skmob_reference
+    cached_count = ref.row_count("filter")
+    our_result = traj_filter(
+        ref.input_df,
+        max_speed_kmh=500.0,
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        uid_col="uid",
+    )
+    assert abs(len(our_result) - cached_count) <= 5

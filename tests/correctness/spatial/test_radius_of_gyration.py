@@ -622,3 +622,23 @@ def test_radius_of_gyration_matches_skmob(comparison_skmob):
         assert abs(skmob_map[uid] - skmob2_map[uid]) < 0.02, (
             f"RoG mismatch for uid={uid}: skmob={skmob_map[uid]:.6f}, skmob2={skmob2_map[uid]:.6f}"
         )
+
+
+def test_radius_of_gyration_matches_cached_reference(comparison_skmob_reference):
+    """RoG matches the cached skmob baseline without requiring the skmob environment."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.radius_of_gyration import radius_of_gyration as skmob2_rog
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("radius_of_gyration")
+    skmob2_result = skmob2_rog(ref.input_df)
+
+    skmob_map = dict(zip(skmob_result["uid"], skmob_result["radius_of_gyration"]))
+    skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
+    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result["radius_of_gyration"]))
+
+    assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
+    for uid in skmob_map:
+        assert abs(skmob_map[uid] - skmob2_map[uid]) < 0.02, (
+            f"RoG mismatch for uid={uid}: cached={skmob_map[uid]:.6f}, skmob2={skmob2_map[uid]:.6f}"
+        )

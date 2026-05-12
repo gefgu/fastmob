@@ -167,3 +167,19 @@ def test_stay_locations_matches_skmob(comparison_skmob):
         uid_col="uid",
     )
     assert len(our_result) == len(skmob_result)
+
+
+def test_stay_locations_matches_cached_reference(comparison_skmob_reference):
+    """Stop count matches the cached skmob baseline without requiring the skmob environment."""
+    ref = comparison_skmob_reference
+    cached_count = ref.row_count("stay_locations")
+    our_result = stay_locations(
+        ref.input_df,
+        spatial_radius_km=0.2,
+        minutes_for_a_stop=20.0,
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        uid_col="uid",
+    )
+    assert len(our_result) == cached_count

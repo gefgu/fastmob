@@ -529,3 +529,23 @@ def test_jump_lengths_matches_skmob(comparison_skmob):
         # skmob uses its Python gislib Haversine implementation; skmob2 uses
         # Rust geo::Haversine. Individual long jumps can differ by metres.
         assert np.allclose(left, right, rtol=2e-5, atol=1e-2), f"Value mismatch for uid={uid}"
+
+
+def test_jump_lengths_matches_cached_reference(comparison_skmob_reference):
+    """jump_lengths matches the cached skmob baseline without requiring the skmob environment."""
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2.measures.spatial.jump_lengths import jump_lengths as skmob2_jl
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("jump_lengths")
+    skmob2_result = skmob2_jl(ref.input_df, merge=False)
+
+    baseline = _normalize_result(skmob_result)
+    candidate = _normalize_result(skmob2_result)
+
+    assert set(baseline.keys()) == set(candidate.keys())
+    for uid in baseline:
+        left = baseline[uid]
+        right = candidate[uid]
+        assert left.shape == right.shape, f"Shape mismatch for uid={uid}"
+        assert np.allclose(left, right, rtol=2e-5, atol=1e-2), f"Value mismatch for uid={uid}"

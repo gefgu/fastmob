@@ -228,6 +228,25 @@ def comparison_skmob(request):
     raise AssertionError(f"Unknown comparison dataset: {request.param}")
 
 
+@pytest.fixture(scope="session", params=["brightkite", "geolife", "foursquare"])
+def comparison_skmob_reference(request):
+    """Cached skmob baseline; auto-skips when the cache is absent.
+
+    Run ``bash tests/populate_skmob_cache.sh`` (inside .venv-skmob) once to
+    populate the cache, then commit tests/shared/skmob_reference/ to git.
+    After that, these tests run in the normal .venv without skmob installed.
+    """
+    from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
+
+    dataset = request.param
+    if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
+        pytest.skip(
+            f"No skmob reference cache for '{dataset}'. "
+            "Run 'bash tests/populate_skmob_cache.sh' first."
+        )
+    return SkmobReferenceDataset(dataset)
+
+
 # ---------------------------------------------------------------------------
 # Marker registration
 # ---------------------------------------------------------------------------

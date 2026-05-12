@@ -193,3 +193,29 @@ def test_imn_matches_skmob(comparison_skmob):
             assert skmob_dict[uid][edge] == skmob2_dict[uid][edge], (
                 f"uid={uid}, edge={edge}: skmob={skmob_dict[uid][edge]}, skmob2={skmob2_dict[uid][edge]}"
             )
+
+
+def test_imn_matches_cached_reference(comparison_skmob_reference):
+    """individual_mobility_network matches the cached skmob baseline without requiring the skmob environment."""
+    from skmob2.measures.visits.individual_mobility_network import individual_mobility_network as skmob2_imn
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("individual_mobility_network")
+    skmob2_result = skmob2_imn(ref.input_df)
+
+    skmob_dict: dict = {}
+    for _, row in skmob_result.iterrows():
+        uid = row["uid"]
+        edge = (row["lat_origin"], row["lng_origin"], row["lat_dest"], row["lng_dest"])
+        skmob_dict.setdefault(uid, {})[edge] = int(row["n_trips"])
+
+    skmob2_dict = _to_edge_dict(skmob2_result)
+
+    common_uids = set(skmob_dict) & set(skmob2_dict)
+    assert len(common_uids) > 0
+    for uid in common_uids:
+        common_edges = set(skmob_dict[uid]) & set(skmob2_dict[uid])
+        for edge in common_edges:
+            assert skmob_dict[uid][edge] == skmob2_dict[uid][edge], (
+                f"uid={uid}, edge={edge}: cached={skmob_dict[uid][edge]}, skmob2={skmob2_dict[uid][edge]}"
+            )

@@ -182,3 +182,22 @@ def test_real_entropy_matches_skmob(comparison_skmob):
         assert math.isclose(skmob_dict[uid], skmob2_dict[uid], rel_tol=1e-5), (
             f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
         )
+
+
+def test_real_entropy_matches_cached_reference(comparison_skmob_reference):
+    """real_entropy matches the cached skmob baseline without requiring the skmob environment."""
+    from skmob2.measures.visits.real_entropy import real_entropy as skmob2_re
+
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("real_entropy")
+    skmob2_result = skmob2_re(ref.input_df)
+
+    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["real_entropy"].tolist()))
+    skmob2_dict = _to_dict(skmob2_result)
+
+    common = set(skmob_dict) & set(skmob2_dict)
+    assert len(common) > 0
+    for uid in common:
+        assert math.isclose(skmob_dict[uid], skmob2_dict[uid], rel_tol=1e-5), (
+            f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        )

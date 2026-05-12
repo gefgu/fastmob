@@ -217,3 +217,34 @@ def test_k_radius_of_gyration_matches_skmob(comparison_skmob):
             atol=1e-12,
             err_msg=f"k-RoG mismatch for uid={uid}",
         )
+
+
+def test_k_radius_of_gyration_matches_cached_reference(comparison_skmob_reference):
+    """k-RoG (k=2) matches the cached skmob baseline without requiring the skmob environment."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.spatial.k_radius_of_gyration import k_radius_of_gyration as skmob2_krg
+
+    k = 2
+    ref = comparison_skmob_reference
+    skmob_result = ref.result("k_radius_of_gyration_k2")
+    skmob2_result = skmob2_krg(ref.input_df, k=k)
+
+    skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)
+    skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
+    skmob_value_col = next(c for c in (f"{k}k_radius_of_gyration", "k_radius_of_gyration") if c in skmob_result.columns)
+    skmob2_value_col = next(
+        c for c in ("k_radius_of_gyration", f"{k}k_radius_of_gyration") if c in skmob2_result.columns
+    )
+
+    skmob_map = dict(zip(skmob_result[skmob_uid], skmob_result[skmob_value_col]))
+    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result[skmob2_value_col]))
+
+    assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
+    for uid in skmob_map:
+        np.testing.assert_allclose(
+            skmob2_map[uid],
+            skmob_map[uid],
+            rtol=1e-5,
+            atol=1e-12,
+            err_msg=f"k-RoG mismatch for uid={uid}",
+        )
