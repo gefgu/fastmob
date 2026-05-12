@@ -9,7 +9,7 @@ Or directly (after activating the skmob env):
 
 Options:
     --datasets   Comma-separated list of datasets to populate.
-                 Default: brightkite,geolife,foursquare,privacy_toy
+                 Default: brightkite,geolife,foursquare,privacy_toy,models
     --geolife-rows N      Max GeoLife rows (default: 10000)
     --foursquare-rows N   Max Foursquare rows (default: 10000)
 """
@@ -17,7 +17,9 @@ Options:
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
+import random
 import sys
 import urllib.request
 import warnings
@@ -34,6 +36,14 @@ if not hasattr(np, "NaN"):
 
 import pandas as pd
 import skmob
+from skmob.models.epr import DensityEPR as SkmobDensityEPR
+from skmob.models.epr import EPR as SkmobEPR
+from skmob.models.epr import SpatialEPR as SkmobSpatialEPR
+from skmob.models.geosim import GeoSim as SkmobGeoSim
+from skmob.models.gravity import Gravity as SkmobGravity
+from skmob.models.markov_diary_generator import MarkovDiaryGenerator as SkmobMarkovDiaryGenerator
+from skmob.models.radiation import Radiation as SkmobRadiation
+from skmob.models.sts_epr import STS_epr as SkmobSTSEPR
 from skmob.measures import individual as skmob_individual
 from skmob.privacy import attacks as skmob_privacy_attacks
 from skmob.preprocessing import clustering as skmob_clustering
@@ -47,6 +57,12 @@ from tests.shared.geolife import GEOLIFE_DEFAULT_ROWS, load_geolife_pandas
 from tests.shared.skmob_cache import _REFERENCE_DIR
 
 PRIVACY_TOY_PATH = REPO_ROOT / "scikit-mobility" / "examples" / "privacy_toy.csv"
+SKMOB_EXAMPLES_DIR = REPO_ROOT / "scikit-mobility" / "examples"
+MODEL_SEED = 2
+MODEL_START = pd.Timestamp("2020-01-01 08:00:00")
+MODEL_END = pd.Timestamp("2020-01-02 08:00:00")
+MODEL_SOCIAL_GRAPH = [[0, 1], [0, 2], [1, 2]]
+MODEL_STARTING_LOCATIONS = [0, 1]
 
 PRIVACY_ATTACK_CASES: tuple[tuple[str, type, dict[str, object], dict[str, object]], ...] = (
     ("location_kl2", skmob_privacy_attacks.LocationAttack, {"knowledge_length": 2}, {}),
@@ -202,9 +218,8 @@ def _load_brightkite() -> skmob.TrajDataFrame:
         nrows=100_000,
         names=["user", "check-in_time", "latitude", "longitude", "location id"],
     )
-    df = (
-        df.sort_values(["user", "check-in_time", "latitude", "longitude", "location id"])
-        .drop_duplicates(["user", "check-in_time"], keep="first")
+    df = df.sort_values(["user", "check-in_time", "latitude", "longitude", "location id"]).drop_duplicates(
+        ["user", "check-in_time"], keep="first"
     )
     return skmob.TrajDataFrame(
         df,
@@ -243,6 +258,82 @@ def _load_privacy_toy() -> skmob.TrajDataFrame:
     df = pd.read_csv(PRIVACY_TOY_PATH)
     df["datetime"] = pd.to_datetime(df["datetime"])
     return skmob.TrajDataFrame(df, latitude="lat", longitude="lng", datetime="datetime", user_id="uid")
+
+
+def _load_model_tessellation():
+    geojson_path = SKMOB_EXAMPLES_DIR / "NY_counties_2011.geojson"
+    flows_path = SKMOB_EXAMPLES_DIR / "NY_commuting_flows_2011.csv"
+    if not geojson_path.exists() or not flows_path.exists():
+        raise FileNotFoundError(f"Missing scikit-mobility model examples under {SKMOB_EXAMPLES_DIR}")
+
+    import geopandas as gpd
+    from shapely.geometry import shape
+
+    _patch_geopandas_apply_for_numpy2(gpd)
+
+    payload = json.loads(geojson_path.read_text())
+    tessellation = gpd.GeoDataFrame(
+        [feature["properties"] for feature in payload["features"]],
+        geometry=[shape(feature["geometry"]) for feature in payload["features"]],
+        crs="EPSG:4269",
+    )
+    tessellation["tile_id"] = tessellation["tile_id"].astype(str)
+    flows = pd.read_csv(flows_path, dtype={"origin": str, "destination": str})
+    outflows = (
+        flows[flows["origin"] != flows["destination"]]
+        .groupby("origin", as_index=False)["flow"]
+        .sum()
+        .rename(columns={"origin": "tile_id", "flow": "tot_outflow"})
+    )
+    tessellation = tessellation.merge(outflows, on="tile_id", how="left")
+    tessellation["tot_outflow"] = tessellation["tot_outflow"].fillna(0).astype(int)
+    tessellation = tessellation.sort_values("tile_id", kind="mergesort").head(12).reset_index(drop=True)
+    tessellation["tot_outflow"] = tessellation["tot_outflow"].clip(upper=250).astype(int)
+    return tessellation
+
+
+def _patch_geopandas_apply_for_numpy2(gpd) -> None:
+    """Avoid old GeoPandas ``copy=False`` paths that fail under NumPy 2."""
+    if getattr(gpd.GeoSeries.apply, "_skmob2_numpy2_patch", False):
+        return
+    original_apply = gpd.GeoSeries.apply
+
+    def apply(self, func, convert_dtype=True, args=(), **kwargs):
+        try:
+            return original_apply(self, func, convert_dtype=convert_dtype, args=args, **kwargs)
+        except ValueError as exc:
+            if "Unable to avoid copy" not in str(exc):
+                raise
+            series = pd.Series(list(self), index=self.index)
+            return series.apply(lambda geom: func(geom, *args), **kwargs)
+
+    apply._skmob2_numpy2_patch = True
+    gpd.GeoSeries.apply = apply
+
+
+def _model_tessellation_input(tessellation) -> pd.DataFrame:
+    centroids = tessellation.geometry.centroid
+    return pd.DataFrame(
+        {
+            "tile_id": tessellation["tile_id"].astype(str).to_numpy(),
+            "lat": [point.y for point in centroids],
+            "lng": [point.x for point in centroids],
+            "population": pd.to_numeric(tessellation["population"], errors="coerce").fillna(0).to_numpy(dtype=float),
+            "tot_outflow": pd.to_numeric(tessellation["tot_outflow"], errors="coerce").fillna(0).to_numpy(dtype=int),
+        }
+    )
+
+
+def _load_model_diary_training() -> pd.DataFrame:
+    geolife_path = SKMOB_EXAMPLES_DIR / "geolife_sample.txt.gz"
+    if not geolife_path.exists():
+        raise FileNotFoundError(f"Missing scikit-mobility GeoLife sample at {geolife_path}")
+
+    with gzip.open(geolife_path, "rt", encoding="utf-8") as handle:
+        df = pd.read_csv(handle)
+    tdf = skmob.TrajDataFrame(df, latitude="lat", longitude="lng", datetime="datetime", user_id="uid")
+    clustered = skmob_clustering.cluster(tdf)
+    return pd.DataFrame(clustered)[["uid", "datetime", "cluster"]].copy()
 
 
 # ---------------------------------------------------------------------------
@@ -378,6 +469,144 @@ def _run_privacy_toy(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
     print(f"    → {out_dir}")
 
 
+def _reset_model_rng(seed: int = MODEL_SEED) -> None:
+    np.random.seed(seed)
+    random.seed(seed)
+    try:
+        import igraph
+
+        if hasattr(igraph, "set_random_number_generator"):
+            igraph.set_random_number_generator(random)
+    except Exception:
+        pass
+
+
+def _run_model_case(name: str, fn, out_dir: Path) -> None:
+    print(f"    {name}.parquet")
+    try:
+        _reset_model_rng()
+        result = fn()
+        df = (
+            pd.DataFrame(result.to_numpy(), columns=list(result.columns))
+            if isinstance(result, pd.DataFrame)
+            else pd.DataFrame(result)
+        )
+        _save(df.reset_index(drop=True), out_dir / f"{name}.parquet")
+    except Exception as exc:
+        print(f"      SKIP ({type(exc).__name__}: {exc})")
+
+
+def _fit_model_diary_generator(training: pd.DataFrame):
+    mdg = SkmobMarkovDiaryGenerator()
+    mdg.fit(training.copy(), 3, lid="cluster")
+    return mdg
+
+
+def _run_models(out_dir: Path) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tessellation = _load_model_tessellation()
+    tessellation_input = _model_tessellation_input(tessellation)
+    diary_training = _load_model_diary_training()
+
+    print("    tessellation.parquet")
+    _save(tessellation_input, out_dir / "tessellation.parquet")
+    print("    input.parquet")
+    _save(tessellation_input, out_dir / "input.parquet")
+    print("    diary_training.parquet")
+    _save(diary_training, out_dir / "diary_training.parquet")
+
+    for out_format in ("flows", "probabilities", "flows_sample"):
+        _run_model_case(
+            f"gravity_{out_format}",
+            lambda out_format=out_format: SkmobGravity().generate(
+                tessellation,
+                tile_id_column="tile_id",
+                tot_outflows_column="tot_outflow",
+                relevance_column="population",
+                out_format=out_format,
+            ),
+            out_dir,
+        )
+
+    for out_format in ("flows", "probabilities", "flows_sample"):
+        _run_model_case(
+            f"radiation_{out_format}",
+            lambda out_format=out_format: SkmobRadiation().generate(
+                tessellation,
+                tile_id_column="tile_id",
+                tot_outflows_column="tot_outflow",
+                relevance_column="population",
+                out_format=out_format,
+            ),
+            out_dir,
+        )
+
+    _run_model_case(
+        "markov_diary",
+        lambda: _fit_model_diary_generator(diary_training).generate(24, MODEL_START, random_state=MODEL_SEED),
+        out_dir,
+    )
+
+    for name, model_cls, relevance_column in (
+        ("epr", SkmobEPR, "population"),
+        ("density_epr", SkmobDensityEPR, "population"),
+        ("spatial_epr", SkmobSpatialEPR, None),
+    ):
+        generate_kwargs = (
+            {}
+            if relevance_column is None
+            else {
+                "relevance_column": relevance_column,
+            }
+        )
+        _run_model_case(
+            name,
+            lambda model_cls=model_cls, generate_kwargs=generate_kwargs: model_cls().generate(
+                MODEL_START,
+                MODEL_END,
+                tessellation,
+                n_agents=2,
+                starting_locations=MODEL_STARTING_LOCATIONS.copy(),
+                random_state=MODEL_SEED,
+                show_progress=False,
+                **generate_kwargs,
+            ),
+            out_dir,
+        )
+
+    _run_model_case(
+        "geosim",
+        lambda: SkmobGeoSim().generate(
+            MODEL_START,
+            MODEL_END,
+            tessellation,
+            social_graph=MODEL_SOCIAL_GRAPH,
+            n_agents=3,
+            random_state=MODEL_SEED,
+            show_progress=False,
+        ),
+        out_dir,
+    )
+    _run_model_case(
+        "sts_epr",
+        lambda: SkmobSTSEPR().generate(
+            MODEL_START,
+            MODEL_END,
+            tessellation,
+            _fit_model_diary_generator(diary_training),
+            social_graph=MODEL_SOCIAL_GRAPH,
+            n_agents=3,
+            rsl=False,
+            relevance_column="population",
+            random_state=MODEL_SEED,
+            show_progress=False,
+        ),
+        out_dir,
+    )
+
+    print(f"    → {out_dir}")
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -387,7 +616,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Populate skmob reference cache")
     parser.add_argument(
         "--datasets",
-        default="brightkite,geolife,foursquare,privacy_toy",
+        default="brightkite,geolife,foursquare,privacy_toy,models",
         help="Comma-separated dataset names (default: all cached datasets)",
     )
     parser.add_argument("--geolife-rows", type=int, default=GEOLIFE_DEFAULT_ROWS)
@@ -400,6 +629,7 @@ def main() -> None:
         "geolife": lambda: _load_geolife(args.geolife_rows),
         "foursquare": lambda: _load_foursquare(args.foursquare_rows),
         "privacy_toy": _load_privacy_toy,
+        "models": lambda: None,
     }
 
     for dataset in datasets:
@@ -407,6 +637,9 @@ def main() -> None:
             print(f"Unknown dataset: {dataset!r} — skip")
             continue
         print(f"\n==> {dataset}")
+        if dataset == "models":
+            _run_models(_REFERENCE_DIR / dataset)
+            continue
         tdf = loaders[dataset]()
         if dataset == "privacy_toy":
             _run_privacy_toy(tdf, _REFERENCE_DIR / dataset)

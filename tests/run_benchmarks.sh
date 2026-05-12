@@ -83,6 +83,12 @@ for profile in "${PROFILES[@]}"; do
         --library skmob2 \
         --backend both \
         --profile "$profile"
+    run_job "skmob2_models_${profile}" \
+        "$MAIN_VENV" \
+        tests/benchmarks/speed_models_suite.py \
+        "$@" \
+        --library skmob2 \
+        --profile "$profile"
 done
 
 if [ -x "$SKMOB_VENV/bin/python" ]; then
@@ -105,6 +111,12 @@ if [ -x "$SKMOB_VENV/bin/python" ]; then
                 --profile "$profile" \
                 --timing-mode "$timing_mode"
         done
+        run_job "skmob_models_${profile}" \
+            "$SKMOB_VENV" \
+            tests/benchmarks/speed_models_suite.py \
+            "$@" \
+            --library skmob \
+            --profile "$profile"
     done
 else
     echo "WARNING: .venv-skmob not found; skipping skmob comparison benchmarks."
