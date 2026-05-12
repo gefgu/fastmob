@@ -51,7 +51,7 @@ class Attack(ABC):
         rows = _records(traj)
 
         if targets is None:
-            target_uids = _uid_values(traj)
+            target_uids = {row[UID] for row in rows}
         elif isinstance(targets, list):
             target_uids = set(targets)
         else:
@@ -59,6 +59,7 @@ class Attack(ABC):
 
         grouped = _rows_by_uid(rows)
         target_grouped = {uid: grouped[uid] for uid in sorted(grouped) if uid in target_uids}
+        prepared_group_counts = self._prepare_group_counts(grouped.values())
 
         if force_instances:
             out = {
@@ -71,7 +72,7 @@ class Attack(ABC):
                 PROBABILITY: [],
             }
             for single_rows in target_grouped.values():
-                inst_result = self._risk(single_rows, rows, force_instances=True)
+                inst_result = self._risk(single_rows, prepared_group_counts, force_instances=True)
                 for key in out:
                     out[key].extend(inst_result[key])
             return _to_native(out, backend)
@@ -80,7 +81,7 @@ class Attack(ABC):
         risks: list[float] = []
         for uid, single_rows in target_grouped.items():
             uids.append(uid)
-            risks.append(self._risk(single_rows, rows, force_instances=False))
+            risks.append(self._risk(single_rows, prepared_group_counts, force_instances=False))
         return _to_native({UID: uids, PRIVACY_RISK: risks}, backend)
 
     def _generate_instances(self, single_traj: Any):
@@ -89,9 +90,37 @@ class Attack(ABC):
         length = size if self.knowledge_length > size else self.knowledge_length
         return combinations(rows, length)
 
-    def _risk(self, single_traj: Any, traj: Any, force_instances: bool = False) -> Any:
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return single_traj
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return None
+
+    def _prepare_group_counts(self, groups: Any) -> list[tuple[Any, int]]:
+        grouped: list[tuple[Any, int]] = []
+        keyed: dict[Any, list[Any]] = {}
+        for group in groups:
+            prepared = self._prepare_group(group)
+            key = self._prepared_group_key(prepared)
+            if key is None:
+                grouped.append((prepared, 1))
+                continue
+            existing = keyed.get(key)
+            if existing is None:
+                keyed[key] = [prepared, 1]
+            else:
+                existing[1] += 1
+        grouped.extend((prepared, count) for prepared, count in keyed.values())
+        return grouped
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return instance
+
+    def _match_prepared(self, prepared_group: Any, prepared_instance: Any) -> int:
+        return self._match(prepared_group, prepared_instance)
+
+    def _risk(self, single_traj: Any, all_groups: list[tuple[Any, int]], force_instances: bool = False) -> Any:
         instances = self._generate_instances(single_traj)
-        all_groups = _rows_by_uid(_records(traj))
         risk = 0.0
 
         if force_instances:
@@ -106,7 +135,8 @@ class Attack(ABC):
             }
             inst_id = 1
             for instance in instances:
-                matches = sum(self._match(group, instance) for group in all_groups.values())
+                prepared_instance = self._prepare_instance(instance)
+                matches = sum(count for group, count in all_groups if self._match_prepared(group, prepared_instance))
                 prob = 1.0 / matches
                 for elem_count, elem in enumerate(instance, start=1):
                     values = list(elem.values())
@@ -121,7 +151,8 @@ class Attack(ABC):
             return inst_data
 
         for instance in instances:
-            matches = sum(self._match(group, instance) for group in all_groups.values())
+            prepared_instance = self._prepare_instance(instance)
+            matches = sum(count for group, count in all_groups if self._match_prepared(group, prepared_instance))
             prob = 1.0 / matches
             if prob > risk:
                 risk = prob

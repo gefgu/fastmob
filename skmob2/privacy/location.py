@@ -37,8 +37,18 @@ class LocationAttack(Attack):
     def _match(self, single_traj: Any, instance: Any) -> int:
         rows = _records(single_traj)
         inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        locs = _group_counts(rows, [LATITUDE, LONGITUDE])
-        inst = _group_counts(inst_rows, [LATITUDE, LONGITUDE])
+        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
+
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return _group_counts(_records(single_traj), [LATITUDE, LONGITUDE])
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return tuple(sorted(prepared_group.items()))
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return _group_counts(_records_like(instance, []), [LATITUDE, LONGITUDE])
+
+    def _match_prepared(self, locs: Any, inst: Any) -> int:
         for key, inst_count in inst.items():
             if locs.get(key, 0) < inst_count:
                 return 0
@@ -73,12 +83,24 @@ class LocationSequenceAttack(Attack):
     def _match(self, single_traj: Any, instance: Any) -> int:
         rows = _records(single_traj)
         inst = _records_like(instance, list(rows[0]) if rows else [])
+        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst))
+
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return [(row[LATITUDE], row[LONGITUDE]) for row in _records(single_traj)]
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return tuple(prepared_group)
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return [(row[LATITUDE], row[LONGITUDE]) for row in _records_like(instance, [])]
+
+    def _match_prepared(self, rows: Any, inst: Any) -> int:
         if not inst:
             return 1
         inst_idx = 0
         for row in rows:
             current = inst[inst_idx]
-            if current[LATITUDE] == row[LATITUDE] and current[LONGITUDE] == row[LONGITUDE]:
+            if current == row:
                 inst_idx += 1
                 if inst_idx == len(inst):
                     return 1
@@ -142,13 +164,25 @@ class LocationTimeAttack(Attack):
             rows.append(updated)
         columns = sorted_df.columns + [TEMP]
         transformed = {column: [row[column] for row in rows] for column in columns}
-        return self._all_risks(_to_native(transformed, sorted_df.implementation), targets, force_instances, show_progress)
+        return self._all_risks(
+            _to_native(transformed, sorted_df.implementation), targets, force_instances, show_progress
+        )
 
     def _match(self, single_traj: Any, instance: Any) -> int:
         rows = _records(single_traj)
         inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        locs = _group_counts(rows, [LATITUDE, LONGITUDE, TEMP])
-        inst = _group_counts(inst_rows, [LATITUDE, LONGITUDE, TEMP])
+        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
+
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return _group_counts(_records(single_traj), [LATITUDE, LONGITUDE, TEMP])
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return tuple(sorted(prepared_group.items()))
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return _group_counts(_records_like(instance, []), [LATITUDE, LONGITUDE, TEMP])
+
+    def _match_prepared(self, locs: Any, inst: Any) -> int:
         for key, inst_count in inst.items():
             if locs.get(key, 0) < inst_count:
                 return 0

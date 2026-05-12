@@ -35,8 +35,19 @@ class UniqueLocationAttack(Attack):
     def _match(self, single_traj: Any, instance: Any) -> int:
         rows = _records(single_traj)
         inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        locs = {(row[LATITUDE], row[LONGITUDE]) for row in rows}
-        return int(all((row[LATITUDE], row[LONGITUDE]) in locs for row in inst_rows))
+        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
+
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return {(row[LATITUDE], row[LONGITUDE]) for row in _records(single_traj)}
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return tuple(sorted(prepared_group))
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return [(row[LATITUDE], row[LONGITUDE]) for row in _records_like(instance, [])]
+
+    def _match_prepared(self, locs: Any, inst_locs: Any) -> int:
+        return int(all(loc in locs for loc in inst_locs))
 
 
 class LocationFrequencyAttack(Attack):
@@ -91,14 +102,25 @@ class LocationFrequencyAttack(Attack):
     def _match(self, single_traj: Any, instance: Any) -> int:
         rows = _records(single_traj)
         inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        locs = {(row[LATITUDE], row[LONGITUDE]): row[FREQUENCY] for row in rows}
-        for row in inst_rows:
-            freq = locs.get((row[LATITUDE], row[LONGITUDE]))
+        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
+
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return {(row[LATITUDE], row[LONGITUDE]): row[FREQUENCY] for row in _records(single_traj)}
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return tuple(sorted(prepared_group.items()))
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return [((row[LATITUDE], row[LONGITUDE]), row[FREQUENCY]) for row in _records_like(instance, [])]
+
+    def _match_prepared(self, locs: Any, instance: Any) -> int:
+        for loc, inst_freq in instance:
+            freq = locs.get(loc)
             if freq is None:
                 return 0
             lower = freq - (freq * self.tolerance)
             upper = freq + (freq * self.tolerance)
-            if not lower <= row[FREQUENCY] <= upper:
+            if not lower <= inst_freq <= upper:
                 return 0
         return 1
 
@@ -155,14 +177,25 @@ class LocationProbabilityAttack(Attack):
     def _match(self, single_traj: Any, instance: Any) -> int:
         rows = _records(single_traj)
         inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        locs = {(row[LATITUDE], row[LONGITUDE]): row[PROBABILITY] for row in rows}
-        for row in inst_rows:
-            prob = locs.get((row[LATITUDE], row[LONGITUDE]))
+        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
+
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return {(row[LATITUDE], row[LONGITUDE]): row[PROBABILITY] for row in _records(single_traj)}
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return tuple(sorted(prepared_group.items()))
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return [((row[LATITUDE], row[LONGITUDE]), row[PROBABILITY]) for row in _records_like(instance, [])]
+
+    def _match_prepared(self, locs: Any, instance: Any) -> int:
+        for loc, inst_prob in instance:
+            prob = locs.get(loc)
             if prob is None:
                 return 0
             lower = prob - (prob * self.tolerance)
             upper = prob + (prob * self.tolerance)
-            if not lower <= row[PROBABILITY] <= upper:
+            if not lower <= inst_prob <= upper:
                 return 0
         return 1
 
@@ -191,22 +224,24 @@ class LocationProportionAttack(LocationFrequencyAttack):
     def _match(self, single_traj: Any, instance: Any) -> int:
         single_rows = _records(single_traj)
         inst_rows = _records_like(instance, list(single_rows[0]) if single_rows else [])
-        locs = {(row[LATITUDE], row[LONGITUDE]): row[FREQUENCY] for row in single_rows}
-        if not inst_rows:
+        return self._match_prepared(self._prepare_group(single_rows), self._prepare_instance(inst_rows))
+
+    def _match_prepared(self, locs: Any, instance: Any) -> int:
+        if not instance:
             return 1
         matched_freqs = []
-        for row in inst_rows:
-            freq = locs.get((row[LATITUDE], row[LONGITUDE]))
+        for loc, _inst_freq in instance:
+            freq = locs.get(loc)
             if freq is None:
                 return 0
             matched_freqs.append(freq)
         max_single = max(matched_freqs) if matched_freqs else 0
-        max_inst = max(row[FREQUENCY] for row in inst_rows)
-        for row, freq in zip(inst_rows, matched_freqs):
+        max_inst = max(inst_freq for _loc, inst_freq in instance)
+        for (_loc, inst_freq), freq in zip(instance, matched_freqs):
             if max_single == 0 or max_inst == 0:
                 return 0
             proportion = freq / max_single
-            inst_proportion = row[FREQUENCY] / max_inst
+            inst_proportion = inst_freq / max_inst
             lower = proportion - (proportion * self.tolerance)
             upper = proportion + (proportion * self.tolerance)
             if not lower <= inst_proportion <= upper:
@@ -244,8 +279,19 @@ class HomeWorkAttack(Attack):
     def _match(self, single_traj: Any, instance: Any) -> int:
         rows = _records(single_traj)
         inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        top_two = {(row[LATITUDE], row[LONGITUDE]) for row in rows[:2]}
-        return int(all((row[LATITUDE], row[LONGITUDE]) in top_two for row in inst_rows))
+        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
+
+    def _prepare_group(self, single_traj: Any) -> Any:
+        return {(row[LATITUDE], row[LONGITUDE]) for row in _records(single_traj)[:2]}
+
+    def _prepared_group_key(self, prepared_group: Any) -> Any:
+        return tuple(sorted(prepared_group))
+
+    def _prepare_instance(self, instance: Any) -> Any:
+        return [(row[LATITUDE], row[LONGITUDE]) for row in _records_like(instance, [])]
+
+    def _match_prepared(self, top_two: Any, inst_locs: Any) -> int:
+        return int(all(loc in top_two for loc in inst_locs))
 
 
 __all__ = [
