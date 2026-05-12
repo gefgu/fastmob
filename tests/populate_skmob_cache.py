@@ -25,6 +25,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+import numpy as np
+
+# skmob 1.3.1 uses np.NaN which was removed in NumPy 2.0.
+if not hasattr(np, "NaN"):
+    np.NaN = np.nan  # type: ignore[attr-defined]
+
 import pandas as pd
 import skmob
 from skmob.measures import individual as skmob_individual
@@ -107,6 +113,19 @@ def _save_count(n: int, path: Path) -> None:
     path.write_text(json.dumps({"count": n}))
 
 
+def _run_measure(name: str, fn, tdf: skmob.TrajDataFrame, path: Path, *, reset_index: bool = False) -> bool:
+    """Run one skmob measure, save to path, return True on success."""
+    print(f"    {path.name}")
+    try:
+        result = fn(tdf)
+        df = result.reset_index() if reset_index else result.reset_index(drop=True)
+        _save(df, path)
+        return True
+    except Exception as exc:
+        print(f"      SKIP ({type(exc).__name__}: {exc})")
+        return False
+
+
 def _run_all(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -128,26 +147,25 @@ def _run_all(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
         ("uncorrelated_entropy", lambda t: skmob_individual.uncorrelated_entropy(t)),
     ]
     for name, fn in scalar:
-        print(f"    {name}.parquet")
-        result = fn(tdf)
-        _save(result.reset_index(drop=True), out_dir / f"{name}.parquet")
+        _run_measure(name, fn, tdf, out_dir / f"{name}.parquet")
 
     # --- list-per-user measures ---
-    print("    jump_lengths.parquet")
-    _save(
-        skmob_individual.jump_lengths(tdf, show_progress=False, merge=False).reset_index(drop=True),
+    _run_measure(
+        "jump_lengths",
+        lambda t: skmob_individual.jump_lengths(t, show_progress=False, merge=False),
+        tdf,
         out_dir / "jump_lengths.parquet",
     )
-
-    print("    k_radius_of_gyration_k2.parquet")
-    _save(
-        skmob_individual.k_radius_of_gyration(tdf, k=2, show_progress=False).reset_index(drop=True),
+    _run_measure(
+        "k_radius_of_gyration_k2",
+        lambda t: skmob_individual.k_radius_of_gyration(t, k=2, show_progress=False),
+        tdf,
         out_dir / "k_radius_of_gyration_k2.parquet",
     )
-
-    print("    waiting_times.parquet")
-    _save(
-        skmob_individual.waiting_times(tdf).reset_index(drop=True),
+    _run_measure(
+        "waiting_times",
+        lambda t: skmob_individual.waiting_times(t),
+        tdf,
         out_dir / "waiting_times.parquet",
     )
 
@@ -158,28 +176,39 @@ def _run_all(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
         ("recency_rank", lambda t: skmob_individual.recency_rank(t, show_progress=False)),
     ]
     for name, fn in location_keyed:
-        print(f"    {name}.parquet")
-        _save(fn(tdf).reset_index(), out_dir / f"{name}.parquet")
+        _run_measure(name, fn, tdf, out_dir / f"{name}.parquet", reset_index=True)
 
     # --- network measure ---
-    print("    individual_mobility_network.parquet")
-    _save(
-        skmob_individual.individual_mobility_network(tdf, show_progress=False).reset_index(),
+    _run_measure(
+        "individual_mobility_network",
+        lambda t: skmob_individual.individual_mobility_network(t, show_progress=False),
+        tdf,
         out_dir / "individual_mobility_network.parquet",
+        reset_index=True,
     )
 
     # --- preprocessing: row counts only ---
-    print("    filter_count.json")
-    _save_count(len(skmob_filtering.filter(tdf, max_speed_kmh=500.0)), out_dir / "filter_count.json")
-
-    print("    compress_count.json")
-    _save_count(len(skmob_compression.compress(tdf, spatial_radius_km=0.2)), out_dir / "compress_count.json")
+    for count_name, count_fn in [
+        ("filter_count", lambda t: len(skmob_filtering.filter(t, max_speed_kmh=500.0))),
+        ("compress_count", lambda t: len(skmob_compression.compress(t, spatial_radius_km=0.2))),
+    ]:
+        print(f"    {count_name}.json")
+        try:
+            _save_count(count_fn(tdf), out_dir / f"{count_name}.json")
+        except Exception as exc:
+            print(f"      SKIP ({type(exc).__name__}: {exc})")
 
     print("    stay_locations_count.json + cluster_count.json")
-    stops = skmob_detection.stay_locations(tdf, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
-    _save_count(len(stops), out_dir / "stay_locations_count.json")
-    clustered = skmob_clustering.cluster(stops, cluster_radius_km=0.1)
-    _save_count(len(clustered), out_dir / "cluster_count.json")
+    try:
+        stops = skmob_detection.stay_locations(tdf, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
+        _save_count(len(stops), out_dir / "stay_locations_count.json")
+        try:
+            clustered = skmob_clustering.cluster(stops, cluster_radius_km=0.1)
+            _save_count(len(clustered), out_dir / "cluster_count.json")
+        except Exception as exc:
+            print(f"      cluster SKIP ({type(exc).__name__}: {exc})")
+    except Exception as exc:
+        print(f"      stay_locations SKIP ({type(exc).__name__}: {exc})")
 
     print(f"    → {out_dir}")
 
