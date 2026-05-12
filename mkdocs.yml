@@ -84,6 +84,7 @@ nav:
     - Overview: explanations/index.md
     - Backend-Agnostic, Rust-Accelerated Design: explanations/backend-agnostic-rust-accelerated-design.md
     - Correctness, Coverage, and Benchmarking: explanations/correctness-coverage-and-benchmarking.md
+    - Why Radius of Gyration Is 447× Faster: explanations/radius-of-gyration-performance.md
   - API Reference:
     - Overview: api/index.md
     - Preprocessing: api/preprocessing.md
