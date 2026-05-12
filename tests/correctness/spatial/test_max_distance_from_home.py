@@ -103,7 +103,11 @@ def test_max_distance_from_home_matches_skmob(comparison_skmob):
 
 
 def test_max_distance_from_home_matches_cached_reference(comparison_skmob_reference):
-    """max_distance_from_home matches the cached skmob baseline without requiring the skmob environment."""
+    """max_distance_from_home matches the cached skmob baseline without requiring the skmob environment.
+
+    Users with an ambiguous (tied) home location are allowed to differ because a different
+    home point yields a different max_distance_from_home value.
+    """
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.spatial.max_distance_from_home import max_distance_from_home as skmob2_mdfh
 
@@ -114,9 +118,15 @@ def test_max_distance_from_home_matches_cached_reference(comparison_skmob_refere
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["max_distance_from_home"].tolist()))
     skmob2_dict = _to_dict(skmob2_result)
 
+    # Import the ambiguity helper from the home_location test module.
+    from tests.correctness.spatial.test_home_location import _nighttime_is_ambiguous
+
     common = set(skmob_dict) & set(skmob2_dict)
     assert len(common) > 0
     for uid in common:
-        assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
-            f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
-        )
+        tol = skmob_dict[uid] * 1e-5 + 1e-5
+        if abs(skmob_dict[uid] - skmob2_dict[uid]) >= tol:
+            assert _nighttime_is_ambiguous(ref.input_df, uid), (
+                f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]} "
+                f"(no tied home location, so this is a real correctness failure)"
+            )

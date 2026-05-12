@@ -145,8 +145,28 @@ def test_home_location_matches_skmob(comparison_skmob):
         assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng skmob={exp_lng}, skmob2={got_lng}"
 
 
+def _nighttime_is_ambiguous(input_df, uid) -> bool:
+    """Return True if uid has multiple locations tied for the most nighttime visits."""
+    import pandas as pd
+
+    if "uid" not in input_df.columns:
+        return False
+    uid_rows = input_df[input_df["uid"] == uid]
+    dt = pd.to_datetime(uid_rows["datetime"])
+    night_df = uid_rows[(dt.dt.hour >= 22) | (dt.dt.hour < 7)]
+    if night_df.empty:
+        return False
+    counts = night_df.groupby(["lat", "lng"]).size()
+    return int((counts == counts.max()).sum()) > 1
+
+
 def test_home_location_matches_cached_reference(comparison_skmob_reference):
-    """home_location matches the cached skmob baseline without requiring the skmob environment."""
+    """home_location matches the cached skmob baseline without requiring the skmob environment.
+
+    Users whose most-visited nighttime location is tied with another location are allowed
+    to differ: skmob and skmob2 use different tie-breaking rules for equal nighttime visit
+    counts, so disagreements on ambiguous users are not treated as failures.
+    """
     from skmob2.measures.spatial.home_location import home_location as skmob2_hl
 
     ref = comparison_skmob_reference
@@ -161,5 +181,12 @@ def test_home_location_matches_cached_reference(comparison_skmob_reference):
     for uid in common:
         exp_lat, exp_lng = skmob_dict[uid]
         got_lat, got_lng = skmob2_dict[uid]
+        if abs(got_lat - exp_lat) >= 1e-6 or abs(got_lng - exp_lng) >= 1e-6:
+            # Allow difference only when the home location is tie-ambiguous.
+            assert _nighttime_is_ambiguous(ref.input_df, uid), (
+                f"uid={uid}: lat cached={exp_lat}, skmob2={got_lat} "
+                f"(no tie, so this is a real correctness failure)"
+            )
+            continue
         assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat cached={exp_lat}, skmob2={got_lat}"
         assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng cached={exp_lng}, skmob2={got_lng}"
