@@ -9,7 +9,7 @@ Or directly (after activating the skmob env):
 
 Options:
     --datasets   Comma-separated list of datasets to populate.
-                 Default: brightkite,geolife,foursquare
+                 Default: brightkite,geolife,foursquare,privacy_toy
     --geolife-rows N      Max GeoLife rows (default: 10000)
     --foursquare-rows N   Max Foursquare rows (default: 10000)
 """
@@ -20,6 +20,7 @@ import argparse
 import json
 import sys
 import urllib.request
+import warnings
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -34,6 +35,7 @@ if not hasattr(np, "NaN"):
 import pandas as pd
 import skmob
 from skmob.measures import individual as skmob_individual
+from skmob.privacy import attacks as skmob_privacy_attacks
 from skmob.preprocessing import clustering as skmob_clustering
 from skmob.preprocessing import compression as skmob_compression
 from skmob.preprocessing import detection as skmob_detection
@@ -43,6 +45,141 @@ from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
 from tests.shared.foursquare import FOURSQUARE_DEFAULT_ROWS, load_foursquare_pandas
 from tests.shared.geolife import GEOLIFE_DEFAULT_ROWS, load_geolife_pandas
 from tests.shared.skmob_cache import _REFERENCE_DIR
+
+PRIVACY_TOY_PATH = REPO_ROOT / "scikit-mobility" / "examples" / "privacy_toy.csv"
+
+PRIVACY_ATTACK_CASES: tuple[tuple[str, type, dict[str, object], dict[str, object]], ...] = (
+    ("location_kl2", skmob_privacy_attacks.LocationAttack, {"knowledge_length": 2}, {}),
+    ("location_kl3", skmob_privacy_attacks.LocationAttack, {"knowledge_length": 3}, {}),
+    ("location_targets_kl3", skmob_privacy_attacks.LocationAttack, {"knowledge_length": 3}, {"targets": [1, 2]}),
+    (
+        "location_force_instances_kl3",
+        skmob_privacy_attacks.LocationAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+    ("location_sequence_kl2", skmob_privacy_attacks.LocationSequenceAttack, {"knowledge_length": 2}, {}),
+    ("location_sequence_kl3", skmob_privacy_attacks.LocationSequenceAttack, {"knowledge_length": 3}, {}),
+    (
+        "location_sequence_targets_kl3",
+        skmob_privacy_attacks.LocationSequenceAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2]},
+    ),
+    (
+        "location_sequence_force_instances_kl3",
+        skmob_privacy_attacks.LocationSequenceAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+    ("location_time_kl2", skmob_privacy_attacks.LocationTimeAttack, {"knowledge_length": 2}, {}),
+    (
+        "location_time_month_kl2",
+        skmob_privacy_attacks.LocationTimeAttack,
+        {"knowledge_length": 2, "time_precision": "Month"},
+        {},
+    ),
+    (
+        "location_time_month_kl3",
+        skmob_privacy_attacks.LocationTimeAttack,
+        {"knowledge_length": 3, "time_precision": "Month"},
+        {},
+    ),
+    (
+        "location_time_month_targets_kl3",
+        skmob_privacy_attacks.LocationTimeAttack,
+        {"knowledge_length": 3, "time_precision": "Month"},
+        {"targets": [1, 2]},
+    ),
+    (
+        "location_time_month_force_instances_kl3",
+        skmob_privacy_attacks.LocationTimeAttack,
+        {"knowledge_length": 3, "time_precision": "Month"},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+    ("unique_location_kl2", skmob_privacy_attacks.UniqueLocationAttack, {"knowledge_length": 2}, {}),
+    ("unique_location_kl3", skmob_privacy_attacks.UniqueLocationAttack, {"knowledge_length": 3}, {}),
+    (
+        "unique_location_targets_kl3",
+        skmob_privacy_attacks.UniqueLocationAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2]},
+    ),
+    (
+        "unique_location_force_instances_kl3",
+        skmob_privacy_attacks.UniqueLocationAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+    ("location_frequency_kl2", skmob_privacy_attacks.LocationFrequencyAttack, {"knowledge_length": 2}, {}),
+    (
+        "location_frequency_tol05_kl2",
+        skmob_privacy_attacks.LocationFrequencyAttack,
+        {"knowledge_length": 2, "tolerance": 0.5},
+        {},
+    ),
+    ("location_frequency_kl3", skmob_privacy_attacks.LocationFrequencyAttack, {"knowledge_length": 3}, {}),
+    (
+        "location_frequency_targets_kl3",
+        skmob_privacy_attacks.LocationFrequencyAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2]},
+    ),
+    (
+        "location_frequency_force_instances_kl3",
+        skmob_privacy_attacks.LocationFrequencyAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+    ("location_probability_kl2", skmob_privacy_attacks.LocationProbabilityAttack, {"knowledge_length": 2}, {}),
+    (
+        "location_probability_tol05_kl2",
+        skmob_privacy_attacks.LocationProbabilityAttack,
+        {"knowledge_length": 2, "tolerance": 0.5},
+        {},
+    ),
+    ("location_probability_kl3", skmob_privacy_attacks.LocationProbabilityAttack, {"knowledge_length": 3}, {}),
+    (
+        "location_probability_targets_kl3",
+        skmob_privacy_attacks.LocationProbabilityAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2]},
+    ),
+    (
+        "location_probability_force_instances_kl3",
+        skmob_privacy_attacks.LocationProbabilityAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+    ("location_proportion_kl2", skmob_privacy_attacks.LocationProportionAttack, {"knowledge_length": 2}, {}),
+    (
+        "location_proportion_tol05_kl2",
+        skmob_privacy_attacks.LocationProportionAttack,
+        {"knowledge_length": 2, "tolerance": 0.5},
+        {},
+    ),
+    ("location_proportion_kl3", skmob_privacy_attacks.LocationProportionAttack, {"knowledge_length": 3}, {}),
+    (
+        "location_proportion_targets_kl3",
+        skmob_privacy_attacks.LocationProportionAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2]},
+    ),
+    (
+        "location_proportion_force_instances_kl3",
+        skmob_privacy_attacks.LocationProportionAttack,
+        {"knowledge_length": 3},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+    ("home_work", skmob_privacy_attacks.HomeWorkAttack, {}, {}),
+    ("home_work_targets", skmob_privacy_attacks.HomeWorkAttack, {}, {"targets": [1, 2]}),
+    (
+        "home_work_force_instances",
+        skmob_privacy_attacks.HomeWorkAttack,
+        {},
+        {"targets": [1, 2], "force_instances": True},
+    ),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +235,14 @@ def _load_foursquare(rows: int) -> skmob.TrajDataFrame:
         datetime="check-in_time",
         user_id="user",
     )
+
+
+def _load_privacy_toy() -> skmob.TrajDataFrame:
+    if not PRIVACY_TOY_PATH.exists():
+        raise FileNotFoundError(f"Privacy toy dataset not found at {PRIVACY_TOY_PATH}")
+    df = pd.read_csv(PRIVACY_TOY_PATH)
+    df["datetime"] = pd.to_datetime(df["datetime"])
+    return skmob.TrajDataFrame(df, latitude="lat", longitude="lng", datetime="datetime", user_id="uid")
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +358,26 @@ def _run_all(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
     print(f"    → {out_dir}")
 
 
+def _run_privacy_toy(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    print("    input.parquet")
+    _save(pd.DataFrame(tdf).copy(), out_dir / "input.parquet")
+
+    for name, attack_cls, init_kwargs, assess_kwargs in PRIVACY_ATTACK_CASES:
+        print(f"    {name}.parquet")
+        try:
+            attack = attack_cls(**init_kwargs)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", FutureWarning)
+                result = attack.assess_risk(tdf.copy(), show_progress=False, **assess_kwargs)
+            _save(result.reset_index(drop=True), out_dir / f"{name}.parquet")
+        except Exception as exc:
+            print(f"      SKIP ({type(exc).__name__}: {exc})")
+
+    print(f"    → {out_dir}")
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -222,8 +387,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Populate skmob reference cache")
     parser.add_argument(
         "--datasets",
-        default="brightkite,geolife,foursquare",
-        help="Comma-separated dataset names (default: all three)",
+        default="brightkite,geolife,foursquare,privacy_toy",
+        help="Comma-separated dataset names (default: all cached datasets)",
     )
     parser.add_argument("--geolife-rows", type=int, default=GEOLIFE_DEFAULT_ROWS)
     parser.add_argument("--foursquare-rows", type=int, default=FOURSQUARE_DEFAULT_ROWS)
@@ -234,6 +399,7 @@ def main() -> None:
         "brightkite": _load_brightkite,
         "geolife": lambda: _load_geolife(args.geolife_rows),
         "foursquare": lambda: _load_foursquare(args.foursquare_rows),
+        "privacy_toy": _load_privacy_toy,
     }
 
     for dataset in datasets:
@@ -242,7 +408,10 @@ def main() -> None:
             continue
         print(f"\n==> {dataset}")
         tdf = loaders[dataset]()
-        _run_all(tdf, _REFERENCE_DIR / dataset)
+        if dataset == "privacy_toy":
+            _run_privacy_toy(tdf, _REFERENCE_DIR / dataset)
+        else:
+            _run_all(tdf, _REFERENCE_DIR / dataset)
 
     print("\nAll done. Commit tests/shared/skmob_reference/ to git to track the snapshots.")
 

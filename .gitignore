@@ -91,3 +91,7 @@ TODO.md
 
 tests/shared/data/*
 tests/shared/skmob_reference/*
+!tests/shared/skmob_reference/*/
+!tests/shared/skmob_reference/**/.gitkeep
+!tests/shared/skmob_reference/**/*.parquet
+!tests/shared/skmob_reference/**/*.json

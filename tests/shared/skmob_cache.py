@@ -20,7 +20,7 @@ _REFERENCE_DIR = Path(__file__).parent / "skmob_reference"
 
 
 class SkmobReferenceDataset:
-    """Cached skmob outputs for one dataset (brightkite / geolife / foursquare)."""
+    """Cached skmob outputs for one dataset."""
 
     def __init__(self, dataset_name: str) -> None:
         self.name = dataset_name
