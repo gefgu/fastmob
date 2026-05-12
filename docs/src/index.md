@@ -50,14 +50,14 @@ print(result)
 
 | Function | Description |
 |---|---|
-| [`jump_lengths`][skmob2.measures.spatial.jump_lengths.jump_lengths] | Haversine distances between consecutive GPS fixes per user |
-| [`radius_of_gyration`][skmob2.measures.spatial.radius_of_gyration.radius_of_gyration] | Spread of a user's movements around their center of mass |
-| [`od_matrix`][skmob2.measures.flows.od.od_matrix] | Origin-destination trip counts |
-| [`od_metrics_per_area`][skmob2.measures.flows.od.od_metrics_per_area] | Per-area flow metrics from an OD matrix |
-| [`log_truncated_powerlaw`][skmob2.measures.fitting.mobility_laws.log_truncated_powerlaw] | Log of the truncated power-law (Gonzalez et al. 2008) |
-| [`fit_values_to_truncated_powerlaw`][skmob2.measures.fitting.mobility_laws.fit_values_to_truncated_powerlaw] | Fit a 1-D array to the truncated power-law model |
-| [`Gravity`][skmob2.models.gravity.Gravity] | Gravity flow generation model |
-| [`Radiation`][skmob2.models.radiation.Radiation] | Radiation flow generation model |
-| [`EPR`][skmob2.models.epr.EPR] | Exploration and preferential return trajectory generator |
-| [`activity_transition_matrix`][skmob2.measures.visits.activity.activity_transition_matrix] | Activity-type transition probabilities |
-| [`intermittance_and_degree_of_return`][skmob2.measures.visits.mobility_profiling.intermittance_and_degree_of_return] | Intermittancy and degree-of-return per user |
+| [`jump_lengths`](api/spatial.md#skmob2.measures.spatial.jump_lengths.jump_lengths) | Haversine distances between consecutive GPS fixes per user |
+| [`radius_of_gyration`](api/spatial.md#skmob2.measures.spatial.radius_of_gyration.radius_of_gyration) | Spread of a user's movements around their center of mass |
+| [`od_matrix`](api/flows.md#skmob2.measures.flows.od.od_matrix) | Origin-destination trip counts |
+| [`od_metrics_per_area`](api/flows.md#skmob2.measures.flows.od.od_metrics_per_area) | Per-area flow metrics from an OD matrix |
+| [`log_truncated_powerlaw`](api/fitting.md#skmob2.measures.fitting.mobility_laws.log_truncated_powerlaw) | Log of the truncated power-law (Gonzalez et al. 2008) |
+| [`fit_values_to_truncated_powerlaw`](api/fitting.md#skmob2.measures.fitting.mobility_laws.fit_values_to_truncated_powerlaw) | Fit a 1-D array to the truncated power-law model |
+| [`Gravity`](api/models.md#skmob2.models.gravity.Gravity) | Gravity flow generation model |
+| [`Radiation`](api/models.md#skmob2.models.radiation.Radiation) | Radiation flow generation model |
+| [`EPR`](api/models.md#skmob2.models.epr.EPR) | Exploration and preferential return trajectory generator |
+| [`activity_transition_matrix`](api/visits.md#skmob2.measures.visits.activity.activity_transition_matrix) | Activity-type transition probabilities |
+| [`intermittance_and_degree_of_return`](api/visits.md#skmob2.measures.visits.mobility_profiling.intermittance_and_degree_of_return) | Intermittancy and degree-of-return per user |
