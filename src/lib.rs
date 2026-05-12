@@ -303,11 +303,19 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        filter_traj::filter_trajectory_indices_batch_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         compress_traj::compress_trajectory_batch,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
         compress_traj::compress_trajectory_representatives,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        compress_traj::compress_trajectory_representatives_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;
@@ -321,6 +329,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_rs::detect_stay_locations_batch,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        stay_locations_rs::detect_stay_locations_batch_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;

@@ -8,6 +8,11 @@ import numpy as np
 import pandas as pd
 from skmob2._core import detect_stay_locations_batch as _detect_stay_locations_batch
 
+try:
+    from skmob2._core import detect_stay_locations_batch_numpy as _detect_stay_locations_batch_numpy
+except ImportError:  # pragma: no cover - fallback for older extension builds
+    _detect_stay_locations_batch_numpy = None
+
 from ..measures._common import _build_user_ranges, _prepare_trajectory
 
 
@@ -118,7 +123,8 @@ def stay_locations(
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
-    out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _detect_stay_locations_batch(
+    batch_func = _detect_stay_locations_batch_numpy or _detect_stay_locations_batch
+    out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = batch_func(
         lats,
         lngs,
         timestamps_s,

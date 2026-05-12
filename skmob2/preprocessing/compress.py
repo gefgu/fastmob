@@ -5,6 +5,11 @@ from typing import Any
 import narwhals as nw
 from skmob2._core import compress_trajectory_representatives as _compress_trajectory_representatives
 
+try:
+    from skmob2._core import compress_trajectory_representatives_numpy as _compress_trajectory_representatives_numpy
+except ImportError:  # pragma: no cover - fallback for older extension builds
+    _compress_trajectory_representatives_numpy = None
+
 from ..measures._common import _build_user_ranges, _prepare_trajectory
 
 
@@ -91,7 +96,8 @@ def compress(
 
     _, ranges = _build_user_ranges(df, uid_col)
 
-    representative_indices, median_lats, median_lngs = _compress_trajectory_representatives(
+    representatives_func = _compress_trajectory_representatives_numpy or _compress_trajectory_representatives
+    representative_indices, median_lats, median_lngs = representatives_func(
         lats,
         lngs,
         ranges,

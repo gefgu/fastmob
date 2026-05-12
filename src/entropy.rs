@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -8,7 +8,7 @@ type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 
 // skmob-compatible LZ77 entropy estimator — matches scikit-mobility's _true_entropy.
 // Distinct from the LZ78 DP estimator used by trajectory_entropy_batch.
-fn skmob_lz77_entropy(sequence: &[String]) -> f64 {
+fn skmob_lz77_entropy<T: PartialEq>(sequence: &[T]) -> f64 {
     let n = sequence.len();
     if n <= 1 {
         return 0.0;
@@ -52,14 +52,33 @@ pub(crate) fn real_entropy_batch(
 ) -> PyResult<Vec<f64>> {
     validate_ranges(tokens.len(), &ranges)?;
 
+    let token_ids = encode_tokens(&tokens);
     let entropies = py.detach(|| {
         ranges
             .par_iter()
-            .map(|&(start, end)| skmob_lz77_entropy(&tokens[start..end]))
+            .map(|&(start, end)| skmob_lz77_entropy(&token_ids[start..end]))
             .collect()
     });
 
     Ok(entropies)
+}
+
+fn encode_tokens(tokens: &[String]) -> Vec<usize> {
+    let mut ids_by_token: HashMap<&str, usize> = HashMap::new();
+    let mut ids = Vec::with_capacity(tokens.len());
+    for token in tokens {
+        let token = token.as_str();
+        let id = match ids_by_token.get(token) {
+            Some(&id) => id,
+            None => {
+                let id = ids_by_token.len();
+                ids_by_token.insert(token, id);
+                id
+            }
+        };
+        ids.push(id);
+    }
+    ids
 }
 
 fn validate_ranges(n_tokens: usize, ranges: &[(usize, usize)]) -> PyResult<()> {

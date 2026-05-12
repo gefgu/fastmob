@@ -11,9 +11,11 @@ fn waiting_times_for_range(timestamps_s: &[f64], start: usize, end: usize) -> Ve
     if end - start < 2 {
         return Vec::new();
     }
-    (start + 1..end)
-        .map(|idx| timestamps_s[idx] - timestamps_s[idx - 1])
-        .collect()
+    let mut waits = Vec::with_capacity(end - start - 1);
+    for idx in start + 1..end {
+        waits.push(timestamps_s[idx] - timestamps_s[idx - 1]);
+    }
+    waits
 }
 
 fn waiting_times_for_indexed_range(
@@ -25,9 +27,11 @@ fn waiting_times_for_indexed_range(
     if end - start < 2 {
         return Vec::new();
     }
-    (start + 1..end)
-        .map(|pos| timestamps_s[indices[pos]] - timestamps_s[indices[pos - 1]])
-        .collect()
+    let mut waits = Vec::with_capacity(end - start - 1);
+    for pos in start + 1..end {
+        waits.push(timestamps_s[indices[pos]] - timestamps_s[indices[pos - 1]]);
+    }
+    waits
 }
 
 fn waiting_times_impl(timestamps_s: &[f64], ranges: &[(usize, usize)]) -> PyResult<Vec<Vec<f64>>> {
@@ -42,10 +46,17 @@ fn waiting_times_impl(timestamps_s: &[f64], ranges: &[(usize, usize)]) -> PyResu
 fn waiting_times_flat_impl(timestamps_s: &[f64], ranges: &[(usize, usize)]) -> PyResult<Vec<f64>> {
     validate_ranges(timestamps_s.len(), ranges)?;
 
-    Ok(ranges
+    let total_len = ranges
         .iter()
-        .flat_map(|&(start, end)| waiting_times_for_range(timestamps_s, start, end))
-        .collect())
+        .map(|&(start, end)| end.saturating_sub(start).saturating_sub(1))
+        .sum();
+    let mut waits = Vec::with_capacity(total_len);
+    for &(start, end) in ranges {
+        for idx in start + 1..end {
+            waits.push(timestamps_s[idx] - timestamps_s[idx - 1]);
+        }
+    }
+    Ok(waits)
 }
 
 fn waiting_times_indexed_impl(
@@ -68,12 +79,17 @@ fn waiting_times_indexed_flat_impl(
 ) -> PyResult<Vec<f64>> {
     validate_indexed_ranges(timestamps_s.len(), indices, ranges)?;
 
-    Ok(ranges
+    let total_len = ranges
         .iter()
-        .flat_map(|&(start, end)| {
-            waiting_times_for_indexed_range(timestamps_s, indices, start, end)
-        })
-        .collect())
+        .map(|&(start, end)| end.saturating_sub(start).saturating_sub(1))
+        .sum();
+    let mut waits = Vec::with_capacity(total_len);
+    for &(start, end) in ranges {
+        for pos in start + 1..end {
+            waits.push(timestamps_s[indices[pos]] - timestamps_s[indices[pos - 1]]);
+        }
+    }
+    Ok(waits)
 }
 
 #[pyfunction]

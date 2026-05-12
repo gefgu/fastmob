@@ -1,4 +1,4 @@
-use numpy::PyReadonlyArray1;
+use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use rayon::prelude::*;
 
@@ -6,6 +6,12 @@ use crate::haversine::haversine_km;
 use crate::utils::median_slice_in_place;
 
 type CompressRepresentatives = (Vec<usize>, Vec<f64>, Vec<f64>);
+type CompressRepresentativesNumpy<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<f64>>,
+);
+type CompressRepresentativeRow = (usize, f64, f64);
 
 fn compress_user_slice(
     lats: &[f64],
@@ -45,6 +51,32 @@ fn compress_user_slice(
     groups
 }
 
+fn compress_user_representatives(
+    lats: &[f64],
+    lngs: &[f64],
+    spatial_radius_km: f64,
+    offset: usize,
+) -> Vec<CompressRepresentativeRow> {
+    let groups = compress_user_slice(lats, lngs, spatial_radius_km, offset);
+    let mut rows = Vec::with_capacity(groups.len());
+    let mut lat_buf = Vec::new();
+    let mut lng_buf = Vec::new();
+
+    for (group_start, group_end) in groups {
+        lat_buf.clear();
+        lng_buf.clear();
+        lat_buf.extend_from_slice(&lats[group_start - offset..group_end - offset]);
+        lng_buf.extend_from_slice(&lngs[group_start - offset..group_end - offset]);
+        rows.push((
+            group_start,
+            median_slice_in_place(&mut lat_buf),
+            median_slice_in_place(&mut lng_buf),
+        ));
+    }
+
+    rows
+}
+
 #[pyfunction]
 pub(crate) fn compress_trajectory_batch(
     latitudes: Vec<f64>,
@@ -74,34 +106,66 @@ pub(crate) fn compress_trajectory_representatives<'py>(
     ranges: Vec<(usize, usize)>,
     spatial_radius_km: f64,
 ) -> PyResult<CompressRepresentatives> {
-    let lats = latitudes.as_slice()?;
-    let lngs = longitudes.as_slice()?;
+    Ok(compress_trajectory_representatives_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        &ranges,
+        spatial_radius_km,
+    ))
+}
 
-    // Parallel group detection across users (read-only access to lats/lngs).
-    let all_groups: Vec<Vec<(usize, usize)>> = ranges
+#[pyfunction]
+pub(crate) fn compress_trajectory_representatives_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    ranges: Vec<(usize, usize)>,
+    spatial_radius_km: f64,
+) -> PyResult<CompressRepresentativesNumpy<'py>> {
+    let (representative_indices, median_latitudes, median_longitudes) =
+        compress_trajectory_representatives_impl(
+            latitudes.as_slice()?,
+            longitudes.as_slice()?,
+            &ranges,
+            spatial_radius_km,
+        );
+    Ok((
+        PyArray1::from_vec(py, representative_indices),
+        PyArray1::from_vec(py, median_latitudes),
+        PyArray1::from_vec(py, median_longitudes),
+    ))
+}
+
+fn compress_trajectory_representatives_impl(
+    lats: &[f64],
+    lngs: &[f64],
+    ranges: &[(usize, usize)],
+    spatial_radius_km: f64,
+) -> CompressRepresentatives {
+    let per_user_rows: Vec<Vec<CompressRepresentativeRow>> = ranges
         .par_iter()
         .map(|&(start, end)| {
-            compress_user_slice(&lats[start..end], &lngs[start..end], spatial_radius_km, start)
+            compress_user_representatives(
+                &lats[start..end],
+                &lngs[start..end],
+                spatial_radius_km,
+                start,
+            )
         })
         .collect();
 
-    let total_groups: usize = all_groups.iter().map(|g| g.len()).sum();
+    let total_groups: usize = per_user_rows.iter().map(|g| g.len()).sum();
     let mut representative_indices = Vec::with_capacity(total_groups);
     let mut median_latitudes = Vec::with_capacity(total_groups);
     let mut median_longitudes = Vec::with_capacity(total_groups);
 
-    for user_groups in all_groups {
-        for (group_start, group_end) in user_groups {
-            representative_indices.push(group_start);
-            // Clone only the group slice (typically very small) for in-place quickselect.
-            // This replaces the old O(n log n) clone-and-sort with O(n) quickselect on a
-            // group-sized buffer — the dominant win for large groups.
-            let mut lat_grp = lats[group_start..group_end].to_vec();
-            let mut lng_grp = lngs[group_start..group_end].to_vec();
-            median_latitudes.push(median_slice_in_place(&mut lat_grp));
-            median_longitudes.push(median_slice_in_place(&mut lng_grp));
+    for user_rows in per_user_rows {
+        for (representative_idx, median_lat, median_lng) in user_rows {
+            representative_indices.push(representative_idx);
+            median_latitudes.push(median_lat);
+            median_longitudes.push(median_lng);
         }
     }
 
-    Ok((representative_indices, median_latitudes, median_longitudes))
+    (representative_indices, median_latitudes, median_longitudes)
 }

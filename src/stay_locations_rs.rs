@@ -1,4 +1,4 @@
-use numpy::PyReadonlyArray1;
+use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use rayon::prelude::*;
 
@@ -6,6 +6,13 @@ use crate::haversine::haversine_km;
 use crate::utils::median_slice_in_place;
 
 type StayLocationsBatchResult = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<usize>);
+type StayLocationsBatchNumpyResult<'py> = (
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<usize>>,
+);
 
 struct Stop {
     lat: f64,
@@ -33,11 +40,11 @@ fn detect_stops_for_user(
     let mut lat_0 = lats[0];
     let mut lon_0 = lngs[0];
     let mut t_0 = times[0];
+    let mut segment_start = 0usize;
 
     // Reusable accumulators — cleared with .clear() to keep heap capacity.
     let mut sum_lat: Vec<f64> = vec![lat_0];
     let mut sum_lon: Vec<f64> = vec![lon_0];
-    let mut sum_t: Vec<f64> = vec![t_0];
     let mut speeds_kmh: Vec<f64> = Vec::new();
 
     let lendata = n - 1;
@@ -53,14 +60,13 @@ fn detect_stops_for_user(
             lat_0 = lat;
             lon_0 = lon;
             t_0 = t;
+            segment_start = i + 1;
             sum_lat.clear();
             sum_lon.clear();
-            sum_t.clear();
             speeds_kmh.clear();
 
             sum_lat.push(lat);
             sum_lon.push(lon);
-            sum_t.push(t);
             continue;
         }
 
@@ -93,9 +99,9 @@ fn detect_stops_for_user(
                         }
                     }
                     if j > 1 {
-                        let trim_idx = sum_t.len().saturating_sub(j - 1);
-                        if trim_idx > 0 && trim_idx < sum_t.len() {
-                            final_t = sum_t[trim_idx];
+                        let trim_idx = sum_lat.len().saturating_sub(j - 1);
+                        if trim_idx > 0 && trim_idx < sum_lat.len() {
+                            final_t = times[segment_start + trim_idx];
                             lat_end = trim_idx.saturating_sub(1);
                         }
                     }
@@ -119,15 +125,14 @@ fn detect_stops_for_user(
             lat_0 = lat;
             lon_0 = lon;
             t_0 = t;
+            segment_start = i + 1;
             sum_lat.clear();
             sum_lon.clear();
-            sum_t.clear();
             speeds_kmh.clear();
         }
 
         sum_lat.push(lat);
         sum_lon.push(lon);
-        sum_t.push(t);
     }
 
     stops
@@ -177,7 +182,13 @@ fn detect_stay_locations_batch_impl(
         }
     }
 
-    (out_lats, out_lngs, entry_times, leaving_times, user_range_idx)
+    (
+        out_lats,
+        out_lngs,
+        entry_times,
+        leaving_times,
+        user_range_idx,
+    )
 }
 
 #[pyfunction]
@@ -201,5 +212,38 @@ pub(crate) fn detect_stay_locations_batch<'py>(
         minutes_for_a_stop,
         no_data_for_minutes,
         min_speed_kmh,
+    ))
+}
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn detect_stay_locations_batch_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    timestamps_s: PyReadonlyArray1<'py, f64>,
+    ranges: Vec<(usize, usize)>,
+    stop_radius_km: f64,
+    minutes_for_a_stop: f64,
+    no_data_for_minutes: f64,
+    min_speed_kmh: f64,
+) -> PyResult<StayLocationsBatchNumpyResult<'py>> {
+    let (out_lats, out_lngs, entry_times, leaving_times, user_range_idx) =
+        detect_stay_locations_batch_impl(
+            latitudes.as_slice()?,
+            longitudes.as_slice()?,
+            timestamps_s.as_slice()?,
+            &ranges,
+            stop_radius_km,
+            minutes_for_a_stop,
+            no_data_for_minutes,
+            min_speed_kmh,
+        );
+    Ok((
+        PyArray1::from_vec(py, out_lats),
+        PyArray1::from_vec(py, out_lngs),
+        PyArray1::from_vec(py, entry_times),
+        PyArray1::from_vec(py, leaving_times),
+        PyArray1::from_vec(py, user_range_idx),
     ))
 }
