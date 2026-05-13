@@ -354,5 +354,17 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         model_generation::model_radiation_probabilities,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(
+        model_generation::model_truncated_power_law_samples,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        model_generation::model_distance_matrix_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        model_generation::model_epr_simulate_agents,
+        m
+    )?)?;
     Ok(())
 }

@@ -52,9 +52,21 @@ class STS_epr(GeoSim):
             }
 
     def compute_distance_matrix(self):
-        self.distance_matrix = np.zeros((len(self.spatial_tessellation), len(self.spatial_tessellation)))
-        for i in range(len(self.spatial_tessellation)):
-            for j in range(len(self.spatial_tessellation)):
+        n = len(self.spatial_tessellation)
+        try:
+            from skmob2 import _core
+
+            flat = _core.model_distance_matrix_numpy(
+                np.asarray(self.lats_lngs[:, 0], dtype=float),
+                np.asarray(self.lats_lngs[:, 1], dtype=float),
+            )
+            self.distance_matrix = np.asarray(flat, dtype=float).reshape((n, n))
+            return
+        except Exception:
+            pass
+        self.distance_matrix = np.zeros((n, n))
+        for i in range(n):
+            for j in range(n):
                 if i != j:
                     self.distance_matrix[i, j] = self.distance_earth_km(
                         {"lat": self.lats_lngs[i][0], "lon": self.lats_lngs[i][1]},
@@ -218,11 +230,10 @@ class STS_epr(GeoSim):
         delta_T = self.end_date - self.start_date
         self.total_h = delta_T.days * 24 + delta_T.seconds // 3600
         self.init_spatial_tessellation(spatial_tessellation, relevance_column, min_relevance)
-        self.distance_matrix = (
-            np.asarray(distance_matrix, dtype=float)
-            if distance_matrix is not None
-            else np.zeros((len(self.spatial_tessellation), len(self.spatial_tessellation)))
-        )
+        if distance_matrix is not None:
+            self.distance_matrix = np.asarray(distance_matrix, dtype=float)
+        else:
+            self.compute_distance_matrix()
         self.init_agents_and_graph(social_graph)
         while self.current_date < self.end_date:
             self.update_agent_movement_window(self.current_date - datetime.timedelta(hours=self.indipendency_window))

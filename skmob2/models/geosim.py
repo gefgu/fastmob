@@ -9,6 +9,8 @@ from ._common import require_optional, tessellation_lat_lngs, to_pandas_frame, t
 
 
 class GeoSim:
+    _POOL_SIZE = 2000
+
     def __init__(self, name="GeoSim", rho=0.6, gamma=0.21, alpha=0.2, beta=0.8, tau=17, min_wait_time_hours=1):
         self.name = name
         self.rho = rho
@@ -22,6 +24,7 @@ class GeoSim:
         self.map_uid_gid = None
         self.dict_uid_to_gid = {}
         self.dict_gid_to_uid = {}
+        self._waiting_time_pool: list[float] = []
 
     def uid_2_gid(self, uid):
         return self.dict_uid_to_gid[uid]
@@ -92,10 +95,26 @@ class GeoSim:
         return 0.0 if den == 0 else float(np.dot(x, y) / den)
 
     def get_waiting_time(self):
-        powerlaw = require_optional("powerlaw")
-        return powerlaw.Truncated_Power_Law(
-            xmin=self.min_wait_time_hours, parameters=[1.0 + self.beta, 1.0 / self.tau]
-        ).generate_random()[0]
+        if not self._waiting_time_pool:
+            try:
+                from skmob2 import _core
+
+                seed = int(np.random.randint(0, 2**31))
+                self._waiting_time_pool = list(
+                    _core.model_truncated_power_law_samples(
+                        self.min_wait_time_hours,
+                        1.0 + self.beta,
+                        1.0 / self.tau,
+                        self._POOL_SIZE,
+                        seed,
+                    )
+                )
+            except Exception:
+                powerlaw = require_optional("powerlaw")
+                return powerlaw.Truncated_Power_Law(
+                    xmin=self.min_wait_time_hours, parameters=[1.0 + self.beta, 1.0 / self.tau]
+                ).generate_random()[0]
+        return self._waiting_time_pool.pop()
 
     def store_tmp_movement(self, t, agent, loc, dT):
         self.tmp_upd.append({"agent": agent, "timestamp": t, "location": loc, "dT": dT})
@@ -260,6 +279,7 @@ class GeoSim:
             raise ValueError("Argument 'start_date' must be prior to 'end_date'.")
         if random_state is not None:
             np.random.seed(random_state)
+        self._waiting_time_pool = []
         if log_file is not None:
             logging.basicConfig(format="%(message)s", filename=log_file, filemode="w", level=logging.INFO)
         self.n_agents = n_agents

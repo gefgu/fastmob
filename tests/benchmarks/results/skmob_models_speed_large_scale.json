@@ -1,0 +1,71 @@
+{
+  "metadata": {
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 1,
+    "library": "skmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
+    "sizes": [
+      500
+    ],
+    "sleep_seconds": 0.5,
+    "suite": "models_large_scale",
+    "timestamp_utc": "2026-05-13T18:38:20.736830+00:00"
+  },
+  "results": [
+    {
+      "label": "500",
+      "locations": 500,
+      "metrics": {
+        "epr_100a": {
+          "average_seconds": 3.4381656830082648,
+          "iterations_completed": 1,
+          "minimum_seconds": 3.4381656830082648,
+          "status": "ok",
+          "times_seconds": [
+            3.4381656830082648
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.17850209001335315,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.17850209001335315,
+          "status": "ok",
+          "times_seconds": [
+            0.17850209001335315
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.031029781006509438,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.031029781006509438,
+          "status": "ok",
+          "times_seconds": [
+            0.031029781006509438
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 1.8326891319884453,
+          "iterations_completed": 1,
+          "minimum_seconds": 1.8326891319884453,
+          "status": "ok",
+          "times_seconds": [
+            1.8326891319884453
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 0.710700233001262,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.710700233001262,
+          "status": "ok",
+          "times_seconds": [
+            0.710700233001262
+          ]
+        }
+      },
+      "size": 500
+    }
+  ]
+}

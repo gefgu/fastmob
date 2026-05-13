@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 1,
+    "library": "skmob2",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
+    "sizes": [
+      500
+    ],
+    "sleep_seconds": 0.5,
+    "suite": "models_large_scale",
+    "timestamp_utc": "2026-05-13T18:37:30.569741+00:00"
+  },
+  "results": [
+    {
+      "label": "500",
+      "locations": 500,
+      "metrics": {
+        "density_epr_1000a": {
+          "average_seconds": 0.79351072999998,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.79351072999998,
+          "status": "ok",
+          "times_seconds": [
+            0.79351072999998
+          ]
+        },
+        "epr_10000a": {
+          "average_seconds": 9.79755823101732,
+          "iterations_completed": 1,
+          "minimum_seconds": 9.79755823101732,
+          "status": "ok",
+          "times_seconds": [
+            9.79755823101732
+          ]
+        },
+        "epr_1000a": {
+          "average_seconds": 1.062218216015026,
+          "iterations_completed": 1,
+          "minimum_seconds": 1.062218216015026,
+          "status": "ok",
+          "times_seconds": [
+            1.062218216015026
+          ]
+        },
+        "epr_100a": {
+          "average_seconds": 0.11316329697729088,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.11316329697729088,
+          "status": "ok",
+          "times_seconds": [
+            0.11316329697729088
+          ]
+        },
+        "epr_50000a": {
+          "average_seconds": 46.95181743698777,
+          "iterations_completed": 1,
+          "minimum_seconds": 46.95181743698777,
+          "status": "ok",
+          "times_seconds": [
+            46.95181743698777
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.15133253097883426,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.15133253097883426,
+          "status": "ok",
+          "times_seconds": [
+            0.15133253097883426
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.037886106001678854,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.037886106001678854,
+          "status": "ok",
+          "times_seconds": [
+            0.037886106001678854
+          ]
+        },
+        "spatial_epr_1000a": {
+          "average_seconds": 0.7842036760121118,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.7842036760121118,
+          "status": "ok",
+          "times_seconds": [
+            0.7842036760121118
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 0.8038935280055739,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.8038935280055739,
+          "status": "ok",
+          "times_seconds": [
+            0.8038935280055739
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 0.20125012399512343,
+          "iterations_completed": 1,
+          "minimum_seconds": 0.20125012399512343,
+          "status": "ok",
+          "times_seconds": [
+            0.20125012399512343
+          ]
+        }
+      },
+      "size": 500
+    }
+  ]
+}

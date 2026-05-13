@@ -46,6 +46,8 @@ def _distance(origin, dest):
 
 
 class EPR:
+    _POOL_SIZE = 2000
+
     def __init__(self, name="EPR model", rho=0.6, gamma=0.21, beta=0.8, tau=17, min_wait_time_minutes=20):
         self._name = name
         self._rho = rho
@@ -63,6 +65,7 @@ class EPR:
         self._min_wait_time = min_wait_time_minutes / 60.0
         self._trajectories_ = []
         self._log_file = None
+        self._waiting_time_pool: list[float] = []
 
     @property
     def name(self):
@@ -149,10 +152,26 @@ class EPR:
         return self._preferential_return(current_location)
 
     def _time_generator(self):
-        powerlaw = require_optional("powerlaw")
-        return powerlaw.Truncated_Power_Law(
-            xmin=self.min_wait_time, parameters=[1.0 + self._beta, 1.0 / self._tau]
-        ).generate_random()[0]
+        if not self._waiting_time_pool:
+            try:
+                from skmob2 import _core
+
+                seed = int(np.random.randint(0, 2**31))
+                self._waiting_time_pool = list(
+                    _core.model_truncated_power_law_samples(
+                        self._min_wait_time,
+                        1.0 + self._beta,
+                        1.0 / self._tau,
+                        self._POOL_SIZE,
+                        seed,
+                    )
+                )
+            except Exception:
+                powerlaw = require_optional("powerlaw")
+                return powerlaw.Truncated_Power_Law(
+                    xmin=self.min_wait_time, parameters=[1.0 + self._beta, 1.0 / self._tau]
+                ).generate_random()[0]
+        return self._waiting_time_pool.pop()
 
     def _choose_waiting_time(self):
         return self._time_generator()
@@ -215,18 +234,66 @@ class EPR:
         self._od_matrix = {} if od_matrix is None else od_matrix
         self._is_sparse = od_matrix is None
 
+        # Derive per-agent seeds and pre-resolve starting locations before
+        # the agent loop so the RNG stream is identical regardless of which
+        # execution path (Python or Rust) is taken.
+        agent_seeds = np.random.randint(0, 2**31, size=n_agents, dtype=np.int64)
         start_values = list(starting_locations) if starting_locations is not None else None
-        for agent_id in range(1, n_agents + 1):
+        resolved_starts = [
+            int(start_values.pop()) if start_values is not None else int(np.random.choice(num_locs))
+            for _ in range(n_agents)
+        ]
+
+        # Rust parallel fast path for large-scale scenarios (no logging, no custom od_matrix).
+        if n_agents * num_locs > 500 and not self._log_file and od_matrix is None:
+            try:
+                rows = self._epr_generate_parallel(
+                    start_date, end_date, n_agents, resolved_starts, agent_seeds
+                )
+                if self._log_file is not None:
+                    logging.shutdown()
+                return trajectory_dataframe(rows, parameters=parameters)
+            except Exception:
+                pass
+
+        for agent_id, sl in enumerate(resolved_starts, 1):
             self._location2visits = defaultdict(int)
-            self._starting_loc = (
-                int(np.random.choice(np.arange(num_locs), size=1)[0])
-                if start_values is None
-                else int(start_values.pop())
-            )
+            self._waiting_time_pool = []
+            self._starting_loc = sl
             self._epr_generate_one_agent(agent_id, start_date, end_date)
         if self._log_file is not None:
             logging.shutdown()
         return self._get_trajdataframe(parameters)
+
+    def _epr_generate_parallel(self, start_date, end_date, n_agents, resolved_starts, agent_seeds):
+        import pandas as pd
+        from skmob2 import _core
+
+        start_ts = int(start_date.timestamp())
+        end_ts = int(end_date.timestamp())
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_epr_simulate_agents(
+            np.asarray(self.lats_lngs[:, 0], dtype=float),
+            np.asarray(self.lats_lngs[:, 1], dtype=float),
+            np.asarray(self.relevances, dtype=float),
+            float(self._rho),
+            float(self._gamma),
+            float(self._beta),
+            float(self._tau),
+            float(self._min_wait_time),
+            start_ts,
+            end_ts,
+            np.asarray(agent_seeds, dtype=np.int64),
+            np.asarray(resolved_starts, dtype=np.int64),
+            self.gravity_singly.deterrence_func_type,
+            float(self.gravity_singly.deterrence_func_args[0]),
+            float(self.gravity_singly.origin_exp),
+            float(self.gravity_singly.destination_exp),
+        )
+        return [
+            (int(agent_ids[k]), float(lats_out[k]), float(lngs_out[k]),
+             pd.Timestamp(int(timestamps[k]), unit="s"))
+            for k in range(len(agent_ids))
+        ]
 
     def _epr_generate_one_agent(self, agent_id, start_date, end_date):
         current_date = start_date
