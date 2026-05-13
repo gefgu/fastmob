@@ -8,9 +8,9 @@ skmob2 computes `radius_of_gyration` on 4 million trajectory points in about **7
 
 Radius of gyration quantifies how far a person typically roams from their most-frequented location. For a user \(u\) with \(n\) recorded positions:
 
-\[
+$$
 r_g(u) = \sqrt{\frac{1}{n} \sum_{i=1}^{n} d_{\text{Haversine}}(r_i,\, r_{\text{cm}})^2}
-\]
+$$
 
 where \(r_{\text{cm}}\) is the arithmetic mean of the user's latitude and longitude coordinates. The formula is order-independent: only which points belong to a user matters, not the sequence they were visited.
 
