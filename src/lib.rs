@@ -10,6 +10,7 @@ mod k_radius_of_gyration;
 mod location_frequency;
 mod max_distance_from_point;
 mod maximum_distance;
+mod model_generation;
 mod motifs;
 mod radius_of_gyration;
 mod recency_rank;
@@ -341,5 +342,17 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(wasserstein::wasserstein_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        model_generation::model_gravity_matrix_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        model_generation::model_gravity_od_row_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        model_generation::model_radiation_probabilities,
+        m
+    )?)?;
     Ok(())
 }

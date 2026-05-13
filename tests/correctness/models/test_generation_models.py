@@ -80,6 +80,55 @@ def test_gravity_generate_matches_formula(deterrence_func_type, args, deterrence
     np.testing.assert_allclose(result.to_matrix(), _expected_gravity(tess, deterrence, gravity_type, out_format))
 
 
+def test_core_gravity_kernel_matches_formula():
+    pytest.importorskip("skmob2._core")
+    from skmob2 import _core
+
+    tess = _tessellation()
+    expected = _expected_gravity(tess, lambda x: powerlaw_deterrence_func(x, -2.0), "singly constrained", "flows")
+
+    flat = _core.model_gravity_matrix_numpy(
+        tess["lat"].to_numpy(dtype=float),
+        tess["lng"].to_numpy(dtype=float),
+        tess["relevance"].to_numpy(dtype=float),
+        tess["tot_outflow"].to_numpy(dtype=float),
+        "power_law",
+        -2.0,
+        1.5,
+        2.0,
+        "singly constrained",
+        "flows",
+    )
+
+    np.testing.assert_allclose(np.asarray(flat).reshape((len(tess), len(tess))), expected)
+
+
+def test_core_gravity_od_row_kernel_matches_formula():
+    pytest.importorskip("skmob2._core")
+    from skmob2 import _core
+
+    tess = _tessellation()
+    expected = _expected_gravity(
+        tess,
+        lambda x: powerlaw_deterrence_func(x, -2.0),
+        "singly constrained",
+        "probabilities",
+    )[1]
+
+    actual = _core.model_gravity_od_row_numpy(
+        1,
+        tess["lat"].to_numpy(dtype=float),
+        tess["lng"].to_numpy(dtype=float),
+        tess["relevance"].to_numpy(dtype=float),
+        "power_law",
+        -2.0,
+        1.5,
+        2.0,
+    )
+
+    np.testing.assert_allclose(np.asarray(actual), expected)
+
+
 def test_gravity_flows_sample_is_seeded():
     tess = _tessellation()
     model = Gravity(gravity_type="singly constrained")
@@ -105,6 +154,45 @@ def test_radiation_generate_shapes(out_format):
     if out_format == "probabilities":
         sums = result.groupby("origin")["flow"].sum().to_numpy()
         np.testing.assert_allclose(sums, np.ones_like(sums))
+
+
+def test_core_radiation_kernel_matches_python_probabilities():
+    pytest.importorskip("skmob2._core")
+    from skmob2 import _core
+
+    tess = _tessellation()
+    model = Radiation()
+    model._out_format = "probabilities"
+    model._tile_id_column = "tile_id"
+    model.lats_lngs = tess[["lat", "lng"]].to_numpy(dtype=float)
+    model.relevances = tess["relevance"].to_numpy(dtype=float)
+    expected = model._from_matrix_to_flowdf(
+        [row for origin in range(len(tess)) for row in model._get_flows(origin, model.relevances.sum())],
+        tess,
+    )
+
+    origins, destinations, probabilities = _core.model_radiation_probabilities(
+        tess["lat"].to_numpy(dtype=float),
+        tess["lng"].to_numpy(dtype=float),
+        tess["relevance"].to_numpy(dtype=float),
+        np.ones(len(tess), dtype=float),
+    )
+    actual = pd.DataFrame(
+        {
+            "origin": [tess.loc[i, "tile_id"] for i in origins],
+            "destination": [tess.loc[i, "tile_id"] for i in destinations],
+            "flow": probabilities,
+        }
+    )
+
+    pd.testing.assert_frame_equal(
+        actual,
+        expected,
+        check_dtype=False,
+        check_frame_type=False,
+        rtol=1e-12,
+        atol=1e-12,
+    )
 
 
 def test_gravity_accepts_narwhals_compatible_dataframe():

@@ -43,6 +43,62 @@ def compute_distance_matrix(spatial_tessellation: Any, origins):
     return distance_matrix
 
 
+def _core_gravity_matrix(
+    coords,
+    relevances,
+    tot_outflows,
+    deterrence_func_type,
+    deterrence_func_args,
+    origin_exp,
+    destination_exp,
+    gravity_type,
+    out_format,
+):
+    try:
+        from skmob2 import _core
+    except Exception:
+        return None
+    try:
+        flat = _core.model_gravity_matrix_numpy(
+            np.asarray(coords[:, 0], dtype=float),
+            np.asarray(coords[:, 1], dtype=float),
+            np.asarray(relevances, dtype=float),
+            np.asarray(tot_outflows, dtype=float),
+            deterrence_func_type,
+            float(deterrence_func_args[0]),
+            float(origin_exp),
+            float(destination_exp),
+            gravity_type,
+            out_format,
+        )
+        return np.asarray(flat, dtype=float).reshape((len(coords), len(coords)))
+    except Exception:
+        return None
+
+
+def _core_gravity_od_row(coords, relevances, origin, gravity_singly):
+    try:
+        from skmob2 import _core
+    except Exception:
+        return None
+    try:
+        return np.asarray(
+            _core.model_gravity_od_row_numpy(
+                int(origin),
+                np.asarray(coords[:, 0], dtype=float),
+                np.asarray(coords[:, 1], dtype=float),
+                np.asarray(relevances, dtype=float),
+                gravity_singly.deterrence_func_type,
+                float(gravity_singly.deterrence_func_args[0]),
+                float(gravity_singly.origin_exp),
+                float(gravity_singly.destination_exp),
+            ),
+            dtype=float,
+        )
+    except Exception:
+        return None
+
+
 class Gravity:
     """Gravity model compatible with original scikit-mobility generation APIs."""
 
@@ -148,6 +204,22 @@ class Gravity:
             tot_outflows = spatial_tessellation[tot_outflows_column].fillna(0).to_numpy(dtype=int)
 
         origins = np.arange(n_locs)
+        coords = tessellation_lat_lngs(spatial_tessellation)
+        if out_format != "flows_sample":
+            od_matrix = _core_gravity_matrix(
+                coords,
+                relevances,
+                tot_outflows if "flows" in out_format else np.zeros(n_locs, dtype=float),
+                self._deterrence_func_type,
+                self._deterrence_func_args,
+                self._origin_exp,
+                self._destination_exp,
+                self._gravity_type,
+                out_format,
+            )
+            if od_matrix is not None:
+                return self._from_matrix_to_flowdf(od_matrix, origins, spatial_tessellation)
+
         distance_matrix = compute_distance_matrix(spatial_tessellation, origins)
         trip_probs_matrix = self._compute_gravity_score(distance_matrix, relevances, relevances)
 

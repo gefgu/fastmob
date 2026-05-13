@@ -15,6 +15,23 @@ from ._common import (
 )
 
 
+def _core_radiation_probabilities(lats_lngs, relevances, tot_outflows):
+    try:
+        from skmob2 import _core
+    except Exception:
+        return None
+    try:
+        origins, destinations, probabilities = _core.model_radiation_probabilities(
+            np.asarray(lats_lngs[:, 0], dtype=float),
+            np.asarray(lats_lngs[:, 1], dtype=float),
+            np.asarray(relevances, dtype=float),
+            np.asarray(tot_outflows, dtype=float),
+        )
+        return origins, destinations, np.asarray(probabilities, dtype=float)
+    except Exception:
+        return None
+
+
 class Radiation:
     """Radiation model compatible with original scikit-mobility generation APIs."""
 
@@ -86,6 +103,22 @@ class Radiation:
                 'Value of out_format "%s" is not valid. \nValid values: flows, flows_sample, probabilities.'
                 % out_format
             )
+
+        if out_format != "flows_sample":
+            outflows = self.tot_outflows if "flows" in out_format else np.ones(len(self.lats_lngs), dtype=float)
+            core_result = _core_radiation_probabilities(self.lats_lngs, self.relevances, outflows)
+            if core_result is not None:
+                origins, destinations, probabilities = core_result
+                quantities = (
+                    np.rint(outflows[np.asarray(origins, dtype=int)] * probabilities)
+                    if out_format == "flows"
+                    else probabilities
+                )
+                all_flows = [
+                    [int(origin), int(destination), quantity]
+                    for origin, destination, quantity in zip(origins, destinations, quantities)
+                ]
+                return self._from_matrix_to_flowdf(all_flows, spatial_tessellation)
 
         total_relevance = np.sum(self.relevances)
         all_flows = []
