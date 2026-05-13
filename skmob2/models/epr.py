@@ -126,7 +126,7 @@ class EPR:
             weights = np.ones(len(self.lats_lngs)) / len(self.lats_lngs)
         else:
             weights = weights / total
-        return int(np.random.choice(np.arange(len(weights)), size=1, p=weights)[0])
+        return int(np.random.choice(len(weights), size=1, p=weights)[0])
 
     def _get_trajdataframe(self, parameters):
         rows = [
