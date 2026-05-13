@@ -22,9 +22,18 @@ def compute_od_matrix(gravity_singly, spatial_tessellation, tile_id_column="tile
     ).to_matrix()
 
 
+_EARTH_RADIUS_KM = 6371.0
+
+
 def populate_od_matrix(location, lats_lngs, relevances, gravity_singly):
-    ll_origin = lats_lngs[location]
-    distances = np.asarray([_distance(ll_origin, coords) for coords in lats_lngs])
+    lat1_r = math.radians(float(lats_lngs[location, 0]))
+    lng1_r = math.radians(float(lats_lngs[location, 1]))
+    lats_r = np.radians(lats_lngs[:, 0])
+    lngs_r = np.radians(lats_lngs[:, 1])
+    dlat = lat1_r - lats_r
+    dlng = lng1_r - lngs_r
+    a = np.sin(dlat / 2.0) ** 2 + math.cos(lat1_r) * np.cos(lats_r) * np.sin(dlng / 2.0) ** 2
+    distances = _EARTH_RADIUS_KM * 2.0 * np.arcsin(np.sqrt(a))
     scores = gravity_singly._compute_gravity_score(distances[None, :], relevances[location, None], relevances)[0]
     total = np.sum(scores)
     return scores / total if total else np.full(len(lats_lngs), 1.0 / len(lats_lngs))
@@ -88,14 +97,11 @@ class EPR:
         return self._trajectories_
 
     def _weighted_random_selection(self, current_location):
-        locations = np.fromiter(self._location2visits.keys(), dtype=int)
-        weights = np.fromiter(self._location2visits.values(), dtype=float)
-        currloc_idx = np.where(locations == current_location)[0]
-        if len(currloc_idx):
-            locations = np.delete(locations, currloc_idx[0])
-            weights = np.delete(weights, currloc_idx[0])
-        if len(locations) == 0:
+        pairs = [(k, v) for k, v in self._location2visits.items() if k != current_location]
+        if not pairs:
             return int(current_location)
+        locations = np.fromiter((k for k, _ in pairs), dtype=int, count=len(pairs))
+        weights = np.fromiter((v for _, v in pairs), dtype=float, count=len(pairs))
         weights = weights / np.sum(weights)
         return int(np.random.choice(locations, size=1, p=weights)[0])
 

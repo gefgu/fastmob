@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import datetime
+import math
 
 import numpy as np
 
-from ._common import haversine_km, tessellation_lat_lngs, to_pandas_frame
+from ._common import EARTH_RADIUS_KM, haversine_km, tessellation_lat_lngs, to_pandas_frame
 from .geosim import GeoSim
 from .markov_diary_generator import MarkovDiaryGenerator
 
@@ -63,36 +64,34 @@ class STS_epr(GeoSim):
     def compute_od_row(self, row):
         if self.distance_matrix[row, 0] != 0 or self.distance_matrix[row, 1] != 0:
             return
-        for i in range(len(self.spatial_tessellation)):
-            if i != row:
-                self.distance_matrix[row, i] = self.distance_earth_km(
-                    {"lat": self.lats_lngs[i][0], "lon": self.lats_lngs[i][1]},
-                    {"lat": self.lats_lngs[row][0], "lon": self.lats_lngs[row][1]},
-                )
+        lat1_r = math.radians(float(self.lats_lngs[row, 0]))
+        lng1_r = math.radians(float(self.lats_lngs[row, 1]))
+        lats_r = np.radians(self.lats_lngs[:, 0])
+        lngs_r = np.radians(self.lats_lngs[:, 1])
+        dlat = lat1_r - lats_r
+        dlng = lng1_r - lngs_r
+        a = np.sin(dlat / 2.0) ** 2 + math.cos(lat1_r) * np.cos(lats_r) * np.sin(dlng / 2.0) ** 2
+        distances = EARTH_RADIUS_KM * 2.0 * np.arcsin(np.sqrt(a))
+        distances[row] = 0.0
+        self.distance_matrix[row] = distances
 
     def distance_earth_km(self, src, dest):
         return haversine_km((src["lat"], src["lon"]), (dest["lat"], dest["lon"]))
 
     def init_mobility_diaries(self, hours, start_date):
+        import pandas as pd
+
         for i in range(self.n_agents):
             rand_seed_diary = np.random.randint(0, 10**6)
-            diary = self.diary_generator.generate(hours, start_date, random_state=rand_seed_diary)
+            short_diary = self.diary_generator._generate_list(hours, start_date, random_state=rand_seed_diary)
             attempts = 0
-            while len(diary) < 2 and attempts < 100:
+            while len(short_diary) < 2 and attempts < 100:
                 rand_seed_diary = np.random.randint(0, 10**6)
-                diary = self.diary_generator.generate(hours, start_date, random_state=rand_seed_diary)
+                short_diary = self.diary_generator._generate_list(hours, start_date, random_state=rand_seed_diary)
                 attempts += 1
-            if len(diary) < 2:
-                import pandas as pd
-
-                diary = pd.concat(
-                    [
-                        diary,
-                        pd.DataFrame([{"datetime": start_date + datetime.timedelta(hours=1), "abstract_location": 0}]),
-                    ],
-                    ignore_index=True,
-                )
-            self.agents[i]["mobility_diary"] = diary
+            if len(short_diary) < 2:
+                short_diary.append([start_date + datetime.timedelta(hours=1), 0])
+            self.agents[i]["mobility_diary"] = pd.DataFrame(short_diary, columns=["datetime", "abstract_location"])
 
     def get_current_abstract_location_from_diary(self, agent):
         row = self.agents[agent]["index_mobility_diary"]

@@ -69,18 +69,33 @@ class MarkovDiaryGenerator:
     def _create_time_series(self, traj, lid="location"):
         traj = to_pandas_frame(traj)
         shift = traj[DATETIME].min().hour
-        traj = traj[[DATETIME, lid]].set_index(DATETIME)
-        traj[lid] = traj[lid].astype("str")
-        traj = (
-            traj.groupby(pd.Grouper(freq=self._time_slot_length, closed="left"))
-            .aggregate(lambda x: ",".join(x))
-            .replace("", np.nan)
+        dt_series = traj[DATETIME]
+        loc_series = traj[lid].astype("str")
+
+        # Global location frequency — equivalent to original comma-string counting
+        loc2freq = loc_series.value_counts().to_dict()
+        loc2rank = {loc: i + 1 for i, (loc, _) in enumerate(sorted(loc2freq.items(), key=lambda x: -x[1]))}
+
+        # Count per (hourly-bin, location) in one vectorized groupby
+        bins = dt_series.dt.floor(self._time_slot_length)
+        counts = (
+            pd.DataFrame({"bin": bins, "loc": loc_series})
+            .groupby(["bin", "loc"])
+            .size()
+            .reset_index(name="n")
         )
-        location2frequency, location2rank = self._get_location2frequency(traj, location_column=lid)
-        time_series = traj.apply(lambda x: self._select_loc(x, location2frequency, location_column=lid), axis=1)
-        time_series.ffill(inplace=True)
-        time_series.bfill(inplace=True)
-        time_series = time_series.apply(lambda x: location2rank[x])
+        # Pick best location per bin: most occurrences, tie-broken by global frequency
+        counts["tiebreak"] = counts["loc"].map(loc2freq).fillna(0)
+        counts.sort_values(["bin", "n", "tiebreak"], ascending=[True, False, False], inplace=True)
+        best = counts.groupby("bin")["loc"].first()
+
+        # Full hourly grid with gap-filling
+        full_idx = pd.date_range(
+            dt_series.min().floor(self._time_slot_length),
+            dt_series.max().floor(self._time_slot_length),
+            freq=self._time_slot_length,
+        )
+        time_series = best.reindex(full_idx).ffill().bfill().map(loc2rank)
         return time_series, shift
 
     def _update_markov_chain(self, time_series, shift=0):
@@ -146,7 +161,8 @@ class MarkovDiaryGenerator:
     def _weighted_random_selection(weights):
         return np.searchsorted(np.cumsum(weights), random.random())
 
-    def generate(self, diary_length, start_date, random_state=None):
+    def _generate_list(self, diary_length, start_date, random_state=None):
+        """Core generation logic; returns a plain list of [datetime, abstract_location] pairs."""
         if self._markov_chain_ is None:
             self._create_empty_markov_chain()
             for state in list(self._markov_chain_):
@@ -195,4 +211,8 @@ class MarkovDiaryGenerator:
             if abstract_location != prev_location:
                 short_diary.append([visit_date, abstract_location])
             prev_location = abstract_location
+        return short_diary
+
+    def generate(self, diary_length, start_date, random_state=None):
+        short_diary = self._generate_list(diary_length, start_date, random_state)
         return pd.DataFrame(short_diary, columns=[DATETIME, "abstract_location"])
