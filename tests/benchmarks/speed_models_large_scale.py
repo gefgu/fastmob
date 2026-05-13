@@ -247,31 +247,68 @@ def benchmark_large_size(
     }
 
 
+_SKMOB_SKIP_THRESHOLD_S = 1800.0  # 30 minutes
+
+
+def _estimate_skmob_seconds(spec: LargeBenchmarkSpec, size: int) -> float:
+    """Rough upper-bound estimate of skmob wall-clock seconds for one run.
+
+    Fitted from observed timings:
+      EPR  N=200  100 agents  7d: 3.15 s  → 31.5 ms/agent
+      EPR  N=500  100 agents  7d: 3.44 s  → 34.4 ms/agent
+      GeoSim N=200 100 agents 1d: 0.025 s → 0.26 ms/agent
+      GeoSim N=500 100 agents 1d: 0.178 s → 1.78 ms/agent  (power law ~N^2.1)
+      STS   N=500 100 agents  1d: 1.83 s  → 18.3 ms/agent
+    """
+    n = spec.kwargs.get("n_agents", 20)
+    if spec.kind == "epr":
+        # OD rows are lazily cached across agents; per-agent cost grows slowly with N.
+        per_agent_s = 0.034 * (1.0 + size / 10_000.0)
+        return per_agent_s * n
+    if spec.kind == "geosim":
+        # Time-step granularity scales super-linearly with N (exponent ~2.1).
+        per_agent_s = 2.6e-6 * (size / 200.0) ** 2.1
+        return per_agent_s * n
+    if spec.kind == "sts_epr":
+        # Similar per-agent cost to EPR (24h window, social graph overhead).
+        per_agent_s = 0.020 * (1.0 + size / 5_000.0)
+        return per_agent_s * n
+    return 0.0
+
+
 def run_large_suite(args: argparse.Namespace) -> dict[str, Any]:
     base_tessellation, diary_training = load_model_inputs(Path(args.reference_dir))
 
-    # Filter benchmarks to skip very large agent counts when running skmob (too slow)
-    if args.library == "skmob":
-        benchmarks = tuple(
-            s for s in LARGE_SCALE_BENCHMARKS
-            if s.kwargs.get("n_agents", 0) <= 100
-        )
-    else:
-        benchmarks = LARGE_SCALE_BENCHMARKS
+    results = []
+    for size in args.sizes:
+        if args.library == "skmob":
+            kept, skipped = [], []
+            for s in LARGE_SCALE_BENCHMARKS:
+                est = _estimate_skmob_seconds(s, size)
+                if est > _SKMOB_SKIP_THRESHOLD_S:
+                    skipped.append((s, est))
+                else:
+                    kept.append(s)
+            if skipped:
+                print(f"\nSize {size}: skipping for skmob (estimated > 30 min):")
+                for s, est in skipped:
+                    print(f"  {s.name}: ~{est/60:.1f} min estimated")
+            benchmarks = tuple(kept)
+        else:
+            benchmarks = LARGE_SCALE_BENCHMARKS
 
-    results = [
-        benchmark_large_size(
-            args.library,
-            base_tessellation,
-            diary_training,
-            size,
-            profile=args.profile,
-            iterations=args.iterations,
-            sleep_seconds=args.sleep_seconds,
-            benchmarks=benchmarks,
+        results.append(
+            benchmark_large_size(
+                args.library,
+                base_tessellation,
+                diary_training,
+                size,
+                profile=args.profile,
+                iterations=args.iterations,
+                sleep_seconds=args.sleep_seconds,
+                benchmarks=benchmarks,
+            )
         )
-        for size in args.sizes
-    ]
     meta = build_metadata(args)
     meta["suite"] = "models_large_scale"
     return {"metadata": meta, "results": results}

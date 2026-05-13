@@ -51,27 +51,29 @@ class STS_epr(GeoSim):
                 "index_mobility_diary": None,
             }
 
+    # Pre-compute the full N×N matrix only when N is small enough that a full
+    # allocation is cheaper than repeated lazy calls.  STS_epr typically runs
+    # 20–100 agents over 24 h, visiting only a small fraction of locations, so
+    # lazy row-by-row computation via compute_od_row() wins beyond this limit.
+    _FULL_MATRIX_THRESHOLD = 5000
+
     def compute_distance_matrix(self):
         n = len(self.spatial_tessellation)
-        try:
-            from skmob2 import _core
+        if n <= self._FULL_MATRIX_THRESHOLD:
+            try:
+                from skmob2 import _core
 
-            flat = _core.model_distance_matrix_numpy(
-                np.asarray(self.lats_lngs[:, 0], dtype=float),
-                np.asarray(self.lats_lngs[:, 1], dtype=float),
-            )
-            self.distance_matrix = np.asarray(flat, dtype=float).reshape((n, n))
-            return
-        except Exception:
-            pass
+                flat = _core.model_distance_matrix_numpy(
+                    np.asarray(self.lats_lngs[:, 0], dtype=float),
+                    np.asarray(self.lats_lngs[:, 1], dtype=float),
+                )
+                self.distance_matrix = np.asarray(flat, dtype=float).reshape((n, n))
+                return
+            except Exception:
+                pass
+        # Lazy init: rows are filled on demand by compute_od_row().
+        # np.zeros on Linux uses mmap so unaccessed pages cost no physical RAM.
         self.distance_matrix = np.zeros((n, n))
-        for i in range(n):
-            for j in range(n):
-                if i != j:
-                    self.distance_matrix[i, j] = self.distance_earth_km(
-                        {"lat": self.lats_lngs[i][0], "lon": self.lats_lngs[i][1]},
-                        {"lat": self.lats_lngs[j][0], "lon": self.lats_lngs[j][1]},
-                    )
 
     def compute_od_row(self, row):
         if self.distance_matrix[row, 0] != 0 or self.distance_matrix[row, 1] != 0:
