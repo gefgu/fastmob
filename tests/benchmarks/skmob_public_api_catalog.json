@@ -211,6 +211,186 @@
       "skmob2_module": "skmob2.measures.flows.visits_per_time_unit",
       "default_kwargs": {},
       "input_kind": "collective"
+    },
+    {
+      "name": "location_kl2",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "LocationAttack",
+      "skmob2_class": "LocationAttack",
+      "default_kwargs": {"knowledge_length": 2},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "location_sequence_kl2",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "LocationSequenceAttack",
+      "skmob2_class": "LocationSequenceAttack",
+      "default_kwargs": {"knowledge_length": 2},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "location_time_kl2",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "LocationTimeAttack",
+      "skmob2_class": "LocationTimeAttack",
+      "default_kwargs": {"knowledge_length": 2},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "unique_location_kl2",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "UniqueLocationAttack",
+      "skmob2_class": "UniqueLocationAttack",
+      "default_kwargs": {"knowledge_length": 2},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "location_frequency_kl2",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "LocationFrequencyAttack",
+      "skmob2_class": "LocationFrequencyAttack",
+      "default_kwargs": {"knowledge_length": 2},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "location_probability_kl2",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "LocationProbabilityAttack",
+      "skmob2_class": "LocationProbabilityAttack",
+      "default_kwargs": {"knowledge_length": 2},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "location_proportion_kl2",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "LocationProportionAttack",
+      "skmob2_class": "LocationProportionAttack",
+      "default_kwargs": {"knowledge_length": 2},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "home_work",
+      "suite": "privacy",
+      "legacy_module": "skmob.privacy.attacks",
+      "skmob2_module": "skmob2.privacy.attacks",
+      "legacy_class": "HomeWorkAttack",
+      "skmob2_class": "HomeWorkAttack",
+      "default_kwargs": {},
+      "input_kind": "privacy_toy"
+    },
+    {
+      "name": "gravity_flows",
+      "suite": "models",
+      "legacy_module": "skmob.models.gravity",
+      "skmob2_module": "skmob2.models.gravity",
+      "legacy_class": "Gravity",
+      "skmob2_class": "Gravity",
+      "default_kwargs": {"out_format": "flows"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "gravity_probabilities",
+      "suite": "models",
+      "legacy_module": "skmob.models.gravity",
+      "skmob2_module": "skmob2.models.gravity",
+      "legacy_class": "Gravity",
+      "skmob2_class": "Gravity",
+      "default_kwargs": {"out_format": "probabilities"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "radiation_flows",
+      "suite": "models",
+      "legacy_module": "skmob.models.radiation",
+      "skmob2_module": "skmob2.models.radiation",
+      "legacy_class": "Radiation",
+      "skmob2_class": "Radiation",
+      "default_kwargs": {"out_format": "flows"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "radiation_probabilities",
+      "suite": "models",
+      "legacy_module": "skmob.models.radiation",
+      "skmob2_module": "skmob2.models.radiation",
+      "legacy_class": "Radiation",
+      "skmob2_class": "Radiation",
+      "default_kwargs": {"out_format": "probabilities"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "markov_diary",
+      "suite": "models",
+      "legacy_module": "skmob.models.markov_diary_generator",
+      "skmob2_module": "skmob2.models.markov_diary_generator",
+      "legacy_class": "MarkovDiaryGenerator",
+      "skmob2_class": "MarkovDiaryGenerator",
+      "default_kwargs": {"diary_length": 24},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "epr",
+      "suite": "models",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "EPR",
+      "skmob2_class": "EPR",
+      "default_kwargs": {"model": "EPR", "n_agents": 2, "relevance_column": "population"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "density_epr",
+      "suite": "models",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "DensityEPR",
+      "skmob2_class": "DensityEPR",
+      "default_kwargs": {"model": "DensityEPR", "n_agents": 2, "relevance_column": "population"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "spatial_epr",
+      "suite": "models",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "SpatialEPR",
+      "skmob2_class": "SpatialEPR",
+      "default_kwargs": {"model": "SpatialEPR", "n_agents": 2},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "geosim",
+      "suite": "models",
+      "legacy_module": "skmob.models.geosim",
+      "skmob2_module": "skmob2.models.geosim",
+      "legacy_class": "GeoSim",
+      "skmob2_class": "GeoSim",
+      "default_kwargs": {"n_agents": 3},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "sts_epr",
+      "suite": "models",
+      "legacy_module": "skmob.models.sts_epr",
+      "skmob2_module": "skmob2.models.sts_epr",
+      "legacy_class": "STS_epr",
+      "skmob2_class": "STS_epr",
+      "default_kwargs": {"n_agents": 3, "relevance_column": "population"},
+      "input_kind": "model_reference"
     }
   ]
 }

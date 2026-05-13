@@ -218,6 +218,9 @@ def nonnegative_float(value: str) -> float:
 
 
 def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
+    if library == "skmob":
+        patch_numpy_nan_for_skmob()
+
     try:
         module_path = spec.skmob2_module_path if library == "skmob2" else spec.skmob_module_path
         module = importlib.import_module(module_path)
@@ -228,6 +231,17 @@ def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
         return getattr(module, spec.func_name)
     except AttributeError as exc:
         raise SkippedMetric(f"metric not available: {spec.func_name}") from exc
+
+
+def patch_numpy_nan_for_skmob() -> None:
+    """Restore the NumPy alias still referenced by scikit-mobility 1.3.x."""
+    try:
+        import numpy as np
+    except Exception:
+        return
+
+    if not hasattr(np, "NaN"):
+        np.NaN = np.nan  # type: ignore[attr-defined]
 
 
 def metric_kwargs_for_library(spec: BenchmarkSpec, library: str, func: Callable[..., Any]) -> dict[str, Any]:

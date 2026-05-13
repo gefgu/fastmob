@@ -37,8 +37,35 @@ def test_catalogs_include_expected_entries():
     skmob_catalog = suite.load_catalog(suite.SKMOB_CATALOG_PATH)
     movingpandas_catalog = suite.load_catalog(suite.MOVINGPANDAS_CATALOG_PATH)
 
-    skmob_names = {entry["name"] for entry in skmob_catalog["entries"]}
-    assert {"radius_of_gyration", "stay_locations", "frequency_rank"}.issubset(skmob_names)
+    names_by_suite = {}
+    for entry in skmob_catalog["entries"]:
+        names_by_suite.setdefault(entry["suite"], set()).add(entry["name"])
+
+    assert {"radius_of_gyration", "stay_locations", "frequency_rank"}.issubset(
+        names_by_suite["spatial"] | names_by_suite["visits"]
+    )
+    assert {
+        "location_kl2",
+        "location_sequence_kl2",
+        "location_time_kl2",
+        "unique_location_kl2",
+        "location_frequency_kl2",
+        "location_probability_kl2",
+        "location_proportion_kl2",
+        "home_work",
+    } == names_by_suite["privacy"]
+    assert {
+        "gravity_flows",
+        "gravity_probabilities",
+        "radiation_flows",
+        "radiation_probabilities",
+        "markov_diary",
+        "epr",
+        "density_epr",
+        "spatial_epr",
+        "geosim",
+        "sts_epr",
+    } == names_by_suite["models"]
     assert any(
         entry["skmob_function"] == "skmob.measures.individual.jump_lengths" and entry["benchmarkable"]
         for entry in movingpandas_catalog["entries"]
@@ -118,6 +145,30 @@ def test_skmob_metric_kwargs_add_show_progress_when_supported():
         "show_progress": False,
     }
     assert suite.metric_kwargs_for_library(spec, "skmob2", fake_metric) == {"merge": False}
+
+
+def test_import_metric_patches_numpy_nan_for_legacy_skmob(monkeypatch):
+    calls = {"patched": 0}
+
+    def fake_patch():
+        calls["patched"] += 1
+
+    fake_module = types.ModuleType("skmob.measures.individual")
+    fake_module.radius_of_gyration = lambda tdf: tdf
+
+    monkeypatch.setattr(suite, "patch_numpy_nan_for_skmob", fake_patch)
+    monkeypatch.setitem(sys.modules, "skmob.measures.individual", fake_module)
+
+    spec = suite.BenchmarkSpec(
+        "radius_of_gyration",
+        "skmob2.measures.spatial.radius_of_gyration",
+        "skmob.measures.individual",
+        "radius_of_gyration",
+        {},
+    )
+
+    assert suite.import_metric(spec, "skmob") is fake_module.radius_of_gyration
+    assert calls["patched"] == 1
 
 
 def test_write_json_serializes_payload(tmp_path: Path):

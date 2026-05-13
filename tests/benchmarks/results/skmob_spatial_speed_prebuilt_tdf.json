@@ -19,7 +19,7 @@
     "skmob_catalog_path": "/home/gustavo/skmob2/tests/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "spatial",
-    "timestamp_utc": "2026-05-08T07:30:25.238747+00:00",
+    "timestamp_utc": "2026-05-13T17:52:20.319769+00:00",
     "timing_mode": "prebuilt_tdf"
   },
   "results": [
@@ -470,12 +470,17 @@
           ]
         },
         "maximum_distance": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
-          "reason": "`np.NaN` was removed in the NumPy 2.0 release. Use `np.nan` instead.",
-          "status": "error",
-          "times_seconds": []
+          "average_seconds": 0.4581101044022944,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.45376657700398937,
+          "status": "ok",
+          "times_seconds": [
+            0.45376657700398937,
+            0.45542246801778674,
+            0.4598176410072483,
+            0.46097681697574444,
+            0.46056701900670305
+          ]
         },
         "number_of_locations": {
           "average_seconds": 0.29475234681740403,
@@ -641,12 +646,17 @@
           ]
         },
         "maximum_distance": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
-          "reason": "`np.NaN` was removed in the NumPy 2.0 release. Use `np.nan` instead.",
-          "status": "error",
-          "times_seconds": []
+          "average_seconds": 6.000332956999773,
+          "iterations_completed": 5,
+          "minimum_seconds": 5.978692630975274,
+          "status": "ok",
+          "times_seconds": [
+            5.997263519995613,
+            6.0242334630165715,
+            6.004688556015026,
+            5.996786614996381,
+            5.978692630975274
+          ]
         },
         "number_of_locations": {
           "average_seconds": 3.7968056062003597,
@@ -812,12 +822,17 @@
           ]
         },
         "maximum_distance": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
-          "reason": "`np.NaN` was removed in the NumPy 2.0 release. Use `np.nan` instead.",
-          "status": "error",
-          "times_seconds": []
+          "average_seconds": 42.228074661805294,
+          "iterations_completed": 5,
+          "minimum_seconds": 41.55162110799574,
+          "status": "ok",
+          "times_seconds": [
+            41.55162110799574,
+            41.655409094004426,
+            42.55769182401127,
+            42.68831890201545,
+            42.68733238099958
+          ]
         },
         "number_of_locations": {
           "average_seconds": 28.706743157200982,
