@@ -31,7 +31,7 @@ class GeoSim:
 
     def random_weighted_choice(self, weights):
         probabilities = np.asarray(weights, dtype=float) / np.sum(weights)
-        return int(np.where(np.random.multinomial(1, probabilities) == 1)[0][0])
+        return int(np.argmax(np.random.multinomial(1, probabilities)))
 
     def init_agents(self):
         self.agents = {}
@@ -144,7 +144,7 @@ class GeoSim:
         )
         if len(id_locs_feasible) == 0:
             return -1
-        weights = [location_vector_contact[i] for i in id_locs_feasible]
+        weights = location_vector_contact[id_locs_feasible]
         if np.sum(weights) == 0:
             return -1
         return int(id_locs_feasible[self.random_weighted_choice(weights)])
@@ -154,7 +154,7 @@ class GeoSim:
         id_locs_feasible = np.where(v_location >= 1)[0]
         if len(id_locs_feasible) == 0:
             return -1
-        return int(id_locs_feasible[self.random_weighted_choice([v_location[i] for i in id_locs_feasible])])
+        return int(id_locs_feasible[self.random_weighted_choice(v_location[id_locs_feasible])])
 
     def make_individual_exploration_action(self, agent):
         v_location = self.agents[agent]["location_vector"]

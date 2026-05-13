@@ -163,7 +163,7 @@ class STS_epr(GeoSim):
         distance_row = np.asarray(self.distance_matrix[src], dtype=float)
         distance_row[src] = 1.0
         score = (1.0 / distance_row**2) * self.relevances * self.relevances[src]
-        weights = np.asarray([score[i] for i in id_locs_feasible], dtype=float)
+        weights = score[id_locs_feasible]
         if np.sum(weights) == 0:
             return int(id_locs_feasible[np.random.randint(0, len(id_locs_feasible))])
         return int(id_locs_feasible[self.random_weighted_choice(weights)])
