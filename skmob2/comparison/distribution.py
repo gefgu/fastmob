@@ -115,10 +115,15 @@ def _group_numeric_values(
     day_col: str | None = None,
     purpose_col: str | None = None,
     skip_day_period_creation: bool = False,
-) -> dict[Any, list[float]]:
+) -> dict[Any, np.ndarray]:
     df = nw.from_native(data, eager_only=True)
     if value_col not in df.columns:
         raise ValueError(f"Column {value_col!r} not found. Available columns: {df.columns}.")
+
+    if hue is None:
+        values_np = df.get_column(value_col).cast(nw.Float64).to_numpy()
+        finite_vals = values_np[np.isfinite(values_np)]
+        return {"All Trips": finite_vals} if len(finite_vals) > 0 else {}
 
     df = _build_hue_column(
         df,
@@ -132,7 +137,7 @@ def _group_numeric_values(
     df = df.with_columns(nw.col(value_col).cast(nw.Float64).alias("__val__"))
 
     unique_hues: list[Any] = df.get_column("__hue__").drop_nulls().unique().to_list()
-    groups: dict[Any, list[float]] = {}
+    groups: dict[Any, np.ndarray] = {}
     for hue_val in unique_hues:
         if _is_null(hue_val):
             continue
@@ -144,7 +149,7 @@ def _group_numeric_values(
         )
         finite_vals = values_np[np.isfinite(values_np)]
         if len(finite_vals) > 0:
-            groups[hue_val] = finite_vals.tolist()
+            groups[hue_val] = finite_vals
     return groups
 
 
@@ -157,9 +162,19 @@ def _visits_per_user_groups(
     day_col: str | None = None,
     purpose_col: str | None = None,
     skip_day_period_creation: bool = False,
-) -> dict[Any, list[int]]:
+) -> dict[Any, np.ndarray]:
     df = nw.from_native(data, eager_only=True)
     uid_col = _resolve_column(df, user_id_col, USER_ID_CANDIDATES, "user")
+
+    if hue is None:
+        counts = (
+            df.drop_nulls(subset=[uid_col])
+            .group_by(uid_col)
+            .agg(nw.len().alias("__count__"))
+            .get_column("__count__")
+            .to_numpy()
+        )
+        return {"All Trips": counts}
 
     df = _build_hue_column(
         df,
@@ -178,17 +193,15 @@ def _visits_per_user_groups(
     )
 
     unique_hues: list[Any] = counts_df.get_column("__hue__").unique().to_list()
-    groups: dict[Any, list[int]] = {}
+    groups: dict[Any, np.ndarray] = {}
     for hue_val in unique_hues:
         if _is_null(hue_val):
             continue
-        user_counts = (
+        groups[hue_val] = (
             counts_df.filter(nw.col("__hue__") == hue_val)
             .get_column("__count__")
             .to_numpy()
-            .tolist()
         )
-        groups[hue_val] = user_counts
     return groups
 
 
