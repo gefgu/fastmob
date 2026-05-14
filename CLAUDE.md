@@ -55,7 +55,7 @@ First-time setup (creates `.venv` at repo root, builds the Rust extension, insta
 
 ```bash
 # Normal development and correctness tests
-bash tests/setup_env.sh
+bash scripts/setup_env.sh
 source .venv/bin/activate
 ```
 
@@ -67,24 +67,24 @@ Use the shell scripts under `tests/` for normal verification. They activate `.ve
 
 ```bash
 # Correctness only, excluding skmob comparisons by default
-bash tests/run_correctness.sh
+bash scripts/run_correctness.sh
 
 # A focused correctness subset
-bash tests/run_correctness.sh tests/correctness/spatial/test_radius_of_gyration.py -v
+bash scripts/run_correctness.sh tests/correctness/spatial/test_radius_of_gyration.py -v
 
 # Lint and format checks
-bash tests/run_lint.sh
+bash scripts/run_lint.sh
 
 # Coverage over correctness tests
-bash tests/run_coverage.sh
+bash scripts/run_coverage.sh
 
 # Benchmarks
-bash tests/run_benchmarks.sh
+bash scripts/run_benchmarks.sh
 ```
 
 ### skmob comparison correctness tests
 
-Run the `@pytest.mark.skmob` comparison tests from the dedicated `.venv-skmob` environment, not the normal `.venv` and not `tests/run_correctness.sh`. The normal correctness script intentionally uses `.venv`; that environment carries the modern Shapely stack and `skmob` fails to import there because `shapely.ops.cascaded_union` was removed.
+Run the `@pytest.mark.skmob` comparison tests from the dedicated `.venv-skmob` environment, not the normal `.venv` and not `scripts/run_correctness.sh`. The normal correctness script intentionally uses `.venv`; that environment carries the modern Shapely stack and `skmob` fails to import there because `shapely.ops.cascaded_union` was removed.
 
 The known-good local skmob comparison stack is Python 3.10 with `scikit-mobility 1.3.1`, `geopandas 0.10.2`, and `Shapely 1.8.5.post1`.
 
@@ -121,20 +121,20 @@ Documentation source pages live in `docs/src/`. The `docs/features/` subdirector
 
 ## Benchmarks
 
-`tests/run_benchmarks.sh` is environment-aware. It rebuilds `skmob2._core` in `.venv`, runs skmob2 pandas/Polars benchmarks there, runs `@pytest.mark.skmob` comparison benchmarks in `.venv-skmob`, and runs `@pytest.mark.movingpandas` benchmarks only from an environment where `movingpandas` imports. Keep skmob comparisons out of `.venv`; that environment uses the modern Shapely stack and cannot import scikit-mobility.
+`scripts/run_benchmarks.sh` is environment-aware. It rebuilds `skmob2._core` in `.venv`, runs skmob2 pandas/Polars benchmarks there, runs `@pytest.mark.skmob` comparison benchmarks in `.venv-skmob`, and runs `@pytest.mark.movingpandas` benchmarks only from an environment where `movingpandas` imports. Keep skmob comparisons out of `.venv`; that environment uses the modern Shapely stack and cannot import scikit-mobility.
 
 ```bash
 # Benchmark table printed to stdout
-bash tests/run_benchmarks.sh
+bash scripts/run_benchmarks.sh
 
 # Save JSON report
-bash tests/run_benchmarks.sh --benchmark-json=results.json
+bash scripts/run_benchmarks.sh --benchmark-json=results.json
 
 # Save named snapshot for later comparison
-bash tests/run_benchmarks.sh --benchmark-save=baseline
+bash scripts/run_benchmarks.sh --benchmark-save=baseline
 
 # Run one workload family across all compatible comparison environments
-bash tests/run_benchmarks.sh -k radius_of_gyration
+bash scripts/run_benchmarks.sh -k radius_of_gyration
 
 # Compare two snapshots
 pytest-benchmark compare baseline 0001
@@ -147,21 +147,21 @@ Benchmarks are parametrized over five dataset sizes (1k / 10k / 100k / 1M / 4M r
 ```bash
 # CPU flamegraph and Speedscope JSON with py-spy and native Rust frames.
 # By default, only the target function call and result materialization are profiled.
-bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration
+bash scripts/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration
 
 # Memory flamegraph with memray and native Rust frames; defaults to function-only profiling.
-bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
+bash scripts/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
 
 # Native Rust sampling profile (Firefox Profiler format) with samply.
 # Function scope: samply attaches after data prep, so only the Rust kernel is sampled.
-bash tests/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration
+bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration
 samply load .profiles/samply/skmob2/radius_of_gyration.json.gz
 
 # Compare skmob2 and skmob where a skmob equivalent exists.
-bash tests/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
+bash scripts/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
 
 # Legacy whole-process profiling, including imports and data loading.
-bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
+bash scripts/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
 ```
 
 Profiling outputs are written to implementation-specific folders under `.profiles/py-spy/`, `.profiles/memray/`, and `.profiles/samply/`. Py-spy writes both `<workload>.svg` and `<workload>.speedscope.json`; samply writes `<workload>.json.gz` (Firefox Profiler JSON, viewable via `samply load`). Run `maturin develop` first when invoking profiling modules directly so `skmob2._core` and native symbols are available. samply requires `kernel.perf_event_paranoid <= 1` on Linux (`sudo sysctl kernel.perf_event_paranoid=1`).

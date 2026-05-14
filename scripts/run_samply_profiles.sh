@@ -3,12 +3,12 @@
 # Firefox Profiler JSON traces and manifests are written to .profiles/samply/ by default.
 #
 # Usage:
-#   bash tests/run_samply_profiles.sh --list
-#   bash tests/run_samply_profiles.sh --dry-run --rows 10000 --workload radius_of_gyration
-#   bash tests/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration
-#   bash tests/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
-#   bash tests/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
-#   bash tests/run_samply_profiles.sh                              # full 4M-row sweep
+#   bash scripts/run_samply_profiles.sh --list
+#   bash scripts/run_samply_profiles.sh --dry-run --rows 10000 --workload radius_of_gyration
+#   bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration
+#   bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
+#   bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
+#   bash scripts/run_samply_profiles.sh                              # full 4M-row sweep
 #
 # View a recorded trace with:
 #   samply load .profiles/samply/skmob2/<workload>.json.gz
@@ -21,7 +21,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 if [ ! -f ".venv/bin/activate" ]; then
-    echo "ERROR: virtual environment not found. Run 'bash tests/setup_env.sh' first."
+    echo "ERROR: virtual environment not found. Run 'bash scripts/setup_env.sh' first."
     exit 1
 fi
 

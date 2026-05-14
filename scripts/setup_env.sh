@@ -3,9 +3,9 @@
 # Run from anywhere — the script resolves the repo root automatically.
 #
 # Usage:
-#   bash tests/setup_env.sh                    # core dev deps only
-#   bash tests/setup_env.sh --skmob            # also install scikit-mobility (optional)
-#   bash tests/setup_env.sh --movingpandas     # also install movingpandas + geopandas (optional)
+#   bash scripts/setup_env.sh                    # core dev deps only
+#   bash scripts/setup_env.sh --skmob            # also install scikit-mobility (optional)
+#   bash scripts/setup_env.sh --movingpandas     # also install movingpandas + geopandas (optional)
 #
 # After completion, activate the environment with:
 #   source .venv/bin/activate
@@ -26,15 +26,17 @@ echo "==> Creating virtual environment at .venv ..."
 [ -d .venv ] && rm -rf .venv
 uv venv .venv
 
-# FIX 1: Activate the venv explicitly so Maturin ignores your active Conda environments
 source .venv/bin/activate
+unset CONDA_PREFIX
 
 echo "==> Installing maturin and polars ..."
 # FIX 2: Added polars. Because the venv is active, we can safely drop the `--python` flags.
 uv pip install "maturin>=1.13,<2.0" polars
 
 echo "==> Building Rust extension (maturin develop) ..."
-maturin develop
+if ! maturin develop; then
+    maturin develop --uv
+fi
 
 echo "==> Installing dev dependencies ..."
 uv pip install -e ".[dev]"
@@ -48,7 +50,7 @@ if $INSTALL_SKMOB; then
 else
     echo ""
     echo "NOTE: scikit-mobility not installed. skmob-comparison tests will be skipped."
-    echo "      To install it, re-run with: bash tests/setup_env.sh --skmob"
+    echo "      To install it, re-run with: bash scripts/setup_env.sh --skmob"
 fi
 
 if $INSTALL_MOVINGPANDAS; then
@@ -60,7 +62,7 @@ if $INSTALL_MOVINGPANDAS; then
 else
     echo ""
     echo "NOTE: movingpandas not installed. movingpandas-comparison benchmarks will be skipped."
-    echo "      To install it, re-run with: bash tests/setup_env.sh --movingpandas"
+    echo "      To install it, re-run with: bash scripts/setup_env.sh --movingpandas"
 fi
 
 echo ""

@@ -7,10 +7,10 @@ same-model variability: if skmob2 vs skmob is within the range of skmob
 vs skmob (different seeds), the implementations are statistically equivalent.
 
 Generating the baseline (one-time setup, requires .venv-skmob):
-    bash tests/run_model_baseline.sh
+    bash scripts/run_model_baseline.sh
 
 Running these tests:
-    bash tests/run_correctness.sh tests/correctness/models/test_statistical_model_parity.py -v
+    bash scripts/run_correctness.sh tests/correctness/models/test_statistical_model_parity.py -v
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ def skmob_baseline() -> dict[str, Any]:
     path = _SHARED_DIR / "model_statistical_baseline_skmob.json"
     if not path.exists():
         pytest.skip(
-            "No model statistical baseline. Run 'bash tests/run_model_baseline.sh' "
+            "No model statistical baseline. Run 'bash scripts/run_model_baseline.sh' "
             "and commit the resulting JSON files to tests/shared/."
         )
     return json.loads(path.read_text(encoding="utf-8"))
@@ -58,7 +58,7 @@ def skmob_baseline() -> dict[str, Any]:
 @pytest.fixture(scope="session")
 def models_reference() -> SkmobReferenceDataset:
     if not (_REFERENCE_DIR / "models" / "input.parquet").exists():
-        pytest.skip("No skmob models cache. Run 'bash tests/populate_skmob_cache.sh --datasets models'.")
+        pytest.skip("No skmob models cache. Run 'bash scripts/populate_skmob_cache.sh --datasets models'.")
     return SkmobReferenceDataset("models")
 
 
@@ -71,7 +71,7 @@ def model_tessellation(models_reference: SkmobReferenceDataset) -> pd.DataFrame:
 def model_diary_training() -> pd.DataFrame:
     path = _REFERENCE_DIR / "models" / "diary_training.parquet"
     if not path.exists():
-        pytest.skip("No cached model diary training frame. Run 'bash tests/populate_skmob_cache.sh --datasets models'.")
+        pytest.skip("No cached model diary training frame. Run 'bash scripts/populate_skmob_cache.sh --datasets models'.")
     return pd.read_parquet(path)
 
 

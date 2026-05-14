@@ -19,7 +19,7 @@ The Rust boundary needs its own attention. Python tests exercise public function
 The documented coverage metric is Python package coverage for `skmob2`. It measures which Python statements and branches run when the correctness suite executes:
 
 ```bash
-bash tests/run_coverage.sh
+bash scripts/run_coverage.sh
 ```
 
 This metric is intentionally scoped. It does not claim Rust line coverage for the PyO3 extension, and it does not turn performance benchmarks into correctness evidence. Instead, it answers a narrower question: how much of the Python API, dataframe preparation layer, and result reconstruction code is exercised by the correctness tests.
@@ -33,7 +33,7 @@ skmob2 exists because mobility analysis can become expensive on large trajectory
 The benchmark suite uses standalone `time.perf_counter()` scripts and includes Brightkite-sized slices where appropriate:
 
 ```bash
-bash tests/run_benchmarks.sh
+bash scripts/run_benchmarks.sh
 ```
 
 Some benchmarks compare skmob2 with skmob. Others exercise pandas and Polars inputs through the same public API. MovingPandas comparisons are included where the optional dependencies are installed and a comparable operation exists, because they answer a different question: how skmob2 behaves next to another trajectory-analysis ecosystem rather than only next to its direct predecessor. The benchmark runner dispatches those comparison groups to compatible virtual environments: `.venv` for skmob2 and movingpandas when installed there, and `.venv-skmob` for the legacy scikit-mobility stack.

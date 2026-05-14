@@ -6,10 +6,10 @@
 # committed to git so the normal .venv can run comparison tests without skmob installed.
 #
 # Usage:
-#   bash tests/populate_skmob_cache.sh
-#   bash tests/populate_skmob_cache.sh --datasets brightkite
-#   bash tests/populate_skmob_cache.sh --datasets geolife,foursquare
-#   bash tests/populate_skmob_cache.sh --geolife-rows 5000
+#   bash scripts/populate_skmob_cache.sh
+#   bash scripts/populate_skmob_cache.sh --datasets brightkite
+#   bash scripts/populate_skmob_cache.sh --datasets geolife,foursquare
+#   bash scripts/populate_skmob_cache.sh --geolife-rows 5000
 
 set -euo pipefail
 

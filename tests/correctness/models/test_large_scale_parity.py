@@ -8,7 +8,7 @@ Generating the baseline (run once, then commit the JSON):
     python tests/benchmarks/correctness_models_large_scale.py
 
 Running these tests:
-    bash tests/run_correctness.sh tests/correctness/models/test_large_scale_parity.py -v -m slow
+    bash scripts/run_correctness.sh tests/correctness/models/test_large_scale_parity.py -v -m slow
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def large_tessellation() -> pd.DataFrame:
     ref_dir = Path(DEFAULT_REFERENCE_DIR)
     if not (ref_dir / "input.parquet").exists():
         pytest.skip(
-            "No model cache. Run 'bash tests/populate_skmob_cache.sh --datasets models' first."
+            "No model cache. Run 'bash scripts/populate_skmob_cache.sh --datasets models' first."
         )
     base_tess, _ = load_model_inputs(ref_dir)
     return expand_tessellation(base_tess, DEFAULT_SIZE)
@@ -72,7 +72,7 @@ def large_diary_training() -> pd.DataFrame:
     if not diary_path.exists():
         pytest.skip(
             "No cached model diary training frame. "
-            "Run 'bash tests/populate_skmob_cache.sh --datasets models' first."
+            "Run 'bash scripts/populate_skmob_cache.sh --datasets models' first."
         )
     return pd.read_parquet(diary_path)
 

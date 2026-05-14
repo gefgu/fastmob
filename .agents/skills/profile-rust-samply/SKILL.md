@@ -12,8 +12,8 @@ Run from the repository root (`/home/gustavo/skmob2`) so `uv`, `maturin`, tests,
 Prefer the existing Brightkite runner for supported workloads:
 
 ```bash
-bash tests/run_samply_profiles.sh --list
-bash tests/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --scope function
+bash scripts/run_samply_profiles.sh --list
+bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --scope function
 ```
 
 Use `--scope function` by default. It prepares data before Samply attaches, so profiles emphasize the target function rather than imports and dataset loading. Use `--scope full` only when startup, data loading, Python wrapper setup, or import overhead is the suspected bottleneck.

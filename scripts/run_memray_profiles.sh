@@ -3,12 +3,12 @@
 # Binary dumps, flame graphs, and manifests are written to .profiles/memray/ by default.
 #
 # Usage:
-#   bash tests/run_memray_profiles.sh --list
-#   bash tests/run_memray_profiles.sh --dry-run --rows 10000 --workload radius_of_gyration
-#   bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
-#   bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
-#   bash tests/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
-#   bash tests/run_memray_profiles.sh                              # full 4M-row sweep
+#   bash scripts/run_memray_profiles.sh --list
+#   bash scripts/run_memray_profiles.sh --dry-run --rows 10000 --workload radius_of_gyration
+#   bash scripts/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
+#   bash scripts/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
+#   bash scripts/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
+#   bash scripts/run_memray_profiles.sh                              # full 4M-row sweep
 #
 # Any extra arguments are forwarded directly to scripts/profile_brightkite_memray.py.
 
@@ -18,7 +18,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 if [ ! -f ".venv/bin/activate" ]; then
-    echo "ERROR: virtual environment not found. Run 'bash tests/setup_env.sh' first."
+    echo "ERROR: virtual environment not found. Run 'bash scripts/setup_env.sh' first."
     exit 1
 fi
 

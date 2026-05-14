@@ -232,7 +232,7 @@ def comparison_skmob(request):
 def comparison_skmob_reference(request):
     """Cached skmob baseline; auto-skips when the cache is absent.
 
-    Run ``bash tests/populate_skmob_cache.sh`` (inside .venv-skmob) once to
+    Run ``bash scripts/populate_skmob_cache.sh`` (inside .venv-skmob) once to
     populate the cache, then commit tests/shared/skmob_reference/ to git.
     After that, these tests run in the normal .venv without skmob installed.
     """
@@ -242,7 +242,7 @@ def comparison_skmob_reference(request):
     if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
         pytest.skip(
             f"No skmob reference cache for '{dataset}'. "
-            "Run 'bash tests/populate_skmob_cache.sh' first."
+            "Run 'bash scripts/populate_skmob_cache.sh' first."
         )
     return SkmobReferenceDataset(dataset)
 

@@ -50,13 +50,13 @@ source .venv/bin/activate
 bash setup.env
 
 # Run benchmarks
-bash tests/run_benchmarks.sh
+bash scripts/run_benchmarks.sh
 
 # The runner dispatches comparison groups to compatible virtual environments:
 # .venv for skmob2/movingpandas and .venv-skmob for skmob.
 
 # Save results to JSON
-bash tests/run_benchmarks.sh --benchmark-json=results.json
+bash scripts/run_benchmarks.sh --benchmark-json=results.json
 
 # Compare snapshots
 pytest-benchmark compare baseline 0001

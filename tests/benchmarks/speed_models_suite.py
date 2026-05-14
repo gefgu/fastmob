@@ -117,7 +117,7 @@ def load_model_inputs(reference_dir: Path) -> tuple[Any, Any]:
     if not tessellation_path.exists() or not diary_path.exists():
         raise SystemExit(
             f"Model benchmark inputs not found in {reference_dir}. "
-            "Run 'bash tests/populate_skmob_cache.sh --datasets models' first."
+            "Run 'bash scripts/populate_skmob_cache.sh --datasets models' first."
         )
     return pd.read_parquet(tessellation_path), pd.read_parquet(diary_path)
 

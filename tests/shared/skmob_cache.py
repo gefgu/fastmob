@@ -1,7 +1,7 @@
 """Utilities for loading cached skmob reference results.
 
 The cache is populated once by running:
-    bash tests/populate_skmob_cache.sh
+    bash scripts/populate_skmob_cache.sh
 
 in the .venv-skmob environment (Python 3.10 + scikit-mobility 1.3.1).
 The resulting files in tests/shared/skmob_reference/ are committed to git

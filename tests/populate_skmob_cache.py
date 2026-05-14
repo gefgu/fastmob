@@ -2,7 +2,7 @@
 """Populate the skmob reference cache.
 
 Run this script inside .venv-skmob via the shell wrapper:
-    bash tests/populate_skmob_cache.sh
+    bash scripts/populate_skmob_cache.sh
 
 Or directly (after activating the skmob env):
     .venv-skmob/bin/python tests/populate_skmob_cache.py [options]

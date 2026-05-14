@@ -100,8 +100,8 @@ pytest tests/benchmarks/bench_individual.py::test_jump_lengths_skmob2_polars[1k]
 
 ### Run full test suite:
 ```bash
-bash tests/run_correctness.sh
-bash tests/run_benchmarks.sh
+bash scripts/run_correctness.sh
+bash scripts/run_benchmarks.sh
 ```
 
 ## Installation Requirements

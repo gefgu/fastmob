@@ -6,7 +6,7 @@
 # tests/correctness/models/test_statistical_model_parity.py.
 #
 # Usage:
-#   bash tests/run_model_baseline.sh [--n-runs N] [--n-agents N]
+#   bash scripts/run_model_baseline.sh [--n-runs N] [--n-agents N]
 #
 # Options passed through to the Python script:
 #   --n-runs   number of random seeds (default 100)

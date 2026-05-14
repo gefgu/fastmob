@@ -2,8 +2,8 @@
 # Run Ruff and Clippy lint checks.
 #
 # Usage:
-#   bash tests/run_lint.sh           # check only
-#   bash tests/run_lint.sh --fix     # apply Ruff fixes/formatting and Clippy fixes
+#   bash scripts/run_lint.sh           # check only
+#   bash scripts/run_lint.sh --fix     # apply Ruff fixes/formatting and Clippy fixes
 #
 # Any extra arguments are forwarded directly to `ruff check`.
 
@@ -13,7 +13,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 if [ ! -f ".venv/bin/activate" ]; then
-    echo "ERROR: virtual environment not found. Run 'bash tests/setup_env.sh' first."
+    echo "ERROR: virtual environment not found. Run 'bash scripts/setup_env.sh' first."
     exit 1
 fi
 

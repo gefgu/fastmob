@@ -7,13 +7,13 @@ The benchmark suite spans packages that need incompatible geospatial stacks:
 - `skmob` comparisons need `.venv-skmob` with Python 3.10, `scikit-mobility 1.3.1`, `geopandas 0.10.2`, and `Shapely 1.8.5.post1`.
 - movingpandas comparisons should run only from an environment where `movingpandas` imports, normally `.venv` after installing the optional extra.
 
-`tests/run_benchmarks.sh` runs each benchmark group in the matching environment instead of trying to import every comparison package from one venv.
+`scripts/run_benchmarks.sh` runs each benchmark group in the matching environment instead of trying to import every comparison package from one venv.
 
 ### Initial Setup
 
 ```bash
 # Normal skmob2 benchmark environment
-bash tests/setup_env.sh --movingpandas
+bash scripts/setup_env.sh --movingpandas
 source .venv/bin/activate
 
 # Dedicated skmob comparison environment, created separately with the legacy stack
@@ -28,15 +28,15 @@ env -u CONDA_PREFIX \
 
 ```bash
 # Run all benchmark groups in their compatible environments
-bash tests/run_benchmarks.sh
+bash scripts/run_benchmarks.sh
 
 # Run one workload family
-bash tests/run_benchmarks.sh -k radius_of_gyration
+bash scripts/run_benchmarks.sh -k radius_of_gyration
 ```
 
-## What tests/setup_env.sh Does
+## What scripts/setup_env.sh Does
 
-The `tests/setup_env.sh` script:
+The `scripts/setup_env.sh` script:
 1. ✓ Installs skmob2 development dependencies (pytest, pytest-benchmark, polars)
 2. ✓ Builds the Rust extension (`maturin develop`)
 3. ✓ Optionally installs movingpandas with `--movingpandas`
@@ -48,13 +48,13 @@ Run the benchmarks to compare skmob2, skmob, and movingpandas where available:
 
 ```bash
 # Run all dataset sizes
-bash tests/run_benchmarks.sh
+bash scripts/run_benchmarks.sh
 
 # Run only 1k rows (fast)
-bash tests/run_benchmarks.sh -k 1k
+bash scripts/run_benchmarks.sh -k 1k
 
 # Save results to JSON
-bash tests/run_benchmarks.sh --benchmark-json=results.json
+bash scripts/run_benchmarks.sh --benchmark-json=results.json
 ```
 
 ### Performance Summary

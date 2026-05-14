@@ -3,12 +3,12 @@
 # JSON profiles, HTML reports, and manifests are written to .profiles/scalene/ by default.
 #
 # Usage:
-#   bash tests/run_scalene_profiles.sh --list
-#   bash tests/run_scalene_profiles.sh --dry-run --rows 10000 --workload jump_lengths --implementation both
-#   bash tests/run_scalene_profiles.sh --rows 10000 --workload jump_lengths --implementation both
-#   bash tests/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2
-#   bash tests/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2 --backend polars
-#   bash tests/run_scalene_profiles.sh                              # jump_lengths skmob2 vs skmob on full 4M-row sweep
+#   bash scripts/run_scalene_profiles.sh --list
+#   bash scripts/run_scalene_profiles.sh --dry-run --rows 10000 --workload jump_lengths --implementation both
+#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload jump_lengths --implementation both
+#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2
+#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2 --backend polars
+#   bash scripts/run_scalene_profiles.sh                              # jump_lengths skmob2 vs skmob on full 4M-row sweep
 #
 # Any extra arguments are forwarded directly to scripts/profile_brightkite_scalene.py.
 
@@ -18,7 +18,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 if [ ! -f ".venv/bin/activate" ]; then
-    echo "ERROR: virtual environment not found. Run 'bash tests/setup_env.sh' first."
+    echo "ERROR: virtual environment not found. Run 'bash scripts/setup_env.sh' first."
     exit 1
 fi
 

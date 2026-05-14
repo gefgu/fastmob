@@ -42,7 +42,7 @@ FLOW_CASES: tuple[FlowCase, ...] = (
 @pytest.fixture(scope="session")
 def models_reference() -> SkmobReferenceDataset:
     if not (_REFERENCE_DIR / "models" / "input.parquet").exists():
-        pytest.skip("No skmob models cache. Run 'bash tests/populate_skmob_cache.sh --datasets models'.")
+        pytest.skip("No skmob models cache. Run 'bash scripts/populate_skmob_cache.sh --datasets models'.")
     return SkmobReferenceDataset("models")
 
 
@@ -55,7 +55,7 @@ def model_tessellation(models_reference: SkmobReferenceDataset) -> pd.DataFrame:
 def model_diary_training() -> pd.DataFrame:
     path = _REFERENCE_DIR / "models" / "diary_training.parquet"
     if not path.exists():
-        pytest.skip("No cached model diary training frame. Run 'bash tests/populate_skmob_cache.sh --datasets models'.")
+        pytest.skip("No cached model diary training frame. Run 'bash scripts/populate_skmob_cache.sh --datasets models'.")
     return pd.read_parquet(path)
 
 

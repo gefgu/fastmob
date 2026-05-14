@@ -4,10 +4,10 @@
 # Pass -m skmob to include them, or -m "" to run everything.
 #
 # Usage:
-#   bash tests/run_coverage.sh              # synthetic tests only
-#   bash tests/run_coverage.sh -m skmob     # skmob-comparison tests only
-#   bash tests/run_coverage.sh -m ""        # all correctness tests
-#   bash tests/run_coverage.sh --cov-report=html
+#   bash scripts/run_coverage.sh              # synthetic tests only
+#   bash scripts/run_coverage.sh -m skmob     # skmob-comparison tests only
+#   bash scripts/run_coverage.sh -m ""        # all correctness tests
+#   bash scripts/run_coverage.sh --cov-report=html
 #
 # Any extra arguments are forwarded directly to pytest.
 
@@ -17,7 +17,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 if [ ! -f ".venv/bin/activate" ]; then
-    echo "ERROR: virtual environment not found. Run 'bash tests/setup_env.sh' first."
+    echo "ERROR: virtual environment not found. Run 'bash scripts/setup_env.sh' first."
     exit 1
 fi
 
@@ -28,7 +28,9 @@ if ! python -m pip --version >/dev/null 2>&1; then
     python -m ensurepip --upgrade
 fi
 
-python -m maturin develop
+if ! python -m maturin develop; then
+    maturin develop --uv
+fi
 
 # Default: skip skmob-comparison tests unless the caller overrides -m
 MARKER_ARGS=("-m" "not skmob")

@@ -2,8 +2,8 @@
 # Run standalone benchmark suites across available profiles and comparison modes.
 #
 # Usage:
-#   bash tests/run_benchmarks.sh
-#   bash tests/run_benchmarks.sh --sizes 1000 --iterations 1 --sleep 0
+#   bash scripts/run_benchmarks.sh
+#   bash scripts/run_benchmarks.sh --sizes 1000 --iterations 1 --sleep 0
 #
 # Any extra arguments are forwarded to each standalone benchmark suite.
 
@@ -22,7 +22,7 @@ SKMOB_TIMING_MODES=("prebuilt_tdf" "workflow_tdf")
 FAILURES=()
 
 if [ ! -f "$MAIN_VENV/bin/activate" ]; then
-    echo "ERROR: virtual environment not found. Run 'bash tests/setup_env.sh' first."
+    echo "ERROR: virtual environment not found. Run 'bash scripts/setup_env.sh' first."
     exit 1
 fi
 

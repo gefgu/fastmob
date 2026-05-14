@@ -3,11 +3,11 @@
 #
 # Intended for long unattended runs, for example:
 #
-#   nohup bash tests/run_skmob_benchmarks.sh > tests/benchmarks/results/logs/skmob_overnight.out 2>&1 &
+#   nohup bash scripts/run_skmob_benchmarks.sh > tests/benchmarks/results/logs/skmob_overnight.out 2>&1 &
 #
 # Extra arguments are forwarded to both suites, for example:
 #
-#   bash tests/run_skmob_benchmarks.sh --sizes 1000 10000 100000 --iterations 3 --sleep 0
+#   bash scripts/run_skmob_benchmarks.sh --sizes 1000 10000 100000 --iterations 3 --sleep 0
 
 set -euo pipefail
 

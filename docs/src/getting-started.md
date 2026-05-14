@@ -21,7 +21,7 @@ git clone https://github.com/gefgu/skmob2.git
 cd skmob2
 
 # First-time setup: creates .venv, builds the Rust extension, installs all dev deps
-bash tests/setup_env.sh
+bash scripts/setup_env.sh
 source .venv/bin/activate
 ```
 
