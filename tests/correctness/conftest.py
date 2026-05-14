@@ -289,3 +289,7 @@ def pytest_configure(config):
         "markers",
         "skmob: tests that require the skmob package to be installed",
     )
+    config.addinivalue_line(
+        "markers",
+        "slow: tests that require long runtimes (skip with -m 'not slow')",
+    )

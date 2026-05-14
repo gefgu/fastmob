@@ -239,7 +239,11 @@ def benchmark_large_size(
                 diary,
                 size,
                 profile=profile,
-                iterations=iterations,
+                iterations=(
+                    _SKMOB2_SPEC_ITERATIONS.get(spec.name, iterations)
+                    if library == "skmob2"
+                    else iterations
+                ),
                 sleep_seconds=sleep_seconds,
             )
             for spec in benchmarks
@@ -248,6 +252,21 @@ def benchmark_large_size(
 
 
 _SKMOB_SKIP_THRESHOLD_S = 1800.0  # 30 minutes
+
+# Per-spec iteration overrides for skmob2 (reference: timings at N=10000).
+# Fast specs (<5 s): 5 iters.  Medium (5–20 s): 3 iters.  Slow (>20 s): 1 iter.
+_SKMOB2_SPEC_ITERATIONS: dict[str, int] = {
+    "geosim_20a":          5,
+    "geosim_100a":         5,
+    "sts_epr_20a":         5,
+    "epr_100a":            5,
+    "density_epr_1000a":   5,
+    "spatial_epr_1000a":   5,
+    "epr_1000a":           5,
+    "sts_epr_100a":        5,
+    "epr_10000a":          3,
+    "epr_50000a":          1,
+}
 
 
 def _estimate_skmob_seconds(spec: LargeBenchmarkSpec, size: int) -> float:
