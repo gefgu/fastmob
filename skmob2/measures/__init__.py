@@ -39,8 +39,8 @@ from .visits.real_entropy import real_entropy
 from .visits.motifs import (
     discover_daily_motifs_from_agents,
 )
-from .stvd_emd import stvd_emd
-from .evaluation import (
+from skmob2.comparison import (
+    stvd_emd,
     common_part_of_commuters,
     common_part_of_links,
     common_part_of_commuters_distance,
@@ -53,8 +53,6 @@ from .evaluation import (
     pearson_correlation,
     spearman_correlation,
     max_error,
-)
-from .comparison import (
     activity_distribution_jensen_shannon_divergence,
     activity_transition_matrix_jensen_shannon_divergence,
     column_distribution_jensen_shannon_divergence,

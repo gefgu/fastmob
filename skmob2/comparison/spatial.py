@@ -1,18 +1,104 @@
-"""Spatio-temporal Wasserstein distance between two spatial distributions."""
+"""Spatial comparisons: OD matrix, radius of gyration, dwell time, and STVD-EMD."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import narwhals as nw
+import numpy as np
 
 from skmob2._core import stvd_emd_arrow as _stvd_emd_arrow
 from skmob2._core import stvd_emd_numpy as _stvd_emd_numpy
-from ._common import _is_polars_backed
+from skmob2.measures._common import DURATION_CANDIDATES, _is_polars_backed, _pick_existing_column
+
+from .distribution import column_distribution_wasserstein_distance
+from .metrics import wasserstein_distance
 
 _TIME_CANDIDATES = ["time_bin", "time", "hour", "timestamp"]
 _WEIGHT_CANDIDATES = ["mean_volume", "volume", "weight", "count", "density"]
 _CENTROID_CANDIDATES = ["centroid", "geometry", "point"]
+
+
+# ---------------------------------------------------------------------------
+# OD matrix and scalar profile comparisons
+# ---------------------------------------------------------------------------
+
+
+def od_matrix_common_part_of_commuters(od1: Any, od2: Any) -> float:
+    """Return CPC between two OD matrices, aligning labels when available."""
+    if all(hasattr(obj, attr) for obj in (od1, od2) for attr in ("index", "columns", "reindex")):
+        origins = od1.index.union(od2.index)
+        destinations = od1.columns.union(od2.columns)
+        values1 = od1.reindex(index=origins, columns=destinations, fill_value=0).values
+        values2 = od2.reindex(index=origins, columns=destinations, fill_value=0).values
+    else:
+        values1 = np.asarray(od1, dtype=np.float64)
+        values2 = np.asarray(od2, dtype=np.float64)
+        if values1.shape != values2.shape:
+            raise ValueError(
+                f"OD matrix shapes must match when labels are unavailable. Got {values1.shape} and {values2.shape}."
+            )
+    min_flows = float(np.minimum(values1, values2).sum())
+    total_flows = float(np.asarray(values1).sum() + np.asarray(values2).sum())
+    return 0.0 if total_flows == 0.0 else float(2.0 * min_flows / total_flows)
+
+
+def profile_metric_wasserstein_distance(df1: Any, df2: Any, metric_col: str) -> float:
+    """Compare a scalar profile metric column with Rust-backed Wasserstein distance."""
+    n1 = nw.from_native(df1, eager_only=True)
+    n2 = nw.from_native(df2, eager_only=True)
+    if metric_col not in n1.columns or metric_col not in n2.columns:
+        raise ValueError(f"Column {metric_col!r} must be present in both dataframes.")
+    return wasserstein_distance(n1.get_column(metric_col).to_numpy(), n2.get_column(metric_col).to_numpy())
+
+
+def radius_of_gyration_wasserstein_distance(
+    df1: Any,
+    df2: Any,
+    radius_col: str = "radius_of_gyration_km",
+    grouping_col: str | None = None,
+) -> tuple[float, list[tuple[Any, float]]]:
+    """Compare radius-of-gyration distributions, optionally grouped by a column."""
+    n1 = nw.from_native(df1, eager_only=True)
+    if grouping_col is None or grouping_col not in n1.columns:
+        value = profile_metric_wasserstein_distance(df1, df2, radius_col)
+        return value, [("Overall", value)] if not np.isnan(value) else []
+    return column_distribution_wasserstein_distance(df1, df2, radius_col, hue="purpose", purpose_col=grouping_col)
+
+
+def dwell_time_wasserstein_distance(
+    df1: Any,
+    df2: Any,
+    duration_col: str | None = None,
+    *,
+    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    day_col1: str | None = None,
+    day_col2: str | None = None,
+    purpose_col: str | None = None,
+) -> tuple[float, list[tuple[Any, float]]]:
+    """Compare dwell-time distributions in hours."""
+    n1 = nw.from_native(df1, eager_only=True)
+    duration_col = duration_col or _pick_existing_column(n1.columns, DURATION_CANDIDATES) or "duration_minutes"
+
+    def add_hours(data: Any) -> Any:
+        native = nw.from_native(data, eager_only=True)
+        return native.with_columns((nw.col(duration_col) / 60.0).alias("__skmob2_dwell_hours__")).to_native()
+
+    return column_distribution_wasserstein_distance(
+        add_hours(df1),
+        add_hours(df2),
+        "__skmob2_dwell_hours__",
+        hue=hue,
+        day_col1=day_col1,
+        day_col2=day_col2,
+        purpose_col=purpose_col,
+        skip_day_period_creation=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Spatio-temporal Wasserstein distance (STVD-EMD)
+# ---------------------------------------------------------------------------
 
 
 def _detect_column(columns: list[str], candidates: list[str], role: str) -> str:
@@ -103,7 +189,7 @@ def stvd_emd(
     Examples
     --------
     >>> import pandas as pd
-    >>> from skmob2.measures.stvd_emd import stvd_emd
+    >>> from skmob2.comparison import stvd_emd
     >>> dist_a = pd.DataFrame(
     ...     {
     ...         "time_bin": ["08:00", "08:10"],
@@ -144,27 +230,22 @@ def stvd_emd(
         centroid_col: str,
         weight_col: str,
     ) -> tuple[nw.Series, nw.Series, nw.Series, nw.Series]:
-        # Parse HH:MM in-vector to reduce Python-level per-row overhead.
         t_col = df.get_column(time_col)
         times = t_col.str.slice(0, 2).cast(nw.Float64) * 60 + t_col.str.slice(3, 5).cast(nw.Float64)
 
         c_col = df.get_column(centroid_col)
         native_series = c_col.to_native()
 
-        # GeoPandas GeoSeries exposes vectorized x/y in native code.
         if hasattr(native_series, "x") and hasattr(native_series, "y"):
             xs = nw.from_native(native_series.x, series_only=True).cast(nw.Float64)
             ys = nw.from_native(native_series.y, series_only=True).cast(nw.Float64)
         else:
             c_first = c_col[0] if len(c_col) > 0 else None
             if c_first is not None and hasattr(c_first, "x") and hasattr(c_first, "y"):
-                # Compatibility fallback for object series of point-like values.
                 xy = [_point_xy(v) for v in c_col.to_list()]
                 xs = nw.new_series("x", [p[0] for p in xy], backend=df.implementation)
                 ys = nw.new_series("y", [p[1] for p in xy], backend=df.implementation)
             else:
-                # WKT fallback. Keep parsing explicit because Narwhals string
-                # replacement is regex-backed on some pandas Arrow strings.
                 xy = [_point_xy(v) for v in c_col.to_list()]
                 xs = nw.new_series("x", [p[0] for p in xy], backend=df.implementation)
                 ys = nw.new_series("y", [p[1] for p in xy], backend=df.implementation)

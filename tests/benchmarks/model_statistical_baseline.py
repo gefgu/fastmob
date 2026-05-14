@@ -298,7 +298,7 @@ def _flat_numpy(values: Any) -> np.ndarray:
 
 
 def _import_comparison() -> Any:
-    return importlib.import_module("skmob2.measures.comparison")
+    return importlib.import_module("skmob2.comparison")
 
 
 def _import_spatial() -> Any:
