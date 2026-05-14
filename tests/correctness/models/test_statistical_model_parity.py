@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skmob2.measures.comparison import wasserstein_distance, visits_per_user_wasserstein_distance
+from skmob2.comparison import wasserstein_distance, visits_per_user_wasserstein_distance
 from skmob2.measures.spatial import jump_lengths, radius_of_gyration, waiting_times
 from skmob2.models import DensityEPR, EPR, GeoSim, Gravity, Radiation, SpatialEPR, STS_epr, MarkovDiaryGenerator
 
@@ -312,7 +312,7 @@ def test_flow_sample_statistical_parity(
     name,
     model_cls,
 ):
-    from skmob2.measures.comparison import od_matrix_common_part_of_commuters
+    from skmob2.comparison import od_matrix_common_part_of_commuters
 
     skmob_mat = _flow_to_od_matrix(_expected_df(models_reference, name))
 

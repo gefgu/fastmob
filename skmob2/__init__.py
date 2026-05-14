@@ -47,8 +47,8 @@ from .measures.visits.mean_area_volume import mean_area_volume
 from .measures.visits.motifs import (
     discover_daily_motifs_from_agents,
 )
-from .measures.stvd_emd import stvd_emd
-from .measures.evaluation import (
+from .comparison import (
+    stvd_emd,
     common_part_of_commuters,
     common_part_of_links,
     common_part_of_commuters_distance,
@@ -61,8 +61,6 @@ from .measures.evaluation import (
     pearson_correlation,
     spearman_correlation,
     max_error,
-)
-from .measures.comparison import (
     activity_distribution_jensen_shannon_divergence,
     activity_transition_matrix_jensen_shannon_divergence,
     column_distribution_jensen_shannon_divergence,

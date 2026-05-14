@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2.measures.evaluation."""
+"""Correctness tests for skmob2.comparison.evaluation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pytest
 
-from skmob2.measures.evaluation import (
+from skmob2.comparison.evaluation import (
     common_part_of_commuters,
     common_part_of_commuters_distance,
     common_part_of_links,
@@ -22,8 +22,6 @@ from skmob2.measures.evaluation import (
     spearman_correlation,
 )
 
-# Tests that call into scipy are skipped when scipy is not installed.
-# Use a module-level flag so each test can reference it with a simple decorator.
 try:
     import scipy  # noqa: F401
 
@@ -52,7 +50,6 @@ def test_cpc_disjoint_arrays():
     """CPC of arrays that share no commuters is 0.0 when one is all-zero."""
     v1 = [10.0, 0.0]
     v2 = [0.0, 10.0]
-    # numerator = 2 * sum(min(10,0), min(0,10)) = 0
     assert common_part_of_commuters(v1, v2) == pytest.approx(0.0)
 
 
@@ -84,7 +81,6 @@ def test_cpl_no_shared_links():
     """CPL when no link is active in both arrays is 0.0."""
     v1 = [1.0, 0.0]
     v2 = [0.0, 1.0]
-    # active1 = [1, 0], active2 = [0, 1]; numerator = 0; denom = 2; CPL = 0
     assert common_part_of_links(v1, v2) == pytest.approx(0.0)
 
 
@@ -108,17 +104,11 @@ def test_cpl_zero_inputs_returns_zero():
 
 def test_cpcd_no_overlap():
     """CPCD is 0.0 when the two arrays fall into non-overlapping bins."""
-    # v1=[3] → bin [2,4); v2=[5] → outside all bins (max_val=5, bins=[0,2,4])
     assert common_part_of_commuters_distance([3.0], [5.0]) == pytest.approx(0.0)
 
 
 def test_cpcd_known_value():
-    """CPCD matches hand-computed value for a partial-overlap case.
-
-    v1=[3,5,7,9], v2=[3,7,9,11], max_val=11, bins=[0,2,4,6,8,10].
-    hist1=[0,1,1,1,1], hist2=[0,1,0,1,1] (11 falls outside last bin).
-    sum_min=3, N=24 → CPCD=0.125.
-    """
+    """CPCD matches hand-computed value for a partial-overlap case."""
     v1 = [3.0, 5.0, 7.0, 9.0]
     v2 = [3.0, 7.0, 9.0, 11.0]
     assert common_part_of_commuters_distance(v1, v2) == pytest.approx(0.125)
@@ -161,8 +151,6 @@ def test_r_squared_known_value():
     """R² matches hand-computed value for a simple case."""
     y_true = [1.0, 2.0, 3.0, 4.0]
     y_pred = [1.5, 2.0, 2.5, 4.0]
-    # ss_res = 0.25 + 0 + 0.25 + 0 = 0.5; mean=2.5; ss_tot=1.25+0.25+0.25+2.25=5.0
-    # R² = 1 - 0.5/5.0 = 0.9
     assert r_squared(y_true, y_pred) == pytest.approx(0.9)
 
 
@@ -179,7 +167,6 @@ def test_mse_perfect_prediction():
 
 def test_mse_known_value():
     """MSE matches hand computation."""
-    # errors = [1, 0, -1] → squared = [1, 0, 1] → mean = 2/3
     assert mse([1.0, 2.0, 3.0], [2.0, 2.0, 2.0]) == pytest.approx(2.0 / 3.0)
 
 
@@ -238,8 +225,6 @@ def test_information_gain_known_value():
     """information_gain matches hand computation for a two-element case."""
     true = [2.0, 4.0]
     pred = [1.0, 8.0]
-    # N=6; IG = (2/6)*log(2/1) + (4/6)*log(4/8)
-    #         = (1/3)*ln(2) + (2/3)*ln(0.5)
     expected = (2.0 / 6.0) * np.log(2.0 / 1.0) + (4.0 / 6.0) * np.log(4.0 / 8.0)
     assert information_gain(true, pred) == pytest.approx(float(expected), rel=1e-9)
 

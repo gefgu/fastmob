@@ -350,7 +350,7 @@ def _skmob2_workloads() -> dict[str, Workload]:
             "skmob2.measures.flows.od.od_metrics_per_area",
             "skmob2 OD metrics per area",
         ),
-        "stvd_emd": _make_workload("stvd_emd", "stvd", "skmob2.measures.stvd_emd.stvd_emd", "skmob2 STVD-EMD"),
+        "stvd_emd": _make_workload("stvd_emd", "stvd", "skmob2.comparison.spatial.stvd_emd", "skmob2 STVD-EMD"),
     }
     return dict(sorted(workloads.items()))
 

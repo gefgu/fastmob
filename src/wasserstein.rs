@@ -3,28 +3,22 @@ use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use wass::wasserstein_1d_samples;
 
 fn empirical_wasserstein_1d(a: &[f64], b: &[f64]) -> PyResult<f64> {
     if a.is_empty() || b.is_empty() {
         return Err(PyValueError::new_err("samples must be non-empty"));
     }
-    if a.iter().any(|v| !v.is_finite()) || b.iter().any(|v| !v.is_finite()) {
-        return Err(PyValueError::new_err(
-            "samples must contain only finite values",
-        ));
-    }
-
-    if a.len() == b.len() {
-        let a32: Vec<f32> = a.iter().map(|v| *v as f32).collect();
-        let b32: Vec<f32> = b.iter().map(|v| *v as f32).collect();
-        return Ok(wasserstein_1d_samples(&a32, &b32, 1.0) as f64);
-    }
 
     let mut sa = a.to_vec();
     let mut sb = b.to_vec();
-    sa.sort_by(|x, y| x.total_cmp(y));
-    sb.sort_by(|x, y| x.total_cmp(y));
+    sa.sort_unstable_by(|x, y| x.total_cmp(y));
+    sb.sort_unstable_by(|x, y| x.total_cmp(y));
+
+    if sa.len() == sb.len() {
+        let n = sa.len() as f64;
+        let sum: f64 = sa.iter().zip(sb.iter()).map(|(x, y)| (x - y).abs()).sum();
+        return Ok(sum / n);
+    }
 
     let na = sa.len() as f64;
     let nb = sb.len() as f64;
