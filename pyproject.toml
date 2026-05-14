@@ -25,13 +25,10 @@ diversity = ["pydivsufsort"]
 generation = ["scipy", "powerlaw", "statsmodels", "python-igraph", "tqdm"]
 tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
 dev = [
-    "memray",
     "pre-commit",
-    "pytest-memray",
     "pytest",
     "pytest-cov",
     "pyarrow",
-    "py-spy",
     "polars",
     "ruff",
     "scalene",

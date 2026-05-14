@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import select
-import shutil
 import subprocess
 import sys
 import time
@@ -15,7 +13,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tests.profiling.brightkite_workloads import DEFAULT_ROWS, IMPLEMENTATIONS, workload_registry
+from scripts.profile_brightkite_common import (
+    implementations,
+    profile_jobs,
+    require_executable,
+    select_workloads,
+    write_manifest,
+)
+from tests.profiling.brightkite_workloads import DEFAULT_ROWS, workload_registry
 
 
 DEFAULT_OUTPUT_DIR = Path(".profiles") / "samply"
@@ -30,25 +35,6 @@ class ProfileCommand:
     output_path: Path
     command: list[str]
     child_command: list[str] | None = None
-
-
-def _implementations(requested: str) -> list[str]:
-    if requested == "both":
-        return list(IMPLEMENTATIONS)
-    return [requested]
-
-
-def select_workloads(requested: list[str] | None, implementation: str = "skmob2") -> list[str]:
-    registry = workload_registry(implementation)
-    if not requested:
-        return list(registry)
-    unknown = sorted(set(requested) - set(registry))
-    if unknown:
-        available = ", ".join(registry) or "none"
-        raise SystemExit(
-            f"Unknown workload(s) for {implementation}: {', '.join(unknown)}. Available: {available}"
-        )
-    return requested
 
 
 def _workload_command(workload: str, *, rows: int, backend: str, implementation: str, prepared_child: bool) -> list[str]:
@@ -131,39 +117,18 @@ def build_profile_command(
     )
 
 
-def write_manifest(output_dir: Path, rows: list[dict[str, Any]]) -> None:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / "manifest.json"
-    csv_path = output_dir / "manifest.csv"
-    json_path.write_text(json.dumps(rows, indent=2) + "\n")
-    if not rows:
-        csv_path.write_text("")
-        return
-    with csv_path.open("w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def run_profiles(args: argparse.Namespace) -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     samply_bin = getattr(args, "samply_bin", "samply")
     scope = getattr(args, "scope", "function")
 
-    if shutil.which(samply_bin) is None and not args.dry_run:
-        raise SystemExit(
-            f"{samply_bin!r} is not installed or not on PATH. "
-            "Install with: cargo install --locked samply"
-        )
+    if not args.dry_run:
+        require_executable(samply_bin, "samply", install_hint="Install with: cargo install --locked samply")
 
     manifest_rows: list[dict[str, Any]] = []
     exit_code = 0
-    jobs = [
-        (implementation, workload)
-        for implementation in _implementations(args.implementation)
-        for workload in select_workloads(args.workload, implementation)
-    ]
+    jobs = profile_jobs(args.implementation, args.workload, select_workloads)
     for implementation, workload in jobs:
         profile = build_profile_command(
             workload,
@@ -365,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.list:
-        for implementation in _implementations(args.implementation):
+        for implementation in implementations(args.implementation):
             for name, workload in workload_registry(implementation).items():
                 print(f"{name}\t{workload.dataset}\t{implementation}\t{workload.description}")
         return 0

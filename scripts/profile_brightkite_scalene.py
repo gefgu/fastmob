@@ -4,11 +4,8 @@
 from __future__ import annotations
 
 import argparse
-import csv
-import json
 import os
 import signal
-import shutil
 import subprocess
 import sys
 import time
@@ -16,10 +13,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from scripts.profile_brightkite_common import (
+    implementations,
+    profile_jobs,
+    require_executable as _require_executable,
+    select_workloads as _select_workloads,
+    write_manifest,
+)
 from tests.profiling.brightkite_workloads import (
     DEFAULT_ROWS,
-    IMPLEMENTATIONS,
-    _skmob_workload_candidates,
     workload_registry,
 )
 
@@ -42,35 +44,18 @@ class ProfileCommand:
     html_command: list[str]
 
 
-def _implementations(requested: str) -> list[str]:
-    if requested == "both":
-        return list(IMPLEMENTATIONS)
-    return [requested]
-
-
 def select_workloads(
     requested: list[str] | None,
     implementation: str = "skmob2",
     *,
     allow_unavailable: bool = False,
 ) -> list[str]:
-    registry = workload_registry(implementation)
-    if allow_unavailable and implementation == "skmob":
-        registry = _skmob_workload_candidates()
-    if implementation == "skmob" and not registry:
-        raise SystemExit(
-            "No skmob workloads are available because scikit-mobility is not importable. "
-            "Install the comparison extra with `uv pip install -e '.[dev-skmob]'` "
-            "or run `bash scripts/setup_env.sh --skmob`, then rerun this profile."
-        )
-    workloads = requested or DEFAULT_WORKLOADS
-    unknown = sorted(set(workloads) - set(registry))
-    if unknown:
-        available = ", ".join(registry) or "none"
-        raise SystemExit(
-            f"Unknown workload(s) for {implementation}: {', '.join(unknown)}. Available: {available}"
-        )
-    return list(workloads)
+    return _select_workloads(
+        requested,
+        implementation,
+        default_workloads=DEFAULT_WORKLOADS,
+        allow_unavailable=allow_unavailable,
+    )
 
 
 def build_profile_command(
@@ -132,20 +117,6 @@ def build_profile_command(
     )
 
 
-def write_manifest(output_dir: Path, rows: list[dict[str, Any]]) -> None:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / "manifest.json"
-    csv_path = output_dir / "manifest.csv"
-    json_path.write_text(json.dumps(rows, indent=2) + "\n")
-    if not rows:
-        csv_path.write_text("")
-        return
-    with csv_path.open("w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def run_profiles(args: argparse.Namespace) -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -156,11 +127,15 @@ def run_profiles(args: argparse.Namespace) -> int:
 
     manifest_rows: list[dict[str, Any]] = []
     exit_code = 0
-    jobs = [
-        (implementation, workload)
-        for implementation in _implementations(args.implementation)
-        for workload in select_workloads(args.workload, implementation, allow_unavailable=args.dry_run)
-    ]
+    jobs = profile_jobs(
+        args.implementation,
+        args.workload,
+        lambda requested, implementation: select_workloads(
+            requested,
+            implementation,
+            allow_unavailable=args.dry_run,
+        ),
+    )
     for implementation, workload in jobs:
         profile = build_profile_command(
             workload,
@@ -227,13 +202,6 @@ def run_profiles(args: argparse.Namespace) -> int:
 
     write_manifest(output_dir, manifest_rows)
     return exit_code
-
-
-def _require_executable(executable: str, package_name: str) -> None:
-    if shutil.which(executable) is None:
-        raise SystemExit(
-            f"{executable!r} is not installed or not on PATH. Install the dev extras first or install {package_name!r}."
-        )
 
 
 def _run_command(
@@ -526,7 +494,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.list:
-        for implementation in _implementations(args.implementation):
+        for implementation in implementations(args.implementation):
             for name, workload in workload_registry(implementation).items():
                 print(f"{name}\t{workload.dataset}\t{implementation}\t{workload.description}")
         return 0

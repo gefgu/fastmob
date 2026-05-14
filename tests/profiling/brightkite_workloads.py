@@ -551,7 +551,7 @@ def run_prepared_child(
 
 
 def _allow_external_profiler_attach() -> None:
-    """Allow sibling py-spy processes to attach on Linux with ptrace_scope=1."""
+    """Allow sibling external profilers to attach on Linux with ptrace_scope=1."""
     if platform.system() != "Linux":
         return
     try:
@@ -561,30 +561,6 @@ def _allow_external_profiler_attach() -> None:
         libc.prctl(pr_set_ptracer, pr_set_ptracer_any, 0, 0, 0)
     except Exception:
         return
-
-
-def run_memray_function_profile(
-    name: str,
-    *,
-    rows: int = DEFAULT_ROWS,
-    backend: str = "pandas",
-    implementation: str = "skmob2",
-    bin_path: str,
-    native: bool = True,
-) -> dict[str, Any]:
-    import memray
-
-    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
-    with memray.Tracker(bin_path, native_traces=native):
-        execute_prepared_workload(prepared)
-    return {
-        "workload": name,
-        "rows": rows,
-        "backend": backend,
-        "implementation": implementation,
-        "dataset": prepared.workload.dataset,
-        "profiled_phase": "function",
-    }
 
 
 def run_scalene_function_profile(
@@ -620,8 +596,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--implementation", choices=IMPLEMENTATIONS, default="skmob2")
     parser.add_argument("--list", action="store_true", help="List workload names and exit.")
     parser.add_argument("--prepared-child", action="store_true", help="Prepare workload, wait on stdin, then execute.")
-    parser.add_argument("--memray-bin-path", help="Run function-only memray profiling to this bin path.")
-    parser.add_argument("--no-native", action="store_true", help="Disable native traces for direct memray profiling.")
     parser.add_argument("--scalene-function-profile", action="store_true", help="Profile only workload execution with Scalene.")
     args = parser.parse_args(argv)
 
@@ -640,16 +614,7 @@ def main(argv: list[str] | None = None) -> int:
             backend=args.backend,
             implementation=args.implementation,
         )
-    if args.memray_bin_path:
-        result = run_memray_function_profile(
-            args.workload,
-            rows=args.rows,
-            backend=args.backend,
-            implementation=args.implementation,
-            bin_path=args.memray_bin_path,
-            native=not args.no_native,
-        )
-    elif args.scalene_function_profile:
+    if args.scalene_function_profile:
         result = run_scalene_function_profile(
             args.workload,
             rows=args.rows,

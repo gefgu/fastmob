@@ -145,12 +145,8 @@ Benchmarks are parametrized over five dataset sizes (1k / 10k / 100k / 1M / 4M r
 ## Profiling
 
 ```bash
-# CPU flamegraph and Speedscope JSON with py-spy and native Rust frames.
-# By default, only the target function call and result materialization are profiled.
-bash scripts/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration
-
-# Memory flamegraph with memray and native Rust frames; defaults to function-only profiling.
-bash scripts/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration
+# Python CPU and memory profile with Scalene.
+bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2
 
 # Native Rust sampling profile (Firefox Profiler format) with samply.
 # Function scope: samply attaches after data prep, so only the Rust kernel is sampled.
@@ -158,13 +154,13 @@ bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration
 samply load .profiles/samply/skmob2/radius_of_gyration.json.gz
 
 # Compare skmob2 and skmob where a skmob equivalent exists.
-bash scripts/run_py_spy_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
+bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
 
 # Legacy whole-process profiling, including imports and data loading.
-bash scripts/run_memray_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
+bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
 ```
 
-Profiling outputs are written to implementation-specific folders under `.profiles/py-spy/`, `.profiles/memray/`, and `.profiles/samply/`. Py-spy writes both `<workload>.svg` and `<workload>.speedscope.json`; samply writes `<workload>.json.gz` (Firefox Profiler JSON, viewable via `samply load`). Run `maturin develop` first when invoking profiling modules directly so `skmob2._core` and native symbols are available. samply requires `kernel.perf_event_paranoid <= 1` on Linux (`sudo sysctl kernel.perf_event_paranoid=1`).
+Profiling outputs are written to implementation-specific folders under `.profiles/scalene/` and `.profiles/samply/`. Scalene writes `<workload>.json` plus `<workload>.html` unless reduced output is requested; samply writes `<workload>.json.gz` (Firefox Profiler JSON, viewable via `samply load`). Run `maturin develop` first when invoking profiling modules directly so `skmob2._core` and native symbols are available. samply requires `kernel.perf_event_paranoid <= 1` on Linux (`sudo sysctl kernel.perf_event_paranoid=1`).
 
 ## Narwhals API notes
 
