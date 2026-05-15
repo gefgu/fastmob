@@ -35,6 +35,7 @@ BODY_STRONG = "#e6e6e6"
 MUTED = "#888888"
 MUTED_SOFT = "#5a5a5a"
 DEFAULT_CATALOG_PATH = Path(__file__).resolve().parent / "skmob_public_api_catalog.json"
+MODEL_TRAJECTORY_METRICS = ["epr", "density_epr", "spatial_epr", "geosim", "sts_epr"]
 
 FIGURE_WIDTH = 11.0
 FIGURE_MIN_HEIGHT = 7.4
@@ -42,15 +43,15 @@ FIGURE_MAX_HEIGHT = 14
 FIGURE_BASE_HEIGHT = 2.8
 FIGURE_HEIGHT_PER_METRIC = 0.70
 
-TITLE_FONT_SIZE = 32
+TITLE_FONT_SIZE = 36
 SUBTITLE_FONT_SIZE = 15
 DETAIL_FONT_SIZE = 12.5
 CONTEXT_FONT_SIZE = 11.5
 CALLOUT_FONT_SIZE = 42
-LEGEND_FONT_SIZE = 14
+LEGEND_FONT_SIZE = 16
 METRIC_LABEL_FONT_SIZE = 16
-AXIS_TICK_FONT_SIZE = 15
-AXIS_LABEL_FONT_SIZE = 17
+AXIS_TICK_FONT_SIZE = 18
+AXIS_LABEL_FONT_SIZE = 20
 BAR_LABEL_FONT_SIZE = 12.5
 SPEEDUP_VALUE_FONT_SIZE = 13.5
 SPEEDUP_HEADER_FONT_SIZE = 11
@@ -118,6 +119,97 @@ def common_labels(
             f"skmob2 labels: {sorted(optimized, key=parse_size_key)}."
         )
     return [size for size in requested if size in available]
+
+
+def model_trajectory_results(payload: dict[str, Any]) -> dict[tuple[int, int], dict[str, Any]]:
+    rows = {}
+    for item in payload.get("results", []):
+        if item.get("benchmark_group") != "trajectory_models":
+            continue
+        n_agents = item.get("n_agents")
+        n_locations = item.get("n_locations")
+        if isinstance(n_agents, int) and isinstance(n_locations, int):
+            rows[(n_locations, n_agents)] = item
+    return rows
+
+
+def requested_location_counts(requested_sizes: list[str] | None) -> list[int] | None:
+    if not requested_sizes:
+        return None
+    counts = []
+    for size in requested_sizes:
+        parsed = parse_size_key(size)
+        if parsed[0] == 0:
+            counts.append(int(parsed[1]))
+    return counts
+
+
+def common_model_locations(
+    original: dict[tuple[int, int], dict[str, Any]],
+    optimized: dict[tuple[int, int], dict[str, Any]],
+    requested_sizes: list[str] | None,
+) -> list[int]:
+    original_locations = {n_locations for n_locations, _ in original}
+    optimized_locations = {n_locations for n_locations, _ in optimized}
+    available = sorted(original_locations.intersection(optimized_locations))
+    requested = requested_location_counts(requested_sizes)
+    if requested is None:
+        return available
+    missing = [count for count in requested if count not in available]
+    for count in missing:
+        print(
+            f"Skipping {count} locations: location count not found in both model files. "
+            f"Original locations: {original_locations}; skmob2 locations: {optimized_locations}."
+        )
+    return [count for count in requested if count in available]
+
+
+def model_matrix_rows(
+    original_results: dict[tuple[int, int], dict[str, Any]],
+    optimized_results: dict[tuple[int, int], dict[str, Any]],
+    n_locations: int,
+    sort_mode: str,
+    metric_names: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    metric_names = metric_names or MODEL_TRAJECTORY_METRICS
+    original_agents = {n_agents for locs, n_agents in original_results if locs == n_locations}
+    optimized_agents = {n_agents for locs, n_agents in optimized_results if locs == n_locations}
+    agent_counts = sorted(original_agents.intersection(optimized_agents))
+    rows = []
+    missing_reasons = []
+
+    for n_agents in agent_counts:
+        original_result = original_results[(n_locations, n_agents)]
+        optimized_result = optimized_results[(n_locations, n_agents)]
+        for metric in metric_names:
+            reasons = missing_metric_reasons(
+                original_result.get("metrics", {}),
+                optimized_result.get("metrics", {}),
+                [metric],
+            )
+            if reasons:
+                missing_reasons.extend((f"{metric} / {n_agents} agents", reason) for _, reason in reasons)
+                continue
+            original_time = original_result["metrics"][metric]["average_seconds"]
+            optimized_time = optimized_result["metrics"][metric]["average_seconds"]
+            rows.append(
+                {
+                    "metric": f"{metric} / {n_agents} agents",
+                    "original": float(original_time),
+                    "optimized": float(optimized_time),
+                    "speedup": float(original_time) / float(optimized_time),
+                }
+            )
+
+    if missing_reasons:
+        reason_lines = "; ".join(f"{metric}: {reason}" for metric, reason in missing_reasons)
+        raise ValueError(f"Cannot plot incomplete benchmark result: {reason_lines}")
+
+    if sort_mode == "speedup":
+        rows.sort(key=lambda row: row["speedup"], reverse=True)
+    else:
+        rows.sort(key=lambda row: row["original"], reverse=True)
+    return rows
 
 
 def expected_metrics_from_catalog(catalog_path: Path, suite: str) -> list[str]:
@@ -204,7 +296,7 @@ def is_valid_time(value: Any) -> bool:
 
 
 def display_metric_name(metric: str) -> str:
-    return metric.replace("_", " ")
+    return metric.replace("_", " ").replace("kl2", "")
 
 
 def comparison_title(suite: str, backend: str | None) -> str:
@@ -224,7 +316,10 @@ def comparison_subtitle(
     parts = [suite.title()]
     if backend:
         parts.append(f"{backend.title()} backend")
-    parts.append(f"{size_label} rows")
+    if suite == "models" and "location" in size_label:
+        parts.append(size_label)
+    else:
+        parts.append(f"{size_label} rows")
     if size_label == "all":
         parts = [suite.title()]
         if backend:
@@ -511,6 +606,51 @@ def generate_plots(args: argparse.Namespace) -> int:
 
     original_payload = load_json(original_path)
     optimized_payload = load_json(optimized_path)
+    if args.suite == "models" and any(
+        item.get("benchmark_group") == "trajectory_models" for item in optimized_payload.get("results", [])
+    ):
+        original_model_results = model_trajectory_results(original_payload)
+        optimized_model_results = model_trajectory_results(optimized_payload)
+        locations = common_model_locations(original_model_results, optimized_model_results, args.sizes)
+        if not locations:
+            print("No overlapping model location counts found.")
+            return 1
+
+        generated = 0
+        for n_locations in locations:
+            size_label = f"{n_locations} locations"
+            try:
+                rows = model_matrix_rows(
+                    original_model_results,
+                    optimized_model_results,
+                    n_locations,
+                    args.sort,
+                    MODEL_TRAJECTORY_METRICS,
+                )
+            except ValueError as exc:
+                print(f"ERROR for {size_label}: {exc}")
+                return 1
+            if not rows:
+                print(f"No valid model rows found for {size_label}; skipping.")
+                continue
+            output_path = args.output_dir / output_name(args.suite, args.backend, size_label)
+            draw_plot(
+                rows,
+                original_payload=original_payload,
+                optimized_payload=optimized_payload,
+                suite=args.suite,
+                backend=args.backend,
+                size_label=size_label,
+                output_path=output_path,
+            )
+            generated += 1
+            print(f"Saved {output_path}")
+
+        if generated == 0:
+            print("No plots were generated.")
+            return 1
+        return 0
+
     original_results = result_map(original_payload)
     optimized_results = result_map(optimized_payload)
     labels = common_labels(original_results, optimized_results, args.sizes)

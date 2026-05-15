@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -276,6 +277,24 @@ def test_movingpandas_visits_suite_records_skips():
 
     assert result["metrics"]["frequency_rank"]["status"] == "skipped"
     assert "MovingPandas" in result["metrics"]["frequency_rank"]["reason"]
+
+
+def test_isolated_metric_records_child_process_crash():
+    def crash(_input):
+        os._exit(17)
+
+    result = suite.run_profiled_call_isolated(
+        crash,
+        lambda: None,
+        {},
+        profile="speed",
+        iterations=1,
+        sleep_seconds=0.0,
+        retries=1,
+    )
+
+    assert result["status"] == "error"
+    assert "17" in result["reason"]
 
 
 def _install_fake_skmob(monkeypatch):

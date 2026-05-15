@@ -14,7 +14,9 @@ import importlib
 import inspect
 import json
 import math
+import multiprocessing as mp
 import platform
+import queue
 import sys
 import time
 import tracemalloc
@@ -207,6 +209,13 @@ def positive_int(value: str) -> int:
     parsed = int(value)
     if parsed <= 0:
         raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def nonnegative_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be greater than or equal to zero")
     return parsed
 
 
@@ -470,6 +479,81 @@ def error_result(reason: str, profile: str = "speed") -> dict[str, Any]:
     return empty_profile_result("error", reason, profile)
 
 
+def _profiled_call_worker(
+    result_queue: Any,
+    func: Callable[..., Any],
+    make_input: Callable[[], Any],
+    kwargs: dict[str, Any],
+    profile: str,
+    iterations: int,
+    sleep_seconds: float,
+) -> None:
+    try:
+        result_queue.put(
+            (
+                "ok",
+                run_profiled_call(
+                    func,
+                    make_input,
+                    kwargs,
+                    profile=profile,
+                    iterations=iterations,
+                    sleep_seconds=sleep_seconds,
+                ),
+            )
+        )
+    except BaseException as exc:
+        result_queue.put(("error", f"{type(exc).__name__}: {exc}"))
+
+
+def run_profiled_call_isolated(
+    func: Callable[..., Any],
+    make_input: Callable[[], Any],
+    kwargs: dict[str, Any],
+    *,
+    profile: str,
+    iterations: int,
+    sleep_seconds: float,
+    retries: int,
+) -> dict[str, Any]:
+    ctx = mp.get_context("fork")
+    attempts = retries + 1
+    last_reason = "benchmark did not produce a result"
+    for attempt in range(1, attempts + 1):
+        result_queue = ctx.Queue()
+        process = ctx.Process(
+            target=_profiled_call_worker,
+            args=(result_queue, func, make_input, kwargs, profile, iterations, sleep_seconds),
+        )
+        process.start()
+        process.join()
+
+        try:
+            status, payload = result_queue.get_nowait()
+        except queue.Empty:
+            status, payload = "error", f"child process exited with code {process.exitcode}"
+
+        result_queue.close()
+        result_queue.join_thread()
+
+        if process.exitcode == 0 and status == "ok":
+            return payload
+
+        if status == "ok":
+            last_reason = f"child process exited with code {process.exitcode} after reporting success"
+        else:
+            last_reason = str(payload)
+            if process.exitcode not in (0, None):
+                last_reason = f"{last_reason}; child process exited with code {process.exitcode}"
+
+        if attempt < attempts:
+            print(f"    attempt {attempt} failed: {last_reason}")
+            print(f"    retrying ({attempt + 1}/{attempts})...")
+
+    print(f"    error after {attempts} attempt(s): {last_reason}")
+    return error_result(last_reason, profile)
+
+
 def benchmark_metric(
     spec: BenchmarkSpec,
     library: str,
@@ -478,6 +562,7 @@ def benchmark_metric(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    retries: int = 0,
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
     try:
@@ -491,6 +576,16 @@ def benchmark_metric(
         return skipped_result(str(exc), profile)
 
     try:
+        if retries > 0:
+            return run_profiled_call_isolated(
+                func,
+                make_input,
+                kwargs,
+                profile=profile,
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+                retries=retries,
+            )
         return run_profiled_call(
             func,
             make_input,
@@ -511,6 +606,7 @@ def benchmark_skmob2_size(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    retries: int = 0,
 ) -> dict[str, Any]:
     size_df = df.head(size)
     print(f"\nSize {size_label(size)} ({len(size_df)} rows)")
@@ -526,6 +622,7 @@ def benchmark_skmob2_size(
                 profile=profile,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
+                retries=retries,
             )
             for spec in SPATIAL_METRICS
         },
@@ -541,6 +638,7 @@ def benchmark_skmob_size(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    retries: int = 0,
 ) -> dict[str, Any]:
     pandas_slice = raw_df.head(size).copy()
     print(f"\nSize {size_label(size)} ({len(pandas_slice)} rows)")
@@ -568,6 +666,7 @@ def benchmark_skmob_size(
                 profile=profile,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
+                retries=retries,
             )
             for spec in SPATIAL_METRICS
         },
@@ -581,6 +680,7 @@ def benchmark_movingpandas_size(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    retries: int = 0,
 ) -> dict[str, Any]:
     print(f"\nSize {size_label(size)}")
     try:
@@ -607,6 +707,7 @@ def benchmark_movingpandas_size(
                 profile=profile,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
+                retries=retries,
             )
             for spec in SPATIAL_METRICS
         },
@@ -627,6 +728,7 @@ def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: st
         "dataset_path": str(args.data_path),
         "iterations": args.iterations,
         "sleep_seconds": args.sleep_seconds,
+        "retries": args.retries,
         "sizes": args.sizes,
         "skmob_catalog_path": str(SKMOB_CATALOG_PATH),
         "movingpandas_catalog_path": str(MOVINGPANDAS_CATALOG_PATH),
@@ -657,6 +759,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
+                retries=args.retries,
             )
             for size in args.sizes
         ]
@@ -671,6 +774,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
+                retries=args.retries,
             )
             for size in args.sizes
         ]
@@ -698,6 +802,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             profile=args.profile,
             iterations=args.iterations,
             sleep_seconds=args.sleep_seconds,
+            retries=args.retries,
         )
         for size in args.sizes
     ]
@@ -721,6 +826,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
+    parser.add_argument("--retries", type=nonnegative_int, default=1, help="Retry a metric this many times after failure.")
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)

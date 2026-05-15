@@ -3,7 +3,7 @@
 Run from the repository root, for example:
 
     python tests/benchmarks/speed_models_suite.py --library skmob2
-    python tests/benchmarks/speed_models_suite.py --library skmob
+    python tests/benchmarks/speed_models_suite.py --library skmob --n-agents 2 10 50 --n-locations 12 50 200
 """
 
 from __future__ import annotations
@@ -26,12 +26,12 @@ from typing import Any, Callable
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REFERENCE_DIR = REPO_ROOT / "tests" / "shared" / "skmob_reference" / "models"
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "results"
-DEFAULT_SIZES = [12]
+DEFAULT_AGENT_COUNTS = [2, 10, 50]
+DEFAULT_LOCATION_COUNTS = [12, 50, 200]
+DEFAULT_SIZES = DEFAULT_LOCATION_COUNTS
 MODEL_SEED = 2
 MODEL_START = "2020-01-01 08:00:00"
 MODEL_END = "2020-01-01 14:00:00"
-MODEL_SOCIAL_GRAPH = [[0, 1], [0, 2], [1, 2]]
-MODEL_STARTING_LOCATIONS = [0, 1]
 
 
 @dataclass(frozen=True)
@@ -47,12 +47,15 @@ MODEL_BENCHMARKS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec("radiation_flows", "radiation", {"out_format": "flows"}),
     BenchmarkSpec("radiation_probabilities", "radiation", {"out_format": "probabilities"}),
     BenchmarkSpec("markov_diary", "markov_diary", {"diary_length": 24}),
-    BenchmarkSpec("epr", "epr", {"model": "EPR", "n_agents": 2, "relevance_column": "population"}),
-    BenchmarkSpec("density_epr", "epr", {"model": "DensityEPR", "n_agents": 2, "relevance_column": "population"}),
-    BenchmarkSpec("spatial_epr", "epr", {"model": "SpatialEPR", "n_agents": 2}),
-    BenchmarkSpec("geosim", "geosim", {"n_agents": 3}),
-    BenchmarkSpec("sts_epr", "sts_epr", {"n_agents": 3, "relevance_column": "population"}),
+    BenchmarkSpec("epr", "epr", {"model": "EPR", "relevance_column": "population"}),
+    BenchmarkSpec("density_epr", "epr", {"model": "DensityEPR", "relevance_column": "population"}),
+    BenchmarkSpec("spatial_epr", "epr", {"model": "SpatialEPR"}),
+    BenchmarkSpec("geosim", "geosim", {}),
+    BenchmarkSpec("sts_epr", "sts_epr", {"relevance_column": "population"}),
 )
+LOCATION_MODEL_BENCHMARKS = tuple(spec for spec in MODEL_BENCHMARKS if spec.kind in {"gravity", "radiation"})
+DIARY_MODEL_BENCHMARKS = tuple(spec for spec in MODEL_BENCHMARKS if spec.kind == "markov_diary")
+TRAJECTORY_MODEL_BENCHMARKS = tuple(spec for spec in MODEL_BENCHMARKS if spec.kind in {"epr", "geosim", "sts_epr"})
 
 
 class SkippedBenchmark(Exception):
@@ -138,6 +141,22 @@ def expand_tessellation(tessellation: Any, size: int) -> Any:
         frame["lng"] = frame["lng"].astype(float) + repeat * 0.01
         frames.append(frame)
     return pd.concat(frames, ignore_index=True).head(size)
+
+
+def model_case_label(n_agents: int, n_locations: int) -> str:
+    return f"{n_agents} agents / {n_locations} locations"
+
+
+def location_case_label(n_locations: int) -> str:
+    return f"{n_locations} locations"
+
+
+def starting_locations(n_agents: int, n_locations: int) -> list[int]:
+    return [agent_index % n_locations for agent_index in range(n_agents)]
+
+
+def social_graph(n_agents: int) -> list[list[int]]:
+    return [[i, j] for i in range(n_agents) for j in range(i + 1, n_agents)]
 
 
 def prepare_library_inputs(library: str, tessellation: Any, diary_training: Any) -> tuple[Any, Any]:
@@ -230,7 +249,14 @@ def import_model_classes(library: str) -> dict[str, Any]:
     }
 
 
-def build_call(spec: BenchmarkSpec, library: str, tessellation: Any, diary_training: Any) -> Callable[[], Any]:
+def build_call(
+    spec: BenchmarkSpec,
+    library: str,
+    tessellation: Any,
+    diary_training: Any,
+    *,
+    n_agents: int | None = None,
+) -> Callable[[], Any]:
     classes = import_model_classes(library)
     start = to_timestamp(MODEL_START)
     end = to_timestamp(MODEL_END)
@@ -259,40 +285,49 @@ def build_call(spec: BenchmarkSpec, library: str, tessellation: Any, diary_train
         )
 
     if spec.kind == "epr":
+        if n_agents is None:
+            raise SkippedBenchmark("EPR benchmarks require n_agents")
         model_name = spec.kwargs["model"]
         generate_kwargs = {}
         if "relevance_column" in spec.kwargs:
             generate_kwargs["relevance_column"] = spec.kwargs["relevance_column"]
+        start_locs = starting_locations(n_agents, len(tessellation))
         return lambda: classes[model_name]().generate(
             start,
             end,
             tessellation,
-            n_agents=spec.kwargs["n_agents"],
-            starting_locations=MODEL_STARTING_LOCATIONS.copy(),
+            n_agents=n_agents,
+            starting_locations=start_locs.copy(),
             random_state=MODEL_SEED,
             show_progress=False,
             **generate_kwargs,
         )
 
     if spec.kind == "geosim":
+        if n_agents is None:
+            raise SkippedBenchmark("GeoSim benchmarks require n_agents")
+        graph = social_graph(n_agents)
         return lambda: classes["GeoSim"]().generate(
             start,
             end,
             tessellation,
-            social_graph=MODEL_SOCIAL_GRAPH,
-            n_agents=spec.kwargs["n_agents"],
+            social_graph=[edge.copy() for edge in graph],
+            n_agents=n_agents,
             random_state=MODEL_SEED,
             show_progress=False,
         )
 
     if spec.kind == "sts_epr":
+        if n_agents is None:
+            raise SkippedBenchmark("STS_epr benchmarks require n_agents")
+        graph = social_graph(n_agents)
         return lambda: classes["STS_epr"]().generate(
             start,
             end,
             tessellation,
             fit_diary(classes["MarkovDiaryGenerator"], diary_training),
-            social_graph=MODEL_SOCIAL_GRAPH,
-            n_agents=spec.kwargs["n_agents"],
+            social_graph=[edge.copy() for edge in graph],
+            n_agents=n_agents,
             rsl=False,
             relevance_column=spec.kwargs["relevance_column"],
             random_state=MODEL_SEED,
@@ -417,10 +452,11 @@ def benchmark_model(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    n_agents: int | None = None,
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
     try:
-        func = build_call(spec, library, tessellation, diary_training)
+        func = build_call(spec, library, tessellation, diary_training, n_agents=n_agents)
     except Exception as exc:
         print(f"    skipped: {exc}")
         return skipped_result(str(exc), profile)
@@ -445,6 +481,7 @@ def benchmark_size(
     profile: str = "speed",
 ) -> dict[str, Any]:
     size_tessellation = expand_tessellation(base_tessellation, size)
+    n_agents = DEFAULT_AGENT_COUNTS[0]
     print(f"\nSize {size_label(size)} ({len(size_tessellation)} locations)")
     try:
         tessellation, diary = prepare_library_inputs(library, size_tessellation, diary_training)
@@ -469,8 +506,126 @@ def benchmark_size(
                 profile=profile,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
+                n_agents=n_agents if spec in TRAJECTORY_MODEL_BENCHMARKS else None,
             )
             for spec in MODEL_BENCHMARKS
+        },
+    }
+
+
+def benchmark_location_case(
+    library: str,
+    base_tessellation: Any,
+    diary_training: Any,
+    n_locations: int,
+    *,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str = "speed",
+) -> dict[str, Any]:
+    size_tessellation = expand_tessellation(base_tessellation, n_locations)
+    print(f"\nLocation-only models: {location_case_label(n_locations)}")
+    try:
+        tessellation, diary = prepare_library_inputs(library, size_tessellation, diary_training)
+    except SkippedBenchmark as exc:
+        return {
+            "benchmark_group": "location_models",
+            "label": location_case_label(n_locations),
+            "n_agents": None,
+            "n_locations": len(size_tessellation),
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in LOCATION_MODEL_BENCHMARKS},
+        }
+
+    return {
+        "benchmark_group": "location_models",
+        "label": location_case_label(n_locations),
+        "n_agents": None,
+        "n_locations": len(size_tessellation),
+        "metrics": {
+            spec.name: benchmark_model(
+                spec,
+                library,
+                tessellation,
+                diary,
+                profile=profile,
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+            )
+            for spec in LOCATION_MODEL_BENCHMARKS
+        },
+    }
+
+
+def benchmark_diary_case(
+    library: str,
+    diary_training: Any,
+    *,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str = "speed",
+) -> dict[str, Any]:
+    print("\nDiary-only models")
+    return {
+        "benchmark_group": "diary_models",
+        "label": "diary only",
+        "n_agents": None,
+        "n_locations": None,
+        "metrics": {
+            spec.name: benchmark_model(
+                spec,
+                library,
+                None,
+                diary_training,
+                profile=profile,
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+            )
+            for spec in DIARY_MODEL_BENCHMARKS
+        },
+    }
+
+
+def benchmark_trajectory_case(
+    library: str,
+    base_tessellation: Any,
+    diary_training: Any,
+    n_agents: int,
+    n_locations: int,
+    *,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str = "speed",
+) -> dict[str, Any]:
+    size_tessellation = expand_tessellation(base_tessellation, n_locations)
+    print(f"\nTrajectory models: {model_case_label(n_agents, n_locations)}")
+    try:
+        tessellation, diary = prepare_library_inputs(library, size_tessellation, diary_training)
+    except SkippedBenchmark as exc:
+        return {
+            "benchmark_group": "trajectory_models",
+            "label": model_case_label(n_agents, n_locations),
+            "n_agents": n_agents,
+            "n_locations": len(size_tessellation),
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in TRAJECTORY_MODEL_BENCHMARKS},
+        }
+
+    return {
+        "benchmark_group": "trajectory_models",
+        "label": model_case_label(n_agents, len(size_tessellation)),
+        "n_agents": n_agents,
+        "n_locations": len(size_tessellation),
+        "metrics": {
+            spec.name: benchmark_model(
+                spec,
+                library,
+                tessellation,
+                diary,
+                profile=profile,
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+                n_agents=n_agents,
+            )
+            for spec in TRAJECTORY_MODEL_BENCHMARKS
         },
     }
 
@@ -487,24 +642,52 @@ def build_metadata(args: argparse.Namespace) -> dict[str, Any]:
         "reference_dir": str(args.reference_dir),
         "iterations": args.iterations,
         "sleep_seconds": args.sleep_seconds,
-        "sizes": args.sizes,
+        "n_agents": args.n_agents,
+        "n_locations": args.n_locations,
     }
 
 
 def run_suite(args: argparse.Namespace) -> dict[str, Any]:
     base_tessellation, diary_training = load_model_inputs(Path(args.reference_dir))
-    results = [
-        benchmark_size(
-            args.library,
-            base_tessellation,
-            diary_training,
-            size,
-            profile=args.profile,
-            iterations=args.iterations,
-            sleep_seconds=args.sleep_seconds,
+    results = []
+    if LOCATION_MODEL_BENCHMARKS:
+        for n_locations in args.n_locations:
+            results.append(
+                benchmark_location_case(
+                    args.library,
+                    base_tessellation,
+                    diary_training,
+                    n_locations,
+                    profile=args.profile,
+                    iterations=args.iterations,
+                    sleep_seconds=args.sleep_seconds,
+                )
+            )
+    if DIARY_MODEL_BENCHMARKS:
+        results.append(
+            benchmark_diary_case(
+                args.library,
+                diary_training,
+                profile=args.profile,
+                iterations=args.iterations,
+                sleep_seconds=args.sleep_seconds,
+            )
         )
-        for size in args.sizes
-    ]
+    if TRAJECTORY_MODEL_BENCHMARKS:
+        for n_locations in args.n_locations:
+            for n_agents in args.n_agents:
+                results.append(
+                    benchmark_trajectory_case(
+                        args.library,
+                        base_tessellation,
+                        diary_training,
+                        n_agents,
+                        n_locations,
+                        profile=args.profile,
+                        iterations=args.iterations,
+                        sleep_seconds=args.sleep_seconds,
+                    )
+                )
     return {"metadata": build_metadata(args), "results": results}
 
 
@@ -514,10 +697,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
-    parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
+    parser.add_argument("--n-agents", type=positive_int, nargs="+", default=DEFAULT_AGENT_COUNTS)
+    parser.add_argument("--n-locations", type=positive_int, nargs="+", default=None)
+    parser.add_argument(
+        "--sizes",
+        type=positive_int,
+        nargs="+",
+        default=None,
+        help="Deprecated alias for --n-locations.",
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--reference-dir", type=Path, default=DEFAULT_REFERENCE_DIR)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.n_locations is None:
+        args.n_locations = args.sizes if args.sizes is not None else DEFAULT_LOCATION_COUNTS
+    elif args.sizes is not None:
+        parser.error("--sizes is a deprecated alias for --n-locations; pass only one of them")
+    args.sizes = args.n_locations
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:

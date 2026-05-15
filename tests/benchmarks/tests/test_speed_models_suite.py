@@ -34,7 +34,16 @@ def test_parse_args_defaults_to_speed_profile():
     args = suite.parse_args(["--library", "skmob2"])
 
     assert args.profile == "speed"
-    assert args.sizes == suite.DEFAULT_SIZES
+    assert args.n_agents == suite.DEFAULT_AGENT_COUNTS
+    assert args.n_locations == suite.DEFAULT_LOCATION_COUNTS
+    assert args.sizes == suite.DEFAULT_LOCATION_COUNTS
+
+
+def test_parse_args_accepts_sizes_as_location_alias():
+    args = suite.parse_args(["--library", "skmob2", "--sizes", "7", "11"])
+
+    assert args.n_locations == [7, 11]
+    assert args.sizes == [7, 11]
 
 
 def test_write_json_serializes_payload(tmp_path: Path):
@@ -124,30 +133,98 @@ def test_benchmark_model_records_import_errors():
     assert result["average_seconds"] is None
 
 
+def test_starting_locations_match_agent_count_and_wrap_locations():
+    assert suite.starting_locations(5, 3) == [0, 1, 2, 0, 1]
+
+
+def test_social_graph_matches_agent_count():
+    assert suite.social_graph(4) == [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
+
+
+def test_build_call_passes_agent_and_location_dimensions(monkeypatch):
+    pd = pytest.importorskip("pandas")
+    calls = {}
+
+    class FakeEPR:
+        def generate(self, start, end, tessellation, **kwargs):
+            calls["epr"] = {"locations": len(tessellation), "kwargs": kwargs}
+            return None
+
+    class FakeGeoSim:
+        def generate(self, start, end, tessellation, **kwargs):
+            calls["geosim"] = {"locations": len(tessellation), "kwargs": kwargs}
+            return None
+
+    fake_models = types.ModuleType("skmob2.models")
+    fake_models.Gravity = object
+    fake_models.Radiation = object
+    fake_models.MarkovDiaryGenerator = object
+    fake_models.EPR = FakeEPR
+    fake_models.DensityEPR = FakeEPR
+    fake_models.SpatialEPR = FakeEPR
+    fake_models.GeoSim = FakeGeoSim
+    fake_models.STS_epr = object
+
+    monkeypatch.setitem(sys.modules, "skmob2.models", fake_models)
+    tessellation = pd.DataFrame({"tile_id": list("abc"), "lat": [1, 2, 3], "lng": [4, 5, 6]})
+
+    suite.build_call(
+        suite.BenchmarkSpec("epr", "epr", {"model": "EPR", "relevance_column": "population"}),
+        "skmob2",
+        tessellation,
+        object(),
+        n_agents=5,
+    )()
+    suite.build_call(
+        suite.BenchmarkSpec("geosim", "geosim", {}),
+        "skmob2",
+        tessellation,
+        object(),
+        n_agents=4,
+    )()
+
+    assert calls["epr"]["locations"] == 3
+    assert calls["epr"]["kwargs"]["n_agents"] == 5
+    assert calls["epr"]["kwargs"]["starting_locations"] == [0, 1, 2, 0, 1]
+    assert calls["geosim"]["kwargs"]["n_agents"] == 4
+    assert calls["geosim"]["kwargs"]["social_graph"] == suite.social_graph(4)
+
+
 def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
     pd = pytest.importorskip("pandas")
-    calls = {"gravity": 0}
+    calls = {"gravity": 0, "epr": 0}
 
     class FakeGravity:
         def generate(self, tessellation, **kwargs):
             calls["gravity"] += 1
             return {"locations": len(tessellation), "kwargs": kwargs}
 
+    class FakeEPR:
+        def generate(self, start, end, tessellation, **kwargs):
+            calls["epr"] += 1
+            return {"locations": len(tessellation), "kwargs": kwargs}
+
     fake_models = types.ModuleType("skmob2.models")
     fake_models.Gravity = FakeGravity
     fake_models.Radiation = FakeGravity
     fake_models.MarkovDiaryGenerator = object
-    fake_models.EPR = object
-    fake_models.DensityEPR = object
-    fake_models.SpatialEPR = object
+    fake_models.EPR = FakeEPR
+    fake_models.DensityEPR = FakeEPR
+    fake_models.SpatialEPR = FakeEPR
     fake_models.GeoSim = object
     fake_models.STS_epr = object
 
     monkeypatch.setitem(sys.modules, "skmob2.models", fake_models)
     monkeypatch.setattr(
         suite,
-        "MODEL_BENCHMARKS",
+        "LOCATION_MODEL_BENCHMARKS",
         (suite.BenchmarkSpec("gravity_flows", "gravity", {"out_format": "flows"}),),
+    )
+    monkeypatch.setattr(suite, "DIARY_MODEL_BENCHMARKS", ())
+    monkeypatch.setattr(
+        suite,
+        "TRAJECTORY_MODEL_BENCHMARKS",
+        (suite.BenchmarkSpec("epr", "epr", {"model": "EPR", "relevance_column": "population"}),),
     )
 
     reference_dir = tmp_path / "models"
@@ -169,8 +246,10 @@ def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
         [
             "--library",
             "skmob2",
-            "--sizes",
+            "--n-locations",
             "2",
+            "--n-agents",
+            "3",
             "--iterations",
             "1",
             "--sleep",
@@ -186,4 +265,10 @@ def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
     assert payload["metadata"]["suite"] == "models"
     assert payload["metadata"]["library"] == "skmob2"
     assert payload["results"][0]["metrics"]["gravity_flows"]["status"] == "ok"
+    assert payload["results"][1]["benchmark_group"] == "trajectory_models"
+    assert payload["results"][1]["label"] == "3 agents / 2 locations"
+    assert payload["results"][1]["n_agents"] == 3
+    assert payload["results"][1]["n_locations"] == 2
+    assert payload["results"][1]["metrics"]["epr"]["status"] == "ok"
     assert calls["gravity"] == 2
+    assert calls["epr"] == 2
