@@ -89,6 +89,7 @@ def visits_per_location(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
     result = (

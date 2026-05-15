@@ -79,3 +79,27 @@ def test_visits_per_location_no_uid():
     counts = {(row["lat"], row["lng"]): row["n_visits"] for _, row in result.iterrows()}
     assert counts[(0.0, 0.0)] == 2
     assert counts[(1.0, 0.0)] == 1
+
+
+def test_visits_per_location_counts_unsorted_input():
+    """Collective location counts do not depend on chronological ordering."""
+    traj = pd.DataFrame(
+        {
+            "uid": ["u2", "u1", "u2", "u1"],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-02 02:00",
+                    "2020-01-01 03:00",
+                    "2020-01-01 01:00",
+                    "2020-01-02 01:00",
+                ]
+            ),
+            "lat": [1.0, 0.0, 1.0, 0.0],
+            "lng": [0.0, 0.0, 0.0, 0.0],
+        }
+    )
+
+    result = visits_per_location(traj)
+    counts = {(row["lat"], row["lng"]): row["n_visits"] for _, row in result.iterrows()}
+
+    assert counts == {(0.0, 0.0): 2, (1.0, 0.0): 2}

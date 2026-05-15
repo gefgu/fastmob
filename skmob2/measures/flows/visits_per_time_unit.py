@@ -1,10 +1,72 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import narwhals as nw
 
 from .._common import _prepare_trajectory
+
+_FREQ_RE = re.compile(r"^\s*(?P<count>\d+)?\s*(?P<unit>[A-Za-z]+)\s*$")
+_FREQ_UNIT_ALIASES = {
+    "ns": "ns",
+    "nanosecond": "ns",
+    "nanoseconds": "ns",
+    "us": "us",
+    "microsecond": "us",
+    "microseconds": "us",
+    "ms": "ms",
+    "millisecond": "ms",
+    "milliseconds": "ms",
+    "s": "s",
+    "sec": "s",
+    "secs": "s",
+    "second": "s",
+    "seconds": "s",
+    "t": "m",
+    "m": "m",
+    "min": "m",
+    "mins": "m",
+    "minute": "m",
+    "minutes": "m",
+    "h": "h",
+    "hour": "h",
+    "hours": "h",
+    "d": "d",
+    "day": "d",
+    "days": "d",
+    "mo": "mo",
+    "month": "mo",
+    "months": "mo",
+    "q": "q",
+    "quarter": "q",
+    "quarters": "q",
+    "y": "y",
+    "year": "y",
+    "years": "y",
+}
+
+
+def _normalize_frequency_for_narwhals(freq: str) -> str | None:
+    """Return a Narwhals duration string for common pandas offset aliases."""
+    match = _FREQ_RE.match(freq)
+    if match is None:
+        return None
+
+    count = match.group("count") or "1"
+    if int(count) <= 0:
+        return None
+
+    unit = match.group("unit")
+    if any(char.isupper() for char in unit) and unit not in {"D", "H", "S", "T"}:
+        return None
+    if unit == "M":
+        return None
+    unit_key = unit.lower()
+    normalized_unit = _FREQ_UNIT_ALIASES.get(unit_key)
+    if normalized_unit is None:
+        return None
+    return f"{count}{normalized_unit}"
 
 
 def visits_per_time_unit(
@@ -102,7 +164,21 @@ def visits_per_time_unit(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
+
+    normalized_freq = _normalize_frequency_for_narwhals(freq)
+    if normalized_freq is not None:
+        try:
+            return (
+                df.select(nw.col(datetime_col).dt.truncate(normalized_freq).alias(datetime_col))
+                .group_by(datetime_col)
+                .agg(nw.len().alias("n_visits"))
+                .sort(datetime_col)
+                .to_native()
+            )
+        except Exception:
+            pass
 
     native = df.select([datetime_col]).to_native()
     if isinstance(native, pd.DataFrame):
