@@ -20,6 +20,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
 
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = ["Inter"]
+
 
 CANVAS = "#0a0a0a"
 SURFACE_CARD = "#1a1a1a"
@@ -32,6 +35,29 @@ BODY_STRONG = "#e6e6e6"
 MUTED = "#888888"
 MUTED_SOFT = "#5a5a5a"
 DEFAULT_CATALOG_PATH = Path(__file__).resolve().parent / "skmob_public_api_catalog.json"
+
+FIGURE_WIDTH = 11.0
+FIGURE_MIN_HEIGHT = 7.4
+FIGURE_MAX_HEIGHT = 14
+FIGURE_BASE_HEIGHT = 2.8
+FIGURE_HEIGHT_PER_METRIC = 0.70
+
+TITLE_FONT_SIZE = 32
+SUBTITLE_FONT_SIZE = 15
+DETAIL_FONT_SIZE = 12.5
+CONTEXT_FONT_SIZE = 11.5
+CALLOUT_FONT_SIZE = 42
+LEGEND_FONT_SIZE = 14
+METRIC_LABEL_FONT_SIZE = 16
+AXIS_TICK_FONT_SIZE = 15
+AXIS_LABEL_FONT_SIZE = 17
+BAR_LABEL_FONT_SIZE = 12.5
+SPEEDUP_VALUE_FONT_SIZE = 13.5
+SPEEDUP_HEADER_FONT_SIZE = 11
+
+BAR_HEIGHT = 1
+BAR_PAIR_OFFSET = 0.6
+BAR_GROUP_GAP = 3
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -182,9 +208,7 @@ def display_metric_name(metric: str) -> str:
 
 
 def comparison_title(suite: str, backend: str | None) -> str:
-    if backend:
-        return f"skmob2 {backend} vs original skmob"
-    return "skmob2 vs original skmob"
+    return "skmob2 vs skmob"
 
 
 def comparison_subtitle(
@@ -258,12 +282,15 @@ def draw_plot(
     output_path: Path,
 ) -> None:
     metric_count = len(rows)
-    figure_height = max(7.4, min(12.8, 2.8 + metric_count * 0.70))
-    fig, ax = plt.subplots(figsize=(14.0, figure_height), facecolor=CANVAS)
+    figure_height = max(
+        FIGURE_MIN_HEIGHT,
+        min(FIGURE_MAX_HEIGHT, FIGURE_BASE_HEIGHT + metric_count * FIGURE_HEIGHT_PER_METRIC),
+    )
+    fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, figure_height), facecolor=CANVAS)
     add_round_card(fig)
     plot_left = 0.27
     plot_right = 0.92
-    header_left = plot_left
+    header_left = 0.055
     fig.subplots_adjust(left=plot_left, right=plot_right, top=0.68, bottom=0.12)
     ax.set_facecolor(SURFACE_CARD)
 
@@ -271,10 +298,10 @@ def draw_plot(
     median_speedup = sorted(row["speedup"] for row in rows)[metric_count // 2]
     max_time = max(row["original"] for row in rows)
     x_max = max_time * 1.22
-    group_gap = 1.98
+    group_gap = BAR_GROUP_GAP
     y_positions = [index * group_gap for index in range(metric_count)]
-    pair_offset = 0.46
-    bar_height = 0.64
+    pair_offset = BAR_PAIR_OFFSET
+    bar_height = BAR_HEIGHT
 
     original_values = [row["original"] for row in rows]
     optimized_values = [row["optimized"] for row in rows]
@@ -301,13 +328,14 @@ def draw_plot(
 
     ax.set_xlim(0, x_max)
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(labels, color=BODY_STRONG, fontsize=16)
+    ax.set_yticklabels(labels, color=BODY_STRONG, fontsize=METRIC_LABEL_FONT_SIZE)
     ax.invert_yaxis()
-    ax.tick_params(axis="x", colors=MUTED, labelsize=15)
+    ax.set_ylim(y_positions[-1] + group_gap * 0.8, -group_gap * 0.9)
+    ax.tick_params(axis="x", colors=MUTED, labelsize=AXIS_TICK_FONT_SIZE)
     ax.tick_params(axis="y", colors=BODY_STRONG)
     ax.xaxis.grid(True, color=HAIRLINE, linestyle="-", linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.set_xlabel("Average execution time (seconds)", color=BODY, fontsize=17, labelpad=16)
+    ax.set_xlabel("Average execution time (seconds)", color=BODY, fontsize=AXIS_LABEL_FONT_SIZE, labelpad=16)
 
     for spine in ax.spines.values():
         spine.set_visible(False)
@@ -316,6 +344,16 @@ def draw_plot(
     optimized_label_floor = x_max * 0.035
     multiplier_x = x_max * 0.965
     leader_end_x = x_max * 0.90
+    ax.text(
+        multiplier_x,
+        y_positions[0] - group_gap * 0.85,
+        "Speedup (x)",
+        va="center",
+        ha="right",
+        color=BODY,
+        fontsize=SPEEDUP_HEADER_FONT_SIZE,
+        clip_on=False,
+    )
     for index, (group_y, row) in enumerate(zip(y_positions, rows, strict=True)):
         original_y = group_y - pair_offset
         optimized_y = group_y + pair_offset
@@ -328,7 +366,7 @@ def draw_plot(
             va="center",
             ha="right" if original_label_inside else "left",
             color=ON_DARK,
-            fontsize=12.5,
+            fontsize=BAR_LABEL_FONT_SIZE,
             fontweight="bold",
         )
 
@@ -352,7 +390,7 @@ def draw_plot(
             va="center",
             ha="left",
             color=PRIMARY,
-            fontsize=12.5,
+            fontsize=BAR_LABEL_FONT_SIZE,
             fontweight="bold",
         )
         leader_start_x = min(max(row["original"], row["optimized"]) + offset * 1.2, leader_end_x)
@@ -372,7 +410,7 @@ def draw_plot(
             va="center",
             ha="right",
             color=CANVAS,
-            fontsize=13.5,
+            fontsize=SPEEDUP_VALUE_FONT_SIZE,
             fontweight="bold",
             bbox={
                 "boxstyle": "round,pad=0.28,rounding_size=0.14",
@@ -384,47 +422,47 @@ def draw_plot(
 
     fig.text(
         header_left,
-        0.965,
+        0.955,
         comparison_title(suite, backend),
         color=ON_DARK,
-        fontsize=25,
+        fontsize=TITLE_FONT_SIZE,
         fontweight="bold",
         ha="left",
         va="top",
     )
     fig.text(
         header_left,
-        0.915,
+        0.900,
         comparison_subtitle(original_payload, optimized_payload, suite, backend, size_label),
         color=BODY,
-        fontsize=13,
+        fontsize=SUBTITLE_FONT_SIZE,
         ha="left",
         va="top",
     )
     fig.text(
         header_left,
-        0.883,
+        0.872,
         f"Median {median_speedup:.2f}x across {metric_count} shared benchmarks / lower is better",
         color=MUTED,
-        fontsize=11.5,
+        fontsize=DETAIL_FONT_SIZE,
         ha="left",
         va="top",
     )
     fig.text(
         header_left,
-        0.855,
+        0.846,
         comparison_context(original_payload, optimized_payload),
         color=MUTED,
-        fontsize=10.5,
+        fontsize=CONTEXT_FONT_SIZE,
         ha="left",
         va="top",
     )
     fig.text(
         header_left,
-        0.807,
+        0.795,
         f"up to {top_speedup:.2f}x faster",
         color=PRIMARY,
-        fontsize=38,
+        fontsize=CALLOUT_FONT_SIZE,
         fontweight="bold",
         ha="left",
         va="top",
@@ -434,11 +472,11 @@ def draw_plot(
     legend = fig.legend(
         handles,
         legend_labels,
-        loc="upper center",
-        bbox_to_anchor=((plot_left + plot_right) / 2, 0.735),
+        loc="upper left",
+        bbox_to_anchor=(header_left, 0.735),
         ncols=2,
         frameon=False,
-        fontsize=14,
+        fontsize=LEGEND_FONT_SIZE,
         borderpad=0.45,
         labelspacing=0.45,
         columnspacing=1.35,

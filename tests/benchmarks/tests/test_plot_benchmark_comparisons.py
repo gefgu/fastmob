@@ -102,6 +102,11 @@ def test_generate_plots_supports_models_without_backend(tmp_path: Path, monkeypa
     assert drawn[0][1]["output_path"].name == "skmob2_vs_skmob_models_1k.png"
 
 
+def test_comparison_title_does_not_repeat_backend():
+    assert plot.comparison_title("spatial", "polars") == "skmob2 vs skmob"
+    assert plot.comparison_title("visits", "pandas") == "skmob2 vs skmob"
+
+
 def _payload(library: str, labels: list[str]) -> dict:
     return {
         "metadata": {"suite": "models", "library": library, "iterations": 1},
