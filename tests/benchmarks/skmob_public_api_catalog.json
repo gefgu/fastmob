@@ -391,6 +391,96 @@
       "skmob2_class": "STS_epr",
       "default_kwargs": {"n_agents": 3, "relevance_column": "population"},
       "input_kind": "model_reference"
+    },
+    {
+      "name": "epr_100a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "EPR",
+      "skmob2_class": "EPR",
+      "default_kwargs": {"model": "EPR", "n_agents": 100, "relevance_column": "population"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "epr_1000a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "EPR",
+      "skmob2_class": "EPR",
+      "default_kwargs": {"model": "EPR", "n_agents": 1000, "relevance_column": "population"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "epr_10000a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "EPR",
+      "skmob2_class": "EPR",
+      "default_kwargs": {"model": "EPR", "n_agents": 10000, "relevance_column": "population"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "density_epr_1000a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "DensityEPR",
+      "skmob2_class": "DensityEPR",
+      "default_kwargs": {"model": "DensityEPR", "n_agents": 1000, "relevance_column": "population"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "spatial_epr_1000a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.epr",
+      "skmob2_module": "skmob2.models.epr",
+      "legacy_class": "SpatialEPR",
+      "skmob2_class": "SpatialEPR",
+      "default_kwargs": {"model": "SpatialEPR", "n_agents": 1000},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "geosim_20a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.geosim",
+      "skmob2_module": "skmob2.models.geosim",
+      "legacy_class": "GeoSim",
+      "skmob2_class": "GeoSim",
+      "default_kwargs": {"n_agents": 20},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "geosim_100a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.geosim",
+      "skmob2_module": "skmob2.models.geosim",
+      "legacy_class": "GeoSim",
+      "skmob2_class": "GeoSim",
+      "default_kwargs": {"n_agents": 100},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "sts_epr_20a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.sts_epr",
+      "skmob2_module": "skmob2.models.sts_epr",
+      "legacy_class": "STS_epr",
+      "skmob2_class": "STS_epr",
+      "default_kwargs": {"n_agents": 20, "relevance_column": "population"},
+      "input_kind": "model_reference"
+    },
+    {
+      "name": "sts_epr_100a",
+      "suite": "models_large_scale",
+      "legacy_module": "skmob.models.sts_epr",
+      "skmob2_module": "skmob2.models.sts_epr",
+      "legacy_class": "STS_epr",
+      "skmob2_class": "STS_epr",
+      "default_kwargs": {"n_agents": 100, "relevance_column": "population"},
+      "input_kind": "model_reference"
     }
   ]
 }

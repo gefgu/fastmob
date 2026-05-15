@@ -50,31 +50,34 @@ run_comparison() {
 }
 
 run_model_comparison() {
-    local original_json="$RESULTS_DIR/skmob_models_speed.json"
-    local optimized_json="$RESULTS_DIR/skmob2_models_speed.json"
+    local suite="$1"
+    local original_json="$2"
+    local optimized_json="$3"
+    local label="$4"
+    shift 4
 
     if [ ! -f "$original_json" ]; then
-        echo "Skipping models: missing $(basename "$original_json")"
+        echo "Skipping ${label}: missing $(basename "$original_json")"
         return 0
     fi
     if [ ! -f "$optimized_json" ]; then
-        echo "Skipping models: missing $(basename "$optimized_json")"
+        echo "Skipping ${label}: missing $(basename "$optimized_json")"
         return 0
     fi
 
     echo
-    echo "==> Plotting models"
+    echo "==> Plotting ${label}"
     if "$PYTHON" "$PLOT_SCRIPT" \
         --original-json "$original_json" \
         --optimized-json "$optimized_json" \
-        --suite models \
+        --suite "$suite" \
         --output-dir "$OUTPUT_DIR" \
         "$@"; then
-        echo "==> models: ok"
+        echo "==> ${label}: ok"
     else
         local status=$?
-        echo "==> models: failed with exit code ${status}"
-        FAILURES+=("models (${status})")
+        echo "==> ${label}: failed with exit code ${status}"
+        FAILURES+=("${label} (${status})")
     fi
 }
 
@@ -84,7 +87,19 @@ for suite in spatial privacy visits; do
     done
 done
 
-run_model_comparison "$@"
+run_model_comparison \
+    models \
+    "$RESULTS_DIR/skmob_models_speed.json" \
+    "$RESULTS_DIR/skmob2_models_speed.json" \
+    models \
+    "$@"
+
+run_model_comparison \
+    models_large_scale \
+    "$RESULTS_DIR/skmob_models_speed_large_scale.json" \
+    "$RESULTS_DIR/skmob2_models_speed_large_scale.json" \
+    models-large-scale \
+    "$@"
 
 echo
 echo "==> Plot generation complete. Images are in ${OUTPUT_DIR#$REPO_ROOT/}"
