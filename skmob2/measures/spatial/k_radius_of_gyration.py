@@ -1,4 +1,5 @@
 from __future__ import annotations
+import narwhals as nw
 
 from typing import Any
 
@@ -12,6 +13,7 @@ from .._common import (
     _dispatch_kernel,
     _extract_timestamps_ms,
     _is_polars_backed,
+    _detect_trajectory_columns,
     _prepare_trajectory,
     _to_native,
 )
@@ -106,8 +108,16 @@ def k_radius_of_gyration(
 
 
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,

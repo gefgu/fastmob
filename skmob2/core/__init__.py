@@ -1,3 +1,3 @@
-from .trajectory_dataframe import TrajectoryDataFrame
+from .trajectory_dataframe import TrajDataFrame
 
-__all__ = ["TrajectoryDataFrame"]
+__all__ = ["TrajDataFrame"]

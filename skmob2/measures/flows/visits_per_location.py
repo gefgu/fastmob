@@ -4,7 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _detect_trajectory_columns, _prepare_trajectory
 
 
 def visits_per_location(
@@ -83,8 +83,16 @@ def visits_per_location(
     ----------
     - [PF2018] Pappalardo, L. & Simini, F. (2018) Data-driven generation of spatio-temporal routines in human mobility. Data Mining and Knowledge Discovery 32, 787-829, https://link.springer.com/article/10.1007/s10618-017-0548-4
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,

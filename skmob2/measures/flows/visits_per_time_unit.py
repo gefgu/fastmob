@@ -5,7 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _detect_trajectory_columns, _prepare_trajectory
 
 _FREQ_RE = re.compile(r"^\s*(?P<count>\d+)?\s*(?P<unit>[A-Za-z]+)\s*$")
 _FREQ_UNIT_ALIASES = {
@@ -158,8 +158,16 @@ def visits_per_time_unit(
         freq = time_unit
     import pandas as pd  # noqa: PLC0415 - pandas offset aliases are the public compatibility contract
 
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,

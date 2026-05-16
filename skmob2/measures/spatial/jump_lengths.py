@@ -5,20 +5,11 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 from skmob2._core import (
-    jump_lengths_indexed_arrow,
-    jump_lengths_indexed_flat_arrow,
-    jump_lengths_indexed_flat_numpy,
-    jump_lengths_indexed_numpy,
-    jump_lengths_time_ordered_arrow,
-    jump_lengths_time_ordered_flat_arrow,
-    jump_lengths_time_ordered_flat_numpy,
-    jump_lengths_time_ordered_numpy,
-    jump_lengths_time_ordered_single_arrow,
-    jump_lengths_time_ordered_single_flat_arrow,
-    jump_lengths_time_ordered_single_flat_numpy,
-    jump_lengths_time_ordered_single_numpy,
+    jump_lengths_non_ordered_arrow,
+    jump_lengths_non_ordered_numpy,
+    jump_lengths_presorted_arrow,
+    jump_lengths_presorted_numpy,
 )
-
 from .._common import (
     _ROW_ORDER_COL,
     _as_index_array,
@@ -26,41 +17,40 @@ from .._common import (
     _build_user_ranges,
     _extract_timestamps_ms,
     _is_polars_backed,
+    _detect_trajectory_columns,
     _prepare_trajectory,
-    _ranges_to_starts_ends,
     _to_native,
     _uid_values_from_index_ranges,
 )
 
 
-def _route_indexed_jump_lengths(
-    lats: nw.Series,
-    lngs: nw.Series,
-    indices: np.ndarray,
-    starts: np.ndarray,
-    ends: np.ndarray,
+def _route_presorted_jump_lengths(
+    lats: Any,
+    lngs: Any,
+    ranges: list[tuple[int, int]],
     *,
     use_arrow: bool,
     merge: bool,
 ) -> Any:
     if use_arrow:
-        if merge:
-            return _arrow_flat_result_values(
-                jump_lengths_indexed_flat_arrow(lats.to_arrow(), lngs.to_arrow(), indices, starts, ends)
-            )
-        value_starts, value_ends, values = jump_lengths_indexed_arrow(
-            lats.to_arrow(),
-            lngs.to_arrow(),
-            indices,
-            starts,
-            ends,
+        starts, ends, values = jump_lengths_presorted_arrow(
+            lats.to_arrow() if hasattr(lats, "to_arrow") else lats,
+            lngs.to_arrow() if hasattr(lngs, "to_arrow") else lngs,
+            ranges,
         )
-        return _grouped_arrow_values(value_starts, value_ends, values)
+        values = _arrow_flat_result_values(values)
+        if merge:
+            return values
+        return _grouped_arrow_values(starts, ends, values, value_offsets=True)
 
+    starts, ends, values = jump_lengths_presorted_numpy(
+        lats.to_numpy() if hasattr(lats, "to_numpy") else lats,
+        lngs.to_numpy() if hasattr(lngs, "to_numpy") else lngs,
+        ranges,
+    )
     if merge:
-        return jump_lengths_indexed_flat_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
-    value_starts, value_ends, values = jump_lengths_indexed_numpy(lats.to_numpy(), lngs.to_numpy(), indices, starts, ends)
-    return _grouped_numpy_values(value_starts, value_ends, values)
+        return values
+    return _grouped_numpy_values(starts, ends, values, value_offsets=True)
 
 
 def _arrow_flat_result_values(values: Any) -> Any:
@@ -72,60 +62,41 @@ def _arrow_flat_result_values(values: Any) -> Any:
     return values
 
 
-def _grouped_numpy_values(value_starts: Any, value_ends: Any, values: Any) -> list[np.ndarray]:
-    starts = np.asarray(value_starts, dtype=np.uintp)
-    ends = np.asarray(value_ends, dtype=np.uintp)
+def _grouped_numpy_values(starts: Any, ends: Any, values: Any, *, value_offsets: bool = False) -> list[np.ndarray]:
+    if value_offsets:
+        starts = np.asarray(starts, dtype=np.uintp)
+        ends = np.asarray(ends, dtype=np.uintp)
+    else:
+        starts, ends = _value_offsets_from_index_ranges(starts, ends)
     values = np.asarray(values, dtype=np.float64)
     return [values[int(start) : int(end)] for start, end in zip(starts, ends)]
 
 
-def _grouped_arrow_values(value_starts: Any, value_ends: Any, values: Any) -> Any:
+def _grouped_arrow_values(starts: Any, ends: Any, values: Any, *, value_offsets: bool = False) -> Any:
     import pyarrow as pa
 
-    starts = np.asarray(value_starts, dtype=np.int64)
-    ends = np.asarray(value_ends, dtype=np.int64)
+    if value_offsets:
+        starts = np.asarray(starts, dtype=np.uintp)
+        ends = np.asarray(ends, dtype=np.uintp)
+    else:
+        starts, ends = _value_offsets_from_index_ranges(starts, ends)
     offsets = np.empty(len(starts) + 1, dtype=np.int32)
     offsets[:-1] = starts
     offsets[-1] = ends[-1] if len(ends) else 0
     return pa.ListArray.from_arrays(offsets, _arrow_flat_result_values(values))
 
 
-def _route_time_ordered_single_jump_lengths(
-    timestamps: nw.Series,
-    lats: nw.Series,
-    lngs: nw.Series,
-    *,
-    use_arrow: bool,
-    merge: bool,
-) -> Any:
-    if use_arrow:
-        if merge:
-            return _arrow_flat_result_values(
-                jump_lengths_time_ordered_single_flat_arrow(
-                    timestamps.to_arrow(),
-                    lats.to_arrow(),
-                    lngs.to_arrow(),
-                )
-            )
-        value_starts, value_ends, values = jump_lengths_time_ordered_single_arrow(
-            timestamps.to_arrow(),
-            lats.to_arrow(),
-            lngs.to_arrow(),
-        )
-        return _grouped_arrow_values(value_starts, value_ends, values)
-
-    if merge:
-        return jump_lengths_time_ordered_single_flat_numpy(timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
-    value_starts, value_ends, values = jump_lengths_time_ordered_single_numpy(
-        timestamps.to_numpy(),
-        lats.to_numpy(),
-        lngs.to_numpy(),
-    )
-    return _grouped_numpy_values(value_starts, value_ends, values)
+def _value_offsets_from_index_ranges(index_starts: Any, index_ends: Any) -> tuple[np.ndarray, np.ndarray]:
+    starts = np.asarray(index_starts, dtype=np.uintp)
+    ends = np.asarray(index_ends, dtype=np.uintp)
+    lengths = np.maximum(ends - starts, 1) - 1
+    value_ends = np.cumsum(lengths, dtype=np.uintp)
+    value_starts = value_ends - lengths
+    return value_starts, value_ends
 
 
-def _route_time_ordered_jump_lengths(
-    uids: nw.Series,
+def _route_non_ordered_jump_lengths(
+    uids: nw.Series | None,
     timestamps: nw.Series,
     lats: nw.Series,
     lngs: nw.Series,
@@ -134,31 +105,36 @@ def _route_time_ordered_jump_lengths(
     merge: bool,
 ) -> tuple[Any, Any, Any, Any]:
     if use_arrow:
-        if merge:
-            indices, starts, ends, values = jump_lengths_time_ordered_flat_arrow(
-                uids.to_arrow(),
-                timestamps.to_arrow(),
-                lats.to_arrow(),
-                lngs.to_arrow(),
-            )
-            return indices, starts, ends, _arrow_flat_result_values(values)
-        indices, starts, ends, value_starts, value_ends, values = jump_lengths_time_ordered_arrow(
-            uids.to_arrow(),
+        indices, starts, ends, values = jump_lengths_non_ordered_arrow(
+            None if uids is None else uids.to_arrow(),
             timestamps.to_arrow(),
             lats.to_arrow(),
             lngs.to_arrow(),
         )
-        return indices, starts, ends, _grouped_arrow_values(value_starts, value_ends, values)
+        values = _arrow_flat_result_values(values)
+        if merge:
+            return indices, starts, ends, values
+        return (
+            indices,
+            starts,
+            ends,
+            _grouped_arrow_values(starts, ends, values),
+        )
 
-    if merge:
-        return jump_lengths_time_ordered_flat_numpy(uids.to_numpy(), timestamps.to_numpy(), lats.to_numpy(), lngs.to_numpy())
-    indices, starts, ends, value_starts, value_ends, values = jump_lengths_time_ordered_numpy(
-        uids.to_numpy(),
+    indices, starts, ends, values = jump_lengths_non_ordered_numpy(
+        None if uids is None else uids.to_numpy(),
         timestamps.to_numpy(),
         lats.to_numpy(),
         lngs.to_numpy(),
     )
-    return indices, starts, ends, _grouped_numpy_values(value_starts, value_ends, values)
+    if merge:
+        return indices, starts, ends, values
+    return (
+        indices,
+        starts,
+        ends,
+        _grouped_numpy_values(starts, ends, values),
+    )
 
 
 def _build_time_ordered_ranges_fallback(
@@ -167,13 +143,36 @@ def _build_time_ordered_ranges_fallback(
     datetime_col: str,
 ) -> tuple[list, list[int], list[tuple[int, int]]]:
     index_df = (
-        df.select([uid_col, datetime_col])
-        .with_row_index(_ROW_ORDER_COL)
-        .sort(uid_col, datetime_col, _ROW_ORDER_COL)
+        df.select([uid_col, datetime_col]).with_row_index(_ROW_ORDER_COL).sort(uid_col, datetime_col, _ROW_ORDER_COL)
     )
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(_ROW_ORDER_COL).to_list()]
     return uid_values, indices, ranges
+
+
+def _presorted_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
+    if uid_col is None:
+        return None, [(0, len(df))]
+
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    return uid_values, ranges
+
+
+def _presorted_coordinate_series_from_indices(
+    lats: nw.Series,
+    lngs: nw.Series,
+    indices: Any,
+    *,
+    use_arrow: bool,
+) -> tuple[Any, Any]:
+    indices = np.asarray(indices, dtype=np.uintp)
+    if use_arrow:
+        import pyarrow as pa
+
+        take_indices = pa.array(indices.astype(np.int64, copy=False))
+        return lats.to_arrow().take(take_indices), lngs.to_arrow().take(take_indices)
+
+    return lats.to_numpy()[indices], lngs.to_numpy()[indices]
 
 
 def jump_lengths(
@@ -184,6 +183,7 @@ def jump_lengths(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ):
     """Compute jump lengths (km) for each user in the trajectory.
 
@@ -263,8 +263,17 @@ def jump_lengths(
 
 
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
@@ -277,8 +286,24 @@ def jump_lengths(
     lngs_full = df.get_column(lng_col)
     use_arrow = _is_polars_backed(df)
 
+    if sorted:
+        uid_values, ranges = _presorted_ranges(df, uid_col)
+        jump_values = _route_presorted_jump_lengths(
+            lats_full,
+            lngs_full,
+            ranges,
+            use_arrow=use_arrow,
+            merge=merge,
+        )
+        if merge:
+            return jump_values
+        if uid_col is None:
+            return _to_native({"jump_lengths": jump_values}, df)
+        return _to_native({uid_col: uid_values, "jump_lengths": jump_values}, df)
+
     if uid_col is None:
-        jump_values = _route_time_ordered_single_jump_lengths(
+        _indices, _starts, _ends, jump_values = _route_non_ordered_jump_lengths(
+            None,
             timestamps,
             lats_full,
             lngs_full,
@@ -291,7 +316,7 @@ def jump_lengths(
 
     uids = df.get_column(uid_col)
     try:
-        indices, starts, ends, jump_values = _route_time_ordered_jump_lengths(
+        indices, starts, ends, jump_values = _route_non_ordered_jump_lengths(
             uids,
             timestamps,
             lats_full,
@@ -307,14 +332,13 @@ def jump_lengths(
         if "unsupported" not in str(exc):
             raise
         uid_values, indices, ranges = _build_time_ordered_ranges_fallback(df, uid_col, datetime_col)
-        starts, ends = _ranges_to_starts_ends(ranges)
-        indices = _as_index_array(indices)
-        jump_values = _route_indexed_jump_lengths(
-            lats_full,
-            lngs_full,
-            indices,
-            starts,
-            ends,
+        sorted_lats, sorted_lngs = _presorted_coordinate_series_from_indices(
+            lats_full, lngs_full, indices, use_arrow=use_arrow
+        )
+        jump_values = _route_presorted_jump_lengths(
+            sorted_lats,
+            sorted_lngs,
+            ranges,
             use_arrow=use_arrow,
             merge=merge,
         )

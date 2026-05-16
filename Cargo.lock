@@ -841,6 +841,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "numkong"
+version = "7.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a75e386ad4a252e96357fd400ed9b5c7afea048447f2fb0906652b47cf2aaa87"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "numpy"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1224,6 +1233,7 @@ dependencies = [
  "linfa-clustering",
  "ndarray 0.15.6",
  "ndarray 0.16.1",
+ "numkong",
  "numpy",
  "pyo3",
  "pyo3-arrow",

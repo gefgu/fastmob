@@ -1,0 +1,7 @@
+[env]
+NK_TARGET_SAPPHIRE = { value = "0", force = false }
+NK_TARGET_SAPPHIREAMX = { value = "0", force = false }
+NK_TARGET_GRANITEAMX = { value = "0", force = false }
+NK_TARGET_DIAMOND = { value = "0", force = false }
+NK_TARGET_TURIN = { value = "0", force = false }
+NK_TARGET_SIERRA = { value = "0", force = false }

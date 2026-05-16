@@ -1,4 +1,5 @@
 from __future__ import annotations
+import narwhals as nw
 
 from typing import Any
 
@@ -8,6 +9,7 @@ from .._common import (
     _build_indexed_user_ranges_fast,
     _dispatch_kernel,
     _is_polars_backed,
+    _detect_trajectory_columns,
     _prepare_trajectory,
     _to_native,
 )
@@ -86,8 +88,16 @@ def number_of_locations(
     ----------
     - [GHB2008] Gonzalez, M. C., Hidalgo, C. A. & Barabasi, A. L. (2008) Understanding individual human mobility patterns. Nature, 453, 779-782, https://www.nature.com/articles/nature06958.
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,

@@ -124,22 +124,43 @@ class TestPrepareTrajectory:
             }
         )
 
-    def test_returns_five_tuple(self):
+    def _prepare(self, df_in, **kwargs):
+        import narwhals as nw
+        from skmob2.measures._common import _detect_trajectory_columns, _prepare_trajectory
+
+        nw_df = nw.from_native(df_in, eager_only=True)
+        datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(nw_df)
+        df = _prepare_trajectory(
+            nw_df,
+            datetime_col=datetime_col,
+            lat_col=lat_col,
+            lng_col=lng_col,
+            uid_col=uid_col,
+            **kwargs,
+        )
+        return df, datetime_col, lat_col, lng_col, uid_col
+
+    def test_returns_dataframe(self):
+        import narwhals as nw
         from skmob2.measures._common import _prepare_trajectory
 
-        result = _prepare_trajectory(self._make_df())
-        assert len(result) == 5
+        nw_df = nw.from_native(self._make_df(), eager_only=True)
+        result = _prepare_trajectory(
+            nw_df,
+            datetime_col="datetime",
+            lat_col="lat",
+            lng_col="lng",
+            uid_col="uid",
+        )
+        assert isinstance(result, nw.DataFrame)
 
     def test_drops_nulls_in_required_columns(self):
-        from skmob2.measures._common import _prepare_trajectory
-
-        df, *_ = _prepare_trajectory(self._make_df())
+        df, *_ = self._prepare(self._make_df())
         # 2 rows have nulls in lat or lng — only 2 rows should survive
         assert len(df) == 2
 
     def test_lat_lng_cast_to_float64(self):
         import narwhals as nw
-        from skmob2.measures._common import _prepare_trajectory
 
         df_in = pd.DataFrame(
             {
@@ -148,13 +169,12 @@ class TestPrepareTrajectory:
                 "lng": [10, 20],
             }
         )
-        df, _, lat_col, lng_col, _ = _prepare_trajectory(df_in)
+        df, _, lat_col, lng_col, _ = self._prepare(df_in)
         assert df.get_column(lat_col).dtype == nw.Float64
         assert df.get_column(lng_col).dtype == nw.Float64
 
     def test_datetime_strings_are_converted(self):
         import narwhals as nw
-        from skmob2.measures._common import _prepare_trajectory
 
         df_in = pd.DataFrame(
             {
@@ -163,12 +183,12 @@ class TestPrepareTrajectory:
                 "lng": [10.0, 20.0],
             }
         )
-        df, datetime_col, *_ = _prepare_trajectory(df_in)
+        df, datetime_col, *_ = self._prepare(df_in)
         assert df.get_column(datetime_col).dtype == nw.Datetime
         assert df.get_column("lat").to_list() == [2.0, 1.0]
 
     def test_sorted_by_uid_then_datetime(self):
-        from skmob2.measures._common import _ROW_ORDER_COL, _prepare_trajectory
+        from skmob2.measures._common import _ROW_ORDER_COL
 
         df_in = pd.DataFrame(
             {
@@ -178,7 +198,7 @@ class TestPrepareTrajectory:
                 "lng": [0.0, 1.0, 2.0, 3.0],
             }
         )
-        df, _, _, _, uid_col = _prepare_trajectory(df_in)
+        df, _, _, _, uid_col = self._prepare(df_in)
         assert _ROW_ORDER_COL not in df.columns
         uids = df.get_column(uid_col).to_list()
         # All "a" rows come before all "b" rows
@@ -188,7 +208,7 @@ class TestPrepareTrajectory:
 
     def test_sort_false_preserves_row_order_after_dropping_nulls(self):
         import narwhals as nw
-        from skmob2.measures._common import _ROW_ORDER_COL, _prepare_trajectory
+        from skmob2.measures._common import _ROW_ORDER_COL
 
         df_in = pd.DataFrame(
             {
@@ -198,7 +218,7 @@ class TestPrepareTrajectory:
                 "lng": [10, 11, 12, 13],
             }
         )
-        df, _, lat_col, lng_col, uid_col = _prepare_trajectory(df_in, sort=False)
+        df, _, lat_col, lng_col, uid_col = self._prepare(df_in, sort=False)
 
         assert _ROW_ORDER_COL not in df.columns
         assert df.get_column(uid_col).to_list() == ["b", "a", "a"]
@@ -207,17 +227,17 @@ class TestPrepareTrajectory:
         assert df.get_column(lng_col).dtype == nw.Float64
 
     def test_drop_nulls_false_preserves_null_coordinate_rows(self):
-        from skmob2.measures._common import _prepare_trajectory
-
-        df, *_ = _prepare_trajectory(self._make_df(), sort=False, drop_nulls=False)
+        df, *_ = self._prepare(self._make_df(), sort=False, drop_nulls=False)
         assert len(df) == 4
 
-    def test_raises_on_missing_column(self):
-        from skmob2.measures._common import _prepare_trajectory
+    def test_detect_raises_on_missing_column_before_prepare(self):
+        import narwhals as nw
+        from skmob2.measures._common import _detect_trajectory_columns
 
         df_in = pd.DataFrame({"datetime": [], "lat": []})
+        nw_df = nw.from_native(df_in, eager_only=True)
         with pytest.raises(ValueError, match="longitude"):
-            _prepare_trajectory(df_in)
+            _detect_trajectory_columns(nw_df)
 
 
 # ---------------------------------------------------------------------------

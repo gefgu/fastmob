@@ -5,11 +5,11 @@ mod entropy;
 mod filter_traj;
 mod haversine;
 mod home_location;
-mod jump_lengths;
 mod k_radius_of_gyration;
 mod location_frequency;
 mod max_distance_from_point;
 mod maximum_distance;
+mod measures;
 mod model_generation;
 mod motifs;
 mod radius_of_gyration;
@@ -18,6 +18,7 @@ mod spatial_counts;
 mod square_displacement;
 mod stay_locations_rs;
 mod stvd_emd;
+mod time_ordering;
 mod total_distance;
 mod uncorrelated_entropy;
 mod utils;
@@ -42,73 +43,32 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         visitation_law::visitation_distances_arrow,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_km, m)?)?;
-    m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_flat_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(jump_lengths::jump_lengths_flat_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_indexed_numpy,
+        measures::jump_lengths::jump_lengths_km,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_indexed_arrow,
+        measures::jump_lengths_numpy::jump_lengths_presorted_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_indexed_flat_numpy,
+        measures::jump_lengths_arrow::jump_lengths_presorted_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_indexed_flat_arrow,
+        measures::jump_lengths_numpy::jump_lengths_non_ordered_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_numpy,
+        measures::jump_lengths_arrow::jump_lengths_non_ordered_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_arrow,
+        time_ordering::time_ordered_user_indices_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_flat_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_flat_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_single_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_single_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_single_flat_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::jump_lengths_time_ordered_single_flat_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::time_ordered_user_indices_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::time_ordered_user_indices_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::time_ordered_single_user_indices_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        jump_lengths::time_ordered_single_user_indices_arrow,
+        time_ordering::time_ordered_user_indices_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

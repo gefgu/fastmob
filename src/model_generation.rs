@@ -83,11 +83,7 @@ pub(crate) fn model_gravity_matrix_numpy<'py>(
                 let score = deterrence(distance, deterrence_type, deterrence_arg)
                     * relevances[j].powf(destination_exp)
                     * relevances[i].powf(origin_exp);
-                if score.is_finite() {
-                    score
-                } else {
-                    0.0
-                }
+                if score.is_finite() { score } else { 0.0 }
             })
         })
         .collect();
@@ -168,11 +164,7 @@ pub(crate) fn model_gravity_od_row_numpy<'py>(
             let score = deterrence(distance, deterrence_type, deterrence_arg)
                 * relevances[j].powf(destination_exp)
                 * relevances[origin].powf(origin_exp);
-            if score.is_finite() {
-                score
-            } else {
-                0.0
-            }
+            if score.is_finite() { score } else { 0.0 }
         })
         .collect();
     let total: f64 = row.iter().sum();
@@ -390,8 +382,8 @@ fn simulate_one_epr_agent(
     while cur_ts < end_ts {
         let n_visited = visits.len();
         let p_new: f64 = rng.gen_range(0.0_f64..1.0);
-        let explore = n_visited == 1
-            || (n_visited < n && p_new <= rho * (n_visited as f64).powf(-gamma));
+        let explore =
+            n_visited == 1 || (n_visited < n && p_new <= rho * (n_visited as f64).powf(-gamma));
         let next_loc = if explore {
             weighted_choice_slice(&mut rng, &od_rows[cur_loc])
         } else {
@@ -515,7 +507,12 @@ pub(crate) fn model_epr_simulate_agents<'py>(
     if n == 0 || n_agents == 0 {
         let empty_i64 = Vec::<i64>::new().into_pyarray(py);
         let empty_f64 = Vec::<f64>::new().into_pyarray(py);
-        return Ok((empty_i64, empty_f64.clone(), empty_f64, Vec::<i64>::new().into_pyarray(py)));
+        return Ok((
+            empty_i64,
+            empty_f64.clone(),
+            empty_f64,
+            Vec::<i64>::new().into_pyarray(py),
+        ));
     }
 
     // Pre-compute all N OD rows in parallel (outer Rayon), sequential inner per row.

@@ -9,7 +9,7 @@ import narwhals as nw
 import pandas as pd
 from skmob2._core import real_entropy_batch as _real_entropy_batch_rust
 
-from .._common import _build_user_ranges, _prepare_trajectory
+from .._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
 
 
 def _skmob_true_entropy(sequence: list) -> float:
@@ -121,8 +121,16 @@ def real_entropy(
     ----------
     - [SQBB2010] Song, C., Qu, Z., Blumm, N. & Barabasi, A. L. (2010) Limits of Predictability in Human Mobility. Science 327(5968), 1018-1021, https://science.sciencemag.org/content/327/5968/1018
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,

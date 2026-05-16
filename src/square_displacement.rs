@@ -113,4 +113,3 @@ pub(crate) fn mean_square_displacement_indexed_arrow<'py>(
         delta_s,
     )
 }
-

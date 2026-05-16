@@ -10,7 +10,7 @@ try:
 except ImportError:  # pragma: no cover - fallback for older extension builds
     _compress_trajectory_representatives_numpy = None
 
-from ..measures._common import _build_user_ranges, _prepare_trajectory
+from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
 
 
 def compress(
@@ -83,8 +83,16 @@ def compress(
     - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), https://dl.acm.org/citation.cfm?id=2743025
 
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,

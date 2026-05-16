@@ -5,7 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory
+from .._common import _detect_trajectory_columns, _prepare_trajectory
 
 
 def random_location_entropy(
@@ -79,8 +79,16 @@ def random_location_entropy(
     29.948116 -90.063436           0.000
     29.948125 -90.063510           0.000
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,

@@ -3,7 +3,7 @@ from .preprocessing.compress import compress
 from .preprocessing.stay_locations import stay_locations
 from .preprocessing.cluster import cluster
 from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
-from .core import TrajectoryDataFrame
+from .core import TrajDataFrame
 from . import utils
 from . import privacy
 from .measures.spatial.jump_lengths import jump_lengths
@@ -84,7 +84,7 @@ __all__ = [
     "compress",
     "stay_locations",
     "cluster",
-    "TrajectoryDataFrame",
+    "TrajDataFrame",
     "cdr_to_visitation_df",
     "cdr_to_trips_df",
     "utils",

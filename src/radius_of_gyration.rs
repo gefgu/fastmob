@@ -225,7 +225,9 @@ fn user_indices_for_ord_values_at_indices<T: Ord>(
 fn user_indices_for_f64_values(values: &[f64]) -> UserIndexRanges {
     let mut indices: Vec<usize> = (0..values.len()).collect();
     indices.sort_by(|&left, &right| {
-        values[left].total_cmp(&values[right]).then(left.cmp(&right))
+        values[left]
+            .total_cmp(&values[right])
+            .then(left.cmp(&right))
     });
     let ranges = ranges_from_sorted_values(values, &indices);
     (indices, ranges)
@@ -236,7 +238,9 @@ fn user_indices_for_f64_values_at_indices(
     mut indices: Vec<usize>,
 ) -> UserIndexRanges {
     indices.sort_by(|&left, &right| {
-        values[left].total_cmp(&values[right]).then(left.cmp(&right))
+        values[left]
+            .total_cmp(&values[right])
+            .then(left.cmp(&right))
     });
     let ranges = ranges_from_sorted_values(values, &indices);
     (indices, ranges)

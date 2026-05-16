@@ -4,8 +4,8 @@ from skmob2.measures.spatial import jump_lengths
 import narwhals as nw
 
 
-class TrajectoryDataFrame(BaseDataFrame):
-    def __init__(self, df, sort=True, timestamp=True, **kwargs):
+class TrajDataFrame(BaseDataFrame):
+    def __init__(self, df, sort=False, timestamp=True, **kwargs):
         super().__init__(df, **kwargs)
 
         self.sorted = False
@@ -25,9 +25,18 @@ class TrajectoryDataFrame(BaseDataFrame):
             if not isinstance(col_dtype, nw.Datetime):
                 # 3. Use Narwhals expressions to convert the string to datetime
                 # and unwrap it back to the native library format
-                self.df = nw_df.with_columns(
-                    nw.col(self.datetime_col).str.to_datetime()
-                ).to_native()
+                if "polars" in str(type(self.df)).lower():
+                    import polars as pl
+                    # Fix for Polars: parse with timezone handling built into the expression
+                    native_pl_df = nw_df.to_native()
+                    self.df = native_pl_df.with_columns(
+                        pl.col(self.datetime_col).str.to_datetime(time_zone="UTC")
+                    )
+                else:
+                    # 3. Fallback for Pandas, Modin, CuDF, etc. via Narwhals
+                    self.df = nw_df.with_columns(
+                        nw.col(self.datetime_col).str.to_datetime()
+                    ).to_native()
 
         if sort:
             nw_df = nw.from_native(self.df, eager_only=True)

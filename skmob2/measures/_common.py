@@ -221,17 +221,15 @@ def _build_time_ordered_user_ranges(
 ) -> tuple[list | None, Any, np.ndarray, np.ndarray]:
     """Build stable time-ordered indexes/ranges without sorting the full dataframe."""
     from skmob2._core import (
-        time_ordered_single_user_indices_arrow,
-        time_ordered_single_user_indices_numpy,
         time_ordered_user_indices_arrow,
         time_ordered_user_indices_numpy,
     )
 
     if uid_col is None:
         if use_arrow:
-            indices, starts, ends = time_ordered_single_user_indices_arrow(timestamps.to_arrow())
+            indices, starts, ends = time_ordered_user_indices_arrow(None, timestamps.to_arrow())
         else:
-            indices, starts, ends = time_ordered_single_user_indices_numpy(timestamps.to_numpy())
+            indices, starts, ends = time_ordered_user_indices_numpy(None, timestamps.to_numpy())
         return None, _as_index_array(indices), _as_index_array(starts), _as_index_array(ends)
 
     uids = df.get_column(uid_col)
@@ -374,32 +372,32 @@ def _detect_trajectory_columns(
 
 
 def _prepare_trajectory(
-    traj,
-    datetime_col: str | None = None,
-    lat_col: str | None = None,
-    lng_col: str | None = None,
+    nw_df: nw.DataFrame,
+    *,
+    datetime_col: str,
+    lat_col: str,
+    lng_col: str,
     uid_col: str | None = None,
     sort: bool = True,
     drop_nulls: bool = True,
-) -> tuple[nw.DataFrame, str, str, str, str | None]:
-    """Wrap, detect columns, optionally sort, and cast a raw trajectory into a clean DataFrame.
+) -> nw.DataFrame:
+    """Optionally sort and cast a trajectory into a clean DataFrame.
 
     This is the standard preprocessing pipeline shared by all trajectory-based
     measures (jump lengths, radius of gyration, etc.).  It:
 
-    1. Wraps the input in Narwhals (accepting any eager backend).
-    2. Auto-detects column names (with optional overrides).
-    3. Drops nulls in the required coordinate/datetime columns.
-    4. Optionally sorts by ``[uid, datetime]`` (with a stable row-order
+    1. Drops nulls in the required coordinate/datetime columns.
+    2. Optionally sorts by ``[uid, datetime]`` (with a stable row-order
        tiebreaker) to ensure chronological order within each user.
-    5. Casts lat/lng to ``Float64``.
+    3. Casts lat/lng to ``Float64``.
 
     Parameters
     ----------
-    traj:
-        Raw trajectory dataframe (any Narwhals-compatible backend).
+    nw_df:
+        Narwhals trajectory dataframe.
     datetime_col, lat_col, lng_col, uid_col:
-        Optional explicit column overrides; auto-detected when None.
+        Resolved column names. Use ``_detect_trajectory_columns`` before
+        calling this function.
     sort:
         Whether to sort by user and datetime. When False, rows keep their
         input order after null rows are dropped.
@@ -408,37 +406,23 @@ def _prepare_trajectory(
 
     Returns
     -------
-    tuple[nw.DataFrame, str, str, str, str | None]
-        ``(df, datetime_col, lat_col, lng_col, uid_col)`` where ``df`` is
-        the cleaned Narwhals DataFrame and ``uid_col`` may be None.
-
-    Raises
-    ------
-    ValueError
-        When required columns cannot be found.
+    nw.DataFrame
+        The cleaned Narwhals DataFrame.
 
     Examples
     --------
-    >>> import pandas as pd
+    >>> import pandas as pd, narwhals as nw
     >>> df = pd.DataFrame({
     ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
     ...     "lat": [0.0, 1.0, 2.0],
     ...     "lng": [0.0, 0.0, 0.0],
     ...     "uid": ["u1", "u1", "u1"],
     ... })
-    >>> clean_df, dt, lat, lng, uid = _prepare_trajectory(df)
+    >>> nw_df = nw.from_native(df, eager_only=True)
+    >>> clean_df = _prepare_trajectory(nw_df, datetime_col="datetime", lat_col="lat", lng_col="lng", uid_col="uid")
     """
-    nw_df = nw.from_native(traj, eager_only=True)
     if sort:
         nw_df = nw_df.with_row_index(_ROW_ORDER_COL)
-
-    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
-        nw_df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-    )
 
     nw_df = _with_datetime_column(nw_df, datetime_col)
 
@@ -454,7 +438,7 @@ def _prepare_trajectory(
     if sort:
         df = df.drop(_ROW_ORDER_COL)
 
-    return df, datetime_col, lat_col, lng_col, uid_col
+    return df
 
 
 def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, list[tuple[int, int]]]:

@@ -61,7 +61,13 @@ fn location_frequency_indexed_impl(
         out_user_ends.push(offset);
     }
 
-    Ok((out_lats, out_lngs, out_counts, out_user_starts, out_user_ends))
+    Ok((
+        out_lats,
+        out_lngs,
+        out_counts,
+        out_user_starts,
+        out_user_ends,
+    ))
 }
 
 type LocFreqNumpy<'py> = (

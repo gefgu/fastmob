@@ -4,7 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _prepare_trajectory, _shannon_entropy
+from .._common import _detect_trajectory_columns, _prepare_trajectory, _shannon_entropy
 
 
 def uncorrelated_location_entropy(
@@ -90,8 +90,16 @@ def uncorrelated_location_entropy(
     ----------
     - [CML2011] Cho, E., Myers, S. A. & Leskovec, J. (2011) Friendship and mobility: user movement in location-based social networks. In Proceedings of the 17th ACM SIGKDD international conference on Knowledge discovery and data mining, 1082-1090, https://dl.acm.org/citation.cfm?id=2020579
     """
-    df, datetime_col, lat_col, lng_col, uid_col = _prepare_trajectory(
-        traj,
+    df = nw.from_native(traj, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    df = _prepare_trajectory(
+        df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
