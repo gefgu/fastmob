@@ -33,6 +33,23 @@ def test_build_profile_command_function_scope_uses_pid_placeholder(tmp_path):
     assert profile.child_command is not None
     assert "tests.profiling.brightkite_workloads" in profile.child_command
     assert "--prepared-child" in profile.child_command
+    assert "--jump-lengths-entrypoint" in profile.child_command
+    assert "method" in profile.child_command
+
+
+def test_build_profile_command_can_select_jump_lengths_function_entrypoint(tmp_path):
+    profile = build_profile_command(
+        "jump_lengths",
+        rows=10_000,
+        backend="pandas",
+        output_dir=tmp_path,
+        rate=1000,
+        jump_lengths_entrypoint="function",
+    )
+
+    assert profile.child_command is not None
+    entrypoint_index = profile.child_command.index("--jump-lengths-entrypoint") + 1
+    assert profile.child_command[entrypoint_index] == "function"
 
 
 def test_build_profile_command_full_scope_runs_child_directly(tmp_path):
@@ -74,6 +91,7 @@ def test_runner_dry_run_writes_manifest(tmp_path):
         scope="function",
         implementation="skmob2",
         samply_bin="samply",
+        jump_lengths_entrypoint="method",
     )
     assert run_profiles(args) == 0
     manifest = json.loads((tmp_path / "manifest.json").read_text())
@@ -81,6 +99,7 @@ def test_runner_dry_run_writes_manifest(tmp_path):
     assert manifest[0]["implementation"] == "skmob2"
     assert manifest[0]["scope"] == "function"
     assert manifest[0]["profiled_phase"] == "function"
+    assert manifest[0]["jump_lengths_entrypoint"] == "method"
     assert manifest[0]["status"] == "dry-run"
     assert manifest[0]["output_path"].endswith("skmob2/radius_of_gyration.json.gz")
     assert "--prepared-child" in manifest[0]["child_command"]
@@ -101,10 +120,12 @@ def test_runner_dry_run_both_uses_implementation_specific_paths(tmp_path, monkey
         scope="function",
         implementation="both",
         samply_bin="samply",
+        jump_lengths_entrypoint="function",
     )
 
     assert run_profiles(args) == 0
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert [row["implementation"] for row in manifest] == ["skmob2", "skmob"]
+    assert [row["jump_lengths_entrypoint"] for row in manifest] == ["function", "function"]
     assert manifest[0]["output_path"].endswith("skmob2/radius_of_gyration.json.gz")
     assert manifest[1]["output_path"].endswith("skmob/radius_of_gyration.json.gz")

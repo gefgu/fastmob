@@ -5,6 +5,7 @@
 # Usage:
 #   bash scripts/run_samply_profiles.sh --list
 #   bash scripts/run_samply_profiles.sh --dry-run --rows 10000 --workload radius_of_gyration
+#   bash scripts/run_samply_profiles.sh --dry-run --rows 10000 --workload jump_lengths --jump-lengths-entrypoint function
 #   bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration
 #   bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
 #   bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --scope full

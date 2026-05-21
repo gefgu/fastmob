@@ -20,7 +20,12 @@ from scripts.profile_brightkite_common import (
     select_workloads,
     write_manifest,
 )
-from tests.profiling.brightkite_workloads import DEFAULT_ROWS, workload_registry
+from tests.profiling.brightkite_workloads import (
+    DEFAULT_ROWS,
+    DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+    JUMP_LENGTHS_ENTRYPOINTS,
+    workload_registry,
+)
 
 
 DEFAULT_OUTPUT_DIR = Path(".profiles") / "samply"
@@ -37,7 +42,15 @@ class ProfileCommand:
     child_command: list[str] | None = None
 
 
-def _workload_command(workload: str, *, rows: int, backend: str, implementation: str, prepared_child: bool) -> list[str]:
+def _workload_command(
+    workload: str,
+    *,
+    rows: int,
+    backend: str,
+    implementation: str,
+    prepared_child: bool,
+    jump_lengths_entrypoint: str,
+) -> list[str]:
     command = [
         sys.executable,
         "-m",
@@ -50,6 +63,8 @@ def _workload_command(workload: str, *, rows: int, backend: str, implementation:
         backend,
         "--implementation",
         implementation,
+        "--jump-lengths-entrypoint",
+        jump_lengths_entrypoint,
     ]
     if prepared_child:
         command.append("--prepared-child")
@@ -66,6 +81,7 @@ def build_profile_command(
     samply_bin: str = "samply",
     implementation: str = "skmob2",
     scope: str = "function",
+    jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> ProfileCommand:
     profile_dir = output_dir / implementation
     suffix = "" if scope == "function" else ".full"
@@ -76,6 +92,7 @@ def build_profile_command(
         backend=backend,
         implementation=implementation,
         prepared_child=scope == "function",
+        jump_lengths_entrypoint=jump_lengths_entrypoint,
     )
 
     if scope == "function":
@@ -139,6 +156,7 @@ def run_profiles(args: argparse.Namespace) -> int:
             samply_bin=samply_bin,
             implementation=implementation,
             scope=scope,
+            jump_lengths_entrypoint=getattr(args, "jump_lengths_entrypoint", DEFAULT_JUMP_LENGTHS_ENTRYPOINT),
         )
         profile.output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -279,6 +297,7 @@ def _manifest_row(
         "implementation": profile.implementation,
         "scope": profile.scope,
         "profiled_phase": "function" if profile.scope == "function" else "full",
+        "jump_lengths_entrypoint": getattr(args, "jump_lengths_entrypoint", DEFAULT_JUMP_LENGTHS_ENTRYPOINT),
         "status": status,
         "returncode": returncode,
         "duration_seconds": round(elapsed, 6),
@@ -309,6 +328,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
     parser.add_argument("--scope", choices=SCOPES, default="function")
     parser.add_argument("--implementation", choices=("skmob2", "skmob", "both"), default="skmob2")
+    parser.add_argument(
+        "--jump-lengths-entrypoint",
+        choices=JUMP_LENGTHS_ENTRYPOINTS,
+        default=DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+        help="skmob2 jump_lengths TrajDataFrame entrypoint to profile.",
+    )
     parser.add_argument(
         "--continue-on-error",
         dest="continue_on_error",

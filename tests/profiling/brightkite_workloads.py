@@ -19,6 +19,8 @@ from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
 
 DEFAULT_ROWS = 4_000_000
 IMPLEMENTATIONS = ("skmob2", "skmob")
+JUMP_LENGTHS_ENTRYPOINTS = ("method", "function")
+DEFAULT_JUMP_LENGTHS_ENTRYPOINT = "method"
 WorkloadFunc = Callable[[Any], Any]
 
 
@@ -39,6 +41,8 @@ class PreparedWorkload:
     backend: str
     data: Any
     func: WorkloadFunc
+    call_kwargs: dict[str, Any]
+    jump_lengths_entrypoint: str | None = None
 
 
 def load_brightkite(rows: int = DEFAULT_ROWS, *, backend: str = "pandas") -> Any:
@@ -425,7 +429,14 @@ def available_workloads(implementation: str = "skmob2") -> list[str]:
     return list(workload_registry(implementation))
 
 
-def build_dataset_for_workload(workload: Workload, rows: int, backend: str, implementation: str = "skmob2") -> Any:
+def build_dataset_for_workload(
+    workload: Workload,
+    rows: int,
+    backend: str,
+    implementation: str = "skmob2",
+    *,
+    jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+) -> Any:
     load_backend = "pandas" if implementation == "skmob" else backend
     traj = load_brightkite(rows, backend=load_backend)
 
@@ -443,6 +454,11 @@ def build_dataset_for_workload(workload: Workload, rows: int, backend: str, impl
             user_id="uid",
         )
 
+    if _uses_skmob2_jump_lengths_tdf(workload, implementation):
+        import skmob2
+
+        _validate_jump_lengths_entrypoint(jump_lengths_entrypoint)
+        return skmob2.TrajDataFrame(traj, sort=jump_lengths_entrypoint == "method")
     if workload.dataset == "trajectory":
         return traj
     if workload.dataset == "visits":
@@ -464,6 +480,7 @@ def prepare_workload(
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
     implementation: str = "skmob2",
+    jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> PreparedWorkload:
     workloads = workload_registry(implementation)
     if name not in workloads:
@@ -480,18 +497,76 @@ def prepare_workload(
             raise SystemExit("skmob2._core is not importable. Run `maturin develop` first.") from exc
 
     workload = workloads[name]
-    data = build_dataset_for_workload(workload, rows, backend, implementation)
+    data = build_dataset_for_workload(
+        workload,
+        rows,
+        backend,
+        implementation,
+        jump_lengths_entrypoint=jump_lengths_entrypoint,
+    )
+    if _uses_skmob2_jump_lengths_tdf(workload, implementation):
+        _validate_jump_lengths_entrypoint(jump_lengths_entrypoint)
+        if jump_lengths_entrypoint == "method":
+            return PreparedWorkload(
+                workload,
+                implementation,
+                rows,
+                backend,
+                data,
+                _jump_lengths_method_entrypoint,
+                {},
+                jump_lengths_entrypoint,
+            )
+        return PreparedWorkload(
+            workload,
+            implementation,
+            rows,
+            backend,
+            data,
+            _jump_lengths_function_entrypoint,
+            dict(workload.kwargs),
+            jump_lengths_entrypoint,
+        )
+
     func = _resolve_import(workload.import_path)
-    return PreparedWorkload(workload, implementation, rows, backend, data, func)
+    return PreparedWorkload(workload, implementation, rows, backend, data, func, dict(workload.kwargs))
 
 
 def execute_prepared_workload(prepared: PreparedWorkload) -> None:
     if prepared.workload.dataset == "stvd":
         left, right = prepared.data
-        result = prepared.func(left, right, **prepared.workload.kwargs)
+        result = prepared.func(left, right, **prepared.call_kwargs)
     else:
-        result = prepared.func(prepared.data, **prepared.workload.kwargs)
+        result = prepared.func(prepared.data, **prepared.call_kwargs)
     _materialize(result)
+
+
+def _uses_skmob2_jump_lengths_tdf(workload: Workload, implementation: str) -> bool:
+    return implementation == "skmob2" and workload.name == "jump_lengths"
+
+
+def _validate_jump_lengths_entrypoint(entrypoint: str) -> None:
+    if entrypoint not in JUMP_LENGTHS_ENTRYPOINTS:
+        choices = ", ".join(JUMP_LENGTHS_ENTRYPOINTS)
+        raise ValueError(f"Unsupported jump_lengths entrypoint: {entrypoint!r}. Expected one of: {choices}")
+
+
+def _jump_lengths_method_entrypoint(tdf: Any) -> Any:
+    return tdf.jump_lengths()
+
+
+def _jump_lengths_function_entrypoint(tdf: Any, **kwargs: Any) -> Any:
+    from skmob2.measures.spatial.jump_lengths import jump_lengths
+
+    return jump_lengths(
+        tdf.df,
+        datetime_col=tdf.datetime_col,
+        lat_col=tdf.lat_col,
+        lng_col=tdf.lng_col,
+        uid_col=tdf.uid_col,
+        sorted=tdf.sorted,
+        **kwargs,
+    )
 
 
 def run_workload(
@@ -500,8 +575,15 @@ def run_workload(
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
     implementation: str = "skmob2",
+    jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> dict[str, Any]:
-    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
+    prepared = prepare_workload(
+        name,
+        rows=rows,
+        backend=backend,
+        implementation=implementation,
+        jump_lengths_entrypoint=jump_lengths_entrypoint,
+    )
     execute_prepared_workload(prepared)
     return {
         "workload": name,
@@ -510,6 +592,7 @@ def run_workload(
         "implementation": implementation,
         "dataset": prepared.workload.dataset,
         "profiled_phase": "full",
+        "jump_lengths_entrypoint": prepared.jump_lengths_entrypoint,
     }
 
 
@@ -519,8 +602,15 @@ def run_prepared_child(
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
     implementation: str = "skmob2",
+    jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> int:
-    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
+    prepared = prepare_workload(
+        name,
+        rows=rows,
+        backend=backend,
+        implementation=implementation,
+        jump_lengths_entrypoint=jump_lengths_entrypoint,
+    )
     _allow_external_profiler_attach()
     ready = {
         "event": "ready",
@@ -530,6 +620,7 @@ def run_prepared_child(
         "backend": backend,
         "implementation": implementation,
         "dataset": prepared.workload.dataset,
+        "jump_lengths_entrypoint": prepared.jump_lengths_entrypoint,
     }
     print(json.dumps(ready), flush=True)
     sys.stdin.readline()
@@ -543,6 +634,7 @@ def run_prepared_child(
                 "backend": backend,
                 "implementation": implementation,
                 "dataset": prepared.workload.dataset,
+                "jump_lengths_entrypoint": prepared.jump_lengths_entrypoint,
             }
         ),
         flush=True,
@@ -569,10 +661,17 @@ def run_scalene_function_profile(
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
     implementation: str = "skmob2",
+    jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> dict[str, Any]:
     from scalene import scalene_profiler
 
-    prepared = prepare_workload(name, rows=rows, backend=backend, implementation=implementation)
+    prepared = prepare_workload(
+        name,
+        rows=rows,
+        backend=backend,
+        implementation=implementation,
+        jump_lengths_entrypoint=jump_lengths_entrypoint,
+    )
     scalene_profiler.start()
     try:
         execute_prepared_workload(prepared)
@@ -585,6 +684,7 @@ def run_scalene_function_profile(
         "implementation": implementation,
         "dataset": prepared.workload.dataset,
         "profiled_phase": "function",
+        "jump_lengths_entrypoint": prepared.jump_lengths_entrypoint,
     }
 
 
@@ -594,6 +694,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rows", type=int, default=DEFAULT_ROWS)
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
     parser.add_argument("--implementation", choices=IMPLEMENTATIONS, default="skmob2")
+    parser.add_argument(
+        "--jump-lengths-entrypoint",
+        choices=JUMP_LENGTHS_ENTRYPOINTS,
+        default=DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+        help="skmob2 jump_lengths TrajDataFrame entrypoint to profile.",
+    )
     parser.add_argument("--list", action="store_true", help="List workload names and exit.")
     parser.add_argument("--prepared-child", action="store_true", help="Prepare workload, wait on stdin, then execute.")
     parser.add_argument("--scalene-function-profile", action="store_true", help="Profile only workload execution with Scalene.")
@@ -613,6 +719,7 @@ def main(argv: list[str] | None = None) -> int:
             rows=args.rows,
             backend=args.backend,
             implementation=args.implementation,
+            jump_lengths_entrypoint=args.jump_lengths_entrypoint,
         )
     if args.scalene_function_profile:
         result = run_scalene_function_profile(
@@ -620,9 +727,16 @@ def main(argv: list[str] | None = None) -> int:
             rows=args.rows,
             backend=args.backend,
             implementation=args.implementation,
+            jump_lengths_entrypoint=args.jump_lengths_entrypoint,
         )
     else:
-        result = run_workload(args.workload, rows=args.rows, backend=args.backend, implementation=args.implementation)
+        result = run_workload(
+            args.workload,
+            rows=args.rows,
+            backend=args.backend,
+            implementation=args.implementation,
+            jump_lengths_entrypoint=args.jump_lengths_entrypoint,
+        )
 
     print(json.dumps(result))
     return 0

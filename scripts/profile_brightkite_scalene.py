@@ -22,6 +22,8 @@ from scripts.profile_brightkite_common import (
 )
 from tests.profiling.brightkite_workloads import (
     DEFAULT_ROWS,
+    DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+    JUMP_LENGTHS_ENTRYPOINTS,
     workload_registry,
 )
 
@@ -70,6 +72,7 @@ def build_profile_command(
     reduced: bool = False,
     cpu_only: bool = False,
     cpu_sampling_rate: float | None = None,
+    jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> ProfileCommand:
     profile_dir = output_dir / implementation
     if implementation == "skmob2" and backend != "pandas":
@@ -87,6 +90,8 @@ def build_profile_command(
         backend,
         "--implementation",
         implementation,
+        "--jump-lengths-entrypoint",
+        jump_lengths_entrypoint,
         "--scalene-function-profile",
     ]
     run_command = [
@@ -148,6 +153,7 @@ def run_profiles(args: argparse.Namespace) -> int:
             reduced=getattr(args, "reduced", False),
             cpu_only=_cpu_only(args),
             cpu_sampling_rate=_cpu_sampling_rate(args),
+            jump_lengths_entrypoint=getattr(args, "jump_lengths_entrypoint", DEFAULT_JUMP_LENGTHS_ENTRYPOINT),
         )
         profile.profile_dir.mkdir(parents=True, exist_ok=True)
 
@@ -415,6 +421,7 @@ def _manifest_row(
         "profile_scope": getattr(args, "profile_scope", None) or profile.implementation,
         "cpu_only": _cpu_only(args),
         "cpu_sampling_rate": _cpu_sampling_rate(args),
+        "jump_lengths_entrypoint": getattr(args, "jump_lengths_entrypoint", DEFAULT_JUMP_LENGTHS_ENTRYPOINT),
         "json_path": "" if reduced_only else str(profile.json_path),
         "reduced_json_path": reduced_json_path,
         "html_path": "" if reduced_only else str(profile.html_path),
@@ -439,6 +446,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scalene-bin", default="scalene")
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
     parser.add_argument("--implementation", choices=("skmob2", "skmob", "both"), default="both")
+    parser.add_argument(
+        "--jump-lengths-entrypoint",
+        choices=JUMP_LENGTHS_ENTRYPOINTS,
+        default=DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+        help="skmob2 jump_lengths TrajDataFrame entrypoint to profile.",
+    )
     parser.add_argument(
         "--timeout-seconds",
         type=float,
@@ -502,14 +515,14 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _cpu_only(args: argparse.Namespace) -> bool:
-    return bool(getattr(args, "reduced", False) and not getattr(args, "profile_memory", False))
+    return not bool(getattr(args, "profile_memory", False))
 
 
 def _cpu_sampling_rate(args: argparse.Namespace) -> float | None:
     sampling_rate = getattr(args, "cpu_sampling_rate", None)
     if sampling_rate is not None:
         return sampling_rate
-    if _cpu_only(args):
+    if getattr(args, "reduced", False) and _cpu_only(args):
         return DEFAULT_REDUCED_CPU_SAMPLING_RATE
     return None
 
