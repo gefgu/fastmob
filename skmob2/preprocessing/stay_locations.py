@@ -18,7 +18,6 @@ from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _
 
 def stay_locations(
     traj: Any,
-    stop_radius_factor: float = 0.5,
     minutes_for_a_stop: float = 20.0,
     spatial_radius_km: float = 0.2,
     leaving_time: bool = True,
@@ -39,8 +38,6 @@ def stay_locations(
     ----------
     traj:
         Trajectory dataframe; any Narwhals-compatible eager backend.
-    stop_radius_factor:
-        Accepted for skmob API compatibility; not used by this implementation.
     minutes_for_a_stop:
         Minimum duration (minutes) to qualify as a stop.
     spatial_radius_km:

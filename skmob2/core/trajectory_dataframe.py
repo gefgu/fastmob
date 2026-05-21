@@ -5,15 +5,23 @@ import narwhals as nw
 
 
 class TrajDataFrame(BaseDataFrame):
-    def __init__(self, df, sort=False, timestamp=True, **kwargs):
+    def __init__(
+        self,
+        df,
+        sort=False,
+        timestamp=True,
+        datetime_col=None,
+        lat_col=None,
+        lng_col=None,
+        uid_col=None,
+        **kwargs,
+    ):
         super().__init__(df, **kwargs)
 
         self.sorted = False
-        datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(self.df)
-        self.datetime_col = datetime_col
-        self.lat_col = lat_col
-        self.lng_col = lng_col
-        self.uid_col = uid_col
+        self.datetime_col, self.lat_col, self.lng_col, self.uid_col = (
+            _detect_trajectory_columns(self.df, datetime_col, lat_col, lng_col, uid_col)
+        )
 
         if timestamp and self.datetime_col is not None:
             # 1. Wrap the native dataframe (pandas/polars) into a Narwhals frame
@@ -27,6 +35,7 @@ class TrajDataFrame(BaseDataFrame):
                 # and unwrap it back to the native library format
                 if "polars" in str(type(self.df)).lower():
                     import polars as pl
+
                     # Fix for Polars: parse with timezone handling built into the expression
                     native_pl_df = nw_df.to_native()
                     self.df = native_pl_df.with_columns(
@@ -40,17 +49,16 @@ class TrajDataFrame(BaseDataFrame):
 
         if sort:
             nw_df = nw.from_native(self.df, eager_only=True)
-            datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(nw_df)
             self.df = _prepare_trajectory(
                 nw_df,
-                datetime_col=datetime_col,
-                lat_col=lat_col,
-                lng_col=lng_col,
-                uid_col=uid_col,
+                datetime_col=self.datetime_col,
+                lat_col=self.lat_col,
+                lng_col=self.lng_col,
+                uid_col=self.uid_col,
             ).to_native()
             self.sorted = True
 
-    def jump_lengths(self):
+    def jump_lengths(self, merge=False):
         return jump_lengths(
             self.df,
             datetime_col=self.datetime_col,
@@ -58,4 +66,83 @@ class TrajDataFrame(BaseDataFrame):
             lng_col=self.lng_col,
             uid_col=self.uid_col,
             sorted=self.sorted,
+            merge=merge,
+        )
+
+    def radius_of_gyration(self):
+        from skmob2.measures.spatial import radius_of_gyration
+
+        return radius_of_gyration(
+            self.df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            # sorted=self.sorted,
+            # merge=merge,
+        )
+
+    # Apply compress function from the skmob2 library to the TrajDataFrame class
+    def compress(self, spatial_radius_km=0.2, inplace=False):
+        from skmob2.preprocessing.compress import compress
+
+        if inplace:
+            self.df = compress(
+                self.df,
+                spatial_radius_km=spatial_radius_km,
+                datetime_col=self.datetime_col,
+                lat_col=self.lat_col,
+                lng_col=self.lng_col,
+                uid_col=self.uid_col,
+            )
+
+            return self
+
+        compressed_df = compress(
+            self.df,
+            spatial_radius_km=spatial_radius_km,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+
+        return TrajDataFrame(
+            compressed_df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+
+    def stay_locations(self, inplace=False, **kwargs):
+        from skmob2.preprocessing.stay_locations import stay_locations
+
+        if inplace:
+            self.df = stay_locations(
+                self.df,
+                datetime_col=self.datetime_col,
+                lat_col=self.lat_col,
+                lng_col=self.lng_col,
+                uid_col=self.uid_col,
+                **kwargs,
+            )
+
+            return self
+
+        stay_locations_df = stay_locations(
+            self.df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            **kwargs,
+        )
+
+        return TrajDataFrame(
+            stay_locations_df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
         )

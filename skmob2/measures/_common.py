@@ -17,7 +17,7 @@ _USER_RANGE_START_COL = "__skmob2_user_range_start__"
 
 DATETIME_CANDIDATES: list[str] = ["datetime", "check-in_time", "timestamp", "time"]
 LAT_CANDIDATES: list[str] = ["lat", "latitude"]
-LNG_CANDIDATES: list[str] = ["lng", "lon", "longitude"]
+LNG_CANDIDATES: list[str] = ["lng", "lon", "longitude", "long"]
 UID_CANDIDATES: list[str] = ["uid", "user", "user_id"]
 
 ACTIVITY_CANDIDATES: list[str] = ["purpose", "activity", "act", "location_type"]
