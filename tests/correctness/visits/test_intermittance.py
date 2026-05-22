@@ -132,3 +132,76 @@ def test_pure_exploration_agent():
     assert row["mean_exploration"] > 0
     assert row["mean_return"] == pytest.approx(0.0)
     assert row["degree_of_return"] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_use_trajectory_expands_aligned_stay_to_5_minute_slices():
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1"],
+            "location_id": ["a"],
+            "start_timestamp": [pd.Timestamp("2020-01-01 08:00")],
+            "end_timestamp": [pd.Timestamp("2020-01-01 08:10")],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none")
+    row = result.iloc[0]
+
+    assert row["mean_exploration"] == pytest.approx(1.0)
+    assert row["mean_return"] == pytest.approx(2.0)
+    assert row["intermittency"] == pytest.approx(3.0)
+    assert row["degree_of_return"] == pytest.approx(np.arctan2(2.0, 1.0))
+
+
+def test_use_trajectory_expands_non_aligned_stay_to_inner_5_minute_slices():
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1"],
+            "location_id": ["a"],
+            "start_timestamp": [pd.Timestamp("2020-01-01 08:02")],
+            "end_timestamp": [pd.Timestamp("2020-01-01 08:13")],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none")
+    row = result.iloc[0]
+
+    assert row["mean_exploration"] == pytest.approx(1.0)
+    assert row["mean_return"] == pytest.approx(1.0)
+    assert row["intermittency"] == pytest.approx(2.0)
+    assert row["degree_of_return"] == pytest.approx(np.arctan2(1.0, 1.0))
+
+
+def test_use_trajectory_falls_back_to_rows_without_end_timestamp():
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1"],
+            "location_id": ["a"],
+            "start_timestamp": [pd.Timestamp("2020-01-01 08:00")],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none")
+    row = result.iloc[0]
+
+    assert row["mean_exploration"] == pytest.approx(1.0)
+    assert row["mean_return"] == pytest.approx(0.0)
+    assert row["degree_of_return"] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_use_trajectory_false_ignores_end_timestamp():
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1"],
+            "location_id": ["a"],
+            "start_timestamp": [pd.Timestamp("2020-01-01 08:00")],
+            "end_timestamp": [pd.Timestamp("2020-01-01 08:10")],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none", use_trajectory=False)
+    row = result.iloc[0]
+
+    assert row["mean_exploration"] == pytest.approx(1.0)
+    assert row["mean_return"] == pytest.approx(0.0)
+    assert row["degree_of_return"] == pytest.approx(0.0, abs=1e-9)

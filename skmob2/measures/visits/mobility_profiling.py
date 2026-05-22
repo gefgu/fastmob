@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any, Literal, get_args
 
 import math
@@ -11,10 +12,69 @@ from .._common import (
     USER_ID_CANDIDATES,
     LOCATION_CANDIDATES,
     DATETIME_CANDIDATES,
+    TIMESTAMP_CANDIDATES,
 )
 
 COLD_START_STRATEGIES = Literal["frequency", "baseline", "max_frequency", "suffix", "none"]
 CLUSTERING_METHODS = Literal["kmeans", "gmm"]
+_END_TIMESTAMP_CANDIDATES: list[str] = ["end_timestamp", "end_time"]
+_FIVE_MINUTES = timedelta(minutes=5)
+_TIMESTAMP_CANDIDATES: list[str] = TIMESTAMP_CANDIDATES + [
+    col for col in DATETIME_CANDIDATES if col not in TIMESTAMP_CANDIDATES
+]
+_TRAJECTORY_TIMESTAMP_COL = "__skmob2_trajectory_timestamp__"
+
+
+def _floor_5min(dt: Any) -> Any:
+    if hasattr(dt, "floor"):
+        return dt.floor("5min")
+    return dt.replace(minute=(dt.minute // 5) * 5, second=0, microsecond=0)
+
+
+def _ceil_5min(dt: Any) -> Any:
+    if hasattr(dt, "ceil"):
+        return dt.ceil("5min")
+    floored = _floor_5min(dt)
+    return floored if floored == dt else floored + _FIVE_MINUTES
+
+
+def _expand_to_5min_trajectory(
+    nw_df: Any,
+    user_id_col: str,
+    location_id_col: str,
+    start_col: str,
+    end_col: str,
+) -> Any:
+    user_values = nw_df.get_column(user_id_col).to_list()
+    location_values = nw_df.get_column(location_id_col).to_list()
+    start_values = nw_df.get_column(start_col).to_list()
+    end_values = nw_df.get_column(end_col).to_list()
+
+    rows: list[tuple[Any, Any, Any]] = []
+    seen: set[tuple[Any, Any]] = set()
+
+    for uid, location, start, end in zip(user_values, location_values, start_values, end_values):
+        if start is None or end is None:
+            continue
+
+        timestamp = _ceil_5min(start)
+        last_timestamp = _floor_5min(end)
+        while timestamp <= last_timestamp:
+            key = (uid, timestamp)
+            if key not in seen:
+                rows.append((uid, timestamp, location))
+                seen.add(key)
+            timestamp = timestamp + _FIVE_MINUTES
+
+    rows.sort(key=lambda row: (str(row[0]), row[1]))
+    return nw.from_dict(
+        {
+            user_id_col: [row[0] for row in rows],
+            _TRAJECTORY_TIMESTAMP_COL: [row[1] for row in rows],
+            location_id_col: [row[2] for row in rows],
+        },
+        backend=nw_df.implementation,
+    )
 
 
 def _apply_cold_start_strategy(
@@ -156,12 +216,15 @@ def intermittance_and_degree_of_return(
     datetime_col: str | None = None,
     cold_start_strategy: COLD_START_STRATEGIES = "frequency",
     known_suffixes: tuple[str, ...] = ("_HOME", "_WORK"),
+    use_trajectory: bool = True,
 ) -> Any:
     """Compute intermittancy and degree of return per user using vectorized operations.
 
     For each user, partitions the visit sequence into alternating blocks of
     *explorations* (new places) and *returns* (revisits or home/work visits).
-    Then computes summary statistics over those blocks.
+    Then computes summary statistics over those blocks. By default, stay
+    intervals are reconstructed into 5-minute trajectory slices when start and
+    end timestamp columns are available.
 
     Parameters
     ----------
@@ -174,6 +237,7 @@ def intermittance_and_degree_of_return(
     datetime_col:
         Column name for visit timestamps. Auto-detected if None. Required when
         ``cold_start_strategy="baseline"`` (used to count distinct active days).
+        Also used as the stay start timestamp when ``use_trajectory=True``.
     cold_start_strategy:
         How to initialize "known" places.
 
@@ -187,6 +251,14 @@ def intermittance_and_degree_of_return(
         * ``"none"`` — no cold-start; every first visit is an exploration.
     known_suffixes:
         Used only when ``cold_start_strategy="suffix"``.
+    use_trajectory:
+        If True, and both start and end timestamp columns are available, expand
+        each stay into observed 5-minute slices from ``ceil(start, "5min")`` to
+        ``floor(end, "5min")`` without imputing missing gaps. Duplicate
+        ``(user, timestamp)`` slices keep the first input occurrence. If no end
+        timestamp column is available, the function falls back to treating each
+        input row as one sequence event. If False, each input row is always one
+        sequence event.
 
     Returns
     -------
@@ -229,7 +301,20 @@ def intermittance_and_degree_of_return(
     if location_id_col is None:
         location_id_col = _pick_existing_column(nw_df.columns, LOCATION_CANDIDATES)
     if datetime_col is None:
-        datetime_col = _pick_existing_column(nw_df.columns, DATETIME_CANDIDATES)
+        datetime_col = _pick_existing_column(nw_df.columns, _TIMESTAMP_CANDIDATES)
+
+    timestamp_col = datetime_col
+    if use_trajectory:
+        end_timestamp_col = _pick_existing_column(nw_df.columns, _END_TIMESTAMP_CANDIDATES)
+        if datetime_col is not None and end_timestamp_col is not None:
+            nw_df = _expand_to_5min_trajectory(
+                nw_df=nw_df,
+                user_id_col=user_id_col,
+                location_id_col=location_id_col,
+                start_col=datetime_col,
+                end_col=end_timestamp_col,
+            )
+            timestamp_col = _TRAJECTORY_TIMESTAMP_COL
 
     # 1. Build the unique location key
     location_expr = nw.col(location_id_col).cast(nw.String).fill_null("unknown")
@@ -248,7 +333,7 @@ def intermittance_and_degree_of_return(
         user_id_col=user_id_col,
         cold_start_strategy=cold_start_strategy,
         known_suffixes=known_suffixes,
-        timestamp_col=datetime_col,
+        timestamp_col=timestamp_col,
     )
 
     # 5. A place is known if its current index > its first seen index, OR if it triggers the cold start
