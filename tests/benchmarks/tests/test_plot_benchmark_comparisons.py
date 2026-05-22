@@ -58,23 +58,11 @@ def test_metric_rows_uses_catalog_order_and_sorts_model_metrics():
     assert [row["speedup"] for row in rows] == [8.0, 4.0]
 
 
-def test_generate_plots_supports_models_without_backend(tmp_path: Path, monkeypatch):
-    catalog = tmp_path / "catalog.json"
-    catalog.write_text(
-        json.dumps(
-            {
-                "entries": [
-                    {"name": "gravity_flows", "suite": "models"},
-                    {"name": "radiation_flows", "suite": "models"},
-                ]
-            }
-        ),
-        encoding="utf-8",
-    )
+def test_generate_plots_models_location_only(tmp_path: Path, monkeypatch):
     original_json = tmp_path / "skmob_models_speed.json"
     optimized_json = tmp_path / "skmob2_models_speed.json"
-    original_json.write_text(json.dumps(_payload("skmob", ["1k", "2k"])), encoding="utf-8")
-    optimized_json.write_text(json.dumps(_payload("skmob2", ["1k"])), encoding="utf-8")
+    original_json.write_text(json.dumps(_location_model_payload("skmob", [12, 50])), encoding="utf-8")
+    optimized_json.write_text(json.dumps(_location_model_payload("skmob2", [12, 50])), encoding="utf-8")
 
     drawn = []
 
@@ -84,27 +72,20 @@ def test_generate_plots_supports_models_without_backend(tmp_path: Path, monkeypa
     monkeypatch.setattr(plot, "draw_plot", fake_draw_plot)
 
     status = plot.generate_plots(
-        argparse.Namespace(
-            original_json=original_json,
-            optimized_json=optimized_json,
-            suite="models",
-            backend=None,
-            catalog=catalog,
-            output_dir=tmp_path / "plots",
-            sizes=None,
-            sort="speedup",
-        )
+        _model_args(original_json, optimized_json, tmp_path)
     )
 
     assert status == 0
-    assert len(drawn) == 1
-    assert drawn[0][1]["backend"] is None
-    assert drawn[0][1]["output_path"].name == "skmob2_vs_skmob_models_1k.png"
+    # One chart per location count (12 and 50)
+    assert len(drawn) == 2
+    assert [item[1]["backend"] for item in drawn] == [None, None]
+    assert drawn[0][1]["output_path"].name == "model_location_only_12_locations.png"
+    assert drawn[1][1]["output_path"].name == "model_location_only_50_locations.png"
+    # Each chart has gravity_flows and radiation_flows rows
+    assert {row["metric"] for row in drawn[0][0]} == {"gravity flows", "radiation flows"}
 
 
-def test_generate_plots_groups_model_matrix_by_locations(tmp_path: Path, monkeypatch):
-    catalog = tmp_path / "catalog.json"
-    catalog.write_text(json.dumps({"entries": []}), encoding="utf-8")
+def test_generate_plots_groups_model_matrix_by_agents(tmp_path: Path, monkeypatch):
     original_json = tmp_path / "skmob_models_speed.json"
     optimized_json = tmp_path / "skmob2_models_speed.json"
     original_json.write_text(json.dumps(_model_matrix_payload("skmob")), encoding="utf-8")
@@ -118,33 +99,27 @@ def test_generate_plots_groups_model_matrix_by_locations(tmp_path: Path, monkeyp
     monkeypatch.setattr(plot, "draw_plot", fake_draw_plot)
 
     status = plot.generate_plots(
-        argparse.Namespace(
-            original_json=original_json,
-            optimized_json=optimized_json,
-            suite="models",
-            backend=None,
-            catalog=catalog,
-            output_dir=tmp_path / "plots",
-            sizes=None,
-            sort="original-time",
-        )
+        _model_args(original_json, optimized_json, tmp_path)
     )
 
     assert status == 0
+    # One chart per agent count (2 and 10)
     assert len(drawn) == 2
-    assert [item[1]["size_label"] for item in drawn] == ["12 locations", "50 locations"]
-    assert drawn[0][1]["output_path"].name == "skmob2_vs_skmob_models_12_locations.png"
+    size_labels = [item[1]["size_label"] for item in drawn]
+    assert size_labels == ["Agent-based / 2 agents", "Agent-based / 10 agents"]
+    assert drawn[0][1]["output_path"].name == "model_agent_based_2_agents.png"
+    # Each chart covers all locations (12, 50) × all trajectory models
     assert {row["metric"] for row in drawn[0][0]} == {
-        "epr / 2 agents",
-        "density_epr / 2 agents",
-        "spatial_epr / 2 agents",
-        "geosim / 2 agents",
-        "sts_epr / 2 agents",
-        "epr / 10 agents",
-        "density_epr / 10 agents",
-        "spatial_epr / 10 agents",
-        "geosim / 10 agents",
-        "sts_epr / 10 agents",
+        "epr / 12 locs",
+        "density epr / 12 locs",
+        "spatial epr / 12 locs",
+        "geosim / 12 locs",
+        "sts epr / 12 locs",
+        "epr / 50 locs",
+        "density epr / 50 locs",
+        "spatial epr / 50 locs",
+        "geosim / 50 locs",
+        "sts epr / 50 locs",
     }
 
 
@@ -153,18 +128,37 @@ def test_comparison_title_does_not_repeat_backend():
     assert plot.comparison_title("visits", "pandas") == "skmob2 vs skmob"
 
 
-def _payload(library: str, labels: list[str]) -> dict:
+def _model_args(original_json: Path, optimized_json: Path, tmp_path: Path) -> argparse.Namespace:
+    return argparse.Namespace(
+        original_json=original_json,
+        optimized_json=optimized_json,
+        suite="models",
+        backend=None,
+        output_dir=tmp_path / "plots",
+        sizes=None,
+        sort="speedup",
+        large_json_skmob2=None,
+        large_json_skmob=None,
+        large_loc_json_skmob2=None,
+        large_loc_json_skmob=None,
+    )
+
+
+def _location_model_payload(library: str, location_counts: list[int]) -> dict:
     return {
         "metadata": {"suite": "models", "library": library, "iterations": 1},
         "results": [
             {
-                "label": label,
+                "benchmark_group": "location_models",
+                "label": f"{n_locs} locations",
+                "n_agents": None,
+                "n_locations": n_locs,
                 "metrics": {
                     "gravity_flows": {"status": "ok", "average_seconds": 2.0},
                     "radiation_flows": {"status": "ok", "average_seconds": 1.0},
                 },
             }
-            for label in labels
+            for n_locs in location_counts
         ],
     }
 

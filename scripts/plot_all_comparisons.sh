@@ -87,19 +87,24 @@ for suite in spatial privacy visits; do
     done
 done
 
-run_model_comparison \
-    models \
-    "$RESULTS_DIR/skmob_models_speed.json" \
-    "$RESULTS_DIR/skmob2_models_speed.json" \
-    models \
-    "$@"
-
-run_model_comparison \
-    models_large_scale \
-    "$RESULTS_DIR/skmob_models_speed_large_scale.json" \
-    "$RESULTS_DIR/skmob2_models_speed_large_scale.json" \
-    models-large-scale \
-    "$@"
+echo
+echo "==> Plotting models (unified: location-only + agent-based, small + large scale)"
+if "$PYTHON" "$PLOT_SCRIPT" \
+    --suite models \
+    --original-json "$RESULTS_DIR/skmob_models_speed.json" \
+    --optimized-json "$RESULTS_DIR/skmob2_models_speed.json" \
+    --large-json-skmob2 "$RESULTS_DIR/skmob2_models_speed_large_scale.json" \
+    --large-json-skmob  "$RESULTS_DIR/skmob_models_speed_large_scale.json" \
+    --large-loc-json-skmob2 "$RESULTS_DIR/skmob2_models_speed_location_large_scale.json" \
+    --large-loc-json-skmob  "$RESULTS_DIR/skmob_models_speed_location_large_scale.json" \
+    --output-dir "$OUTPUT_DIR" \
+    "$@"; then
+    echo "==> models: ok"
+else
+    status=$?
+    echo "==> models: failed with exit code ${status}"
+    FAILURES+=("models (${status})")
+fi
 
 echo
 echo "==> Plot generation complete. Images are in ${OUTPUT_DIR#$REPO_ROOT/}"
