@@ -36,10 +36,12 @@ MUTED = "#888888"
 MUTED_SOFT = "#5a5a5a"
 DEFAULT_CATALOG_PATH = Path(__file__).resolve().parent / "skmob_public_api_catalog.json"
 MODEL_TRAJECTORY_METRICS = ["epr", "density_epr", "spatial_epr", "geosim", "sts_epr"]
+MODEL_LOCATION_METRICS = ["gravity_flows", "gravity_probabilities", "radiation_flows", "radiation_probabilities"]
+_LARGE_SPEC_RE = re.compile(r"^(.*?)_(\d+)a$")
 
 FIGURE_WIDTH = 11.0
 FIGURE_MIN_HEIGHT = 7.4
-FIGURE_MAX_HEIGHT = 14
+FIGURE_MAX_HEIGHT = 22
 FIGURE_BASE_HEIGHT = 2.8
 FIGURE_HEIGHT_PER_METRIC = 0.70
 
@@ -316,7 +318,7 @@ def comparison_subtitle(
     parts = [suite.title()]
     if backend:
         parts.append(f"{backend.title()} backend")
-    if suite == "models" and "location" in size_label:
+    if suite == "models":
         parts.append(size_label)
     else:
         parts.append(f"{size_label} rows")
@@ -586,12 +588,460 @@ def draw_plot(
     plt.close(fig)
 
 
+def draw_standalone_plot(
+    rows: list[dict[str, Any]],
+    *,
+    optimized_payload: dict[str, Any],
+    suite: str,
+    size_label: str,
+    output_path: Path,
+) -> None:
+    metric_count = len(rows)
+    figure_height = max(
+        FIGURE_MIN_HEIGHT,
+        min(FIGURE_MAX_HEIGHT, FIGURE_BASE_HEIGHT + metric_count * FIGURE_HEIGHT_PER_METRIC),
+    )
+    fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, figure_height), facecolor=CANVAS)
+    add_round_card(fig)
+    plot_left = 0.27
+    plot_right = 0.92
+    header_left = 0.055
+    fig.subplots_adjust(left=plot_left, right=plot_right, top=0.68, bottom=0.12)
+    ax.set_facecolor(SURFACE_CARD)
+
+    max_time = max(row["optimized"] for row in rows)
+    x_max = max_time * 1.22
+    group_gap = BAR_GROUP_GAP
+    y_positions = [index * group_gap for index in range(metric_count)]
+    bar_height = BAR_HEIGHT * 1.4
+
+    optimized_values = [row["optimized"] for row in rows]
+    labels = [display_metric_name(row["metric"]) for row in rows]
+
+    ax.barh(
+        y_positions,
+        optimized_values,
+        height=bar_height,
+        color=PRIMARY,
+        edgecolor=PRIMARY,
+        linewidth=0.6,
+        label="skmob2",
+    )
+
+    ax.set_xlim(0, x_max)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(labels, color=BODY_STRONG, fontsize=METRIC_LABEL_FONT_SIZE)
+    ax.invert_yaxis()
+    ax.set_ylim(y_positions[-1] + group_gap * 0.8, -group_gap * 0.9)
+    ax.tick_params(axis="x", colors=MUTED, labelsize=AXIS_TICK_FONT_SIZE)
+    ax.tick_params(axis="y", colors=BODY_STRONG)
+    ax.xaxis.grid(True, color=HAIRLINE, linestyle="-", linewidth=0.7)
+    ax.set_axisbelow(True)
+    ax.set_xlabel("Average execution time (seconds)", color=BODY, fontsize=AXIS_LABEL_FONT_SIZE, labelpad=16)
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    offset = x_max * 0.012
+    min_label_x = x_max * 0.035
+    for group_y, row in zip(y_positions, rows, strict=True):
+        label_x = row["optimized"] + offset
+        if label_x < min_label_x:
+            label_x = min_label_x
+        ax.text(
+            min(label_x, x_max * 0.985),
+            group_y,
+            format_seconds(row["optimized"]),
+            va="center",
+            ha="left",
+            color=PRIMARY,
+            fontsize=BAR_LABEL_FONT_SIZE,
+            fontweight="bold",
+        )
+
+    metadata = optimized_payload.get("metadata", {})
+    iterations = metadata.get("iterations")
+    subtitle_parts = [suite.title(), size_label]
+    if iterations:
+        subtitle_parts.append(f"{iterations} iterations")
+    subtitle = " / ".join(subtitle_parts)
+
+    fig.text(
+        header_left,
+        0.955,
+        "skmob2 scaling",
+        color=ON_DARK,
+        fontsize=TITLE_FONT_SIZE,
+        fontweight="bold",
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.900,
+        subtitle,
+        color=BODY,
+        fontsize=SUBTITLE_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.872,
+        f"{metric_count} benchmarks / lower is better",
+        color=MUTED,
+        fontsize=DETAIL_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+    fastest_time = min(row["optimized"] for row in rows)
+    slowest_time = max(row["optimized"] for row in rows)
+    fig.text(
+        header_left,
+        0.795,
+        format_seconds(slowest_time),
+        color=PRIMARY,
+        fontsize=CALLOUT_FONT_SIZE,
+        fontweight="bold",
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.846,
+        f"range {format_seconds(fastest_time)} – {format_seconds(slowest_time)}",
+        color=MUTED,
+        fontsize=CONTEXT_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+
+    handles, legend_labels = ax.get_legend_handles_labels()
+    legend = fig.legend(
+        handles,
+        legend_labels,
+        loc="upper left",
+        bbox_to_anchor=(header_left, 0.735),
+        ncols=1,
+        frameon=False,
+        fontsize=LEGEND_FONT_SIZE,
+        borderpad=0.45,
+        labelspacing=0.45,
+        handlelength=2.0,
+        handleheight=0.9,
+    )
+    for text in legend.get_texts():
+        text.set_color(BODY)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, facecolor=CANVAS, bbox_inches="tight", pad_inches=0.18)
+    plt.close(fig)
+
+
 def format_seconds(value: float) -> str:
     if value < 0.01:
         return f"{value * 1_000:.2f} ms"
     if value < 1:
         return f"{value:.3f}s"
     return f"{value:.2f}s"
+
+
+def _parse_large_spec_name(spec_name: str) -> tuple[str, int] | None:
+    m = _LARGE_SPEC_RE.match(spec_name)
+    if not m:
+        return None
+    return m.group(1), int(m.group(2))
+
+
+def _merge_location_model_data(
+    standard: dict[str, Any],
+    large: dict[str, Any] | None,
+) -> dict[int, dict[str, Any]]:
+    result: dict[int, dict[str, Any]] = {}
+    for item in standard.get("results", []):
+        if item.get("benchmark_group") == "location_models":
+            n_locs = item.get("n_locations")
+            if isinstance(n_locs, int):
+                result[n_locs] = item
+    if large:
+        for item in large.get("results", []):
+            if item.get("benchmark_group") == "location_models":
+                n_locs = item.get("n_locations")
+                if isinstance(n_locs, int):
+                    result[n_locs] = item
+    return result
+
+
+def _merge_trajectory_model_data(
+    standard: dict[str, Any],
+    large: dict[str, Any] | None,
+) -> dict[tuple[int, int], dict[str, Any]]:
+    result: dict[tuple[int, int], dict[str, Any]] = {}
+    for item in standard.get("results", []):
+        if item.get("benchmark_group") == "trajectory_models":
+            n_agents = item.get("n_agents")
+            n_locs = item.get("n_locations")
+            if isinstance(n_agents, int) and isinstance(n_locs, int):
+                result[(n_locs, n_agents)] = item.get("metrics", {})
+    if large:
+        for size_record in large.get("results", []):
+            n_locs = size_record.get("locations") or size_record.get("size")
+            if n_locs is None:
+                continue
+            n_locs = int(n_locs)
+            for spec_name, metric_result in size_record.get("metrics", {}).items():
+                parsed = _parse_large_spec_name(spec_name)
+                if parsed is None:
+                    continue
+                model_name, n_agents = parsed
+                key = (n_locs, n_agents)
+                if key not in result:
+                    result[key] = {}
+                result[key][model_name] = metric_result
+    return result
+
+
+def _location_only_rows(
+    orig_by_loc: dict[int, dict[str, Any]],
+    opt_by_loc: dict[int, dict[str, Any]],
+    n_locations: int,
+) -> list[dict[str, Any]]:
+    orig_metrics = orig_by_loc.get(n_locations, {}).get("metrics", {})
+    opt_metrics = opt_by_loc.get(n_locations, {}).get("metrics", {})
+    rows = []
+    for model in MODEL_LOCATION_METRICS:
+        orig_m = orig_metrics.get(model)
+        opt_m = opt_metrics.get(model)
+        if not orig_m or not opt_m:
+            continue
+        orig_t = orig_m.get("average_seconds")
+        opt_t = opt_m.get("average_seconds")
+        if not is_valid_time(orig_t) or not is_valid_time(opt_t):
+            continue
+        rows.append(
+            {
+                "metric": display_metric_name(model),
+                "original": float(orig_t),
+                "optimized": float(opt_t),
+                "speedup": float(orig_t) / float(opt_t),
+            }
+        )
+    rows.sort(key=lambda r: r["original"], reverse=True)
+    return rows
+
+
+def _location_only_standalone_rows(
+    opt_by_loc: dict[int, dict[str, Any]],
+    n_locations: int,
+) -> list[dict[str, Any]]:
+    opt_metrics = opt_by_loc.get(n_locations, {}).get("metrics", {})
+    rows = []
+    for model in MODEL_LOCATION_METRICS:
+        opt_m = opt_metrics.get(model)
+        if not opt_m:
+            continue
+        opt_t = opt_m.get("average_seconds")
+        if not is_valid_time(opt_t):
+            continue
+        rows.append({"metric": display_metric_name(model), "optimized": float(opt_t)})
+    rows.sort(key=lambda r: r["optimized"], reverse=True)
+    return rows
+
+
+def _agent_based_standalone_rows(
+    opt_traj: dict[tuple[int, int], dict[str, Any]],
+    n_agents: int,
+    model_names: list[str],
+) -> list[dict[str, Any]]:
+    opt_locs = sorted(loc for (loc, ag) in opt_traj if ag == n_agents)
+    rows = []
+    for n_locs in opt_locs:
+        opt_metrics = opt_traj.get((n_locs, n_agents), {})
+        for model in model_names:
+            opt_m = opt_metrics.get(model)
+            if not opt_m:
+                continue
+            opt_t = opt_m.get("average_seconds")
+            if not is_valid_time(opt_t):
+                continue
+            loc_label = format_size_label(n_locs)
+            rows.append({"metric": f"{display_metric_name(model)} / {loc_label} locs", "optimized": float(opt_t)})
+    rows.sort(key=lambda r: (
+        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+        -r["optimized"],
+    ))
+    return rows
+
+
+def _agent_based_rows(
+    orig_traj: dict[tuple[int, int], dict[str, Any]],
+    opt_traj: dict[tuple[int, int], dict[str, Any]],
+    n_agents: int,
+    model_names: list[str],
+) -> list[dict[str, Any]]:
+    orig_locs = {loc for (loc, ag) in orig_traj if ag == n_agents}
+    opt_locs = {loc for (loc, ag) in opt_traj if ag == n_agents}
+    common_locs = sorted(orig_locs & opt_locs)
+    rows = []
+    for n_locs in common_locs:
+        orig_metrics = orig_traj.get((n_locs, n_agents), {})
+        opt_metrics = opt_traj.get((n_locs, n_agents), {})
+        for model in model_names:
+            orig_m = orig_metrics.get(model)
+            opt_m = opt_metrics.get(model)
+            if not orig_m or not opt_m:
+                continue
+            orig_t = orig_m.get("average_seconds")
+            opt_t = opt_m.get("average_seconds")
+            if not is_valid_time(orig_t) or not is_valid_time(opt_t):
+                continue
+            loc_label = format_size_label(n_locs)
+            rows.append(
+                {
+                    "metric": f"{display_metric_name(model)} / {loc_label} locs",
+                    "original": float(orig_t),
+                    "optimized": float(opt_t),
+                    "speedup": float(orig_t) / float(opt_t),
+                }
+            )
+    rows.sort(key=lambda r: (
+        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+        -r["original"],
+    ))
+    return rows
+
+
+def generate_model_plots(args: argparse.Namespace) -> int:
+    original_path = args.original_json.resolve()
+    optimized_path = args.optimized_json.resolve()
+    if not original_path.exists():
+        print(f"ERROR: original benchmark JSON not found: {original_path}")
+        return 2
+    if not optimized_path.exists():
+        print(f"ERROR: optimized benchmark JSON not found: {optimized_path}")
+        return 2
+
+    original_payload = load_json(original_path)
+    optimized_payload = load_json(optimized_path)
+
+    def _maybe_load(attr: str) -> dict[str, Any] | None:
+        p: Path | None = getattr(args, attr, None)
+        if p is None:
+            return None
+        rp = p.resolve()
+        if not rp.exists():
+            return None
+        return load_json(rp)
+
+    orig_large = _maybe_load("large_json_skmob")
+    opt_large = _maybe_load("large_json_skmob2")
+    orig_loc_large = _maybe_load("large_loc_json_skmob")
+    opt_loc_large = _maybe_load("large_loc_json_skmob2")
+
+    orig_loc = _merge_location_model_data(original_payload, orig_loc_large)
+    opt_loc = _merge_location_model_data(optimized_payload, opt_loc_large)
+    orig_traj = _merge_trajectory_model_data(original_payload, orig_large)
+    opt_traj = _merge_trajectory_model_data(optimized_payload, opt_large)
+
+    generated = 0
+
+    def _loc_safe(n: int) -> str:
+        return re.sub(r"[^A-Za-z0-9_.-]+", "_", format_size_label(n))
+
+    # Family 1 — Location-only models: one chart per location count
+    # Comparison charts where both libraries have data
+    common_loc_counts = sorted(set(orig_loc) & set(opt_loc))
+    for n_locs in common_loc_counts:
+        rows = _location_only_rows(orig_loc, opt_loc, n_locs)
+        if not rows:
+            continue
+        loc_label = format_size_label(n_locs)
+        size_label = f"Location-only / {loc_label} locations"
+        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations.png"
+        output_path = args.output_dir / out_name
+        draw_plot(
+            rows,
+            original_payload=original_payload,
+            optimized_payload=optimized_payload,
+            suite="models",
+            backend=None,
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    # Standalone skmob2-only charts for location counts not available in skmob
+    skmob2_only_loc_counts = sorted(set(opt_loc) - set(orig_loc))
+    for n_locs in skmob2_only_loc_counts:
+        standalone_rows = _location_only_standalone_rows(opt_loc, n_locs)
+        if not standalone_rows:
+            continue
+        loc_label = format_size_label(n_locs)
+        size_label = f"Location-only / {loc_label} locations"
+        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations_skmob2.png"
+        output_path = args.output_dir / out_name
+        draw_standalone_plot(
+            standalone_rows,
+            optimized_payload=optimized_payload,
+            suite="models",
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    # Family 2 — Agent-based models: one chart per agent count
+    # Comparison charts where both libraries have data
+    all_agent_counts = sorted(
+        {ag for (_, ag) in orig_traj} & {ag for (_, ag) in opt_traj}
+    )
+    for n_agents in all_agent_counts:
+        rows = _agent_based_rows(orig_traj, opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
+        if not rows:
+            continue
+        agent_label = format_size_label(n_agents)
+        size_label = f"Agent-based / {agent_label} agents"
+        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents.png"
+        output_path = args.output_dir / out_name
+        draw_plot(
+            rows,
+            original_payload=original_payload,
+            optimized_payload=optimized_payload,
+            suite="models",
+            backend=None,
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    # Standalone skmob2-only charts for agent counts not available in skmob
+    skmob2_only_agents = sorted(
+        {ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj}
+    )
+    for n_agents in skmob2_only_agents:
+        standalone_rows = _agent_based_standalone_rows(opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
+        if not standalone_rows:
+            continue
+        agent_label = format_size_label(n_agents)
+        size_label = f"Agent-based / {agent_label} agents"
+        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents_skmob2.png"
+        output_path = args.output_dir / out_name
+        draw_standalone_plot(
+            standalone_rows,
+            optimized_payload=optimized_payload,
+            suite="models",
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    if generated == 0:
+        print("No model plots were generated.")
+        return 1
+    return 0
 
 
 def generate_plots(args: argparse.Namespace) -> int:
@@ -606,50 +1056,8 @@ def generate_plots(args: argparse.Namespace) -> int:
 
     original_payload = load_json(original_path)
     optimized_payload = load_json(optimized_path)
-    if args.suite == "models" and any(
-        item.get("benchmark_group") == "trajectory_models" for item in optimized_payload.get("results", [])
-    ):
-        original_model_results = model_trajectory_results(original_payload)
-        optimized_model_results = model_trajectory_results(optimized_payload)
-        locations = common_model_locations(original_model_results, optimized_model_results, args.sizes)
-        if not locations:
-            print("No overlapping model location counts found.")
-            return 1
-
-        generated = 0
-        for n_locations in locations:
-            size_label = f"{n_locations} locations"
-            try:
-                rows = model_matrix_rows(
-                    original_model_results,
-                    optimized_model_results,
-                    n_locations,
-                    args.sort,
-                    MODEL_TRAJECTORY_METRICS,
-                )
-            except ValueError as exc:
-                print(f"ERROR for {size_label}: {exc}")
-                return 1
-            if not rows:
-                print(f"No valid model rows found for {size_label}; skipping.")
-                continue
-            output_path = args.output_dir / output_name(args.suite, args.backend, size_label)
-            draw_plot(
-                rows,
-                original_payload=original_payload,
-                optimized_payload=optimized_payload,
-                suite=args.suite,
-                backend=args.backend,
-                size_label=size_label,
-                output_path=output_path,
-            )
-            generated += 1
-            print(f"Saved {output_path}")
-
-        if generated == 0:
-            print("No plots were generated.")
-            return 1
-        return 0
+    if args.suite == "models":
+        return generate_model_plots(args)
 
     original_results = result_map(original_payload)
     optimized_results = result_map(optimized_payload)
@@ -722,6 +1130,34 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("speedup", "original-time"),
         default="speedup",
         help="Metric ordering for the plot.",
+    )
+    parser.add_argument(
+        "--large-json-skmob2",
+        type=Path,
+        default=None,
+        dest="large_json_skmob2",
+        help="Large-scale trajectory benchmark JSON for skmob2 (models suite only).",
+    )
+    parser.add_argument(
+        "--large-json-skmob",
+        type=Path,
+        default=None,
+        dest="large_json_skmob",
+        help="Large-scale trajectory benchmark JSON for original skmob (models suite only).",
+    )
+    parser.add_argument(
+        "--large-loc-json-skmob2",
+        type=Path,
+        default=None,
+        dest="large_loc_json_skmob2",
+        help="Large-scale location-only benchmark JSON for skmob2 (models suite only).",
+    )
+    parser.add_argument(
+        "--large-loc-json-skmob",
+        type=Path,
+        default=None,
+        dest="large_loc_json_skmob",
+        help="Large-scale location-only benchmark JSON for original skmob (models suite only).",
     )
     return parser
 

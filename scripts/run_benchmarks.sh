@@ -89,6 +89,20 @@ for profile in "${PROFILES[@]}"; do
         "$@" \
         --library skmob2 \
         --profile "$profile"
+    run_job "skmob2_models_large_scale_${profile}" \
+        "$MAIN_VENV" \
+        tests/benchmarks/speed_models_large_scale.py \
+        "$@" \
+        --library skmob2 \
+        --mode trajectory \
+        --profile "$profile"
+    run_job "skmob2_models_location_large_scale_${profile}" \
+        "$MAIN_VENV" \
+        tests/benchmarks/speed_models_large_scale.py \
+        "$@" \
+        --library skmob2 \
+        --mode location \
+        --profile "$profile"
 done
 
 if [ -x "$SKMOB_VENV/bin/python" ]; then
@@ -116,6 +130,20 @@ if [ -x "$SKMOB_VENV/bin/python" ]; then
             tests/benchmarks/speed_models_suite.py \
             "$@" \
             --library skmob \
+            --profile "$profile"
+        run_job "skmob_models_large_scale_${profile}" \
+            "$SKMOB_VENV" \
+            tests/benchmarks/speed_models_large_scale.py \
+            "$@" \
+            --library skmob \
+            --mode trajectory \
+            --profile "$profile"
+        run_job "skmob_models_location_large_scale_${profile}" \
+            "$SKMOB_VENV" \
+            tests/benchmarks/speed_models_large_scale.py \
+            "$@" \
+            --library skmob \
+            --mode location \
             --profile "$profile"
     done
 else

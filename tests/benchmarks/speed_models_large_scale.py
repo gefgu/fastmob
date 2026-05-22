@@ -32,13 +32,16 @@ _SUITE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SUITE_DIR))
 
 from speed_models_suite import (  # noqa: E402
+    LOCATION_MODEL_BENCHMARKS,
     SkippedBenchmark,
+    benchmark_model,
     build_metadata,
     build_output_path,
     expand_tessellation,
     fit_diary,
     import_model_classes,
     load_model_inputs,
+    location_case_label,
     nonnegative_float,
     positive_int,
     prepare_library_inputs,
@@ -74,10 +77,11 @@ class LargeBenchmarkSpec:
 
 LARGE_SCALE_BENCHMARKS: tuple[LargeBenchmarkSpec, ...] = (
     # EPR family — 7-day window, increasing agent counts
-    LargeBenchmarkSpec("epr_100a",        "epr", {"model": "EPR",        "n_agents": 100,   "relevance_column": "population"}),
-    LargeBenchmarkSpec("epr_1000a",       "epr", {"model": "EPR",        "n_agents": 1000,  "relevance_column": "population"}),
-    LargeBenchmarkSpec("epr_10000a",      "epr", {"model": "EPR",        "n_agents": 10000, "relevance_column": "population"}),
-    LargeBenchmarkSpec("epr_50000a",      "epr", {"model": "EPR",        "n_agents": 50000, "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_100a",         "epr", {"model": "EPR",        "n_agents": 100,    "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_1000a",        "epr", {"model": "EPR",        "n_agents": 1000,   "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_10000a",       "epr", {"model": "EPR",        "n_agents": 10000,  "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_50000a",       "epr", {"model": "EPR",        "n_agents": 50000,  "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_100000a",      "epr", {"model": "EPR",        "n_agents": 100000, "relevance_column": "population"}),
     LargeBenchmarkSpec("density_epr_1000a", "epr", {"model": "DensityEPR", "n_agents": 1000, "relevance_column": "population"}),
     LargeBenchmarkSpec("spatial_epr_1000a", "epr", {"model": "SpatialEPR", "n_agents": 1000}),
     # Social models — 24h window, smaller agent counts (social graph scales quadratically)
@@ -266,6 +270,7 @@ _SKMOB2_SPEC_ITERATIONS: dict[str, int] = {
     "sts_epr_100a":        5,
     "epr_10000a":          3,
     "epr_50000a":          1,
+    "epr_100000a":         2,
 }
 
 
@@ -295,41 +300,99 @@ def _estimate_skmob_seconds(spec: LargeBenchmarkSpec, size: int) -> float:
     return 0.0
 
 
+def benchmark_location_large_size(
+    library: str,
+    base_tessellation: Any,
+    diary_training: Any,
+    size: int,
+    *,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str = "speed",
+) -> dict[str, Any]:
+    size_tessellation = expand_tessellation(base_tessellation, size)
+    print(f"\nLocation-only models: {location_case_label(size)}")
+    from speed_models_suite import skipped_result
+
+    try:
+        tessellation, diary = prepare_library_inputs(library, size_tessellation, diary_training)
+    except SkippedBenchmark as exc:
+        return {
+            "benchmark_group": "location_models",
+            "label": location_case_label(size),
+            "n_agents": None,
+            "n_locations": len(size_tessellation),
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in LOCATION_MODEL_BENCHMARKS},
+        }
+
+    return {
+        "benchmark_group": "location_models",
+        "label": location_case_label(size),
+        "n_agents": None,
+        "n_locations": len(size_tessellation),
+        "metrics": {
+            spec.name: benchmark_model(
+                spec,
+                library,
+                tessellation,
+                diary,
+                profile=profile,
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+            )
+            for spec in LOCATION_MODEL_BENCHMARKS
+        },
+    }
+
+
 def run_large_suite(args: argparse.Namespace) -> dict[str, Any]:
     base_tessellation, diary_training = load_model_inputs(Path(args.reference_dir))
 
     results = []
     for size in args.sizes:
-        if args.library == "skmob":
-            kept, skipped = [], []
-            for s in LARGE_SCALE_BENCHMARKS:
-                est = _estimate_skmob_seconds(s, size)
-                if est > _SKMOB_SKIP_THRESHOLD_S:
-                    skipped.append((s, est))
-                else:
-                    kept.append(s)
-            if skipped:
-                print(f"\nSize {size}: skipping for skmob (estimated > 30 min):")
-                for s, est in skipped:
-                    print(f"  {s.name}: ~{est/60:.1f} min estimated")
-            benchmarks = tuple(kept)
-        else:
-            benchmarks = LARGE_SCALE_BENCHMARKS
-
-        results.append(
-            benchmark_large_size(
-                args.library,
-                base_tessellation,
-                diary_training,
-                size,
-                profile=args.profile,
-                iterations=args.iterations,
-                sleep_seconds=args.sleep_seconds,
-                benchmarks=benchmarks,
+        if args.mode == "location":
+            results.append(
+                benchmark_location_large_size(
+                    args.library,
+                    base_tessellation,
+                    diary_training,
+                    size,
+                    profile=args.profile,
+                    iterations=args.iterations,
+                    sleep_seconds=args.sleep_seconds,
+                )
             )
-        )
+        else:
+            if args.library == "skmob":
+                kept, skipped = [], []
+                for s in LARGE_SCALE_BENCHMARKS:
+                    est = _estimate_skmob_seconds(s, size)
+                    if est > _SKMOB_SKIP_THRESHOLD_S:
+                        skipped.append((s, est))
+                    else:
+                        kept.append(s)
+                if skipped:
+                    print(f"\nSize {size}: skipping for skmob (estimated > 30 min):")
+                    for s, est in skipped:
+                        print(f"  {s.name}: ~{est/60:.1f} min estimated")
+                benchmarks = tuple(kept)
+            else:
+                benchmarks = LARGE_SCALE_BENCHMARKS
+
+            results.append(
+                benchmark_large_size(
+                    args.library,
+                    base_tessellation,
+                    diary_training,
+                    size,
+                    profile=args.profile,
+                    iterations=args.iterations,
+                    sleep_seconds=args.sleep_seconds,
+                    benchmarks=benchmarks,
+                )
+            )
     meta = build_metadata(args)
-    meta["suite"] = "models_large_scale"
+    meta["suite"] = "models_large_scale" if args.mode != "location" else "models_location_large_scale"
     return {"metadata": meta, "results": results}
 
 
@@ -337,18 +400,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run large-scale generation model benchmarks.")
     parser.add_argument("--library", choices=["skmob2", "skmob"], required=True)
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
+    parser.add_argument("--mode", choices=["trajectory", "location"], default="trajectory",
+                        help="trajectory: EPR/GeoSim/STS_epr; location: gravity/radiation only")
     parser.add_argument("--iterations", type=positive_int, default=3)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--reference-dir", type=Path, default=DEFAULT_REFERENCE_DIR)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    # build_metadata (from speed_models_suite) expects these; they are N/A for the large-scale suite
+    if not hasattr(args, "n_agents"):
+        args.n_agents = None
+    if not hasattr(args, "n_locations"):
+        args.n_locations = None
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     payload = run_large_suite(args)
-    output_path = build_output_path(Path(args.output_dir), args.library, f"{args.profile}_large_scale")
+    if args.mode == "location":
+        suffix = f"{args.profile}_location_large_scale"
+    else:
+        suffix = f"{args.profile}_large_scale"
+    output_path = build_output_path(Path(args.output_dir), args.library, suffix)
     write_json(payload, output_path)
     print(f"\nWrote results to {output_path}")
     return 0
