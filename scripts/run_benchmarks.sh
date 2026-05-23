@@ -25,13 +25,6 @@ if [ ! -f "$MAIN_VENV/bin/activate" ]; then
     exit 1
 fi
 
-ENV_SLUG="$(detect_env_slug "$MAIN_VENV" 2>/dev/null || echo "unknown_env")"
-OUTPUT_DIR="$REPO_ROOT/tests/benchmarks/results/${ENV_SLUG}"
-LOG_DIR="$OUTPUT_DIR/logs"
-mkdir -p "$LOG_DIR"
-echo "==> Environment: ${ENV_SLUG}"
-echo "==> Results dir: ${OUTPUT_DIR#$REPO_ROOT/}"
-
 run_python() {
     local venv="$1"
     shift
@@ -76,6 +69,13 @@ run_job() {
         FAILURES+=("${label} (${status})")
     fi
 }
+
+ENV_SLUG="$(detect_env_slug "$MAIN_VENV" 2>/dev/null || echo "unknown_env")"
+OUTPUT_DIR="$REPO_ROOT/tests/benchmarks/results/${ENV_SLUG}"
+LOG_DIR="$OUTPUT_DIR/logs"
+mkdir -p "$LOG_DIR"
+echo "==> Environment: ${ENV_SLUG}"
+echo "==> Results dir: ${OUTPUT_DIR#$REPO_ROOT/}"
 
 echo "==> Building skmob2._core in .venv ..."
 run_job "build_skmob2_core" "$MAIN_VENV" -m maturin develop
@@ -124,6 +124,14 @@ for profile in "${PROFILES[@]}"; do
         --output-dir "$OUTPUT_DIR"
 done
 
+run_job "skmob2_privacy_both" \
+    "$MAIN_VENV" \
+    tests/benchmarks/speed_privacy_suite.py \
+    --library skmob2 \
+    --backend both \
+    --input-order both \
+    --output-dir "$OUTPUT_DIR"
+
 if [ -x "$SKMOB_VENV/bin/python" ]; then
     echo
     echo "==> Running original skmob benchmark suites in .venv-skmob ..."
@@ -168,6 +176,15 @@ if [ -x "$SKMOB_VENV/bin/python" ]; then
             --library skmob \
             --mode location \
             --profile "$profile" \
+            --output-dir "$OUTPUT_DIR"
+    done
+    for timing_mode in "${SKMOB_TIMING_MODES[@]}"; do
+        run_job "skmob_privacy_${timing_mode}" \
+            "$SKMOB_VENV" \
+            tests/benchmarks/speed_privacy_suite.py \
+            --library skmob \
+            --timing-mode "$timing_mode" \
+            --input-order both \
             --output-dir "$OUTPUT_DIR"
     done
 else
