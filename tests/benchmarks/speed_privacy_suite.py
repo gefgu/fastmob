@@ -23,7 +23,11 @@ from typing import Any, Callable, Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_PATH = REPO_ROOT / "scikit-mobility" / "examples" / "privacy_toy.csv"
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "results"
+
+_BENCHMARK_DIR = Path(__file__).resolve().parent
+if str(_BENCHMARK_DIR) not in sys.path:
+    sys.path.insert(0, str(_BENCHMARK_DIR))
+from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -269,6 +273,7 @@ def benchmark_skmob(
 
 
 def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: str, backend: str | None) -> dict[str, Any]:
+    cpu = detect_cpu_info()
     return {
         "suite": "privacy",
         "library": args.library,
@@ -277,6 +282,9 @@ def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: st
         "input_type": input_type,
         "python_version": sys.version,
         "platform": platform.platform(),
+        "cpu_model": cpu["model"],
+        "cpu_cores": cpu["cores"],
+        "cpu_vendor": cpu["vendor_slug"],
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.data_path),
         "iterations": args.iterations,
@@ -343,9 +351,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--repeat-factor", type=positive_int, default=1)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.output_dir is None:
+        args.output_dir = get_default_output_dir()
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:

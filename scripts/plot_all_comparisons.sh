@@ -11,10 +11,49 @@ if [ ! -x "$PYTHON" ]; then
     PYTHON="python"
 fi
 
-RESULTS_DIR="$REPO_ROOT/tests/benchmarks/results"
-OUTPUT_DIR="$RESULTS_DIR/plots"
+_BASE_RESULTS_DIR="$REPO_ROOT/tests/benchmarks/results"
 PLOT_SCRIPT="$REPO_ROOT/tests/benchmarks/plot_benchmark_comparisons.py"
 FAILURES=()
+
+# Parse --env-dir from arguments; pass remaining args to the plot script
+ENV_DIR=""
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --env-dir)
+            ENV_DIR="$2"
+            shift 2
+            ;;
+        *)
+            POSITIONAL_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${POSITIONAL_ARGS[@]+"${POSITIONAL_ARGS[@]}"}"
+
+# Auto-discover the most recently modified env subfolder when --env-dir is not given
+if [ -z "$ENV_DIR" ]; then
+    ENV_DIR="$(find "$_BASE_RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d \
+        -not -name "plots" -not -name "logs" \
+        | while read -r d; do
+            ls "$d"/*.json >/dev/null 2>&1 && echo "$d"
+          done \
+        | xargs -I{} stat --format="%Y {}" {} 2>/dev/null \
+        | sort -rn \
+        | head -1 \
+        | awk '{print $2}')"
+    if [ -z "$ENV_DIR" ]; then
+        # Fallback: legacy flat results dir
+        ENV_DIR="$_BASE_RESULTS_DIR"
+        echo "WARNING: No env subfolders found with JSON files; using flat results dir."
+    else
+        echo "==> Auto-discovered env dir: ${ENV_DIR#$REPO_ROOT/}"
+    fi
+fi
+
+RESULTS_DIR="${ENV_DIR}"
+OUTPUT_DIR="${ENV_DIR}/plots"
 
 run_comparison() {
     local suite="$1"

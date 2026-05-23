@@ -29,8 +29,12 @@ from typing import Any, Callable, Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "results"
 SKMOB_CATALOG_PATH = Path(__file__).resolve().parent / "skmob_public_api_catalog.json"
+
+_BENCHMARK_DIR = Path(__file__).resolve().parent
+if str(_BENCHMARK_DIR) not in sys.path:
+    sys.path.insert(0, str(_BENCHMARK_DIR))
+from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
 MOVINGPANDAS_CATALOG_PATH = Path(__file__).resolve().parent / "movingpandas_skmob_api_catalog.json"
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
 BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
@@ -715,6 +719,7 @@ def benchmark_movingpandas_size(
 
 
 def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: str, backend: str | None) -> dict[str, Any]:
+    cpu = detect_cpu_info()
     return {
         "suite": "spatial",
         "library": args.library,
@@ -724,6 +729,9 @@ def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: st
         "input_type": input_type,
         "python_version": sys.version,
         "platform": platform.platform(),
+        "cpu_model": cpu["model"],
+        "cpu_cores": cpu["cores"],
+        "cpu_vendor": cpu["vendor_slug"],
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.data_path),
         "iterations": args.iterations,
@@ -828,9 +836,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--retries", type=nonnegative_int, default=1, help="Retry a metric this many times after failure.")
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.output_dir is None:
+        args.output_dir = get_default_output_dir()
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:

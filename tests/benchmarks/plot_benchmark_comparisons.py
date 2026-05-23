@@ -57,6 +57,7 @@ AXIS_LABEL_FONT_SIZE = 20
 BAR_LABEL_FONT_SIZE = 12.5
 SPEEDUP_VALUE_FONT_SIZE = 13.5
 SPEEDUP_HEADER_FONT_SIZE = 11
+FOOTER_FONT_SIZE = 9.5
 
 BAR_HEIGHT = 1
 BAR_PAIR_OFFSET = 0.6
@@ -66,6 +67,24 @@ BAR_GROUP_GAP = 3
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def format_env_footer(optimized_payload: dict[str, Any]) -> str | None:
+    """Return 'Python 3.12  ·  Intel Core i7-12700K  ·  12 logical cores' or None."""
+    metadata = optimized_payload.get("metadata", {})
+    cpu_model = metadata.get("cpu_model")
+    if not cpu_model:
+        return None
+    parts: list[str] = []
+    py_ver = metadata.get("python_version", "")
+    m = re.match(r"(\d+\.\d+)", py_ver)
+    if m:
+        parts.append(f"Python {m.group(1)}")
+    parts.append(cpu_model)
+    cores = metadata.get("cpu_cores")
+    if cores:
+        parts.append(f"{cores} logical cores")
+    return "  ·  ".join(parts) if parts else None
 
 
 def result_label(result: dict[str, Any]) -> str:
@@ -583,6 +602,10 @@ def draw_plot(
     for text in legend.get_texts():
         text.set_color(BODY)
 
+    footer = format_env_footer(optimized_payload)
+    if footer:
+        fig.text(0.5, 0.048, footer, color=MUTED, fontsize=FOOTER_FONT_SIZE, ha="center", va="bottom")
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300, facecolor=CANVAS, bbox_inches="tight", pad_inches=0.18)
     plt.close(fig)
@@ -732,6 +755,10 @@ def draw_standalone_plot(
     )
     for text in legend.get_texts():
         text.set_color(BODY)
+
+    footer = format_env_footer(optimized_payload)
+    if footer:
+        fig.text(0.5, 0.048, footer, color=MUTED, fontsize=FOOTER_FONT_SIZE, ha="center", va="bottom")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300, facecolor=CANVAS, bbox_inches="tight", pad_inches=0.18)
