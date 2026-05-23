@@ -471,6 +471,15 @@ def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, lis
     return uid_values, ranges
 
 
+def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
+    """Build contiguous user ranges for data already grouped by user."""
+    if uid_col is None:
+        return None, [(0, len(df))]
+
+    uid_values, ranges = _build_user_ranges(df, uid_col)
+    return uid_values, ranges
+
+
 def _build_indexed_user_ranges(
     df: nw.DataFrame,
     uid_col: str,

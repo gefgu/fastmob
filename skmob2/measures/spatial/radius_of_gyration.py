@@ -15,6 +15,7 @@ from skmob2._core import (
 
 from .._common import (
     _as_index_array,
+    _build_presorted_user_ranges,
     _build_user_ranges,
     _dispatch_kernel,
     _is_polars_backed,
@@ -76,6 +77,7 @@ def radius_of_gyration(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ):
     """Compute the radius of gyration (km) for each user in the trajectory.
 
@@ -108,6 +110,9 @@ def radius_of_gyration(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and use the
+        contiguous fast path.
 
     Returns
     -------
@@ -189,6 +194,20 @@ def radius_of_gyration(
             )
         )
         return _to_native({"radius_of_gyration": [rg]}, df)
+
+    if sorted:
+        valid_df = df.drop_nulls(subset=[lat_col, lng_col]).filter(
+            (~nw.col(lat_col).is_nan()) & (~nw.col(lng_col).is_nan())
+        )
+        uid_values, ranges = _build_presorted_user_ranges(valid_df, uid_col)
+        rog_values = _dispatch_kernel(
+            radius_of_gyration_numpy,
+            radius_of_gyration_arrow,
+            [valid_df.get_column(lat_col), valid_df.get_column(lng_col)],
+            ranges,
+            use_arrow=use_arrow,
+        )
+        return _to_native({uid_col: uid_values, "radius_of_gyration": rog_values}, df)
 
     uid_values, indices, starts, ends = _build_valid_indexed_user_ranges(df, uid_col, lat_col, lng_col)
     rog_values = _dispatch_kernel(

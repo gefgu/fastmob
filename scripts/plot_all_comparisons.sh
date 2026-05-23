@@ -15,25 +15,72 @@ RESULTS_DIR="$REPO_ROOT/tests/benchmarks/results"
 OUTPUT_DIR="$RESULTS_DIR/plots"
 PLOT_SCRIPT="$REPO_ROOT/tests/benchmarks/plot_benchmark_comparisons.py"
 FAILURES=()
+INPUT_ORDER="raw"
+PLOT_ARGS=()
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --input-order)
+            if [ "$#" -lt 2 ]; then
+                echo "ERROR: --input-order requires one of: raw, sorted, both"
+                exit 1
+            fi
+            INPUT_ORDER="$2"
+            shift 2
+            ;;
+        --input-order=*)
+            INPUT_ORDER="${1#*=}"
+            shift
+            ;;
+        *)
+            PLOT_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [ "$INPUT_ORDER" != "raw" ] && [ "$INPUT_ORDER" != "sorted" ] && [ "$INPUT_ORDER" != "both" ]; then
+    echo "ERROR: --input-order must be one of: raw, sorted, both"
+    exit 1
+fi
+
+input_orders() {
+    if [ "$INPUT_ORDER" = "both" ]; then
+        printf '%s\n' raw sorted
+    else
+        printf '%s\n' "$INPUT_ORDER"
+    fi
+}
+
+order_part() {
+    if [ "$1" = "raw" ]; then
+        printf ''
+    else
+        printf '%s_' "$1"
+    fi
+}
 
 run_comparison() {
     local suite="$1"
     local backend="$2"
-    shift 2
-    local original_json="$RESULTS_DIR/skmob_${suite}_speed_prebuilt_tdf.json"
-    local optimized_json="$RESULTS_DIR/skmob2_${suite}_speed_${backend}.json"
+    local input_order="$3"
+    shift 3
+    local part
+    part="$(order_part "$input_order")"
+    local original_json="$RESULTS_DIR/skmob_${suite}_speed_${part}prebuilt_tdf.json"
+    local optimized_json="$RESULTS_DIR/skmob2_${suite}_speed_${part}${backend}.json"
 
     if [ ! -f "$original_json" ]; then
-        echo "Skipping ${suite}/${backend}: missing $(basename "$original_json")"
+        echo "Skipping ${suite}/${backend}/${input_order}: missing $(basename "$original_json")"
         return 0
     fi
     if [ ! -f "$optimized_json" ]; then
-        echo "Skipping ${suite}/${backend}: missing $(basename "$optimized_json")"
+        echo "Skipping ${suite}/${backend}/${input_order}: missing $(basename "$optimized_json")"
         return 0
     fi
 
     echo
-    echo "==> Plotting ${suite}/${backend}"
+    echo "==> Plotting ${suite}/${backend}/${input_order}"
     if "$PYTHON" "$PLOT_SCRIPT" \
         --original-json "$original_json" \
         --optimized-json "$optimized_json" \
@@ -41,11 +88,11 @@ run_comparison() {
         --backend "$backend" \
         --output-dir "$OUTPUT_DIR" \
         "$@"; then
-        echo "==> ${suite}/${backend}: ok"
+        echo "==> ${suite}/${backend}/${input_order}: ok"
     else
         local status=$?
-        echo "==> ${suite}/${backend}: failed with exit code ${status}"
-        FAILURES+=("${suite}/${backend} (${status})")
+        echo "==> ${suite}/${backend}/${input_order}: failed with exit code ${status}"
+        FAILURES+=("${suite}/${backend}/${input_order} (${status})")
     fi
 }
 
@@ -83,7 +130,9 @@ run_model_comparison() {
 
 for suite in spatial privacy visits; do
     for backend in pandas polars; do
-        run_comparison "$suite" "$backend" "$@"
+        while IFS= read -r input_order; do
+            run_comparison "$suite" "$backend" "$input_order" "${PLOT_ARGS[@]}"
+        done < <(input_orders)
     done
 done
 
@@ -98,7 +147,7 @@ if "$PYTHON" "$PLOT_SCRIPT" \
     --large-loc-json-skmob2 "$RESULTS_DIR/skmob2_models_speed_location_large_scale.json" \
     --large-loc-json-skmob  "$RESULTS_DIR/skmob_models_speed_location_large_scale.json" \
     --output-dir "$OUTPUT_DIR" \
-    "$@"; then
+    "${PLOT_ARGS[@]}"; then
     echo "==> models: ok"
 else
     status=$?

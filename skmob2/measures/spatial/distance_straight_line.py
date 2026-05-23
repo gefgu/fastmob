@@ -4,11 +4,14 @@ import narwhals as nw
 from typing import Any
 
 from skmob2._core import (
+    total_distance_arrow,
     total_distance_indexed_arrow,
     total_distance_indexed_numpy,
+    total_distance_numpy,
 )
 
 from .._common import (
+    _build_presorted_user_ranges,
     _build_time_ordered_user_ranges,
     _dispatch_kernel,
     _extract_timestamps_ms,
@@ -26,6 +29,7 @@ def distance_straight_line(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ) -> Any:
     """Return the total trajectory length (km) for each user.
 
@@ -48,6 +52,9 @@ def distance_straight_line(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and ordered by
+        datetime within each user, then use the contiguous fast path.
 
     Returns
     -------
@@ -111,8 +118,21 @@ def distance_straight_line(
         sort=False,
     )
 
-    timestamps = _extract_timestamps_ms(df, datetime_col)
     use_arrow = _is_polars_backed(df)
+    if sorted:
+        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        distances = _dispatch_kernel(
+            total_distance_numpy,
+            total_distance_arrow,
+            [df.get_column(lat_col), df.get_column(lng_col)],
+            ranges,
+            use_arrow=use_arrow,
+        )
+        if uid_col is None:
+            return _to_native({"distance_straight_line": distances}, df)
+        return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)
+
+    timestamps = _extract_timestamps_ms(df, datetime_col)
     uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
     )

@@ -150,6 +150,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        k_radius_of_gyration::k_radius_of_gyration_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        k_radius_of_gyration::k_radius_of_gyration_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         k_radius_of_gyration::k_radius_of_gyration_indexed_numpy,
         m
     )?)?;
@@ -157,12 +165,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         k_radius_of_gyration::k_radius_of_gyration_indexed_arrow,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(spatial_counts::number_of_visits_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(spatial_counts::number_of_visits_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
         spatial_counts::number_of_visits_indexed_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
         spatial_counts::number_of_visits_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        spatial_counts::number_of_locations_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        spatial_counts::number_of_locations_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -194,6 +212,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        max_distance_from_point::max_distance_from_point_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        max_distance_from_point::max_distance_from_point_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         max_distance_from_point::max_distance_from_point_indexed_numpy,
         m
     )?)?;
@@ -201,6 +227,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         max_distance_from_point::max_distance_from_point_indexed_arrow,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(home_location::home_location_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(home_location::home_location_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
         home_location::home_location_indexed_numpy,
         m

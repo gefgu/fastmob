@@ -1,17 +1,12 @@
-use numkong::Haversine as NumKongHaversine;
 use numpy::PyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
-use crate::haversine::haversine_km;
+use crate::haversine::{adjacent_haversine_distances_km, haversine_km};
 use crate::time_ordering::IndexRanges;
 use crate::utils::{validate_coord_ranges, validate_indexed_coord_ranges};
-
-const GEO_HAVERSINE_RADIUS_M: f64 = 6_371_008.8;
-const NUMKONG_HAVERSINE_RADIUS_M: f64 = 6_335_439.0;
-const NUMKONG_TO_GEO_KM: f64 = GEO_HAVERSINE_RADIUS_M / NUMKONG_HAVERSINE_RADIUS_M / 1000.0;
 
 pub(super) type PyPresortedJumpLengths<'py> = (
     Bound<'py, PyArray1<usize>>,
@@ -42,33 +37,7 @@ fn jump_lengths_presorted_range(
     start: usize,
     end: usize,
 ) -> Vec<f64> {
-    if end - start < 2 {
-        return Vec::new();
-    }
-
-    let latitudes_rad: Vec<f64> = latitudes[start..end]
-        .iter()
-        .map(|lat| lat.to_radians())
-        .collect();
-    let longitudes_rad: Vec<f64> = longitudes[start..end]
-        .iter()
-        .map(|lon| lon.to_radians())
-        .collect();
-    let mut distances = vec![0.0; end - start - 1];
-
-    f64::haversine(
-        &latitudes_rad[..latitudes_rad.len() - 1],
-        &longitudes_rad[..longitudes_rad.len() - 1],
-        &latitudes_rad[1..],
-        &longitudes_rad[1..],
-        &mut distances,
-    )
-    .expect("adjacent coordinate slices have matching lengths");
-
-    distances
-        .iter_mut()
-        .for_each(|distance| *distance *= NUMKONG_TO_GEO_KM);
-    distances
+    adjacent_haversine_distances_km(latitudes, longitudes, start, end)
 }
 
 fn jump_lengths_for_indexed_range(

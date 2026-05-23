@@ -5,13 +5,18 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 from skmob2._core import (
+    waiting_times_arrow,
+    waiting_times_flat_arrow,
+    waiting_times_flat_numpy,
     waiting_times_indexed_arrow,
     waiting_times_indexed_flat_arrow,
     waiting_times_indexed_flat_numpy,
     waiting_times_indexed_numpy,
+    waiting_times_numpy,
 )
 
 from .._common import (
+    _build_presorted_user_ranges,
     _build_time_ordered_user_ranges,
     _extract_timestamps_s,
     _is_polars_backed,
@@ -40,6 +45,23 @@ def _route_indexed_waiting_times(
     return waiting_times_indexed_numpy(timestamps_s.to_numpy(), indices, starts, ends)
 
 
+def _route_presorted_waiting_times(
+    timestamps_s: nw.Series,
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+    merge: bool,
+) -> list[float] | list[list[float]]:
+    if use_arrow:
+        if merge:
+            return waiting_times_flat_arrow(timestamps_s.to_arrow(), ranges)
+        return waiting_times_arrow(timestamps_s.to_arrow(), ranges)
+
+    if merge:
+        return waiting_times_flat_numpy(timestamps_s.to_numpy(), ranges)
+    return waiting_times_numpy(timestamps_s.to_numpy(), ranges)
+
+
 def waiting_times(
     traj: Any,
     merge: bool = False,
@@ -48,6 +70,7 @@ def waiting_times(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ) -> Any:
     """Return the waiting times (seconds) between consecutive GPS fixes for each user.
 
@@ -74,6 +97,9 @@ def waiting_times(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and ordered by
+        datetime within each user, then use the contiguous fast path.
 
     Returns
     -------
@@ -142,6 +168,15 @@ def waiting_times(
 
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     use_arrow = _is_polars_backed(df)
+    if sorted:
+        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        wt_values = _route_presorted_waiting_times(timestamps_s, ranges, use_arrow=use_arrow, merge=merge)
+        if merge:
+            return wt_values
+        if uid_col is None:
+            return _to_native({"waiting_times": wt_values}, df)
+        return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
+
     uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_s, use_arrow=use_arrow
     )

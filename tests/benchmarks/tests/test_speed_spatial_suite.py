@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from tests.benchmarks import speed_spatial_suite as suite
+from tests.benchmarks.sorted_input_cache import load_or_create_sorted_input, sorted_cache_path, stable_sort_pandas
 
 
 def test_metric_registry_contains_expected_spatial_and_preprocessing_measures():
@@ -120,13 +121,28 @@ def test_output_path_matches_library_backend_and_timing_mode(tmp_path: Path):
         suite.build_output_path(tmp_path, "movingpandas", "prebuilt_tdf", profile="memory")
         == tmp_path / "movingpandas_spatial_memory.json"
     )
+    assert (
+        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas", input_order="sorted")
+        == tmp_path / "skmob2_spatial_speed_sorted_pandas.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf", input_order="sorted")
+        == tmp_path / "skmob_spatial_speed_sorted_prebuilt_tdf.json"
+    )
 
 
 def test_parse_args_defaults_to_both_skmob2_backends():
     args = suite.parse_args(["--library", "skmob2"])
     assert args.backend == "both"
     assert args.profile == "speed"
+    assert args.input_order == "raw"
     assert tuple(suite.concrete_backends(args)) == ("pandas", "polars")
+    assert tuple(suite.concrete_input_orders(args)) == ("raw",)
+
+
+def test_parse_args_expands_both_input_orders():
+    args = suite.parse_args(["--library", "skmob2", "--input-order", "both"])
+    assert tuple(suite.concrete_input_orders(args)) == ("raw", "sorted")
 
 
 def test_skmob_metric_kwargs_add_show_progress_when_supported():
@@ -146,6 +162,95 @@ def test_skmob_metric_kwargs_add_show_progress_when_supported():
         "show_progress": False,
     }
     assert suite.metric_kwargs_for_library(spec, "skmob2", fake_metric) == {"merge": False}
+
+
+def test_sorted_skmob2_spatial_metrics_get_sorted_kwarg_but_preprocessing_does_not():
+    def fake_metric(_tdf):
+        return None
+
+    jump_spec = suite.BenchmarkSpec("jump_lengths", "unused", "unused", "jump_lengths", {"merge": False})
+    rog_spec = suite.BenchmarkSpec("radius_of_gyration", "unused", "unused", "radius_of_gyration", {})
+    filter_spec = suite.BenchmarkSpec(
+        "filter",
+        "unused",
+        "unused",
+        "filter",
+        {},
+        input_kind="preprocessing",
+    )
+
+    assert suite.metric_kwargs_for_library(jump_spec, "skmob2", fake_metric, input_order="sorted") == {
+        "merge": False,
+        "sorted": True,
+    }
+    assert suite.metric_kwargs_for_library(rog_spec, "skmob2", fake_metric, input_order="sorted") == {"sorted": True}
+    assert suite.metric_kwargs_for_library(filter_spec, "skmob2", fake_metric, input_order="sorted") == {}
+    assert suite.metric_kwargs_for_library(jump_spec, "skmob", fake_metric, input_order="sorted") == {"merge": False}
+
+
+def test_sorted_cache_path_and_stable_pandas_sort(tmp_path: Path):
+    pd = pytest.importorskip("pandas")
+    data_path = tmp_path / "bright kite.tsv.gz"
+    path = sorted_cache_path(tmp_path, suite="spatial", backend="pandas", data_path=data_path)
+
+    assert path == tmp_path / "spatial_bright_kite.tsv.gz_pandas_sorted.parquet"
+
+    df = pd.DataFrame(
+        {
+            "user": [2, 1, 1, 1],
+            "check-in_time": pd.to_datetime(
+                ["2020-01-01 00:00", "2020-01-01 01:00", "2020-01-01 01:00", "2019-01-01 00:00"]
+            ),
+            "latitude": [0.0, 1.0, 2.0, 3.0],
+            "longitude": [0.0, 1.0, 2.0, 3.0],
+        }
+    )
+
+    sorted_df = stable_sort_pandas(df, uid_col="user", datetime_col="check-in_time")
+
+    assert sorted_df["latitude"].tolist() == [3.0, 1.0, 2.0, 0.0]
+
+
+def test_sorted_cache_is_created_then_reused(tmp_path: Path):
+    pd = pytest.importorskip("pandas")
+    calls = {"load": 0}
+    data_path = tmp_path / "brightkite.tsv"
+    df = pd.DataFrame(
+        {
+            "user": [2, 1],
+            "check-in_time": pd.to_datetime(["2020-01-02", "2020-01-01"]),
+            "latitude": [0.0, 1.0],
+            "longitude": [0.0, 1.0],
+        }
+    )
+
+    def load_raw():
+        calls["load"] += 1
+        return df
+
+    first = load_or_create_sorted_input(
+        cache_dir=tmp_path,
+        suite="spatial",
+        backend="pandas",
+        data_path=data_path,
+        load_raw=load_raw,
+        uid_col="user",
+        datetime_col="check-in_time",
+    )
+    second = load_or_create_sorted_input(
+        cache_dir=tmp_path,
+        suite="spatial",
+        backend="pandas",
+        data_path=data_path,
+        load_raw=load_raw,
+        uid_col="user",
+        datetime_col="check-in_time",
+    )
+
+    assert first.status == "created"
+    assert second.status == "reused"
+    assert calls["load"] == 1
+    assert second.data["user"].tolist() == [1, 2]
 
 
 def test_import_metric_patches_numpy_nan_for_legacy_skmob(monkeypatch):
@@ -333,6 +438,57 @@ def test_skmob2_smoke_with_tiny_pandas_dataframe_when_extension_is_available(mon
     assert payload["metadata"]["library"] == "skmob2"
     assert payload["metadata"]["backend"] == "pandas"
     assert payload["results"][0]["metrics"]["radius_of_gyration"]["status"] == "ok"
+
+
+def test_skmob2_sorted_smoke_with_tiny_pandas_dataframe_when_extension_is_available(monkeypatch, tmp_path: Path):
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first")
+
+    tiny = _tiny_pandas_df()
+    data_path = tmp_path / "brightkite.tsv.gz"
+    data_path.write_bytes(b"placeholder")
+
+    monkeypatch.setattr(suite, "load_brightkite_pandas", lambda _path: tiny)
+    monkeypatch.setattr(
+        suite,
+        "SPATIAL_METRICS",
+        (
+            suite.BenchmarkSpec(
+                "jump_lengths",
+                "skmob2.measures.spatial.jump_lengths",
+                "skmob.measures.individual",
+                "jump_lengths",
+                {"merge": False},
+            ),
+        ),
+    )
+
+    args = suite.parse_args(
+        [
+            "--library",
+            "skmob2",
+            "--backend",
+            "pandas",
+            "--input-order",
+            "sorted",
+            "--input-cache-dir",
+            str(tmp_path / "cache"),
+            "--sizes",
+            "10",
+            "--iterations",
+            "1",
+            "--sleep",
+            "0",
+            "--data-path",
+            str(data_path),
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+    payload = suite.run_suite(args, backend="pandas")
+
+    assert payload["metadata"]["input_order"] == "sorted"
+    assert payload["metadata"]["input_cache_status"] == "created"
+    assert payload["results"][0]["metrics"]["jump_lengths"]["status"] == "ok"
 
 
 def test_movingpandas_smoke_with_fake_collection(monkeypatch):

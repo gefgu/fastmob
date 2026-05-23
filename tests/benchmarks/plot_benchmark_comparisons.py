@@ -328,6 +328,8 @@ def comparison_subtitle(
             parts.append(f"{backend.title()} backend")
     if iterations:
         parts.append(f"{iterations} iterations")
+    if metadata.get("input_order") == "sorted" or original_metadata.get("input_order") == "sorted":
+        parts.append("sorted")
     return " / ".join(parts)
 
 

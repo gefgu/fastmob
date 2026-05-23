@@ -7,8 +7,16 @@ use rayon::prelude::*;
 
 use crate::utils::{
     arrow_values, as_f64_array, ranges_from_starts_ends, u64_results_into_arrow,
-    validate_indexed_coord_ranges, validate_indexed_ranges,
+    validate_coord_ranges, validate_indexed_coord_ranges, validate_indexed_ranges, validate_ranges,
 };
+
+fn number_of_visits_impl(n_values: usize, ranges: &[(usize, usize)]) -> PyResult<Vec<u64>> {
+    validate_ranges(n_values, ranges)?;
+    Ok(ranges
+        .iter()
+        .map(|&(start, end)| (end - start) as u64)
+        .collect())
+}
 
 fn number_of_visits_indexed_impl(
     n_values: usize,
@@ -19,6 +27,24 @@ fn number_of_visits_indexed_impl(
     Ok(ranges
         .iter()
         .map(|&(start, end)| (end - start) as u64)
+        .collect())
+}
+
+fn number_of_locations_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    ranges: &[(usize, usize)],
+) -> PyResult<Vec<u64>> {
+    validate_coord_ranges(latitudes, longitudes, ranges)?;
+    Ok(ranges
+        .par_iter()
+        .map(|&(start, end)| {
+            let mut seen = HashSet::with_capacity(end.saturating_sub(start));
+            for idx in start..end {
+                seen.insert((latitudes[idx].to_bits(), longitudes[idx].to_bits()));
+            }
+            seen.len() as u64
+        })
         .collect())
 }
 
@@ -39,6 +65,25 @@ fn number_of_locations_indexed_impl(
             seen.len() as u64
         })
         .collect())
+}
+
+#[pyfunction]
+pub(crate) fn number_of_visits_numpy<'py>(
+    py: Python<'py>,
+    n_values: usize,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Bound<'py, PyArray1<u64>>> {
+    Ok(number_of_visits_impl(n_values, &ranges)?.into_pyarray(py))
+}
+
+#[pyfunction]
+pub(crate) fn number_of_visits_arrow(
+    n_values: usize,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<PyArray> {
+    Ok(u64_results_into_arrow(number_of_visits_impl(
+        n_values, &ranges,
+    )?))
 }
 
 #[pyfunction]
@@ -64,6 +109,34 @@ pub(crate) fn number_of_visits_indexed_arrow(
     Ok(u64_results_into_arrow(number_of_visits_indexed_impl(
         n_values,
         indices.as_slice()?,
+        &ranges,
+    )?))
+}
+
+#[pyfunction]
+pub(crate) fn number_of_locations_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<Bound<'py, PyArray1<u64>>> {
+    Ok(
+        number_of_locations_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)?
+            .into_pyarray(py),
+    )
+}
+
+#[pyfunction]
+pub(crate) fn number_of_locations_arrow(
+    latitudes: PyArray,
+    longitudes: PyArray,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<PyArray> {
+    let latitudes = as_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    Ok(u64_results_into_arrow(number_of_locations_impl(
+        arrow_values(&latitudes),
+        arrow_values(&longitudes),
         &ranges,
     )?))
 }

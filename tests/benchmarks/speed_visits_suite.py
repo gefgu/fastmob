@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from tests.benchmarks.sorted_input_cache import DEFAULT_INPUT_CACHE_DIR, load_or_create_sorted_input
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
@@ -169,15 +171,17 @@ def build_output_path(
     timing_mode: str,
     backend: str | None = None,
     profile: str = "speed",
+    input_order: str = "raw",
 ) -> Path:
+    order_part = "" if input_order == "raw" else f"{input_order}_"
     if library == "skmob2":
         if backend is None or backend == "both":
             raise ValueError("skmob2 output path requires a concrete backend")
-        filename = f"skmob2_visits_{profile}_{backend}.json"
+        filename = f"skmob2_visits_{profile}_{order_part}{backend}.json"
     elif library == "skmob":
-        filename = f"skmob_visits_{profile}_{timing_mode}.json"
+        filename = f"skmob_visits_{profile}_{order_part}{timing_mode}.json"
     else:
-        filename = f"movingpandas_visits_{profile}.json"
+        filename = f"movingpandas_visits_{profile}_{input_order}.json" if input_order != "raw" else f"movingpandas_visits_{profile}.json"
     return output_dir / filename
 
 
@@ -596,7 +600,15 @@ def benchmark_movingpandas_size(size: int, *, profile: str = "speed") -> dict[st
     }
 
 
-def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: str, backend: str | None) -> dict[str, Any]:
+def build_metadata(
+    args: argparse.Namespace,
+    *,
+    input_type: str,
+    timing_mode: str,
+    backend: str | None,
+    input_cache_path: Path | None = None,
+    input_cache_status: str = "not_applicable",
+) -> dict[str, Any]:
     return {
         "suite": "visits",
         "library": args.library,
@@ -612,9 +624,36 @@ def build_metadata(args: argparse.Namespace, *, input_type: str, timing_mode: st
         "sleep_seconds": args.sleep_seconds,
         "retries": args.retries,
         "sizes": args.sizes,
+        "input_order": args.input_order,
+        "input_cache_path": None if input_cache_path is None else str(input_cache_path),
+        "input_cache_status": input_cache_status,
         "skmob_catalog_path": str(SKMOB_CATALOG_PATH),
         "movingpandas_catalog_path": str(MOVINGPANDAS_CATALOG_PATH),
     }
+
+
+def load_brightkite_for_order(
+    *,
+    data_path: Path,
+    backend: str,
+    input_order: str,
+    input_cache_dir: Path,
+) -> tuple[Any, Path | None, str]:
+    if input_order == "raw":
+        if backend == "polars":
+            return load_brightkite_polars(data_path), None, "not_applicable"
+        return load_brightkite_pandas(data_path), None, "not_applicable"
+
+    sorted_input = load_or_create_sorted_input(
+        cache_dir=input_cache_dir,
+        suite="visits",
+        backend=backend,
+        data_path=data_path,
+        load_raw=lambda: load_brightkite_polars(data_path) if backend == "polars" else load_brightkite_pandas(data_path),
+        uid_col="user",
+        datetime_col="check-in_time",
+    )
+    return sorted_input.data, sorted_input.path, sorted_input.status
 
 
 def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[str, Any]:
@@ -627,13 +666,16 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         if selected_backend == "both":
             raise ValueError("run_suite requires a concrete backend when library is skmob2")
         if selected_backend == "pandas":
-            print(f"Loading Brightkite into pandas from {data_path}...")
-            df = load_brightkite_pandas(data_path)
             input_type = "pandas.DataFrame"
         else:
-            print(f"Loading Brightkite into Polars from {data_path}...")
-            df = load_brightkite_polars(data_path)
             input_type = "polars.DataFrame"
+        print(f"Loading {args.input_order} Brightkite into {selected_backend} from {data_path}...")
+        df, input_cache_path, input_cache_status = load_brightkite_for_order(
+            data_path=data_path,
+            backend=selected_backend,
+            input_order=args.input_order,
+            input_cache_dir=Path(args.input_cache_dir),
+        )
         results = [
             benchmark_skmob2_size(
                 df,
@@ -645,7 +687,14 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             )
             for size in args.sizes
         ]
-        metadata = build_metadata(args, input_type=input_type, timing_mode="measure_only", backend=selected_backend)
+        metadata = build_metadata(
+            args,
+            input_type=input_type,
+            timing_mode="measure_only",
+            backend=selected_backend,
+            input_cache_path=input_cache_path,
+            input_cache_status=input_cache_status,
+        )
         return {"metadata": metadata, "results": results}
 
     if args.library == "movingpandas":
@@ -653,8 +702,13 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         metadata = build_metadata(args, input_type="not_applicable", timing_mode="not_applicable", backend=None)
         return {"metadata": metadata, "results": results}
 
-    print(f"Loading Brightkite into pandas from {data_path}...")
-    raw_df = load_brightkite_pandas(data_path)
+    print(f"Loading {args.input_order} Brightkite into pandas from {data_path}...")
+    raw_df, input_cache_path, input_cache_status = load_brightkite_for_order(
+        data_path=data_path,
+        backend="pandas",
+        input_order=args.input_order,
+        input_cache_dir=Path(args.input_cache_dir),
+    )
     try:
         skmob_module = importlib.import_module("skmob")
     except Exception as exc:
@@ -667,13 +721,20 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             size,
             timing_mode=args.timing_mode,
             profile=args.profile,
-                iterations=args.iterations,
-                sleep_seconds=args.sleep_seconds,
-                retries=args.retries,
-            )
+            iterations=args.iterations,
+            sleep_seconds=args.sleep_seconds,
+            retries=args.retries,
+        )
         for size in args.sizes
     ]
-    metadata = build_metadata(args, input_type="skmob.TrajDataFrame", timing_mode=args.timing_mode, backend=None)
+    metadata = build_metadata(
+        args,
+        input_type="skmob.TrajDataFrame",
+        timing_mode=args.timing_mode,
+        backend=None,
+        input_cache_path=input_cache_path,
+        input_cache_status=input_cache_status,
+    )
     return {"metadata": metadata, "results": results}
 
 
@@ -685,12 +746,20 @@ def concrete_backends(args: argparse.Namespace) -> Iterable[str | None]:
     return (args.backend,)
 
 
+def concrete_input_orders(args: argparse.Namespace) -> Iterable[str]:
+    if args.input_order == "both":
+        return ("raw", "sorted")
+    return (args.input_order,)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone visits/collective speed benchmarks.")
     parser.add_argument("--library", choices=["skmob2", "skmob", "movingpandas"], required=True)
     parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")
+    parser.add_argument("--input-order", choices=["raw", "sorted", "both"], default="raw")
+    parser.add_argument("--input-cache-dir", type=Path, default=DEFAULT_INPUT_CACHE_DIR)
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--retries", type=nonnegative_int, default=1, help="Retry a metric this many times after failure.")
@@ -702,11 +771,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    for backend in concrete_backends(args):
-        payload = run_suite(args, backend=backend)
-        output_path = build_output_path(Path(args.output_dir), args.library, args.timing_mode, backend, args.profile)
-        write_json(payload, output_path)
-        print(f"\nWrote results to {output_path}")
+    for input_order in concrete_input_orders(args):
+        order_args = argparse.Namespace(**vars(args))
+        order_args.input_order = input_order
+        for backend in concrete_backends(order_args):
+            payload = run_suite(order_args, backend=backend)
+            output_path = build_output_path(
+                Path(order_args.output_dir),
+                order_args.library,
+                order_args.timing_mode,
+                backend,
+                order_args.profile,
+                order_args.input_order,
+            )
+            write_json(payload, output_path)
+            print(f"\nWrote results to {output_path}")
     return 0
 
 

@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
-use crate::haversine::haversine_km;
+use crate::haversine::{adjacent_haversine_sum_km, haversine_km};
 use crate::utils::{
     arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends,
     validate_coord_ranges, validate_indexed_coord_ranges,
@@ -22,16 +22,7 @@ fn total_distance_impl(
             if end - start < 2 {
                 return 0.0;
             }
-            (start + 1..end)
-                .map(|idx| {
-                    haversine_km(
-                        latitudes[idx - 1],
-                        longitudes[idx - 1],
-                        latitudes[idx],
-                        longitudes[idx],
-                    )
-                })
-                .sum()
+            adjacent_haversine_sum_km(latitudes, longitudes, start, end)
         })
         .collect();
 

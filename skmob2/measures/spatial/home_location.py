@@ -3,10 +3,16 @@ import narwhals as nw
 
 from typing import Any
 
-from skmob2._core import home_location_indexed_arrow, home_location_indexed_numpy
+from skmob2._core import (
+    home_location_arrow,
+    home_location_indexed_arrow,
+    home_location_indexed_numpy,
+    home_location_numpy,
+)
 
 from .._common import (
     _build_indexed_user_ranges_fast,
+    _build_presorted_user_ranges,
     _dispatch_pair_kernel,
     _extract_hours,
     _is_polars_backed,
@@ -25,6 +31,7 @@ def home_location(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ) -> Any:
     """Return the most-visited nighttime location for each user.
 
@@ -52,6 +59,9 @@ def home_location(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and use the
+        contiguous fast path.
 
     Returns
     -------
@@ -118,6 +128,21 @@ def home_location(
 
     df, hours = _extract_hours(df, datetime_col)
     use_arrow = _is_polars_backed(df)
+    if sorted:
+        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        home_lats, home_lngs = _dispatch_pair_kernel(
+            home_location_numpy,
+            home_location_arrow,
+            [df.get_column(lat_col), df.get_column(lng_col), hours],
+            ranges,
+            float(start_night),
+            float(end_night),
+            use_arrow=use_arrow,
+        )
+        if uid_col is None:
+            return _to_native({lat_col: home_lats, lng_col: home_lngs}, df)
+        return _to_native({uid_col: uid_values, lat_col: home_lats, lng_col: home_lngs}, df)
+
     uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     home_lats, home_lngs = _dispatch_pair_kernel(

@@ -87,6 +87,7 @@ scikit-mobility/
 TODO.md
 
 **/results/logs/*
+tests/benchmarks/cache/
 
 
 tests/shared/data/*

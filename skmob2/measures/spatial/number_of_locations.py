@@ -3,10 +3,16 @@ import narwhals as nw
 
 from typing import Any
 
-from skmob2._core import number_of_locations_indexed_arrow, number_of_locations_indexed_numpy
+from skmob2._core import (
+    number_of_locations_arrow,
+    number_of_locations_indexed_arrow,
+    number_of_locations_indexed_numpy,
+    number_of_locations_numpy,
+)
 
 from .._common import (
     _build_indexed_user_ranges_fast,
+    _build_presorted_user_ranges,
     _dispatch_kernel,
     _is_polars_backed,
     _detect_trajectory_columns,
@@ -22,6 +28,7 @@ def number_of_locations(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ) -> Any:
     """Return the number of distinct locations visited by each user.
 
@@ -43,6 +50,9 @@ def number_of_locations(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and use the
+        contiguous fast path.
 
     Returns
     -------
@@ -106,6 +116,19 @@ def number_of_locations(
     )
 
     use_arrow = _is_polars_backed(df)
+    if sorted:
+        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        n_locs = _dispatch_kernel(
+            number_of_locations_numpy,
+            number_of_locations_arrow,
+            [df.get_column(lat_col), df.get_column(lng_col)],
+            ranges,
+            use_arrow=use_arrow,
+        )
+        if uid_col is None:
+            return _to_native({"number_of_locations": n_locs}, df)
+        return _to_native({uid_col: uid_values, "number_of_locations": n_locs}, df)
+
     uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
     n_locs = _dispatch_kernel(
         number_of_locations_indexed_numpy,

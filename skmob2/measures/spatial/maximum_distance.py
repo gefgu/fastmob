@@ -6,11 +6,14 @@ from typing import Any
 
 import numpy as np
 from skmob2._core import (
+    maximum_distance_arrow,
     maximum_distance_indexed_arrow,
     maximum_distance_indexed_numpy,
+    maximum_distance_numpy,
 )
 
 from .._common import (
+    _build_presorted_user_ranges,
     _build_time_ordered_user_ranges,
     _dispatch_kernel,
     _extract_timestamps_ms,
@@ -28,6 +31,7 @@ def maximum_distance(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ) -> Any:
     """Return the maximum distance (km) covered in a single movement for each user.
 
@@ -49,6 +53,9 @@ def maximum_distance(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and ordered by
+        datetime within each user, then use the contiguous fast path.
 
     Returns
     -------
@@ -113,8 +120,27 @@ def maximum_distance(
         sort=False,
     )
 
-    timestamps = _extract_timestamps_ms(df, datetime_col)
     use_arrow = _is_polars_backed(df)
+    if sorted:
+        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        max_distances = _dispatch_kernel(
+            maximum_distance_numpy,
+            maximum_distance_arrow,
+            [df.get_column(lat_col), df.get_column(lng_col)],
+            ranges,
+            use_arrow=use_arrow,
+        )
+        if uid_col is None:
+            if len(df) < 2:
+                return _to_native({"maximum_distance": [math.nan]}, df)
+            return _to_native({"maximum_distance": max_distances}, df)
+
+        max_distances = np.asarray(max_distances, dtype=float)
+        short_mask = np.fromiter((end - start < 2 for start, end in ranges), dtype=bool, count=len(ranges))
+        max_distances[short_mask] = math.nan
+        return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)
+
+    timestamps = _extract_timestamps_ms(df, datetime_col)
     uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
     )

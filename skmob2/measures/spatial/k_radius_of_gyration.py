@@ -4,12 +4,15 @@ import narwhals as nw
 from typing import Any
 
 from skmob2._core import (
+    k_radius_of_gyration_arrow,
     k_radius_of_gyration_indexed_arrow,
     k_radius_of_gyration_indexed_numpy,
+    k_radius_of_gyration_numpy,
 )
 
 from .._common import (
     _build_indexed_user_ranges_fast,
+    _build_presorted_user_ranges,
     _dispatch_kernel,
     _extract_timestamps_ms,
     _is_polars_backed,
@@ -27,6 +30,7 @@ def k_radius_of_gyration(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted: bool = False,
 ):
     """Compute the k-radius of gyration (km) for each user in the trajectory.
 
@@ -61,6 +65,9 @@ def k_radius_of_gyration(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and use the
+        contiguous fast path.
 
     Returns
     -------
@@ -129,6 +136,20 @@ def k_radius_of_gyration(
     lngs = df.get_column(lng_col)
     timestamps = _extract_timestamps_ms(df, datetime_col)
     use_arrow = _is_polars_backed(df)
+    if sorted:
+        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        krg_values = _dispatch_kernel(
+            k_radius_of_gyration_numpy,
+            k_radius_of_gyration_arrow,
+            [lats, lngs, timestamps],
+            ranges,
+            k,
+            use_arrow=use_arrow,
+        )
+        if uid_col is None:
+            return _to_native({"k_radius_of_gyration": krg_values}, df)
+        return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)
+
     uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     krg_values = _dispatch_kernel(

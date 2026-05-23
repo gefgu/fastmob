@@ -9,7 +9,7 @@ use rayon::prelude::*;
 
 use crate::utils::{
     arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends,
-    validate_indexed_coord_ranges,
+    validate_coord_ranges, validate_indexed_coord_ranges,
 };
 
 type LocationKey = (u64, u64);
@@ -156,6 +156,86 @@ fn k_radius_of_gyration_indexed_impl(
         .collect())
 }
 
+fn k_radius_of_gyration_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    timestamps: &[f64],
+    ranges: &[(usize, usize)],
+    k: usize,
+) -> PyResult<Vec<f64>> {
+    validate_coord_ranges(latitudes, longitudes, ranges)?;
+    if timestamps.len() != latitudes.len() {
+        return Err(PyValueError::new_err(
+            "timestamps, latitudes, and longitudes must have the same length",
+        ));
+    }
+
+    Ok(ranges
+        .par_iter()
+        .map(|&(start, end)| {
+            let mut stats: HashMap<LocationKey, LocationStats> = HashMap::new();
+            for idx in start..end {
+                let lat = latitudes[idx];
+                let lng = longitudes[idx];
+                let entry = stats.entry((lat.to_bits(), lng.to_bits())).or_insert((
+                    lat,
+                    lng,
+                    0,
+                    timestamps[idx],
+                    idx,
+                ));
+                entry.2 += 1;
+                if timestamps[idx].total_cmp(&entry.3).is_lt()
+                    || (timestamps[idx].total_cmp(&entry.3).is_eq() && idx < entry.4)
+                {
+                    entry.3 = timestamps[idx];
+                    entry.4 = idx;
+                }
+            }
+
+            let mut locations: Vec<LocationStats> = stats.into_values().collect();
+            locations.sort_by(|left, right| {
+                right
+                    .2
+                    .cmp(&left.2)
+                    .then(left.3.total_cmp(&right.3))
+                    .then(left.4.cmp(&right.4))
+            });
+
+            let top_len = k.min(locations.len());
+            let coords: Vec<(f64, f64)> = locations[..top_len]
+                .iter()
+                .map(|&(lat, lng, _, _, _)| (lat, lng))
+                .collect();
+            let counts: Vec<u64> = locations[..top_len]
+                .iter()
+                .map(|&(_, _, count, _, _)| count)
+                .collect();
+            k_radius_for_weighted_locations(&coords, &counts, k)
+        })
+        .collect())
+}
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn k_radius_of_gyration_numpy<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    timestamps: PyReadonlyArray1<'py, f64>,
+    ranges: Vec<(usize, usize)>,
+    k: usize,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    Ok(k_radius_of_gyration_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        timestamps.as_slice()?,
+        &ranges,
+        k,
+    )?
+    .into_pyarray(py))
+}
+
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn k_radius_of_gyration_indexed_numpy<'py>(
@@ -178,6 +258,26 @@ pub(crate) fn k_radius_of_gyration_indexed_numpy<'py>(
         k,
     )?
     .into_pyarray(py))
+}
+
+#[pyfunction]
+pub(crate) fn k_radius_of_gyration_arrow(
+    latitudes: PyArray,
+    longitudes: PyArray,
+    timestamps: PyArray,
+    ranges: Vec<(usize, usize)>,
+    k: usize,
+) -> PyResult<PyArray> {
+    let latitudes = as_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    let timestamps = as_f64_array(timestamps, "timestamps")?;
+    Ok(f64_results_into_arrow(k_radius_of_gyration_impl(
+        arrow_values(&latitudes),
+        arrow_values(&longitudes),
+        arrow_values(&timestamps),
+        &ranges,
+        k,
+    )?))
 }
 
 #[pyfunction]

@@ -14,6 +14,7 @@ from .._common import (
     _ROW_ORDER_COL,
     _as_index_array,
     _arrow_result_values,
+    _build_presorted_user_ranges,
     _build_user_ranges,
     _extract_timestamps_ms,
     _is_polars_backed,
@@ -151,11 +152,7 @@ def _build_time_ordered_ranges_fallback(
 
 
 def _presorted_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
-    if uid_col is None:
-        return None, [(0, len(df))]
-
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    return uid_values, ranges
+    return _build_presorted_user_ranges(df, uid_col)
 
 
 def _presorted_coordinate_series_from_indices(
@@ -209,6 +206,9 @@ def jump_lengths(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    sorted:
+        When True, trust that rows are already grouped by user and ordered by
+        datetime within each user, then use the presorted contiguous fast path.
 
     Returns
     -------
