@@ -1,131 +1,131 @@
 # Evaluation
 
-::: skmob2.measures.evaluation.common_part_of_commuters
+::: skmob2.comparison.evaluation.common_part_of_commuters
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.common_part_of_links
+::: skmob2.comparison.evaluation.common_part_of_links
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.common_part_of_commuters_distance
+::: skmob2.comparison.evaluation.common_part_of_commuters_distance
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.r_squared
+::: skmob2.comparison.evaluation.r_squared
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.mse
+::: skmob2.comparison.evaluation.mse
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.rmse
+::: skmob2.comparison.evaluation.rmse
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.nrmse
+::: skmob2.comparison.evaluation.nrmse
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.information_gain
+::: skmob2.comparison.evaluation.information_gain
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.kullback_leibler_divergence
+::: skmob2.comparison.evaluation.kullback_leibler_divergence
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.pearson_correlation
+::: skmob2.comparison.evaluation.pearson_correlation
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.spearman_correlation
+::: skmob2.comparison.evaluation.spearman_correlation
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.evaluation.max_error
+::: skmob2.comparison.evaluation.max_error
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.jensen_shannon_divergence
+::: skmob2.comparison.metrics.jensen_shannon_divergence
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.matrix_jensen_shannon_divergence
+::: skmob2.comparison.metrics.matrix_jensen_shannon_divergence
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.time_bin_matrix_jensen_shannon_divergence
+::: skmob2.comparison.metrics.time_bin_matrix_jensen_shannon_divergence
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.histogram_jensen_shannon_divergence
+::: skmob2.comparison.metrics.histogram_jensen_shannon_divergence
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.wasserstein_distance
+::: skmob2.comparison.metrics.wasserstein_distance
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.column_distribution_jensen_shannon_divergence
+::: skmob2.comparison.distribution.column_distribution_jensen_shannon_divergence
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.column_distribution_wasserstein_distance
+::: skmob2.comparison.distribution.column_distribution_wasserstein_distance
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.visits_per_user_jensen_shannon_divergence
+::: skmob2.comparison.distribution.visits_per_user_jensen_shannon_divergence
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.visits_per_user_wasserstein_distance
+::: skmob2.comparison.distribution.visits_per_user_wasserstein_distance
     options:
       show_source: false
 
 ---
 
-::: skmob2.measures.comparison.od_matrix_common_part_of_commuters
+::: skmob2.comparison.spatial.od_matrix_common_part_of_commuters
     options:
       show_source: false

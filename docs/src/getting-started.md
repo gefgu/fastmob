@@ -39,10 +39,10 @@ maturin develop
 uv sync --extra docs
 
 # Serve locally with live reload
-uv run mkdocs serve
+uv run zensical serve
 
-# Build and validate (strict mode, zero warnings)
-uv run mkdocs build --strict
+# Build and validate
+uv run zensical build
 ```
 
 ## Column Name Auto-Detection

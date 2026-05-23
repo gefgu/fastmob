@@ -1,0 +1,130 @@
+{
+  "metadata": {
+    "backend": "polars",
+    "dataset_path": "/home/gustavo/skmob2/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": "/home/gustavo/skmob2/tests/benchmarks/cache/privacy_privacy_toy.csv_polars_repeat1_sorted.parquet",
+    "input_cache_status": "created",
+    "input_order": "sorted",
+    "input_type": "polars.DataFrame",
+    "iterations": 5,
+    "library": "skmob2",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "python_version": "3.11.4 (main, Jul  5 2023, 14:15:25) [GCC 11.2.0]",
+    "repeat_factor": 1,
+    "sleep_seconds": 0.5,
+    "suite": "privacy",
+    "timestamp_utc": "2026-05-22T17:58:06.476469+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 0.0005087758181616664,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0004983949474990368,
+          "status": "ok",
+          "times_seconds": [
+            0.0005053620552644134,
+            0.0004983949474990368,
+            0.0005104719894006848,
+            0.0005004940321668983,
+            0.0005291560664772987
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 0.002552357781678438,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0005672279512509704,
+          "status": "ok",
+          "times_seconds": [
+            0.0030322070233523846,
+            0.005618131021037698,
+            0.0029447389533743262,
+            0.000599483959376812,
+            0.0005672279512509704
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 0.0010789703810587525,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0009101169416680932,
+          "status": "ok",
+          "times_seconds": [
+            0.001143408939242363,
+            0.001138234045356512,
+            0.0009736049687489867,
+            0.0012294870102778077,
+            0.0009101169416680932
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 0.000560629996471107,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0005486829904839396,
+          "status": "ok",
+          "times_seconds": [
+            0.0005486829904839396,
+            0.0005660499446094036,
+            0.000574267003685236,
+            0.0005518760299310088,
+            0.000562274013645947
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 0.0006107446039095521,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0005932990461587906,
+          "status": "ok",
+          "times_seconds": [
+            0.0006053969264030457,
+            0.0006264189723879099,
+            0.0005932990461587906,
+            0.0006223720265552402,
+            0.0006062360480427742
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 0.0020805147709324957,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0006891939556226134,
+          "status": "ok",
+          "times_seconds": [
+            0.0028670509345829487,
+            0.003240515012294054,
+            0.0028610900044441223,
+            0.0007447239477187395,
+            0.0006891939556226134
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 0.00281394321937114,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0008991210488602519,
+          "status": "ok",
+          "times_seconds": [
+            0.004115217016078532,
+            0.0008991210488602519,
+            0.0009301380487158895,
+            0.003918754984624684,
+            0.004206484998576343
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 0.00244228420779109,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0007118630455806851,
+          "status": "ok",
+          "times_seconds": [
+            0.002929216017946601,
+            0.002788493991829455,
+            0.0007118630455806851,
+            0.0028694940265268087,
+            0.0029123539570719004
+          ]
+        }
+      },
+      "rows": 23
+    }
+  ]
+}
