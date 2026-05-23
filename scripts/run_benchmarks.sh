@@ -15,7 +15,6 @@ cd "$REPO_ROOT"
 MAIN_VENV="$REPO_ROOT/.venv"
 SKMOB_VENV="$REPO_ROOT/.venv-skmob"
 MOVINGPANDAS_VENV="${MOVINGPANDAS_VENV:-$MAIN_VENV}"
-LOG_DIR="$REPO_ROOT/tests/benchmarks/results/logs"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 PROFILES=("speed" "memory")
 SKMOB_TIMING_MODES=("prebuilt_tdf" "workflow_tdf")
@@ -26,7 +25,12 @@ if [ ! -f "$MAIN_VENV/bin/activate" ]; then
     exit 1
 fi
 
+ENV_SLUG="$(detect_env_slug "$MAIN_VENV" 2>/dev/null || echo "unknown_env")"
+OUTPUT_DIR="$REPO_ROOT/tests/benchmarks/results/${ENV_SLUG}"
+LOG_DIR="$OUTPUT_DIR/logs"
 mkdir -p "$LOG_DIR"
+echo "==> Environment: ${ENV_SLUG}"
+echo "==> Results dir: ${OUTPUT_DIR#$REPO_ROOT/}"
 
 run_python() {
     local venv="$1"
@@ -41,6 +45,16 @@ can_import() {
     local venv="$1"
     local module="$2"
     run_python "$venv" -c "import ${module}" >/dev/null 2>&1
+}
+
+detect_env_slug() {
+    local venv="$1"
+    run_python "$venv" - <<'PYEOF'
+import sys
+sys.path.insert(0, "tests/benchmarks")
+from benchmark_env import detect_cpu_info, build_env_slug
+print(build_env_slug(detect_cpu_info()))
+PYEOF
 }
 
 run_job() {
@@ -75,34 +89,39 @@ for profile in "${PROFILES[@]}"; do
         "$@" \
         --library skmob2 \
         --backend both \
-        --profile "$profile"
+        --profile "$profile" \
+        --output-dir "$OUTPUT_DIR"
     run_job "skmob2_visits_${profile}_both" \
         "$MAIN_VENV" \
         tests/benchmarks/speed_visits_suite.py \
         "$@" \
         --library skmob2 \
         --backend both \
-        --profile "$profile"
+        --profile "$profile" \
+        --output-dir "$OUTPUT_DIR"
     run_job "skmob2_models_${profile}" \
         "$MAIN_VENV" \
         tests/benchmarks/speed_models_suite.py \
         "$@" \
         --library skmob2 \
-        --profile "$profile"
+        --profile "$profile" \
+        --output-dir "$OUTPUT_DIR"
     run_job "skmob2_models_large_scale_${profile}" \
         "$MAIN_VENV" \
         tests/benchmarks/speed_models_large_scale.py \
         "$@" \
         --library skmob2 \
         --mode trajectory \
-        --profile "$profile"
+        --profile "$profile" \
+        --output-dir "$OUTPUT_DIR"
     run_job "skmob2_models_location_large_scale_${profile}" \
         "$MAIN_VENV" \
         tests/benchmarks/speed_models_large_scale.py \
         "$@" \
         --library skmob2 \
         --mode location \
-        --profile "$profile"
+        --profile "$profile" \
+        --output-dir "$OUTPUT_DIR"
 done
 
 if [ -x "$SKMOB_VENV/bin/python" ]; then
@@ -116,35 +135,40 @@ if [ -x "$SKMOB_VENV/bin/python" ]; then
                 "$@" \
                 --library skmob \
                 --profile "$profile" \
-                --timing-mode "$timing_mode"
+                --timing-mode "$timing_mode" \
+                --output-dir "$OUTPUT_DIR"
             run_job "skmob_visits_${profile}_${timing_mode}" \
                 "$SKMOB_VENV" \
                 tests/benchmarks/speed_visits_suite.py \
                 "$@" \
                 --library skmob \
                 --profile "$profile" \
-                --timing-mode "$timing_mode"
+                --timing-mode "$timing_mode" \
+                --output-dir "$OUTPUT_DIR"
         done
         run_job "skmob_models_${profile}" \
             "$SKMOB_VENV" \
             tests/benchmarks/speed_models_suite.py \
             "$@" \
             --library skmob \
-            --profile "$profile"
+            --profile "$profile" \
+            --output-dir "$OUTPUT_DIR"
         run_job "skmob_models_large_scale_${profile}" \
             "$SKMOB_VENV" \
             tests/benchmarks/speed_models_large_scale.py \
             "$@" \
             --library skmob \
             --mode trajectory \
-            --profile "$profile"
+            --profile "$profile" \
+            --output-dir "$OUTPUT_DIR"
         run_job "skmob_models_location_large_scale_${profile}" \
             "$SKMOB_VENV" \
             tests/benchmarks/speed_models_large_scale.py \
             "$@" \
             --library skmob \
             --mode location \
-            --profile "$profile"
+            --profile "$profile" \
+            --output-dir "$OUTPUT_DIR"
     done
 else
     echo "WARNING: .venv-skmob not found; skipping skmob comparison benchmarks."
@@ -161,13 +185,15 @@ if [ -x "$MOVINGPANDAS_VENV/bin/python" ] && can_import "$MOVINGPANDAS_VENV" mov
             tests/benchmarks/speed_spatial_suite.py \
             "$@" \
             --library movingpandas \
-            --profile "$profile"
+            --profile "$profile" \
+            --output-dir "$OUTPUT_DIR"
         run_job "movingpandas_visits_${profile}" \
             "$MOVINGPANDAS_VENV" \
             tests/benchmarks/speed_visits_suite.py \
             "$@" \
             --library movingpandas \
-            --profile "$profile"
+            --profile "$profile" \
+            --output-dir "$OUTPUT_DIR"
     done
 else
     echo "WARNING: movingpandas is not importable in ${MOVINGPANDAS_VENV#$REPO_ROOT/}; skipping MovingPandas benchmarks."
@@ -175,7 +201,7 @@ else
 fi
 
 echo
-echo "==> Benchmark run complete. Logs are in ${LOG_DIR#$REPO_ROOT/} with prefix ${RUN_ID}_"
+echo "==> Benchmark run complete. Results are in ${OUTPUT_DIR#$REPO_ROOT/}, logs in ${LOG_DIR#$REPO_ROOT/}/ with prefix ${RUN_ID}_"
 if [ "${#FAILURES[@]}" -gt 0 ]; then
     echo "==> Failures:"
     printf '  - %s\n' "${FAILURES[@]}"

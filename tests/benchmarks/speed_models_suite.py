@@ -25,7 +25,11 @@ from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REFERENCE_DIR = REPO_ROOT / "tests" / "shared" / "skmob_reference" / "models"
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "results"
+
+_BENCHMARK_DIR = Path(__file__).resolve().parent
+if str(_BENCHMARK_DIR) not in sys.path:
+    sys.path.insert(0, str(_BENCHMARK_DIR))
+from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
 DEFAULT_AGENT_COUNTS = [2, 10, 50]
 DEFAULT_LOCATION_COUNTS = [12, 50, 200]
 DEFAULT_SIZES = DEFAULT_LOCATION_COUNTS
@@ -631,6 +635,7 @@ def benchmark_trajectory_case(
 
 
 def build_metadata(args: argparse.Namespace) -> dict[str, Any]:
+    cpu = detect_cpu_info()
     return {
         "suite": "models",
         "library": args.library,
@@ -638,6 +643,9 @@ def build_metadata(args: argparse.Namespace) -> dict[str, Any]:
         "input_type": "cached_skmob_model_reference",
         "python_version": sys.version,
         "platform": platform.platform(),
+        "cpu_model": cpu["model"],
+        "cpu_cores": cpu["cores"],
+        "cpu_vendor": cpu["vendor_slug"],
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "reference_dir": str(args.reference_dir),
         "iterations": args.iterations,
@@ -706,7 +714,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Deprecated alias for --n-locations.",
     )
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--reference-dir", type=Path, default=DEFAULT_REFERENCE_DIR)
     args = parser.parse_args(argv)
     if args.n_locations is None:
@@ -714,6 +722,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     elif args.sizes is not None:
         parser.error("--sizes is a deprecated alias for --n-locations; pass only one of them")
     args.sizes = args.n_locations
+    if args.output_dir is None:
+        args.output_dir = get_default_output_dir()
     return args
 
 

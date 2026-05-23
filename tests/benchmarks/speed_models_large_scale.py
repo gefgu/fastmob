@@ -51,6 +51,7 @@ from speed_models_suite import (  # noqa: E402
     to_timestamp,
     write_json,
 )
+from benchmark_env import get_default_output_dir  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -58,7 +59,6 @@ from speed_models_suite import (  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REFERENCE_DIR = REPO_ROOT / "tests" / "shared" / "skmob_reference" / "models"
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parent / "results"
 DEFAULT_SIZES = [1000, 5000, 10000]
 
 MODEL_SEED = 2
@@ -405,7 +405,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--iterations", type=positive_int, default=3)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--reference-dir", type=Path, default=DEFAULT_REFERENCE_DIR)
     args = parser.parse_args(argv)
     # build_metadata (from speed_models_suite) expects these; they are N/A for the large-scale suite
@@ -413,6 +413,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         args.n_agents = None
     if not hasattr(args, "n_locations"):
         args.n_locations = None
+    if args.output_dir is None:
+        args.output_dir = get_default_output_dir()
     return args
 
 
