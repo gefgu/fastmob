@@ -23,6 +23,22 @@ pub(crate) fn adjacent_haversine_distances_km(
         return Vec::new();
     }
 
+    let mut distances = vec![0.0; end - start - 1];
+    adjacent_haversine_distances_into_km(latitudes, longitudes, start, end, &mut distances);
+    distances
+}
+
+pub(crate) fn adjacent_haversine_distances_into_km(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    start: usize,
+    end: usize,
+    distances: &mut [f64],
+) {
+    if end - start < 2 {
+        return;
+    }
+
     let latitudes_rad: Vec<f64> = latitudes[start..end]
         .iter()
         .map(|lat| lat.to_radians())
@@ -31,21 +47,19 @@ pub(crate) fn adjacent_haversine_distances_km(
         .iter()
         .map(|lon| lon.to_radians())
         .collect();
-    let mut distances = vec![0.0; end - start - 1];
 
     f64::haversine(
         &latitudes_rad[..latitudes_rad.len() - 1],
         &longitudes_rad[..longitudes_rad.len() - 1],
         &latitudes_rad[1..],
         &longitudes_rad[1..],
-        &mut distances,
+        distances,
     )
     .expect("adjacent coordinate slices have matching lengths");
 
     distances
         .iter_mut()
         .for_each(|distance| *distance *= NUMKONG_TO_GEO_KM);
-    distances
 }
 
 pub(crate) fn adjacent_haversine_sum_km(

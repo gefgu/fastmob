@@ -476,6 +476,20 @@ def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple
     if uid_col is None:
         return None, [(0, len(df))]
 
+    if _is_pandas_backed(df):
+        native = df.to_native()
+        n = len(native)
+        if n == 0:
+            return [], []
+
+        uid_series = native[uid_col]
+        boundaries = uid_series.ne(uid_series.shift(1)).fillna(True).to_numpy(dtype=bool, copy=False)
+        starts_array = np.flatnonzero(boundaries)
+        starts = starts_array.tolist()
+        ends = starts[1:] + [n]
+        uid_values = uid_series.iloc[starts_array].tolist()
+        return uid_values, list(zip(starts, ends))
+
     uid_values, ranges = _build_user_ranges(df, uid_col)
     return uid_values, ranges
 

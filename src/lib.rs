@@ -84,7 +84,15 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        radius_of_gyration::radius_of_gyration_numpy_with_counts,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         radius_of_gyration::radius_of_gyration_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        radius_of_gyration::radius_of_gyration_arrow_with_counts,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

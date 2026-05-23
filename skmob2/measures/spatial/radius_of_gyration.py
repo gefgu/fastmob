@@ -6,14 +6,17 @@ from typing import Any
 import numpy as np
 from skmob2._core import (
     radius_of_gyration_arrow,
+    radius_of_gyration_arrow_with_counts,
     radius_of_gyration_indexed_arrow,
     radius_of_gyration_indexed_numpy,
     radius_of_gyration_numpy,
+    radius_of_gyration_numpy_with_counts,
     radius_of_gyration_valid_user_indices_arrow,
     radius_of_gyration_valid_user_indices_numpy,
 )
 
 from .._common import (
+    _arrow_result_values,
     _as_index_array,
     _build_presorted_user_ranges,
     _build_user_ranges,
@@ -28,6 +31,34 @@ from .._common import (
 )
 
 _ROG_ROW_INDEX_COL = "__skmob2_rog_row_index__"
+
+
+def _radius_of_gyration_with_counts(
+    lats: nw.Series,
+    lngs: nw.Series,
+    ranges: list[tuple[int, int]],
+    *,
+    use_arrow: bool,
+) -> tuple[Any, np.ndarray]:
+    if use_arrow:
+        values, counts = radius_of_gyration_arrow_with_counts(lats.to_arrow(), lngs.to_arrow(), ranges)
+        return _arrow_result_values(values), np.asarray(counts, dtype=np.uintp)
+
+    values, counts = radius_of_gyration_numpy_with_counts(lats.to_numpy(), lngs.to_numpy(), ranges)
+    return np.asarray(values, dtype=np.float64), np.asarray(counts, dtype=np.uintp)
+
+
+def _filter_values_by_valid_counts(values: Any, counts: np.ndarray, *, use_arrow: bool) -> Any:
+    keep = counts > 0
+    if use_arrow:
+        import pyarrow as pa
+        import pyarrow.compute as pc
+
+        arrow_values = _arrow_result_values(values)
+        if hasattr(arrow_values, "__arrow_c_array__"):
+            arrow_values = pa.array(arrow_values)
+        return pc.filter(arrow_values, pa.array(keep))
+    return np.asarray(values, dtype=np.float64)[keep]
 
 
 def _build_valid_indexed_user_ranges(
@@ -196,17 +227,23 @@ def radius_of_gyration(
         return _to_native({"radius_of_gyration": [rg]}, df)
 
     if sorted:
-        valid_df = df.drop_nulls(subset=[lat_col, lng_col]).filter(
-            (~nw.col(lat_col).is_nan()) & (~nw.col(lng_col).is_nan())
-        )
-        uid_values, ranges = _build_presorted_user_ranges(valid_df, uid_col)
-        rog_values = _dispatch_kernel(
-            radius_of_gyration_numpy,
-            radius_of_gyration_arrow,
-            [valid_df.get_column(lat_col), valid_df.get_column(lng_col)],
-            ranges,
-            use_arrow=use_arrow,
-        )
+        if use_arrow:
+            valid_df = df.drop_nulls(subset=[lat_col, lng_col]).filter(
+                (~nw.col(lat_col).is_nan()) & (~nw.col(lng_col).is_nan())
+            )
+            uid_values, ranges = _build_presorted_user_ranges(valid_df, uid_col)
+            rog_values = _dispatch_kernel(
+                radius_of_gyration_numpy,
+                radius_of_gyration_arrow,
+                [valid_df.get_column(lat_col), valid_df.get_column(lng_col)],
+                ranges,
+                use_arrow=use_arrow,
+            )
+        else:
+            uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+            rog_values, valid_counts = _radius_of_gyration_with_counts(lats, lngs, ranges, use_arrow=use_arrow)
+            uid_values = [uid for uid, count in zip(uid_values, valid_counts) if count > 0]
+            rog_values = _filter_values_by_valid_counts(rog_values, valid_counts, use_arrow=use_arrow)
         return _to_native({uid_col: uid_values, "radius_of_gyration": rog_values}, df)
 
     uid_values, indices, starts, ends = _build_valid_indexed_user_ranges(df, uid_col, lat_col, lng_col)

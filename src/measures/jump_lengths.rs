@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
-use crate::haversine::{adjacent_haversine_distances_km, haversine_km};
+use crate::haversine::{adjacent_haversine_distances_into_km, haversine_km};
 use crate::time_ordering::IndexRanges;
 use crate::utils::{validate_coord_ranges, validate_indexed_coord_ranges};
 
@@ -31,13 +31,18 @@ pub(super) type PyNonOrderedJumpLengthsArrow<'py> = (
     PyArray,
 );
 
-fn jump_lengths_presorted_range(
+fn write_jump_lengths_presorted_range(
     latitudes: &[f64],
     longitudes: &[f64],
     start: usize,
     end: usize,
-) -> Vec<f64> {
-    adjacent_haversine_distances_km(latitudes, longitudes, start, end)
+    out: &mut [f64],
+) {
+    if end - start < 2 {
+        return;
+    }
+
+    adjacent_haversine_distances_into_km(latitudes, longitudes, start, end, out);
 }
 
 fn jump_lengths_for_indexed_range(
@@ -115,11 +120,22 @@ pub(super) fn jump_lengths_presorted_impl(
 ) -> PyResult<(Vec<usize>, Vec<usize>, Vec<f64>)> {
     validate_coord_ranges(latitudes, longitudes, ranges)?;
     let (starts, ends) = jump_offsets_for_ranges(ranges);
+    let mut values = vec![0.0; ends.last().copied().unwrap_or(0)];
+    let mut rest = values.as_mut_slice();
+    let mut chunks = Vec::with_capacity(ranges.len());
+    for (&start, &end) in starts.iter().zip(&ends) {
+        let len = end - start;
+        let (chunk, next) = rest.split_at_mut(len);
+        chunks.push(chunk);
+        rest = next;
+    }
 
-    let values = ranges
-        .par_iter()
-        .flat_map(|&(start, end)| jump_lengths_presorted_range(latitudes, longitudes, start, end))
-        .collect();
+    chunks
+        .into_par_iter()
+        .zip(ranges.par_iter())
+        .for_each(|(chunk, &(start, end))| {
+            write_jump_lengths_presorted_range(latitudes, longitudes, start, end, chunk);
+        });
     Ok((starts, ends, values))
 }
 

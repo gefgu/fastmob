@@ -20,6 +20,10 @@ type PyUserIndexRanges<'py> = (
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
 );
+type PyRadiusOfGyrationWithCounts<'py> = (
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<usize>>,
+);
 
 #[pyfunction]
 pub(crate) fn radius_of_gyration_km(coords: Vec<(f64, f64)>) -> PyResult<f64> {
@@ -136,11 +140,20 @@ fn radius_of_gyration_batch_impl(
     longitudes: &[f64],
     ranges: &[(usize, usize)],
 ) -> PyResult<Vec<f64>> {
+    Ok(radius_of_gyration_batch_with_counts_impl(latitudes, longitudes, ranges)?.0)
+}
+
+fn radius_of_gyration_batch_with_counts_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    ranges: &[(usize, usize)],
+) -> PyResult<(Vec<f64>, Vec<usize>)> {
     validate_coord_ranges(latitudes, longitudes, ranges)?;
 
     let mut valid_latitudes = Vec::new();
     let mut valid_longitudes = Vec::new();
     let mut valid_ranges = Vec::with_capacity(ranges.len());
+    let mut valid_counts = Vec::with_capacity(ranges.len());
     for &(start, end) in ranges {
         let valid_start = valid_latitudes.len();
         for idx in start..end {
@@ -151,7 +164,9 @@ fn radius_of_gyration_batch_impl(
                 valid_longitudes.push(lng);
             }
         }
-        valid_ranges.push((valid_start, valid_latitudes.len()));
+        let valid_end = valid_latitudes.len();
+        valid_ranges.push((valid_start, valid_end));
+        valid_counts.push(valid_end - valid_start);
     }
 
     let results: Vec<f64> = valid_ranges
@@ -161,7 +176,7 @@ fn radius_of_gyration_batch_impl(
         })
         .collect();
 
-    Ok(results)
+    Ok((results, valid_counts))
 }
 
 fn radius_of_gyration_indexed_impl(
@@ -278,6 +293,21 @@ pub(crate) fn radius_of_gyration_numpy<'py>(
         radius_of_gyration_batch_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)?
             .into_pyarray(py),
     )
+}
+
+#[pyfunction]
+pub(crate) fn radius_of_gyration_numpy_with_counts<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<PyRadiusOfGyrationWithCounts<'py>> {
+    let (values, counts) = radius_of_gyration_batch_with_counts_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        &ranges,
+    )?;
+    Ok((values.into_pyarray(py), counts.into_pyarray(py)))
 }
 
 #[pyfunction]
@@ -463,6 +493,66 @@ pub(crate) fn radius_of_gyration_arrow(
         &valid_longitudes,
         &valid_ranges,
     )?))
+}
+
+#[pyfunction]
+pub(crate) fn radius_of_gyration_arrow_with_counts<'py>(
+    py: Python<'py>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    ranges: Vec<(usize, usize)>,
+) -> PyResult<(ArrowPyArray, Bound<'py, PyArray1<usize>>)> {
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    let n = latitudes.len();
+    for &(start, end) in &ranges {
+        if start > end {
+            return Err(PyValueError::new_err(
+                "range start must be less than or equal to range end",
+            ));
+        }
+        if end > n {
+            return Err(PyValueError::new_err(
+                "range end must be within coordinate array bounds",
+            ));
+        }
+    }
+
+    let mut valid_latitudes = Vec::new();
+    let mut valid_longitudes = Vec::new();
+    let mut valid_ranges = Vec::with_capacity(ranges.len());
+    let mut valid_counts = Vec::with_capacity(ranges.len());
+    for &(start, end) in &ranges {
+        let valid_start = valid_latitudes.len();
+        for idx in start..end {
+            if !latitudes.is_null(idx) && !longitudes.is_null(idx) {
+                let lat = latitudes.value(idx);
+                let lng = longitudes.value(idx);
+                if !lat.is_nan() && !lng.is_nan() {
+                    valid_latitudes.push(lat);
+                    valid_longitudes.push(lng);
+                }
+            }
+        }
+        let valid_end = valid_latitudes.len();
+        valid_ranges.push((valid_start, valid_end));
+        valid_counts.push(valid_end - valid_start);
+    }
+
+    Ok((
+        f64_results_into_arrow(radius_of_gyration_batch_impl(
+            &valid_latitudes,
+            &valid_longitudes,
+            &valid_ranges,
+        )?),
+        valid_counts.into_pyarray(py),
+    ))
 }
 
 #[pyfunction]
