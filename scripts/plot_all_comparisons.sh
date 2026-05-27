@@ -194,6 +194,64 @@ else
     FAILURES+=("models (${status})")
 fi
 
+run_memory_comparison() {
+    local suite="$1"
+    local backend="$2"
+    shift 2
+    local original_json="$RESULTS_DIR/skmob_${suite}_memory_prebuilt_tdf.json"
+    local optimized_json="$RESULTS_DIR/skmob2_${suite}_memory_${backend}.json"
+
+    if [ ! -f "$original_json" ]; then
+        echo "Skipping ${suite}/${backend}/memory: missing $(basename "$original_json")"
+        return 0
+    fi
+    if [ ! -f "$optimized_json" ]; then
+        echo "Skipping ${suite}/${backend}/memory: missing $(basename "$optimized_json")"
+        return 0
+    fi
+
+    echo
+    echo "==> Plotting ${suite}/${backend}/memory"
+    if "$PYTHON" "$PLOT_SCRIPT" \
+        --original-json "$original_json" \
+        --optimized-json "$optimized_json" \
+        --suite "$suite" \
+        --backend "$backend" \
+        --profile memory \
+        --output-dir "$OUTPUT_DIR" \
+        "$@"; then
+        echo "==> ${suite}/${backend}/memory: ok"
+    else
+        local status=$?
+        echo "==> ${suite}/${backend}/memory: failed with exit code ${status}"
+        FAILURES+=("${suite}/${backend}/memory (${status})")
+    fi
+}
+
+for suite in spatial visits; do
+    for backend in pandas polars; do
+        run_memory_comparison "$suite" "$backend" "${PLOT_ARGS[@]}"
+    done
+done
+
+echo
+echo "==> Plotting models memory (unified: location-only + agent-based, small + large scale)"
+if "$PYTHON" "$PLOT_SCRIPT" \
+    --suite models \
+    --profile memory \
+    --original-json "$RESULTS_DIR/skmob_models_memory.json" \
+    --optimized-json "$RESULTS_DIR/skmob2_models_memory.json" \
+    --large-json-skmob2 "$RESULTS_DIR/skmob2_models_memory_large_scale.json" \
+    --large-loc-json-skmob2 "$RESULTS_DIR/skmob2_models_memory_location_large_scale.json" \
+    --output-dir "$OUTPUT_DIR" \
+    "${PLOT_ARGS[@]}"; then
+    echo "==> models memory: ok"
+else
+    status=$?
+    echo "==> models memory: failed with exit code ${status}"
+    FAILURES+=("models memory (${status})")
+fi
+
 echo
 echo "==> Plot generation complete. Images are in ${OUTPUT_DIR#$REPO_ROOT/}"
 if [ "${#FAILURES[@]}" -gt 0 ]; then

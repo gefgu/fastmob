@@ -1,0 +1,249 @@
+{
+  "metadata": {
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 3,
+    "library": "skmob2",
+    "n_agents": null,
+    "n_locations": null,
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "memory",
+    "python_version": "3.11.4 (main, Jul  5 2023, 14:15:25) [GCC 11.2.0]",
+    "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
+    "sleep_seconds": 0.5,
+    "suite": "models_location_large_scale",
+    "timestamp_utc": "2026-05-24T03:04:04.417484+00:00"
+  },
+  "results": [
+    {
+      "benchmark_group": "location_models",
+      "label": "1000 locations",
+      "metrics": {
+        "gravity_flows": {
+          "average_peak_memory_mb": 170.19939168294272,
+          "current_memory_mb": [
+            0.007380485534667969,
+            0.0073261260986328125,
+            0.007380485534667969
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 170.19949626922607,
+          "minimum_peak_memory_mb": 170.19931983947754,
+          "peak_memory_mb": [
+            170.19949626922607,
+            170.19931983947754,
+            170.1993589401245
+          ],
+          "status": "ok"
+        },
+        "gravity_probabilities": {
+          "average_peak_memory_mb": 170.19954840342203,
+          "current_memory_mb": [
+            0.0073261260986328125,
+            0.009096145629882812,
+            0.007271766662597656
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 170.20071601867676,
+          "minimum_peak_memory_mb": 170.19886112213135,
+          "peak_memory_mb": [
+            170.199068069458,
+            170.20071601867676,
+            170.19886112213135
+          ],
+          "status": "ok"
+        },
+        "radiation_flows": {
+          "average_peak_memory_mb": 180.52562554677328,
+          "current_memory_mb": [
+            0.007372856140136719,
+            0.007372856140136719,
+            0.007372856140136719
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 180.52571201324463,
+          "minimum_peak_memory_mb": 180.52557468414307,
+          "peak_memory_mb": [
+            180.52571201324463,
+            180.52558994293213,
+            180.52557468414307
+          ],
+          "status": "ok"
+        },
+        "radiation_probabilities": {
+          "average_peak_memory_mb": 316.98058382670087,
+          "current_memory_mb": [
+            0.0073795318603515625,
+            0.009424209594726562,
+            0.0073795318603515625
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 316.9819164276123,
+          "minimum_peak_memory_mb": 316.9798412322998,
+          "peak_memory_mb": [
+            316.97999382019043,
+            316.9819164276123,
+            316.9798412322998
+          ],
+          "status": "ok"
+        }
+      },
+      "n_agents": null,
+      "n_locations": 1000
+    },
+    {
+      "benchmark_group": "location_models",
+      "label": "5000 locations",
+      "metrics": {
+        "gravity_flows": {
+          "average_peak_memory_mb": 4246.948170979817,
+          "current_memory_mb": [
+            0.007380485534667969,
+            0.007380485534667969,
+            0.0073261260986328125
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 4246.948275566101,
+          "minimum_peak_memory_mb": 4246.9480838775635,
+          "peak_memory_mb": [
+            4246.948275566101,
+            4246.948153495789,
+            4246.9480838775635
+          ],
+          "status": "ok"
+        },
+        "gravity_probabilities": {
+          "average_peak_memory_mb": 4246.949078241984,
+          "current_memory_mb": [
+            0.011293411254882812,
+            0.0073261260986328125,
+            0.0073261260986328125
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 4246.951814651489,
+          "minimum_peak_memory_mb": 4246.947694778442,
+          "peak_memory_mb": [
+            4246.951814651489,
+            4246.9477252960205,
+            4246.947694778442
+          ],
+          "status": "ok"
+        },
+        "radiation_flows": {
+          "average_peak_memory_mb": 4718.2135279973345,
+          "current_memory_mb": [
+            0.007372856140136719,
+            0.0073184967041015625,
+            0.007372856140136719
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 4718.213606834412,
+          "minimum_peak_memory_mb": 4718.213484764099,
+          "peak_memory_mb": [
+            4718.213606834412,
+            4718.213492393494,
+            4718.213484764099
+          ],
+          "status": "ok"
+        },
+        "radiation_probabilities": {
+          "average_peak_memory_mb": 8186.055428187053,
+          "current_memory_mb": [
+            0.0073795318603515625,
+            0.0073795318603515625,
+            0.0073795318603515625
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 8186.055509567261,
+          "minimum_peak_memory_mb": 8186.055379867554,
+          "peak_memory_mb": [
+            8186.055509567261,
+            8186.055395126343,
+            8186.055379867554
+          ],
+          "status": "ok"
+        }
+      },
+      "n_agents": null,
+      "n_locations": 5000
+    },
+    {
+      "benchmark_group": "location_models",
+      "label": "10000 locations",
+      "metrics": {
+        "gravity_flows": {
+          "average_peak_memory_mb": 17008.995430310566,
+          "current_memory_mb": [
+            0.007380485534667969,
+            0.007380485534667969,
+            0.007380485534667969
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 17008.995509147644,
+          "minimum_peak_memory_mb": 17008.99538707733,
+          "peak_memory_mb": [
+            17008.995509147644,
+            17008.995394706726,
+            17008.99538707733
+          ],
+          "status": "ok"
+        },
+        "gravity_probabilities": {
+          "average_peak_memory_mb": 17008.995047887165,
+          "current_memory_mb": [
+            0.0073261260986328125,
+            0.0073261260986328125,
+            0.0073261260986328125
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 17008.99511909485,
+          "minimum_peak_memory_mb": 17008.995012283325,
+          "peak_memory_mb": [
+            17008.99511909485,
+            17008.995012283325,
+            17008.995012283325
+          ],
+          "status": "ok"
+        },
+        "radiation_flows": {
+          "average_peak_memory_mb": 19000.40887037913,
+          "current_memory_mb": [
+            0.007372856140136719,
+            0.007372856140136719,
+            0.01576519012451172
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 19000.414422035217,
+          "minimum_peak_memory_mb": 19000.406037330627,
+          "peak_memory_mb": [
+            19000.406151771545,
+            19000.406037330627,
+            19000.414422035217
+          ],
+          "status": "ok"
+        },
+        "radiation_probabilities": {
+          "average_peak_memory_mb": 32925.459696133934,
+          "current_memory_mb": [
+            0.0073795318603515625,
+            0.00727081298828125,
+            0.007325172424316406
+          ],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 32925.45982170105,
+          "minimum_peak_memory_mb": 32925.459606170654,
+          "peak_memory_mb": [
+            32925.45982170105,
+            32925.459606170654,
+            32925.45966053009
+          ],
+          "status": "ok"
+        }
+      },
+      "n_agents": null,
+      "n_locations": 10000
+    }
+  ]
+}

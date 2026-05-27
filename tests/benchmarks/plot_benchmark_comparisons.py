@@ -29,6 +29,7 @@ SURFACE_CARD = "#1a1a1a"
 SURFACE_SOFT = "#121212"
 HAIRLINE = "#2a2a2a"
 PRIMARY = "#faff69"
+NEGATIVE_COLOR = "#ff6b6b"
 ON_DARK = "#ffffff"
 BODY = "#cccccc"
 BODY_STRONG = "#e6e6e6"
@@ -775,6 +776,458 @@ def format_seconds(value: float) -> str:
     return f"{value:.2f}s"
 
 
+def format_mb(value: float) -> str:
+    if value < 0.1:
+        return f"{value * 1_000:.1f} KB"
+    if value >= 1_000:
+        return f"{value / 1_000:.2f} GB"
+    return f"{value:.2f} MB"
+
+
+def invalid_memory_metric_reason(metric_result: dict[str, Any], label: str) -> str | None:
+    status = metric_result.get("status")
+    average_mb = metric_result.get("average_peak_memory_mb")
+    if status not in (None, "ok"):
+        reason = metric_result.get("reason")
+        if reason:
+            return f"{label} status={status} ({reason})"
+        return f"{label} status={status}"
+    if not is_valid_time(average_mb):
+        return f"{label} average_peak_memory_mb is not a positive finite number"
+    return None
+
+
+def missing_memory_metric_reasons(
+    original_metrics: dict[str, Any],
+    optimized_metrics: dict[str, Any],
+    metric_names: list[str],
+) -> list[tuple[str, str]]:
+    reasons = []
+    for metric in metric_names:
+        orig = original_metrics.get(metric)
+        opt = optimized_metrics.get(metric)
+        if orig is None:
+            reasons.append((metric, "missing from original skmob JSON"))
+            continue
+        if opt is None:
+            reasons.append((metric, "missing from skmob2 JSON"))
+            continue
+        r1 = invalid_memory_metric_reason(orig, "original skmob")
+        r2 = invalid_memory_metric_reason(opt, "skmob2")
+        if r1:
+            reasons.append((metric, r1))
+        if r2:
+            reasons.append((metric, r2))
+    return reasons
+
+
+def memory_metric_rows(
+    original_result: dict[str, Any],
+    optimized_result: dict[str, Any],
+    sort_mode: str,
+    expected_metrics: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    original_metrics = original_result.get("metrics", {})
+    optimized_metrics = optimized_result.get("metrics", {})
+    metric_names = expected_metrics or sorted(set(original_metrics).intersection(optimized_metrics))
+    rows = []
+    missing = missing_memory_metric_reasons(original_metrics, optimized_metrics, metric_names)
+    if missing:
+        reason_lines = "; ".join(f"{m}: {r}" for m, r in missing)
+        raise ValueError(f"Cannot plot incomplete benchmark result: {reason_lines}")
+    for metric in metric_names:
+        orig_mb = float(original_metrics[metric]["average_peak_memory_mb"])
+        opt_mb = float(optimized_metrics[metric]["average_peak_memory_mb"])
+        reduction_pct = (orig_mb - opt_mb) / orig_mb * 100.0
+        rows.append({"metric": metric, "original": orig_mb, "optimized": opt_mb, "reduction_pct": reduction_pct})
+    if sort_mode == "speedup":
+        rows.sort(key=lambda r: r["reduction_pct"], reverse=True)
+    else:
+        rows.sort(key=lambda r: r["original"], reverse=True)
+    return rows
+
+
+def draw_memory_plot(
+    rows: list[dict[str, Any]],
+    *,
+    original_payload: dict[str, Any],
+    optimized_payload: dict[str, Any],
+    suite: str,
+    backend: str | None,
+    size_label: str,
+    output_path: Path,
+) -> None:
+    metric_count = len(rows)
+    figure_height = max(
+        FIGURE_MIN_HEIGHT,
+        min(FIGURE_MAX_HEIGHT, FIGURE_BASE_HEIGHT + metric_count * FIGURE_HEIGHT_PER_METRIC),
+    )
+    fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, figure_height), facecolor=CANVAS)
+    add_round_card(fig)
+    plot_left = 0.27
+    plot_right = 0.92
+    header_left = 0.055
+    fig.subplots_adjust(left=plot_left, right=plot_right, top=0.68, bottom=0.12)
+    ax.set_facecolor(SURFACE_CARD)
+
+    top_reduction = max(row["reduction_pct"] for row in rows)
+    median_reduction = sorted(row["reduction_pct"] for row in rows)[metric_count // 2]
+    max_mem = max(row["original"] for row in rows)
+    x_max = max_mem * 1.22
+    group_gap = BAR_GROUP_GAP
+    y_positions = [index * group_gap for index in range(metric_count)]
+    pair_offset = BAR_PAIR_OFFSET
+    bar_height = BAR_HEIGHT
+
+    original_values = [row["original"] for row in rows]
+    optimized_values = [row["optimized"] for row in rows]
+    labels = [display_metric_name(row["metric"]) for row in rows]
+
+    ax.barh(
+        [y - pair_offset for y in y_positions],
+        original_values,
+        height=bar_height,
+        color=MUTED_SOFT,
+        edgecolor=MUTED,
+        linewidth=0.6,
+        label="Original skmob",
+    )
+    ax.barh(
+        [y + pair_offset for y in y_positions],
+        optimized_values,
+        height=bar_height,
+        color=PRIMARY,
+        edgecolor=PRIMARY,
+        linewidth=0.6,
+        label=f"skmob2 {backend}" if backend else "skmob2",
+    )
+
+    ax.set_xlim(0, x_max)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(labels, color=BODY_STRONG, fontsize=METRIC_LABEL_FONT_SIZE)
+    ax.invert_yaxis()
+    ax.set_ylim(y_positions[-1] + group_gap * 0.8, -group_gap * 0.9)
+    ax.tick_params(axis="x", colors=MUTED, labelsize=AXIS_TICK_FONT_SIZE)
+    ax.tick_params(axis="y", colors=BODY_STRONG)
+    ax.xaxis.grid(True, color=HAIRLINE, linestyle="-", linewidth=0.7)
+    ax.set_axisbelow(True)
+    ax.set_xlabel("Average peak memory (MB)", color=BODY, fontsize=AXIS_LABEL_FONT_SIZE, labelpad=16)
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    offset = x_max * 0.012
+    optimized_label_floor = x_max * 0.035
+    multiplier_x = x_max * 0.965
+    leader_end_x = x_max * 0.90
+    ax.text(
+        multiplier_x,
+        y_positions[0] - group_gap * 0.85,
+        "Reduction (%)",
+        va="center",
+        ha="right",
+        color=BODY,
+        fontsize=SPEEDUP_HEADER_FONT_SIZE,
+        clip_on=False,
+    )
+    for index, (group_y, row) in enumerate(zip(y_positions, rows, strict=True)):
+        original_y = group_y - pair_offset
+        optimized_y = group_y + pair_offset
+        original_label_inside = row["original"] >= x_max * 0.06
+        original_label_x = row["original"] - offset if original_label_inside else row["original"] + offset
+        ax.text(
+            original_label_x,
+            original_y,
+            format_mb(row["original"]),
+            va="center",
+            ha="right" if original_label_inside else "left",
+            color=ON_DARK,
+            fontsize=BAR_LABEL_FONT_SIZE,
+            fontweight="bold",
+        )
+
+        optimized_label_x = row["optimized"] + offset
+        needs_callout = optimized_label_x < optimized_label_floor
+        if needs_callout:
+            optimized_label_x = optimized_label_floor
+            ax.plot(
+                [row["optimized"], optimized_label_x - offset * 0.35],
+                [optimized_y, optimized_y],
+                color=PRIMARY,
+                alpha=0.42,
+                linewidth=0.8,
+                solid_capstyle="round",
+                zorder=4,
+            )
+        ax.text(
+            min(optimized_label_x, x_max * 0.985),
+            optimized_y,
+            format_mb(row["optimized"]),
+            va="center",
+            ha="left",
+            color=PRIMARY,
+            fontsize=BAR_LABEL_FONT_SIZE,
+            fontweight="bold",
+        )
+        leader_start_x = min(max(row["original"], row["optimized"]) + offset * 1.2, leader_end_x)
+        ax.plot(
+            [leader_start_x, leader_end_x],
+            [group_y, group_y],
+            color=PRIMARY,
+            alpha=0.22,
+            linewidth=0.8,
+            linestyle=(0, (1.5, 4.0)),
+            zorder=1,
+        )
+        reduction_pct = row["reduction_pct"]
+        badge_color = PRIMARY if reduction_pct >= 0 else NEGATIVE_COLOR
+        badge_text_color = CANVAS if reduction_pct >= 0 else ON_DARK
+        ax.text(
+            multiplier_x,
+            group_y,
+            f"{reduction_pct:.1f}%",
+            va="center",
+            ha="right",
+            color=badge_text_color,
+            fontsize=SPEEDUP_VALUE_FONT_SIZE,
+            fontweight="bold",
+            bbox={
+                "boxstyle": "round,pad=0.28,rounding_size=0.14",
+                "facecolor": badge_color,
+                "edgecolor": badge_color,
+                "linewidth": 0,
+            },
+        )
+
+    fig.text(
+        header_left,
+        0.955,
+        comparison_title(suite, backend),
+        color=ON_DARK,
+        fontsize=TITLE_FONT_SIZE,
+        fontweight="bold",
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.900,
+        comparison_subtitle(original_payload, optimized_payload, suite, backend, size_label),
+        color=BODY,
+        fontsize=SUBTITLE_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.872,
+        f"Median {median_reduction:.1f}% reduction across {metric_count} shared benchmarks / lower is better",
+        color=MUTED,
+        fontsize=DETAIL_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.846,
+        comparison_context(original_payload, optimized_payload),
+        color=MUTED,
+        fontsize=CONTEXT_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.795,
+        f"up to {top_reduction:.1f}% less memory",
+        color=PRIMARY,
+        fontsize=CALLOUT_FONT_SIZE,
+        fontweight="bold",
+        ha="left",
+        va="top",
+    )
+
+    handles, legend_labels = ax.get_legend_handles_labels()
+    legend = fig.legend(
+        handles,
+        legend_labels,
+        loc="upper left",
+        bbox_to_anchor=(header_left, 0.735),
+        ncols=2,
+        frameon=False,
+        fontsize=LEGEND_FONT_SIZE,
+        borderpad=0.45,
+        labelspacing=0.45,
+        columnspacing=1.35,
+        handlelength=2.0,
+        handleheight=0.9,
+    )
+    for text in legend.get_texts():
+        text.set_color(BODY)
+
+    footer = format_env_footer(optimized_payload)
+    if footer:
+        fig.text(0.5, 0.048, footer, color=MUTED, fontsize=FOOTER_FONT_SIZE, ha="center", va="bottom")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, facecolor=CANVAS, bbox_inches="tight", pad_inches=0.18)
+    plt.close(fig)
+
+
+def draw_memory_standalone_plot(
+    rows: list[dict[str, Any]],
+    *,
+    optimized_payload: dict[str, Any],
+    suite: str,
+    size_label: str,
+    output_path: Path,
+) -> None:
+    metric_count = len(rows)
+    figure_height = max(
+        FIGURE_MIN_HEIGHT,
+        min(FIGURE_MAX_HEIGHT, FIGURE_BASE_HEIGHT + metric_count * FIGURE_HEIGHT_PER_METRIC),
+    )
+    fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, figure_height), facecolor=CANVAS)
+    add_round_card(fig)
+    plot_left = 0.27
+    plot_right = 0.92
+    header_left = 0.055
+    fig.subplots_adjust(left=plot_left, right=plot_right, top=0.68, bottom=0.12)
+    ax.set_facecolor(SURFACE_CARD)
+
+    max_mem = max(row["optimized"] for row in rows)
+    x_max = max_mem * 1.22
+    group_gap = BAR_GROUP_GAP
+    y_positions = [index * group_gap for index in range(metric_count)]
+    bar_height = BAR_HEIGHT * 1.4
+
+    optimized_values = [row["optimized"] for row in rows]
+    labels = [display_metric_name(row["metric"]) for row in rows]
+
+    ax.barh(
+        y_positions,
+        optimized_values,
+        height=bar_height,
+        color=PRIMARY,
+        edgecolor=PRIMARY,
+        linewidth=0.6,
+        label="skmob2",
+    )
+
+    ax.set_xlim(0, x_max)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(labels, color=BODY_STRONG, fontsize=METRIC_LABEL_FONT_SIZE)
+    ax.invert_yaxis()
+    ax.set_ylim(y_positions[-1] + group_gap * 0.8, -group_gap * 0.9)
+    ax.tick_params(axis="x", colors=MUTED, labelsize=AXIS_TICK_FONT_SIZE)
+    ax.tick_params(axis="y", colors=BODY_STRONG)
+    ax.xaxis.grid(True, color=HAIRLINE, linestyle="-", linewidth=0.7)
+    ax.set_axisbelow(True)
+    ax.set_xlabel("Average peak memory (MB)", color=BODY, fontsize=AXIS_LABEL_FONT_SIZE, labelpad=16)
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    offset = x_max * 0.012
+    min_label_x = x_max * 0.035
+    for group_y, row in zip(y_positions, rows, strict=True):
+        label_x = row["optimized"] + offset
+        if label_x < min_label_x:
+            label_x = min_label_x
+        ax.text(
+            min(label_x, x_max * 0.985),
+            group_y,
+            format_mb(row["optimized"]),
+            va="center",
+            ha="left",
+            color=PRIMARY,
+            fontsize=BAR_LABEL_FONT_SIZE,
+            fontweight="bold",
+        )
+
+    metadata = optimized_payload.get("metadata", {})
+    iterations = metadata.get("iterations")
+    subtitle_parts = [suite.title(), size_label]
+    if iterations:
+        subtitle_parts.append(f"{iterations} iterations")
+    subtitle = " / ".join(subtitle_parts)
+
+    fig.text(
+        header_left,
+        0.955,
+        "skmob2 memory",
+        color=ON_DARK,
+        fontsize=TITLE_FONT_SIZE,
+        fontweight="bold",
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.900,
+        subtitle,
+        color=BODY,
+        fontsize=SUBTITLE_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.872,
+        f"{metric_count} benchmarks / lower is better",
+        color=MUTED,
+        fontsize=DETAIL_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+    fastest_mem = min(row["optimized"] for row in rows)
+    slowest_mem = max(row["optimized"] for row in rows)
+    fig.text(
+        header_left,
+        0.795,
+        format_mb(slowest_mem),
+        color=PRIMARY,
+        fontsize=CALLOUT_FONT_SIZE,
+        fontweight="bold",
+        ha="left",
+        va="top",
+    )
+    fig.text(
+        header_left,
+        0.846,
+        f"range {format_mb(fastest_mem)} – {format_mb(slowest_mem)}",
+        color=MUTED,
+        fontsize=CONTEXT_FONT_SIZE,
+        ha="left",
+        va="top",
+    )
+
+    handles, legend_labels = ax.get_legend_handles_labels()
+    legend = fig.legend(
+        handles,
+        legend_labels,
+        loc="upper left",
+        bbox_to_anchor=(header_left, 0.735),
+        ncols=1,
+        frameon=False,
+        fontsize=LEGEND_FONT_SIZE,
+        borderpad=0.45,
+        labelspacing=0.45,
+        handlelength=2.0,
+        handleheight=0.9,
+    )
+    for text in legend.get_texts():
+        text.set_color(BODY)
+
+    footer = format_env_footer(optimized_payload)
+    if footer:
+        fig.text(0.5, 0.048, footer, color=MUTED, fontsize=FOOTER_FONT_SIZE, ha="center", va="bottom")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, facecolor=CANVAS, bbox_inches="tight", pad_inches=0.18)
+    plt.close(fig)
+
+
 def _parse_large_spec_name(spec_name: str) -> tuple[str, int] | None:
     m = _LARGE_SPEC_RE.match(spec_name)
     if not m:
@@ -940,6 +1393,312 @@ def _agent_based_rows(
     return rows
 
 
+def _memory_location_only_rows(
+    orig_by_loc: dict[int, dict[str, Any]],
+    opt_by_loc: dict[int, dict[str, Any]],
+    n_locations: int,
+) -> list[dict[str, Any]]:
+    orig_metrics = orig_by_loc.get(n_locations, {}).get("metrics", {})
+    opt_metrics = opt_by_loc.get(n_locations, {}).get("metrics", {})
+    rows = []
+    for model in MODEL_LOCATION_METRICS:
+        orig_m = orig_metrics.get(model)
+        opt_m = opt_metrics.get(model)
+        if not orig_m or not opt_m:
+            continue
+        orig_mb = orig_m.get("average_peak_memory_mb")
+        opt_mb = opt_m.get("average_peak_memory_mb")
+        if not is_valid_time(orig_mb) or not is_valid_time(opt_mb):
+            continue
+        reduction_pct = (float(orig_mb) - float(opt_mb)) / float(orig_mb) * 100.0
+        rows.append(
+            {
+                "metric": display_metric_name(model),
+                "original": float(orig_mb),
+                "optimized": float(opt_mb),
+                "reduction_pct": reduction_pct,
+            }
+        )
+    rows.sort(key=lambda r: r["original"], reverse=True)
+    return rows
+
+
+def _memory_location_only_standalone_rows(
+    opt_by_loc: dict[int, dict[str, Any]],
+    n_locations: int,
+) -> list[dict[str, Any]]:
+    opt_metrics = opt_by_loc.get(n_locations, {}).get("metrics", {})
+    rows = []
+    for model in MODEL_LOCATION_METRICS:
+        opt_m = opt_metrics.get(model)
+        if not opt_m:
+            continue
+        opt_mb = opt_m.get("average_peak_memory_mb")
+        if not is_valid_time(opt_mb):
+            continue
+        rows.append({"metric": display_metric_name(model), "optimized": float(opt_mb)})
+    rows.sort(key=lambda r: r["optimized"], reverse=True)
+    return rows
+
+
+def _memory_agent_based_standalone_rows(
+    opt_traj: dict[tuple[int, int], dict[str, Any]],
+    n_agents: int,
+    model_names: list[str],
+) -> list[dict[str, Any]]:
+    opt_locs = sorted(loc for (loc, ag) in opt_traj if ag == n_agents)
+    rows = []
+    for n_locs in opt_locs:
+        opt_metrics = opt_traj.get((n_locs, n_agents), {})
+        for model in model_names:
+            opt_m = opt_metrics.get(model)
+            if not opt_m:
+                continue
+            opt_mb = opt_m.get("average_peak_memory_mb")
+            if not is_valid_time(opt_mb):
+                continue
+            loc_label = format_size_label(n_locs)
+            rows.append({"metric": f"{display_metric_name(model)} / {loc_label} locs", "optimized": float(opt_mb)})
+    rows.sort(key=lambda r: (
+        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+        -r["optimized"],
+    ))
+    return rows
+
+
+def _memory_agent_based_rows(
+    orig_traj: dict[tuple[int, int], dict[str, Any]],
+    opt_traj: dict[tuple[int, int], dict[str, Any]],
+    n_agents: int,
+    model_names: list[str],
+) -> list[dict[str, Any]]:
+    orig_locs = {loc for (loc, ag) in orig_traj if ag == n_agents}
+    opt_locs = {loc for (loc, ag) in opt_traj if ag == n_agents}
+    common_locs = sorted(orig_locs & opt_locs)
+    rows = []
+    for n_locs in common_locs:
+        orig_metrics = orig_traj.get((n_locs, n_agents), {})
+        opt_metrics = opt_traj.get((n_locs, n_agents), {})
+        for model in model_names:
+            orig_m = orig_metrics.get(model)
+            opt_m = opt_metrics.get(model)
+            if not orig_m or not opt_m:
+                continue
+            orig_mb = orig_m.get("average_peak_memory_mb")
+            opt_mb = opt_m.get("average_peak_memory_mb")
+            if not is_valid_time(orig_mb) or not is_valid_time(opt_mb):
+                continue
+            reduction_pct = (float(orig_mb) - float(opt_mb)) / float(orig_mb) * 100.0
+            loc_label = format_size_label(n_locs)
+            rows.append(
+                {
+                    "metric": f"{display_metric_name(model)} / {loc_label} locs",
+                    "original": float(orig_mb),
+                    "optimized": float(opt_mb),
+                    "reduction_pct": reduction_pct,
+                }
+            )
+    rows.sort(key=lambda r: (
+        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+        -r["original"],
+    ))
+    return rows
+
+
+def generate_model_memory_plots(args: argparse.Namespace) -> int:
+    original_path = args.original_json.resolve()
+    optimized_path = args.optimized_json.resolve()
+    if not original_path.exists():
+        print(f"ERROR: original benchmark JSON not found: {original_path}")
+        return 2
+    if not optimized_path.exists():
+        print(f"ERROR: optimized benchmark JSON not found: {optimized_path}")
+        return 2
+
+    original_payload = load_json(original_path)
+    optimized_payload = load_json(optimized_path)
+
+    def _maybe_load(attr: str) -> dict[str, Any] | None:
+        p: Path | None = getattr(args, attr, None)
+        if p is None:
+            return None
+        rp = p.resolve()
+        if not rp.exists():
+            return None
+        return load_json(rp)
+
+    orig_large = _maybe_load("large_json_skmob")
+    opt_large = _maybe_load("large_json_skmob2")
+    orig_loc_large = _maybe_load("large_loc_json_skmob")
+    opt_loc_large = _maybe_load("large_loc_json_skmob2")
+
+    orig_loc = _merge_location_model_data(original_payload, orig_loc_large)
+    opt_loc = _merge_location_model_data(optimized_payload, opt_loc_large)
+    orig_traj = _merge_trajectory_model_data(original_payload, orig_large)
+    opt_traj = _merge_trajectory_model_data(optimized_payload, opt_large)
+
+    generated = 0
+
+    def _loc_safe(n: int) -> str:
+        return re.sub(r"[^A-Za-z0-9_.-]+", "_", format_size_label(n))
+
+    common_loc_counts = sorted(set(orig_loc) & set(opt_loc))
+    for n_locs in common_loc_counts:
+        rows = _memory_location_only_rows(orig_loc, opt_loc, n_locs)
+        if not rows:
+            continue
+        loc_label = format_size_label(n_locs)
+        size_label = f"Location-only / {loc_label} locations"
+        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations_memory.png"
+        output_path = args.output_dir / out_name
+        draw_memory_plot(
+            rows,
+            original_payload=original_payload,
+            optimized_payload=optimized_payload,
+            suite="models",
+            backend=None,
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    skmob2_only_loc_counts = sorted(set(opt_loc) - set(orig_loc))
+    for n_locs in skmob2_only_loc_counts:
+        standalone_rows = _memory_location_only_standalone_rows(opt_loc, n_locs)
+        if not standalone_rows:
+            continue
+        loc_label = format_size_label(n_locs)
+        size_label = f"Location-only / {loc_label} locations"
+        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations_skmob2_memory.png"
+        output_path = args.output_dir / out_name
+        draw_memory_standalone_plot(
+            standalone_rows,
+            optimized_payload=optimized_payload,
+            suite="models",
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    all_agent_counts = sorted(
+        {ag for (_, ag) in orig_traj} & {ag for (_, ag) in opt_traj}
+    )
+    for n_agents in all_agent_counts:
+        rows = _memory_agent_based_rows(orig_traj, opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
+        if not rows:
+            continue
+        agent_label = format_size_label(n_agents)
+        size_label = f"Agent-based / {agent_label} agents"
+        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents_memory.png"
+        output_path = args.output_dir / out_name
+        draw_memory_plot(
+            rows,
+            original_payload=original_payload,
+            optimized_payload=optimized_payload,
+            suite="models",
+            backend=None,
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    skmob2_only_agents = sorted(
+        {ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj}
+    )
+    for n_agents in skmob2_only_agents:
+        standalone_rows = _memory_agent_based_standalone_rows(opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
+        if not standalone_rows:
+            continue
+        agent_label = format_size_label(n_agents)
+        size_label = f"Agent-based / {agent_label} agents"
+        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents_skmob2_memory.png"
+        output_path = args.output_dir / out_name
+        draw_memory_standalone_plot(
+            standalone_rows,
+            optimized_payload=optimized_payload,
+            suite="models",
+            size_label=size_label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    if generated == 0:
+        print("No model memory plots were generated.")
+        return 1
+    return 0
+
+
+def generate_memory_plots(args: argparse.Namespace) -> int:
+    original_path = args.original_json.resolve()
+    optimized_path = args.optimized_json.resolve()
+    if not original_path.exists():
+        print(f"ERROR: original benchmark JSON not found: {original_path}")
+        return 2
+    if not optimized_path.exists():
+        print(f"ERROR: optimized benchmark JSON not found: {optimized_path}")
+        return 2
+
+    original_payload = load_json(original_path)
+    optimized_payload = load_json(optimized_path)
+    if args.suite == "models":
+        return generate_model_memory_plots(args)
+
+    original_results = result_map(original_payload)
+    optimized_results = result_map(optimized_payload)
+    labels = common_labels(original_results, optimized_results, args.sizes)
+    if not labels:
+        print(
+            "No overlapping size labels found. "
+            f"Original labels: {sorted(original_results, key=parse_size_key)}; "
+            f"skmob2 labels: {sorted(optimized_results, key=parse_size_key)}."
+        )
+        if args.sizes:
+            return 0
+        return 1
+
+    expected_metrics = expected_metrics_from_catalog(args.catalog, args.suite)
+    if not expected_metrics:
+        print(f"ERROR: no expected metrics for suite '{args.suite}' in {args.catalog}.")
+        return 2
+
+    generated = 0
+    for label in labels:
+        try:
+            rows = memory_metric_rows(original_results[label], optimized_results[label], args.sort, expected_metrics)
+        except ValueError as exc:
+            print(f"ERROR for {label}: {exc}")
+            return 1
+        if not rows:
+            print(f"No valid overlapping metrics found for {label}; skipping.")
+            continue
+        safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+        if not args.backend:
+            out_name = f"skmob2_vs_skmob_{args.suite}_{safe_label}_memory.png"
+        else:
+            out_name = f"skmob2_vs_skmob_{args.suite}_{args.backend}_{safe_label}_memory.png"
+        output_path = args.output_dir / out_name
+        draw_memory_plot(
+            rows,
+            original_payload=original_payload,
+            optimized_payload=optimized_payload,
+            suite=args.suite,
+            backend=args.backend,
+            size_label=label,
+            output_path=output_path,
+        )
+        generated += 1
+        print(f"Saved {output_path}")
+
+    if generated == 0:
+        print("No memory plots were generated.")
+        return 1
+    return 0
+
+
 def generate_model_plots(args: argparse.Namespace) -> int:
     original_path = args.original_json.resolve()
     optimized_path = args.optimized_json.resolve()
@@ -1074,6 +1833,9 @@ def generate_model_plots(args: argparse.Namespace) -> int:
 
 
 def generate_plots(args: argparse.Namespace) -> int:
+    if getattr(args, "profile", "speed") == "memory":
+        return generate_memory_plots(args)
+
     original_path = args.original_json.resolve()
     optimized_path = args.optimized_json.resolve()
     if not original_path.exists():
@@ -1187,6 +1949,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         dest="large_loc_json_skmob",
         help="Large-scale location-only benchmark JSON for original skmob (models suite only).",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=("speed", "memory"),
+        default="speed",
+        help="Benchmark profile: speed (default) or memory.",
     )
     return parser
 
