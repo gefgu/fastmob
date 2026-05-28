@@ -2,11 +2,13 @@ use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use rayon::prelude::*;
+use std::sync::Arc;
 
 use crate::generation::model_generation::validate_equal_lengths;
 use crate::haversine::haversine_km;
 
 const EARTH_RADIUS_KM: f64 = 6371.01;
+pub(crate) const EPR_OD_CACHE_SIZE: u64 = 2_000;
 
 fn haversine_km_radians(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let dlat = lat1 - lat2;
@@ -23,6 +25,56 @@ fn deterrence(distance: f64, deterrence_type: &str, arg: f64) -> f64 {
         (-distance * arg).exp()
     } else {
         distance.powf(arg)
+    }
+}
+
+pub(crate) struct CachedGravityOdRows<'a> {
+    cache: moka::sync::Cache<usize, Arc<[f64]>>,
+    lats: &'a [f64],
+    lons: &'a [f64],
+    rels: &'a [f64],
+    deterrence_type: &'a str,
+    deterrence_arg: f64,
+    origin_exp: f64,
+    dest_exp: f64,
+}
+
+impl<'a> CachedGravityOdRows<'a> {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new(
+        lats: &'a [f64],
+        lons: &'a [f64],
+        rels: &'a [f64],
+        deterrence_type: &'a str,
+        deterrence_arg: f64,
+        origin_exp: f64,
+        dest_exp: f64,
+    ) -> Self {
+        Self {
+            cache: moka::sync::Cache::new(EPR_OD_CACHE_SIZE),
+            lats,
+            lons,
+            rels,
+            deterrence_type,
+            deterrence_arg,
+            origin_exp,
+            dest_exp,
+        }
+    }
+
+    pub(crate) fn get(&self, origin: usize) -> Arc<[f64]> {
+        self.cache.get_with(origin, || {
+            Arc::from(gravity_od_row_seq(
+                origin,
+                self.lats,
+                self.lons,
+                self.rels,
+                self.deterrence_type,
+                self.deterrence_arg,
+                self.origin_exp,
+                self.dest_exp,
+            ))
+        })
     }
 }
 

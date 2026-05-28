@@ -1,6 +1,6 @@
 use arrow_array::{
-    Array, Int32Array, Int64Array, LargeStringArray, StringArray, UInt32Array, UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
+    Array, Int32Array, Int64Array, LargeStringArray, StringArray, UInt32Array, UInt64Array,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
@@ -20,10 +20,7 @@ type PyUserIndexRanges<'py> = (
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
 );
-type PyRadiusOfGyrationWithCounts<'py> = (
-    Bound<'py, PyArray1<f64>>,
-    Bound<'py, PyArray1<usize>>,
-);
+type PyRadiusOfGyrationWithCounts<'py> = (Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<usize>>);
 
 #[pyfunction]
 pub(crate) fn radius_of_gyration_km(coords: Vec<(f64, f64)>) -> PyResult<f64> {
