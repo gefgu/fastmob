@@ -1,4 +1,4 @@
-from .activity import activity_transition_matrix
+from .activity import activity_transition_matrix, daily_activity_distribution, visit_purpose_distribution
 from .mobility_profiling import intermittance_and_degree_of_return, exploration_profiling
 from .regularity import regularity
 from .fast_diversity import fast_diversity
@@ -18,6 +18,8 @@ from .mean_area_volume import mean_area_volume
 
 __all__ = [
     "activity_transition_matrix",
+    "daily_activity_distribution",
+    "visit_purpose_distribution",
     "mobility_profiling",
     "intermittance_and_degree_of_return",
     "exploration_profiling",

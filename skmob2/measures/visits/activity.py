@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+from collections import Counter
 from typing import Any
 
 import numpy as np
@@ -18,6 +20,212 @@ from .._common import (
 
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday"}
 _WEEKENDS = {"saturday", "sunday"}
+_END_TIMESTAMP_CANDIDATES = ["end_timestamp", "leaving_datetime", "end_time", "stop_timestamp"]
+
+
+def _allowed_days(day_filter: str | None) -> set[str] | None:
+    if day_filter == "weekdays":
+        return _WEEKDAYS
+    if day_filter == "weekends":
+        return _WEEKENDS
+    return None
+
+
+def _apply_day_filter(
+    df: nw.DataFrame,
+    day_col: str | None,
+    day_filter: str | None,
+) -> nw.DataFrame:
+    allowed_days = _allowed_days(day_filter)
+    if allowed_days is None:
+        return df
+    if day_col is None:
+        raise ValueError(
+            "day_col could not be auto-detected and is required when day_filter is set. "
+            f"Tried: {DAY_CANDIDATES}. Available columns: {df.columns}"
+        )
+    days = df.get_column(day_col).to_list()
+    keep = [str(day).lower() in allowed_days for day in days]
+    return df.with_columns(nw.new_series("__skmob2_keep__", keep, backend=df.implementation)).filter(
+        nw.col("__skmob2_keep__")
+    ).drop("__skmob2_keep__")
+
+
+def _with_activity_fallback(
+    df: nw.DataFrame,
+    activity_col: str | None,
+    unknown_label: str,
+) -> tuple[nw.DataFrame, str]:
+    if activity_col is None or activity_col not in df.columns:
+        warnings.warn(
+            f"activity column could not be found; using {unknown_label!r} for all visits",
+            UserWarning,
+            stacklevel=2,
+        )
+        fallback_col = "__skmob2_activity__"
+        values = [unknown_label] * len(df)
+        return df.with_columns(nw.new_series(fallback_col, values, backend=df.implementation)), fallback_col
+
+    values = df.get_column(activity_col).to_list()
+    if any(pd.isna(value) for value in values):
+        warnings.warn(
+            f"null activity values found; replacing them with {unknown_label!r}",
+            UserWarning,
+            stacklevel=2,
+        )
+        values = [unknown_label if pd.isna(value) else value for value in values]
+        df = df.with_columns(nw.new_series(activity_col, values, backend=df.implementation))
+    return df, activity_col
+
+
+def _resolve_start_column(columns: list[str], start_time_col: str | None) -> str | None:
+    if start_time_col is not None:
+        return start_time_col
+    return _pick_existing_column(columns, TIMESTAMP_CANDIDATES)
+
+
+def _resolve_end_column(columns: list[str], end_time_col: str | None) -> str | None:
+    if end_time_col is not None:
+        return end_time_col
+    return _pick_existing_column(columns, _END_TIMESTAMP_CANDIDATES)
+
+
+def visit_purpose_distribution(
+    visits: Any,
+    activity_col: str | None = None,
+    normalize: bool = True,
+    day_col: str | None = None,
+    day_filter: str | None = None,
+    unknown_label: str = "UNKNOWN",
+) -> Any:
+    """Compute visit-purpose counts and percentages.
+
+    Missing activity columns and null activity values are recoverable: the
+    affected visits are labelled with ``unknown_label`` and a warning is emitted.
+    """
+    nw_df = nw.from_native(visits, eager_only=True)
+    is_pandas_input = isinstance(nw_df.to_native(), pd.DataFrame)
+
+    if activity_col is None:
+        activity_col = _pick_existing_column(nw_df.columns, ACTIVITY_CANDIDATES)
+    if day_col is None:
+        day_col = _pick_existing_column(nw_df.columns, DAY_CANDIDATES)
+
+    work_cols = []
+    if activity_col:
+        work_cols.append(activity_col)
+    if day_col and _allowed_days(day_filter) is not None:
+        work_cols.append(day_col)
+    work_cols = list(dict.fromkeys(work_cols))
+
+    if work_cols:
+        df = nw_df.select(work_cols)
+    elif nw_df.columns:
+        df = nw_df.select([nw_df.columns[0]])
+    else:
+        df = nw_df.select([])
+    df = _apply_day_filter(df, day_col, day_filter)
+    df, resolved_activity_col = _with_activity_fallback(df, activity_col, unknown_label)
+
+    values = df.get_column(resolved_activity_col).to_list()
+    counts = Counter(values)
+    labels = sorted(counts, key=lambda label: (-counts[label], str(label)))
+    total = sum(counts.values())
+    percentages = [(counts[label] / total) * 100.0 if normalize and total else float(counts[label]) for label in labels]
+
+    output = {
+        "activity": labels,
+        "count": [counts[label] for label in labels],
+        "percentage": percentages,
+    }
+    if is_pandas_input:
+        return pd.DataFrame(output)
+    return nw.from_dict(output, backend=nw_df.implementation).to_native()
+
+
+def daily_activity_distribution(
+    visits: Any,
+    activity_col: str | None = None,
+    start_time_col: str | None = None,
+    end_time_col: str | None = None,
+    bin_size_minutes: int = 10,
+    day_col: str | None = None,
+    day_filter: str | None = None,
+    unknown_label: str = "UNKNOWN",
+) -> tuple[np.ndarray, list[Any], int]:
+    """Compute a daily activity distribution matrix over fixed time bins."""
+    if bin_size_minutes <= 0 or 1440 % bin_size_minutes != 0:
+        raise ValueError("bin_size_minutes must be a positive divisor of 1440")
+
+    nw_df = nw.from_native(visits, eager_only=True)
+    if activity_col is None:
+        activity_col = _pick_existing_column(nw_df.columns, ACTIVITY_CANDIDATES)
+    if day_col is None:
+        day_col = _pick_existing_column(nw_df.columns, DAY_CANDIDATES)
+    start_time_col = _resolve_start_column(nw_df.columns, start_time_col)
+    end_time_col = _resolve_end_column(nw_df.columns, end_time_col)
+    if start_time_col is None or start_time_col not in nw_df.columns:
+        raise ValueError(
+            "start_time_col could not be auto-detected. "
+            f"Tried: {TIMESTAMP_CANDIDATES}. Available columns: {nw_df.columns}"
+        )
+
+    work_cols = [start_time_col]
+    if activity_col:
+        work_cols.append(activity_col)
+    if end_time_col:
+        work_cols.append(end_time_col)
+    if day_col and _allowed_days(day_filter) is not None:
+        work_cols.append(day_col)
+    work_cols = list(dict.fromkeys(work_cols))
+
+    df = nw_df.select(work_cols)
+    df = _apply_day_filter(df, day_col, day_filter)
+    df, resolved_activity_col = _with_activity_fallback(df, activity_col, unknown_label)
+
+    categories = sorted(df.get_column(resolved_activity_col).unique().to_list(), key=lambda value: str(value))
+    n_bins = 1440 // bin_size_minutes
+    activity_matrix = np.full((len(categories), n_bins), np.nan)
+    category_idx = {category: idx for idx, category in enumerate(categories)}
+
+    starts = df.get_column(start_time_col).to_list()
+    ends = df.get_column(end_time_col).to_list() if end_time_col and end_time_col in df.columns else [None] * len(df)
+    activities = df.get_column(resolved_activity_col).to_list()
+
+    for activity, start_value, end_value in zip(activities, starts, ends):
+        if pd.isna(start_value):
+            continue
+
+        start = pd.to_datetime(start_value)
+        if end_value is None or pd.isna(end_value):
+            end = start.replace(hour=23, minute=59, second=59)
+        else:
+            end = pd.to_datetime(end_value)
+
+        row_idx = category_idx[activity]
+        start_min = start.hour * 60 + start.minute
+        end_min = end.hour * 60 + end.minute
+
+        ranges = []
+        if end_min < start_min:
+            ranges.append((start_min // bin_size_minutes, n_bins - 1))
+            ranges.append((0, min(end_min // bin_size_minutes, n_bins - 1)))
+        else:
+            ranges.append((start_min // bin_size_minutes, min(end_min // bin_size_minutes, n_bins - 1)))
+
+        for start_bin, end_bin in ranges:
+            for bin_idx in range(start_bin, end_bin + 1):
+                activity_matrix[row_idx, bin_idx] = (
+                    1 if np.isnan(activity_matrix[row_idx, bin_idx]) else activity_matrix[row_idx, bin_idx] + 1
+                )
+
+    col_sums = np.nansum(activity_matrix, axis=0)
+    activity_matrix_pct = np.full_like(activity_matrix, np.nan, dtype=float)
+    for col in range(n_bins):
+        if col_sums[col] > 0:
+            activity_matrix_pct[:, col] = (activity_matrix[:, col] / col_sums[col]) * 100.0
+
+    return activity_matrix_pct, categories, n_bins
 
 
 def activity_transition_matrix(
@@ -27,6 +235,7 @@ def activity_transition_matrix(
     timestamp_col: str | None = None,
     day_col: str | None = None,
     day_filter: str | None = None,
+    unknown_label: str = "UNKNOWN",
 ) -> Any:
     """Compute the activity transition matrix for a visits DataFrame.
 
@@ -104,39 +313,25 @@ def activity_transition_matrix(
     if day_col is None:
         day_col = _pick_existing_column(nw_df.columns, DAY_CANDIDATES)
 
-    if day_filter is not None and day_col is None:
-        raise ValueError(
-            "day_col could not be auto-detected and is required when day_filter is set. "
-            f"Tried: {DAY_CANDIDATES}. Available columns: {nw_df.columns}"
-        )
-
     is_pandas_input = isinstance(nw_df.to_native(), pd.DataFrame)
-
-    if day_filter == "weekdays":
-        allowed_days = _WEEKDAYS
-    elif day_filter == "weekends":
-        allowed_days = _WEEKENDS
-    else:
-        allowed_days = None
 
     work_cols = [activity_col] if activity_col else []
     if user_id_col:
         work_cols.append(user_id_col)
     if timestamp_col:
         work_cols.append(timestamp_col)
-    if day_col and allowed_days is not None:
+    if day_col and _allowed_days(day_filter) is not None:
         work_cols.append(day_col)
     work_cols = list(dict.fromkeys(work_cols))
 
-    df = nw_df.select(work_cols) if work_cols else nw_df
-    if activity_col:
-        df = df.drop_nulls(subset=[activity_col])
-
-    if allowed_days is not None and day_col:
-        days = df.get_column(day_col).to_list()
-        keep = [str(day).lower() in allowed_days for day in days]
-        df = df.with_columns(nw.new_series("__skmob2_keep__", keep, backend=df.implementation))
-        df = df.filter(nw.col("__skmob2_keep__")).drop("__skmob2_keep__")
+    if work_cols:
+        df = nw_df.select(work_cols)
+    elif nw_df.columns:
+        df = nw_df.select([nw_df.columns[0]])
+    else:
+        df = nw_df.select([])
+    df = _apply_day_filter(df, day_col, day_filter)
+    df, activity_col = _with_activity_fallback(df, activity_col, unknown_label)
 
     sort_cols = []
     if user_id_col:

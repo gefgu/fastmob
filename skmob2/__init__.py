@@ -31,7 +31,7 @@ from .measures.fitting.mobility_laws import (
     log_truncated_powerlaw,
     visitation_law_curve,
 )
-from .measures.visits.activity import activity_transition_matrix
+from .measures.visits.activity import activity_transition_matrix, daily_activity_distribution, visit_purpose_distribution
 from .measures.visits.mobility_profiling import intermittance_and_degree_of_return, exploration_profiling
 from .measures.visits.regularity import regularity
 from .measures.visits.fast_diversity import fast_diversity
@@ -114,6 +114,8 @@ __all__ = [
     "fit_visitation_law",
     "visitation_law_curve",
     "activity_transition_matrix",
+    "daily_activity_distribution",
+    "visit_purpose_distribution",
     "intermittance_and_degree_of_return",
     "exploration_profiling",
     "regularity",
