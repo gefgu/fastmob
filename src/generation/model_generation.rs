@@ -1,182 +1,27 @@
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
-use std::collections::HashMap;
 
-const EARTH_RADIUS_KM: f64 = 6371.01;
+use crate::generation::od::gravity_od_row_seq;
+use crate::haversine::haversine_km;
 
-fn validate_equal_lengths(arrays: &[(&str, usize)]) -> PyResult<usize> {
+pub(crate) use crate::generation::od::{model_gravity_matrix_numpy, model_gravity_od_row_numpy};
+
+pub(crate) fn validate_equal_lengths(arrays: &[(&str, usize)]) -> PyResult<usize> {
     let Some((_, n)) = arrays.first() else {
         return Ok(0);
     };
     for (name, len) in arrays {
         if len != n {
-            return Err(PyValueError::new_err(format!(
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
                 "{name} must have the same length as the coordinate arrays"
             )));
         }
     }
     Ok(*n)
-}
-
-fn haversine_km_manual(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
-    let lat1 = lat1.to_radians();
-    let lon1 = lon1.to_radians();
-    let lat2 = lat2.to_radians();
-    let lon2 = lon2.to_radians();
-    let dlat = lat1 - lat2;
-    let dlon = lon1 - lon2;
-    let ds = 2.0
-        * ((dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2))
-            .sqrt()
-            .asin();
-    EARTH_RADIUS_KM * ds
-}
-
-fn deterrence(distance: f64, deterrence_type: &str, arg: f64) -> f64 {
-    if deterrence_type == "exponential" {
-        (-distance * arg).exp()
-    } else {
-        distance.powf(arg)
-    }
-}
-
-#[pyfunction]
-#[allow(clippy::too_many_arguments)]
-#[pyo3(signature = (latitudes, longitudes, relevances, tot_outflows, deterrence_type, deterrence_arg, origin_exp, destination_exp, gravity_type, out_format))]
-pub(crate) fn model_gravity_matrix_numpy<'py>(
-    py: Python<'py>,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
-    relevances: PyReadonlyArray1<'py, f64>,
-    tot_outflows: PyReadonlyArray1<'py, f64>,
-    deterrence_type: &str,
-    deterrence_arg: f64,
-    origin_exp: f64,
-    destination_exp: f64,
-    gravity_type: &str,
-    out_format: &str,
-) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    let latitudes = latitudes.as_slice()?;
-    let longitudes = longitudes.as_slice()?;
-    let relevances = relevances.as_slice()?;
-    let tot_outflows = tot_outflows.as_slice()?;
-    let n = validate_equal_lengths(&[
-        ("longitudes", longitudes.len()),
-        ("relevances", relevances.len()),
-        ("tot_outflows", tot_outflows.len()),
-        ("latitudes", latitudes.len()),
-    ])?;
-
-    let mut matrix: Vec<f64> = (0..n)
-        .into_par_iter()
-        .flat_map_iter(|i| {
-            (0..n).map(move |j| {
-                if i == j {
-                    return 0.0;
-                }
-                let distance =
-                    haversine_km_manual(latitudes[i], longitudes[i], latitudes[j], longitudes[j]);
-                let score = deterrence(distance, deterrence_type, deterrence_arg)
-                    * relevances[j].powf(destination_exp)
-                    * relevances[i].powf(origin_exp);
-                if score.is_finite() { score } else { 0.0 }
-            })
-        })
-        .collect();
-
-    if gravity_type == "globally constrained" {
-        let total: f64 = matrix.iter().sum();
-        if total != 0.0 {
-            for value in &mut matrix {
-                *value /= total;
-            }
-        }
-        if out_format == "flows" {
-            let total_outflow: f64 = tot_outflows.iter().sum();
-            for value in &mut matrix {
-                *value *= total_outflow;
-            }
-        }
-    } else {
-        matrix.par_chunks_mut(n).enumerate().for_each(|(i, row)| {
-            let row_sum: f64 = row.iter().sum();
-            if row_sum != 0.0 {
-                for value in row.iter_mut() {
-                    *value /= row_sum;
-                    if out_format == "flows" {
-                        *value *= tot_outflows[i];
-                    }
-                }
-            } else {
-                for value in row.iter_mut() {
-                    *value = 0.0;
-                }
-            }
-        });
-    }
-
-    Ok(matrix.into_pyarray(py))
-}
-
-#[pyfunction]
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn model_gravity_od_row_numpy<'py>(
-    py: Python<'py>,
-    origin: usize,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
-    relevances: PyReadonlyArray1<'py, f64>,
-    deterrence_type: &str,
-    deterrence_arg: f64,
-    origin_exp: f64,
-    destination_exp: f64,
-) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    let latitudes = latitudes.as_slice()?;
-    let longitudes = longitudes.as_slice()?;
-    let relevances = relevances.as_slice()?;
-    let n = validate_equal_lengths(&[
-        ("longitudes", longitudes.len()),
-        ("relevances", relevances.len()),
-        ("latitudes", latitudes.len()),
-    ])?;
-    if origin >= n {
-        return Err(PyValueError::new_err(
-            "origin must be within coordinate bounds",
-        ));
-    }
-
-    let mut row: Vec<f64> = (0..n)
-        .into_par_iter()
-        .map(|j| {
-            if j == origin {
-                return 0.0;
-            }
-            let distance = haversine_km_manual(
-                latitudes[origin],
-                longitudes[origin],
-                latitudes[j],
-                longitudes[j],
-            );
-            let score = deterrence(distance, deterrence_type, deterrence_arg)
-                * relevances[j].powf(destination_exp)
-                * relevances[origin].powf(origin_exp);
-            if score.is_finite() { score } else { 0.0 }
-        })
-        .collect();
-    let total: f64 = row.iter().sum();
-    if total != 0.0 {
-        for value in &mut row {
-            *value /= total;
-        }
-    } else if n > 0 {
-        let uniform = 1.0 / n as f64;
-        row.fill(uniform);
-    }
-    Ok(row.into_pyarray(py))
 }
 
 #[pyfunction]
@@ -211,7 +56,7 @@ pub(crate) fn model_radiation_probabilities(
                 .map(|destination| {
                     (
                         destination,
-                        haversine_km_manual(
+                        haversine_km(
                             latitudes[origin],
                             longitudes[origin],
                             latitudes[destination],
@@ -268,41 +113,6 @@ fn sample_tpl_rng(rng: &mut impl Rng, xmin: f64, alpha: f64, lambda_: f64) -> f6
     }
 }
 
-// Sequential (non-Rayon) OD row — used inside the parallel agent loop to avoid
-// nested parallelism contention when outer par_iter already owns all threads.
-#[allow(clippy::too_many_arguments)]
-fn gravity_od_row_seq(
-    origin: usize,
-    lats: &[f64],
-    lons: &[f64],
-    rels: &[f64],
-    deterrence_type: &str,
-    deterrence_arg: f64,
-    origin_exp: f64,
-    dest_exp: f64,
-) -> Vec<f64> {
-    let n = lats.len();
-    let mut row: Vec<f64> = (0..n)
-        .map(|j| {
-            if j == origin {
-                return 0.0;
-            }
-            let d = haversine_km_manual(lats[origin], lons[origin], lats[j], lons[j]);
-            let s = deterrence(d, deterrence_type, deterrence_arg)
-                * rels[j].powf(dest_exp)
-                * rels[origin].powf(origin_exp);
-            if s.is_finite() { s } else { 0.0 }
-        })
-        .collect();
-    let total: f64 = row.iter().sum();
-    if total != 0.0 {
-        row.iter_mut().for_each(|v| *v /= total);
-    } else if n > 0 {
-        row.fill(1.0 / n as f64);
-    }
-    row
-}
-
 fn weighted_choice_slice(rng: &mut impl Rng, weights: &[f64]) -> usize {
     let n = weights.len();
     if n == 0 {
@@ -325,13 +135,13 @@ fn weighted_choice_slice(rng: &mut impl Rng, weights: &[f64]) -> usize {
 
 fn weighted_choice_excluding(
     rng: &mut impl Rng,
-    visits: &HashMap<usize, usize>,
+    visits: &[(usize, u32)],
     exclude: usize,
 ) -> usize {
     let mut pairs: Vec<(usize, f64)> = Vec::new();
-    for (&loc, &cnt) in visits.iter() {
-        if loc != exclude {
-            pairs.push((loc, cnt as f64));
+    for (loc, cnt) in visits.iter() {
+        if *loc != exclude {
+            pairs.push((*loc, *cnt as f64));
         }
     }
     if pairs.is_empty() {
@@ -349,54 +159,72 @@ fn weighted_choice_excluding(
     pairs.last().unwrap().0
 }
 
-#[allow(clippy::too_many_arguments)]
-fn simulate_one_epr_agent(
-    starting_loc: usize,
-    od_rows: &[Vec<f64>],
+#[derive(Clone, Copy)]
+struct EprConfig<'a> {
+    od_rows: &'a [Vec<f64>],
     n: usize,
     rho: f64,
     gamma: f64,
-    beta: f64,
-    tau: f64,
+    alpha: f64,
+    lambda_: f64,
     xmin: f64,
-    start_ts: i64,
-    end_ts: i64,
+    start_ts: u64,
+    end_ts: u64,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn simulate_one_epr_agent(
+    agent_id: usize,
+    starting_loc: usize,
     seed: u64,
-) -> (Vec<i64>, Vec<usize>) {
-    let alpha = 1.0 + beta;
-    let lambda_ = 1.0 / tau;
-    let mut rng = StdRng::seed_from_u64(seed);
-    let mut timestamps: Vec<i64> = Vec::new();
-    let mut loc_indices: Vec<usize> = Vec::new();
-    let mut visits: HashMap<usize, usize> = HashMap::new();
+    config: EprConfig,
+    out_agents: &mut Vec<usize>,
+    out_timestamps: &mut Vec<u64>,
+    out_loc_indices: &mut Vec<usize>,
+    visit_cache: &mut Vec<(usize, u32)>,
+) {
+    let mut rng = Xoshiro256PlusPlus::seed_from_u64(seed);
 
-    let mut cur_loc = starting_loc.min(n.saturating_sub(1));
-    let mut cur_ts = start_ts;
-    timestamps.push(cur_ts);
-    loc_indices.push(cur_loc);
-    *visits.entry(cur_loc).or_insert(0) += 1;
+    let mut cur_loc = starting_loc.min(config.n.saturating_sub(1));
+    let mut cur_ts = config.start_ts;
+    out_agents.push(agent_id);
+    out_timestamps.push(cur_ts);
+    out_loc_indices.push(cur_loc);
+    record_visits(visit_cache, cur_loc);
 
-    let wait_h = sample_tpl_rng(&mut rng, xmin, alpha, lambda_);
-    cur_ts += (wait_h * 3600.0) as i64;
+    let wait_h = sample_tpl_rng(&mut rng, config.xmin, config.alpha, config.lambda_);
+    cur_ts += (wait_h * 3600.0) as u64;
 
-    while cur_ts < end_ts {
-        let n_visited = visits.len();
+    while cur_ts < config.end_ts {
+        let n_visited = visit_cache.len();
         let p_new: f64 = rng.gen_range(0.0_f64..1.0);
-        let explore =
-            n_visited == 1 || (n_visited < n && p_new <= rho * (n_visited as f64).powf(-gamma));
+        let explore = n_visited == 1
+            || (n_visited < config.n
+                && p_new <= config.rho * (n_visited as f64).powf(-config.gamma));
         let next_loc = if explore {
-            weighted_choice_slice(&mut rng, &od_rows[cur_loc])
+            weighted_choice_slice(&mut rng, &config.od_rows[cur_loc])
         } else {
-            weighted_choice_excluding(&mut rng, &visits, cur_loc)
+            weighted_choice_excluding(&mut rng, visit_cache, cur_loc)
         };
         cur_loc = next_loc;
-        timestamps.push(cur_ts);
-        loc_indices.push(cur_loc);
-        *visits.entry(cur_loc).or_insert(0) += 1;
-        let wait_h = sample_tpl_rng(&mut rng, xmin, alpha, lambda_);
-        cur_ts += (wait_h * 3600.0) as i64;
+        out_agents.push(agent_id);
+        out_timestamps.push(cur_ts);
+        out_loc_indices.push(cur_loc);
+        record_visits(visit_cache, cur_loc);
+        let wait_h = sample_tpl_rng(&mut rng, config.xmin, config.alpha, config.lambda_);
+        cur_ts += (wait_h * 3600.0) as u64;
     }
-    (timestamps, loc_indices)
+}
+
+#[inline(always)]
+fn record_visits(visits: &mut Vec<(usize, u32)>, loc: usize) {
+    for (l, cnt) in visits.iter_mut() {
+        if *l == loc {
+            *cnt += 1;
+            return;
+        }
+    }
+    visits.push((loc, 1));
 }
 
 // ---------------------------------------------------------------------------
@@ -411,7 +239,7 @@ pub(crate) fn model_truncated_power_law_samples(
     n: usize,
     seed: u64,
 ) -> Vec<f64> {
-    let mut rng = StdRng::seed_from_u64(seed);
+    let mut rng = Xoshiro256PlusPlus::seed_from_u64(seed);
     let mut result = Vec::with_capacity(n);
     while result.len() < n {
         let u: f64 = rng.gen_range(0.0_f64..1.0);
@@ -443,7 +271,7 @@ pub(crate) fn model_distance_matrix_numpy<'py>(
                 if i == j {
                     0.0
                 } else {
-                    haversine_km_manual(lats[i], lons[i], lats[j], lons[j])
+                    haversine_km(lats[i], lons[i], lats[j], lons[j])
                 }
             })
         })
@@ -532,32 +360,73 @@ pub(crate) fn model_epr_simulate_agents<'py>(
         })
         .collect();
 
-    // Simulate all agents in parallel; each agent owns its own RNG.
-    let agent_results: Vec<(Vec<i64>, Vec<usize>)> = (0..n_agents)
-        .into_par_iter()
-        .map(|i| {
-            let sl = (starting_locs_slice[i].max(0) as usize).min(n - 1);
-            let seed = seeds_slice[i] as u64;
-            simulate_one_epr_agent(
-                sl, &od_rows, n, rho, gamma, beta, tau, xmin, start_ts, end_ts, seed,
-            )
-        })
+    // Chunk agents so each Rayon worker can reuse its local output buffers and visit cache.
+    let worker_count = rayon::current_num_threads().max(1);
+    let target_chunks = (worker_count * 4).min(n_agents).max(1);
+    let chunk_size = n_agents.div_ceil(target_chunks);
+    let agent_chunks: Vec<_> = (0..n_agents)
+        .step_by(chunk_size)
+        .map(|start| start..(start + chunk_size).min(n_agents))
         .collect();
 
-    // Flatten into parallel output arrays.
-    let total: usize = agent_results.iter().map(|(ts, _)| ts.len()).sum();
+    let epr_config = EprConfig {
+        od_rows: &od_rows,
+        n,
+        rho,
+        gamma,
+        alpha: 1.0 + beta,
+        lambda_: 1.0 / tau,
+        xmin,
+        start_ts: start_ts as u64,
+        end_ts: end_ts as u64,
+    };
+
+    let agent_results = agent_chunks
+        .into_par_iter()
+        .map(|chunk| {
+            let mut out_agents = Vec::with_capacity(chunk.len() * 50);
+            let mut out_timestamps = Vec::with_capacity(chunk.len() * 50);
+            let mut out_loc_indices = Vec::with_capacity(chunk.len() * 50);
+            let mut visit_cache = Vec::with_capacity(300);
+
+            for agent in chunk {
+                let sl = (starting_locs_slice[agent].max(0) as usize).min(n - 1);
+                let seed = seeds_slice[agent] as u64;
+                simulate_one_epr_agent(
+                    agent + 1,
+                    sl,
+                    seed,
+                    epr_config,
+                    &mut out_agents,
+                    &mut out_timestamps,
+                    &mut out_loc_indices,
+                    &mut visit_cache,
+                );
+
+                visit_cache.clear();
+            }
+
+            (out_agents, out_timestamps, out_loc_indices)
+        })
+        .collect::<Vec<_>>();
+
+    // Flatten chunk-local output arrays. Rayon preserves chunk order here, and each
+    // chunk emits agents in increasing order, so the final rows remain agent ordered.
+    let total: usize = agent_results
+        .iter()
+        .map(|(agents, _, _)| agents.len())
+        .sum();
     let mut out_agents: Vec<i64> = Vec::with_capacity(total);
     let mut out_lats: Vec<f64> = Vec::with_capacity(total);
     let mut out_lons_: Vec<f64> = Vec::with_capacity(total);
     let mut out_ts: Vec<i64> = Vec::with_capacity(total);
 
-    for (agent_idx, (timestamps, loc_indices)) in agent_results.into_iter().enumerate() {
-        let agent_id = (agent_idx + 1) as i64;
-        for (ts, loc) in timestamps.into_iter().zip(loc_indices) {
-            out_agents.push(agent_id);
+    for (chunk_agents, timestamps, loc_indices) in agent_results {
+        for ((agent_id, ts), loc) in chunk_agents.into_iter().zip(timestamps).zip(loc_indices) {
+            out_agents.push(agent_id as i64);
             out_lats.push(lats[loc]);
             out_lons_.push(lons[loc]);
-            out_ts.push(ts);
+            out_ts.push(ts as i64);
         }
     }
 

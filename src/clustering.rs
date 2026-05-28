@@ -4,7 +4,7 @@ use ndarray015::Array2;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use rand::SeedableRng;
-use rand::rngs::StdRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 
 fn to_f32_array2(values: Vec<f64>) -> Result<Array2<f32>, String> {
     let n = values.len();
@@ -31,7 +31,7 @@ pub(crate) fn cluster_kmeans(
     }
     let arr = to_f32_array2(values).map_err(PyValueError::new_err)?;
     let dataset = DatasetBase::from(arr);
-    let rng = StdRng::seed_from_u64(seed);
+    let rng = Xoshiro256PlusPlus::seed_from_u64(seed);
     let model = KMeans::params_with_rng(n_clusters, rng)
         .max_n_iterations(max_iter)
         .tolerance(tolerance as f32)
@@ -59,7 +59,7 @@ pub(crate) fn cluster_gmm(
     }
     let arr = to_f32_array2(values).map_err(PyValueError::new_err)?;
     let dataset = DatasetBase::from(arr);
-    let rng = StdRng::seed_from_u64(seed);
+    let rng = Xoshiro256PlusPlus::seed_from_u64(seed);
     let model = GaussianMixtureModel::params(n_clusters)
         .max_n_iterations(max_iter)
         .tolerance(tolerance as f32)

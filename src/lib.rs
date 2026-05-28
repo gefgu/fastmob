@@ -3,6 +3,7 @@ mod clustering;
 mod compress_traj;
 mod entropy;
 mod filter_traj;
+mod generation;
 mod haversine;
 mod home_location;
 mod k_radius_of_gyration;
@@ -10,7 +11,6 @@ mod location_frequency;
 mod max_distance_from_point;
 mod maximum_distance;
 mod measures;
-mod model_generation;
 mod motifs;
 mod radius_of_gyration;
 mod recency_rank;
@@ -339,27 +339,27 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     m.add_function(wrap_pyfunction!(
-        model_generation::model_gravity_matrix_numpy,
+        generation::model_generation::model_gravity_matrix_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        model_generation::model_gravity_od_row_numpy,
+        generation::model_generation::model_gravity_od_row_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        model_generation::model_radiation_probabilities,
+        generation::model_generation::model_radiation_probabilities,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        model_generation::model_truncated_power_law_samples,
+        generation::model_generation::model_truncated_power_law_samples,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        model_generation::model_distance_matrix_numpy,
+        generation::model_generation::model_distance_matrix_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        model_generation::model_epr_simulate_agents,
+        generation::model_generation::model_epr_simulate_agents,
         m
     )?)?;
     Ok(())

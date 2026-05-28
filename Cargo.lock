@@ -1238,6 +1238,7 @@ dependencies = [
  "pyo3",
  "pyo3-arrow",
  "rand 0.8.5",
+ "rand_xoshiro",
  "rayon",
  "wass",
 ]

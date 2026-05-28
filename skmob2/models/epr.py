@@ -8,11 +8,22 @@ from collections import defaultdict
 
 import numpy as np
 
-from ._common import RELEVANCE, require_optional, tessellation_lat_lngs, to_pandas_frame, trajectory_dataframe
+from ._common import (
+    RELEVANCE,
+    require_optional,
+    tessellation_lat_lngs,
+    to_pandas_frame,
+    trajectory_dataframe,
+)
 from .gravity import Gravity
 
 
-def compute_od_matrix(gravity_singly, spatial_tessellation, tile_id_column="tile_id", relevance_column=RELEVANCE):
+def compute_od_matrix(
+    gravity_singly,
+    spatial_tessellation,
+    tile_id_column="tile_id",
+    relevance_column=RELEVANCE,
+):
     return gravity_singly.generate(
         spatial_tessellation,
         tile_id_column=tile_id_column,
@@ -39,16 +50,18 @@ def populate_od_matrix(location, lats_lngs, relevances, gravity_singly):
     return scores / total if total else np.full(len(lats_lngs), 1.0 / len(lats_lngs))
 
 
-def _distance(origin, dest):
-    from ._common import haversine_km
-
-    return haversine_km(tuple(origin), tuple(dest))
-
-
 class EPR:
     _POOL_SIZE = 2000
 
-    def __init__(self, name="EPR model", rho=0.6, gamma=0.21, beta=0.8, tau=17, min_wait_time_minutes=20):
+    def __init__(
+        self,
+        name="EPR model",
+        rho=0.6,
+        gamma=0.21,
+        beta=0.8,
+        tau=17,
+        min_wait_time_minutes=20,
+    ):
         self._name = name
         self._rho = rho
         self._gamma = gamma
@@ -119,7 +132,12 @@ class EPR:
         if self._is_sparse:
             row = self._od_matrix.get(int(current_location))
             if row is None:
-                row = populate_od_matrix(current_location, self.lats_lngs, self.relevances, self.gravity_singly)
+                row = populate_od_matrix(
+                    current_location,
+                    self.lats_lngs,
+                    self.relevances,
+                    self.gravity_singly,
+                )
                 self._od_matrix[int(current_location)] = row
             weights = row
         else:
@@ -151,7 +169,7 @@ class EPR:
             return self._preferential_exploration(current_location)
         return self._preferential_return(current_location)
 
-    def _time_generator(self):
+    def _choose_waiting_time(self):
         if not self._waiting_time_pool:
             try:
                 from skmob2 import _core
@@ -169,12 +187,10 @@ class EPR:
             except Exception:
                 powerlaw = require_optional("powerlaw")
                 return powerlaw.Truncated_Power_Law(
-                    xmin=self.min_wait_time, parameters=[1.0 + self._beta, 1.0 / self._tau]
+                    xmin=self.min_wait_time,
+                    parameters=[1.0 + self._beta, 1.0 / self._tau],
                 ).generate_random()[0]
         return self._waiting_time_pool.pop()
-
-    def _choose_waiting_time(self):
-        return self._time_generator()
 
     def generate(
         self,
@@ -204,6 +220,7 @@ class EPR:
         else:
             raise TypeError("Argument `gravity_singly` should be of type skmob.models.gravity.Gravity.")
 
+        # Get parameters used in the generation for metadata recording
         frame = inspect.currentframe()
         args, _, _, arg_values = inspect.getargvalues(frame)
         parameters = {
@@ -212,15 +229,28 @@ class EPR:
                 "generate": {
                     i: arg_values[i]
                     for i in args[1:]
-                    if i not in ["spatial_tessellation", "od_matrix", "log_file", "starting_locations"]
+                    if i
+                    not in [
+                        "spatial_tessellation",
+                        "od_matrix",
+                        "log_file",
+                        "starting_locations",
+                    ]
                 },
             }
         }
+
         if random_state is not None:
             np.random.seed(random_state)
+
         if log_file is not None:
             self._log_file = log_file
-            logging.basicConfig(format="%(message)s", filename=log_file, filemode="w", level=logging.INFO)
+            logging.basicConfig(
+                format="%(message)s",
+                filename=log_file,
+                filemode="w",
+                level=logging.INFO,
+            )
 
         self._trajectories_ = []
         self._spatial_tessellation = to_pandas_frame(spatial_tessellation)
@@ -240,16 +270,14 @@ class EPR:
         agent_seeds = np.random.randint(0, 2**31, size=n_agents, dtype=np.int64)
         start_values = list(starting_locations) if starting_locations is not None else None
         resolved_starts = [
-            int(start_values.pop()) if start_values is not None else int(np.random.choice(num_locs))
+            (int(start_values.pop()) if start_values is not None else int(np.random.choice(num_locs)))
             for _ in range(n_agents)
         ]
 
         # Rust parallel fast path for large-scale scenarios (no logging, no custom od_matrix).
         if n_agents * num_locs > 500 and not self._log_file and od_matrix is None:
             try:
-                rows = self._epr_generate_parallel(
-                    start_date, end_date, n_agents, resolved_starts, agent_seeds
-                )
+                rows = self._epr_generate_parallel(start_date, end_date, n_agents, resolved_starts, agent_seeds)
                 if self._log_file is not None:
                     logging.shutdown()
                 return trajectory_dataframe(rows, parameters=parameters)
@@ -290,8 +318,12 @@ class EPR:
             float(self.gravity_singly.destination_exp),
         )
         return [
-            (int(agent_ids[k]), float(lats_out[k]), float(lngs_out[k]),
-             pd.Timestamp(int(timestamps[k]), unit="s"))
+            (
+                int(agent_ids[k]),
+                float(lats_out[k]),
+                float(lngs_out[k]),
+                pd.Timestamp(int(timestamps[k]), unit="s"),
+            )
             for k in range(len(agent_ids))
         ]
 
@@ -308,8 +340,22 @@ class EPR:
 
 
 class DensityEPR(EPR):
-    def __init__(self, name="Density EPR model", rho=0.6, gamma=0.21, beta=0.8, tau=17, min_wait_time_minutes=20):
-        super().__init__(rho=rho, gamma=gamma, beta=beta, tau=tau, min_wait_time_minutes=min_wait_time_minutes)
+    def __init__(
+        self,
+        name="Density EPR model",
+        rho=0.6,
+        gamma=0.21,
+        beta=0.8,
+        tau=17,
+        min_wait_time_minutes=20,
+    ):
+        super().__init__(
+            rho=rho,
+            gamma=gamma,
+            beta=beta,
+            tau=tau,
+            min_wait_time_minutes=min_wait_time_minutes,
+        )
         self._name = name
 
     def generate(
@@ -342,8 +388,22 @@ class DensityEPR(EPR):
 
 
 class SpatialEPR(EPR):
-    def __init__(self, name="Spatial EPR model", rho=0.6, gamma=0.21, beta=0.8, tau=17, min_wait_time_minutes=20):
-        super().__init__(rho=rho, gamma=gamma, beta=beta, tau=tau, min_wait_time_minutes=min_wait_time_minutes)
+    def __init__(
+        self,
+        name="Spatial EPR model",
+        rho=0.6,
+        gamma=0.21,
+        beta=0.8,
+        tau=17,
+        min_wait_time_minutes=20,
+    ):
+        super().__init__(
+            rho=rho,
+            gamma=gamma,
+            beta=beta,
+            tau=tau,
+            min_wait_time_minutes=min_wait_time_minutes,
+        )
         self._name = name
 
     def generate(

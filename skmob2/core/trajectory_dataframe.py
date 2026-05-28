@@ -16,11 +16,16 @@ class TrajDataFrame(BaseDataFrame):
         uid_col=None,
         **kwargs,
     ):
+        if isinstance(df, TrajDataFrame):
+            # If the input is already a TrajDataFrame, we can skip the column detection and preparation steps
+            super().__init__(df.df, **kwargs)
+            return
+
         super().__init__(df, **kwargs)
 
         self.sorted = False
-        self.datetime_col, self.lat_col, self.lng_col, self.uid_col = (
-            _detect_trajectory_columns(self.df, datetime_col, lat_col, lng_col, uid_col)
+        self.datetime_col, self.lat_col, self.lng_col, self.uid_col = _detect_trajectory_columns(
+            self.df, datetime_col, lat_col, lng_col, uid_col
         )
 
         if timestamp and self.datetime_col is not None:
@@ -38,14 +43,10 @@ class TrajDataFrame(BaseDataFrame):
 
                     # Fix for Polars: parse with timezone handling built into the expression
                     native_pl_df = nw_df.to_native()
-                    self.df = native_pl_df.with_columns(
-                        pl.col(self.datetime_col).str.to_datetime(time_zone="UTC")
-                    )
+                    self.df = native_pl_df.with_columns(pl.col(self.datetime_col).str.to_datetime(time_zone="UTC"))
                 else:
                     # 3. Fallback for Pandas, Modin, CuDF, etc. via Narwhals
-                    self.df = nw_df.with_columns(
-                        nw.col(self.datetime_col).str.to_datetime()
-                    ).to_native()
+                    self.df = nw_df.with_columns(nw.col(self.datetime_col).str.to_datetime()).to_native()
 
         if sort:
             nw_df = nw.from_native(self.df, eager_only=True)
