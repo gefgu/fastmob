@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-import datetime
 import inspect
-import logging
-import math
-from collections import defaultdict
 
 import numpy as np
 
 from ._common import (
     RELEVANCE,
-    require_optional,
     tessellation_lat_lngs,
     to_pandas_frame,
     trajectory_dataframe,
@@ -33,26 +28,7 @@ def compute_od_matrix(
     ).to_matrix()
 
 
-_EARTH_RADIUS_KM = 6371.0
-
-
-def populate_od_matrix(location, lats_lngs, relevances, gravity_singly):
-    lat1_r = math.radians(float(lats_lngs[location, 0]))
-    lng1_r = math.radians(float(lats_lngs[location, 1]))
-    lats_r = np.radians(lats_lngs[:, 0])
-    lngs_r = np.radians(lats_lngs[:, 1])
-    dlat = lat1_r - lats_r
-    dlng = lng1_r - lngs_r
-    a = np.sin(dlat / 2.0) ** 2 + math.cos(lat1_r) * np.cos(lats_r) * np.sin(dlng / 2.0) ** 2
-    distances = _EARTH_RADIUS_KM * 2.0 * np.arcsin(np.sqrt(a))
-    scores = gravity_singly._compute_gravity_score(distances[None, :], relevances[location, None], relevances)[0]
-    total = np.sum(scores)
-    return scores / total if total else np.full(len(lats_lngs), 1.0 / len(lats_lngs))
-
-
 class EPR:
-    _POOL_SIZE = 2000
-
     def __init__(
         self,
         name="EPR model",
@@ -67,18 +43,13 @@ class EPR:
         self._gamma = gamma
         self._tau = tau
         self._beta = beta
-        self._location2visits = defaultdict(int)
         self._od_matrix = None
-        self._is_sparse = True
         self._spatial_tessellation = None
         self.lats_lngs = None
         self.relevances = None
-        self._starting_loc = None
         self.gravity_singly = None
         self._min_wait_time = min_wait_time_minutes / 60.0
         self._trajectories_ = []
-        self._log_file = None
-        self._waiting_time_pool: list[float] = []
 
     @property
     def name(self):
@@ -112,86 +83,6 @@ class EPR:
     def trajectories_(self):
         return self._trajectories_
 
-    def _weighted_random_selection(self, current_location):
-        pairs = [(k, v) for k, v in self._location2visits.items() if k != current_location]
-        if not pairs:
-            return int(current_location)
-        locations = np.fromiter((k for k, _ in pairs), dtype=int, count=len(pairs))
-        weights = np.fromiter((v for _, v in pairs), dtype=float, count=len(pairs))
-        weights = weights / np.sum(weights)
-        return int(np.random.choice(locations, size=1, p=weights)[0])
-
-    def _preferential_return(self, current_location):
-        next_location = self._weighted_random_selection(current_location)
-        if self._log_file is not None:
-            logging.info(f"RETURN to {next_location} ({self.lats_lngs[next_location]})")
-            logging.info(f"\t frequency = {self._location2visits[next_location]}")
-        return next_location
-
-    def _preferential_exploration(self, current_location):
-        if self._is_sparse:
-            row = self._od_matrix.get(int(current_location))
-            if row is None:
-                row = populate_od_matrix(
-                    current_location,
-                    self.lats_lngs,
-                    self.relevances,
-                    self.gravity_singly,
-                )
-                self._od_matrix[int(current_location)] = row
-            weights = row
-        else:
-            weights = np.asarray(self._od_matrix[int(current_location)], dtype=float)
-        total = np.sum(weights)
-        if total == 0:
-            weights = np.ones(len(self.lats_lngs)) / len(self.lats_lngs)
-        else:
-            weights = weights / total
-        return int(np.random.choice(len(weights), size=1, p=weights)[0])
-
-    def _get_trajdataframe(self, parameters):
-        rows = [
-            (agent_id, self.lats_lngs[loc][0], self.lats_lngs[loc][1], dt) for agent_id, dt, loc in self._trajectories_
-        ]
-        return trajectory_dataframe(rows, parameters=parameters)
-
-    def _choose_location(self):
-        n_visited_locations = len(self._location2visits)
-        if n_visited_locations == 0:
-            self._starting_loc = self._preferential_exploration(self._starting_loc)
-            return self._starting_loc
-        _agent_id, _current_time, current_location = self._trajectories_[-1]
-        p_new = np.random.uniform(0, 1)
-        n_locs = len(self.lats_lngs)
-        if (p_new <= self._rho * math.pow(n_visited_locations, -self._gamma) and n_visited_locations != n_locs) or (
-            n_visited_locations == 1
-        ):
-            return self._preferential_exploration(current_location)
-        return self._preferential_return(current_location)
-
-    def _choose_waiting_time(self):
-        if not self._waiting_time_pool:
-            try:
-                from skmob2 import _core
-
-                seed = int(np.random.randint(0, 2**31))
-                self._waiting_time_pool = list(
-                    _core.model_truncated_power_law_samples(
-                        self._min_wait_time,
-                        1.0 + self._beta,
-                        1.0 / self._tau,
-                        self._POOL_SIZE,
-                        seed,
-                    )
-                )
-            except Exception:
-                powerlaw = require_optional("powerlaw")
-                return powerlaw.Truncated_Power_Law(
-                    xmin=self.min_wait_time,
-                    parameters=[1.0 + self._beta, 1.0 / self._tau],
-                ).generate_random()[0]
-        return self._waiting_time_pool.pop()
-
     def generate(
         self,
         start_date,
@@ -207,7 +98,9 @@ class EPR:
         show_progress=False,
     ):
         if starting_locations is not None and len(starting_locations) < n_agents:
-            raise IndexError("The number of starting locations is smaller than the number of agents.")
+            raise IndexError(
+                "The number of starting locations is smaller than the number of agents."
+            )
         if gravity_singly == {}:
             self.gravity_singly = Gravity(gravity_type="singly constrained")
         elif type(gravity_singly) is Gravity:
@@ -218,7 +111,9 @@ class EPR:
                     "Argument `gravity_singly` should be a skmob.models.gravity.Gravity object with argument `gravity_type` equal to 'singly constrained'."
                 )
         else:
-            raise TypeError("Argument `gravity_singly` should be of type skmob.models.gravity.Gravity.")
+            raise TypeError(
+                "Argument `gravity_singly` should be of type skmob.models.gravity.Gravity."
+            )
 
         # Get parameters used in the generation for metadata recording
         frame = inspect.currentframe()
@@ -243,15 +138,6 @@ class EPR:
         if random_state is not None:
             np.random.seed(random_state)
 
-        if log_file is not None:
-            self._log_file = log_file
-            logging.basicConfig(
-                format="%(message)s",
-                filename=log_file,
-                filemode="w",
-                level=logging.INFO,
-            )
-
         self._trajectories_ = []
         self._spatial_tessellation = to_pandas_frame(spatial_tessellation)
         num_locs = len(self._spatial_tessellation)
@@ -259,64 +145,82 @@ class EPR:
         self.relevances = (
             np.ones(num_locs)
             if relevance_column is None
-            else self._spatial_tessellation[relevance_column].fillna(0).to_numpy(dtype=float)
+            else self._spatial_tessellation[relevance_column]
+            .fillna(0)
+            .to_numpy(dtype=float)
         )
-        self._od_matrix = {} if od_matrix is None else od_matrix
-        self._is_sparse = od_matrix is None
+        self._od_matrix = None if od_matrix is None else self._dense_rust_od_matrix(od_matrix)
 
-        # Derive per-agent seeds and pre-resolve starting locations before
-        # the agent loop so the RNG stream is identical regardless of which
-        # execution path (Python or Rust) is taken.
         agent_seeds = np.random.randint(0, 2**31, size=n_agents, dtype=np.int64)
-        start_values = list(starting_locations) if starting_locations is not None else None
+        start_values = (
+            list(starting_locations) if starting_locations is not None else None
+        )
         resolved_starts = [
-            (int(start_values.pop()) if start_values is not None else int(np.random.choice(num_locs)))
+            (
+                int(start_values.pop())
+                if start_values is not None
+                else int(np.random.choice(num_locs))
+            )
             for _ in range(n_agents)
         ]
 
-        # Rust parallel fast path for large-scale scenarios (no logging, no custom od_matrix).
-        if n_agents * num_locs > 500 and not self._log_file and od_matrix is None:
-            try:
-                rows = self._epr_generate_parallel(start_date, end_date, n_agents, resolved_starts, agent_seeds)
-                if self._log_file is not None:
-                    logging.shutdown()
-                return trajectory_dataframe(rows, parameters=parameters)
-            except Exception:
-                pass
+        rows = self._epr_generate_parallel(
+            start_date,
+            end_date,
+            resolved_starts,
+            agent_seeds,
+            od_matrix=self._od_matrix,
+        )
+        return trajectory_dataframe(rows, parameters=parameters)
 
-        for agent_id, sl in enumerate(resolved_starts, 1):
-            self._location2visits = defaultdict(int)
-            self._waiting_time_pool = []
-            self._starting_loc = sl
-            self._epr_generate_one_agent(agent_id, start_date, end_date)
-        if self._log_file is not None:
-            logging.shutdown()
-        return self._get_trajdataframe(parameters)
-
-    def _epr_generate_parallel(self, start_date, end_date, n_agents, resolved_starts, agent_seeds):
+    def _epr_generate_parallel(
+        self, start_date, end_date, resolved_starts, agent_seeds, od_matrix=None
+    ):
         import pandas as pd
         from skmob2 import _core
 
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
-        agent_ids, lats_out, lngs_out, timestamps = _core.model_epr_simulate_agents(
-            np.asarray(self.lats_lngs[:, 0], dtype=float),
-            np.asarray(self.lats_lngs[:, 1], dtype=float),
-            np.asarray(self.relevances, dtype=float),
-            float(self._rho),
-            float(self._gamma),
-            float(self._beta),
-            float(self._tau),
-            float(self._min_wait_time),
-            start_ts,
-            end_ts,
-            np.asarray(agent_seeds, dtype=np.int64),
-            np.asarray(resolved_starts, dtype=np.int64),
-            self.gravity_singly.deterrence_func_type,
-            float(self.gravity_singly.deterrence_func_args[0]),
-            float(self.gravity_singly.origin_exp),
-            float(self.gravity_singly.destination_exp),
-        )
+        lats = np.asarray(self.lats_lngs[:, 0], dtype=float)
+        lngs = np.asarray(self.lats_lngs[:, 1], dtype=float)
+        seeds = np.asarray(agent_seeds, dtype=np.int64)
+        starts = np.asarray(resolved_starts, dtype=np.int64)
+        if od_matrix is None:
+            agent_ids, lats_out, lngs_out, timestamps = _core.model_epr_simulate_agents(
+                lats,
+                lngs,
+                np.asarray(self.relevances, dtype=float),
+                float(self._rho),
+                float(self._gamma),
+                float(self._beta),
+                float(self._tau),
+                float(self._min_wait_time),
+                start_ts,
+                end_ts,
+                seeds,
+                starts,
+                self.gravity_singly.deterrence_func_type,
+                float(self.gravity_singly.deterrence_func_args[0]),
+                float(self.gravity_singly.origin_exp),
+                float(self.gravity_singly.destination_exp),
+            )
+        else:
+            agent_ids, lats_out, lngs_out, timestamps = (
+                _core.model_epr_simulate_agents_from_od(
+                    lats,
+                    lngs,
+                    np.asarray(od_matrix, dtype=float).ravel(),
+                    float(self._rho),
+                    float(self._gamma),
+                    float(self._beta),
+                    float(self._tau),
+                    float(self._min_wait_time),
+                    start_ts,
+                    end_ts,
+                    seeds,
+                    starts,
+                )
+            )
         return [
             (
                 int(agent_ids[k]),
@@ -327,16 +231,13 @@ class EPR:
             for k in range(len(agent_ids))
         ]
 
-    def _epr_generate_one_agent(self, agent_id, start_date, end_date):
-        current_date = start_date
-        self._trajectories_.append((agent_id, current_date, self._starting_loc))
-        self._location2visits[self._starting_loc] += 1
-        current_date += datetime.timedelta(hours=self._choose_waiting_time())
-        while current_date < end_date:
-            next_location = self._choose_location()
-            self._trajectories_.append((agent_id, current_date, next_location))
-            self._location2visits[next_location] += 1
-            current_date += datetime.timedelta(hours=self._choose_waiting_time())
+    def _dense_rust_od_matrix(self, od_matrix):
+        if od_matrix is None:
+            return None
+        dense = np.asarray(od_matrix, dtype=float)
+        if dense.shape != (len(self.lats_lngs), len(self.lats_lngs)):
+            raise ValueError("od_matrix must be a dense square matrix with one row per location.")
+        return dense
 
 
 class DensityEPR(EPR):

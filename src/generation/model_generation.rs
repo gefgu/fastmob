@@ -133,11 +133,7 @@ fn weighted_choice_slice(rng: &mut impl Rng, weights: &[f64]) -> usize {
     n - 1
 }
 
-fn weighted_choice_excluding(
-    rng: &mut impl Rng,
-    visits: &[(usize, u32)],
-    exclude: usize,
-) -> usize {
+fn weighted_choice_excluding(rng: &mut impl Rng, visits: &[(usize, u32)], exclude: usize) -> usize {
     let mut pairs: Vec<(usize, f64)> = Vec::new();
     for (loc, cnt) in visits.iter() {
         if *loc != exclude {
@@ -225,6 +221,130 @@ fn record_visits(visits: &mut Vec<(usize, u32)>, loc: usize) {
         }
     }
     visits.push((loc, 1));
+}
+
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn simulate_epr_agents_from_od<'py>(
+    py: Python<'py>,
+    lats: &[f64],
+    lons: &[f64],
+    od_rows: Vec<Vec<f64>>,
+    rho: f64,
+    gamma: f64,
+    beta: f64,
+    tau: f64,
+    xmin: f64,
+    start_ts: i64,
+    end_ts: i64,
+    seeds_slice: &[i64],
+    starting_locs_slice: &[i64],
+) -> PyResult<(
+    Bound<'py, PyArray1<i64>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<i64>>,
+)> {
+    let n = lats.len();
+    let n_agents = seeds_slice.len();
+    if starting_locs_slice.len() != n_agents {
+        return Err(PyValueError::new_err(
+            "starting_locs length must equal seeds length",
+        ));
+    }
+    if lons.len() != n {
+        return Err(PyValueError::new_err(
+            "longitudes must have the same length as latitudes",
+        ));
+    }
+    if od_rows.len() != n || od_rows.iter().any(|row| row.len() != n) {
+        return Err(PyValueError::new_err(
+            "od_matrix must be square with one row per coordinate",
+        ));
+    }
+    if n == 0 || n_agents == 0 {
+        let empty_i64 = Vec::<i64>::new().into_pyarray(py);
+        let empty_f64 = Vec::<f64>::new().into_pyarray(py);
+        return Ok((
+            empty_i64,
+            empty_f64.clone(),
+            empty_f64,
+            Vec::<i64>::new().into_pyarray(py),
+        ));
+    }
+
+    let worker_count = rayon::current_num_threads().max(1);
+    let target_chunks = (worker_count * 4).min(n_agents).max(1);
+    let chunk_size = n_agents.div_ceil(target_chunks);
+    let agent_chunks: Vec<_> = (0..n_agents)
+        .step_by(chunk_size)
+        .map(|start| start..(start + chunk_size).min(n_agents))
+        .collect();
+
+    let epr_config = EprConfig {
+        od_rows: &od_rows,
+        n,
+        rho,
+        gamma,
+        alpha: 1.0 + beta,
+        lambda_: 1.0 / tau,
+        xmin,
+        start_ts: start_ts as u64,
+        end_ts: end_ts as u64,
+    };
+
+    let agent_results = agent_chunks
+        .into_par_iter()
+        .map(|chunk| {
+            let mut out_agents = Vec::with_capacity(chunk.len() * 50);
+            let mut out_timestamps = Vec::with_capacity(chunk.len() * 50);
+            let mut out_loc_indices = Vec::with_capacity(chunk.len() * 50);
+            let mut visit_cache = Vec::with_capacity(300);
+
+            for agent in chunk {
+                let sl = (starting_locs_slice[agent].max(0) as usize).min(n - 1);
+                let seed = seeds_slice[agent] as u64;
+                simulate_one_epr_agent(
+                    agent + 1,
+                    sl,
+                    seed,
+                    epr_config,
+                    &mut out_agents,
+                    &mut out_timestamps,
+                    &mut out_loc_indices,
+                    &mut visit_cache,
+                );
+
+                visit_cache.clear();
+            }
+
+            (out_agents, out_timestamps, out_loc_indices)
+        })
+        .collect::<Vec<_>>();
+
+    let total: usize = agent_results
+        .iter()
+        .map(|(agents, _, _)| agents.len())
+        .sum();
+    let mut out_agents: Vec<i64> = Vec::with_capacity(total);
+    let mut out_lats: Vec<f64> = Vec::with_capacity(total);
+    let mut out_lons_: Vec<f64> = Vec::with_capacity(total);
+    let mut out_ts: Vec<i64> = Vec::with_capacity(total);
+
+    for (chunk_agents, timestamps, loc_indices) in agent_results {
+        for ((agent_id, ts), loc) in chunk_agents.into_iter().zip(timestamps).zip(loc_indices) {
+            out_agents.push(agent_id as i64);
+            out_lats.push(lats[loc]);
+            out_lons_.push(lons[loc]);
+            out_ts.push(ts as i64);
+        }
+    }
+
+    Ok((
+        out_agents.into_pyarray(py),
+        out_lats.into_pyarray(py),
+        out_lons_.into_pyarray(py),
+        out_ts.into_pyarray(py),
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -326,24 +446,6 @@ pub(crate) fn model_epr_simulate_agents<'py>(
         ("relevances", rels.len()),
         ("latitudes", lats.len()),
     ])?;
-    let n_agents = seeds_slice.len();
-    if starting_locs_slice.len() != n_agents {
-        return Err(PyValueError::new_err(
-            "starting_locs length must equal seeds length",
-        ));
-    }
-    if n == 0 || n_agents == 0 {
-        let empty_i64 = Vec::<i64>::new().into_pyarray(py);
-        let empty_f64 = Vec::<f64>::new().into_pyarray(py);
-        return Ok((
-            empty_i64,
-            empty_f64.clone(),
-            empty_f64,
-            Vec::<i64>::new().into_pyarray(py),
-        ));
-    }
-
-    // Pre-compute all N OD rows in parallel (outer Rayon), sequential inner per row.
     let od_rows: Vec<Vec<f64>> = (0..n)
         .into_par_iter()
         .map(|i| {
@@ -360,80 +462,76 @@ pub(crate) fn model_epr_simulate_agents<'py>(
         })
         .collect();
 
-    // Chunk agents so each Rayon worker can reuse its local output buffers and visit cache.
-    let worker_count = rayon::current_num_threads().max(1);
-    let target_chunks = (worker_count * 4).min(n_agents).max(1);
-    let chunk_size = n_agents.div_ceil(target_chunks);
-    let agent_chunks: Vec<_> = (0..n_agents)
-        .step_by(chunk_size)
-        .map(|start| start..(start + chunk_size).min(n_agents))
-        .collect();
-
-    let epr_config = EprConfig {
-        od_rows: &od_rows,
-        n,
+    simulate_epr_agents_from_od(
+        py,
+        lats,
+        lons,
+        od_rows,
         rho,
         gamma,
-        alpha: 1.0 + beta,
-        lambda_: 1.0 / tau,
+        beta,
+        tau,
         xmin,
-        start_ts: start_ts as u64,
-        end_ts: end_ts as u64,
-    };
+        start_ts,
+        end_ts,
+        seeds_slice,
+        starting_locs_slice,
+    )
+}
 
-    let agent_results = agent_chunks
-        .into_par_iter()
-        .map(|chunk| {
-            let mut out_agents = Vec::with_capacity(chunk.len() * 50);
-            let mut out_timestamps = Vec::with_capacity(chunk.len() * 50);
-            let mut out_loc_indices = Vec::with_capacity(chunk.len() * 50);
-            let mut visit_cache = Vec::with_capacity(300);
-
-            for agent in chunk {
-                let sl = (starting_locs_slice[agent].max(0) as usize).min(n - 1);
-                let seed = seeds_slice[agent] as u64;
-                simulate_one_epr_agent(
-                    agent + 1,
-                    sl,
-                    seed,
-                    epr_config,
-                    &mut out_agents,
-                    &mut out_timestamps,
-                    &mut out_loc_indices,
-                    &mut visit_cache,
-                );
-
-                visit_cache.clear();
-            }
-
-            (out_agents, out_timestamps, out_loc_indices)
-        })
-        .collect::<Vec<_>>();
-
-    // Flatten chunk-local output arrays. Rayon preserves chunk order here, and each
-    // chunk emits agents in increasing order, so the final rows remain agent ordered.
-    let total: usize = agent_results
-        .iter()
-        .map(|(agents, _, _)| agents.len())
-        .sum();
-    let mut out_agents: Vec<i64> = Vec::with_capacity(total);
-    let mut out_lats: Vec<f64> = Vec::with_capacity(total);
-    let mut out_lons_: Vec<f64> = Vec::with_capacity(total);
-    let mut out_ts: Vec<i64> = Vec::with_capacity(total);
-
-    for (chunk_agents, timestamps, loc_indices) in agent_results {
-        for ((agent_id, ts), loc) in chunk_agents.into_iter().zip(timestamps).zip(loc_indices) {
-            out_agents.push(agent_id as i64);
-            out_lats.push(lats[loc]);
-            out_lons_.push(lons[loc]);
-            out_ts.push(ts as i64);
-        }
+#[pyfunction]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+#[pyo3(signature = (
+    latitudes, longitudes, od_matrix,
+    rho, gamma, beta, tau, xmin,
+    start_ts, end_ts,
+    seeds, starting_locs
+))]
+pub(crate) fn model_epr_simulate_agents_from_od<'py>(
+    py: Python<'py>,
+    latitudes: PyReadonlyArray1<'py, f64>,
+    longitudes: PyReadonlyArray1<'py, f64>,
+    od_matrix: PyReadonlyArray1<'py, f64>,
+    rho: f64,
+    gamma: f64,
+    beta: f64,
+    tau: f64,
+    xmin: f64,
+    start_ts: i64,
+    end_ts: i64,
+    seeds: PyReadonlyArray1<'py, i64>,
+    starting_locs: PyReadonlyArray1<'py, i64>,
+) -> PyResult<(
+    Bound<'py, PyArray1<i64>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<f64>>,
+    Bound<'py, PyArray1<i64>>,
+)> {
+    let lats = latitudes.as_slice()?;
+    let lons = longitudes.as_slice()?;
+    let od = od_matrix.as_slice()?;
+    let seeds_slice = seeds.as_slice()?;
+    let starting_locs_slice = starting_locs.as_slice()?;
+    let n = validate_equal_lengths(&[("longitudes", lons.len()), ("latitudes", lats.len())])?;
+    if od.len() != n * n {
+        return Err(PyValueError::new_err(
+            "od_matrix must contain n_locations * n_locations values",
+        ));
     }
-
-    Ok((
-        out_agents.into_pyarray(py),
-        out_lats.into_pyarray(py),
-        out_lons_.into_pyarray(py),
-        out_ts.into_pyarray(py),
-    ))
+    let od_rows = od.chunks(n).map(|row| row.to_vec()).collect();
+    simulate_epr_agents_from_od(
+        py,
+        lats,
+        lons,
+        od_rows,
+        rho,
+        gamma,
+        beta,
+        tau,
+        xmin,
+        start_ts,
+        end_ts,
+        seeds_slice,
+        starting_locs_slice,
+    )
 }

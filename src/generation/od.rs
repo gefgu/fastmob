@@ -6,6 +6,18 @@ use rayon::prelude::*;
 use crate::generation::model_generation::validate_equal_lengths;
 use crate::haversine::haversine_km;
 
+const EARTH_RADIUS_KM: f64 = 6371.01;
+
+fn haversine_km_radians(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+    let dlat = lat1 - lat2;
+    let dlon = lon1 - lon2;
+    let ds = 2.0
+        * ((dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2))
+            .sqrt()
+            .asin();
+    EARTH_RADIUS_KM * ds
+}
+
 fn deterrence(distance: f64, deterrence_type: &str, arg: f64) -> f64 {
     if deterrence_type == "exponential" {
         (-distance * arg).exp()
@@ -30,50 +42,58 @@ pub(crate) fn model_gravity_matrix_numpy<'py>(
     gravity_type: &str,
     out_format: &str,
 ) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    let latitudes = latitudes.as_slice()?;
-    let longitudes = longitudes.as_slice()?;
+    let lats = latitudes.as_slice()?;
+    let lons = longitudes.as_slice()?;
     let relevances = relevances.as_slice()?;
     let tot_outflows = tot_outflows.as_slice()?;
     let n = validate_equal_lengths(&[
-        ("longitudes", longitudes.len()),
+        ("longitudes", lons.len()),
         ("relevances", relevances.len()),
         ("tot_outflows", tot_outflows.len()),
-        ("latitudes", latitudes.len()),
+        ("latitudes", lats.len()),
     ])?;
 
-    let mut matrix: Vec<f64> = (0..n)
-        .into_par_iter()
-        .flat_map_iter(|i| {
-            (0..n).map(move |j| {
-                if i == j {
-                    return 0.0;
-                }
-                let distance =
-                    haversine_km(latitudes[i], longitudes[i], latitudes[j], longitudes[j]);
-                let score = deterrence(distance, deterrence_type, deterrence_arg)
-                    * relevances[j].powf(destination_exp)
-                    * relevances[i].powf(origin_exp);
-                if score.is_finite() { score } else { 0.0 }
-            })
-        })
+    let lats_rad: Vec<f64> = lats.par_iter().map(|x| x.to_radians()).collect();
+    let lons_rad: Vec<f64> = lons.par_iter().map(|x| x.to_radians()).collect();
+    let rels_origin: Vec<f64> = relevances.par_iter().map(|x| x.powf(origin_exp)).collect();
+    let rels_dest: Vec<f64> = relevances
+        .par_iter()
+        .map(|x| x.powf(destination_exp))
         .collect();
 
+    let mut matrix = vec![0.0; n * n];
+
+    matrix.par_chunks_mut(n).enumerate().for_each(|(i, row)| {
+        for j in 0..n {
+            if i == j {
+                row[j] = 0.0;
+            } else {
+                let distance =
+                    haversine_km_radians(lats_rad[i], lons_rad[i], lats_rad[j], lons_rad[j]);
+                let score = deterrence(distance, deterrence_type, deterrence_arg)
+                    * rels_dest[j]
+                    * rels_origin[i];
+                row[j] = if score.is_finite() { score } else { 0.0 };
+            }
+        }
+    });
+
     if gravity_type == "globally constrained" {
-        let total: f64 = matrix.iter().sum();
+        let total: f64 = matrix.par_iter().sum();
         if total != 0.0 {
             for value in &mut matrix {
                 *value /= total;
             }
         }
         if out_format == "flows" {
-            let total_outflow: f64 = tot_outflows.iter().sum();
+            let total_outflow: f64 = tot_outflows.par_iter().sum();
             for value in &mut matrix {
                 *value *= total_outflow;
             }
         }
     } else {
         matrix.par_chunks_mut(n).enumerate().for_each(|(i, row)| {
-            let row_sum: f64 = row.iter().sum();
+            let row_sum: f64 = row.par_iter().sum();
             if row_sum != 0.0 {
                 for value in row.iter_mut() {
                     *value /= row_sum;
@@ -134,7 +154,11 @@ pub(crate) fn model_gravity_od_row_numpy<'py>(
             let score = deterrence(distance, deterrence_type, deterrence_arg)
                 * relevances[j].powf(destination_exp)
                 * relevances[origin].powf(origin_exp);
-            if score.is_finite() { score } else { 0.0 }
+            if score.is_finite() {
+                score
+            } else {
+                0.0
+            }
         })
         .collect();
     let total: f64 = row.iter().sum();
@@ -172,7 +196,11 @@ pub(crate) fn gravity_od_row_seq(
             let s = deterrence(d, deterrence_type, deterrence_arg)
                 * rels[j].powf(dest_exp)
                 * rels[origin].powf(origin_exp);
-            if s.is_finite() { s } else { 0.0 }
+            if s.is_finite() {
+                s
+            } else {
+                0.0
+            }
         })
         .collect();
     let total: f64 = row.iter().sum();
