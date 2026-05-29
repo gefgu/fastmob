@@ -85,9 +85,3 @@ pip install "skmob2[generation]"
 ::: skmob2.models.epr.compute_od_matrix
     options:
       show_source: false
-
----
-
-::: skmob2.models.epr.populate_od_matrix
-    options:
-      show_source: false

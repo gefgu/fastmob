@@ -5,5 +5,5 @@ Explanations describe the ideas and tradeoffs behind skmob2. They are for unders
 Start here:
 
 - [Backend-agnostic, Rust-accelerated design](backend-agnostic-rust-accelerated-design.md)
-- [Correctness, coverage, and benchmarking](correctness-coverage-and-benchmarking.md)
+- [Correctness, coverage, and benchmarking](correctness-coverage-and-benchmarking/)
 - [Why Radius of Gyration Is 447× Faster](radius-of-gyration-performance.md)

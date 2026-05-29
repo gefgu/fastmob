@@ -22,7 +22,7 @@ The result is not that every part of skmob2 needs to be Rust. The useful split i
 
 ## How the layers fit together
 
-The Python layer receives a dataframe, detects or accepts the important trajectory columns, prepares the data, and preserves the calling convention users see in the [API reference](../api/index.md). Once the relevant columns are ready, selected measures route compact arrays into Rust kernels.
+The Python layer receives a dataframe, detects or accepts the important trajectory columns, prepares the data, and preserves the calling convention users see in the [API reference](../api/). Once the relevant columns are ready, selected measures route compact arrays into Rust kernels.
 
 Narwhals is the translation layer that makes this practical. It gives skmob2 enough shared dataframe behavior to prepare inputs without committing the public API to one dataframe library. The Rust kernels then work on the numerical representation rather than on pandas-specific or Polars-specific objects.
 
@@ -34,11 +34,10 @@ This approach trades some implementation simplicity for a friendlier user surfac
 
 The benefit is that the same mobility API can fit into more workflows. Users who value familiarity can stay with pandas. Users who value Polars' execution model can keep Polars at the edges of their analysis. skmob2 carries the compatibility burden so each project does not have to.
 
-Rust introduces a similar tradeoff. It adds a compiled extension and a build toolchain for source installs, but it gives the project a clear place to optimize the routines that dominate runtime. For installation and development details, see [Getting Started](../getting-started.md).
+Rust introduces a similar tradeoff. It adds a compiled extension and a build toolchain for source installs, but it gives the project a clear place to optimize the routines that dominate runtime. For installation and development details, see [Getting Started](../getting-started/).
 
 ## What this means in practice
 
 The design aims to make the fast path feel ordinary. A trajectory measure should look like a normal Python function call, accept the dataframe already in the user's hands, and return a result that fits back into the same analysis environment.
 
 That is the central idea behind skmob2: keep the mobility-analysis API familiar, let dataframe choice remain flexible, and reserve lower-level optimization for the places where it changes real workloads.
-

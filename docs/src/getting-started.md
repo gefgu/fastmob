@@ -7,43 +7,50 @@
 
 ## Install from PyPI
 
-```bash
-pip install skmob2
-```
+=== "pip"
+
+    ```bash
+    pip install skmob2
+    ```
+
+=== "uv"
+
+    ```bash
+    uv add skmob2
+    ```
+
+=== "generation extra"
+
+    ```bash
+    pip install "skmob2[generation]"
+    ```
 
 ## Install for Development (from source)
 
-Development requires `uv` and a Rust toolchain.
+=== "Initial setup"
 
-```bash
-# Clone the repo
-git clone https://github.com/gefgu/skmob2.git
-cd skmob2
+    ```bash
+    git clone https://github.com/gefgu/skmob2.git
+    cd skmob2
+    bash scripts/setup_env.sh
+    source .venv/bin/activate
+    ```
 
-# First-time setup: creates .venv, builds the Rust extension, installs all dev deps
-bash scripts/setup_env.sh
-source .venv/bin/activate
-```
+=== "Rebuild Rust extension"
 
-After setup the compiled Rust extension (`.so`) is placed directly in `skmob2/`, so the package is importable from the repo root without a separate pip install.
+    ```bash
+    maturin develop
+    ```
 
-To rebuild the Rust extension after editing `src/lib.rs`:
+=== "Docs"
 
-```bash
-maturin develop
-```
+    ```bash
+    uv sync --extra docs
+    uv run --extra docs zensical serve
+    uv run --extra docs zensical build
+    ```
 
-## Install the Docs Toolchain
-
-```bash
-uv sync --extra docs
-
-# Serve locally with live reload
-uv run zensical serve
-
-# Build and validate
-uv run zensical build
-```
+Development requires `uv` and a Rust toolchain. After setup the compiled Rust extension (`.so`) is placed directly in `skmob2/`, so the package is importable from the repo root without a separate pip install.
 
 ## Column Name Auto-Detection
 

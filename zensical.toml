@@ -15,12 +15,35 @@ extra_javascript = [
 logo = "assets/logo.png"
 favicon = "assets/icon.png"
 variant = "modern"
+features = [
+  "content.code.copy",
+  "content.tabs.link",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
+  "navigation.top",
+  "search.highlight",
+]
 
-[project.theme.features]
-"content.code.copy" = true
-"navigation.sections" = true
-"navigation.top" = true
-"search.highlight" = true
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "black"
+accent = "yellow"
+
+[project.theme.palette.toggle]
+icon = "lucide/moon"
+name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "black"
+accent = "yellow"
+
+[project.theme.palette.toggle]
+icon = "lucide/sun"
+name = "Switch to light mode"
 
 [project.plugins.search]
 
@@ -42,6 +65,7 @@ generic = true
 
 [project.markdown_extensions."pymdownx.tabbed"]
 alternate_style = true
+combine_header_slug = true
 
 [project.markdown_extensions."pymdownx.highlight"]
 anchor_linenums = true
