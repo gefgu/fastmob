@@ -3,7 +3,7 @@
 #
 # Intended for long unattended runs, for example:
 #
-#   nohup bash scripts/run_skmob_benchmarks.sh > tests/benchmarks/results/logs/skmob_overnight.out 2>&1 &
+#   nohup bash scripts/run_skmob_benchmarks.sh > benchmarks/results/logs/skmob_overnight.out 2>&1 &
 #
 # Extra arguments are forwarded to both suites, for example:
 #
@@ -15,7 +15,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 SKMOB_VENV="${SKMOB_VENV:-$REPO_ROOT/.venv-skmob}"
-RESULTS_DIR="$REPO_ROOT/tests/benchmarks/results"
+RESULTS_DIR="$REPO_ROOT/benchmarks/results"
 LOG_DIR="$RESULTS_DIR/logs"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 SPATIAL_LOG="$LOG_DIR/skmob_spatial_${TIMESTAMP}.log"
@@ -42,8 +42,8 @@ run_skmob_suite() {
         2>&1 | tee "$log_path"
 }
 
-run_skmob_suite tests/benchmarks/speed_spatial_suite.py "$SPATIAL_LOG" "$@"
-run_skmob_suite tests/benchmarks/speed_visits_suite.py "$VISITS_LOG" "$@"
+run_skmob_suite benchmarks/speed_spatial_suite.py "$SPATIAL_LOG" "$@"
+run_skmob_suite benchmarks/speed_visits_suite.py "$VISITS_LOG" "$@"
 
 echo "==> Done"
 echo "Spatial log: $SPATIAL_LOG"

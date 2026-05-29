@@ -1,32 +1,20 @@
-mod cdr;
-mod clustering;
-mod compress_traj;
-mod entropy;
-mod filter_traj;
-mod generation;
-mod haversine;
-mod home_location;
-mod k_radius_of_gyration;
-mod location_frequency;
-mod max_distance_from_point;
-mod maximum_distance;
 mod measures;
-mod motifs;
-mod radius_of_gyration;
-mod recency_rank;
-mod spatial_counts;
-mod square_displacement;
-mod stay_locations_rs;
-mod stvd_emd;
-mod time_ordering;
-mod total_distance;
-mod uncorrelated_entropy;
+mod models;
+mod preprocessing;
 mod utils;
-mod visitation_law;
-mod waiting_times;
-mod wasserstein;
 
 use pyo3::prelude::*;
+
+use measures::collective::{square_displacement, visitation_law};
+use measures::evaluation::{stvd_emd, wasserstein};
+use measures::individual::{
+    entropy, home_location, k_radius_of_gyration, location_frequency, max_distance_from_point,
+    maximum_distance, motifs, radius_of_gyration, recency_rank, spatial_counts, total_distance,
+    uncorrelated_entropy, waiting_times,
+};
+use preprocessing::{cdr, clustering, compress_traj, filter_traj, stay_locations_rs};
+pub(crate) use utils::haversine;
+pub(crate) use measures::individual::time_ordering;
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -44,23 +32,23 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::jump_lengths::jump_lengths_km,
+        measures::individual::jump_lengths::jump_lengths_km,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::jump_lengths_numpy::jump_lengths_presorted_numpy,
+        measures::individual::jump_lengths_numpy::jump_lengths_presorted_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::jump_lengths_arrow::jump_lengths_presorted_arrow,
+        measures::individual::jump_lengths_arrow::jump_lengths_presorted_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::jump_lengths_numpy::jump_lengths_non_ordered_numpy,
+        measures::individual::jump_lengths_numpy::jump_lengths_non_ordered_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::jump_lengths_arrow::jump_lengths_non_ordered_arrow,
+        measures::individual::jump_lengths_arrow::jump_lengths_non_ordered_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -339,31 +327,31 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     m.add_function(wrap_pyfunction!(
-        generation::model_generation::model_gravity_matrix_numpy,
+        models::model_generation::model_gravity_matrix_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        generation::model_generation::model_gravity_od_row_numpy,
+        models::model_generation::model_gravity_od_row_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        generation::model_generation::model_radiation_probabilities,
+        models::model_generation::model_radiation_probabilities,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        generation::model_generation::model_truncated_power_law_samples,
+        models::model_generation::model_truncated_power_law_samples,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        generation::model_generation::model_distance_matrix_numpy,
+        models::model_generation::model_distance_matrix_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        generation::model_generation::model_epr_simulate_agents,
+        models::model_generation::model_epr_simulate_agents,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        generation::model_generation::model_epr_simulate_agents_from_od,
+        models::model_generation::model_epr_simulate_agents_from_od,
         m
     )?)?;
     Ok(())

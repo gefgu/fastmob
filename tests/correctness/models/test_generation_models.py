@@ -39,6 +39,10 @@ def _distance_matrix(tessellation: pd.DataFrame) -> np.ndarray:
     return compute_distance_matrix(tessellation, np.arange(len(tessellation)))
 
 
+def _native_frame(df):
+    return df.df if hasattr(df, "df") else df
+
+
 def _expected_gravity(tessellation, deterrence, gravity_type, out_format, origin_exp=1.5, destination_exp=2.0):
     relevance = tessellation["relevance"].to_numpy(dtype=float)
     outflows = tessellation["tot_outflow"].to_numpy(dtype=float)
@@ -138,7 +142,7 @@ def test_gravity_flows_sample_is_seeded():
     np.random.seed(123)
     second = model.generate(tess, out_format="flows_sample")
 
-    pd.testing.assert_frame_equal(first, second)
+    pd.testing.assert_frame_equal(_native_frame(first), _native_frame(second))
 
 
 @pytest.mark.parametrize("out_format", ["flows", "flows_sample", "probabilities"])
@@ -148,6 +152,7 @@ def test_radiation_generate_shapes(out_format):
 
     result = Radiation().generate(tess, out_format=out_format)
 
+    result = _native_frame(result)
     assert list(result.columns) == ["origin", "destination", "flow"]
     assert set(result["origin"]).issubset(set(tess["tile_id"]))
     assert set(result["destination"]).issubset(set(tess["tile_id"]))
@@ -187,7 +192,7 @@ def test_core_radiation_kernel_matches_python_probabilities():
 
     pd.testing.assert_frame_equal(
         actual,
-        expected,
+        _native_frame(expected),
         check_dtype=False,
         check_frame_type=False,
         rtol=1e-12,

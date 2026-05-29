@@ -24,8 +24,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skmob2.comparison import wasserstein_distance, visits_per_user_wasserstein_distance
-from skmob2.measures.spatial import jump_lengths, radius_of_gyration, waiting_times
+from skmob2.measures.evaluation import wasserstein_distance, visits_per_user_wasserstein_distance
+from skmob2.measures.individual import jump_lengths, radius_of_gyration, waiting_times
 from skmob2.models import DensityEPR, EPR, GeoSim, Gravity, Radiation, SpatialEPR, STS_epr, MarkovDiaryGenerator
 
 from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
@@ -93,6 +93,8 @@ def _expected_df(models_reference: SkmobReferenceDataset, name: str) -> pd.DataF
 
 
 def _normalize_trajectory(df: Any) -> pd.DataFrame:
+    if hasattr(df, "df"):
+        df = df.df
     out = pd.DataFrame(df).copy()
     out = out[["uid", "datetime", "lat", "lng"]]
     out["datetime"] = pd.to_datetime(out["datetime"])
@@ -102,6 +104,8 @@ def _normalize_trajectory(df: Any) -> pd.DataFrame:
 
 
 def _normalize_flow(df: Any) -> pd.DataFrame:
+    if hasattr(df, "df"):
+        df = df.df
     out = pd.DataFrame(df).copy()
     out = out[["origin", "destination", "flow"]].copy()
     out["origin"] = out["origin"].astype(str)
@@ -312,7 +316,7 @@ def test_flow_sample_statistical_parity(
     name,
     model_cls,
 ):
-    from skmob2.comparison import od_matrix_common_part_of_commuters
+    from skmob2.measures.evaluation import od_matrix_common_part_of_commuters
 
     skmob_mat = _flow_to_od_matrix(_expected_df(models_reference, name))
 
@@ -324,7 +328,7 @@ def test_flow_sample_statistical_parity(
         relevance_column="population",
         out_format="flows_sample",
     )
-    skmob2_mat = _flow_to_od_matrix(pd.DataFrame(skmob2_df))
+    skmob2_mat = _flow_to_od_matrix(skmob2_df)
 
     cpc = od_matrix_common_part_of_commuters(skmob2_mat, skmob_mat)
     _assert_cpc_within_baseline(cpc, skmob_baseline, name)

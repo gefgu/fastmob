@@ -11,8 +11,8 @@ if [ ! -x "$PYTHON" ]; then
     PYTHON="python"
 fi
 
-_BASE_RESULTS_DIR="$REPO_ROOT/tests/benchmarks/results"
-PLOT_SCRIPT="$REPO_ROOT/tests/benchmarks/plot_benchmark_comparisons.py"
+_BASE_RESULTS_DIR="$REPO_ROOT/benchmarks/results"
+PLOT_SCRIPT="$REPO_ROOT/benchmarks/plot_benchmark_comparisons.py"
 FAILURES=()
 INPUT_ORDER="raw"
 PLOT_ARGS=()

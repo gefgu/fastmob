@@ -14,7 +14,7 @@ skmob2/_core         ← compiled artifact (do not edit manually)
 skmob2/measures/     ← Python measure implementations; each calls into _core
 skmob2/__init__.py   ← re-exports public API
 tests/correctness/   ← correctness tests (no optional deps required)
-tests/benchmarks/    ← pytest-benchmark tests comparing skmob vs skmob2
+benchmarks/    ← pytest-benchmark tests comparing skmob vs skmob2
 ```
 
 **Data flow for a measure (e.g. `jump_lengths`):**
@@ -172,7 +172,7 @@ Preserve `backend=nw_df.implementation` when constructing output dicts so the re
 
 ## Radius of gyration performance pattern
 
-`skmob2.measures.spatial.radius_of_gyration` is the current reference implementation for a high-throughput, low-memory measure. Treat it as the standard to copy when building or refactoring other measures.
+`skmob2.measures.individual.radius_of_gyration` is the current reference implementation for a high-throughput, low-memory measure. Treat it as the standard to copy when building or refactoring other measures.
 
 What makes it fast:
 
@@ -235,7 +235,7 @@ When adding a measure, choose the output pattern based on cardinality:
 2. Run `maturin develop` to rebuild.
 3. Create the Python wrapper in `skmob2/measures/individual.py` (or a new file), following the pattern of `jump_lengths`.
 4. Re-export from `skmob2/measures/__init__.py` and `skmob2/__init__.py`.
-5. Add a correctness test in `tests/correctness/test_individual.py` and a benchmark in `tests/benchmarks/bench_individual.py`.
+5. Add a correctness test in `tests/correctness/test_individual.py` and a benchmark in `benchmarks/bench_individual.py`.
 
 
 # Project Structure

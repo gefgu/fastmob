@@ -1,0 +1,592 @@
+from __future__ import annotations
+
+import json
+import os
+import sys
+import types
+from pathlib import Path
+
+import pytest
+
+from benchmarks import speed_spatial_suite as suite
+from benchmarks.sorted_input_cache import load_or_create_sorted_input, sorted_cache_path, stable_sort_pandas
+
+
+def test_metric_registry_contains_expected_spatial_and_preprocessing_measures():
+    assert [spec.name for spec in suite.SPATIAL_METRICS] == [
+        "distance_straight_line",
+        "home_location",
+        "jump_lengths",
+        "k_radius_of_gyration",
+        "max_distance_from_home",
+        "maximum_distance",
+        "number_of_locations",
+        "number_of_visits",
+        "radius_of_gyration",
+        "waiting_times",
+        "filter",
+        "compress",
+        "stay_locations",
+    ]
+
+    kwargs = {spec.name: spec.kwargs for spec in suite.SPATIAL_METRICS}
+    assert kwargs["jump_lengths"] == {"merge": False}
+    assert kwargs["waiting_times"] == {"merge": False}
+    assert kwargs["k_radius_of_gyration"] == {"k": 2}
+
+
+def test_catalogs_include_expected_entries():
+    skmob_catalog = suite.load_catalog(suite.SKMOB_CATALOG_PATH)
+    movingpandas_catalog = suite.load_catalog(suite.MOVINGPANDAS_CATALOG_PATH)
+
+    names_by_suite = {}
+    for entry in skmob_catalog["entries"]:
+        names_by_suite.setdefault(entry["suite"], set()).add(entry["name"])
+
+    assert {"radius_of_gyration", "stay_locations", "frequency_rank"}.issubset(
+        names_by_suite["individual"] | names_by_suite["preprocessing"]
+    )
+    assert {
+        "location_kl2",
+        "location_sequence_kl2",
+        "location_time_kl2",
+        "unique_location_kl2",
+        "location_frequency_kl2",
+        "location_probability_kl2",
+        "location_proportion_kl2",
+        "home_work",
+    } == names_by_suite["privacy"]
+    assert {
+        "gravity_flows",
+        "gravity_probabilities",
+        "radiation_flows",
+        "radiation_probabilities",
+        "markov_diary",
+        "epr",
+        "density_epr",
+        "spatial_epr",
+        "geosim",
+        "sts_epr",
+    } == names_by_suite["models"]
+    assert any(
+        entry["skmob_function"] == "skmob.measures.individual.jump_lengths" and entry["benchmarkable"]
+        for entry in movingpandas_catalog["entries"]
+    )
+
+
+def test_summarize_times_handles_values_and_empty_list():
+    assert suite.summarize_times([0.3, 0.1, 0.2]) == {
+        "average_seconds": pytest.approx(0.2),
+        "minimum_seconds": 0.1,
+    }
+    assert suite.summarize_times([]) == {"average_seconds": None, "minimum_seconds": None}
+
+
+def test_summarize_memory_handles_values_and_empty_list():
+    assert suite.summarize_memory([3.0, 1.0, 2.0]) == {
+        "average_peak_memory_mb": pytest.approx(2.0),
+        "minimum_peak_memory_mb": 1.0,
+        "maximum_peak_memory_mb": 3.0,
+    }
+    assert suite.summarize_memory([]) == {
+        "average_peak_memory_mb": None,
+        "minimum_peak_memory_mb": None,
+        "maximum_peak_memory_mb": None,
+    }
+
+
+def test_output_path_matches_library_backend_and_timing_mode(tmp_path: Path):
+    assert (
+        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas")
+        == tmp_path / "skmob2_spatial_speed_pandas.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "polars")
+        == tmp_path / "skmob2_spatial_speed_polars.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf")
+        == tmp_path / "skmob_spatial_speed_prebuilt_tdf.json"
+    )
+    assert suite.build_output_path(tmp_path, "movingpandas", "prebuilt_tdf") == tmp_path / "movingpandas_spatial_speed.json"
+    assert (
+        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas", "memory")
+        == tmp_path / "skmob2_spatial_memory_pandas.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf", profile="memory")
+        == tmp_path / "skmob_spatial_memory_prebuilt_tdf.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "movingpandas", "prebuilt_tdf", profile="memory")
+        == tmp_path / "movingpandas_spatial_memory.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas", input_order="sorted")
+        == tmp_path / "skmob2_spatial_speed_sorted_pandas.json"
+    )
+    assert (
+        suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf", input_order="sorted")
+        == tmp_path / "skmob_spatial_speed_sorted_prebuilt_tdf.json"
+    )
+
+
+def test_parse_args_defaults_to_both_skmob2_backends():
+    args = suite.parse_args(["--library", "skmob2"])
+    assert args.backend == "both"
+    assert args.profile == "speed"
+    assert args.input_order == "raw"
+    assert tuple(suite.concrete_backends(args)) == ("pandas", "polars")
+    assert tuple(suite.concrete_input_orders(args)) == ("raw",)
+
+
+def test_parse_args_expands_both_input_orders():
+    args = suite.parse_args(["--library", "skmob2", "--input-order", "both"])
+    assert tuple(suite.concrete_input_orders(args)) == ("raw", "sorted")
+
+
+def test_skmob_metric_kwargs_add_show_progress_when_supported():
+    def fake_metric(_tdf, show_progress=True, merge=True):
+        return None
+
+    spec = suite.BenchmarkSpec(
+        "jump_lengths",
+        "unused",
+        "unused",
+        "jump_lengths",
+        {"merge": False},
+    )
+
+    assert suite.metric_kwargs_for_library(spec, "skmob", fake_metric) == {
+        "merge": False,
+        "show_progress": False,
+    }
+    assert suite.metric_kwargs_for_library(spec, "skmob2", fake_metric) == {"merge": False}
+
+
+def test_sorted_skmob2_spatial_metrics_get_sorted_kwarg_but_preprocessing_does_not():
+    def fake_metric(_tdf):
+        return None
+
+    jump_spec = suite.BenchmarkSpec("jump_lengths", "unused", "unused", "jump_lengths", {"merge": False})
+    rog_spec = suite.BenchmarkSpec("radius_of_gyration", "unused", "unused", "radius_of_gyration", {})
+    filter_spec = suite.BenchmarkSpec(
+        "filter",
+        "unused",
+        "unused",
+        "filter",
+        {},
+        input_kind="preprocessing",
+    )
+
+    assert suite.metric_kwargs_for_library(jump_spec, "skmob2", fake_metric, input_order="sorted") == {
+        "merge": False,
+        "sorted": True,
+    }
+    assert suite.metric_kwargs_for_library(rog_spec, "skmob2", fake_metric, input_order="sorted") == {"sorted": True}
+    assert suite.metric_kwargs_for_library(filter_spec, "skmob2", fake_metric, input_order="sorted") == {}
+    assert suite.metric_kwargs_for_library(jump_spec, "skmob", fake_metric, input_order="sorted") == {"merge": False}
+
+
+def test_sorted_cache_path_and_stable_pandas_sort(tmp_path: Path):
+    pd = pytest.importorskip("pandas")
+    data_path = tmp_path / "bright kite.tsv.gz"
+    path = sorted_cache_path(tmp_path, suite="spatial", backend="pandas", data_path=data_path)
+
+    assert path == tmp_path / "spatial_bright_kite.tsv.gz_pandas_sorted.parquet"
+
+    df = pd.DataFrame(
+        {
+            "user": [2, 1, 1, 1],
+            "check-in_time": pd.to_datetime(
+                ["2020-01-01 00:00", "2020-01-01 01:00", "2020-01-01 01:00", "2019-01-01 00:00"]
+            ),
+            "latitude": [0.0, 1.0, 2.0, 3.0],
+            "longitude": [0.0, 1.0, 2.0, 3.0],
+        }
+    )
+
+    sorted_df = stable_sort_pandas(df, uid_col="user", datetime_col="check-in_time")
+
+    assert sorted_df["latitude"].tolist() == [3.0, 1.0, 2.0, 0.0]
+
+
+def test_sorted_cache_is_created_then_reused(tmp_path: Path):
+    pd = pytest.importorskip("pandas")
+    calls = {"load": 0}
+    data_path = tmp_path / "brightkite.tsv"
+    df = pd.DataFrame(
+        {
+            "user": [2, 1],
+            "check-in_time": pd.to_datetime(["2020-01-02", "2020-01-01"]),
+            "latitude": [0.0, 1.0],
+            "longitude": [0.0, 1.0],
+        }
+    )
+
+    def load_raw():
+        calls["load"] += 1
+        return df
+
+    first = load_or_create_sorted_input(
+        cache_dir=tmp_path,
+        suite="spatial",
+        backend="pandas",
+        data_path=data_path,
+        load_raw=load_raw,
+        uid_col="user",
+        datetime_col="check-in_time",
+    )
+    second = load_or_create_sorted_input(
+        cache_dir=tmp_path,
+        suite="spatial",
+        backend="pandas",
+        data_path=data_path,
+        load_raw=load_raw,
+        uid_col="user",
+        datetime_col="check-in_time",
+    )
+
+    assert first.status == "created"
+    assert second.status == "reused"
+    assert calls["load"] == 1
+    assert second.data["user"].tolist() == [1, 2]
+
+
+def test_import_metric_patches_numpy_nan_for_legacy_skmob(monkeypatch):
+    calls = {"patched": 0}
+
+    def fake_patch():
+        calls["patched"] += 1
+
+    fake_module = types.ModuleType("skmob.measures.individual")
+    fake_module.radius_of_gyration = lambda tdf: tdf
+
+    monkeypatch.setattr(suite, "patch_numpy_nan_for_skmob", fake_patch)
+    monkeypatch.setitem(sys.modules, "skmob.measures.individual", fake_module)
+
+    spec = suite.BenchmarkSpec(
+        "radius_of_gyration",
+        "skmob2.measures.individual.radius_of_gyration",
+        "skmob.measures.individual",
+        "radius_of_gyration",
+        {},
+    )
+
+    assert suite.import_metric(spec, "skmob") is fake_module.radius_of_gyration
+    assert calls["patched"] == 1
+
+
+def test_write_json_serializes_payload(tmp_path: Path):
+    output_path = suite.write_json({"metadata": {"library": "skmob2"}, "results": []}, tmp_path / "result.json")
+
+    assert output_path == tmp_path / "result.json"
+    assert json.loads(output_path.read_text(encoding="utf-8")) == {
+        "metadata": {"library": "skmob2"},
+        "results": [],
+    }
+
+
+def test_benchmark_metric_records_import_skip(monkeypatch):
+    spec = suite.BenchmarkSpec("missing", "missing.module", "missing.module", "missing", {})
+
+    def raise_skip(_spec, _library):
+        raise suite.SkippedMetric("not installed")
+
+    monkeypatch.setattr(suite, "import_metric", raise_skip)
+
+    result = suite.benchmark_metric(spec, "skmob", lambda: object(), iterations=1, sleep_seconds=0.0)
+
+    assert result["status"] == "skipped"
+    assert result["reason"] == "not installed"
+    assert result["times_seconds"] == []
+    assert result["average_seconds"] is None
+    assert result["minimum_seconds"] is None
+
+
+def test_memory_skip_uses_memory_result_schema(monkeypatch):
+    spec = suite.BenchmarkSpec("missing", "missing.module", "missing.module", "missing", {})
+
+    def raise_skip(_spec, _library):
+        raise suite.SkippedMetric("not installed")
+
+    monkeypatch.setattr(suite, "import_metric", raise_skip)
+
+    result = suite.benchmark_metric(
+        spec,
+        "skmob",
+        lambda: object(),
+        iterations=1,
+        sleep_seconds=0.0,
+        profile="memory",
+    )
+
+    assert result["status"] == "skipped"
+    assert result["peak_memory_mb"] == []
+    assert result["current_memory_mb"] == []
+    assert result["average_peak_memory_mb"] is None
+    assert "times_seconds" not in result
+
+
+def test_run_memory_call_tracks_each_iteration_with_tracemalloc(monkeypatch):
+    calls = {"func": 0, "start": 0, "get": 0, "stop": 0}
+
+    def fake_func(input_value, scale=1):
+        calls["func"] += 1
+        return input_value * scale
+
+    def fake_start():
+        calls["start"] += 1
+
+    def fake_get_traced_memory():
+        calls["get"] += 1
+        return calls["get"] * 1024 * 1024, calls["get"] * 2 * 1024 * 1024
+
+    def fake_stop():
+        calls["stop"] += 1
+
+    monkeypatch.setattr(suite.tracemalloc, "start", fake_start)
+    monkeypatch.setattr(suite.tracemalloc, "get_traced_memory", fake_get_traced_memory)
+    monkeypatch.setattr(suite.tracemalloc, "stop", fake_stop)
+
+    result = suite.run_memory_call(fake_func, lambda: 10, {"scale": 2}, iterations=2, sleep_seconds=0.0)
+
+    assert calls == {"func": 3, "start": 2, "get": 2, "stop": 2}
+    assert result["status"] == "ok"
+    assert result["current_memory_mb"] == [1.0, 2.0]
+    assert result["peak_memory_mb"] == [2.0, 4.0]
+    assert result["average_peak_memory_mb"] == pytest.approx(3.0)
+    assert "times_seconds" not in result
+
+
+def test_skmob_prebuilt_tdf_builds_once_outside_timing(monkeypatch):
+    calls = _install_fake_skmob(monkeypatch)
+
+    result = suite.benchmark_skmob_size(
+        _tiny_pandas_df(),
+        sys.modules["skmob"],
+        3,
+        timing_mode="prebuilt_tdf",
+        iterations=2,
+        sleep_seconds=0.0,
+    )
+
+    assert result["metrics"]["radius_of_gyration"]["status"] == "ok"
+    assert calls["tdf"] == 1
+    assert calls["metric"] == 3
+
+
+def test_skmob_workflow_tdf_builds_inside_each_timed_run(monkeypatch):
+    calls = _install_fake_skmob(monkeypatch)
+
+    result = suite.benchmark_skmob_size(
+        _tiny_pandas_df(),
+        sys.modules["skmob"],
+        3,
+        timing_mode="workflow_tdf",
+        iterations=2,
+        sleep_seconds=0.0,
+    )
+
+    assert result["metrics"]["radius_of_gyration"]["status"] == "ok"
+    assert calls["tdf"] == 3
+    assert calls["metric"] == 3
+
+
+def test_skmob2_smoke_with_tiny_pandas_dataframe_when_extension_is_available(monkeypatch, tmp_path: Path):
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first")
+
+    tiny = _tiny_pandas_df()
+    data_path = tmp_path / "brightkite.tsv.gz"
+    data_path.write_bytes(b"placeholder")
+
+    monkeypatch.setattr(suite, "load_brightkite_pandas", lambda _path: tiny)
+    monkeypatch.setattr(
+        suite,
+        "SPATIAL_METRICS",
+        (
+            suite.BenchmarkSpec(
+                "radius_of_gyration",
+                "skmob2.measures.individual.radius_of_gyration",
+                "skmob.measures.individual",
+                "radius_of_gyration",
+                {},
+            ),
+        ),
+    )
+
+    args = suite.parse_args(
+        [
+            "--library",
+            "skmob2",
+            "--backend",
+            "pandas",
+            "--sizes",
+            "10",
+            "--iterations",
+            "1",
+            "--sleep",
+            "0",
+            "--data-path",
+            str(data_path),
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+    payload = suite.run_suite(args, backend="pandas")
+
+    assert payload["metadata"]["library"] == "skmob2"
+    assert payload["metadata"]["backend"] == "pandas"
+    assert payload["results"][0]["metrics"]["radius_of_gyration"]["status"] == "ok"
+
+
+def test_skmob2_sorted_smoke_with_tiny_pandas_dataframe_when_extension_is_available(monkeypatch, tmp_path: Path):
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first")
+
+    tiny = _tiny_pandas_df()
+    data_path = tmp_path / "brightkite.tsv.gz"
+    data_path.write_bytes(b"placeholder")
+
+    monkeypatch.setattr(suite, "load_brightkite_pandas", lambda _path: tiny)
+    monkeypatch.setattr(
+        suite,
+        "SPATIAL_METRICS",
+        (
+            suite.BenchmarkSpec(
+                "jump_lengths",
+                "skmob2.measures.individual.jump_lengths",
+                "skmob.measures.individual",
+                "jump_lengths",
+                {"merge": False},
+            ),
+        ),
+    )
+
+    args = suite.parse_args(
+        [
+            "--library",
+            "skmob2",
+            "--backend",
+            "pandas",
+            "--input-order",
+            "sorted",
+            "--input-cache-dir",
+            str(tmp_path / "cache"),
+            "--sizes",
+            "10",
+            "--iterations",
+            "1",
+            "--sleep",
+            "0",
+            "--data-path",
+            str(data_path),
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+    payload = suite.run_suite(args, backend="pandas")
+
+    assert payload["metadata"]["input_order"] == "sorted"
+    assert payload["metadata"]["input_cache_status"] == "created"
+    assert payload["results"][0]["metrics"]["jump_lengths"]["status"] == "ok"
+
+
+def test_movingpandas_smoke_with_fake_collection(monkeypatch):
+    class FakeCollection:
+        def __init__(self):
+            self.calls = 0
+
+        def add_distance(self, overwrite=False, units=None):
+            self.calls += 1
+            return {"overwrite": overwrite, "units": units}
+
+    spec = suite.BenchmarkSpec(
+        "jump_lengths",
+        "unused",
+        "unused",
+        "jump_lengths",
+        {},
+        movingpandas_api="TrajectoryCollection.add_distance",
+    )
+    collection = FakeCollection()
+
+    result = suite.benchmark_metric(spec, "movingpandas", lambda: collection, iterations=2, sleep_seconds=0.0)
+
+    assert result["status"] == "ok"
+    assert collection.calls == 3
+
+
+def test_isolated_metric_records_child_process_crash():
+    def crash(_input):
+        os._exit(17)
+
+    result = suite.run_profiled_call_isolated(
+        crash,
+        lambda: None,
+        {},
+        profile="speed",
+        iterations=1,
+        sleep_seconds=0.0,
+        retries=1,
+    )
+
+    assert result["status"] == "error"
+    assert "17" in result["reason"]
+
+
+def _install_fake_skmob(monkeypatch):
+    calls = {"tdf": 0, "metric": 0}
+
+    class FakeTrajDataFrame:
+        def __init__(self, df, latitude=None, longitude=None, datetime=None, user_id=None):
+            calls["tdf"] += 1
+            self.df = df
+            self.latitude = latitude
+            self.longitude = longitude
+            self.datetime = datetime
+            self.user_id = user_id
+
+    def fake_metric(tdf):
+        calls["metric"] += 1
+        return {"rows": len(tdf.df)}
+
+    skmob_module = types.ModuleType("skmob")
+    skmob_module.__path__ = []
+    skmob_module.TrajDataFrame = FakeTrajDataFrame
+    measures_module = types.ModuleType("skmob.measures")
+    measures_module.__path__ = []
+    individual_module = types.ModuleType("skmob.measures.individual")
+    individual_module.radius_of_gyration = fake_metric
+
+    monkeypatch.setitem(sys.modules, "skmob", skmob_module)
+    monkeypatch.setitem(sys.modules, "skmob.measures", measures_module)
+    monkeypatch.setitem(sys.modules, "skmob.measures.individual", individual_module)
+    monkeypatch.setattr(
+        suite,
+        "SPATIAL_METRICS",
+        (
+            suite.BenchmarkSpec(
+                "radius_of_gyration",
+                "skmob2.measures.individual.radius_of_gyration",
+                "skmob.measures.individual",
+                "radius_of_gyration",
+                {},
+            ),
+        ),
+    )
+    return calls
+
+
+def _tiny_pandas_df():
+    pd = pytest.importorskip("pandas")
+    return pd.DataFrame(
+        {
+            "user": [1, 1, 2, 2],
+            "check-in_time": pd.to_datetime(
+                ["2020-01-01 00:00:00", "2020-01-01 01:00:00", "2020-01-01 00:00:00", "2020-01-01 01:00:00"]
+            ),
+            "latitude": [0.0, 0.0, 1.0, 1.0],
+            "longitude": [0.0, 1.0, 1.0, 2.0],
+            "location id": ["a", "b", "c", "d"],
+        }
+    )

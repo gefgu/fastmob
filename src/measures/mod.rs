@@ -1,3 +1,3 @@
-pub(crate) mod jump_lengths;
-pub(crate) mod jump_lengths_arrow;
-pub(crate) mod jump_lengths_numpy;
+pub(crate) mod collective;
+pub(crate) mod evaluation;
+pub(crate) mod individual;

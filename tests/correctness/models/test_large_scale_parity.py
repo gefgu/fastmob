@@ -5,7 +5,7 @@ a fresh pair of runs produces Wasserstein-based metrics within the p99 of the
 same-model variability distribution captured in the pre-computed baseline.
 
 Generating the baseline (run once, then commit the JSON):
-    python tests/benchmarks/correctness_models_large_scale.py
+    python benchmarks/correctness_models_large_scale.py
 
 Running these tests:
     bash scripts/run_correctness.sh tests/correctness/models/test_large_scale_parity.py -v -m slow
@@ -21,7 +21,7 @@ from typing import Any
 import pandas as pd
 import pytest
 
-_BENCH_DIR = Path(__file__).resolve().parents[3] / "tests" / "benchmarks"
+_BENCH_DIR = Path(__file__).resolve().parents[3] / "benchmarks"
 sys.path.insert(0, str(_BENCH_DIR))
 
 from correctness_models_large_scale import (  # noqa: E402
@@ -48,7 +48,7 @@ def large_scale_baseline() -> dict[str, Any]:
     if not _BASELINE_PATH.exists():
         pytest.skip(
             "No large-scale model statistical baseline. "
-            "Run 'python tests/benchmarks/correctness_models_large_scale.py' "
+            "Run 'python benchmarks/correctness_models_large_scale.py' "
             "and commit the resulting JSON to tests/shared/."
         )
     return json.loads(_BASELINE_PATH.read_text(encoding="utf-8"))

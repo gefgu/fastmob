@@ -1,0 +1,1 @@
+"""Collective-measure benchmark entrypoints."""
