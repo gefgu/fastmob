@@ -74,10 +74,7 @@ from .measures import (
     wasserstein_distance,
 )
 from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
-from .preprocessing.cluster import cluster
-from .preprocessing.compress import compress
-from .preprocessing.filter import filter
-from .preprocessing.stay_locations import stay_locations
+from .preprocessing import cluster, compress, filter, stay_locations
 
 __all__ = [
     "filter",

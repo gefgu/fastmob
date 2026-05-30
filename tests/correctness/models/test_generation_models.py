@@ -279,7 +279,7 @@ def test_sts_epr_generates_trajectory():
 
 
 def test_cluster_imports_without_scikit_learn_until_called(monkeypatch):
-    cluster_mod = importlib.import_module("skmob2.preprocessing.cluster")
+    cluster_mod = importlib.import_module("skmob2.preprocessing._cluster")
 
     monkeypatch.setitem(sys.modules, "sklearn", None)
     monkeypatch.setitem(sys.modules, "sklearn.cluster", None)

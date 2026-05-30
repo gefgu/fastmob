@@ -89,8 +89,8 @@ def cluster(
 
     References
     ----------
-    - [DBSCAN] DBSCAN implementation, scikit-learn, https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
-    - [RT2004] Ramaswamy, H. & Toyama, K. (2004) Project Lachesis: parsing and modeling location histories. In International Conference on Geographic Information Science, 106-124, http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf
+    - [DBSCAN] DBSCAN implementation, scikit-learn, <a href="https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html">https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html</a>
+    - [RT2004] Ramaswamy, H. & Toyama, K. (2004) Project Lachesis: parsing and modeling location histories. In International Conference on Geographic Information Science, 106-124, <a href="http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf">http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf</a>
 
     """
     df = nw.from_native(traj, eager_only=True)
@@ -144,3 +144,6 @@ def cluster(
     col_dict["cluster"] = all_labels
     result = nw.from_dict(col_dict, backend=df.implementation)
     return result.to_native()
+
+
+cluster.__module__ = "skmob2.preprocessing"

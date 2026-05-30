@@ -1,7 +1,7 @@
-from .filter import filter
-from .compress import compress
-from .stay_locations import stay_locations
-from .cluster import cluster
+from ._filter import filter
+from ._compress import compress
+from ._stay_locations import stay_locations
+from ._cluster import cluster
 from .cdr import cdr_to_trips_df, cdr_to_visitation_df
 
 __all__ = [

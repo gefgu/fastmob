@@ -154,7 +154,7 @@ class TrajDataFrame(BaseDataFrame):
 
     # Apply compress function from the skmob2 library to the TrajDataFrame class
     def compress(self, spatial_radius_km=0.2, inplace=False):
-        from skmob2.preprocessing.compress import compress
+        from skmob2.preprocessing import compress
 
         if inplace:
             self.df = compress(
@@ -186,7 +186,7 @@ class TrajDataFrame(BaseDataFrame):
         )
 
     def stay_locations(self, inplace=False, **kwargs):
-        from skmob2.preprocessing.stay_locations import stay_locations
+        from skmob2.preprocessing import stay_locations
 
         if inplace:
             self.df = stay_locations(

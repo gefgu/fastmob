@@ -96,8 +96,8 @@ def stay_locations(
 
     References
     ----------
-    - [RT2004] Ramaswamy, H. & Toyama, K. (2004) Project Lachesis: parsing and modeling location histories. In International Conference on Geographic Information Science, 106-124, http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf
-    - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), https://dl.acm.org/citation.cfm?id=2743025
+    - [RT2004] Ramaswamy, H. & Toyama, K. (2004) Project Lachesis: parsing and modeling location histories. In International Conference on Geographic Information Science, 106-124, <a href="http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf">http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf</a>
+    - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), <a href="https://dl.acm.org/citation.cfm?id=2743025">https://dl.acm.org/citation.cfm?id=2743025</a>
 
     """
     df = nw.from_native(traj, eager_only=True)
@@ -167,6 +167,9 @@ def stay_locations(
 
     result = nw.from_dict(out_dict, backend=df.implementation)
     return result.to_native()
+
+
+stay_locations.__module__ = "skmob2.preprocessing"
 
 
 def _seconds_to_naive_utc(seconds: list[float]) -> np.ndarray:
