@@ -119,6 +119,8 @@ uv run zensical build
 
 Documentation source pages live in `docs/src/`. The `docs/features/` subdirectory holds internal planning files and is intentionally excluded from the published site nav. `docs/DESIGN.md` is the Zensical design system reference.
 
+API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
+
 ## Benchmarks
 
 `scripts/run_benchmarks.sh` is environment-aware. It rebuilds `skmob2._core` in `.venv`, runs skmob2 pandas/Polars benchmarks there, runs `@pytest.mark.skmob` comparison benchmarks in `.venv-skmob`, and runs `@pytest.mark.movingpandas` benchmarks only from an environment where `movingpandas` imports. Keep skmob comparisons out of `.venv`; that environment uses the modern Shapely stack and cannot import scikit-mobility.

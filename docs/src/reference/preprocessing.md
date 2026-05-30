@@ -1,6 +1,6 @@
 # Preprocessing
 
-| Function | Description |
+| API | Description |
 | --- | --- |
 | [`filter`](#skmob2.preprocessing.filter) | Trajectory filtering. |
 | [`compress`](#skmob2.preprocessing.compress) | Trajectory compression. |
