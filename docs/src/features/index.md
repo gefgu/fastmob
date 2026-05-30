@@ -1,10 +1,11 @@
-# Explanations
+# Key Features
 
-Explanations describe the ideas and tradeoffs behind skmob2. They are for understanding why the library works the way it does, not for step-by-step tasks or exhaustive API details.
+- **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — skmob2 works without changes.
 
-Start here:
+- **Rust-accelerated core**: Haversine distance calculations and other compute-heavy kernels run in compiled Rust via PyO3.
+    
+- **Drop-in API**: function signatures mirror the original skmob library so migration is straightforward.
+    
+- **Measured validation**: correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
 
-- [Backend-agnostic, Rust-accelerated design](backend-agnostic-rust-accelerated-design.md)
-- [Correctness, coverage, and benchmarking](correctness-coverage-and-benchmarking/)
-- [Pandas benchmark plots](benchmark_pandas.md)
-- [Why Radius of Gyration Is 447× Faster](radius-of-gyration-performance.md)
+- **Zero-Copy**: Scikit-Mobility 2 process the data where it lives. Instead of copying, it directly access your dataframe in the memory, saving memory and making the processing faster.

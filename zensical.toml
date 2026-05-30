@@ -22,7 +22,7 @@ nav = [
     { "Overview" = "reference/index.md" },
     { "Data Structures" = "reference/data-structures.md" },
     { "Preprocessing" = "reference/preprocessing.md" },
-    { "Measures" = [
+    { "Measures" = "reference/measures/index.md", children = [
       { "Overview" = "reference/measures/index.md" },
       { "Individual" = "reference/measures/individual.md" },
       { "Collective" = "reference/measures/collective.md" },
@@ -33,8 +33,9 @@ nav = [
     { "Privacy" = "reference/privacy.md" },
     { "Data" = "reference/data.md" },
   ] },
-  { "Release Notes" = "release_notes/index.md" },
+  {"Resources" = "resource/index.md"},
   { "About" = "about/index.md" },
+  { "Release Notes" = "release_notes/index.md" },
 ]
 
 [project.theme]

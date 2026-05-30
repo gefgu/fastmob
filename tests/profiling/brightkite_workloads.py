@@ -161,15 +161,15 @@ def _make_workload(name: str, dataset: str, import_path: str, description: str, 
 
 def _skmob2_workloads() -> dict[str, Workload]:
     workloads = {
-        "filter": _make_workload("filter", "trajectory", "skmob2.preprocessing.filter.filter", "skmob2 filter"),
-        "compress": _make_workload("compress", "trajectory", "skmob2.preprocessing.compress.compress", "skmob2 compress"),
+        "filter": _make_workload("filter", "trajectory", "skmob2.preprocessing.filter", "skmob2 filter"),
+        "compress": _make_workload("compress", "trajectory", "skmob2.preprocessing.compress", "skmob2 compress"),
         "stay_locations": _make_workload(
             "stay_locations",
             "trajectory",
-            "skmob2.preprocessing.stay_locations.stay_locations",
+            "skmob2.preprocessing.stay_locations",
             "skmob2 stay locations",
         ),
-        "cluster": _make_workload("cluster", "trajectory", "skmob2.preprocessing.cluster.cluster", "skmob2 cluster"),
+        "cluster": _make_workload("cluster", "trajectory", "skmob2.preprocessing.cluster", "skmob2 cluster"),
         "jump_lengths": _make_workload(
             "jump_lengths",
             "trajectory",

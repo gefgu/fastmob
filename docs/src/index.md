@@ -8,12 +8,18 @@
 
 It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/) so any eager dataframe (pandas, polars, …) is accepted as input.
 
-## Key Features
+# Key Features
 
-- **Backend-agnostic:** pass a pandas, polars, or any other Narwhals-compatible DataFrame — skmob2 works without changes.
-- **Rust-accelerated core:** Haversine distance calculations and other compute-heavy kernels run in compiled Rust via PyO3.
-- **Drop-in API:** function signatures mirror the original skmob library so migration is straightforward.
-- **Measured validation:** correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
+- **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — skmob2 works without changes.
+
+- **Rust-accelerated core**: Haversine distance calculations and other compute-heavy kernels run in compiled Rust via PyO3.
+    
+- **Drop-in API**: function signatures mirror the original skmob library so migration is straightforward.
+    
+- **Measured validation**: correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
+
+- **Zero-Copy**: Scikit-Mobility 2 process the data where it lives. Instead of copying, it directly access your dataframe in the memory, saving memory and making the processing faster.
+
 
 ## Installation
 
