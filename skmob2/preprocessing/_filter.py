@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import filter_trajectory_indices_batch as _filter_trajectory_indices_batch
+from skmob2._core import FilterConfig
+from skmob2._core import filter_trajectory_numpy as _filter_trajectory_numpy
 from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
 
 
@@ -111,20 +112,28 @@ def filter(
     lngs = df.get_column(lng_col).to_numpy()
 
     _, ranges = _build_user_ranges(df, uid_col)
+    config = FilterConfig(
+        max_speed_kmh=max_speed_kmh,
+        include_loops=include_loops,
+        speed_kmh=speed_kmh,
+        max_loop=max_loop,
+        ratio_max=ratio_max,
+    )
 
-    keep_indices = _filter_trajectory_indices_batch(
+    keep_mask = _filter_trajectory_numpy(
         lats,
         lngs,
         timestamps_s,
         ranges,
-        max_speed_kmh,
-        include_loops,
-        speed_kmh,
-        max_loop,
-        ratio_max,
+        config,
     )
 
-    return df[keep_indices].to_native()
+    return df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
 
 
 filter.__module__ = "skmob2.preprocessing"
+
+
+# TODO: Add numpy/arrow path
+# TODO: Add sorted path
+# TODO: ADD

@@ -24,3 +24,7 @@ numpy = "0.28.0"
 pyo3-arrow = "0.17.0"
 arrow-array = "58.1.0"
 numkong = "7.6.0"
+
+
+[profile.release]
+debug = "line-tables-only"

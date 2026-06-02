@@ -5,3 +5,7 @@ NK_TARGET_GRANITEAMX = { value = "0", force = false }
 NK_TARGET_DIAMOND = { value = "0", force = false }
 NK_TARGET_TURIN = { value = "0", force = false }
 NK_TARGET_SIERRA = { value = "0", force = false }
+
+
+[build]
+rustflags = ["-C", "force-frame-pointers=yes", "-C", "symbol-mangling-version=v0"]

@@ -146,6 +146,8 @@ Benchmarks are parametrized over five dataset sizes (1k / 10k / 100k / 1M / 4M r
 
 ## Profiling
 
+Start with a small row count, then scale to 4M only after the profiler path works. Brightkite workloads are registered in `tests/profiling/brightkite_workloads.py`; use `--workload filter`, `--workload radius_of_gyration`, etc. The Brightkite dataset is cached at `tests/shared/data/loc-brightkite_totalCheckins.txt.gz`.
+
 ```bash
 # Python CPU and memory profile with Scalene.
 bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2
@@ -163,6 +165,65 @@ bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration -
 ```
 
 Profiling outputs are written to implementation-specific folders under `.profiles/scalene/` and `.profiles/samply/`. Scalene writes `<workload>.json` plus `<workload>.html` unless reduced output is requested; samply writes `<workload>.json.gz` (Firefox Profiler JSON, viewable via `samply load`). Run `maturin develop` first when invoking profiling modules directly so `skmob2._core` and native symbols are available. samply requires `kernel.perf_event_paranoid <= 1` on Linux (`sudo sysctl kernel.perf_event_paranoid=1`).
+
+### Profiling from constrained Codex/sandbox environments
+
+The wrapper scripts are the preferred path because they activate `.venv`, check tools, rebuild the Rust extension in release mode, and write manifests. If they fail before profiling because the sandbox cannot run Snap `uv`, the `.venv` has no `pip`, or `maturin develop --uv` cannot resolve `uv`, do not spend time reinstalling Python tooling. If `skmob2._core` is already importable, run the profiler modules directly with `.venv/bin/python` and `.venv/bin/scalene`.
+
+Check the two prerequisites first:
+
+```bash
+cat /proc/sys/kernel/perf_event_paranoid
+.venv/bin/python -c 'import skmob2._core as c; print(c.__file__)'
+```
+
+If `perf_event_paranoid` is greater than `1`, ask the user to run:
+
+```bash
+sudo sysctl kernel.perf_event_paranoid=1
+```
+
+If the extension import fails, rebuild with the approved local build path:
+
+```bash
+env -u CONDA_PREFIX uv run maturin develop --release
+```
+
+For a direct Scalene profile of a Brightkite workload:
+
+```bash
+.venv/bin/scalene run --profile-only skmob2 --memory --off \
+  -o /tmp/filter_4M_scalene.json \
+  tests/profiling/brightkite_workloads.py --- \
+  --workload filter --rows 4000000 --backend pandas \
+  --implementation skmob2 --scalene-function-profile
+
+.venv/bin/python .agents/skills/profile-python-scalene/scripts/reduce_scalene_json.py \
+  /tmp/filter_4M_scalene.json --top 25
+```
+
+For a direct function-scope Samply profile of the same workload:
+
+```bash
+.venv/bin/python scripts/profile_brightkite_samply.py \
+  --samply-bin /home/gustavo/.cargo/bin/samply \
+  --rows 4000000 --workload filter --implementation skmob2 \
+  --backend pandas --scope function --rate 1000 \
+  --output-dir /tmp/samply_filter_4M
+
+.venv/bin/python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py \
+  /tmp/samply_filter_4M/skmob2/filter.json.gz --top 20 \
+  -o /tmp/filter_4M_samply_reduced.json
+```
+
+Use `--scope function` for Samply unless startup, imports, or data loading are the target. Function scope prepares Brightkite first, then attaches to the child process before releasing the workload, so samples represent the API call rather than CSV loading. Use `/tmp` for exploratory profile artifacts unless the user asks to keep them in `.profiles/`.
+
+The Rust build flags in `.cargo/config.toml` must keep each `-C` option as a separate flag/value pair. The correct form is:
+
+```toml
+[build]
+rustflags = ["-C", "force-frame-pointers=yes", "-C", "symbol-mangling-version=v0"]
+```
 
 ## Narwhals API notes
 

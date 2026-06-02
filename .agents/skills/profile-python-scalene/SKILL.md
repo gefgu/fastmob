@@ -24,6 +24,35 @@ uv run python .agents/skills/profile-python-scalene/scripts/reduce_scalene_json.
 
 Use `--profile-only skmob2` for normal investigations. Add a comma-separated broader scope only when the question is about dependency overhead, for example `--profile-only skmob2,narwhals,pandas,polars`.
 
+## skmob2 Environment Fallback
+
+In this repository, Codex may run in a sandbox where `/snap/bin/uv` fails with snap-confine permissions and the local `.venv` has no `pip`. If the wrapper script fails before profiling while trying to rebuild with `maturin develop --uv`, first check whether the compiled extension is already usable:
+
+```bash
+.venv/bin/python -c 'import skmob2._core as c; print(c.__file__)'
+```
+
+If that succeeds, profile directly with `.venv/bin/scalene` instead of forcing a rebuild:
+
+```bash
+.venv/bin/scalene run --profile-only skmob2 --memory --off \
+  -o /tmp/filter_4M_scalene.json \
+  tests/profiling/brightkite_workloads.py --- \
+  --workload filter --rows 4000000 --backend pandas \
+  --implementation skmob2 --scalene-function-profile
+
+.venv/bin/python .agents/skills/profile-python-scalene/scripts/reduce_scalene_json.py \
+  /tmp/filter_4M_scalene.json --top 25
+```
+
+If the extension is not importable, rebuild with the approved local path:
+
+```bash
+env -u CONDA_PREFIX uv run maturin develop --release
+```
+
+The repo Cargo config must keep `-C` as a separate flag before each rustc option, for example `["-C", "force-frame-pointers=yes", "-C", "symbol-mangling-version=v0"]`.
+
 ## Profiling Callables
 
 Use `scripts/profile_function.py` to profile an importable callable. Targets use `module:function` syntax:

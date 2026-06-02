@@ -7,14 +7,16 @@ use pyo3::prelude::*;
 
 use measures::collective::{square_displacement, visitation_law};
 use measures::evaluation::{stvd_emd, wasserstein};
+pub(crate) use measures::individual::time_ordering;
 use measures::individual::{
     entropy, home_location, k_radius_of_gyration, location_frequency, max_distance_from_point,
     maximum_distance, motifs, radius_of_gyration, recency_rank, spatial_counts, total_distance,
     uncorrelated_entropy, waiting_times,
 };
-use preprocessing::{cdr, clustering, compress_traj, filter_traj, stay_locations_rs};
+use preprocessing::{
+    cdr, clustering, compress_traj, filter_traj, filter_traj_py, stay_locations_rs,
+};
 pub(crate) use utils::haversine;
-pub(crate) use measures::individual::time_ordering;
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -282,13 +284,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
     m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
-    m.add_function(wrap_pyfunction!(filter_traj::filter_trajectory_batch, m)?)?;
+    m.add_class::<filter_traj::FilterConfig>()?;
+    m.add_function(wrap_pyfunction!(filter_traj_py::filter_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(
-        filter_traj::filter_trajectory_indices_batch,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        filter_traj::filter_trajectory_indices_batch_numpy,
+        filter_traj_py::filter_trajectory_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
