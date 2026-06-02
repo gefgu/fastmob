@@ -123,8 +123,8 @@ def compress(
         if use_arrow:
             _i, _l, _g = _compress_arrow(lats.to_arrow(), lngs.to_arrow(), ranges, spatial_radius_km)
             representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
-            median_lats = np.asarray(_arrow_result_values(_l))
-            median_lngs = np.asarray(_arrow_result_values(_g))
+            median_lats = _arrow_result_values(_l)
+            median_lngs = _arrow_result_values(_g)
         else:
             representative_indices, median_lats, median_lngs = _compress_numpy(
                 lats.to_numpy(), lngs.to_numpy(), ranges, spatial_radius_km
@@ -148,8 +148,8 @@ def compress(
                 spatial_radius_km,
             )
             representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
-            median_lats = np.asarray(_arrow_result_values(_l))
-            median_lngs = np.asarray(_arrow_result_values(_g))
+            median_lats = _arrow_result_values(_l)
+            median_lngs = _arrow_result_values(_g)
         else:
             representative_indices, median_lats, median_lngs = _compress_indexed_numpy(
                 lats.to_numpy(),

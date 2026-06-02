@@ -148,10 +148,10 @@ def stay_locations(
                 no_data_for_minutes,
                 effective_min_speed,
             )
-            out_lats = np.asarray(_arrow_result_values(_l))
-            out_lngs = np.asarray(_arrow_result_values(_g))
-            entry_times_s = np.asarray(_arrow_result_values(_e))
-            leaving_times_s = np.asarray(_arrow_result_values(_lv))
+            out_lats = _arrow_result_values(_l)
+            out_lngs = _arrow_result_values(_g)
+            entry_times_s = _arrow_result_values(_e)
+            leaving_times_s = _arrow_result_values(_lv)
             user_range_indices = np.asarray(_arrow_result_values(_r), dtype=np.uintp)
         else:
             out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _stay_numpy(
@@ -186,10 +186,10 @@ def stay_locations(
                 no_data_for_minutes,
                 effective_min_speed,
             )
-            out_lats = np.asarray(_arrow_result_values(_l))
-            out_lngs = np.asarray(_arrow_result_values(_g))
-            entry_times_s = np.asarray(_arrow_result_values(_e))
-            leaving_times_s = np.asarray(_arrow_result_values(_lv))
+            out_lats = _arrow_result_values(_l)
+            out_lngs = _arrow_result_values(_g)
+            entry_times_s = _arrow_result_values(_e)
+            leaving_times_s = _arrow_result_values(_lv)
             user_range_indices = np.asarray(_arrow_result_values(_r), dtype=np.uintp)
         else:
             out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _stay_indexed_numpy(
