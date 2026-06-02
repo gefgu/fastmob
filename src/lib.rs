@@ -291,6 +291,18 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        filter_traj_py::filter_trajectory_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        filter_traj_py::filter_trajectory_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        filter_traj_py::filter_trajectory_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         compress_traj::compress_trajectory_batch,
         m
     )?)?;

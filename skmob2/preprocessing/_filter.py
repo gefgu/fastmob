@@ -4,8 +4,21 @@ from typing import Any
 
 import narwhals as nw
 from skmob2._core import FilterConfig
-from skmob2._core import filter_trajectory_numpy as _filter_trajectory_numpy
-from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from skmob2._core import (
+    filter_trajectory_arrow as _filter_trajectory_arrow,
+    filter_trajectory_indexed_arrow as _filter_trajectory_indexed_arrow,
+    filter_trajectory_indexed_numpy as _filter_trajectory_indexed_numpy,
+    filter_trajectory_numpy as _filter_trajectory_numpy,
+)
+from ..measures._common import (
+    _arrow_result_values,
+    _build_time_ordered_user_ranges,
+    _build_user_ranges,
+    _detect_trajectory_columns,
+    _extract_timestamps_s,
+    _is_polars_backed,
+    _prepare_trajectory,
+)
 
 
 def filter(
@@ -20,6 +33,7 @@ def filter(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted=False,
 ) -> Any:
     """Filter trajectory noise by removing high-speed outlier points.
 
@@ -39,6 +53,7 @@ def filter(
         Distance ratio threshold for loop detection.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
+    sorted: Whether the trajectory is already sorted by user and time;
 
     Returns
     -------
@@ -101,17 +116,14 @@ def filter(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
-    timestamps_s = (
-        df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__"))
-        .get_column("__ts_s__")
-        .to_numpy()
-    )
-    lats = df.get_column(lat_col).to_numpy()
-    lngs = df.get_column(lng_col).to_numpy()
+    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    lats = df.get_column(lat_col)
+    lngs = df.get_column(lng_col)
+    use_arrow = _is_polars_backed(df)
 
-    _, ranges = _build_user_ranges(df, uid_col)
     config = FilterConfig(
         max_speed_kmh=max_speed_kmh,
         include_loops=include_loops,
@@ -120,20 +132,64 @@ def filter(
         ratio_max=ratio_max,
     )
 
-    keep_mask = _filter_trajectory_numpy(
-        lats,
-        lngs,
-        timestamps_s,
-        ranges,
-        config,
-    )
+    if sorted:
+        _, ranges = _build_user_ranges(df, uid_col)
+
+        if use_arrow:
+            keep_mask = _arrow_result_values(
+                _filter_trajectory_arrow(
+                    lats.to_arrow(),
+                    lngs.to_arrow(),
+                    timestamps_s.to_arrow(),
+                    ranges,
+                    config,
+                )
+            )
+        else:
+            keep_mask = _filter_trajectory_numpy(
+                lats.to_numpy(),
+                lngs.to_numpy(),
+                timestamps_s.to_numpy(),
+                ranges,
+                config,
+            )
+    else:
+        _, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
+            df,
+            uid_col,
+            datetime_col=datetime_col,
+            timestamps=timestamps_s,
+            use_arrow=use_arrow,
+        )
+
+        if use_arrow:
+            keep_mask = _arrow_result_values(
+                _filter_trajectory_indexed_arrow(
+                    lats.to_arrow(),
+                    lngs.to_arrow(),
+                    timestamps_s.to_arrow(),
+                    sorted_indices,
+                    starts,
+                    ends,
+                    config,
+                )
+            )
+        else:
+            keep_mask = _filter_trajectory_indexed_numpy(
+                lats.to_numpy(),
+                lngs.to_numpy(),
+                timestamps_s.to_numpy(),
+                sorted_indices,
+                starts,
+                ends,
+                config,
+            )
+
+    native_df = df.to_native()
+    if hasattr(native_df, "iloc") and hasattr(native_df, "dtypes"):
+        return native_df[keep_mask]
 
     return df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
 
 
 filter.__module__ = "skmob2.preprocessing"
-
-
-# TODO: Add numpy/arrow path
-# TODO: Add sorted path
-# TODO: ADD

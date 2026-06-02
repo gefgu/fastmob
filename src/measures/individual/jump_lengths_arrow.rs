@@ -5,8 +5,8 @@ use pyo3_arrow::PyArray;
 use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow};
 
 use super::jump_lengths::{
-    jump_lengths_presorted_impl, time_ordered_flat_values_impl, validate_time_ordered_inputs,
-    PyNonOrderedJumpLengthsArrow, PyPresortedJumpLengthsArrow,
+    PyNonOrderedJumpLengthsArrow, PyPresortedJumpLengthsArrow, jump_lengths_presorted_impl,
+    time_ordered_flat_values_impl, validate_time_ordered_inputs,
 };
 use crate::time_ordering::{ordered_index_ranges_into_numpy, time_ordered_indices_from_arrow_uids};
 

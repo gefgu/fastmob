@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use arrow_array::{types::Float64Type, Array, ArrayRef, Float64Array, PrimitiveArray, UInt64Array};
+use arrow_array::{
+    Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt64Array, types::Float64Type,
+};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
@@ -125,6 +127,11 @@ pub(crate) fn f64_results_into_arrow(results: Vec<f64>) -> PyArray {
 
 pub(crate) fn u64_results_into_arrow(results: Vec<u64>) -> PyArray {
     let array: ArrayRef = Arc::new(UInt64Array::from(results));
+    PyArray::from_array_ref(array)
+}
+
+pub(crate) fn bool_results_into_arrow(results: Vec<bool>) -> PyArray {
+    let array: ArrayRef = Arc::new(BooleanArray::from(results));
     PyArray::from_array_ref(array)
 }
 

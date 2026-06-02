@@ -2,8 +2,8 @@ use numpy::{IntoPyArray, PyReadonlyArray1};
 use pyo3::prelude::*;
 
 use super::jump_lengths::{
-    jump_lengths_presorted_impl, time_ordered_flat_values_impl, validate_time_ordered_inputs,
-    PyNonOrderedJumpLengths, PyPresortedJumpLengths,
+    PyNonOrderedJumpLengths, PyPresortedJumpLengths, jump_lengths_presorted_impl,
+    time_ordered_flat_values_impl, validate_time_ordered_inputs,
 };
 use crate::time_ordering::{ordered_index_ranges_into_numpy, time_ordered_indices_from_numpy_uids};
 

@@ -4,8 +4,8 @@ use pyo3::prelude::*;
 use rayon::prelude::*;
 use std::sync::Arc;
 
-use crate::models::model_generation::validate_equal_lengths;
 use crate::haversine::haversine_km;
+use crate::models::model_generation::validate_equal_lengths;
 
 const EARTH_RADIUS_KM: f64 = 6371.01;
 pub(crate) const EPR_OD_CACHE_SIZE: u64 = 2_000;
@@ -206,11 +206,7 @@ pub(crate) fn model_gravity_od_row_numpy<'py>(
             let score = deterrence(distance, deterrence_type, deterrence_arg)
                 * relevances[j].powf(destination_exp)
                 * relevances[origin].powf(origin_exp);
-            if score.is_finite() {
-                score
-            } else {
-                0.0
-            }
+            if score.is_finite() { score } else { 0.0 }
         })
         .collect();
     let total: f64 = row.iter().sum();
@@ -248,11 +244,7 @@ pub(crate) fn gravity_od_row_seq(
             let s = deterrence(d, deterrence_type, deterrence_arg)
                 * rels[j].powf(dest_exp)
                 * rels[origin].powf(origin_exp);
-            if s.is_finite() {
-                s
-            } else {
-                0.0
-            }
+            if s.is_finite() { s } else { 0.0 }
         })
         .collect();
     let total: f64 = row.iter().sum();

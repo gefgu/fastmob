@@ -1,4 +1,4 @@
-use arrow_array::{types::Float64Type, Float64Array, PrimitiveArray};
+use arrow_array::{Float64Array, PrimitiveArray, types::Float64Type};
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

@@ -5,8 +5,8 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 
-use crate::models::od::CachedGravityOdRows;
 use crate::haversine::haversine_km;
+use crate::models::od::CachedGravityOdRows;
 
 pub(crate) use crate::models::od::{model_gravity_matrix_numpy, model_gravity_od_row_numpy};
 

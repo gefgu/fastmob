@@ -1,6 +1,6 @@
 use arrow_array::{
-    types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
     Array, Int32Array, Int64Array, LargeStringArray, StringArray, UInt32Array, UInt64Array,
+    types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
