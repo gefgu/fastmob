@@ -28,6 +28,7 @@ def cluster(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted=False,
 ) -> Any:
     """Cluster stop locations using DBSCAN with Haversine metric.
 
@@ -45,6 +46,8 @@ def cluster(
         Minimum number of stops to form a cluster.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
+    sorted:
+        Whether the trajectory is already sorted by user and time.
 
     Returns
     -------
@@ -107,6 +110,7 @@ def cluster(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=not sorted,
     )
 
     eps_rad = cluster_radius_km / _KMS_PER_RADIAN

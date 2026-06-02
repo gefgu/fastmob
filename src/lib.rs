@@ -14,7 +14,7 @@ use measures::individual::{
     uncorrelated_entropy, waiting_times,
 };
 use preprocessing::{
-    cdr, clustering, compress_traj, filter_traj, filter_traj_py, stay_locations_rs,
+    cdr, clustering, compress_traj_py, filter_traj, filter_traj_py, stay_locations_py,
 };
 pub(crate) use utils::haversine;
 
@@ -303,15 +303,23 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        compress_traj::compress_trajectory_batch,
+        compress_traj_py::compress_trajectory_batch,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        compress_traj::compress_trajectory_representatives,
+        compress_traj_py::compress_trajectory_representatives_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        compress_traj::compress_trajectory_representatives_numpy,
+        compress_traj_py::compress_trajectory_representatives_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        compress_traj_py::compress_trajectory_representatives_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        compress_traj_py::compress_trajectory_representatives_indexed_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;
@@ -324,11 +332,19 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
-        stay_locations_rs::detect_stay_locations_batch,
+        stay_locations_py::detect_stay_locations_batch_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        stay_locations_rs::detect_stay_locations_batch_numpy,
+        stay_locations_py::detect_stay_locations_batch_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        stay_locations_py::detect_stay_locations_batch_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        stay_locations_py::detect_stay_locations_batch_indexed_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;

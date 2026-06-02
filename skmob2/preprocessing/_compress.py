@@ -3,14 +3,23 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-from skmob2._core import compress_trajectory_representatives as _compress_trajectory_representatives
+import numpy as np
+from skmob2._core import (
+    compress_trajectory_representatives_arrow as _compress_arrow,
+    compress_trajectory_representatives_indexed_arrow as _compress_indexed_arrow,
+    compress_trajectory_representatives_indexed_numpy as _compress_indexed_numpy,
+    compress_trajectory_representatives_numpy as _compress_numpy,
+)
 
-try:
-    from skmob2._core import compress_trajectory_representatives_numpy as _compress_trajectory_representatives_numpy
-except ImportError:  # pragma: no cover - fallback for older extension builds
-    _compress_trajectory_representatives_numpy = None
-
-from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from ..measures._common import (
+    _arrow_result_values,
+    _build_time_ordered_user_ranges,
+    _build_user_ranges,
+    _detect_trajectory_columns,
+    _extract_timestamps_s,
+    _is_polars_backed,
+    _prepare_trajectory,
+)
 
 
 def compress(
@@ -21,6 +30,7 @@ def compress(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted=False,
 ) -> Any:
     """Compress trajectory by collapsing nearby points into single representative points.
 
@@ -35,6 +45,8 @@ def compress(
         Minimum distance (km) between consecutive output points.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
+    sorted:
+        Whether the trajectory is already sorted by user and time.
 
     Returns
     -------
@@ -97,20 +109,56 @@ def compress(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
-    lats = df.get_column(lat_col).to_numpy()
-    lngs = df.get_column(lng_col).to_numpy()
+    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    lats = df.get_column(lat_col)
+    lngs = df.get_column(lng_col)
+    use_arrow = _is_polars_backed(df)
 
-    _, ranges = _build_user_ranges(df, uid_col)
+    if sorted:
+        _, ranges = _build_user_ranges(df, uid_col)
 
-    representatives_func = _compress_trajectory_representatives_numpy or _compress_trajectory_representatives
-    representative_indices, median_lats, median_lngs = representatives_func(
-        lats,
-        lngs,
-        ranges,
-        spatial_radius_km,
-    )
+        if use_arrow:
+            _i, _l, _g = _compress_arrow(lats.to_arrow(), lngs.to_arrow(), ranges, spatial_radius_km)
+            representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
+            median_lats = np.asarray(_arrow_result_values(_l))
+            median_lngs = np.asarray(_arrow_result_values(_g))
+        else:
+            representative_indices, median_lats, median_lngs = _compress_numpy(
+                lats.to_numpy(), lngs.to_numpy(), ranges, spatial_radius_km
+            )
+    else:
+        _, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
+            df,
+            uid_col,
+            datetime_col=datetime_col,
+            timestamps=timestamps_s,
+            use_arrow=use_arrow,
+        )
+
+        if use_arrow:
+            _i, _l, _g = _compress_indexed_arrow(
+                lats.to_arrow(),
+                lngs.to_arrow(),
+                sorted_indices,
+                starts,
+                ends,
+                spatial_radius_km,
+            )
+            representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
+            median_lats = np.asarray(_arrow_result_values(_l))
+            median_lngs = np.asarray(_arrow_result_values(_g))
+        else:
+            representative_indices, median_lats, median_lngs = _compress_indexed_numpy(
+                lats.to_numpy(),
+                lngs.to_numpy(),
+                sorted_indices,
+                starts,
+                ends,
+                spatial_radius_km,
+            )
 
     result = df[representative_indices].with_columns(
         nw.new_series(lat_col, median_lats, backend=df.implementation),

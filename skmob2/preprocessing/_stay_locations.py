@@ -5,15 +5,22 @@ from typing import Any
 
 import narwhals as nw
 import numpy as np
-import pandas as pd
-from skmob2._core import detect_stay_locations_batch as _detect_stay_locations_batch
+from skmob2._core import (
+    detect_stay_locations_batch_arrow as _stay_arrow,
+    detect_stay_locations_batch_indexed_arrow as _stay_indexed_arrow,
+    detect_stay_locations_batch_indexed_numpy as _stay_indexed_numpy,
+    detect_stay_locations_batch_numpy as _stay_numpy,
+)
 
-try:
-    from skmob2._core import detect_stay_locations_batch_numpy as _detect_stay_locations_batch_numpy
-except ImportError:  # pragma: no cover - fallback for older extension builds
-    _detect_stay_locations_batch_numpy = None
-
-from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from ..measures._common import (
+    _arrow_result_values,
+    _build_time_ordered_user_ranges,
+    _build_user_ranges,
+    _detect_trajectory_columns,
+    _extract_timestamps_s,
+    _is_polars_backed,
+    _prepare_trajectory,
+)
 
 
 def stay_locations(
@@ -28,6 +35,7 @@ def stay_locations(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    sorted=False,
 ) -> Any:
     """Detect stay locations (stops) in trajectory data.
 
@@ -50,6 +58,8 @@ def stay_locations(
         If set, trim trailing high-speed points from the end of each stop.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
+    sorted:
+        Whether the trajectory is already sorted by user and time.
 
     Returns
     -------
@@ -114,31 +124,86 @@ def stay_locations(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
 
-    timestamps_s = (
-        df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__"))
-        .get_column("__ts_s__")
-        .to_numpy()
-    )
-    lats = df.get_column(lat_col).to_numpy()
-    lngs = df.get_column(lng_col).to_numpy()
-
-    uid_values, ranges = _build_user_ranges(df, uid_col)
+    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    lats = df.get_column(lat_col)
+    lngs = df.get_column(lng_col)
+    use_arrow = _is_polars_backed(df)
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
-    batch_func = _detect_stay_locations_batch_numpy or _detect_stay_locations_batch
-    out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = batch_func(
-        lats,
-        lngs,
-        timestamps_s,
-        ranges,
-        spatial_radius_km,
-        minutes_for_a_stop,
-        no_data_for_minutes,
-        effective_min_speed,
-    )
+    if sorted:
+        uid_values, ranges = _build_user_ranges(df, uid_col)
+
+        if use_arrow:
+            _l, _g, _e, _lv, _r = _stay_arrow(
+                lats.to_arrow(),
+                lngs.to_arrow(),
+                timestamps_s.to_arrow(),
+                ranges,
+                spatial_radius_km,
+                minutes_for_a_stop,
+                no_data_for_minutes,
+                effective_min_speed,
+            )
+            out_lats = np.asarray(_arrow_result_values(_l))
+            out_lngs = np.asarray(_arrow_result_values(_g))
+            entry_times_s = np.asarray(_arrow_result_values(_e))
+            leaving_times_s = np.asarray(_arrow_result_values(_lv))
+            user_range_indices = np.asarray(_arrow_result_values(_r), dtype=np.uintp)
+        else:
+            out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _stay_numpy(
+                lats.to_numpy(),
+                lngs.to_numpy(),
+                timestamps_s.to_numpy(),
+                ranges,
+                spatial_radius_km,
+                minutes_for_a_stop,
+                no_data_for_minutes,
+                effective_min_speed,
+            )
+    else:
+        uid_values, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
+            df,
+            uid_col,
+            datetime_col=datetime_col,
+            timestamps=timestamps_s,
+            use_arrow=use_arrow,
+        )
+
+        if use_arrow:
+            _l, _g, _e, _lv, _r = _stay_indexed_arrow(
+                lats.to_arrow(),
+                lngs.to_arrow(),
+                timestamps_s.to_arrow(),
+                sorted_indices,
+                starts,
+                ends,
+                spatial_radius_km,
+                minutes_for_a_stop,
+                no_data_for_minutes,
+                effective_min_speed,
+            )
+            out_lats = np.asarray(_arrow_result_values(_l))
+            out_lngs = np.asarray(_arrow_result_values(_g))
+            entry_times_s = np.asarray(_arrow_result_values(_e))
+            leaving_times_s = np.asarray(_arrow_result_values(_lv))
+            user_range_indices = np.asarray(_arrow_result_values(_r), dtype=np.uintp)
+        else:
+            out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _stay_indexed_numpy(
+                lats.to_numpy(),
+                lngs.to_numpy(),
+                timestamps_s.to_numpy(),
+                sorted_indices,
+                starts,
+                ends,
+                spatial_radius_km,
+                minutes_for_a_stop,
+                no_data_for_minutes,
+                effective_min_speed,
+            )
 
     if len(out_lats) == 0:
         out_dict: dict[str, list] = {lat_col: [], lng_col: [], datetime_col: []}
@@ -148,7 +213,6 @@ def stay_locations(
             out_dict["leaving_datetime"] = []
         return nw.from_dict(out_dict, backend=df.implementation).to_native()
 
-    # Map user_range_idx → uid value
     stop_uids = [uid_values[idx] for idx in user_range_indices]
 
     entry_datetimes = _seconds_to_naive_utc(entry_times_s)
@@ -172,10 +236,5 @@ def stay_locations(
 stay_locations.__module__ = "skmob2.preprocessing"
 
 
-def _seconds_to_naive_utc(seconds: list[float]) -> np.ndarray:
-    """Convert Unix seconds to naive UTC datetimes without a per-row Python loop."""
-    return (
-        pd.to_datetime(np.asarray(seconds, dtype="float64"), unit="s", utc=True)
-        .tz_convert(None)
-        .to_numpy(dtype="datetime64[ns]")
-    )
+def _seconds_to_naive_utc(seconds) -> np.ndarray:
+    return (np.asarray(seconds, dtype="float64") * 1e9).astype("int64").view("datetime64[ns]")
