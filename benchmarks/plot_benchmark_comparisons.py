@@ -847,6 +847,40 @@ def memory_metric_rows(
     return rows
 
 
+def standalone_metric_rows(
+    optimized_result: dict[str, Any],
+    sort_mode: str,
+    expected_metrics: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    optimized_metrics = optimized_result.get("metrics", {})
+    metric_names = expected_metrics or sorted(optimized_metrics)
+    rows = []
+    for metric in metric_names:
+        metric_result = optimized_metrics.get(metric)
+        if metric_result is None or invalid_metric_reason(metric_result, "skmob2"):
+            continue
+        rows.append({"metric": metric, "optimized": float(metric_result["average_seconds"])})
+    rows.sort(key=lambda row: row["optimized"], reverse=(sort_mode != "speedup"))
+    return rows
+
+
+def standalone_memory_metric_rows(
+    optimized_result: dict[str, Any],
+    sort_mode: str,
+    expected_metrics: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    optimized_metrics = optimized_result.get("metrics", {})
+    metric_names = expected_metrics or sorted(optimized_metrics)
+    rows = []
+    for metric in metric_names:
+        metric_result = optimized_metrics.get(metric)
+        if metric_result is None or invalid_memory_metric_reason(metric_result, "skmob2"):
+            continue
+        rows.append({"metric": metric, "optimized": float(metric_result["average_peak_memory_mb"])})
+    rows.sort(key=lambda row: row["optimized"], reverse=(sort_mode != "speedup"))
+    return rows
+
+
 def draw_memory_plot(
     rows: list[dict[str, Any]],
     *,
@@ -1506,17 +1540,23 @@ def _memory_agent_based_rows(
 
 
 def generate_model_memory_plots(args: argparse.Namespace) -> int:
-    original_path = args.original_json.resolve()
     optimized_path = args.optimized_json.resolve()
-    if not original_path.exists():
-        print(f"ERROR: original benchmark JSON not found: {original_path}")
-        return 2
     if not optimized_path.exists():
         print(f"ERROR: optimized benchmark JSON not found: {optimized_path}")
         return 2
 
-    original_payload = load_json(original_path)
     optimized_payload = load_json(optimized_path)
+    if args.standalone:
+        original_payload = {"metadata": {}, "results": []}
+    else:
+        if args.original_json is None:
+            print("ERROR: --original-json is required unless --standalone is used.")
+            return 2
+        original_path = args.original_json.resolve()
+        if not original_path.exists():
+            print(f"ERROR: original benchmark JSON not found: {original_path}")
+            return 2
+        original_payload = load_json(original_path)
 
     def _maybe_load(attr: str) -> dict[str, Any] | None:
         p: Path | None = getattr(args, attr, None)
@@ -1527,9 +1567,9 @@ def generate_model_memory_plots(args: argparse.Namespace) -> int:
             return None
         return load_json(rp)
 
-    orig_large = _maybe_load("large_json_skmob")
+    orig_large = None if args.standalone else _maybe_load("large_json_skmob")
     opt_large = _maybe_load("large_json_skmob2")
-    orig_loc_large = _maybe_load("large_loc_json_skmob")
+    orig_loc_large = None if args.standalone else _maybe_load("large_loc_json_skmob")
     opt_loc_large = _maybe_load("large_loc_json_skmob2")
 
     orig_loc = _merge_location_model_data(original_payload, orig_loc_large)
@@ -1633,6 +1673,47 @@ def generate_model_memory_plots(args: argparse.Namespace) -> int:
 
 
 def generate_memory_plots(args: argparse.Namespace) -> int:
+    if args.standalone:
+        optimized_path = args.optimized_json.resolve()
+        if not optimized_path.exists():
+            print(f"ERROR: optimized benchmark JSON not found: {optimized_path}")
+            return 2
+        optimized_payload = load_json(optimized_path)
+        if args.suite == "models":
+            return generate_model_memory_plots(args)
+
+        optimized_results = result_map(optimized_payload)
+        labels = sorted(optimized_results, key=parse_size_key)
+        if args.sizes:
+            requested = [format_size_label(size) for size in args.sizes]
+            labels = [label for label in requested if label in optimized_results]
+        expected_metrics = expected_metrics_from_catalog(args.catalog, args.suite)
+        generated = 0
+        for label in labels:
+            rows = standalone_memory_metric_rows(optimized_results[label], args.sort, expected_metrics)
+            if not rows:
+                print(f"No valid skmob2 memory metrics found for {label}; skipping.")
+                continue
+            safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+            backend_part = f"_{args.backend}" if args.backend else ""
+            output_path = args.output_dir / f"skmob2_{args.suite}{backend_part}_{safe_label}_memory.png"
+            draw_memory_standalone_plot(
+                rows,
+                optimized_payload=optimized_payload,
+                suite=args.suite,
+                size_label=label,
+                output_path=output_path,
+            )
+            generated += 1
+            print(f"Saved {output_path}")
+        if generated == 0:
+            print("No standalone memory plots were generated.")
+            return 1
+        return 0
+
+    if args.original_json is None:
+        print("ERROR: --original-json is required unless --standalone is used.")
+        return 2
     original_path = args.original_json.resolve()
     optimized_path = args.optimized_json.resolve()
     if not original_path.exists():
@@ -1700,17 +1781,23 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
 
 
 def generate_model_plots(args: argparse.Namespace) -> int:
-    original_path = args.original_json.resolve()
     optimized_path = args.optimized_json.resolve()
-    if not original_path.exists():
-        print(f"ERROR: original benchmark JSON not found: {original_path}")
-        return 2
     if not optimized_path.exists():
         print(f"ERROR: optimized benchmark JSON not found: {optimized_path}")
         return 2
 
-    original_payload = load_json(original_path)
     optimized_payload = load_json(optimized_path)
+    if args.standalone:
+        original_payload = {"metadata": {}, "results": []}
+    else:
+        if args.original_json is None:
+            print("ERROR: --original-json is required unless --standalone is used.")
+            return 2
+        original_path = args.original_json.resolve()
+        if not original_path.exists():
+            print(f"ERROR: original benchmark JSON not found: {original_path}")
+            return 2
+        original_payload = load_json(original_path)
 
     def _maybe_load(attr: str) -> dict[str, Any] | None:
         p: Path | None = getattr(args, attr, None)
@@ -1721,9 +1808,9 @@ def generate_model_plots(args: argparse.Namespace) -> int:
             return None
         return load_json(rp)
 
-    orig_large = _maybe_load("large_json_skmob")
+    orig_large = None if args.standalone else _maybe_load("large_json_skmob")
     opt_large = _maybe_load("large_json_skmob2")
-    orig_loc_large = _maybe_load("large_loc_json_skmob")
+    orig_loc_large = None if args.standalone else _maybe_load("large_loc_json_skmob")
     opt_loc_large = _maybe_load("large_loc_json_skmob2")
 
     orig_loc = _merge_location_model_data(original_payload, orig_loc_large)
@@ -1836,6 +1923,47 @@ def generate_plots(args: argparse.Namespace) -> int:
     if getattr(args, "profile", "speed") == "memory":
         return generate_memory_plots(args)
 
+    if args.standalone:
+        optimized_path = args.optimized_json.resolve()
+        if not optimized_path.exists():
+            print(f"ERROR: optimized benchmark JSON not found: {optimized_path}")
+            return 2
+        optimized_payload = load_json(optimized_path)
+        if args.suite == "models":
+            return generate_model_plots(args)
+
+        optimized_results = result_map(optimized_payload)
+        labels = sorted(optimized_results, key=parse_size_key)
+        if args.sizes:
+            requested = [format_size_label(size) for size in args.sizes]
+            labels = [label for label in requested if label in optimized_results]
+        expected_metrics = expected_metrics_from_catalog(args.catalog, args.suite)
+        generated = 0
+        for label in labels:
+            rows = standalone_metric_rows(optimized_results[label], args.sort, expected_metrics)
+            if not rows:
+                print(f"No valid skmob2 speed metrics found for {label}; skipping.")
+                continue
+            safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
+            backend_part = f"_{args.backend}" if args.backend else ""
+            output_path = args.output_dir / f"skmob2_{args.suite}{backend_part}_{safe_label}.png"
+            draw_standalone_plot(
+                rows,
+                optimized_payload=optimized_payload,
+                suite=args.suite,
+                size_label=label,
+                output_path=output_path,
+            )
+            generated += 1
+            print(f"Saved {output_path}")
+        if generated == 0:
+            print("No standalone plots were generated.")
+            return 1
+        return 0
+
+    if args.original_json is None:
+        print("ERROR: --original-json is required unless --standalone is used.")
+        return 2
     original_path = args.original_json.resolve()
     optimized_path = args.optimized_json.resolve()
     if not original_path.exists():
@@ -1899,9 +2027,9 @@ def generate_plots(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--original-json", required=True, type=Path, help="Original skmob benchmark JSON.")
+    parser.add_argument("--original-json", type=Path, help="Original skmob benchmark JSON.")
     parser.add_argument("--optimized-json", required=True, type=Path, help="skmob2 benchmark JSON.")
-    parser.add_argument("--suite", required=True, help="Benchmark suite name, for example spatial or privacy.")
+    parser.add_argument("--suite", required=True, help="Benchmark suite name, for example individual or privacy.")
     parser.add_argument("--backend", choices=("pandas", "polars"), help="skmob2 backend.")
     parser.add_argument(
         "--catalog",
@@ -1955,6 +2083,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("speed", "memory"),
         default="speed",
         help="Benchmark profile: speed (default) or memory.",
+    )
+    parser.add_argument(
+        "--standalone",
+        action="store_true",
+        help="Generate skmob2-only plots without requiring an original skmob JSON.",
     )
     return parser
 

@@ -52,7 +52,7 @@ from speed_models_large_scale import (  # noqa: E402
     MODEL_START_EPR,
     MODEL_START_SOCIAL,
 )
-from speed_models_suite import expand_tessellation, load_model_inputs  # noqa: E402
+from benchmarks.models.speed_suite import expand_tessellation, load_model_inputs  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration

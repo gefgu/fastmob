@@ -4,6 +4,7 @@
 #
 # Usage:
 #   bash scripts/setup_env.sh                    # core dev deps only
+#   bash scripts/setup_env.sh --python 3.12 --venv .venv-py312
 #   bash scripts/setup_env.sh --skmob            # also install scikit-mobility (optional)
 #   bash scripts/setup_env.sh --movingpandas     # also install movingpandas + geopandas (optional)
 #
@@ -17,16 +18,42 @@ cd "$REPO_ROOT"
 
 INSTALL_SKMOB=false
 INSTALL_MOVINGPANDAS=false
-for arg in "$@"; do
-    [[ "$arg" == "--skmob" ]] && INSTALL_SKMOB=true
-    [[ "$arg" == "--movingpandas" ]] && INSTALL_MOVINGPANDAS=true
+PYTHON_SPEC=""
+VENV_DIR=".venv"
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --skmob)
+            INSTALL_SKMOB=true
+            shift
+            ;;
+        --movingpandas)
+            INSTALL_MOVINGPANDAS=true
+            shift
+            ;;
+        --python)
+            PYTHON_SPEC="$2"
+            shift 2
+            ;;
+        --venv)
+            VENV_DIR="$2"
+            shift 2
+            ;;
+        *)
+            echo "ERROR: unknown argument: $1"
+            exit 2
+            ;;
+    esac
 done
 
-echo "==> Creating virtual environment at .venv ..."
-[ -d .venv ] && rm -rf .venv
-uv venv .venv
+echo "==> Creating virtual environment at ${VENV_DIR} ..."
+[ -d "$VENV_DIR" ] && rm -rf "$VENV_DIR"
+if [ -n "$PYTHON_SPEC" ]; then
+    uv venv --python "$PYTHON_SPEC" "$VENV_DIR"
+else
+    uv venv "$VENV_DIR"
+fi
 
-source .venv/bin/activate
+source "$VENV_DIR/bin/activate"
 unset CONDA_PREFIX
 
 echo "==> Installing maturin and polars ..."
@@ -67,4 +94,4 @@ fi
 
 echo ""
 echo "Done. Activate the environment with:"
-echo "  source .venv/bin/activate"
+echo "  source ${VENV_DIR}/bin/activate"

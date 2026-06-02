@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from benchmarks import speed_models_suite as suite
+from benchmarks.models import speed_suite as suite
 
 
 def test_model_registry_contains_expected_generation_models():

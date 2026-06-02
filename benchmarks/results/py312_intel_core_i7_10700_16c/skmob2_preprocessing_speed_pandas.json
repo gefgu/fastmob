@@ -1,0 +1,329 @@
+{
+  "metadata": {
+    "backend": "pandas",
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "pandas.DataFrame",
+    "iterations": 5,
+    "library": "skmob2",
+    "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "retries": 0,
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "preprocessing",
+    "timestamp_utc": "2026-05-30T19:12:26.756336+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 0.016482621245086194,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.016192880924791098,
+          "status": "ok",
+          "times_seconds": [
+            0.016569179017096758,
+            0.01705521997064352,
+            0.01629181415773928,
+            0.016192880924791098,
+            0.016304012155160308
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.00784291047602892,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007409834070131183,
+          "status": "ok",
+          "times_seconds": [
+            0.008845044998452067,
+            0.007418798049911857,
+            0.007409834070131183,
+            0.00744410022161901,
+            0.00809677504003048
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.012544192327186465,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00813366798684001,
+          "status": "ok",
+          "times_seconds": [
+            0.008667264133691788,
+            0.029386873124167323,
+            0.00813366798684001,
+            0.00835160817950964,
+            0.008181548211723566
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.008709006989374758,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008651466108858585,
+          "status": "ok",
+          "times_seconds": [
+            0.008651466108858585,
+            0.008675480959936976,
+            0.008789231069386005,
+            0.008721380028873682,
+            0.008707476779818535
+          ]
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 0.12266788906417787,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.12167919799685478,
+          "status": "ok",
+          "times_seconds": [
+            0.12304616114124656,
+            0.12342422315850854,
+            0.12209272803738713,
+            0.12309713498689234,
+            0.12167919799685478
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.008709179004654288,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008521643932908773,
+          "status": "ok",
+          "times_seconds": [
+            0.008598425891250372,
+            0.008521643932908773,
+            0.008862111018970609,
+            0.008996977005153894,
+            0.008566737174987793
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.00968007780611515,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009625200182199478,
+          "status": "ok",
+          "times_seconds": [
+            0.00975345610640943,
+            0.009679489070549607,
+            0.009671853855252266,
+            0.009625200182199478,
+            0.00967038981616497
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.011135299736633898,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010950387921184301,
+          "status": "ok",
+          "times_seconds": [
+            0.011226126924157143,
+            0.011331424815580249,
+            0.011082437122240663,
+            0.011086121900007129,
+            0.010950387921184301
+          ]
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 1.2789948338177055,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.2623588230926543,
+          "status": "ok",
+          "times_seconds": [
+            1.294295062078163,
+            1.305525721050799,
+            1.2648433609865606,
+            1.2623588230926543,
+            1.2679512018803507
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.02931313361041248,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.028950335225090384,
+          "status": "ok",
+          "times_seconds": [
+            0.029981794068589807,
+            0.028950335225090384,
+            0.029281353810802102,
+            0.029314880957826972,
+            0.029037303989753127
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.031444098241627215,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.030815413920208812,
+          "status": "ok",
+          "times_seconds": [
+            0.03101710812188685,
+            0.031024153111502528,
+            0.030815413920208812,
+            0.03172244597226381,
+            0.03264137008227408
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.03969174036756158,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.03913575503975153,
+          "status": "ok",
+          "times_seconds": [
+            0.03960561892017722,
+            0.040660355938598514,
+            0.03929259907454252,
+            0.03913575503975153,
+            0.03976437286473811
+          ]
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 12.588041175156832,
+          "iterations_completed": 5,
+          "minimum_seconds": 12.335952831897885,
+          "status": "ok",
+          "times_seconds": [
+            12.733455311972648,
+            12.678675319999456,
+            12.335952831897885,
+            12.656366711948067,
+            12.535755699966103
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.3115539423655719,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.28693561907857656,
+          "status": "ok",
+          "times_seconds": [
+            0.28693561907857656,
+            0.31430953089147806,
+            0.33206079085357487,
+            0.3182853350881487,
+            0.30617843591608107
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.3062692084815353,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.30417456617578864,
+          "status": "ok",
+          "times_seconds": [
+            0.30417456617578864,
+            0.3093139920383692,
+            0.3049697750248015,
+            0.30536233610473573,
+            0.30752537306398153
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.37621981925331055,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.3612288050353527,
+          "status": "ok",
+          "times_seconds": [
+            0.3799715870991349,
+            0.3612288050353527,
+            0.38404257921501994,
+            0.3818082809448242,
+            0.374047843972221
+          ]
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
+      "label": "4M",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 52.08156891963445,
+          "iterations_completed": 5,
+          "minimum_seconds": 51.85318229300901,
+          "status": "ok",
+          "times_seconds": [
+            52.346462678164244,
+            52.23482721298933,
+            52.07191408588551,
+            51.85318229300901,
+            51.901458328124136
+          ]
+        },
+        "compress": {
+          "average_seconds": 1.820873969839886,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.791228269925341,
+          "status": "ok",
+          "times_seconds": [
+            1.791228269925341,
+            1.7924419310875237,
+            1.8058936661109328,
+            1.8652028481010348,
+            1.8496031339745969
+          ]
+        },
+        "filter": {
+          "average_seconds": 1.9817741983570158,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.917388095986098,
+          "status": "ok",
+          "times_seconds": [
+            2.0156190840061754,
+            2.01360533782281,
+            1.9834853608626872,
+            1.9787731131073087,
+            1.917388095986098
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 2.037607942381874,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.023201070027426,
+          "status": "ok",
+          "times_seconds": [
+            2.0262139581609517,
+            2.023201070027426,
+            2.0244385560508817,
+            2.054711362812668,
+            2.059474764857441
+          ]
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}

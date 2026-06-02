@@ -1,0 +1,363 @@
+{
+  "metadata": {
+    "backend": "pandas",
+    "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_type": "pandas.DataFrame",
+    "iterations": 5,
+    "library": "skmob2",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000
+    ],
+    "sleep_seconds": 0.5,
+    "suite": "evaluation",
+    "timestamp_utc": "2026-05-30T19:20:30.050581+00:00"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "metrics": {
+        "column_distribution_jensen_shannon_divergence": {
+          "average_seconds": 0.0008511736057698726,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0006994560826569796,
+          "status": "ok",
+          "times_seconds": [
+            0.0006994560826569796,
+            0.0008425288833677769,
+            0.0009013849776238203,
+            0.0008518481627106667,
+            0.0009606499224901199
+          ]
+        },
+        "column_distribution_wasserstein_distance": {
+          "average_seconds": 0.0006119435653090477,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0005121720023453236,
+          "status": "ok",
+          "times_seconds": [
+            0.0006707210559397936,
+            0.0005857869982719421,
+            0.0006435569375753403,
+            0.0005121720023453236,
+            0.0006474808324128389
+          ]
+        },
+        "histogram_jensen_shannon_divergence": {
+          "average_seconds": 0.0006657710764557123,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00044624716974794865,
+          "status": "ok",
+          "times_seconds": [
+            0.0006252930033951998,
+            0.0006240969523787498,
+            0.0007189291063696146,
+            0.0009142891503870487,
+            0.00044624716974794865
+          ]
+        },
+        "visits_per_user_jensen_shannon_divergence": {
+          "average_seconds": 0.0038281773682683705,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.003721655113622546,
+          "status": "ok",
+          "times_seconds": [
+            0.0038065968547016382,
+            0.0038959227968007326,
+            0.003721655113622546,
+            0.003914095927029848,
+            0.003802616149187088
+          ]
+        },
+        "visits_per_user_wasserstein_distance": {
+          "average_seconds": 0.003626828361302614,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0034542579669505358,
+          "status": "ok",
+          "times_seconds": [
+            0.003676211927086115,
+            0.0034542579669505358,
+            0.00365945091471076,
+            0.0035622490104287863,
+            0.003781971987336874
+          ]
+        },
+        "wasserstein_distance": {
+          "average_seconds": 0.0005078228656202555,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0003764331340789795,
+          "status": "ok",
+          "times_seconds": [
+            0.000426494050770998,
+            0.0003764331340789795,
+            0.0006002520676702261,
+            0.00043421005830168724,
+            0.0007017250172793865
+          ]
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "column_distribution_jensen_shannon_divergence": {
+          "average_seconds": 0.004448443045839667,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004353565163910389,
+          "status": "ok",
+          "times_seconds": [
+            0.004353565163910389,
+            0.004494318040087819,
+            0.004484693054109812,
+            0.004479605937376618,
+            0.004430033033713698
+          ]
+        },
+        "column_distribution_wasserstein_distance": {
+          "average_seconds": 0.0026956470217555763,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0008207389619201422,
+          "status": "ok",
+          "times_seconds": [
+            0.003864443162456155,
+            0.00386215397156775,
+            0.0008207389619201422,
+            0.0011568751651793718,
+            0.003774023847654462
+          ]
+        },
+        "histogram_jensen_shannon_divergence": {
+          "average_seconds": 0.0015227311290800572,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0006487008649855852,
+          "status": "ok",
+          "times_seconds": [
+            0.002716433024033904,
+            0.0009196118917316198,
+            0.0006840659771114588,
+            0.0006487008649855852,
+            0.002644843887537718
+          ]
+        },
+        "visits_per_user_jensen_shannon_divergence": {
+          "average_seconds": 0.013483702205121517,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004021537955850363,
+          "status": "ok",
+          "times_seconds": [
+            0.006402724189683795,
+            0.004021537955850363,
+            0.025042422814294696,
+            0.010074848076328635,
+            0.021876977989450097
+          ]
+        },
+        "visits_per_user_wasserstein_distance": {
+          "average_seconds": 0.008245219429954886,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0037660591769963503,
+          "status": "ok",
+          "times_seconds": [
+            0.019931895891204476,
+            0.0037660591769963503,
+            0.003879504045471549,
+            0.0054737410973757505,
+            0.008174896938726306
+          ]
+        },
+        "wasserstein_distance": {
+          "average_seconds": 0.0005398612469434738,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00043154507875442505,
+          "status": "ok",
+          "times_seconds": [
+            0.0004475400783121586,
+            0.00043154507875442505,
+            0.000618400052189827,
+            0.0007303350139409304,
+            0.0004714860115200281
+          ]
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "column_distribution_jensen_shannon_divergence": {
+          "average_seconds": 0.0018328827805817126,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0016934210434556007,
+          "status": "ok",
+          "times_seconds": [
+            0.0019285918679088354,
+            0.0017464300617575645,
+            0.0020721061155200005,
+            0.0016934210434556007,
+            0.0017238648142665625
+          ]
+        },
+        "column_distribution_wasserstein_distance": {
+          "average_seconds": 0.0025092261843383313,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0023800230119377375,
+          "status": "ok",
+          "times_seconds": [
+            0.0024714709725230932,
+            0.002863589907065034,
+            0.002432288136333227,
+            0.0023987588938325644,
+            0.0023800230119377375
+          ]
+        },
+        "histogram_jensen_shannon_divergence": {
+          "average_seconds": 0.0010910799726843833,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0010178459342569113,
+          "status": "ok",
+          "times_seconds": [
+            0.0010357829742133617,
+            0.0010249749757349491,
+            0.0013097450137138367,
+            0.0010670509655028582,
+            0.0010178459342569113
+          ]
+        },
+        "visits_per_user_jensen_shannon_divergence": {
+          "average_seconds": 0.004600803880020976,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004555748077109456,
+          "status": "ok",
+          "times_seconds": [
+            0.004577679093927145,
+            0.004641702165827155,
+            0.0046100791078060865,
+            0.004555748077109456,
+            0.004618810955435038
+          ]
+        },
+        "visits_per_user_wasserstein_distance": {
+          "average_seconds": 0.004425402218475938,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004346301080659032,
+          "status": "ok",
+          "times_seconds": [
+            0.004425149876624346,
+            0.004548065131530166,
+            0.004346301080659032,
+            0.004360946826636791,
+            0.004446548176929355
+          ]
+        },
+        "wasserstein_distance": {
+          "average_seconds": 0.0041854954324662685,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0014251240063458681,
+          "status": "ok",
+          "times_seconds": [
+            0.005581130040809512,
+            0.0014251240063458681,
+            0.006078751990571618,
+            0.006382061168551445,
+            0.0014604099560528994
+          ]
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "column_distribution_jensen_shannon_divergence": {
+          "average_seconds": 0.01813092492520809,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010421473998576403,
+          "status": "ok",
+          "times_seconds": [
+            0.0440778739284724,
+            0.010836103931069374,
+            0.0148399299941957,
+            0.010479242773726583,
+            0.010421473998576403
+          ]
+        },
+        "column_distribution_wasserstein_distance": {
+          "average_seconds": 0.03674071850255132,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.024232635041698813,
+          "status": "ok",
+          "times_seconds": [
+            0.024334719870239496,
+            0.0606306588742882,
+            0.024232635041698813,
+            0.04999055387452245,
+            0.024515024852007627
+          ]
+        },
+        "histogram_jensen_shannon_divergence": {
+          "average_seconds": 0.014761995803564788,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004770752042531967,
+          "status": "ok",
+          "times_seconds": [
+            0.025686137145385146,
+            0.009279279969632626,
+            0.004770752042531967,
+            0.008878963999450207,
+            0.02519484586082399
+          ]
+        },
+        "visits_per_user_jensen_shannon_divergence": {
+          "average_seconds": 0.02100840457715094,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012426879024133086,
+          "status": "ok",
+          "times_seconds": [
+            0.01699276501312852,
+            0.013466892996802926,
+            0.01652638684026897,
+            0.045629099011421204,
+            0.012426879024133086
+          ]
+        },
+        "visits_per_user_wasserstein_distance": {
+          "average_seconds": 0.020031455950811506,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012075407896190882,
+          "status": "ok",
+          "times_seconds": [
+            0.012092437827959657,
+            0.012075407896190882,
+            0.012115939054638147,
+            0.04748101602308452,
+            0.01639247895218432
+          ]
+        },
+        "wasserstein_distance": {
+          "average_seconds": 0.00907458271831274,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00896263588219881,
+          "status": "ok",
+          "times_seconds": [
+            0.009039663011208177,
+            0.008979210862889886,
+            0.009154335828498006,
+            0.00896263588219881,
+            0.009237068006768823
+          ]
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    }
+  ]
+}

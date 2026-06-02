@@ -31,7 +31,7 @@ import numpy as np
 _SUITE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SUITE_DIR))
 
-from speed_models_suite import (  # noqa: E402
+from benchmarks.models.speed_suite import (  # noqa: E402
     LOCATION_MODEL_BENCHMARKS,
     SkippedBenchmark,
     benchmark_model,
@@ -194,7 +194,7 @@ def benchmark_large_model(
         func = build_large_call(spec, library, tessellation, diary_training, size)
     except Exception as exc:
         print(f"    skipped: {exc}")
-        from speed_models_suite import skipped_result
+        from benchmarks.models.speed_suite import skipped_result
         return skipped_result(str(exc), profile)
 
     try:
@@ -203,7 +203,7 @@ def benchmark_large_model(
         return run_timed_call(func, iterations=iterations, sleep_seconds=sleep_seconds)
     except Exception as exc:
         print(f"    error: {exc}")
-        from speed_models_suite import error_result
+        from benchmarks.models.speed_suite import error_result
         return error_result(str(exc), profile)
 
 
@@ -223,7 +223,7 @@ def benchmark_large_size(
     try:
         tessellation, diary = prepare_library_inputs(library, size_tessellation, diary_training)
     except SkippedBenchmark as exc:
-        from speed_models_suite import skipped_result
+        from benchmarks.models.speed_suite import skipped_result
         return {
             "size": size,
             "label": size_label(size),
@@ -312,7 +312,7 @@ def benchmark_location_large_size(
 ) -> dict[str, Any]:
     size_tessellation = expand_tessellation(base_tessellation, size)
     print(f"\nLocation-only models: {location_case_label(size)}")
-    from speed_models_suite import skipped_result
+    from benchmarks.models.speed_suite import skipped_result
 
     try:
         tessellation, diary = prepare_library_inputs(library, size_tessellation, diary_training)
@@ -408,7 +408,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--reference-dir", type=Path, default=DEFAULT_REFERENCE_DIR)
     args = parser.parse_args(argv)
-    # build_metadata (from speed_models_suite) expects these; they are N/A for the large-scale suite
+    # build_metadata (from benchmarks.models.speed_suite) expects these; they are N/A for the large-scale suite
     if not hasattr(args, "n_agents"):
         args.n_agents = None
     if not hasattr(args, "n_locations"):

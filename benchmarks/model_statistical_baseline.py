@@ -74,7 +74,7 @@ ALL_SPECS = TRAJECTORY_SPECS + FLOW_SPECS
 
 
 # ---------------------------------------------------------------------------
-# RNG + library helpers (shared with speed_models_suite.py)
+# RNG + library helpers (shared with benchmarks.models.speed_suite)
 # ---------------------------------------------------------------------------
 
 

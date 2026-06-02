@@ -5,7 +5,7 @@
 #
 #   nohup bash scripts/run_skmob_benchmarks.sh > benchmarks/results/logs/skmob_overnight.out 2>&1 &
 #
-# Extra arguments are forwarded to both suites, for example:
+# Extra arguments are forwarded to each suite, for example:
 #
 #   bash scripts/run_skmob_benchmarks.sh --sizes 1000 10000 100000 --iterations 3 --sleep 0
 
@@ -18,8 +18,9 @@ SKMOB_VENV="${SKMOB_VENV:-$REPO_ROOT/.venv-skmob}"
 RESULTS_DIR="$REPO_ROOT/benchmarks/results"
 LOG_DIR="$RESULTS_DIR/logs"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-SPATIAL_LOG="$LOG_DIR/skmob_spatial_${TIMESTAMP}.log"
-VISITS_LOG="$LOG_DIR/skmob_visits_${TIMESTAMP}.log"
+INDIVIDUAL_LOG="$LOG_DIR/skmob_individual_${TIMESTAMP}.log"
+COLLECTIVE_LOG="$LOG_DIR/skmob_collective_${TIMESTAMP}.log"
+PREPROCESSING_LOG="$LOG_DIR/skmob_preprocessing_${TIMESTAMP}.log"
 
 if [ ! -x "$SKMOB_VENV/bin/python" ]; then
     echo "ERROR: skmob virtual environment not found at $SKMOB_VENV"
@@ -42,10 +43,12 @@ run_skmob_suite() {
         2>&1 | tee "$log_path"
 }
 
-run_skmob_suite benchmarks/speed_spatial_suite.py "$SPATIAL_LOG" "$@"
-run_skmob_suite benchmarks/speed_visits_suite.py "$VISITS_LOG" "$@"
+run_skmob_suite benchmarks/individual/speed_suite.py "$INDIVIDUAL_LOG" "$@"
+run_skmob_suite benchmarks/collective/speed_suite.py "$COLLECTIVE_LOG" "$@"
+run_skmob_suite benchmarks/preprocessing/speed_suite.py "$PREPROCESSING_LOG" "$@"
 
 echo "==> Done"
-echo "Spatial log: $SPATIAL_LOG"
-echo "Visits log:  $VISITS_LOG"
-echo "Results:     $RESULTS_DIR"
+echo "Individual log:    $INDIVIDUAL_LOG"
+echo "Collective log:    $COLLECTIVE_LOG"
+echo "Preprocessing log: $PREPROCESSING_LOG"
+echo "Results:           $RESULTS_DIR"

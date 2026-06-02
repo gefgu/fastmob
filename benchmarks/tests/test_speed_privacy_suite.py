@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from benchmarks import speed_privacy_suite as suite
+from benchmarks.privacy import speed_suite as suite
 
 
 def test_attack_registry_contains_expected_privacy_attacks():

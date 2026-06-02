@@ -33,7 +33,7 @@ from correctness_models_large_scale import (  # noqa: E402
     generate_one_large_run,
 )
 from model_statistical_baseline import compute_trajectory_pair_metrics, _trajectory_to_std  # noqa: E402
-from speed_models_suite import expand_tessellation, load_model_inputs  # noqa: E402
+from benchmarks.models.speed_suite import expand_tessellation, load_model_inputs  # noqa: E402
 
 _BASELINE_PATH = DEFAULT_OUTPUT_DIR / DEFAULT_OUTPUT_NAME
 

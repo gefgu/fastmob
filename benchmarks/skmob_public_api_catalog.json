@@ -94,7 +94,7 @@
       "name": "filter",
       "suite": "preprocessing",
       "legacy_module": "skmob.preprocessing.filtering",
-      "skmob2_module": "skmob2.preprocessing.filter",
+      "skmob2_module": "skmob2.preprocessing",
       "default_kwargs": {},
       "input_kind": "preprocessing"
     },
@@ -102,7 +102,7 @@
       "name": "compress",
       "suite": "preprocessing",
       "legacy_module": "skmob.preprocessing.compression",
-      "skmob2_module": "skmob2.preprocessing.compress",
+      "skmob2_module": "skmob2.preprocessing",
       "default_kwargs": {},
       "input_kind": "preprocessing"
     },
@@ -110,7 +110,7 @@
       "name": "stay_locations",
       "suite": "preprocessing",
       "legacy_module": "skmob.preprocessing.detection",
-      "skmob2_module": "skmob2.preprocessing.stay_locations",
+      "skmob2_module": "skmob2.preprocessing",
       "default_kwargs": {},
       "input_kind": "preprocessing"
     },
@@ -132,7 +132,7 @@
     },
     {
       "name": "real_entropy",
-      "suite": "individual",
+      "suite": "individual_real_entropy",
       "legacy_module": "skmob.measures.individual",
       "skmob2_module": "skmob2.measures.individual.real_entropy",
       "default_kwargs": {},
@@ -556,6 +556,70 @@
         "relevance_column": "population"
       },
       "input_kind": "model_reference"
+    },
+    {
+      "name": "cluster",
+      "suite": "preprocessing",
+      "legacy_module": "skmob.preprocessing.clustering",
+      "skmob2_module": "skmob2.preprocessing",
+      "default_kwargs": {},
+      "input_kind": "preprocessing"
+    },
+    {
+      "name": "diversity",
+      "suite": "individual_skmob2_only",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.individual.diversity",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "trajectory_entropy",
+      "suite": "individual_skmob2_only",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.individual.entropy",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "trajectory_predictability",
+      "suite": "individual_skmob2_only",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.individual.entropy",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "regularity",
+      "suite": "individual_skmob2_only",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.individual.regularity",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "mean_area_volume",
+      "suite": "individual_skmob2_only",
+      "legacy_module": "skmob.measures.individual",
+      "skmob2_module": "skmob2.measures.individual.mean_area_volume",
+      "default_kwargs": {},
+      "input_kind": "trajectory"
+    },
+    {
+      "name": "od_matrix",
+      "suite": "collective_skmob2_only",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.collective.od",
+      "default_kwargs": {},
+      "input_kind": "collective"
+    },
+    {
+      "name": "od_metrics_per_area",
+      "suite": "collective_skmob2_only",
+      "legacy_module": "skmob.measures.collective",
+      "skmob2_module": "skmob2.measures.collective.od",
+      "default_kwargs": {},
+      "input_kind": "collective"
     }
   ]
 }
