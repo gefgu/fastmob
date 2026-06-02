@@ -1399,6 +1399,7 @@ dependencies = [
  "geo",
  "linfa",
  "linfa-clustering",
+ "linfa-nn",
  "moka",
  "ndarray 0.15.6",
  "ndarray 0.16.1",

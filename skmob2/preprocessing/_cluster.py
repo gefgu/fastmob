@@ -1,22 +1,11 @@
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any
 
-import numpy as np
 import narwhals as nw
+from skmob2._core import cluster_dbscan_haversine as _cluster_dbscan_haversine
 
 from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
-
-_KMS_PER_RADIAN = 6371.0088
-
-
-def _dbscan_cls():
-    try:
-        from sklearn.cluster import DBSCAN
-    except ImportError as exc:
-        raise ImportError("scikit-learn is required for cluster: pip install skmob2[ai]") from exc
-    return DBSCAN
 
 
 def cluster(
@@ -92,7 +81,7 @@ def cluster(
 
     References
     ----------
-    - [DBSCAN] DBSCAN implementation, scikit-learn, <a href="https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html">https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html</a>
+    - [DBSCAN] DBSCAN implementation, linfa-clustering, <a href="https://docs.rs/linfa-clustering">https://docs.rs/linfa-clustering</a>
     - [RT2004] Ramaswamy, H. & Toyama, K. (2004) Project Lachesis: parsing and modeling location histories. In International Conference on Geographic Information Science, 106-124, <a href="http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf">http://kentarotoyama.com/papers/Hariharan_2004_Project_Lachesis.pdf</a>
 
     """
@@ -113,36 +102,12 @@ def cluster(
         sort=not sorted,
     )
 
-    eps_rad = cluster_radius_km / _KMS_PER_RADIAN
-    DBSCAN = _dbscan_cls()
-
     _, ranges = _build_user_ranges(df, uid_col)
 
-    lats = df.get_column(lat_col).to_numpy()
-    lngs = df.get_column(lng_col).to_numpy()
+    lats = df.get_column(lat_col).to_list()
+    lngs = df.get_column(lng_col).to_list()
 
-    all_labels: list[int] = []
-
-    for start, end in ranges:
-        coords = np.radians(np.column_stack([lats[start:end], lngs[start:end]]))
-        if len(coords) == 0:
-            continue
-
-        db = DBSCAN(
-            eps=eps_rad,
-            min_samples=min_samples,
-            algorithm="ball_tree",
-            metric="haversine",
-        )
-        raw_labels = db.fit(coords).labels_
-
-        # Remap labels by visit frequency (most visited → 0)
-        counts = Counter(lbl for lbl in raw_labels if lbl >= 0)
-        sorted_clusters = sorted(counts.keys(), key=lambda lbl: -counts[lbl])
-        remap = {old: new for new, old in enumerate(sorted_clusters)}
-
-        remapped = [remap[lbl] if lbl >= 0 else -1 for lbl in raw_labels]
-        all_labels.extend(remapped)
+    all_labels = _cluster_dbscan_haversine(lats, lngs, ranges, cluster_radius_km, min_samples)
 
     col_dict = {col: df.get_column(col).to_list() for col in df.columns}
     col_dict["cluster"] = all_labels
