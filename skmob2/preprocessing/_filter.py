@@ -4,12 +4,6 @@ from typing import Any
 
 import narwhals as nw
 from skmob2._core import filter_trajectory_indices_batch as _filter_trajectory_indices_batch
-
-try:
-    from skmob2._core import filter_trajectory_indices_batch_numpy as _filter_trajectory_indices_batch_numpy
-except ImportError:  # pragma: no cover - fallback for older extension builds
-    _filter_trajectory_indices_batch_numpy = None
-
 from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
 
 
@@ -118,8 +112,7 @@ def filter(
 
     _, ranges = _build_user_ranges(df, uid_col)
 
-    indices_func = _filter_trajectory_indices_batch_numpy or _filter_trajectory_indices_batch
-    keep_indices = indices_func(
+    keep_indices = _filter_trajectory_indices_batch(
         lats,
         lngs,
         timestamps_s,
