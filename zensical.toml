@@ -1,5 +1,5 @@
 [project]
-site_name = "skmob2"
+site_name = "Scikit-Mobility 2"
 site_description = "High-performance mobility analysis library with a Rust-accelerated core and backend-agnostic DataFrame API."
 site_url = "https://gefgu.github.io/skmob2/"
 repo_url = "https://github.com/gefgu/skmob2"
@@ -9,6 +9,33 @@ extra_css = ["stylesheets/extra.css"]
 extra_javascript = [
   "javascripts/mathjax.js",
   "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js",
+]
+
+nav = [
+  { "Home" = "index.md" },
+  { "Features" = [
+    { "Overview" = "features/index.md" },
+    { "Pandas Benchmarks" = "features/benchmark_pandas.md" },
+  ] },
+  { "Learn" = "learn/index.md" },
+  { "Reference" = [
+    { "Overview" = "reference/index.md" },
+    { "Data Structures" = "reference/data-structures.md" },
+    { "Preprocessing" = "reference/preprocessing.md" },
+    { "Measures" = "reference/measures/index.md", children = [
+      { "Overview" = "reference/measures/index.md" },
+      { "Individual" = "reference/measures/individual.md" },
+      { "Collective" = "reference/measures/collective.md" },
+      { "Evaluation" = "reference/measures/evaluation.md" },
+    ] },
+    { "Models" = "reference/models.md" },
+    { "Input/Output" = "reference/io.md" },
+    { "Privacy" = "reference/privacy.md" },
+    { "Data" = "reference/data.md" },
+  ] },
+  {"Resources" = "resource/index.md"},
+  { "About" = "about/index.md" },
+  { "Release Notes" = "release_notes/index.md" },
 ]
 
 [project.theme]

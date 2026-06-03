@@ -12,7 +12,7 @@ DAYS="${DAYS:-7}"
 RATE="${RATE:-1000}"
 RANDOM_STATE="${RANDOM_STATE:-2}"
 SCALENE_SCOPE="${SCALENE_SCOPE:-skmob2}"
-WORKLOAD="tests/benchmarks/profile_density_epr_workload.py"
+WORKLOAD="benchmarks/profile_density_epr_workload.py"
 
 if [ "$DAYS" = "7" ]; then
     DEFAULT_PROFILE_NAME="density_epr_${N_AGENTS}a_${N_LOCATIONS}l_1w"

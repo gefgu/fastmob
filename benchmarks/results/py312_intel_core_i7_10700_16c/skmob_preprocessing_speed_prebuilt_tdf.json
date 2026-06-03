@@ -1,0 +1,324 @@
+{
+  "metadata": {
+    "backend": null,
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "skmob.TrajDataFrame",
+    "iterations": 5,
+    "library": "skmob",
+    "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "retries": 0,
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "preprocessing",
+    "timestamp_utc": "2026-05-31T17:28:14.225242+00:00",
+    "timing_mode": "prebuilt_tdf"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 0.0185324443038553,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.018319881055504084,
+          "status": "ok",
+          "times_seconds": [
+            0.018828107975423336,
+            0.01859936583787203,
+            0.01841401681303978,
+            0.018500849837437272,
+            0.018319881055504084
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.03846145845018327,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0380411590449512,
+          "status": "ok",
+          "times_seconds": [
+            0.03835289808921516,
+            0.0380411590449512,
+            0.038411343935877085,
+            0.0390503010712564,
+            0.03845159010961652
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.011965018417686223,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.011819964041933417,
+          "status": "ok",
+          "times_seconds": [
+            0.01205418398603797,
+            0.011819964041933417,
+            0.011873143026605248,
+            0.012043107999488711,
+            0.012034693034365773
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.054859061166644095,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.05041310586966574,
+          "status": "ok",
+          "times_seconds": [
+            0.050479179015383124,
+            0.07187455706298351,
+            0.05041310586966574,
+            0.05077071604318917,
+            0.050757747841998935
+          ]
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 0.17028803094290196,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.16289800498634577,
+          "status": "ok",
+          "times_seconds": [
+            0.19790928182192147,
+            0.1634096240159124,
+            0.16349126095883548,
+            0.1637319829314947,
+            0.16289800498634577
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.3370458055753261,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.32869992195628583,
+          "status": "ok",
+          "times_seconds": [
+            0.32997399289160967,
+            0.3683375511318445,
+            0.3292825978714973,
+            0.32893496402539313,
+            0.32869992195628583
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.08518836940638722,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0843409919179976,
+          "status": "ok",
+          "times_seconds": [
+            0.08540334296412766,
+            0.08488990808837116,
+            0.08489798498339951,
+            0.0843409919179976,
+            0.08640961907804012
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.4306191734038293,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.42622610996477306,
+          "status": "ok",
+          "times_seconds": [
+            0.42906346800737083,
+            0.42622610996477306,
+            0.43159621907398105,
+            0.4293825849890709,
+            0.43682748498395085
+          ]
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 1.9876759636681527,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.9784182941075414,
+          "status": "ok",
+          "times_seconds": [
+            1.981364435981959,
+            2.0164759210310876,
+            1.979730867082253,
+            1.9784182941075414,
+            1.9823903001379222
+          ]
+        },
+        "compress": {
+          "average_seconds": 3.0873753199819474,
+          "iterations_completed": 5,
+          "minimum_seconds": 3.0756677410099655,
+          "status": "ok",
+          "times_seconds": [
+            3.0756677410099655,
+            3.087738852016628,
+            3.076767510967329,
+            3.091937718912959,
+            3.104764777002856
+          ]
+        },
+        "filter": {
+          "average_seconds": 1.056110934028402,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.0308117549866438,
+          "status": "ok",
+          "times_seconds": [
+            1.0390494570601732,
+            1.0729253150057048,
+            1.0308117549866438,
+            1.0691136000677943,
+            1.0686545430216938
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 4.094228106597439,
+          "iterations_completed": 5,
+          "minimum_seconds": 4.071851429995149,
+          "status": "ok",
+          "times_seconds": [
+            4.071851429995149,
+            4.099945119116455,
+            4.09856742201373,
+            4.107992294011638,
+            4.09278426785022
+          ]
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 22.879788236273452,
+          "iterations_completed": 5,
+          "minimum_seconds": 22.582449324196205,
+          "status": "ok",
+          "times_seconds": [
+            22.83987546688877,
+            22.987651714123785,
+            22.98208844405599,
+            23.006876232102513,
+            22.582449324196205
+          ]
+        },
+        "compress": {
+          "average_seconds": 31.224606024194507,
+          "iterations_completed": 5,
+          "minimum_seconds": 31.08262549689971,
+          "status": "ok",
+          "times_seconds": [
+            31.242442006012425,
+            31.08262549689971,
+            31.285207513952628,
+            31.17927010403946,
+            31.333485000068322
+          ]
+        },
+        "filter": {
+          "average_seconds": 13.80950651196763,
+          "iterations_completed": 5,
+          "minimum_seconds": 13.7354206899181,
+          "status": "ok",
+          "times_seconds": [
+            13.776269899914041,
+            13.884502961998805,
+            13.7354206899181,
+            13.870618757093325,
+            13.780720250913873
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 40.86669408981688,
+          "iterations_completed": 5,
+          "minimum_seconds": 40.56391691300087,
+          "status": "ok",
+          "times_seconds": [
+            40.89450967917219,
+            41.28632931201719,
+            40.892052521929145,
+            40.69666202296503,
+            40.56391691300087
+          ]
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
+      "label": "4M",
+      "metrics": {
+        "cluster": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "Input X contains NaN.\nDBSCAN does not accept missing values encoded as NaN natively. For supervised learning, you might want to consider sklearn.ensemble.HistGradientBoostingClassifier and Regressor which accept missing values encoded as NaNs natively. Alternatively, it is possible to preprocess the data, for instance by using an imputer transformer in a pipeline or drop samples with missing values. See https://scikit-learn.org/stable/modules/impute.html You can find a list of all estimators that handle NaN values at the following page: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values",
+          "status": "error",
+          "times_seconds": []
+        },
+        "compress": {
+          "average_seconds": 155.80788631998,
+          "iterations_completed": 5,
+          "minimum_seconds": 155.5957173339557,
+          "status": "ok",
+          "times_seconds": [
+            155.5957173339557,
+            155.954049234977,
+            155.968460398959,
+            155.86074907705188,
+            155.66045555495657
+          ]
+        },
+        "filter": {
+          "average_seconds": 95.39620754164643,
+          "iterations_completed": 5,
+          "minimum_seconds": 94.96656149509363,
+          "status": "ok",
+          "times_seconds": [
+            95.7764912310522,
+            95.7641516099684,
+            95.46600303705782,
+            95.00783033506013,
+            94.96656149509363
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 198.05104700280353,
+          "iterations_completed": 5,
+          "minimum_seconds": 196.89592693303712,
+          "status": "ok",
+          "times_seconds": [
+            197.56620584311895,
+            198.52585156494752,
+            198.65858179004863,
+            196.89592693303712,
+            198.60866888286546
+          ]
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}

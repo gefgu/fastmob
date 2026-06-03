@@ -6,15 +6,16 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-PYTHON="${PYTHON:-$REPO_ROOT/.venv/bin/python}"
+PYTHON="${PYTHON:-$REPO_ROOT/.venv-py312/bin/python}"
 if [ ! -x "$PYTHON" ]; then
     PYTHON="python"
 fi
 
-_BASE_RESULTS_DIR="$REPO_ROOT/tests/benchmarks/results"
-PLOT_SCRIPT="$REPO_ROOT/tests/benchmarks/plot_benchmark_comparisons.py"
+_BASE_RESULTS_DIR="$REPO_ROOT/benchmarks/results"
+PLOT_SCRIPT="$REPO_ROOT/benchmarks/plot_benchmark_comparisons.py"
 FAILURES=()
 INPUT_ORDER="raw"
+ENV_DIR=""
 PLOT_ARGS=()
 
 while [ "$#" -gt 0 ]; do
@@ -30,6 +31,14 @@ while [ "$#" -gt 0 ]; do
         --input-order=*)
             INPUT_ORDER="${1#*=}"
             shift
+            ;;
+        --env-dir)
+            if [ "$#" -lt 2 ]; then
+                echo "ERROR: --env-dir requires a results directory"
+                exit 1
+            fi
+            ENV_DIR="$2"
+            shift 2
             ;;
         *)
             PLOT_ARGS+=("$1")
@@ -58,23 +67,6 @@ order_part() {
         printf '%s_' "$1"
     fi
 }
-
-# Parse --env-dir from arguments; pass remaining args to the plot script
-ENV_DIR=""
-POSITIONAL_ARGS=()
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --env-dir)
-            ENV_DIR="$2"
-            shift 2
-            ;;
-        *)
-            POSITIONAL_ARGS+=("$1")
-            shift
-            ;;
-    esac
-done
-set -- "${POSITIONAL_ARGS[@]+"${POSITIONAL_ARGS[@]}"}"
 
 # Auto-discover the most recently modified env subfolder when --env-dir is not given
 if [ -z "$ENV_DIR" ]; then
@@ -109,10 +101,6 @@ run_comparison() {
     local original_json="$RESULTS_DIR/skmob_${suite}_speed_${part}prebuilt_tdf.json"
     local optimized_json="$RESULTS_DIR/skmob2_${suite}_speed_${part}${backend}.json"
 
-    if [ ! -f "$original_json" ]; then
-        echo "Skipping ${suite}/${backend}/${input_order}: missing $(basename "$original_json")"
-        return 0
-    fi
     if [ ! -f "$optimized_json" ]; then
         echo "Skipping ${suite}/${backend}/${input_order}: missing $(basename "$optimized_json")"
         return 0
@@ -120,13 +108,14 @@ run_comparison() {
 
     echo
     echo "==> Plotting ${suite}/${backend}/${input_order}"
-    if "$PYTHON" "$PLOT_SCRIPT" \
-        --original-json "$original_json" \
-        --optimized-json "$optimized_json" \
-        --suite "$suite" \
-        --backend "$backend" \
-        --output-dir "$OUTPUT_DIR" \
-        "$@"; then
+    cmd=("$PYTHON" "$PLOT_SCRIPT" --optimized-json "$optimized_json" --suite "$suite" --backend "$backend" --output-dir "$OUTPUT_DIR")
+    if [ -f "$original_json" ]; then
+        cmd+=(--original-json "$original_json")
+    else
+        echo "    missing $(basename "$original_json"); generating skmob2-only plot"
+        cmd+=(--standalone)
+    fi
+    if "${cmd[@]}" "$@"; then
         echo "==> ${suite}/${backend}/${input_order}: ok"
     else
         local status=$?
@@ -167,7 +156,7 @@ run_model_comparison() {
     fi
 }
 
-for suite in spatial privacy visits; do
+for suite in individual collective preprocessing evaluation privacy; do
     for backend in pandas polars; do
         while IFS= read -r input_order; do
             run_comparison "$suite" "$backend" "$input_order" "${PLOT_ARGS[@]}"
@@ -177,16 +166,14 @@ done
 
 echo
 echo "==> Plotting models (unified: location-only + agent-based, small + large scale)"
-if "$PYTHON" "$PLOT_SCRIPT" \
-    --suite models \
-    --original-json "$RESULTS_DIR/skmob_models_speed.json" \
-    --optimized-json "$RESULTS_DIR/skmob2_models_speed.json" \
-    --large-json-skmob2 "$RESULTS_DIR/skmob2_models_speed_large_scale.json" \
-    --large-json-skmob  "$RESULTS_DIR/skmob_models_speed_large_scale.json" \
-    --large-loc-json-skmob2 "$RESULTS_DIR/skmob2_models_speed_location_large_scale.json" \
-    --large-loc-json-skmob  "$RESULTS_DIR/skmob_models_speed_location_large_scale.json" \
-    --output-dir "$OUTPUT_DIR" \
-    "${PLOT_ARGS[@]}"; then
+model_cmd=("$PYTHON" "$PLOT_SCRIPT" --suite models --optimized-json "$RESULTS_DIR/skmob2_models_speed.json" --large-json-skmob2 "$RESULTS_DIR/skmob2_models_speed_large_scale.json" --large-loc-json-skmob2 "$RESULTS_DIR/skmob2_models_speed_location_large_scale.json" --output-dir "$OUTPUT_DIR")
+if [ -f "$RESULTS_DIR/skmob_models_speed.json" ]; then
+    model_cmd+=(--original-json "$RESULTS_DIR/skmob_models_speed.json" --large-json-skmob "$RESULTS_DIR/skmob_models_speed_large_scale.json" --large-loc-json-skmob "$RESULTS_DIR/skmob_models_speed_location_large_scale.json")
+else
+    echo "    missing skmob_models_speed.json; generating skmob2-only model plots"
+    model_cmd+=(--standalone)
+fi
+if "${model_cmd[@]}" "${PLOT_ARGS[@]}"; then
     echo "==> models: ok"
 else
     status=$?
@@ -201,10 +188,6 @@ run_memory_comparison() {
     local original_json="$RESULTS_DIR/skmob_${suite}_memory_prebuilt_tdf.json"
     local optimized_json="$RESULTS_DIR/skmob2_${suite}_memory_${backend}.json"
 
-    if [ ! -f "$original_json" ]; then
-        echo "Skipping ${suite}/${backend}/memory: missing $(basename "$original_json")"
-        return 0
-    fi
     if [ ! -f "$optimized_json" ]; then
         echo "Skipping ${suite}/${backend}/memory: missing $(basename "$optimized_json")"
         return 0
@@ -212,14 +195,14 @@ run_memory_comparison() {
 
     echo
     echo "==> Plotting ${suite}/${backend}/memory"
-    if "$PYTHON" "$PLOT_SCRIPT" \
-        --original-json "$original_json" \
-        --optimized-json "$optimized_json" \
-        --suite "$suite" \
-        --backend "$backend" \
-        --profile memory \
-        --output-dir "$OUTPUT_DIR" \
-        "$@"; then
+    cmd=("$PYTHON" "$PLOT_SCRIPT" --optimized-json "$optimized_json" --suite "$suite" --backend "$backend" --profile memory --output-dir "$OUTPUT_DIR")
+    if [ -f "$original_json" ]; then
+        cmd+=(--original-json "$original_json")
+    else
+        echo "    missing $(basename "$original_json"); generating skmob2-only memory plot"
+        cmd+=(--standalone)
+    fi
+    if "${cmd[@]}" "$@"; then
         echo "==> ${suite}/${backend}/memory: ok"
     else
         local status=$?
@@ -228,7 +211,7 @@ run_memory_comparison() {
     fi
 }
 
-for suite in spatial visits; do
+for suite in individual collective preprocessing evaluation privacy; do
     for backend in pandas polars; do
         run_memory_comparison "$suite" "$backend" "${PLOT_ARGS[@]}"
     done
@@ -236,15 +219,14 @@ done
 
 echo
 echo "==> Plotting models memory (unified: location-only + agent-based, small + large scale)"
-if "$PYTHON" "$PLOT_SCRIPT" \
-    --suite models \
-    --profile memory \
-    --original-json "$RESULTS_DIR/skmob_models_memory.json" \
-    --optimized-json "$RESULTS_DIR/skmob2_models_memory.json" \
-    --large-json-skmob2 "$RESULTS_DIR/skmob2_models_memory_large_scale.json" \
-    --large-loc-json-skmob2 "$RESULTS_DIR/skmob2_models_memory_location_large_scale.json" \
-    --output-dir "$OUTPUT_DIR" \
-    "${PLOT_ARGS[@]}"; then
+model_memory_cmd=("$PYTHON" "$PLOT_SCRIPT" --suite models --profile memory --optimized-json "$RESULTS_DIR/skmob2_models_memory.json" --large-json-skmob2 "$RESULTS_DIR/skmob2_models_memory_large_scale.json" --large-loc-json-skmob2 "$RESULTS_DIR/skmob2_models_memory_location_large_scale.json" --output-dir "$OUTPUT_DIR")
+if [ -f "$RESULTS_DIR/skmob_models_memory.json" ]; then
+    model_memory_cmd+=(--original-json "$RESULTS_DIR/skmob_models_memory.json")
+else
+    echo "    missing skmob_models_memory.json; generating skmob2-only model memory plots"
+    model_memory_cmd+=(--standalone)
+fi
+if "${model_memory_cmd[@]}" "${PLOT_ARGS[@]}"; then
     echo "==> models memory: ok"
 else
     status=$?

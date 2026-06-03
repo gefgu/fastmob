@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+import time
 from typing import Any, Iterable
 
 import narwhals as nw
@@ -210,6 +211,35 @@ def _uid_values_from_index_ranges(
     return uid_values[np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]].tolist()
 
 
+def _time_ordering_numpy_uids(uids: nw.Series) -> Any:
+    """Return NumPy UID values supported by the Rust time-ordering kernel."""
+    values = uids.to_numpy()
+    if values.dtype.kind not in {"O", "S", "U"}:
+        return values
+
+    import pandas as pd  # noqa: PLC0415 - used only for pandas/object string UID factorization
+
+    if values.dtype.kind == "O":
+        first_valid = None
+        for value in values:
+            try:
+                is_missing = pd.isna(value)
+            except (TypeError, ValueError):
+                is_missing = False
+            if isinstance(is_missing, (bool, np.bool_)) and is_missing:
+                continue
+            first_valid = value
+            break
+        if first_valid is None or not isinstance(first_valid, (str, bytes)):
+            return values
+
+    try:
+        codes, _uniques = pd.factorize(values, sort=True, use_na_sentinel=True)
+    except (TypeError, ValueError):
+        return values
+    return np.asarray(codes, dtype=np.int64)
+
+
 def _build_time_ordered_user_ranges(
     df: nw.DataFrame,
     uid_col: str | None,
@@ -225,11 +255,14 @@ def _build_time_ordered_user_ranges(
         time_ordered_user_indices_numpy,
     )
 
+    start = time.perf_counter() 
+
     if uid_col is None:
         if use_arrow:
             indices, starts, ends = time_ordered_user_indices_arrow(None, timestamps.to_arrow())
         else:
             indices, starts, ends = time_ordered_user_indices_numpy(None, timestamps.to_numpy())
+        print(f"Indexing@no_user time: {time.perf_counter() - start:.2f} seconds")
         return None, _as_index_array(indices), _as_index_array(starts), _as_index_array(ends)
 
     uids = df.get_column(uid_col)
@@ -237,11 +270,15 @@ def _build_time_ordered_user_ranges(
         if use_arrow:
             indices, starts, ends = time_ordered_user_indices_arrow(uids.to_arrow(), timestamps.to_arrow())
         else:
-            indices, starts, ends = time_ordered_user_indices_numpy(uids.to_numpy(), timestamps.to_numpy())
+            indices, starts, ends = time_ordered_user_indices_numpy(
+                _time_ordering_numpy_uids(uids),
+                timestamps.to_numpy(),
+            )
         indices = _as_index_array(indices)
         starts = _as_index_array(starts)
         ends = _as_index_array(ends)
         uid_values = _uid_values_from_index_ranges(uids, indices, starts, use_arrow=use_arrow)
+        print(f"Indexing time: {time.perf_counter() - start:.2f} seconds")
         return uid_values, indices, starts, ends
     except ValueError as exc:
         if "unsupported" not in str(exc):
@@ -255,6 +292,7 @@ def _build_time_ordered_user_ranges(
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
     starts, ends = _ranges_to_starts_ends(ranges)
+    print(f"Indexing@fallback time: {time.perf_counter() - start:.2f} seconds")
     return uid_values, _as_index_array(indices), starts, ends
 
 

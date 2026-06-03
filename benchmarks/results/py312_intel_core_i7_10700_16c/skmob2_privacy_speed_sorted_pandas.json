@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "backend": "pandas",
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/privacy_privacy_toy.csv_pandas_repeat1_sorted.parquet",
+    "input_cache_status": "reused",
+    "input_order": "sorted",
+    "input_type": "pandas.DataFrame",
+    "iterations": 5,
+    "library": "skmob2",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "repeat_factor": 1,
+    "sleep_seconds": 0.5,
+    "suite": "privacy",
+    "timestamp_utc": "2026-05-30T20:43:11.284883+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 0.0017942652106285096,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0017365070525556803,
+          "status": "ok",
+          "times_seconds": [
+            0.0017833900637924671,
+            0.0017365070525556803,
+            0.001747610978782177,
+            0.0017444528639316559,
+            0.0019593650940805674
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 0.0018031748943030835,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001748463837429881,
+          "status": "ok",
+          "times_seconds": [
+            0.0018083718605339527,
+            0.0018012169748544693,
+            0.0017963829450309277,
+            0.0018614388536661863,
+            0.001748463837429881
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 0.001658813375979662,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001622145064175129,
+          "status": "ok",
+          "times_seconds": [
+            0.0016746670007705688,
+            0.0016973509918898344,
+            0.001637403853237629,
+            0.001622145064175129,
+            0.0016624999698251486
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 0.0017394843511283399,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0016277588438242674,
+          "status": "ok",
+          "times_seconds": [
+            0.0017833781894296408,
+            0.0017877218779176474,
+            0.0017537870444357395,
+            0.0016277588438242674,
+            0.0017447758000344038
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 0.0018513624090701342,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0018165998626500368,
+          "status": "ok",
+          "times_seconds": [
+            0.001842740923166275,
+            0.0018437751568853855,
+            0.0018165998626500368,
+            0.0019034100696444511,
+            0.0018502860330045223
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 0.0015848418232053518,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0015306281857192516,
+          "status": "ok",
+          "times_seconds": [
+            0.0015899359714239836,
+            0.0016232321504503489,
+            0.001613026950508356,
+            0.0015306281857192516,
+            0.001567385857924819
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 0.0025972122326493262,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.002453539054840803,
+          "status": "ok",
+          "times_seconds": [
+            0.0030128760263323784,
+            0.0024934939574450254,
+            0.002453539054840803,
+            0.002527079079300165,
+            0.0024990730453282595
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 0.0018413782119750977,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0017752600833773613,
+          "status": "ok",
+          "times_seconds": [
+            0.0017985079903155565,
+            0.0018835719674825668,
+            0.0017752600833773613,
+            0.0018319219816476107,
+            0.001917629037052393
+          ]
+        }
+      },
+      "rows": 23
+    }
+  ]
+}

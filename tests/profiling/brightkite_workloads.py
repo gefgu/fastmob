@@ -161,200 +161,200 @@ def _make_workload(name: str, dataset: str, import_path: str, description: str, 
 
 def _skmob2_workloads() -> dict[str, Workload]:
     workloads = {
-        "filter": _make_workload("filter", "trajectory", "skmob2.preprocessing.filter.filter", "skmob2 filter"),
-        "compress": _make_workload("compress", "trajectory", "skmob2.preprocessing.compress.compress", "skmob2 compress"),
+        "filter": _make_workload("filter", "trajectory", "skmob2.preprocessing.filter", "skmob2 filter"),
+        "compress": _make_workload("compress", "trajectory", "skmob2.preprocessing.compress", "skmob2 compress"),
         "stay_locations": _make_workload(
             "stay_locations",
             "trajectory",
-            "skmob2.preprocessing.stay_locations.stay_locations",
+            "skmob2.preprocessing.stay_locations",
             "skmob2 stay locations",
         ),
-        "cluster": _make_workload("cluster", "trajectory", "skmob2.preprocessing.cluster.cluster", "skmob2 cluster"),
+        "cluster": _make_workload("cluster", "trajectory", "skmob2.preprocessing.cluster", "skmob2 cluster"),
         "jump_lengths": _make_workload(
             "jump_lengths",
             "trajectory",
-            "skmob2.measures.spatial.jump_lengths.jump_lengths",
+            "skmob2.measures.individual.jump_lengths.jump_lengths",
             "skmob2 jump lengths",
             merge=False,
         ),
         "radius_of_gyration": _make_workload(
             "radius_of_gyration",
             "trajectory",
-            "skmob2.measures.spatial.radius_of_gyration.radius_of_gyration",
+            "skmob2.measures.individual.radius_of_gyration.radius_of_gyration",
             "skmob2 radius of gyration",
         ),
         "k_radius_of_gyration": _make_workload(
             "k_radius_of_gyration",
             "trajectory",
-            "skmob2.measures.spatial.k_radius_of_gyration.k_radius_of_gyration",
+            "skmob2.measures.individual.k_radius_of_gyration.k_radius_of_gyration",
             "skmob2 k radius of gyration",
         ),
         "number_of_visits": _make_workload(
             "number_of_visits",
             "trajectory",
-            "skmob2.measures.spatial.number_of_visits.number_of_visits",
+            "skmob2.measures.individual.number_of_visits.number_of_visits",
             "skmob2 number of visits",
         ),
         "number_of_locations": _make_workload(
             "number_of_locations",
             "trajectory",
-            "skmob2.measures.spatial.number_of_locations.number_of_locations",
+            "skmob2.measures.individual.number_of_locations.number_of_locations",
             "skmob2 number of locations",
         ),
         "maximum_distance": _make_workload(
             "maximum_distance",
             "trajectory",
-            "skmob2.measures.spatial.maximum_distance.maximum_distance",
+            "skmob2.measures.individual.maximum_distance.maximum_distance",
             "skmob2 maximum distance",
         ),
         "distance_straight_line": _make_workload(
             "distance_straight_line",
             "trajectory",
-            "skmob2.measures.spatial.distance_straight_line.distance_straight_line",
+            "skmob2.measures.individual.distance_straight_line.distance_straight_line",
             "skmob2 distance straight line",
         ),
         "waiting_times": _make_workload(
             "waiting_times",
             "trajectory",
-            "skmob2.measures.spatial.waiting_times.waiting_times",
+            "skmob2.measures.individual.waiting_times.waiting_times",
             "skmob2 waiting times",
         ),
         "home_location": _make_workload(
             "home_location",
             "trajectory",
-            "skmob2.measures.spatial.home_location.home_location",
+            "skmob2.measures.individual.home_location.home_location",
             "skmob2 home location",
         ),
         "max_distance_from_home": _make_workload(
             "max_distance_from_home",
             "trajectory",
-            "skmob2.measures.spatial.max_distance_from_home.max_distance_from_home",
+            "skmob2.measures.individual.max_distance_from_home.max_distance_from_home",
             "skmob2 max distance from home",
         ),
         "visits_per_location": _make_workload(
             "visits_per_location",
             "trajectory",
-            "skmob2.measures.flows.visits_per_location.visits_per_location",
+            "skmob2.measures.collective.visits_per_location.visits_per_location",
             "skmob2 visits per location",
         ),
         "homes_per_location": _make_workload(
             "homes_per_location",
             "trajectory",
-            "skmob2.measures.flows.homes_per_location.homes_per_location",
+            "skmob2.measures.collective.homes_per_location.homes_per_location",
             "skmob2 homes per location",
         ),
         "visits_per_time_unit": _make_workload(
             "visits_per_time_unit",
             "trajectory",
-            "skmob2.measures.flows.visits_per_time_unit.visits_per_time_unit",
+            "skmob2.measures.collective.visits_per_time_unit.visits_per_time_unit",
             "skmob2 visits per time unit",
         ),
         "mean_square_displacement": _make_workload(
             "mean_square_displacement",
             "trajectory",
-            "skmob2.measures.flows.mean_square_displacement.mean_square_displacement",
+            "skmob2.measures.collective.mean_square_displacement.mean_square_displacement",
             "skmob2 mean square displacement",
         ),
         "random_location_entropy": _make_workload(
             "random_location_entropy",
             "trajectory",
-            "skmob2.measures.flows.random_location_entropy.random_location_entropy",
+            "skmob2.measures.collective.random_location_entropy.random_location_entropy",
             "skmob2 random location entropy",
         ),
         "uncorrelated_location_entropy": _make_workload(
             "uncorrelated_location_entropy",
             "trajectory",
-            "skmob2.measures.flows.uncorrelated_location_entropy.uncorrelated_location_entropy",
+            "skmob2.measures.collective.uncorrelated_location_entropy.uncorrelated_location_entropy",
             "skmob2 uncorrelated location entropy",
         ),
         "random_entropy": _make_workload(
-            "random_entropy", "trajectory", "skmob2.measures.visits.random_entropy.random_entropy", "skmob2 random entropy"
+            "random_entropy", "trajectory", "skmob2.measures.individual.random_entropy.random_entropy", "skmob2 random entropy"
         ),
         "uncorrelated_entropy": _make_workload(
             "uncorrelated_entropy",
             "trajectory",
-            "skmob2.measures.visits.uncorrelated_entropy.uncorrelated_entropy",
+            "skmob2.measures.individual.uncorrelated_entropy.uncorrelated_entropy",
             "skmob2 uncorrelated entropy",
         ),
         "real_entropy": _make_workload(
-            "real_entropy", "trajectory", "skmob2.measures.visits.real_entropy.real_entropy", "skmob2 real entropy"
+            "real_entropy", "trajectory", "skmob2.measures.individual.real_entropy.real_entropy", "skmob2 real entropy"
         ),
         "frequency_rank": _make_workload(
             "frequency_rank",
             "trajectory",
-            "skmob2.measures.visits.frequency_rank.frequency_rank",
+            "skmob2.measures.individual.frequency_rank.frequency_rank",
             "skmob2 frequency rank",
         ),
         "recency_rank": _make_workload(
-            "recency_rank", "trajectory", "skmob2.measures.visits.recency_rank.recency_rank", "skmob2 recency rank"
+            "recency_rank", "trajectory", "skmob2.measures.individual.recency_rank.recency_rank", "skmob2 recency rank"
         ),
         "location_frequency": _make_workload(
             "location_frequency",
             "trajectory",
-            "skmob2.measures.visits.location_frequency.location_frequency",
+            "skmob2.measures.individual.location_frequency.location_frequency",
             "skmob2 location frequency",
         ),
         "individual_mobility_network": _make_workload(
             "individual_mobility_network",
             "trajectory",
-            "skmob2.measures.visits.individual_mobility_network.individual_mobility_network",
+            "skmob2.measures.individual.individual_mobility_network.individual_mobility_network",
             "skmob2 individual mobility network",
         ),
         "activity_transition_matrix": _make_workload(
             "activity_transition_matrix",
             "visits",
-            "skmob2.measures.visits.activity.activity_transition_matrix",
+            "skmob2.measures.individual.activity.activity_transition_matrix",
             "skmob2 activity transition matrix",
         ),
-        "diversity": _make_workload("diversity", "visits", "skmob2.measures.visits.diversity.diversity", "skmob2 diversity"),
+        "diversity": _make_workload("diversity", "visits", "skmob2.measures.individual.diversity.diversity", "skmob2 diversity"),
         "regularity": _make_workload(
-            "regularity", "visits", "skmob2.measures.visits.regularity.regularity", "skmob2 regularity"
+            "regularity", "visits", "skmob2.measures.individual.regularity.regularity", "skmob2 regularity"
         ),
         "trajectory_entropy": _make_workload(
             "trajectory_entropy",
             "visits",
-            "skmob2.measures.visits.entropy.trajectory_entropy",
+            "skmob2.measures.individual.entropy.trajectory_entropy",
             "skmob2 trajectory entropy",
         ),
         "trajectory_predictability": _make_workload(
             "trajectory_predictability",
             "visits",
-            "skmob2.measures.visits.entropy.trajectory_predictability",
+            "skmob2.measures.individual.entropy.trajectory_predictability",
             "skmob2 trajectory predictability",
         ),
         "intermittance_and_degree_of_return": _make_workload(
             "intermittance_and_degree_of_return",
             "visits",
-            "skmob2.measures.visits.mobility_profiling.intermittance_and_degree_of_return",
+            "skmob2.measures.individual.mobility_profiling.intermittance_and_degree_of_return",
             "skmob2 intermittance and degree of return",
         ),
         "exploration_profiling": _make_workload(
             "exploration_profiling",
             "visits",
-            "skmob2.measures.visits.mobility_profiling.exploration_profiling",
+            "skmob2.measures.individual.mobility_profiling.exploration_profiling",
             "skmob2 exploration profiling",
             random_seed=0,
         ),
         "mean_area_volume": _make_workload(
             "mean_area_volume",
             "visits",
-            "skmob2.measures.visits.mean_area_volume.mean_area_volume",
+            "skmob2.measures.individual.mean_area_volume.mean_area_volume",
             "skmob2 mean area volume",
         ),
         "discover_daily_motifs_from_agents": _make_workload(
             "discover_daily_motifs_from_agents",
             "visits",
-            "skmob2.measures.visits.motifs.discover_daily_motifs_from_agents",
+            "skmob2.measures.individual.motifs.discover_daily_motifs_from_agents",
             "skmob2 daily motifs",
         ),
-        "od_matrix": _make_workload("od_matrix", "od", "skmob2.measures.flows.od.od_matrix", "skmob2 OD matrix"),
+        "od_matrix": _make_workload("od_matrix", "od", "skmob2.measures.collective.od.od_matrix", "skmob2 OD matrix"),
         "od_metrics_per_area": _make_workload(
             "od_metrics_per_area",
             "od_metrics",
-            "skmob2.measures.flows.od.od_metrics_per_area",
+            "skmob2.measures.collective.od.od_metrics_per_area",
             "skmob2 OD metrics per area",
         ),
-        "stvd_emd": _make_workload("stvd_emd", "stvd", "skmob2.comparison.spatial.stvd_emd", "skmob2 STVD-EMD"),
+        "stvd_emd": _make_workload("stvd_emd", "stvd", "skmob2.measures.evaluation.spatial.stvd_emd", "skmob2 STVD-EMD"),
     }
     return dict(sorted(workloads.items()))
 
@@ -466,7 +466,7 @@ def build_dataset_for_workload(
     if workload.dataset == "od":
         return trajectory_to_od(traj)
     if workload.dataset == "od_metrics":
-        from skmob2.measures.flows.od import od_matrix
+        from skmob2.measures.collective.od import od_matrix
 
         return od_matrix(trajectory_to_od(traj))
     if workload.dataset == "stvd":
@@ -556,7 +556,7 @@ def _jump_lengths_method_entrypoint(tdf: Any) -> Any:
 
 
 def _jump_lengths_function_entrypoint(tdf: Any, **kwargs: Any) -> Any:
-    from skmob2.measures.spatial.jump_lengths import jump_lengths
+    from skmob2.measures.individual.jump_lengths import jump_lengths
 
     return jump_lengths(
         tdf.df,

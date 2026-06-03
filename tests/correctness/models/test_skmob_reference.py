@@ -72,6 +72,8 @@ def _expected(models_reference: SkmobReferenceDataset, name: str) -> pd.DataFram
 
 
 def _normalize_flow(df: Any) -> pd.DataFrame:
+    if hasattr(df, "df"):
+        df = df.df
     out = pd.DataFrame(df).copy()
     out = out[["origin", "destination", "flow"]]
     out["origin"] = out["origin"].astype(str)
@@ -81,6 +83,8 @@ def _normalize_flow(df: Any) -> pd.DataFrame:
 
 
 def _normalize_trajectory(df: Any) -> pd.DataFrame:
+    if hasattr(df, "df"):
+        df = df.df
     out = pd.DataFrame(df).copy()
     out = out[["uid", "datetime", "lat", "lng"]]
     out["datetime"] = pd.to_datetime(out["datetime"])

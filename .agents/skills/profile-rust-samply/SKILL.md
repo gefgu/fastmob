@@ -26,6 +26,36 @@ attempt to run the sudo command yourself unless the user explicitly asks; Samply
 only be launched after the user confirms the setting has been updated or the current value is
 already `1` or lower.
 
+## skmob2 Environment Fallback
+
+In this repository, Codex may run in a sandbox where `/snap/bin/uv` fails with snap-confine permissions and the local `.venv` has no `pip`. If `scripts/run_samply_profiles.sh` fails before recording while trying to rebuild with `maturin develop --uv`, first check whether the compiled extension is already usable:
+
+```bash
+.venv/bin/python -c 'import skmob2._core as c; print(c.__file__)'
+```
+
+If that succeeds, keep the function-scope prepared-child behavior by running the Python Samply runner directly:
+
+```bash
+.venv/bin/python scripts/profile_brightkite_samply.py \
+  --samply-bin /home/gustavo/.cargo/bin/samply \
+  --rows 4000000 --workload filter --implementation skmob2 \
+  --backend pandas --scope function --rate 1000 \
+  --output-dir /tmp/samply_filter_4M
+
+.venv/bin/python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py \
+  /tmp/samply_filter_4M/skmob2/filter.json.gz --top 20 \
+  -o /tmp/filter_4M_samply_reduced.json
+```
+
+If the extension is not importable, rebuild with the approved local path:
+
+```bash
+env -u CONDA_PREFIX uv run maturin develop --release
+```
+
+The repo Cargo config must keep `-C` as a separate flag before each rustc option, for example `["-C", "force-frame-pointers=yes", "-C", "symbol-mangling-version=v0"]`.
+
 ## Reducing Profiles
 
 Samply writes Firefox Profiler JSON, usually compressed as `.json.gz`. Do not load large raw profiles directly into context. Reduce them first:

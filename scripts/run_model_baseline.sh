@@ -14,7 +14,7 @@
 
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-SCRIPT="$REPO/tests/benchmarks/model_statistical_baseline.py"
+SCRIPT="$REPO/benchmarks/model_statistical_baseline.py"
 
 # Forward any extra arguments (e.g. --n-runs 50) to both invocations.
 EXTRA_ARGS=("$@")

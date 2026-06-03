@@ -1,20 +1,43 @@
-from .spatial.jump_lengths import jump_lengths
-from .spatial.radius_of_gyration import radius_of_gyration
-from .spatial.k_radius_of_gyration import k_radius_of_gyration
-from .spatial.number_of_visits import number_of_visits
-from .spatial.number_of_locations import number_of_locations
-from .spatial.maximum_distance import maximum_distance
-from .spatial.distance_straight_line import distance_straight_line
-from .spatial.waiting_times import waiting_times
-from .spatial.home_location import home_location
-from .spatial.max_distance_from_home import max_distance_from_home
-from .flows.od import od_matrix, od_metrics_per_area
-from .flows.random_location_entropy import random_location_entropy
-from .flows.uncorrelated_location_entropy import uncorrelated_location_entropy
-from .flows.visits_per_location import visits_per_location
-from .flows.homes_per_location import homes_per_location
-from .flows.visits_per_time_unit import visits_per_time_unit
-from .flows.mean_square_displacement import mean_square_displacement
+from .collective import (
+    homes_per_location,
+    mean_square_displacement,
+    od_matrix,
+    od_metrics_per_area,
+    random_location_entropy,
+    uncorrelated_location_entropy,
+    visits_per_location,
+    visits_per_time_unit,
+)
+from .evaluation import (
+    activity_distribution_jensen_shannon_divergence,
+    activity_transition_matrix_jensen_shannon_divergence,
+    column_distribution_jensen_shannon_divergence,
+    column_distribution_wasserstein_distance,
+    common_part_of_commuters,
+    common_part_of_commuters_distance,
+    common_part_of_links,
+    histogram_jensen_shannon_divergence,
+    information_gain,
+    jensen_shannon_divergence,
+    kullback_leibler_divergence,
+    matrix_jensen_shannon_divergence,
+    max_error,
+    motif_distribution_jensen_shannon_divergence,
+    mse,
+    nrmse,
+    od_matrix_common_part_of_commuters,
+    pearson_correlation,
+    profile_metric_wasserstein_distance,
+    r_squared,
+    radius_of_gyration_wasserstein_distance,
+    rmse,
+    spearman_correlation,
+    stvd_emd,
+    time_bin_matrix_jensen_shannon_divergence,
+    visits_per_user_jensen_shannon_divergence,
+    visits_per_user_wasserstein_distance,
+    wasserstein_distance,
+)
 from .fitting.mobility_laws import (
     bin_visitation_law_data,
     compute_visitation_law_data,
@@ -23,51 +46,36 @@ from .fitting.mobility_laws import (
     log_truncated_powerlaw,
     visitation_law_curve,
 )
-from .visits.activity import activity_transition_matrix
-from .visits.mobility_profiling import intermittance_and_degree_of_return, exploration_profiling
-from .visits.regularity import regularity
-from .visits.fast_diversity import fast_diversity
-from .visits.diversity import diversity
-from .visits.entropy import trajectory_entropy, trajectory_predictability
-from .visits.random_entropy import random_entropy
-from .visits.uncorrelated_entropy import uncorrelated_entropy
-from .visits.recency_rank import recency_rank
-from .visits.frequency_rank import frequency_rank
-from .visits.individual_mobility_network import individual_mobility_network
-from .visits.location_frequency import location_frequency
-from .visits.real_entropy import real_entropy
-from .visits.motifs import (
+from .individual import (
+    activity_transition_matrix,
+    daily_activity_distribution,
     discover_daily_motifs_from_agents,
-)
-from skmob2.comparison import (
-    stvd_emd,
-    common_part_of_commuters,
-    common_part_of_links,
-    common_part_of_commuters_distance,
-    r_squared,
-    mse,
-    rmse,
-    nrmse,
-    information_gain,
-    kullback_leibler_divergence,
-    pearson_correlation,
-    spearman_correlation,
-    max_error,
-    activity_distribution_jensen_shannon_divergence,
-    activity_transition_matrix_jensen_shannon_divergence,
-    column_distribution_jensen_shannon_divergence,
-    column_distribution_wasserstein_distance,
-    histogram_jensen_shannon_divergence,
-    jensen_shannon_divergence,
-    matrix_jensen_shannon_divergence,
-    motif_distribution_jensen_shannon_divergence,
-    od_matrix_common_part_of_commuters,
-    profile_metric_wasserstein_distance,
-    radius_of_gyration_wasserstein_distance,
-    time_bin_matrix_jensen_shannon_divergence,
-    visits_per_user_jensen_shannon_divergence,
-    visits_per_user_wasserstein_distance,
-    wasserstein_distance,
+    distance_straight_line,
+    diversity,
+    exploration_profiling,
+    fast_diversity,
+    frequency_rank,
+    home_location,
+    individual_mobility_network,
+    intermittance_and_degree_of_return,
+    jump_lengths,
+    k_radius_of_gyration,
+    location_frequency,
+    max_distance_from_home,
+    maximum_distance,
+    mean_area_volume,
+    number_of_locations,
+    number_of_visits,
+    radius_of_gyration,
+    random_entropy,
+    real_entropy,
+    recency_rank,
+    regularity,
+    trajectory_entropy,
+    trajectory_predictability,
+    uncorrelated_entropy,
+    visit_purpose_distribution,
+    waiting_times,
 )
 
 __all__ = [
@@ -81,6 +89,25 @@ __all__ = [
     "waiting_times",
     "home_location",
     "max_distance_from_home",
+    "random_entropy",
+    "uncorrelated_entropy",
+    "real_entropy",
+    "location_frequency",
+    "individual_mobility_network",
+    "recency_rank",
+    "frequency_rank",
+    "activity_transition_matrix",
+    "daily_activity_distribution",
+    "visit_purpose_distribution",
+    "intermittance_and_degree_of_return",
+    "exploration_profiling",
+    "regularity",
+    "fast_diversity",
+    "diversity",
+    "trajectory_entropy",
+    "trajectory_predictability",
+    "discover_daily_motifs_from_agents",
+    "mean_area_volume",
     "od_matrix",
     "od_metrics_per_area",
     "random_location_entropy",
@@ -95,22 +122,6 @@ __all__ = [
     "bin_visitation_law_data",
     "fit_visitation_law",
     "visitation_law_curve",
-    "activity_transition_matrix",
-    "intermittance_and_degree_of_return",
-    "exploration_profiling",
-    "regularity",
-    "fast_diversity",
-    "diversity",
-    "trajectory_entropy",
-    "trajectory_predictability",
-    "random_entropy",
-    "uncorrelated_entropy",
-    "recency_rank",
-    "frequency_rank",
-    "individual_mobility_network",
-    "location_frequency",
-    "real_entropy",
-    "discover_daily_motifs_from_agents",
     "stvd_emd",
     "common_part_of_commuters",
     "common_part_of_links",

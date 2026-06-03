@@ -73,7 +73,11 @@ def load_dataset(name, drop_columns=False, auth=None, show_progress=False):
     dataset = dataset_instance.prepare(full_path_files)
 
     if isinstance(dataset, TrajDataFrame) and drop_columns:
-        dataset = dataset[["uid", "lat", "lng", "datetime"]]
+        dataset = TrajDataFrame(
+            dataset.df[["uid", "lat", "lng", "datetime"]],
+            crs=getattr(dataset, "crs", None),
+            parameters=getattr(dataset, "parameters", None),
+        )
 
     if isinstance(dataset, (TrajDataFrame, FlowDataFrame, pd.DataFrame)):
         dataset._info = dataset_info

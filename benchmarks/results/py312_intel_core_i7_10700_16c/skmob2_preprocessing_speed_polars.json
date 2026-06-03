@@ -1,0 +1,72 @@
+{
+  "metadata": {
+    "backend": "polars",
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "polars.DataFrame",
+    "iterations": 5,
+    "library": "skmob2",
+    "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "repeat_dataset": 1,
+    "retries": 0,
+    "sizes": [
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "preprocessing",
+    "timestamp_utc": "2026-06-03T11:25:50.123942+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "label": "4M",
+      "metrics": {
+        "compress": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "the name '' passed to `LazyFrame.with_columns` is duplicate\n\nIt's possible that multiple expressions are returning the same default column name. If this is the case, try renaming the columns with `.alias(\"new_name\")` to avoid duplicate column names.",
+          "status": "error",
+          "times_seconds": []
+        },
+        "filter": {
+          "average_seconds": 0.18445765585638582,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.18041159212589264,
+          "status": "ok",
+          "times_seconds": [
+            0.1884540910832584,
+            0.18142661196179688,
+            0.1896234650630504,
+            0.18041159212589264,
+            0.18237251904793084
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.2543207682669163,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.2457022771704942,
+          "status": "ok",
+          "times_seconds": [
+            0.27277496410533786,
+            0.250248878961429,
+            0.2457022771704942,
+            0.250846449052915,
+            0.25203127204440534
+          ]
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}

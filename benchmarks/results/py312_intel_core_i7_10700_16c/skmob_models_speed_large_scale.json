@@ -1,0 +1,339 @@
+{
+  "metadata": {
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 3,
+    "library": "skmob",
+    "n_agents": null,
+    "n_locations": null,
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
+    "sleep_seconds": 0.5,
+    "suite": "models_large_scale",
+    "timestamp_utc": "2026-05-31T20:36:27.677970+00:00"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "locations": 1000,
+      "metrics": {
+        "density_epr_1000a": {
+          "average_seconds": 34.67010032067386,
+          "iterations_completed": 3,
+          "minimum_seconds": 33.84152796398848,
+          "status": "ok",
+          "times_seconds": [
+            33.84152796398848,
+            35.06431899708696,
+            35.104454000946134
+          ]
+        },
+        "epr_10000a": {
+          "average_seconds": 345.786258693086,
+          "iterations_completed": 3,
+          "minimum_seconds": 343.81153061403893,
+          "status": "ok",
+          "times_seconds": [
+            347.65484736906365,
+            343.81153061403893,
+            345.8923980961554
+          ]
+        },
+        "epr_1000a": {
+          "average_seconds": 35.175816981044285,
+          "iterations_completed": 3,
+          "minimum_seconds": 34.85965187009424,
+          "status": "ok",
+          "times_seconds": [
+            34.85965187009424,
+            35.448003825964406,
+            35.21979524707422
+          ]
+        },
+        "epr_100a": {
+          "average_seconds": 3.9442849173986665,
+          "iterations_completed": 3,
+          "minimum_seconds": 3.9067050490994006,
+          "status": "ok",
+          "times_seconds": [
+            3.9067050490994006,
+            3.9476008689962327,
+            3.9785488341003656
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.19138558596993485,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.19107652897946537,
+          "status": "ok",
+          "times_seconds": [
+            0.19138464983552694,
+            0.19107652897946537,
+            0.19169557909481227
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.04212229799789687,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.04198666103184223,
+          "status": "ok",
+          "times_seconds": [
+            0.0422491489443928,
+            0.04213108401745558,
+            0.04198666103184223
+          ]
+        },
+        "spatial_epr_1000a": {
+          "average_seconds": 35.04812585096806,
+          "iterations_completed": 3,
+          "minimum_seconds": 35.013822574866936,
+          "status": "ok",
+          "times_seconds": [
+            35.03621608414687,
+            35.09433889389038,
+            35.013822574866936
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 1.9052007267406832,
+          "iterations_completed": 3,
+          "minimum_seconds": 1.896481027128175,
+          "status": "ok",
+          "times_seconds": [
+            1.9049933680798858,
+            1.9141277850139886,
+            1.896481027128175
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 0.7000578470372906,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.6976159201003611,
+          "status": "ok",
+          "times_seconds": [
+            0.7033077280502766,
+            0.6992498929612339,
+            0.6976159201003611
+          ]
+        }
+      },
+      "size": 1000
+    },
+    {
+      "label": "5k",
+      "locations": 5000,
+      "metrics": {
+        "density_epr_1000a": {
+          "average_seconds": 77.354968994235,
+          "iterations_completed": 3,
+          "minimum_seconds": 76.7710997138638,
+          "status": "ok",
+          "times_seconds": [
+            76.7710997138638,
+            78.1495604799129,
+            77.14424678892829
+          ]
+        },
+        "epr_10000a": {
+          "average_seconds": 613.644650046636,
+          "iterations_completed": 3,
+          "minimum_seconds": 609.6347411759198,
+          "status": "ok",
+          "times_seconds": [
+            618.5831526149996,
+            609.6347411759198,
+            612.7160563489888
+          ]
+        },
+        "epr_1000a": {
+          "average_seconds": 76.48635847664748,
+          "iterations_completed": 3,
+          "minimum_seconds": 76.07128845201805,
+          "status": "ok",
+          "times_seconds": [
+            76.65825809398666,
+            76.72952888393775,
+            76.07128845201805
+          ]
+        },
+        "epr_100a": {
+          "average_seconds": 10.353919224115089,
+          "iterations_completed": 3,
+          "minimum_seconds": 10.334547319216654,
+          "status": "ok",
+          "times_seconds": [
+            10.334547319216654,
+            10.347301837988198,
+            10.379908515140414
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.36328797531314194,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.36240664799697697,
+          "status": "ok",
+          "times_seconds": [
+            0.36380849103443325,
+            0.3636487869080156,
+            0.36240664799697697
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.13336432329379022,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.1330756910610944,
+          "status": "ok",
+          "times_seconds": [
+            0.1330756910610944,
+            0.13315025088377297,
+            0.1338670279365033
+          ]
+        },
+        "spatial_epr_1000a": {
+          "average_seconds": 78.40660823462531,
+          "iterations_completed": 3,
+          "minimum_seconds": 78.11702412785962,
+          "status": "ok",
+          "times_seconds": [
+            78.50236112298444,
+            78.11702412785962,
+            78.60043945303187
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 3.0394299260806292,
+          "iterations_completed": 3,
+          "minimum_seconds": 3.0276508149690926,
+          "status": "ok",
+          "times_seconds": [
+            3.037187202135101,
+            3.053451761137694,
+            3.0276508149690926
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 0.9946641953041157,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.9901507829781622,
+          "status": "ok",
+          "times_seconds": [
+            0.9901507829781622,
+            0.9990993209648877,
+            0.9947424819692969
+          ]
+        }
+      },
+      "size": 5000
+    },
+    {
+      "label": "10k",
+      "locations": 10000,
+      "metrics": {
+        "density_epr_1000a": {
+          "average_seconds": 144.67236162799722,
+          "iterations_completed": 3,
+          "minimum_seconds": 143.6435161929112,
+          "status": "ok",
+          "times_seconds": [
+            146.09498024103232,
+            144.27858845004812,
+            143.6435161929112
+          ]
+        },
+        "epr_10000a": {
+          "average_seconds": 967.0477299583144,
+          "iterations_completed": 3,
+          "minimum_seconds": 963.7780110021122,
+          "status": "ok",
+          "times_seconds": [
+            971.7542500679847,
+            963.7780110021122,
+            965.6109288048465
+          ]
+        },
+        "epr_1000a": {
+          "average_seconds": 146.04385322433276,
+          "iterations_completed": 3,
+          "minimum_seconds": 144.98079115501605,
+          "status": "ok",
+          "times_seconds": [
+            144.98079115501605,
+            145.2776223339606,
+            147.8731461840216
+          ]
+        },
+        "epr_100a": {
+          "average_seconds": 18.655340839565422,
+          "iterations_completed": 3,
+          "minimum_seconds": 18.629953848896548,
+          "status": "ok",
+          "times_seconds": [
+            18.630671086953953,
+            18.629953848896548,
+            18.705397582845762
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.5537148360162973,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.5527186261024326,
+          "status": "ok",
+          "times_seconds": [
+            0.5548317618668079,
+            0.5535941200796515,
+            0.5527186261024326
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.2408197617623955,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.2403883661609143,
+          "status": "ok",
+          "times_seconds": [
+            0.2403883661609143,
+            0.24123348016291857,
+            0.24083743896335363
+          ]
+        },
+        "spatial_epr_1000a": {
+          "average_seconds": 149.70536712300964,
+          "iterations_completed": 3,
+          "minimum_seconds": 148.70415945188142,
+          "status": "ok",
+          "times_seconds": [
+            148.70415945188142,
+            151.3208976869937,
+            149.09104423015378
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 4.349496348993853,
+          "iterations_completed": 3,
+          "minimum_seconds": 4.34027792699635,
+          "status": "ok",
+          "times_seconds": [
+            4.34027792699635,
+            4.358515592990443,
+            4.349695526994765
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 1.2556422313985725,
+          "iterations_completed": 3,
+          "minimum_seconds": 1.2547415471635759,
+          "status": "ok",
+          "times_seconds": [
+            1.2547415471635759,
+            1.255367340054363,
+            1.2568178069777787
+          ]
+        }
+      },
+      "size": 10000
+    }
+  ]
+}

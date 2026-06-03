@@ -1,0 +1,130 @@
+{
+  "metadata": {
+    "backend": null,
+    "dataset_path": "/home/gustavo/skmob2/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/privacy_privacy_toy.csv_pandas_repeat1_sorted.parquet",
+    "input_cache_status": "reused",
+    "input_order": "sorted",
+    "input_type": "skmob.TrajDataFrame",
+    "iterations": 5,
+    "library": "skmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "repeat_factor": 1,
+    "sleep_seconds": 0.5,
+    "suite": "privacy",
+    "timestamp_utc": "2026-05-22T17:58:42.050728+00:00",
+    "timing_mode": "prebuilt_tdf"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 0.1039527680259198,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.09236145799513906,
+          "status": "ok",
+          "times_seconds": [
+            0.10478687903378159,
+            0.09236145799513906,
+            0.11013192601967603,
+            0.10534966306295246,
+            0.10713391401804984
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 0.34825154116842894,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.34695628995541483,
+          "status": "ok",
+          "times_seconds": [
+            0.35031621193047613,
+            0.3473313630092889,
+            0.3489967519417405,
+            0.34695628995541483,
+            0.3476570890052244
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 0.9667262431932613,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.9607006900478154,
+          "status": "ok",
+          "times_seconds": [
+            0.9743347279727459,
+            0.9654800599673763,
+            0.9695176499662921,
+            0.9635980880120769,
+            0.9607006900478154
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 0.22773314758669586,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.22341444890480489,
+          "status": "ok",
+          "times_seconds": [
+            0.2288202210329473,
+            0.22341444890480489,
+            0.2360778630245477,
+            0.22523927898146212,
+            0.22511392598971725
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 0.37738720278721305,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.37528651393949986,
+          "status": "ok",
+          "times_seconds": [
+            0.3787872410612181,
+            0.37528651393949986,
+            0.37804347195196897,
+            0.3766308129997924,
+            0.37818797398358583
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 0.1944833975750953,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.18512420693878084,
+          "status": "ok",
+          "times_seconds": [
+            0.18569969793315977,
+            0.1861315539572388,
+            0.18512420693878084,
+            0.1859938979614526,
+            0.22946763108484447
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 0.36999818941112605,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.3637016350403428,
+          "status": "ok",
+          "times_seconds": [
+            0.3645451779011637,
+            0.36542542499955744,
+            0.3637016350403428,
+            0.3644097871147096,
+            0.39190892199985683
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 0.29061234698165206,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.2846401239512488,
+          "status": "ok",
+          "times_seconds": [
+            0.28726549993734807,
+            0.2916387520963326,
+            0.3021254879422486,
+            0.2873918709810823,
+            0.2846401239512488
+          ]
+        }
+      },
+      "rows": 23
+    }
+  ]
+}

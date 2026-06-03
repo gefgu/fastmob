@@ -7,6 +7,8 @@ import narwhals as nw
 import numpy as np
 import pandas as pd
 
+from skmob2.core import FlowDataFrame, TrajDataFrame
+
 LATITUDE = "lat"
 LONGITUDE = "lng"
 DATETIME = "datetime"
@@ -24,6 +26,8 @@ EARTH_RADIUS_KM = 6371.01
 
 def to_pandas_frame(df: Any) -> pd.DataFrame:
     """Return a pandas DataFrame copy for pandas, GeoPandas, or Narwhals inputs."""
+    if isinstance(df, (FlowDataFrame, TrajDataFrame)):
+        df = df.df
     if isinstance(df, pd.DataFrame):
         return df.copy()
     try:
@@ -63,61 +67,23 @@ def tessellation_lat_lngs(spatial_tessellation: Any) -> np.ndarray:
     raise ValueError("spatial_tessellation must include a geometry column or latitude/longitude columns.")
 
 
-class FlowDataFrame(pd.DataFrame):
-    _metadata = ["tessellation", "tile_id"]
-
-    @property
-    def _constructor(self):
-        return FlowDataFrame
-
-    def to_matrix(self):
-        if self.empty:
-            return np.zeros((0, 0))
-        if getattr(self, "tessellation", None) is not None and getattr(self, "tile_id", None) in self.tessellation:
-            tile_ids = list(self.tessellation[self.tile_id].values)
-        else:
-            tile_ids = sorted(set(self[ORIGIN].tolist()) | set(self[DESTINATION].tolist()))
-        index = {tile_id: i for i, tile_id in enumerate(tile_ids)}
-        matrix = np.zeros((len(tile_ids), len(tile_ids)), dtype=float)
-        for _, row in self.iterrows():
-            matrix[index[row[ORIGIN]], index[row[DESTINATION]]] = row[FLOW]
-        return matrix
-
-
 def flow_dataframe(
     rows: list[list[Any]],
     columns: tuple[str, str, str] = (ORIGIN, DESTINATION, FLOW),
     *,
     tessellation: Any | None = None,
     tile_id: str = TILE_ID,
-) -> pd.DataFrame:
-    df = FlowDataFrame(rows, columns=list(columns))
-    df.tessellation = tessellation
-    df.tile_id = tile_id
-    return df
+) -> FlowDataFrame:
+    return FlowDataFrame(rows, columns=list(columns), tessellation=tessellation, tile_id=tile_id)
 
 
-class TrajDataFrame(pd.DataFrame):
-    _metadata = ["parameters"]
-
-    @property
-    def _constructor(self):
-        return TrajDataFrame
-
-    def sort_by_uid_and_datetime(self):
-        return self.sort_values([UID, DATETIME]).reset_index(drop=True)
-
-
-def trajectory_dataframe(rows: list[tuple[Any, float, float, Any]], parameters: dict | None = None) -> pd.DataFrame:
+def trajectory_dataframe(rows: list[tuple[Any, float, float, Any]], parameters: dict | None = None) -> TrajDataFrame:
     df = pd.DataFrame(rows, columns=[UID, LATITUDE, LONGITUDE, DATETIME])
     if df.empty:
-        out = TrajDataFrame(columns=[UID, DATETIME, LATITUDE, LONGITUDE])
+        frame = pd.DataFrame(columns=[UID, DATETIME, LATITUDE, LONGITUDE])
     else:
-        out = TrajDataFrame(
-            df.sort_values([UID, DATETIME]).reset_index(drop=True)[[UID, DATETIME, LATITUDE, LONGITUDE]]
-        )
-    out.parameters = parameters
-    return out
+        frame = df.sort_values([UID, DATETIME]).reset_index(drop=True)[[UID, DATETIME, LATITUDE, LONGITUDE]]
+    return TrajDataFrame(frame, parameters=parameters)
 
 
 def require_optional(module_name: str, extra: str = "generation"):

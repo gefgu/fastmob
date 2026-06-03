@@ -12,7 +12,7 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-MAIN_VENV="$REPO_ROOT/.venv"
+MAIN_VENV="${SKMOB2_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
 SKMOB_VENV="$REPO_ROOT/.venv-skmob"
 MOVINGPANDAS_VENV="${MOVINGPANDAS_VENV:-$MAIN_VENV}"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -21,7 +21,8 @@ SKMOB_TIMING_MODES=("prebuilt_tdf" "workflow_tdf")
 FAILURES=()
 
 if [ ! -f "$MAIN_VENV/bin/activate" ]; then
-    echo "ERROR: virtual environment not found. Run 'bash scripts/setup_env.sh' first."
+    echo "ERROR: Python 3.12 benchmark environment not found at ${MAIN_VENV#$REPO_ROOT/}."
+    echo "       Run 'bash scripts/setup_env.sh --python 3.12 --venv .venv-py312' first."
     exit 1
 fi
 
@@ -44,7 +45,7 @@ detect_env_slug() {
     local venv="$1"
     run_python "$venv" - <<'PYEOF'
 import sys
-sys.path.insert(0, "tests/benchmarks")
+sys.path.insert(0, "benchmarks")
 from benchmark_env import detect_cpu_info, build_env_slug
 print(build_env_slug(detect_cpu_info()))
 PYEOF
@@ -71,44 +72,59 @@ run_job() {
 }
 
 ENV_SLUG="$(detect_env_slug "$MAIN_VENV" 2>/dev/null || echo "unknown_env")"
-OUTPUT_DIR="$REPO_ROOT/tests/benchmarks/results/${ENV_SLUG}"
+OUTPUT_DIR="$REPO_ROOT/benchmarks/results/${ENV_SLUG}"
 LOG_DIR="$OUTPUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 echo "==> Environment: ${ENV_SLUG}"
 echo "==> Results dir: ${OUTPUT_DIR#$REPO_ROOT/}"
 
-echo "==> Building skmob2._core in .venv ..."
-run_job "build_skmob2_core" "$MAIN_VENV" -m maturin develop
+echo "==> Building skmob2._core in ${MAIN_VENV#$REPO_ROOT/} ..."
+run_job "build_skmob2_core" "$MAIN_VENV" -m maturin develop --uv
 
 echo
-echo "==> Running skmob2 pandas/Polars benchmark suites in .venv ..."
+echo "==> Running skmob2 pandas/Polars benchmark suites in ${MAIN_VENV#$REPO_ROOT/} ..."
 for profile in "${PROFILES[@]}"; do
-    run_job "skmob2_spatial_${profile}_both" \
+    run_job "skmob2_individual_${profile}_both" \
         "$MAIN_VENV" \
-        tests/benchmarks/speed_spatial_suite.py \
+        benchmarks/individual/speed_suite.py \
         "$@" \
         --library skmob2 \
         --backend both \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
-    run_job "skmob2_visits_${profile}_both" \
+    run_job "skmob2_collective_${profile}_both" \
         "$MAIN_VENV" \
-        tests/benchmarks/speed_visits_suite.py \
+        benchmarks/collective/speed_suite.py \
         "$@" \
         --library skmob2 \
+        --backend both \
+        --profile "$profile" \
+        --output-dir "$OUTPUT_DIR"
+    run_job "skmob2_preprocessing_${profile}_both" \
+        "$MAIN_VENV" \
+        benchmarks/preprocessing/speed_suite.py \
+        "$@" \
+        --library skmob2 \
+        --backend both \
+        --profile "$profile" \
+        --output-dir "$OUTPUT_DIR"
+    run_job "skmob2_evaluation_${profile}_both" \
+        "$MAIN_VENV" \
+        benchmarks/evaluation/speed_suite.py \
+        "$@" \
         --backend both \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
     run_job "skmob2_models_${profile}" \
         "$MAIN_VENV" \
-        tests/benchmarks/speed_models_suite.py \
+        benchmarks/models/speed_suite.py \
         "$@" \
         --library skmob2 \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
     run_job "skmob2_models_large_scale_${profile}" \
         "$MAIN_VENV" \
-        tests/benchmarks/speed_models_large_scale.py \
+        benchmarks/speed_models_large_scale.py \
         "$@" \
         --library skmob2 \
         --mode trajectory \
@@ -116,7 +132,7 @@ for profile in "${PROFILES[@]}"; do
         --output-dir "$OUTPUT_DIR"
     run_job "skmob2_models_location_large_scale_${profile}" \
         "$MAIN_VENV" \
-        tests/benchmarks/speed_models_large_scale.py \
+        benchmarks/speed_models_large_scale.py \
         "$@" \
         --library skmob2 \
         --mode location \
@@ -124,30 +140,41 @@ for profile in "${PROFILES[@]}"; do
         --output-dir "$OUTPUT_DIR"
 done
 
-run_job "skmob2_privacy_both" \
-    "$MAIN_VENV" \
-    tests/benchmarks/speed_privacy_suite.py \
-    --library skmob2 \
-    --backend both \
-    --input-order both \
-    --output-dir "$OUTPUT_DIR"
+for profile in "${PROFILES[@]}"; do
+    run_job "skmob2_privacy_${profile}_both" \
+        "$MAIN_VENV" \
+        benchmarks/privacy/speed_suite.py \
+        --library skmob2 \
+        --backend both \
+        --profile "$profile" \
+        --input-order both \
+        --output-dir "$OUTPUT_DIR"
+done
 
 if [ -x "$SKMOB_VENV/bin/python" ]; then
     echo
     echo "==> Running original skmob benchmark suites in .venv-skmob ..."
     for profile in "${PROFILES[@]}"; do
         for timing_mode in "${SKMOB_TIMING_MODES[@]}"; do
-            run_job "skmob_spatial_${profile}_${timing_mode}" \
+            run_job "skmob_individual_${profile}_${timing_mode}" \
                 "$SKMOB_VENV" \
-                tests/benchmarks/speed_spatial_suite.py \
+                benchmarks/individual/speed_suite.py \
                 "$@" \
                 --library skmob \
                 --profile "$profile" \
                 --timing-mode "$timing_mode" \
                 --output-dir "$OUTPUT_DIR"
-            run_job "skmob_visits_${profile}_${timing_mode}" \
+            run_job "skmob_collective_${profile}_${timing_mode}" \
                 "$SKMOB_VENV" \
-                tests/benchmarks/speed_visits_suite.py \
+                benchmarks/collective/speed_suite.py \
+                "$@" \
+                --library skmob \
+                --profile "$profile" \
+                --timing-mode "$timing_mode" \
+                --output-dir "$OUTPUT_DIR"
+            run_job "skmob_preprocessing_${profile}_${timing_mode}" \
+                "$SKMOB_VENV" \
+                benchmarks/preprocessing/speed_suite.py \
                 "$@" \
                 --library skmob \
                 --profile "$profile" \
@@ -156,14 +183,14 @@ if [ -x "$SKMOB_VENV/bin/python" ]; then
         done
         run_job "skmob_models_${profile}" \
             "$SKMOB_VENV" \
-            tests/benchmarks/speed_models_suite.py \
+            benchmarks/models/speed_suite.py \
             "$@" \
             --library skmob \
             --profile "$profile" \
             --output-dir "$OUTPUT_DIR"
         run_job "skmob_models_large_scale_${profile}" \
             "$SKMOB_VENV" \
-            tests/benchmarks/speed_models_large_scale.py \
+            benchmarks/speed_models_large_scale.py \
             "$@" \
             --library skmob \
             --mode trajectory \
@@ -171,7 +198,7 @@ if [ -x "$SKMOB_VENV/bin/python" ]; then
             --output-dir "$OUTPUT_DIR"
         run_job "skmob_models_location_large_scale_${profile}" \
             "$SKMOB_VENV" \
-            tests/benchmarks/speed_models_large_scale.py \
+            benchmarks/speed_models_large_scale.py \
             "$@" \
             --library skmob \
             --mode location \
@@ -179,13 +206,16 @@ if [ -x "$SKMOB_VENV/bin/python" ]; then
             --output-dir "$OUTPUT_DIR"
     done
     for timing_mode in "${SKMOB_TIMING_MODES[@]}"; do
-        run_job "skmob_privacy_${timing_mode}" \
-            "$SKMOB_VENV" \
-            tests/benchmarks/speed_privacy_suite.py \
-            --library skmob \
-            --timing-mode "$timing_mode" \
-            --input-order both \
-            --output-dir "$OUTPUT_DIR"
+        for profile in "${PROFILES[@]}"; do
+            run_job "skmob_privacy_${profile}_${timing_mode}" \
+                "$SKMOB_VENV" \
+                benchmarks/privacy/speed_suite.py \
+                --library skmob \
+                --profile "$profile" \
+                --timing-mode "$timing_mode" \
+                --input-order both \
+                --output-dir "$OUTPUT_DIR"
+        done
     done
 else
     echo "WARNING: .venv-skmob not found; skipping skmob comparison benchmarks."
@@ -197,16 +227,16 @@ if [ -x "$MOVINGPANDAS_VENV/bin/python" ] && can_import "$MOVINGPANDAS_VENV" mov
     echo
     echo "==> Running MovingPandas benchmark suites in ${label} ..."
     for profile in "${PROFILES[@]}"; do
-        run_job "movingpandas_spatial_${profile}" \
+        run_job "movingpandas_individual_${profile}" \
             "$MOVINGPANDAS_VENV" \
-            tests/benchmarks/speed_spatial_suite.py \
+            benchmarks/individual/speed_suite.py \
             "$@" \
             --library movingpandas \
             --profile "$profile" \
             --output-dir "$OUTPUT_DIR"
-        run_job "movingpandas_visits_${profile}" \
+        run_job "movingpandas_preprocessing_${profile}" \
             "$MOVINGPANDAS_VENV" \
-            tests/benchmarks/speed_visits_suite.py \
+            benchmarks/preprocessing/speed_suite.py \
             "$@" \
             --library movingpandas \
             --profile "$profile" \

@@ -1,0 +1,15 @@
+pub mod entropy;
+pub mod home_location;
+pub mod jump_lengths;
+pub mod k_radius_of_gyration;
+pub mod location_frequency;
+pub mod max_distance_from_point;
+pub mod maximum_distance;
+pub mod motifs;
+pub mod radius_of_gyration;
+pub mod recency_rank;
+pub mod spatial_counts;
+pub mod time_ordering;
+pub mod total_distance;
+pub mod uncorrelated_entropy;
+pub mod waiting_times;

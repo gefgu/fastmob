@@ -1,0 +1,23 @@
+[package]
+name = "skmob2-core"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "skmob2_core"
+crate-type = ["lib"]
+
+[dependencies]
+geo = "0.32.0"
+rayon = "1.12"
+wass = "0.2.0"
+ndarray = "0.16"
+ndarray015 = { package = "ndarray", version = "0.15" }
+rand = "0.8"
+rand_xoshiro = "0.6"
+moka = { version = "0.12.15", default-features = false, features = ["sync"] }
+linfa = "0.7"
+linfa-clustering = "0.7"
+linfa-nn = "0.7.1"
+numkong = "7.6.0"
+rustc-hash = "2.1.1"
