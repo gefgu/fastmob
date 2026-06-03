@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import time
 from typing import Any
 
 import narwhals as nw
@@ -17,8 +15,8 @@ from ..measures._common import (
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
-    _is_polars_backed,
     _prepare_trajectory,
+    _use_arrow_kernel_path,
 )
 
 
@@ -103,7 +101,6 @@ def filter(
     - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), <a href="https://dl.acm.org/citation.cfm?id=2743025">https://dl.acm.org/citation.cfm?id=2743025</a>
 
     """
-    start = time.perf_counter()
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -112,7 +109,7 @@ def filter(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    use_arrow = _is_polars_backed(df)
+    use_arrow = _use_arrow_kernel_path(df)
     df = _prepare_trajectory(
         df,
         datetime_col=datetime_col,
@@ -157,7 +154,6 @@ def filter(
                 config,
             )
     else:
-        sort_start = time.perf_counter()
         _, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
             df,
             uid_col,
@@ -165,7 +161,6 @@ def filter(
             timestamps=timestamps_s,
             use_arrow=use_arrow,
         )
-        print(f"Sorting time: {time.perf_counter() - sort_start:.2f} seconds")
 
         if use_arrow:
             keep_mask = _arrow_result_values(
@@ -189,8 +184,6 @@ def filter(
                 ends,
                 config,
             )
-
-    print(f"Total Python time: {time.perf_counter() - start:.2f} seconds")
 
     native_df = df.to_native()
     if hasattr(native_df, "iloc") and hasattr(native_df, "dtypes"):

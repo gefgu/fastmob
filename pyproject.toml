@@ -27,12 +27,14 @@ data = ["geopandas", "shapely", "pyproj", "requests"]
 tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
 dev = [
     "pre-commit",
+    "maturin>=1.13,<2.0",
     "pytest",
     "pytest-cov",
     "pyarrow",
     "polars",
     "ruff",
     "scalene",
+    "memray",
     "scikit-learn>=1.3.2",
     "tqdm",
     "scipy",

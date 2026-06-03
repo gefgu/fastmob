@@ -77,10 +77,37 @@ def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str 
     return None
 
 
+def is_arrow_backed(nw_df: nw.DataFrame) -> bool:
+    """Return True when a Narwhals DataFrame is backed by an Arrow object."""
+    native = nw_df.to_native()
+    return hasattr(native, "to_arrow") and hasattr(native, "dtypes")
+
+
 def _is_polars_backed(nw_df: nw.DataFrame) -> bool:
     """Return True when a Narwhals DataFrame is backed by a Polars object."""
+    implementation = getattr(nw_df, "implementation", None)
+    if implementation is not None and hasattr(implementation, "is_polars"):
+        return bool(implementation.is_polars())
+
     native = nw_df.to_native()
     return hasattr(native, "lazy")
+
+
+def _use_arrow_kernel_path(nw_df: nw.DataFrame) -> bool:
+    """Return True when Rust kernels should consume Arrow buffers directly.
+
+    Pandas-backed Narwhals series expose ``to_arrow()``, but that converts
+    pandas/NumPy storage into Arrow buffers and can add large temporary
+    allocations.  Use Arrow kernels only for backends whose native storage is
+    already Arrow-oriented.
+    """
+    implementation = getattr(nw_df, "implementation", None)
+    if implementation is not None:
+        if hasattr(implementation, "is_polars") and implementation.is_polars():
+            return True
+        if hasattr(implementation, "is_pyarrow") and implementation.is_pyarrow():
+            return True
+    return False
 
 
 def _is_pandas_backed(nw_df: nw.DataFrame) -> bool:

@@ -7,6 +7,32 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
+# backend kernel dispatch
+# ---------------------------------------------------------------------------
+
+
+class TestBackendKernelDispatch:
+    def test_pandas_uses_numpy_kernel_path(self):
+        import narwhals as nw
+        from skmob2.measures._common import _use_arrow_kernel_path
+
+        df = pd.DataFrame({"lat": [1.0], "lng": [2.0]})
+        nw_df = nw.from_native(df, eager_only=True)
+
+        assert _use_arrow_kernel_path(nw_df) is False
+
+    def test_polars_uses_arrow_kernel_path(self):
+        pl = pytest.importorskip("polars", reason="Polars not installed")
+        import narwhals as nw
+        from skmob2.measures._common import _use_arrow_kernel_path
+
+        df = pl.DataFrame({"lat": [1.0], "lng": [2.0]})
+        nw_df = nw.from_native(df, eager_only=True)
+
+        assert _use_arrow_kernel_path(nw_df) is True
+
+
+# ---------------------------------------------------------------------------
 # _pick_existing_column
 # ---------------------------------------------------------------------------
 
