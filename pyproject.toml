@@ -80,3 +80,4 @@ extend-exclude = ["benchmarks/*.ipynb"]
 [tool.maturin]
 module-name = "skmob2._core"
 python-source = "."
+manifest-path = "skmob2-py/Cargo.toml"

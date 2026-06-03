@@ -1392,10 +1392,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
 
 [[package]]
-name = "skmob2"
+name = "skmob2-core"
 version = "0.1.0"
 dependencies = [
- "arrow-array",
  "geo",
  "linfa",
  "linfa-clustering",
@@ -1404,14 +1403,22 @@ dependencies = [
  "ndarray 0.15.6",
  "ndarray 0.16.1",
  "numkong",
- "numpy",
- "pyo3",
- "pyo3-arrow",
  "rand 0.8.5",
  "rand_xoshiro",
  "rayon",
  "rustc-hash",
  "wass",
+]
+
+[[package]]
+name = "skmob2-py"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "numpy",
+ "pyo3",
+ "pyo3-arrow",
+ "skmob2-core",
 ]
 
 [[package]]

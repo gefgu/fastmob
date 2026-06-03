@@ -1,0 +1,15 @@
+[package]
+name = "skmob2-py"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "skmob2"
+crate-type = ["cdylib"]
+
+[dependencies]
+skmob2-core = { path = "../skmob2-core" }
+pyo3 = "0.28.2"
+numpy = "0.28.0"
+pyo3-arrow = "0.17.0"
+arrow-array = "58.1.0"
