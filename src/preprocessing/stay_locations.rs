@@ -228,5 +228,11 @@ fn flatten_stops(per_user_stops: Vec<Vec<Stop>>) -> StayLocationsBatchResult {
         }
     }
 
-    (out_lats, out_lngs, entry_times, leaving_times, user_range_idx)
+    (
+        out_lats,
+        out_lngs,
+        entry_times,
+        leaving_times,
+        user_range_idx,
+    )
 }

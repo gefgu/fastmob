@@ -8,4 +8,4 @@ NK_TARGET_SIERRA = { value = "0", force = false }
 
 
 [build]
-rustflags = ["-C", "force-frame-pointers=yes", "-C", "symbol-mangling-version=v0"]
+# rustflags = ["-C", "force-frame-pointers=yes", "-C", "symbol-mangling-version=v0"]

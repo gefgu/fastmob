@@ -1,3 +1,5 @@
+#![warn(clippy::disallowed_types)]
+
 mod measures;
 mod models;
 mod preprocessing;
@@ -351,7 +353,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(wasserstein::wasserstein_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(wasserstein::wasserstein_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(clustering::cluster_dbscan_haversine, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     m.add_function(wrap_pyfunction!(

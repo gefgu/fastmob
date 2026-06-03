@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -31,20 +33,21 @@ pub(crate) fn filter_trajectory_numpy<'py>(
     ranges: Vec<(usize, usize)>,
     config: FilterConfig,
 ) -> PyResult<Bound<'py, PyArray1<bool>>> {
-    Ok(PyArray1::from_vec(
-        py,
-        filter_trajectory_impl(
-            latitudes.as_slice()?,
-            longitudes.as_slice()?,
-            timestamps_s.as_slice()?,
-            &ranges,
-            &config,
-        ),
-    ))
+    // 1. Extract raw Rust slices while we hold the GIL
+    let lats = latitudes.as_slice()?;
+    let lngs = longitudes.as_slice()?;
+    let times = timestamps_s.as_slice()?;
+
+    // 2. Release the GIL and blast all CPU cores
+    let keep_mask = py.detach(|| filter_trajectory_impl(lats, lngs, times, &ranges, &config));
+
+    // 3. Convert back to Python (GIL is automatically re-acquired here)
+    Ok(PyArray1::from_vec(py, keep_mask))
 }
 
 #[pyfunction]
 pub(crate) fn filter_trajectory_arrow(
+    py: Python<'_>, // <-- Added the Python token here
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
@@ -54,13 +57,15 @@ pub(crate) fn filter_trajectory_arrow(
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
-    Ok(bool_results_into_arrow(filter_trajectory_impl(
-        arrow_values(&latitudes),
-        arrow_values(&longitudes),
-        arrow_values(&timestamps_s),
-        &ranges,
-        &config,
-    )))
+
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let times = arrow_values(&timestamps_s);
+
+    // Release the GIL
+    let keep_mask = py.detach(|| filter_trajectory_impl(lats, lngs, times, &ranges, &config));
+
+    Ok(bool_results_into_arrow(keep_mask))
 }
 
 #[pyfunction]
@@ -75,29 +80,35 @@ pub(crate) fn filter_trajectory_indexed_numpy<'py>(
     ends: PyReadonlyArray1<'py, usize>,
     config: FilterConfig,
 ) -> PyResult<Bound<'py, PyArray1<bool>>> {
-    let ranges: Vec<(usize, usize)> = starts
-        .as_slice()?
+    let start = Instant::now();
+    let lats = latitudes.as_slice()?;
+    let lngs = longitudes.as_slice()?;
+    let times = timestamps_s.as_slice()?;
+    let indices = sorted_indices.as_slice()?;
+    let starts_slice = starts.as_slice()?;
+    let ends_slice = ends.as_slice()?;
+
+    let ranges: Vec<(usize, usize)> = starts_slice
         .iter()
         .copied()
-        .zip(ends.as_slice()?.iter().copied())
+        .zip(ends_slice.iter().copied())
         .collect();
 
-    Ok(PyArray1::from_vec(
-        py,
-        filter_trajectory_indexed_impl(
-            latitudes.as_slice()?,
-            longitudes.as_slice()?,
-            timestamps_s.as_slice()?,
-            sorted_indices.as_slice()?,
-            &ranges,
-            &config,
-        ),
-    ))
+    // Release the GIL
+    let keep_mask =
+        py.detach(|| filter_trajectory_indexed_impl(lats, lngs, times, indices, &ranges, &config));
+
+    // let keep_mask = filter_trajectory_indexed_impl(lats, lngs, times, indices, &ranges, &config);
+
+    println!("Total RUST time: {:.2?}", start.elapsed());
+
+    Ok(PyArray1::from_vec(py, keep_mask))
 }
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn filter_trajectory_indexed_arrow(
+    py: Python<'_>, // <-- Added the Python token here
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
@@ -106,9 +117,16 @@ pub(crate) fn filter_trajectory_indexed_arrow(
     ends: PyReadonlyArray1<usize>,
     config: FilterConfig,
 ) -> PyResult<ArrowPyArray> {
+    let start = Instant::now();
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let times = arrow_values(&timestamps_s);
+    let indices = sorted_indices.as_slice()?;
+
     let ranges: Vec<(usize, usize)> = starts
         .as_slice()?
         .iter()
@@ -116,12 +134,12 @@ pub(crate) fn filter_trajectory_indexed_arrow(
         .zip(ends.as_slice()?.iter().copied())
         .collect();
 
-    Ok(bool_results_into_arrow(filter_trajectory_indexed_impl(
-        arrow_values(&latitudes),
-        arrow_values(&longitudes),
-        arrow_values(&timestamps_s),
-        sorted_indices.as_slice()?,
-        &ranges,
-        &config,
-    )))
+    // Release the GIL
+    let keep_mask =
+        py.detach(|| filter_trajectory_indexed_impl(lats, lngs, times, indices, &ranges, &config));
+    // let keep_mask = filter_trajectory_indexed_impl(lats, lngs, times, indices, &ranges, &config);
+
+    println!("Total RUST time: {:.2?}", start.elapsed());
+
+    Ok(bool_results_into_arrow(keep_mask))
 }

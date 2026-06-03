@@ -25,7 +25,16 @@ numpy = "0.28.0"
 pyo3-arrow = "0.17.0"
 arrow-array = "58.1.0"
 numkong = "7.6.0"
+rustc-hash = "2.1.1"
 
 
+# Temporary profile for debugging/sampling
 [profile.release]
 debug = "line-tables-only"
+# To fix latency, add these to your Cargo.toml release profile:
+lto = "fat"          # Link-Time Optimization merges crates for faster loops
+codegen-units = 1   # Gives the compiler full visibility to optimize code
+
+# In your .cargo/config.toml for production speed testing:
+[build]
+rustflags = ["-C", "target-cpu=native"] # Enables all AMX/AVX extensions your CPU physically has

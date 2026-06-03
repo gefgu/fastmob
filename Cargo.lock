@@ -1410,6 +1410,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_xoshiro",
  "rayon",
+ "rustc-hash",
  "wass",
 ]
 

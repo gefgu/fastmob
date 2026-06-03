@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import narwhals as nw
@@ -102,6 +103,7 @@ def filter(
     - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), <a href="https://dl.acm.org/citation.cfm?id=2743025">https://dl.acm.org/citation.cfm?id=2743025</a>
 
     """
+    start = time.perf_counter()
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -110,19 +112,19 @@ def filter(
         lng_col=lng_col,
         uid_col=uid_col,
     )
+    use_arrow = _is_polars_backed(df)
     df = _prepare_trajectory(
         df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
-        sort=False,
+        sort=use_arrow,
     )
 
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
-    use_arrow = _is_polars_backed(df)
 
     config = FilterConfig(
         max_speed_kmh=max_speed_kmh,
@@ -131,6 +133,7 @@ def filter(
         max_loop=max_loop,
         ratio_max=ratio_max,
     )
+    sorted = use_arrow or sorted
 
     if sorted:
         _, ranges = _build_user_ranges(df, uid_col)
@@ -154,6 +157,7 @@ def filter(
                 config,
             )
     else:
+        sort_start = time.perf_counter()
         _, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
             df,
             uid_col,
@@ -161,6 +165,7 @@ def filter(
             timestamps=timestamps_s,
             use_arrow=use_arrow,
         )
+        print(f"Sorting time: {time.perf_counter() - sort_start:.2f} seconds")
 
         if use_arrow:
             keep_mask = _arrow_result_values(
@@ -185,11 +190,15 @@ def filter(
                 config,
             )
 
+    print(f"Total Python time: {time.perf_counter() - start:.2f} seconds")
+
     native_df = df.to_native()
     if hasattr(native_df, "iloc") and hasattr(native_df, "dtypes"):
         return native_df[keep_mask]
 
-    return df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
+    return df.filter(
+        nw.new_series("__keep__", keep_mask, backend=df.implementation)
+    ).to_native()
 
 
 filter.__module__ = "skmob2.preprocessing"

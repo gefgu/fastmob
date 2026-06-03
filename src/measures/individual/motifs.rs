@@ -1,7 +1,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 // ---------------------------------------------------------------------------
 // Structs
@@ -124,7 +124,7 @@ pub(crate) fn canonical_adjacency_form(n_nodes: u32, edges: Vec<(u32, u32)>) -> 
 /// 3. Return `None` when no HOME rows at all.
 fn compute_primary_home_node_id<'a>(visits: &[Visit<'a>]) -> Option<&'a str> {
     // Step 1: night HOME visits
-    let mut night_duration: HashMap<&str, f64> = HashMap::new();
+    let mut night_duration: FxHashMap<&str, f64> = FxHashMap::default();
     for visit in visits {
         if visit.purpose == "HOME" && (visit.start_hour >= 22 || visit.start_hour < 6) {
             *night_duration.entry(visit.uid).or_insert(0.0) +=
@@ -140,7 +140,7 @@ fn compute_primary_home_node_id<'a>(visits: &[Visit<'a>]) -> Option<&'a str> {
     }
 
     // Step 2: most frequent HOME uid regardless of hour
-    let mut home_counts: HashMap<&str, usize> = HashMap::new();
+    let mut home_counts: FxHashMap<&str, usize> = FxHashMap::default();
     for visit in visits {
         if visit.purpose == "HOME" {
             *home_counts.entry(visit.uid).or_insert(0) += 1;
@@ -211,14 +211,14 @@ fn compute_motif_from_daily_visits<'a>(
     }
     unique_nodes.insert(0, primary_home);
 
-    let id_map: HashMap<&str, u32> = unique_nodes
+    let id_map: FxHashMap<&str, u32> = unique_nodes
         .iter()
         .enumerate()
         .map(|(i, &name)| (name, i as u32))
         .collect();
 
     // Collect edges (deduplicated)
-    let mut edges_set: HashSet<(u32, u32)> = HashSet::new();
+    let mut edges_set: FxHashSet<(u32, u32)> = FxHashSet::default();
     for window in cleaned.windows(2) {
         let u = id_map[window[0]];
         let v = id_map[window[1]];

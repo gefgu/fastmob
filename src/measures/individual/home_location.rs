@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 
 use crate::utils::{
     arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends,
@@ -34,7 +33,7 @@ fn best_location_for_indices(
     let has_night = indices[start..end]
         .iter()
         .any(|&idx| inputs.hours[idx] >= night.start || inputs.hours[idx] < night.end);
-    let mut counts: HashMap<(u64, u64), (f64, f64, u64)> = HashMap::new();
+    let mut counts: FxHashMap<(u64, u64), (f64, f64, u64)> = FxHashMap::default();
 
     for &idx in &indices[start..end] {
         let is_night = inputs.hours[idx] >= night.start || inputs.hours[idx] < night.end;
@@ -69,7 +68,7 @@ fn best_location_for_range(
 ) -> (f64, f64) {
     let has_night =
         (start..end).any(|idx| inputs.hours[idx] >= night.start || inputs.hours[idx] < night.end);
-    let mut counts: HashMap<(u64, u64), (f64, f64, u64)> = HashMap::new();
+    let mut counts: FxHashMap<(u64, u64), (f64, f64, u64)> = FxHashMap::default();
 
     for idx in start..end {
         let is_night = inputs.hours[idx] >= night.start || inputs.hours[idx] < night.end;

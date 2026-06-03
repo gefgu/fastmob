@@ -1,9 +1,8 @@
-use std::collections::HashSet;
-
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
+use rustc_hash::FxHashSet;
 
 use crate::utils::{
     arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends,
@@ -23,7 +22,8 @@ fn recency_rank_indexed_impl(
     let per_user: Vec<Vec<(f64, f64)>> = ranges
         .par_iter()
         .map(|&(start, end)| {
-            let mut seen: HashSet<(u64, u64)> = HashSet::with_capacity(end.saturating_sub(start));
+            let mut seen: FxHashSet<(u64, u64)> =
+                FxHashSet::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             let mut locs: Vec<(f64, f64)> = Vec::new();
             for &idx in indices[start..end].iter().rev() {
                 let lat = latitudes[idx];

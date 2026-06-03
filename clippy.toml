@@ -1,0 +1,4 @@
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "std::HashMap is slow. Use rustc_hash::FxHashMap instead." },
+    { path = "std::collections::HashSet", reason = "std::HashSet is slow. Use rustc_hash::FxHashSet instead." },
+]

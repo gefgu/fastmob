@@ -80,14 +80,14 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
         input_kind="preprocessing",
         movingpandas_api="TrajectoryStopDetector.get_stop_points",
     ),
-    BenchmarkSpec(
-        "cluster",
-        "skmob2.preprocessing",
-        "skmob.preprocessing.clustering",
-        "cluster",
-        {},
-        input_kind="preprocessing",
-    ),
+    # BenchmarkSpec(
+    #     "cluster",
+    #     "skmob2.preprocessing",
+    #     "skmob.preprocessing.clustering",
+    #     "cluster",
+    #     {},
+    #     input_kind="preprocessing",
+    # ),
 )
 
 
@@ -233,6 +233,21 @@ def load_brightkite_pandas(data_path: Path):
     return df
 
 
+def repeat_brightkite_pandas(df: Any, repeat_factor: int) -> Any:
+    if repeat_factor <= 1:
+        return df
+
+    import pandas as pd
+
+    repeated_chunks = []
+    user_as_text = df["user"].astype(str)
+    for repeat_idx in range(repeat_factor):
+        chunk = df.copy()
+        chunk["user"] = user_as_text + f"__rep{repeat_idx}"
+        repeated_chunks.append(chunk)
+    return pd.concat(repeated_chunks, ignore_index=True)
+
+
 def load_brightkite_polars(data_path: Path):
     import polars as pl
 
@@ -245,7 +260,21 @@ def load_brightkite_polars(data_path: Path):
     )
 
 
-def load_brightkite_movingpandas(data_path: Path, size: int) -> Any:
+def repeat_brightkite_polars(df: Any, repeat_factor: int) -> Any:
+    if repeat_factor <= 1:
+        return df
+
+    import polars as pl
+
+    repeated_chunks = []
+    for repeat_idx in range(repeat_factor):
+        repeated_chunks.append(
+            df.with_columns((pl.col("user").cast(pl.Utf8) + pl.lit(f"__rep{repeat_idx}")).alias("user"))
+        )
+    return pl.concat(repeated_chunks, how="vertical")
+
+
+def load_brightkite_movingpandas(data_path: Path, size: int, *, repeat_factor: int = 1) -> Any:
     try:
         import geopandas as gpd
         import movingpandas as mpd
@@ -253,7 +282,8 @@ def load_brightkite_movingpandas(data_path: Path, size: int) -> Any:
     except Exception as exc:
         raise SkippedMetric(f"movingpandas input setup failed: {exc}") from exc
 
-    df = load_brightkite_pandas(data_path).head(size).copy()
+    df = load_brightkite_pandas(data_path)
+    df = repeat_brightkite_pandas(df, repeat_factor).head(size).copy()
     gdf = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
@@ -638,6 +668,7 @@ def benchmark_movingpandas_size(
     data_path: Path,
     size: int,
     *,
+    repeat_factor: int = 1,
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
@@ -646,7 +677,7 @@ def benchmark_movingpandas_size(
 ) -> dict[str, Any]:
     print(f"\nSize {size_label(size)}")
     try:
-        tc = load_brightkite_movingpandas(data_path, size)
+        tc = load_brightkite_movingpandas(data_path, size, repeat_factor=repeat_factor)
     except SkippedMetric as exc:
         return {
             "size": size,
@@ -704,6 +735,7 @@ def build_metadata(
         "iterations": args.iterations,
         "sleep_seconds": args.sleep_seconds,
         "retries": args.retries,
+        "repeat_dataset": args.repeat_dataset,
         "sizes": args.sizes,
         "input_order": args.input_order,
         "input_cache_path": None if input_cache_path is None else str(input_cache_path),
@@ -719,20 +751,24 @@ def load_brightkite_for_order(
     backend: str,
     input_order: str,
     input_cache_dir: Path,
+    repeat_factor: int,
 ) -> tuple[Any, Path | None, str]:
     if input_order == "raw":
         if backend == "polars":
-            return load_brightkite_polars(data_path), None, "not_applicable"
-        return load_brightkite_pandas(data_path), None, "not_applicable"
+            return repeat_brightkite_polars(load_brightkite_polars(data_path), repeat_factor), None, "not_applicable"
+        return repeat_brightkite_pandas(load_brightkite_pandas(data_path), repeat_factor), None, "not_applicable"
 
     sorted_input = load_or_create_sorted_input(
         cache_dir=input_cache_dir,
         suite="preprocessing",
         backend=backend,
         data_path=data_path,
-        load_raw=lambda: load_brightkite_polars(data_path) if backend == "polars" else load_brightkite_pandas(data_path),
+        load_raw=lambda: repeat_brightkite_polars(load_brightkite_polars(data_path), repeat_factor)
+        if backend == "polars"
+        else repeat_brightkite_pandas(load_brightkite_pandas(data_path), repeat_factor),
         uid_col="user",
         datetime_col="check-in_time",
+        repeat_factor=repeat_factor if repeat_factor > 1 else None,
     )
     return sorted_input.data, sorted_input.path, sorted_input.status
 
@@ -756,6 +792,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             backend=selected_backend,
             input_order=args.input_order,
             input_cache_dir=Path(args.input_cache_dir),
+            repeat_factor=args.repeat_dataset,
         )
         results = [
             benchmark_skmob2_size(
@@ -784,6 +821,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             benchmark_movingpandas_size(
                 data_path,
                 size,
+                repeat_factor=args.repeat_dataset,
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
@@ -805,6 +843,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         backend="pandas",
         input_order=args.input_order,
         input_cache_dir=Path(args.input_cache_dir),
+        repeat_factor=args.repeat_dataset,
     )
     try:
         skmob_module = importlib.import_module("skmob")
@@ -861,6 +900,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--retries", type=nonnegative_int, default=0, help="Retry a metric this many times after failure.")
+    parser.add_argument(
+        "--repeat-dataset",
+        type=positive_int,
+        default=1,
+        help="Repeat the Brightkite dataset this many times, forcing unique user ids for each repeat.",
+    )
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)

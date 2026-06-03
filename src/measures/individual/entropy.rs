@@ -1,8 +1,7 @@
-use std::collections::{HashMap, HashSet};
-
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use rayon::prelude::*;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 
@@ -64,7 +63,7 @@ pub(crate) fn real_entropy_batch(
 }
 
 fn encode_tokens(tokens: &[String]) -> Vec<usize> {
-    let mut ids_by_token: HashMap<&str, usize> = HashMap::new();
+    let mut ids_by_token: FxHashMap<&str, usize> = FxHashMap::default();
     let mut ids = Vec::with_capacity(tokens.len());
     for token in tokens {
         let token = token.as_str();
@@ -211,7 +210,7 @@ pub(crate) fn trajectory_predictability_batch(
             .map(|&(start, end)| {
                 let sequence = &tokens[start..end];
                 let n_steps = sequence.len();
-                let n_unique = sequence.iter().collect::<HashSet<_>>().len();
+                let n_unique = sequence.iter().collect::<FxHashSet<_>>().len();
                 let real_entropy = kontoyiannis_entropy(sequence);
                 let predictability = solve_max_predictability_with_fano(real_entropy, n_unique);
                 (real_entropy, predictability, n_unique, n_steps)

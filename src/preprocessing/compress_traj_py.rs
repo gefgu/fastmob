@@ -79,7 +79,12 @@ pub(crate) fn compress_trajectory_representatives_arrow(
             spatial_radius_km,
         );
     Ok((
-        u64_results_into_arrow(representative_indices.into_iter().map(|i| i as u64).collect()),
+        u64_results_into_arrow(
+            representative_indices
+                .into_iter()
+                .map(|i| i as u64)
+                .collect(),
+        ),
         f64_results_into_arrow(median_latitudes),
         f64_results_into_arrow(median_longitudes),
     ))
@@ -134,7 +139,12 @@ pub(crate) fn compress_trajectory_representatives_indexed_arrow(
             spatial_radius_km,
         );
     Ok((
-        u64_results_into_arrow(representative_indices.into_iter().map(|i| i as u64).collect()),
+        u64_results_into_arrow(
+            representative_indices
+                .into_iter()
+                .map(|i| i as u64)
+                .collect(),
+        ),
         f64_results_into_arrow(median_latitudes),
         f64_results_into_arrow(median_longitudes),
     ))

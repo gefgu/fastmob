@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use arrow_array::{
     Array, Int32Array, Int64Array, LargeStringArray, StringArray, UInt32Array, UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
@@ -9,8 +11,7 @@ use pyo3_arrow::PyArray;
 use rayon::prelude::*;
 
 use crate::utils::{
-    arrow_values, as_f64_array, primitive_option_values, ranges_from_sorted_values, split_ranges,
-    validate_uid_len,
+    arrow_values, as_f64_array, primitive_option_values, split_ranges, validate_uid_len,
 };
 
 pub(crate) type IndexRanges = Vec<(usize, usize)>;
@@ -44,75 +45,134 @@ fn time_ordered_indices_single_user(timestamps: &[f64]) -> OrderedIndexRanges {
     (indices, vec![(0, n)])
 }
 
-fn time_ordered_indices_for_ord_uid_values<T: Ord + Sync>(
+fn time_ordered_indices_for_ord_uid_values<T: Ord + Copy + Sync + Send>(
     uids: &[T],
     timestamps: &[f64],
 ) -> OrderedIndexRanges {
-    let mut indices: Vec<usize> = (0..timestamps.len()).collect();
-    indices.par_sort_by(|&left, &right| {
-        uids[left]
-            .cmp(&uids[right])
-            .then(timestamps[left].total_cmp(&timestamps[right]))
-            .then(left.cmp(&right))
+    let n = uids.len();
+    let mut grouped: Vec<(T, usize)> = uids
+        .par_iter()
+        .enumerate()
+        .map(|(idx, &uid)| (uid, idx))
+        .collect();
+
+    grouped.par_sort_unstable_by(|left, right| left.0.cmp(&right.0));
+
+    let mut ranges = Vec::new();
+    if !grouped.is_empty() {
+        let mut start = 0;
+        for idx in 1..n {
+            if grouped[idx].0 != grouped[idx - 1].0 {
+                ranges.push((start, idx));
+                start = idx;
+            }
+        }
+        ranges.push((start, n));
+    }
+
+    let mut indices = vec![0usize; n];
+    let indices_ptr = indices.as_mut_ptr() as usize;
+
+    ranges.par_iter().for_each(|&(start, end)| {
+        // SAFETY: `ranges` is built from monotonically increasing group boundaries, so each
+        // parallel task writes to a unique, non-overlapping slice of `indices`.
+        let out_slice = unsafe {
+            std::slice::from_raw_parts_mut((indices_ptr as *mut usize).add(start), end - start)
+        };
+
+        for offset in 0..(end - start) {
+            out_slice[offset] = grouped[start + offset].1;
+        }
+
+        out_slice.sort_unstable_by(|&left, &right| {
+            timestamps[left]
+                .total_cmp(&timestamps[right])
+                .then(left.cmp(&right))
+        });
     });
-    let ranges = ranges_from_sorted_values(uids, &indices);
+
     (indices, ranges)
 }
 
 fn time_ordered_indices_for_f64_uid_values(uids: &[f64], timestamps: &[f64]) -> OrderedIndexRanges {
-    let mut indices: Vec<usize> = (0..timestamps.len()).collect();
-    indices.par_sort_by(|&left, &right| {
-        uids[left]
-            .total_cmp(&uids[right])
-            .then(timestamps[left].total_cmp(&timestamps[right]))
-            .then(left.cmp(&right))
+    let n = uids.len();
+    let mut grouped: Vec<(f64, usize)> = uids
+        .par_iter()
+        .enumerate()
+        .map(|(idx, &uid)| (uid, idx))
+        .collect();
+
+    grouped.par_sort_unstable_by(|left, right| left.0.total_cmp(&right.0));
+
+    let mut ranges = Vec::new();
+    if !grouped.is_empty() {
+        let mut start = 0;
+        for idx in 1..n {
+            if grouped[idx].0.total_cmp(&grouped[idx - 1].0) != std::cmp::Ordering::Equal {
+                ranges.push((start, idx));
+                start = idx;
+            }
+        }
+        ranges.push((start, n));
+    }
+
+    let mut indices = vec![0usize; n];
+    let indices_ptr = indices.as_mut_ptr() as usize;
+
+    ranges.par_iter().for_each(|&(start, end)| {
+        // SAFETY: `ranges` is built from monotonically increasing group boundaries, so each
+        // parallel task writes to a unique, non-overlapping slice of `indices`.
+        let out_slice = unsafe {
+            std::slice::from_raw_parts_mut((indices_ptr as *mut usize).add(start), end - start)
+        };
+
+        for offset in 0..(end - start) {
+            out_slice[offset] = grouped[start + offset].1;
+        }
+
+        out_slice.sort_unstable_by(|&left, &right| {
+            timestamps[left]
+                .total_cmp(&timestamps[right])
+                .then(left.cmp(&right))
+        });
     });
-    let ranges = ranges_from_sorted_values(uids, &indices);
+
     (indices, ranges)
 }
 
 pub(crate) fn time_ordered_indices_from_numpy_uids(
+    py: Python<'_>,
     uids: &Bound<'_, PyAny>,
     timestamps: &[f64],
 ) -> PyResult<OrderedIndexRanges> {
     if uids.is_none() {
-        return Ok(time_ordered_indices_single_user(timestamps));
+        return Ok(py.detach(|| time_ordered_indices_single_user(timestamps)));
     }
 
     if let Ok(array) = uids.extract::<PyReadonlyArray1<i64>>() {
         validate_uid_len(timestamps.len(), array.len()?)?;
-        return Ok(time_ordered_indices_for_ord_uid_values(
-            array.as_slice()?,
-            timestamps,
-        ));
+        let slice = array.as_slice()?;
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(slice, timestamps)));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<i32>>() {
         validate_uid_len(timestamps.len(), array.len()?)?;
-        return Ok(time_ordered_indices_for_ord_uid_values(
-            array.as_slice()?,
-            timestamps,
-        ));
+        let slice = array.as_slice()?;
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(slice, timestamps)));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<u64>>() {
         validate_uid_len(timestamps.len(), array.len()?)?;
-        return Ok(time_ordered_indices_for_ord_uid_values(
-            array.as_slice()?,
-            timestamps,
-        ));
+        let slice = array.as_slice()?;
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(slice, timestamps)));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<u32>>() {
         validate_uid_len(timestamps.len(), array.len()?)?;
-        return Ok(time_ordered_indices_for_ord_uid_values(
-            array.as_slice()?,
-            timestamps,
-        ));
+        let slice = array.as_slice()?;
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(slice, timestamps)));
     }
     if let Ok(array) = uids.extract::<PyReadonlyArray1<f64>>() {
         validate_uid_len(timestamps.len(), array.len()?)?;
-        return Ok(time_ordered_indices_for_f64_uid_values(
-            array.as_slice()?,
-            timestamps,
-        ));
+        let slice = array.as_slice()?;
+        return Ok(py.detach(|| time_ordered_indices_for_f64_uid_values(slice, timestamps)));
     }
 
     Err(PyValueError::new_err(
@@ -121,11 +181,12 @@ pub(crate) fn time_ordered_indices_from_numpy_uids(
 }
 
 pub(crate) fn time_ordered_indices_from_arrow_uids(
+    py: Python<'_>,
     uids: &Bound<'_, PyAny>,
     timestamps: &[f64],
 ) -> PyResult<OrderedIndexRanges> {
     if uids.is_none() {
-        return Ok(time_ordered_indices_single_user(timestamps));
+        return Ok(py.detach(|| time_ordered_indices_single_user(timestamps)));
     }
 
     let uids = uids.extract::<PyArray>()?;
@@ -135,22 +196,22 @@ pub(crate) fn time_ordered_indices_from_arrow_uids(
     if let Some(array) = array.downcast_ref::<Int64Array>() {
         validate_uid_len(timestamps.len(), array.len())?;
         let values = primitive_option_values::<Int64Type>(array);
-        return Ok(time_ordered_indices_for_ord_uid_values(&values, timestamps));
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(&values, timestamps)));
     }
     if let Some(array) = array.downcast_ref::<Int32Array>() {
         validate_uid_len(timestamps.len(), array.len())?;
         let values = primitive_option_values::<Int32Type>(array);
-        return Ok(time_ordered_indices_for_ord_uid_values(&values, timestamps));
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(&values, timestamps)));
     }
     if let Some(array) = array.downcast_ref::<UInt64Array>() {
         validate_uid_len(timestamps.len(), array.len())?;
         let values = primitive_option_values::<UInt64Type>(array);
-        return Ok(time_ordered_indices_for_ord_uid_values(&values, timestamps));
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(&values, timestamps)));
     }
     if let Some(array) = array.downcast_ref::<UInt32Array>() {
         validate_uid_len(timestamps.len(), array.len())?;
         let values = primitive_option_values::<UInt32Type>(array);
-        return Ok(time_ordered_indices_for_ord_uid_values(&values, timestamps));
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(&values, timestamps)));
     }
     if let Some(array) = array.downcast_ref::<StringArray>() {
         validate_uid_len(timestamps.len(), array.len())?;
@@ -163,7 +224,7 @@ pub(crate) fn time_ordered_indices_from_arrow_uids(
                 }
             })
             .collect();
-        return Ok(time_ordered_indices_for_ord_uid_values(&values, timestamps));
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(&values, timestamps)));
     }
     if let Some(array) = array.downcast_ref::<LargeStringArray>() {
         validate_uid_len(timestamps.len(), array.len())?;
@@ -176,7 +237,7 @@ pub(crate) fn time_ordered_indices_from_arrow_uids(
                 }
             })
             .collect();
-        return Ok(time_ordered_indices_for_ord_uid_values(&values, timestamps));
+        return Ok(py.detach(|| time_ordered_indices_for_ord_uid_values(&values, timestamps)));
     }
 
     Err(PyValueError::new_err(
@@ -190,10 +251,14 @@ pub(crate) fn time_ordered_user_indices_numpy<'py>(
     uids: &Bound<'py, PyAny>,
     timestamps: PyReadonlyArray1<'py, f64>,
 ) -> PyResult<PyOrderedIndexRanges<'py>> {
-    Ok(ordered_index_ranges_into_numpy(
-        py,
-        time_ordered_indices_from_numpy_uids(uids, timestamps.as_slice()?)?,
-    ))
+    let start = Instant::now();
+
+    let ordered_indices = time_ordered_indices_from_numpy_uids(py, uids, timestamps.as_slice()?)?;
+    let final_result = ordered_index_ranges_into_numpy(py, ordered_indices);
+
+    println!("Time ordering time: {:.2?}", start.elapsed());
+
+    Ok(final_result)
 }
 
 #[pyfunction]
@@ -202,9 +267,14 @@ pub(crate) fn time_ordered_user_indices_arrow<'py>(
     uids: &Bound<'py, PyAny>,
     timestamps: PyArray,
 ) -> PyResult<PyOrderedIndexRanges<'py>> {
+    let start = Instant::now();
     let timestamps = as_f64_array(timestamps, "timestamps")?;
-    Ok(ordered_index_ranges_into_numpy(
-        py,
-        time_ordered_indices_from_arrow_uids(uids, arrow_values(&timestamps))?,
-    ))
+    let timestamp_values = arrow_values(&timestamps);
+
+    let time_ordered_indices = time_ordered_indices_from_arrow_uids(py, uids, timestamp_values)?;
+    let final_result = ordered_index_ranges_into_numpy(py, time_ordered_indices);
+
+    println!("Time ordering time: {:.2?}", start.elapsed());
+
+    Ok(final_result)
 }

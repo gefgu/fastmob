@@ -240,6 +240,46 @@ class TestPrepareTrajectory:
             _detect_trajectory_columns(nw_df)
 
 
+class TestBuildTimeOrderedUserRanges:
+    def test_pandas_string_uids_use_numpy_rust_path(self, capsys):
+        import narwhals as nw
+        import numpy as np
+        from skmob2.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+
+        df = pd.DataFrame(
+            {
+                "uid": ["b", "a", "b", "a"],
+                "datetime": pd.to_datetime(
+                    [
+                        "2020-01-01 01:00:00",
+                        "2020-01-01 02:00:00",
+                        "2020-01-01 00:00:00",
+                        "2020-01-01 00:30:00",
+                    ]
+                ),
+                "lat": [0.0, 0.0, 0.0, 0.0],
+                "lng": [0.0, 0.0, 0.0, 0.0],
+            }
+        )
+        nw_df = nw.from_native(df, eager_only=True)
+        timestamps = _extract_timestamps_s(nw_df, "datetime")
+
+        uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
+            nw_df,
+            "uid",
+            "datetime",
+            timestamps,
+            use_arrow=False,
+        )
+
+        captured = capsys.readouterr()
+        assert "Indexing@fallback" not in captured.out
+        assert uid_values == ["a", "b"]
+        assert np.asarray(indices).tolist() == [3, 1, 2, 0]
+        assert np.asarray(starts).tolist() == [0, 2]
+        assert np.asarray(ends).tolist() == [2, 4]
+
+
 # ---------------------------------------------------------------------------
 # _build_user_ranges
 # ---------------------------------------------------------------------------

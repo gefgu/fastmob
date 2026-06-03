@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 
 use crate::utils::{
     arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends,
@@ -23,8 +22,8 @@ fn location_frequency_indexed_impl(
     let per_user: Vec<Vec<(f64, f64, u64)>> = ranges
         .par_iter()
         .map(|&(start, end)| {
-            let mut counts: HashMap<(u64, u64), (f64, f64, u64)> =
-                HashMap::with_capacity(end.saturating_sub(start));
+            let mut counts: FxHashMap<(u64, u64), (f64, f64, u64)> =
+                FxHashMap::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             for &idx in &indices[start..end] {
                 let lat = latitudes[idx];
                 let lng = longitudes[idx];

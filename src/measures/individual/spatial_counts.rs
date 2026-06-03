@@ -1,9 +1,8 @@
-use std::collections::HashSet;
-
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
+use rustc_hash::FxHashSet;
 
 use crate::utils::{
     arrow_values, as_f64_array, ranges_from_starts_ends, u64_results_into_arrow,
@@ -39,7 +38,8 @@ fn number_of_locations_impl(
     Ok(ranges
         .par_iter()
         .map(|&(start, end)| {
-            let mut seen = HashSet::with_capacity(end.saturating_sub(start));
+            let mut seen =
+                FxHashSet::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             for idx in start..end {
                 seen.insert((latitudes[idx].to_bits(), longitudes[idx].to_bits()));
             }
@@ -58,7 +58,8 @@ fn number_of_locations_indexed_impl(
     Ok(ranges
         .par_iter()
         .map(|&(start, end)| {
-            let mut seen = HashSet::with_capacity(end.saturating_sub(start));
+            let mut seen =
+                FxHashSet::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             for &idx in &indices[start..end] {
                 seen.insert((latitudes[idx].to_bits(), longitudes[idx].to_bits()));
             }
