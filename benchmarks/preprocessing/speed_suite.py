@@ -80,14 +80,14 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
         input_kind="preprocessing",
         movingpandas_api="TrajectoryStopDetector.get_stop_points",
     ),
-    # BenchmarkSpec(
-    #     "cluster",
-    #     "skmob2.preprocessing",
-    #     "skmob.preprocessing.clustering",
-    #     "cluster",
-    #     {},
-    #     input_kind="preprocessing",
-    # ),
+    BenchmarkSpec(
+        "cluster",
+        "skmob2.preprocessing",
+        "skmob.preprocessing.clustering",
+        "cluster",
+        {},
+        input_kind="preprocessing",
+    ),
 )
 
 
