@@ -6,7 +6,7 @@ use skmob2_core::measures::individual::total_distance::{
     total_distance_impl, total_distance_indexed_impl,
 };
 
-use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow};
+use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow};
 
 #[pyfunction]
 pub fn total_distance_batch_km(
@@ -40,6 +40,7 @@ pub fn total_distance_indexed_numpy<'py>(
         longitudes.as_slice()?,
         indices.as_slice()?,
         ends.as_slice()?,
+        None,
     )
     .map_err(PyValueError::new_err)?
     .into_pyarray(py))
@@ -64,14 +65,16 @@ pub fn total_distance_indexed_arrow(
     indices: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
 ) -> PyResult<PyArray> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
     Ok(f64_results_into_arrow(
         total_distance_indexed_impl(
             arrow_values(&latitudes),
             arrow_values(&longitudes),
             indices.as_slice()?,
             ends.as_slice()?,
+            valid_rows.as_deref(),
         )
         .map_err(PyValueError::new_err)?,
     ))

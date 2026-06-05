@@ -6,7 +6,7 @@ use skmob2_core::measures::collective::square_displacement::{
     mean_square_displacement_indexed_impl, square_displacement_km2 as core_square_displacement_km2,
 };
 
-use crate::utils::{arrow_values, as_f64_array};
+use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array};
 
 #[pyfunction]
 pub fn square_displacement_km2(lat0: f64, lng0: f64, lat_t: f64, lng_t: f64) -> f64 {
@@ -31,6 +31,7 @@ pub fn mean_square_displacement_indexed_numpy<'py>(
         indices.as_slice()?,
         ends.as_slice()?,
         delta_s,
+        None,
     )
     .map_err(PyValueError::new_err)
 }
@@ -46,9 +47,10 @@ pub fn mean_square_displacement_indexed_arrow<'py>(
     ends: PyReadonlyArray1<'py, usize>,
     delta_s: f64,
 ) -> PyResult<f64> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    let timestamps_s = as_nullable_f64_array(timestamps_s, "timestamps_s")?;
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &timestamps_s]);
     mean_square_displacement_indexed_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
@@ -56,6 +58,7 @@ pub fn mean_square_displacement_indexed_arrow<'py>(
         indices.as_slice()?,
         ends.as_slice()?,
         delta_s,
+        valid_rows.as_deref(),
     )
     .map_err(PyValueError::new_err)
 }

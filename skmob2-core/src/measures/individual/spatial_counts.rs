@@ -20,12 +20,17 @@ pub fn number_of_visits_indexed_impl(
     n_values: usize,
     indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<u64>, String> {
     validate_indexed_ends(n_values, indices, ends)?;
     Ok((0..ends.len())
         .map(|i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
-            (ends[i] - start) as u64
+            let end = ends[i];
+            match valid_rows {
+                None => (end - start) as u64,
+                Some(valid) => indices[start..end].iter().filter(|&&idx| valid[idx]).count() as u64,
+            }
         })
         .collect())
 }
@@ -54,6 +59,7 @@ pub fn number_of_locations_indexed_impl(
     longitudes: &[f64],
     indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<u64>, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
     Ok((0..ends.len())
@@ -64,7 +70,12 @@ pub fn number_of_locations_indexed_impl(
             let mut seen =
                 FxHashSet::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             for &idx in &indices[start..end] {
-                seen.insert((latitudes[idx].to_bits(), longitudes[idx].to_bits()));
+                if valid_rows.is_none_or(|v| v[idx])
+                    && latitudes[idx].is_finite()
+                    && longitudes[idx].is_finite()
+                {
+                    seen.insert((latitudes[idx].to_bits(), longitudes[idx].to_bits()));
+                }
             }
             seen.len() as u64
         })

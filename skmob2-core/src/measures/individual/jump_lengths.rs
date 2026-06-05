@@ -26,20 +26,29 @@ pub fn jump_lengths_for_indexed_range(
     indices: &[usize],
     start: usize,
     end: usize,
+    valid_rows: Option<&[bool]>,
 ) -> Vec<f64> {
-    if end - start < 2 {
+    let valid: Vec<usize> = indices[start..end]
+        .iter()
+        .copied()
+        .filter(|&idx| {
+            valid_rows.is_none_or(|v| v[idx])
+                && latitudes[idx].is_finite()
+                && longitudes[idx].is_finite()
+        })
+        .collect();
+
+    if valid.len() < 2 {
         return Vec::new();
     }
 
-    (start + 1..end)
+    (1..valid.len())
         .map(|pos| {
-            let previous_idx = indices[pos - 1];
-            let current_idx = indices[pos];
             haversine_km(
-                latitudes[previous_idx],
-                longitudes[previous_idx],
-                latitudes[current_idx],
-                longitudes[current_idx],
+                latitudes[valid[pos - 1]],
+                longitudes[valid[pos - 1]],
+                latitudes[valid[pos]],
+                longitudes[valid[pos]],
             )
         })
         .collect()
@@ -65,10 +74,11 @@ pub fn time_ordered_flat_values_impl(
     timestamps: &[f64],
     indices: Vec<usize>,
     ranges: IndexRanges,
+    valid_rows: Option<&[bool]>,
 ) -> Result<(Vec<usize>, IndexRanges, Vec<f64>), String> {
     validate_time_ordered_inputs(latitudes, longitudes, timestamps)?;
     validate_indexed_coord_ranges(latitudes, longitudes, &indices, &ranges)?;
-    let values = jump_lengths_indexed_flat_impl(latitudes, longitudes, &indices, &ranges)?;
+    let values = jump_lengths_indexed_flat_impl(latitudes, longitudes, &indices, &ranges, valid_rows)?;
     Ok((indices, ranges, values))
 }
 
@@ -115,13 +125,14 @@ pub fn jump_lengths_indexed_flat_impl(
     longitudes: &[f64],
     indices: &[usize],
     ranges: &[(usize, usize)],
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
 
     Ok(ranges
         .par_iter()
         .flat_map(|&(start, end)| {
-            jump_lengths_for_indexed_range(latitudes, longitudes, indices, start, end)
+            jump_lengths_for_indexed_range(latitudes, longitudes, indices, start, end, valid_rows)
         })
         .collect())
 }

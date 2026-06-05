@@ -26,7 +26,7 @@ pub fn jump_lengths_non_ordered_numpy<'py>(
 
     let (indices, ranges) = time_ordered_indices_from_numpy_uids(py, uids, timestamps)?;
     let (indices, ranges, values) =
-        time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)
+        time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges, None)
             .map_err(PyValueError::new_err)?;
     let (indices, starts, ends) = ordered_index_ranges_into_start_end_numpy(py, (indices, ranges));
     Ok((indices, starts, ends, values.into_pyarray(py)))

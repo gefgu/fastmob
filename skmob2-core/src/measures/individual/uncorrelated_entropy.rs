@@ -9,6 +9,7 @@ pub fn uncorrelated_entropy_indexed_impl(
     indices: &[usize],
     ends: &[usize],
     normalize: bool,
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
 
@@ -17,17 +18,21 @@ pub fn uncorrelated_entropy_indexed_impl(
         .map(|i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
             let end = ends[i];
-            let n = end - start;
-            if n == 0 {
+            let mut counts: FxHashMap<(u64, u64), u64> =
+                FxHashMap::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
+            for &idx in &indices[start..end] {
+                if valid_rows.is_none_or(|v| v[idx])
+                    && latitudes[idx].is_finite()
+                    && longitudes[idx].is_finite()
+                {
+                    let key = (latitudes[idx].to_bits(), longitudes[idx].to_bits());
+                    *counts.entry(key).or_insert(0) += 1;
+                }
+            }
+            if counts.is_empty() {
                 return 0.0;
             }
-            let mut counts: FxHashMap<(u64, u64), u64> =
-                FxHashMap::with_capacity_and_hasher(n, Default::default());
-            for &idx in &indices[start..end] {
-                let key = (latitudes[idx].to_bits(), longitudes[idx].to_bits());
-                *counts.entry(key).or_insert(0) += 1;
-            }
-            let total = n as f64;
+            let total: f64 = counts.values().sum::<u64>() as f64;
             let entropy = counts.values().fold(0.0f64, |acc, &c| {
                 let p = c as f64 / total;
                 acc - p * p.log2()

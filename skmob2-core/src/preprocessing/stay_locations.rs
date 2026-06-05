@@ -128,17 +128,28 @@ fn detect_stops_for_user_indexed(
     lngs: &[f64],
     times: &[f64],
     user_indices: &[usize],
+    valid_rows: Option<&[bool]>,
     stop_radius_km: f64,
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
 ) -> Vec<Stop> {
-    if user_indices.is_empty() {
+    let valid_user_indices: Vec<usize> = user_indices
+        .iter()
+        .copied()
+        .filter(|&idx| {
+            valid_rows.is_none_or(|v| v[idx])
+                && lats[idx].is_finite()
+                && lngs[idx].is_finite()
+                && times[idx].is_finite()
+        })
+        .collect();
+    if valid_user_indices.is_empty() {
         return Vec::new();
     }
-    let lats_u: Vec<f64> = user_indices.iter().map(|&i| lats[i]).collect();
-    let lngs_u: Vec<f64> = user_indices.iter().map(|&i| lngs[i]).collect();
-    let times_u: Vec<f64> = user_indices.iter().map(|&i| times[i]).collect();
+    let lats_u: Vec<f64> = valid_user_indices.iter().map(|&i| lats[i]).collect();
+    let lngs_u: Vec<f64> = valid_user_indices.iter().map(|&i| lngs[i]).collect();
+    let times_u: Vec<f64> = valid_user_indices.iter().map(|&i| times[i]).collect();
     detect_stops_for_user(
         &lats_u,
         &lngs_u,
@@ -186,6 +197,7 @@ pub fn detect_stay_locations_batch_indexed_impl(
     timestamps_s: &[f64],
     sorted_indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
     stop_radius_km: f64,
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
@@ -201,6 +213,7 @@ pub fn detect_stay_locations_batch_indexed_impl(
                 longitudes,
                 timestamps_s,
                 &sorted_indices[start..end],
+                valid_rows,
                 stop_radius_km,
                 minutes_for_a_stop,
                 no_data_for_minutes,

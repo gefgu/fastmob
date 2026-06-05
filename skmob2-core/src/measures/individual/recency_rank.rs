@@ -10,6 +10,7 @@ pub fn recency_rank_indexed_impl(
     longitudes: &[f64],
     indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<RecencyRankData, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
 
@@ -22,6 +23,12 @@ pub fn recency_rank_indexed_impl(
                 FxHashSet::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             let mut locs: Vec<(f64, f64)> = Vec::new();
             for &idx in indices[start..end].iter().rev() {
+                if !valid_rows.is_none_or(|v| v[idx])
+                    || !latitudes[idx].is_finite()
+                    || !longitudes[idx].is_finite()
+                {
+                    continue;
+                }
                 let lat = latitudes[idx];
                 let lng = longitudes[idx];
                 let key = (lat.to_bits(), lng.to_bits());

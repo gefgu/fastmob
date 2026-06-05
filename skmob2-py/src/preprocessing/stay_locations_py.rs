@@ -6,8 +6,8 @@ use skmob2_core::preprocessing::stay_locations::{
 };
 
 use crate::utils::{
-    arrow_values, as_f64_array, f64_results_into_arrow, u64_results_into_arrow,
-    validate_indexed_ends,
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+    u64_results_into_arrow, validate_indexed_ends,
 };
 
 type StayLocationsBatchNumpyResult<'py> = (
@@ -129,6 +129,7 @@ pub fn detect_stay_locations_batch_indexed_numpy<'py>(
             times,
             idxs,
             ends,
+            None,
             stop_radius_km,
             minutes_for_a_stop,
             no_data_for_minutes,
@@ -158,9 +159,10 @@ pub fn detect_stay_locations_batch_indexed_arrow(
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
 ) -> PyResult<StayLocationsBatchArrowResult> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    let timestamps_s = as_nullable_f64_array(timestamps_s, "timestamps_s")?;
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &timestamps_s]);
     let lats = arrow_values(&latitudes);
     let lngs = arrow_values(&longitudes);
     let times = arrow_values(&timestamps_s);
@@ -174,6 +176,7 @@ pub fn detect_stay_locations_batch_indexed_arrow(
             times,
             idxs,
             ends,
+            valid_rows.as_deref(),
             stop_radius_km,
             minutes_for_a_stop,
             no_data_for_minutes,

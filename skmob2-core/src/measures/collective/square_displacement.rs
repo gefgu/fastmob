@@ -13,6 +13,7 @@ pub fn mean_square_displacement_indexed_impl(
     indices: &[usize],
     ends: &[usize],
     delta_s: f64,
+    valid_rows: Option<&[bool]>,
 ) -> Result<f64, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
     if latitudes.len() != timestamps_s.len() {
@@ -26,15 +27,25 @@ pub fn mean_square_displacement_indexed_impl(
     for i in 0..ends.len() {
         let start = if i == 0 { 0 } else { ends[i - 1] };
         let end = ends[i];
-        if start >= end {
+        let valid: Vec<usize> = indices[start..end]
+            .iter()
+            .copied()
+            .filter(|&idx| {
+                valid_rows.is_none_or(|v| v[idx])
+                    && latitudes[idx].is_finite()
+                    && longitudes[idx].is_finite()
+                    && timestamps_s[idx].is_finite()
+            })
+            .collect();
+        if valid.is_empty() {
             continue;
         }
-        let first_idx = indices[start];
+        let first_idx = valid[0];
         let t_limit = timestamps_s[first_idx] + delta_s;
 
-        // indices[start..end] are in chronological order (time-ordered ranges)
+        // valid is in chronological order (time-ordered ranges)
         let mut rt_idx = first_idx;
-        for &idx in &indices[start..end] {
+        for &idx in &valid {
             if timestamps_s[idx] <= t_limit {
                 rt_idx = idx;
             } else {

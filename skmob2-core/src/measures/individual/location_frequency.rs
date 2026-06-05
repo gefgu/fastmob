@@ -10,6 +10,7 @@ pub fn location_frequency_indexed_impl(
     longitudes: &[f64],
     indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<LocFreqData, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
 
@@ -21,6 +22,12 @@ pub fn location_frequency_indexed_impl(
             let mut counts: FxHashMap<(u64, u64), (f64, f64, u64)> =
                 FxHashMap::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             for &idx in &indices[start..end] {
+                if !valid_rows.is_none_or(|v| v[idx])
+                    || !latitudes[idx].is_finite()
+                    || !longitudes[idx].is_finite()
+                {
+                    continue;
+                }
                 let lat = latitudes[idx];
                 let lng = longitudes[idx];
                 let key = (lat.to_bits(), lng.to_bits());

@@ -91,6 +91,7 @@ pub fn k_radius_of_gyration_indexed_impl(
     indices: &[usize],
     ends: &[usize],
     k: usize,
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
     if timestamps.len() != latitudes.len() {
@@ -104,6 +105,13 @@ pub fn k_radius_of_gyration_indexed_impl(
             let end = ends[i];
             let mut stats: FxHashMap<LocationKey, LocationStats> = FxHashMap::default();
             for &idx in indices.iter().take(end).skip(start) {
+                if !valid_rows.is_none_or(|v| v[idx])
+                    || !latitudes[idx].is_finite()
+                    || !longitudes[idx].is_finite()
+                    || !timestamps[idx].is_finite()
+                {
+                    continue;
+                }
                 let lat = latitudes[idx];
                 let lng = longitudes[idx];
                 let entry = stats.entry((lat.to_bits(), lng.to_bits())).or_insert((

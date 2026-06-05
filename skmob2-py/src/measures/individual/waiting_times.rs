@@ -7,7 +7,7 @@ use skmob2_core::measures::individual::waiting_times::{
     waiting_times_indexed_impl, waiting_times_seconds as core_waiting_times_seconds,
 };
 
-use crate::utils::{arrow_values, as_f64_array};
+use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array};
 
 #[pyfunction]
 pub fn waiting_times_seconds(
@@ -43,6 +43,7 @@ pub fn waiting_times_indexed_numpy(
         timestamps_s.as_slice()?,
         indices.as_slice()?,
         ends.as_slice()?,
+        None,
     )
     .map_err(PyValueError::new_err)
 }
@@ -57,6 +58,7 @@ pub fn waiting_times_indexed_flat_numpy(
         timestamps_s.as_slice()?,
         indices.as_slice()?,
         ends.as_slice()?,
+        None,
     )
     .map_err(PyValueError::new_err)
 }
@@ -85,11 +87,13 @@ pub fn waiting_times_indexed_arrow(
     indices: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
 ) -> PyResult<Vec<Vec<f64>>> {
-    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    let timestamps_s = as_nullable_f64_array(timestamps_s, "timestamps_s")?;
+    let valid_rows = arrow_valid_rows(&[&timestamps_s]);
     waiting_times_indexed_impl(
         arrow_values(&timestamps_s),
         indices.as_slice()?,
         ends.as_slice()?,
+        valid_rows.as_deref(),
     )
     .map_err(PyValueError::new_err)
 }
@@ -100,11 +104,13 @@ pub fn waiting_times_indexed_flat_arrow(
     indices: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
 ) -> PyResult<Vec<f64>> {
-    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    let timestamps_s = as_nullable_f64_array(timestamps_s, "timestamps_s")?;
+    let valid_rows = arrow_valid_rows(&[&timestamps_s]);
     waiting_times_indexed_flat_impl(
         arrow_values(&timestamps_s),
         indices.as_slice()?,
         ends.as_slice()?,
+        valid_rows.as_deref(),
     )
     .map_err(PyValueError::new_err)
 }

@@ -64,6 +64,7 @@ pub fn waiting_times_indexed_impl(
     timestamps_s: &[f64],
     indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<Vec<f64>>, String> {
     validate_indexed_ends(timestamps_s.len(), indices, ends)?;
 
@@ -71,7 +72,20 @@ pub fn waiting_times_indexed_impl(
         .into_par_iter()
         .map(|i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
-            waiting_times_for_indexed_range(timestamps_s, indices, start, ends[i])
+            let end = ends[i];
+            let valid: Vec<usize> = indices[start..end]
+                .iter()
+                .copied()
+                .filter(|&idx| {
+                    valid_rows.is_none_or(|v| v[idx]) && timestamps_s[idx].is_finite()
+                })
+                .collect();
+            if valid.len() < 2 {
+                return Vec::new();
+            }
+            (1..valid.len())
+                .map(|pos| timestamps_s[valid[pos]] - timestamps_s[valid[pos - 1]])
+                .collect()
         })
         .collect())
 }
@@ -80,21 +94,23 @@ pub fn waiting_times_indexed_flat_impl(
     timestamps_s: &[f64],
     indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     validate_indexed_ends(timestamps_s.len(), indices, ends)?;
 
-    let total_len = (0..ends.len())
-        .map(|i| {
-            let start = if i == 0 { 0 } else { ends[i - 1] };
-            ends[i].saturating_sub(start).saturating_sub(1)
-        })
-        .sum();
-    let mut waits = Vec::with_capacity(total_len);
+    let mut waits = Vec::new();
     for i in 0..ends.len() {
         let start = if i == 0 { 0 } else { ends[i - 1] };
         let end = ends[i];
-        for pos in start + 1..end {
-            waits.push(timestamps_s[indices[pos]] - timestamps_s[indices[pos - 1]]);
+        let valid: Vec<usize> = indices[start..end]
+            .iter()
+            .copied()
+            .filter(|&idx| {
+                valid_rows.is_none_or(|v| v[idx]) && timestamps_s[idx].is_finite()
+            })
+            .collect();
+        for pos in 1..valid.len() {
+            waits.push(timestamps_s[valid[pos]] - timestamps_s[valid[pos - 1]]);
         }
     }
     Ok(waits)

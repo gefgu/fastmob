@@ -22,13 +22,29 @@ fn best_location_for_indices(
     start: usize,
     end: usize,
     night: &NightWindow,
+    valid_rows: Option<&[bool]>,
 ) -> (f64, f64) {
-    let has_night = indices[start..end]
+    let valid_slice: Vec<usize> = indices[start..end]
+        .iter()
+        .copied()
+        .filter(|&idx| {
+            valid_rows.is_none_or(|v| v[idx])
+                && inputs.latitudes[idx].is_finite()
+                && inputs.longitudes[idx].is_finite()
+                && inputs.hours[idx].is_finite()
+        })
+        .collect();
+
+    if valid_slice.is_empty() {
+        return (f64::NAN, f64::NAN);
+    }
+
+    let has_night = valid_slice
         .iter()
         .any(|&idx| inputs.hours[idx] >= night.start || inputs.hours[idx] < night.end);
     let mut counts: FxHashMap<(u64, u64), (f64, f64, u64)> = FxHashMap::default();
 
-    for &idx in &indices[start..end] {
+    for &idx in &valid_slice {
         let is_night = inputs.hours[idx] >= night.start || inputs.hours[idx] < night.end;
         if has_night && !is_night {
             continue;
@@ -125,6 +141,7 @@ pub fn home_location_indexed_impl(
     ends: &[usize],
     start_night: f64,
     end_night: f64,
+    valid_rows: Option<&[bool]>,
 ) -> Result<HomeResults, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
     if hours.len() != latitudes.len() {
@@ -144,7 +161,7 @@ pub fn home_location_indexed_impl(
         .into_par_iter()
         .map(|i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
-            best_location_for_indices(&inputs, indices, start, ends[i], &night)
+            best_location_for_indices(&inputs, indices, start, ends[i], &night, valid_rows)
         })
         .collect();
     Ok(homes.into_iter().unzip())
