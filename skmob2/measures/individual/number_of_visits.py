@@ -10,15 +10,17 @@ from skmob2._core import (
     number_of_visits_numpy,
 )
 
+from skmob2.core.dispatch import TrajectoryDispatcher
+
 from .._common import (
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ranges,
     _dispatch_kernel,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
     _to_native,
 )
+
+_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def number_of_visits(
@@ -101,16 +103,12 @@ def number_of_visits(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
-    use_arrow = _is_polars_backed(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
         uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
         counts = _dispatch_kernel(
@@ -125,6 +123,9 @@ def number_of_visits(
             return _to_native({"number_of_visits": counts}, df)
         return _to_native({uid_col: uid_values, "number_of_visits": counts}, df)
 
+    valid_mask = (
+        ~df.get_column(lat_col).is_null() & ~df.get_column(lng_col).is_null()
+    ).to_numpy()
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
     counts = _dispatch_kernel(
         number_of_visits_indexed_numpy,
@@ -133,6 +134,7 @@ def number_of_visits(
         len(df),
         indices,
         ends,
+        valid_mask,
         use_arrow=use_arrow,
     )
 

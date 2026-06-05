@@ -8,13 +8,17 @@ from skmob2._core import (
     mean_square_displacement_indexed_arrow,
     mean_square_displacement_indexed_numpy,
 )
+from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _build_time_ordered_user_ranges,
     _extract_timestamps_s,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
+)
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={"kernel": mean_square_displacement_indexed_arrow},
+    numpy_ops={"kernel": mean_square_displacement_indexed_numpy},
 )
 
 
@@ -115,38 +119,22 @@ def mean_square_displacement(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
     if len(df) == 0:
         return 0.0
 
-    use_arrow = _is_polars_backed(df)
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     timestamps = _extract_timestamps_s(df, datetime_col)
     _uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
     )
 
-    if use_arrow:
-        return mean_square_displacement_indexed_arrow(
-            df.get_column(lat_col).to_arrow(),
-            df.get_column(lng_col).to_arrow(),
-            timestamps.to_arrow(),
-            indices,
-            ends,
-            delta_s,
-        )
-    return mean_square_displacement_indexed_numpy(
-        df.get_column(lat_col).to_numpy(),
-        df.get_column(lng_col).to_numpy(),
-        timestamps.to_numpy(),
-        indices,
-        ends,
-        delta_s,
-    )
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    timestamps_data = ops["extract_data"](timestamps)
+    return ops["kernel"](lats_data, lngs_data, timestamps_data, indices, ends, delta_s)

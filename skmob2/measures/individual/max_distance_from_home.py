@@ -14,14 +14,29 @@ from skmob2._core import (
     max_distance_from_point_numpy,
 )
 
+from skmob2.core.dispatch import TrajectoryDispatcher
+
 from .._common import (
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ranges,
     _extract_hours,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
     _to_native,
+)
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "home": home_location_arrow,
+        "home_indexed": home_location_indexed_arrow,
+        "max_dist": max_distance_from_point_arrow,
+        "max_dist_indexed": max_distance_from_point_indexed_arrow,
+    },
+    numpy_ops={
+        "home": home_location_numpy,
+        "home_indexed": home_location_indexed_numpy,
+        "max_dist": max_distance_from_point_numpy,
+        "max_dist_indexed": max_distance_from_point_indexed_numpy,
+    },
 )
 
 
@@ -120,102 +135,35 @@ def max_distance_from_home(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
     df, hours = _extract_hours(df, datetime_col)
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
-    use_arrow = _is_polars_backed(df)
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
+    lats_data = ops["extract_data"](lats)
+    lngs_data = ops["extract_data"](lngs)
+    hours_data = ops["extract_data"](hours)
     if sorted:
         uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
-        if use_arrow:
-            home_lats, home_lngs = home_location_arrow(
-                lats.to_arrow(),
-                lngs.to_arrow(),
-                hours.to_arrow(),
-                ranges,
-                float(start_night),
-                float(end_night),
-            )
-            max_distances = max_distance_from_point_arrow(
-                home_lats,
-                home_lngs,
-                lats.to_arrow(),
-                lngs.to_arrow(),
-                ranges,
-            )
-            if hasattr(max_distances, "to_pyarrow"):
-                max_distances = max_distances.to_pyarrow()
-        else:
-            home_lats, home_lngs = home_location_numpy(
-                lats.to_numpy(),
-                lngs.to_numpy(),
-                hours.to_numpy(),
-                ranges,
-                float(start_night),
-                float(end_night),
-            )
-            max_distances = max_distance_from_point_numpy(
-                home_lats,
-                home_lngs,
-                lats.to_numpy(),
-                lngs.to_numpy(),
-                ranges,
-            )
+        home_lats, home_lngs = ops["home"](lats_data, lngs_data, hours_data, ranges, float(start_night), float(end_night))
+        max_distances = ops["max_dist"](home_lats, home_lngs, lats_data, lngs_data, ranges)
+        if hasattr(max_distances, "to_pyarrow"):
+            max_distances = max_distances.to_pyarrow()
         if uid_col is None:
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-    # Two-stage call: home_location first, then max_distance_from_point. In
-    # the Arrow path the home coordinates are passed back as Arrow arrays;
-    # in the NumPy path they flow as NumPy arrays.
-    if use_arrow:
-        home_lats, home_lngs = home_location_indexed_arrow(
-            lats.to_arrow(),
-            lngs.to_arrow(),
-            hours.to_arrow(),
-            indices,
-            ends,
-            float(start_night),
-            float(end_night),
-        )
-        max_distances = max_distance_from_point_indexed_arrow(
-            home_lats,
-            home_lngs,
-            lats.to_arrow(),
-            lngs.to_arrow(),
-            indices,
-            ends,
-        )
-        if hasattr(max_distances, "to_pyarrow"):
-            max_distances = max_distances.to_pyarrow()
-    else:
-        home_lats, home_lngs = home_location_indexed_numpy(
-            lats.to_numpy(),
-            lngs.to_numpy(),
-            hours.to_numpy(),
-            indices,
-            ends,
-            float(start_night),
-            float(end_night),
-        )
-        max_distances = max_distance_from_point_indexed_numpy(
-            home_lats,
-            home_lngs,
-            lats.to_numpy(),
-            lngs.to_numpy(),
-            indices,
-            ends,
-        )
+    home_lats, home_lngs = ops["home_indexed"](lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night))
+    max_distances = ops["max_dist_indexed"](home_lats, home_lngs, lats_data, lngs_data, indices, ends)
+    if hasattr(max_distances, "to_pyarrow"):
+        max_distances = max_distances.to_pyarrow()
 
     if uid_col is None:
         return _to_native({"max_distance_from_home": max_distances}, df)

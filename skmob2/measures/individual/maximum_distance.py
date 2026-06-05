@@ -12,16 +12,18 @@ from skmob2._core import (
     maximum_distance_numpy,
 )
 
+from skmob2.core.dispatch import TrajectoryDispatcher
+
 from .._common import (
     _build_presorted_user_ranges,
     _build_time_ordered_user_ranges,
     _dispatch_kernel,
     _extract_timestamps_ms,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
     _to_native,
 )
+
+_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def maximum_distance(
@@ -111,16 +113,12 @@ def maximum_distance(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
-    use_arrow = _is_polars_backed(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
         uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
         max_distances = _dispatch_kernel(

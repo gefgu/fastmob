@@ -4,14 +4,24 @@ import narwhals as nw
 from typing import Any
 
 from skmob2._core import uncorrelated_entropy_indexed_arrow, uncorrelated_entropy_indexed_numpy
+from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
     _to_native,
+)
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "kernel": uncorrelated_entropy_indexed_arrow,
+        "unpack": lambda raw: _arrow_result_values(raw).to_pylist(),
+    },
+    numpy_ops={
+        "kernel": uncorrelated_entropy_indexed_numpy,
+        "unpack": lambda raw: raw.tolist(),
+    },
 )
 
 
@@ -114,35 +124,18 @@ def uncorrelated_entropy(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
-    use_arrow = _is_polars_backed(df)
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-    if use_arrow:
-        raw = uncorrelated_entropy_indexed_arrow(
-            df.get_column(lat_col).to_arrow(),
-            df.get_column(lng_col).to_arrow(),
-            indices,
-            ends,
-            normalize,
-        )
-        entropies = _arrow_result_values(raw).to_pylist()
-    else:
-        entropies = uncorrelated_entropy_indexed_numpy(
-            df.get_column(lat_col).to_numpy(),
-            df.get_column(lng_col).to_numpy(),
-            indices,
-            ends,
-            normalize,
-        ).tolist()
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    entropies = ops["unpack"](ops["kernel"](lats_data, lngs_data, indices, ends, normalize))
 
     if uid_col is None:
         return _to_native({"uncorrelated_entropy": entropies}, df)

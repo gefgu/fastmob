@@ -4,14 +4,30 @@ import narwhals as nw
 from typing import Any
 
 from skmob2._core import location_frequency_indexed_arrow, location_frequency_indexed_numpy
+from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
     _to_native,
+)
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "kernel": location_frequency_indexed_arrow,
+        "unpack": lambda raw: (
+            _arrow_result_values(raw[0]).to_pylist(),
+            _arrow_result_values(raw[1]).to_pylist(),
+            _arrow_result_values(raw[2]).to_pylist(),
+            raw[3],
+            raw[4],
+        ),
+    },
+    numpy_ops={
+        "kernel": location_frequency_indexed_numpy,
+        "unpack": lambda raw: (raw[0].tolist(), raw[1].tolist(), raw[2].tolist(), raw[3], raw[4]),
+    },
 )
 
 
@@ -115,40 +131,19 @@ def location_frequency(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
-    use_arrow = _is_polars_backed(df)
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-    if use_arrow:
-        raw = location_frequency_indexed_arrow(
-            df.get_column(lat_col).to_arrow(),
-            df.get_column(lng_col).to_arrow(),
-            indices,
-            ends,
-        )
-        out_lats: list = _arrow_result_values(raw[0]).to_pylist()
-        out_lngs: list = _arrow_result_values(raw[1]).to_pylist()
-        out_counts_list: list = _arrow_result_values(raw[2]).to_pylist()
-        out_starts, out_ends = raw[3], raw[4]
-    else:
-        out_lats_arr, out_lngs_arr, out_counts_arr, out_starts, out_ends = (
-            location_frequency_indexed_numpy(
-                df.get_column(lat_col).to_numpy(),
-                df.get_column(lng_col).to_numpy(),
-                indices,
-                ends,
-            )
-        )
-        out_lats = out_lats_arr.tolist()
-        out_lngs = out_lngs_arr.tolist()
-        out_counts_list = out_counts_arr.tolist()
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    raw = ops["kernel"](lats_data, lngs_data, indices, ends)
+    out_lats, out_lngs, out_counts_list, out_starts, out_ends = ops["unpack"](raw)
 
     freqs_all: list = []
     per_user_freqs: list = []

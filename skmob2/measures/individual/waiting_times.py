@@ -15,50 +15,55 @@ from skmob2._core import (
     waiting_times_numpy,
 )
 
+from skmob2.core.dispatch import TrajectoryDispatcher
+
 from .._common import (
     _build_presorted_user_ranges,
     _build_time_ordered_user_ranges,
     _extract_timestamps_s,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
     _to_native,
+)
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "indexed": waiting_times_indexed_arrow,
+        "indexed_flat": waiting_times_indexed_flat_arrow,
+        "presorted": waiting_times_arrow,
+        "presorted_flat": waiting_times_flat_arrow,
+    },
+    numpy_ops={
+        "indexed": waiting_times_indexed_numpy,
+        "indexed_flat": waiting_times_indexed_flat_numpy,
+        "presorted": waiting_times_numpy,
+        "presorted_flat": waiting_times_flat_numpy,
+    },
 )
 
 
 def _route_indexed_waiting_times(
-    timestamps_s: nw.Series,
+    ops: dict,
+    timestamps_data: Any,
     indices: np.ndarray,
     ends: np.ndarray,
     *,
-    use_arrow: bool,
     merge: bool,
-) -> list[float] | list[list[float]]:
-    if use_arrow:
-        if merge:
-            return waiting_times_indexed_flat_arrow(timestamps_s.to_arrow(), indices, ends)
-        return waiting_times_indexed_arrow(timestamps_s.to_arrow(), indices, ends)
-
+) -> Any:
     if merge:
-        return waiting_times_indexed_flat_numpy(timestamps_s.to_numpy(), indices, ends)
-    return waiting_times_indexed_numpy(timestamps_s.to_numpy(), indices, ends)
+        return ops["indexed_flat"](timestamps_data, indices, ends)
+    return ops["indexed"](timestamps_data, indices, ends)
 
 
 def _route_presorted_waiting_times(
-    timestamps_s: nw.Series,
+    ops: dict,
+    timestamps_data: Any,
     ranges: list[tuple[int, int]],
     *,
-    use_arrow: bool,
     merge: bool,
-) -> list[float] | list[list[float]]:
-    if use_arrow:
-        if merge:
-            return waiting_times_flat_arrow(timestamps_s.to_arrow(), ranges)
-        return waiting_times_arrow(timestamps_s.to_arrow(), ranges)
-
+) -> Any:
     if merge:
-        return waiting_times_flat_numpy(timestamps_s.to_numpy(), ranges)
-    return waiting_times_numpy(timestamps_s.to_numpy(), ranges)
+        return ops["presorted_flat"](timestamps_data, ranges)
+    return ops["presorted"](timestamps_data, ranges)
 
 
 def waiting_times(
@@ -156,20 +161,18 @@ def waiting_times(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    use_arrow = _is_polars_backed(df)
+    timestamps_data = ops["extract_data"](timestamps_s)
     if sorted:
         uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
-        wt_values = _route_presorted_waiting_times(timestamps_s, ranges, use_arrow=use_arrow, merge=merge)
+        wt_values = _route_presorted_waiting_times(ops, timestamps_data, ranges, merge=merge)
         if merge:
             return wt_values
         if uid_col is None:
@@ -179,9 +182,7 @@ def waiting_times(
     uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_s, use_arrow=use_arrow
     )
-    wt_values = _route_indexed_waiting_times(
-        timestamps_s, indices, ends, use_arrow=use_arrow, merge=merge
-    )
+    wt_values = _route_indexed_waiting_times(ops, timestamps_data, indices, ends, merge=merge)
 
     if merge:
         return wt_values

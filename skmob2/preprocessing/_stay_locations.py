@@ -12,14 +12,38 @@ from skmob2._core import (
     detect_stay_locations_batch_numpy as _stay_numpy,
 )
 
+from skmob2.core.dispatch import TrajectoryDispatcher
+
 from ..measures._common import (
     _arrow_result_values,
     _build_time_ordered_user_ranges,
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
-    _is_polars_backed,
-    _prepare_trajectory,
+)
+
+
+def _unwrap_stay_arrow(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
+    return (
+        _arrow_result_values(_l),
+        _arrow_result_values(_g),
+        _arrow_result_values(_e),
+        _arrow_result_values(_lv),
+        np.asarray(_arrow_result_values(_r), dtype=np.uintp),
+    )
+
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "sorted": _stay_arrow,
+        "indexed": _stay_indexed_arrow,
+        "unwrap": _unwrap_stay_arrow,
+    },
+    numpy_ops={
+        "sorted": _stay_numpy,
+        "indexed": _stay_indexed_numpy,
+        "unwrap": lambda _l, _g, _e, _lv, _r: (_l, _g, _e, _lv, _r),
+    },
 )
 
 
@@ -118,52 +142,29 @@ def stay_locations(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
-    use_arrow = _is_polars_backed(df)
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
+    lats_data = ops["extract_data"](lats)
+    lngs_data = ops["extract_data"](lngs)
+    timestamps_data = ops["extract_data"](timestamps_s)
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
     if sorted:
         uid_values, ranges = _build_user_ranges(df, uid_col)
-
-        if use_arrow:
-            _l, _g, _e, _lv, _r = _stay_arrow(
-                lats.to_arrow(),
-                lngs.to_arrow(),
-                timestamps_s.to_arrow(),
-                ranges,
-                spatial_radius_km,
-                minutes_for_a_stop,
-                no_data_for_minutes,
-                effective_min_speed,
-            )
-            out_lats = _arrow_result_values(_l)
-            out_lngs = _arrow_result_values(_g)
-            entry_times_s = _arrow_result_values(_e)
-            leaving_times_s = _arrow_result_values(_lv)
-            user_range_indices = np.asarray(_arrow_result_values(_r), dtype=np.uintp)
-        else:
-            out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _stay_numpy(
-                lats.to_numpy(),
-                lngs.to_numpy(),
-                timestamps_s.to_numpy(),
-                ranges,
-                spatial_radius_km,
-                minutes_for_a_stop,
-                no_data_for_minutes,
-                effective_min_speed,
-            )
+        _result = ops["sorted"](
+            lats_data, lngs_data, timestamps_data, ranges,
+            spatial_radius_km, minutes_for_a_stop, no_data_for_minutes, effective_min_speed,
+        )
+        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = ops["unwrap"](*_result)
     else:
         uid_values, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -172,36 +173,11 @@ def stay_locations(
             timestamps=timestamps_s,
             use_arrow=use_arrow,
         )
-
-        if use_arrow:
-            _l, _g, _e, _lv, _r = _stay_indexed_arrow(
-                lats.to_arrow(),
-                lngs.to_arrow(),
-                timestamps_s.to_arrow(),
-                sorted_indices,
-                ends,
-                spatial_radius_km,
-                minutes_for_a_stop,
-                no_data_for_minutes,
-                effective_min_speed,
-            )
-            out_lats = _arrow_result_values(_l)
-            out_lngs = _arrow_result_values(_g)
-            entry_times_s = _arrow_result_values(_e)
-            leaving_times_s = _arrow_result_values(_lv)
-            user_range_indices = np.asarray(_arrow_result_values(_r), dtype=np.uintp)
-        else:
-            out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _stay_indexed_numpy(
-                lats.to_numpy(),
-                lngs.to_numpy(),
-                timestamps_s.to_numpy(),
-                sorted_indices,
-                ends,
-                spatial_radius_km,
-                minutes_for_a_stop,
-                no_data_for_minutes,
-                effective_min_speed,
-            )
+        _result = ops["indexed"](
+            lats_data, lngs_data, timestamps_data, sorted_indices, ends,
+            spatial_radius_km, minutes_for_a_stop, no_data_for_minutes, effective_min_speed,
+        )
+        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = ops["unwrap"](*_result)
 
     if len(out_lats) == 0:
         out_dict: dict[str, list] = {lat_col: [], lng_col: [], datetime_col: []}
