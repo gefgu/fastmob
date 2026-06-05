@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
-use crate::utils::validate_indexed_coord_ranges;
+use crate::utils::validate_indexed_coord_ends;
 
 type LocFreqData = (Vec<f64>, Vec<f64>, Vec<u64>, Vec<usize>, Vec<usize>);
 
@@ -9,13 +9,15 @@ pub fn location_frequency_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
 ) -> Result<LocFreqData, String> {
-    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
 
-    let per_user: Vec<Vec<(f64, f64, u64)>> = ranges
-        .par_iter()
-        .map(|&(start, end)| {
+    let per_user: Vec<Vec<(f64, f64, u64)>> = (0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             let mut counts: FxHashMap<(u64, u64), (f64, f64, u64)> =
                 FxHashMap::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             for &idx in &indices[start..end] {
@@ -39,8 +41,8 @@ pub fn location_frequency_indexed_impl(
     let mut out_lats = Vec::with_capacity(total_locs);
     let mut out_lngs = Vec::with_capacity(total_locs);
     let mut out_counts = Vec::with_capacity(total_locs);
-    let mut out_user_starts = Vec::with_capacity(ranges.len());
-    let mut out_user_ends = Vec::with_capacity(ranges.len());
+    let mut out_user_starts = Vec::with_capacity(ends.len());
+    let mut out_user_ends = Vec::with_capacity(ends.len());
 
     let mut offset = 0usize;
     for locs in per_user {

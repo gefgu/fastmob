@@ -2,7 +2,7 @@ use geo::{Distance, Haversine, Point};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
-use crate::utils::{validate_coord_ranges, validate_indexed_coord_ranges};
+use crate::utils::{validate_coord_ranges, validate_indexed_coord_ends};
 
 type LocationKey = (u64, u64);
 type LocationStats = (f64, f64, u64, f64, usize);
@@ -89,17 +89,19 @@ pub fn k_radius_of_gyration_indexed_impl(
     longitudes: &[f64],
     timestamps: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
     k: usize,
 ) -> Result<Vec<f64>, String> {
-    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
     if timestamps.len() != latitudes.len() {
         return Err("timestamps, latitudes, and longitudes must have the same length".to_string());
     }
 
-    Ok(ranges
-        .par_iter()
-        .map(|&(start, end)| {
+    Ok((0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             let mut stats: FxHashMap<LocationKey, LocationStats> = FxHashMap::default();
             for &idx in indices.iter().take(end).skip(start) {
                 let lat = latitudes[idx];

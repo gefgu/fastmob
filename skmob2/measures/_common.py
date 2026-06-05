@@ -179,6 +179,22 @@ def _ranges_to_starts_ends(ranges: list[tuple[int, int]]) -> tuple[np.ndarray, n
     return starts, ends
 
 
+def _ranges_to_ends(ranges: list[tuple[int, int]]) -> np.ndarray:
+    """Convert Python range tuples to a cumulative end-boundary array."""
+    return np.fromiter((end for _, end in ranges), dtype=np.uintp, count=len(ranges))
+
+
+def _starts_from_ends(ends: Any) -> np.ndarray:
+    """Derive range starts from a cumulative end-boundary array."""
+    ends = np.asarray(ends, dtype=np.uintp)
+    starts = np.empty_like(ends)
+    if len(ends) == 0:
+        return starts
+    starts[0] = 0
+    starts[1:] = ends[:-1]
+    return starts
+
+
 def _arrow_result_values(values: Any) -> Any:
     """Return a PyArrow value object when a pyo3-arrow wrapper is returned."""
     if hasattr(values, "to_pyarrow"):
@@ -225,11 +241,12 @@ def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, n
 def _uid_values_from_index_ranges(
     uids: nw.Series,
     indices: Any,
-    starts: Any,
+    ends: Any,
     *,
     use_arrow: bool,
 ) -> list:
     """Extract one UID label per indexed range without scanning all rows in Python."""
+    starts = _starts_from_ends(ends)
     if use_arrow:
         uid_arrow = uids.to_arrow()
         return [uid_arrow[int(indices[int(start)])].as_py() for start in starts]
@@ -275,38 +292,33 @@ def _build_time_ordered_user_ranges(
     *,
     use_arrow: bool,
     row_index_col: str = "__skmob2_time_order_row_index__",
-) -> tuple[list | None, Any, np.ndarray, np.ndarray]:
+) -> tuple[list | None, Any, np.ndarray]:
     """Build stable time-ordered indexes/ranges without sorting the full dataframe."""
     from skmob2._core import (
         time_ordered_user_indices_arrow,
         time_ordered_user_indices_numpy,
     )
 
-    start = time.perf_counter() 
-
     if uid_col is None:
         if use_arrow:
-            indices, starts, ends = time_ordered_user_indices_arrow(None, timestamps.to_arrow())
+            indices, ends = time_ordered_user_indices_arrow(None, timestamps.to_arrow())
         else:
-            indices, starts, ends = time_ordered_user_indices_numpy(None, timestamps.to_numpy())
-        print(f"Indexing@no_user time: {time.perf_counter() - start:.2f} seconds")
-        return None, _as_index_array(indices), _as_index_array(starts), _as_index_array(ends)
+            indices, ends = time_ordered_user_indices_numpy(None, timestamps.to_numpy())
+        return None, _as_index_array(indices), _as_index_array(ends)
 
     uids = df.get_column(uid_col)
     try:
         if use_arrow:
-            indices, starts, ends = time_ordered_user_indices_arrow(uids.to_arrow(), timestamps.to_arrow())
+            indices, ends = time_ordered_user_indices_arrow(uids.to_arrow(), timestamps.to_arrow())
         else:
-            indices, starts, ends = time_ordered_user_indices_numpy(
+            indices, ends = time_ordered_user_indices_numpy(
                 _time_ordering_numpy_uids(uids),
                 timestamps.to_numpy(),
             )
         indices = _as_index_array(indices)
-        starts = _as_index_array(starts)
         ends = _as_index_array(ends)
-        uid_values = _uid_values_from_index_ranges(uids, indices, starts, use_arrow=use_arrow)
-        print(f"Indexing time: {time.perf_counter() - start:.2f} seconds")
-        return uid_values, indices, starts, ends
+        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
+        return uid_values, indices, ends
     except ValueError as exc:
         if "unsupported" not in str(exc):
             raise
@@ -318,9 +330,8 @@ def _build_time_ordered_user_ranges(
     )
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
-    starts, ends = _ranges_to_starts_ends(ranges)
-    print(f"Indexing@fallback time: {time.perf_counter() - start:.2f} seconds")
-    return uid_values, _as_index_array(indices), starts, ends
+    ends = _ranges_to_ends(ranges)
+    return uid_values, _as_index_array(indices), ends
 
 
 def _build_indexed_user_ranges_fast(
@@ -329,31 +340,30 @@ def _build_indexed_user_ranges_fast(
     *,
     use_arrow: bool,
     row_index_col: str = "__skmob2_fast_row_index__",
-) -> tuple[list | None, Any, np.ndarray, np.ndarray]:
+) -> tuple[list | None, Any, np.ndarray]:
     """Build grouped row indexes using Rust for supported UID dtypes."""
     from skmob2._core import radius_of_gyration_user_indices_arrow, radius_of_gyration_user_indices_numpy
 
     if uid_col is None:
         indices = np.arange(len(df), dtype=np.uintp)
-        starts = np.array([0], dtype=np.uintp)
-        ends = np.array([len(df)], dtype=np.uintp)
-        return None, indices, starts, ends
+        ends = np.array([] if len(df) == 0 else [len(df)], dtype=np.uintp)
+        return None, indices, ends
 
     uids = df.get_column(uid_col)
     try:
         if use_arrow:
-            indices, starts, ends = radius_of_gyration_user_indices_arrow(uids.to_arrow())
+            indices, ends = radius_of_gyration_user_indices_arrow(uids.to_arrow())
         else:
-            indices, starts, ends = radius_of_gyration_user_indices_numpy(uids.to_numpy())
-        uid_values = _uid_values_from_index_ranges(uids, indices, starts, use_arrow=use_arrow)
-        return uid_values, _as_index_array(indices), _as_index_array(starts), _as_index_array(ends)
+            indices, ends = radius_of_gyration_user_indices_numpy(uids.to_numpy())
+        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
+        return uid_values, _as_index_array(indices), _as_index_array(ends)
     except ValueError as exc:
         if "unsupported" not in str(exc):
             raise
 
     uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col, row_index_col=row_index_col)
-    starts, ends = _ranges_to_starts_ends(ranges)
-    return uid_values, _as_index_array(indices), starts, ends
+    ends = _ranges_to_ends(ranges)
+    return uid_values, _as_index_array(indices), ends
 
 
 def _detect_trajectory_columns(
@@ -491,7 +501,9 @@ def _prepare_trajectory(
 
     nw_df = _with_datetime_column(nw_df, datetime_col)
 
+    start = time.perf_counter_ns()
     df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col]) if drop_nulls else nw_df
+    print(f"Null dropping took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
     if sort:
         sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
         df = df.sort(*sort_cols)

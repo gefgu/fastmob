@@ -1,3 +1,4 @@
+use crate::utils::primitive_option_values;
 use arrow_array::{
     Array, Int32Array, Int64Array, LargeStringArray, StringArray, UInt32Array, UInt64Array,
     types::{Int32Type, Int64Type, UInt32Type, UInt64Type},
@@ -12,27 +13,18 @@ use skmob2_core::measures::individual::radius_of_gyration::{
     user_indices_for_f64_values_at_indices, user_indices_for_ord_values,
     user_indices_for_ord_values_at_indices, valid_coord_indices,
 };
-use crate::utils::primitive_option_values;
 
-use crate::utils::{as_nullable_f64_array, f64_results_into_arrow, ranges_from_starts_ends};
+use crate::utils::{as_nullable_f64_array, f64_results_into_arrow};
 
-type PyUserIndexRanges<'py> = (
-    Bound<'py, PyArray1<usize>>,
-    Bound<'py, PyArray1<usize>>,
-    Bound<'py, PyArray1<usize>>,
-);
+type PyUserIndexRanges<'py> = (Bound<'py, PyArray1<usize>>, Bound<'py, PyArray1<usize>>);
 type PyRadiusOfGyrationWithCounts<'py> = (Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<usize>>);
 
 fn user_index_ranges_into_numpy<'py>(
     py: Python<'py>,
     (indices, ranges): UserIndexRanges,
 ) -> PyUserIndexRanges<'py> {
-    let (indices, starts, ends) = split_user_index_ranges((indices, ranges));
-    (
-        indices.into_pyarray(py),
-        starts.into_pyarray(py),
-        ends.into_pyarray(py),
-    )
+    let (indices, ends) = split_user_index_ranges((indices, ranges));
+    (indices.into_pyarray(py), ends.into_pyarray(py))
 }
 
 #[pyfunction]
@@ -47,8 +39,7 @@ pub fn radius_of_gyration_batch_km(
     longitudes: Vec<f64>,
     ranges: Vec<(usize, usize)>,
 ) -> PyResult<Vec<f64>> {
-    radius_of_gyration_batch_impl(&latitudes, &longitudes, &ranges)
-        .map_err(PyValueError::new_err)
+    radius_of_gyration_batch_impl(&latitudes, &longitudes, &ranges).map_err(PyValueError::new_err)
 }
 
 #[pyfunction]
@@ -87,15 +78,13 @@ pub fn radius_of_gyration_indexed_numpy<'py>(
     latitudes: PyReadonlyArray1<'py, f64>,
     longitudes: PyReadonlyArray1<'py, f64>,
     indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     Ok(radius_of_gyration_indexed_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
         indices.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
     )
     .map_err(PyValueError::new_err)?
     .into_pyarray(py))
@@ -499,7 +488,6 @@ pub fn radius_of_gyration_indexed_arrow(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     indices: PyReadonlyArray1<usize>,
-    starts: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
 ) -> PyResult<ArrowPyArray> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
@@ -529,14 +517,12 @@ pub fn radius_of_gyration_indexed_arrow(
         })
         .collect();
 
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
-
     Ok(f64_results_into_arrow(
         radius_of_gyration_indexed_impl(
             &lat_values,
             &lng_values,
             indices.as_slice()?,
-            &ranges,
+            ends.as_slice()?,
         )
         .map_err(PyValueError::new_err)?,
     ))

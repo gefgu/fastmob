@@ -113,14 +113,13 @@ def recency_rank(
     )
 
     use_arrow = _is_polars_backed(df)
-    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     if use_arrow:
         raw = recency_rank_indexed_arrow(
             df.get_column(lat_col).to_arrow(),
             df.get_column(lng_col).to_arrow(),
             indices,
-            starts,
             ends,
         )
         out_lats: list = _arrow_result_values(raw[0]).to_pylist()
@@ -131,7 +130,6 @@ def recency_rank(
             df.get_column(lat_col).to_numpy(),
             df.get_column(lng_col).to_numpy(),
             indices,
-            starts,
             ends,
         )
         out_lats = out_lats_arr.tolist()

@@ -143,14 +143,13 @@ def home_location(
             return _to_native({lat_col: home_lats, lng_col: home_lngs}, df)
         return _to_native({uid_col: uid_values, lat_col: home_lats, lng_col: home_lngs}, df)
 
-    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     home_lats, home_lngs = _dispatch_pair_kernel(
         home_location_indexed_numpy,
         home_location_indexed_arrow,
         [df.get_column(lat_col), df.get_column(lng_col), hours],
         indices,
-        starts,
         ends,
         float(start_night),
         float(end_night),

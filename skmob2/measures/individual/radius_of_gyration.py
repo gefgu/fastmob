@@ -24,7 +24,7 @@ from .._common import (
     _is_polars_backed,
     _detect_trajectory_columns,
     _prepare_trajectory,
-    _ranges_to_starts_ends,
+    _ranges_to_ends,
     _result_scalar,
     _to_native,
     _uid_values_from_index_ranges,
@@ -63,7 +63,7 @@ def _filter_values_by_valid_counts(values: Any, counts: np.ndarray, *, use_arrow
 
 def _build_valid_indexed_user_ranges(
     df, uid_col: str, lat_col: str, lng_col: str
-) -> tuple[list, Any, Any, Any]:
+) -> tuple[list, Any, Any]:
     """Build sorted row indices and per-user ranges for rows with valid lat/lng.
 
     Tries the Rust fast path first; falls back to a Narwhals filter+sort when
@@ -72,20 +72,20 @@ def _build_valid_indexed_user_ranges(
     n = len(df)
     if n == 0:
         empty = np.array([], dtype=np.uintp)
-        return [], empty, empty, empty
+        return [], empty, empty
 
     use_arrow = _is_polars_backed(df)
     uid_series = df.get_column(uid_col)
     try:
-        indices, starts, ends = _dispatch_kernel(
+        indices, ends = _dispatch_kernel(
             radius_of_gyration_valid_user_indices_numpy,
             radius_of_gyration_valid_user_indices_arrow,
             [uid_series, df.get_column(lat_col), df.get_column(lng_col)],
             use_arrow=use_arrow,
             convert_arrow_result=False,
         )
-        uid_values = _uid_values_from_index_ranges(uid_series, indices, starts, use_arrow=use_arrow)
-        return uid_values, indices, starts, ends
+        uid_values = _uid_values_from_index_ranges(uid_series, indices, ends, use_arrow=use_arrow)
+        return uid_values, indices, ends
     except ValueError:
         pass
 
@@ -97,8 +97,8 @@ def _build_valid_indexed_user_ranges(
     )
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(_ROG_ROW_INDEX_COL).to_list()]
-    starts, ends = _ranges_to_starts_ends(ranges)
-    return uid_values, _as_index_array(indices), starts, ends
+    ends = _ranges_to_ends(ranges)
+    return uid_values, _as_index_array(indices), ends
 
 
 def radius_of_gyration(
@@ -246,13 +246,12 @@ def radius_of_gyration(
             rog_values = _filter_values_by_valid_counts(rog_values, valid_counts, use_arrow=use_arrow)
         return _to_native({uid_col: uid_values, "radius_of_gyration": rog_values}, df)
 
-    uid_values, indices, starts, ends = _build_valid_indexed_user_ranges(df, uid_col, lat_col, lng_col)
+    uid_values, indices, ends = _build_valid_indexed_user_ranges(df, uid_col, lat_col, lng_col)
     rog_values = _dispatch_kernel(
         radius_of_gyration_indexed_numpy,
         radius_of_gyration_indexed_arrow,
         [lats, lngs],
         indices,
-        starts,
         ends,
         use_arrow=use_arrow,
     )

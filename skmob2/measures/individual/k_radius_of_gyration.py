@@ -150,14 +150,13 @@ def k_radius_of_gyration(
             return _to_native({"k_radius_of_gyration": krg_values}, df)
         return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)
 
-    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     krg_values = _dispatch_kernel(
         k_radius_of_gyration_indexed_numpy,
         k_radius_of_gyration_indexed_arrow,
         [lats, lngs, timestamps],
         indices,
-        starts,
         ends,
         k,
         use_arrow=use_arrow,

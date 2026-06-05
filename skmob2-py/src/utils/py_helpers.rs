@@ -45,9 +45,7 @@ pub fn as_f64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Float64
         .as_any()
         .downcast_ref::<Float64Array>()
         .cloned()
-        .ok_or_else(|| {
-            PyValueError::new_err(format!("expected float64 Arrow array for {name}"))
-        })?;
+        .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))?;
     if array.null_count() > 0 {
         return Err(PyValueError::new_err(format!(
             "Arrow array for {name} must not contain nulls"
@@ -62,9 +60,7 @@ pub fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float64Array>
         .as_any()
         .downcast_ref::<Float64Array>()
         .cloned()
-        .ok_or_else(|| {
-            PyValueError::new_err(format!("expected float64 Arrow array for {name}"))
-        })
+        .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))
 }
 
 pub fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
@@ -73,29 +69,31 @@ pub fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
     &array.values()[start..end]
 }
 
-pub fn ranges_from_starts_ends(
-    starts: &[usize],
-    ends: &[usize],
-) -> PyResult<Vec<(usize, usize)>> {
-    if starts.len() != ends.len() {
-        return Err(PyValueError::new_err(
-            "range starts and ends must have the same length",
-        ));
+pub fn validate_indexed_ends(value_len: usize, indices: &[usize], ends: &[usize]) -> PyResult<()> {
+    let mut previous = 0usize;
+    for &end in ends {
+        if end < previous {
+            return Err(PyValueError::new_err(
+                "range ends must be monotonically non-decreasing",
+            ));
+        }
+        if end > indices.len() {
+            return Err(PyValueError::new_err(
+                "range end must be within index array bounds",
+            ));
+        }
+        previous = end;
     }
 
-    starts
-        .iter()
-        .zip(ends)
-        .map(|(&start, &end)| {
-            if start > end {
-                Err(PyValueError::new_err(
-                    "range start must be less than or equal to range end",
-                ))
-            } else {
-                Ok((start, end))
-            }
-        })
-        .collect()
+    for &idx in indices {
+        if idx >= value_len {
+            return Err(PyValueError::new_err(
+                "index must be within coordinate array bounds",
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 #[allow(dead_code)]

@@ -1,6 +1,6 @@
 use rayon::prelude::*;
 
-use crate::utils::{validate_indexed_ranges, validate_ranges};
+use crate::utils::{validate_indexed_ends, validate_ranges};
 
 pub fn waiting_times_for_range(timestamps_s: &[f64], start: usize, end: usize) -> Vec<f64> {
     if end - start < 2 {
@@ -63,29 +63,36 @@ pub fn waiting_times_flat_impl(
 pub fn waiting_times_indexed_impl(
     timestamps_s: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
 ) -> Result<Vec<Vec<f64>>, String> {
-    validate_indexed_ranges(timestamps_s.len(), indices, ranges)?;
+    validate_indexed_ends(timestamps_s.len(), indices, ends)?;
 
-    Ok(ranges
-        .par_iter()
-        .map(|&(start, end)| waiting_times_for_indexed_range(timestamps_s, indices, start, end))
+    Ok((0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            waiting_times_for_indexed_range(timestamps_s, indices, start, ends[i])
+        })
         .collect())
 }
 
 pub fn waiting_times_indexed_flat_impl(
     timestamps_s: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
 ) -> Result<Vec<f64>, String> {
-    validate_indexed_ranges(timestamps_s.len(), indices, ranges)?;
+    validate_indexed_ends(timestamps_s.len(), indices, ends)?;
 
-    let total_len = ranges
-        .iter()
-        .map(|&(start, end)| end.saturating_sub(start).saturating_sub(1))
+    let total_len = (0..ends.len())
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            ends[i].saturating_sub(start).saturating_sub(1)
+        })
         .sum();
     let mut waits = Vec::with_capacity(total_len);
-    for &(start, end) in ranges {
+    for i in 0..ends.len() {
+        let start = if i == 0 { 0 } else { ends[i - 1] };
+        let end = ends[i];
         for pos in start + 1..end {
             waits.push(timestamps_s[indices[pos]] - timestamps_s[indices[pos - 1]]);
         }

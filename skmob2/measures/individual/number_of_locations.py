@@ -129,13 +129,12 @@ def number_of_locations(
             return _to_native({"number_of_locations": n_locs}, df)
         return _to_native({uid_col: uid_values, "number_of_locations": n_locs}, df)
 
-    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
     n_locs = _dispatch_kernel(
         number_of_locations_indexed_numpy,
         number_of_locations_indexed_arrow,
         [df.get_column(lat_col), df.get_column(lng_col)],
         indices,
-        starts,
         ends,
         use_arrow=use_arrow,
     )

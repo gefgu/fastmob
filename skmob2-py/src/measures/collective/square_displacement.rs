@@ -6,7 +6,7 @@ use skmob2_core::measures::collective::square_displacement::{
     mean_square_displacement_indexed_impl, square_displacement_km2 as core_square_displacement_km2,
 };
 
-use crate::utils::{arrow_values, as_f64_array, ranges_from_starts_ends};
+use crate::utils::{arrow_values, as_f64_array};
 
 #[pyfunction]
 pub fn square_displacement_km2(lat0: f64, lng0: f64, lat_t: f64, lng_t: f64) -> f64 {
@@ -21,17 +21,15 @@ pub fn mean_square_displacement_indexed_numpy<'py>(
     longitudes: PyReadonlyArray1<'py, f64>,
     timestamps_s: PyReadonlyArray1<'py, f64>,
     indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     delta_s: f64,
 ) -> PyResult<f64> {
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     mean_square_displacement_indexed_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
         timestamps_s.as_slice()?,
         indices.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
         delta_s,
     )
     .map_err(PyValueError::new_err)
@@ -45,20 +43,18 @@ pub fn mean_square_displacement_indexed_arrow<'py>(
     longitudes: PyArray,
     timestamps_s: PyArray,
     indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     delta_s: f64,
 ) -> PyResult<f64> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     mean_square_displacement_indexed_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
         arrow_values(&timestamps_s),
         indices.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
         delta_s,
     )
     .map_err(PyValueError::new_err)

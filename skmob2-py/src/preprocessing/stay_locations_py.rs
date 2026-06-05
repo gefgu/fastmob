@@ -6,8 +6,8 @@ use skmob2_core::preprocessing::stay_locations::{
 };
 
 use crate::utils::{
-    arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends,
-    u64_results_into_arrow,
+    arrow_values, as_f64_array, f64_results_into_arrow, u64_results_into_arrow,
+    validate_indexed_ends,
 };
 
 type StayLocationsBatchNumpyResult<'py> = (
@@ -110,7 +110,6 @@ pub fn detect_stay_locations_batch_indexed_numpy<'py>(
     longitudes: PyReadonlyArray1<'py, f64>,
     timestamps_s: PyReadonlyArray1<'py, f64>,
     sorted_indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     stop_radius_km: f64,
     minutes_for_a_stop: f64,
@@ -121,14 +120,15 @@ pub fn detect_stay_locations_batch_indexed_numpy<'py>(
     let lngs = longitudes.as_slice()?;
     let times = timestamps_s.as_slice()?;
     let idxs = sorted_indices.as_slice()?;
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ends = ends.as_slice()?;
+    validate_indexed_ends(lats.len(), idxs, ends)?;
     let (out_lats, out_lngs, entry_times, leaving_times, user_range_idx) = py.detach(|| {
         detect_stay_locations_batch_indexed_impl(
             lats,
             lngs,
             times,
             idxs,
-            &ranges,
+            ends,
             stop_radius_km,
             minutes_for_a_stop,
             no_data_for_minutes,
@@ -152,7 +152,6 @@ pub fn detect_stay_locations_batch_indexed_arrow(
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
     sorted_indices: PyReadonlyArray1<usize>,
-    starts: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
     stop_radius_km: f64,
     minutes_for_a_stop: f64,
@@ -166,14 +165,15 @@ pub fn detect_stay_locations_batch_indexed_arrow(
     let lngs = arrow_values(&longitudes);
     let times = arrow_values(&timestamps_s);
     let idxs = sorted_indices.as_slice()?;
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ends = ends.as_slice()?;
+    validate_indexed_ends(lats.len(), idxs, ends)?;
     let (out_lats, out_lngs, entry_times, leaving_times, user_range_idx) = py.detach(|| {
         detect_stay_locations_batch_indexed_impl(
             lats,
             lngs,
             times,
             idxs,
-            &ranges,
+            ends,
             stop_radius_km,
             minutes_for_a_stop,
             no_data_for_minutes,

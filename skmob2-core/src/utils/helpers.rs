@@ -56,6 +56,32 @@ pub fn validate_indexed_ranges(
     Ok(())
 }
 
+pub fn validate_indexed_ends(
+    value_len: usize,
+    indices: &[usize],
+    ends: &[usize],
+) -> Result<(), String> {
+    let n_indices = indices.len();
+    let mut previous = 0usize;
+    for &end in ends {
+        if end < previous {
+            return Err("range ends must be monotonically non-decreasing".to_string());
+        }
+        if end > n_indices {
+            return Err("range end must be within index array bounds".to_string());
+        }
+        previous = end;
+    }
+
+    for &idx in indices {
+        if idx >= value_len {
+            return Err("index must be within coordinate array bounds".to_string());
+        }
+    }
+
+    Ok(())
+}
+
 pub fn validate_indexed_coord_ranges(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -66,6 +92,18 @@ pub fn validate_indexed_coord_ranges(
         return Err("latitudes and longitudes must have the same length".to_string());
     }
     validate_indexed_ranges(latitudes.len(), indices, ranges)
+}
+
+pub fn validate_indexed_coord_ends(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    indices: &[usize],
+    ends: &[usize],
+) -> Result<(), String> {
+    if latitudes.len() != longitudes.len() {
+        return Err("latitudes and longitudes must have the same length".to_string());
+    }
+    validate_indexed_ends(latitudes.len(), indices, ends)
 }
 
 pub fn ranges_from_starts_ends(
@@ -87,6 +125,23 @@ pub fn ranges_from_starts_ends(
             }
         })
         .collect()
+}
+
+pub fn ranges_from_ends(ends: &[usize]) -> Result<Vec<(usize, usize)>, String> {
+    let mut ranges = Vec::with_capacity(ends.len());
+    let mut start = 0usize;
+    for &end in ends {
+        if end < start {
+            return Err("range ends must be monotonically non-decreasing".to_string());
+        }
+        ranges.push((start, end));
+        start = end;
+    }
+    Ok(ranges)
+}
+
+pub fn ends_from_ranges(ranges: &[(usize, usize)]) -> Vec<usize> {
+    ranges.iter().map(|&(_, end)| end).collect()
 }
 
 /// Splits a `Vec<(usize, usize)>` of ranges into two parallel `Vec<usize>` of starts and ends.

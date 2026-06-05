@@ -1,4 +1,5 @@
 from __future__ import annotations
+import time
 from typing import Any
 
 import narwhals as nw
@@ -102,6 +103,7 @@ def filter(
 
     """
     df = nw.from_native(traj, eager_only=True)
+    start = time.perf_counter_ns()
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
@@ -109,7 +111,10 @@ def filter(
         lng_col=lng_col,
         uid_col=uid_col,
     )
+    print(f"Column detection took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
     use_arrow = _use_arrow_kernel_path(df)
+
+    start = time.perf_counter_ns()
     df = _prepare_trajectory(
         df,
         datetime_col=datetime_col,
@@ -118,8 +123,11 @@ def filter(
         uid_col=uid_col,
         sort=use_arrow,
     )
+    print(f"Trajectory preparation took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
 
+    start = time.perf_counter_ns()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
+    print(f"Timestamp extraction took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
 
@@ -132,6 +140,7 @@ def filter(
     )
     sorted = use_arrow or sorted
 
+    start = time.perf_counter_ns()
     if sorted:
         _, ranges = _build_user_ranges(df, uid_col)
 
@@ -154,7 +163,7 @@ def filter(
                 config,
             )
     else:
-        _, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
+        _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
             uid_col,
             datetime_col=datetime_col,
@@ -169,7 +178,6 @@ def filter(
                     lngs.to_arrow(),
                     timestamps_s.to_arrow(),
                     sorted_indices,
-                    starts,
                     ends,
                     config,
                 )
@@ -180,10 +188,10 @@ def filter(
                 lngs.to_numpy(),
                 timestamps_s.to_numpy(),
                 sorted_indices,
-                starts,
                 ends,
                 config,
             )
+    print(f"Filtering took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
 
     native_df = df.to_native()
     if hasattr(native_df, "iloc") and hasattr(native_df, "dtypes"):

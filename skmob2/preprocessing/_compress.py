@@ -123,14 +123,14 @@ def compress(
         if use_arrow:
             _i, _l, _g = _compress_arrow(lats.to_arrow(), lngs.to_arrow(), ranges, spatial_radius_km)
             representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
-            median_lats = _arrow_result_values(_l)
-            median_lngs = _arrow_result_values(_g)
+            median_lats = np.asarray(_arrow_result_values(_l), dtype=np.float64)
+            median_lngs = np.asarray(_arrow_result_values(_g), dtype=np.float64)
         else:
             representative_indices, median_lats, median_lngs = _compress_numpy(
                 lats.to_numpy(), lngs.to_numpy(), ranges, spatial_radius_km
             )
     else:
-        _, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
+        _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
             uid_col,
             datetime_col=datetime_col,
@@ -143,19 +143,17 @@ def compress(
                 lats.to_arrow(),
                 lngs.to_arrow(),
                 sorted_indices,
-                starts,
                 ends,
                 spatial_radius_km,
             )
             representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
-            median_lats = _arrow_result_values(_l)
-            median_lngs = _arrow_result_values(_g)
+            median_lats = np.asarray(_arrow_result_values(_l), dtype=np.float64)
+            median_lngs = np.asarray(_arrow_result_values(_g), dtype=np.float64)
         else:
             representative_indices, median_lats, median_lngs = _compress_indexed_numpy(
                 lats.to_numpy(),
                 lngs.to_numpy(),
                 sorted_indices,
-                starts,
                 ends,
                 spatial_radius_km,
             )

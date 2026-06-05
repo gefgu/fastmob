@@ -172,12 +172,17 @@ fn filter_user_slice_indexed(
     times: &[f64],
     user_indices: &[usize],
     config: &FilterConfig,
-) -> Vec<bool> {
+    keep: &mut Vec<bool>,
+    kept_idx: &mut Vec<usize>,
+    dr_dt: &mut Vec<(f64, f64)>,
+    drop_local_idx: &mut Vec<bool>,
+) {
     let n = user_indices.len();
+    keep.clear();
+    keep.resize(n, true);
     if n == 0 {
-        return Vec::new();
+        return;
     }
-    let mut keep = vec![true; n];
 
     let mut i = 0usize;
     loop {
@@ -209,14 +214,15 @@ fn filter_user_slice_indexed(
     }
 
     if !config.include_loops {
-        return keep;
+        return;
     }
 
-    let kept_idx: Vec<usize> = (0..n).filter(|&k| keep[k]).collect();
+    kept_idx.clear();
+    kept_idx.extend((0..n).filter(|&k| keep[k]));
     let m = kept_idx.len();
 
-    let mut dr_dt: Vec<(f64, f64)> = Vec::with_capacity(config.max_loop);
-    let mut drop_local_idx = vec![false; n];
+    drop_local_idx.clear();
+    drop_local_idx.resize(n, false);
 
     let mut ci = 0usize;
     while ci + 1 < m {
@@ -274,8 +280,6 @@ fn filter_user_slice_indexed(
             keep[idx] = false;
         }
     }
-
-    keep
 }
 
 pub fn filter_trajectory_indexed_impl(
@@ -283,25 +287,51 @@ pub fn filter_trajectory_indexed_impl(
     longitudes: &[f64],
     timestamps_s: &[f64],
     sorted_indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
     config: &FilterConfig,
 ) -> Vec<bool> {
     let n = latitudes.len();
     let mut global_mask = vec![true; n];
 
     let mask_addr = global_mask.as_mut_ptr() as usize;
-    ranges.par_iter().for_each(|&(start, end)| {
-        let user_indices = &sorted_indices[start..end];
-        let user_mask =
-            filter_user_slice_indexed(latitudes, longitudes, timestamps_s, user_indices, config);
-        let mask_ptr = mask_addr as *mut bool;
-        for (local_idx, &keep) in user_mask.iter().enumerate() {
-            let absolute_original_idx = user_indices[local_idx];
-            unsafe {
-                *mask_ptr.add(absolute_original_idx) = keep;
+    (0..ends.len()).into_par_iter().for_each_init(
+        || {
+            (
+                Vec::<bool>::new(),
+                Vec::<usize>::new(),
+                Vec::<(f64, f64)>::with_capacity(config.max_loop),
+                Vec::<bool>::new(),
+            )
+        },
+        |(keep_buf, kept_idx_buf, dr_dt_buf, drop_local_idx_buf), i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
+            if start >= end {
+                return;
             }
-        }
-    });
+
+            let user_indices = &sorted_indices[start..end];
+            filter_user_slice_indexed(
+                latitudes,
+                longitudes,
+                timestamps_s,
+                user_indices,
+                config,
+                keep_buf,
+                kept_idx_buf,
+                dr_dt_buf,
+                drop_local_idx_buf,
+            );
+
+            let mask_ptr = mask_addr as *mut bool;
+            for (local_idx, &keep) in keep_buf.iter().enumerate() {
+                let absolute_original_idx = user_indices[local_idx];
+                unsafe {
+                    *mask_ptr.add(absolute_original_idx) = keep;
+                }
+            }
+        },
+    );
 
     global_mask
 }

@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 
 use crate::utils::haversine::haversine_km;
-use crate::utils::{validate_coord_ranges, validate_indexed_coord_ranges};
+use crate::utils::{validate_coord_ranges, validate_indexed_coord_ends};
 
 pub fn max_distance_from_point_impl(
     home_lats: &[f64],
@@ -42,17 +42,18 @@ pub fn max_distance_from_point_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
 ) -> Result<Vec<f64>, String> {
-    if home_lats.len() != home_lngs.len() || home_lats.len() != ranges.len() {
+    if home_lats.len() != home_lngs.len() || home_lats.len() != ends.len() {
         return Err("home coordinates and ranges must have the same length".to_string());
     }
-    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
 
-    Ok(ranges
-        .par_iter()
-        .enumerate()
-        .map(|(i, &(start, end))| {
+    Ok((0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             let home_lat = home_lats[i];
             let home_lng = home_lngs[i];
             indices[start..end]

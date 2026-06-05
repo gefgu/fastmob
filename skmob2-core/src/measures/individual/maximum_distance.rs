@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 
 use crate::utils::haversine::{adjacent_haversine_max_km, haversine_km};
-use crate::utils::{validate_coord_ranges, validate_indexed_coord_ranges};
+use crate::utils::{validate_coord_ranges, validate_indexed_coord_ends};
 
 pub fn maximum_distance_impl(
     latitudes: &[f64],
@@ -27,13 +27,15 @@ pub fn maximum_distance_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
 ) -> Result<Vec<f64>, String> {
-    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
 
-    let results: Vec<f64> = ranges
-        .par_iter()
-        .map(|&(start, end)| {
+    let results: Vec<f64> = (0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             if end - start < 2 {
                 return 0.0;
             }

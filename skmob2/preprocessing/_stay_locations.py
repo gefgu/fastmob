@@ -165,7 +165,7 @@ def stay_locations(
                 effective_min_speed,
             )
     else:
-        uid_values, sorted_indices, starts, ends = _build_time_ordered_user_ranges(
+        uid_values, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
             uid_col,
             datetime_col=datetime_col,
@@ -179,7 +179,6 @@ def stay_locations(
                 lngs.to_arrow(),
                 timestamps_s.to_arrow(),
                 sorted_indices,
-                starts,
                 ends,
                 spatial_radius_km,
                 minutes_for_a_stop,
@@ -197,7 +196,6 @@ def stay_locations(
                 lngs.to_numpy(),
                 timestamps_s.to_numpy(),
                 sorted_indices,
-                starts,
                 ends,
                 spatial_radius_km,
                 minutes_for_a_stop,

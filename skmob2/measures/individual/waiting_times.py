@@ -29,7 +29,6 @@ from .._common import (
 def _route_indexed_waiting_times(
     timestamps_s: nw.Series,
     indices: np.ndarray,
-    starts: np.ndarray,
     ends: np.ndarray,
     *,
     use_arrow: bool,
@@ -37,12 +36,12 @@ def _route_indexed_waiting_times(
 ) -> list[float] | list[list[float]]:
     if use_arrow:
         if merge:
-            return waiting_times_indexed_flat_arrow(timestamps_s.to_arrow(), indices, starts, ends)
-        return waiting_times_indexed_arrow(timestamps_s.to_arrow(), indices, starts, ends)
+            return waiting_times_indexed_flat_arrow(timestamps_s.to_arrow(), indices, ends)
+        return waiting_times_indexed_arrow(timestamps_s.to_arrow(), indices, ends)
 
     if merge:
-        return waiting_times_indexed_flat_numpy(timestamps_s.to_numpy(), indices, starts, ends)
-    return waiting_times_indexed_numpy(timestamps_s.to_numpy(), indices, starts, ends)
+        return waiting_times_indexed_flat_numpy(timestamps_s.to_numpy(), indices, ends)
+    return waiting_times_indexed_numpy(timestamps_s.to_numpy(), indices, ends)
 
 
 def _route_presorted_waiting_times(
@@ -177,11 +176,11 @@ def waiting_times(
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
-    uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
+    uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_s, use_arrow=use_arrow
     )
     wt_values = _route_indexed_waiting_times(
-        timestamps_s, indices, starts, ends, use_arrow=use_arrow, merge=merge
+        timestamps_s, indices, ends, use_arrow=use_arrow, merge=merge
     )
 
     if merge:

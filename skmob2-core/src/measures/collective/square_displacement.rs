@@ -1,5 +1,5 @@
 use crate::utils::haversine::haversine_km;
-use crate::utils::validate_indexed_coord_ranges;
+use crate::utils::validate_indexed_coord_ends;
 
 pub fn square_displacement_km2(lat0: f64, lng0: f64, lat_t: f64, lng_t: f64) -> f64 {
     let d = haversine_km(lat0, lng0, lat_t, lng_t);
@@ -11,20 +11,21 @@ pub fn mean_square_displacement_indexed_impl(
     longitudes: &[f64],
     timestamps_s: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
     delta_s: f64,
 ) -> Result<f64, String> {
-    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
     if latitudes.len() != timestamps_s.len() {
         return Err(
             "timestamps_s must have the same length as latitudes and longitudes".to_string(),
         );
     }
-
     let mut total = 0.0f64;
     let mut count = 0usize;
 
-    for &(start, end) in ranges {
+    for i in 0..ends.len() {
+        let start = if i == 0 { 0 } else { ends[i - 1] };
+        let end = ends[i];
         if start >= end {
             continue;
         }

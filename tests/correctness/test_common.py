@@ -290,7 +290,7 @@ class TestBuildTimeOrderedUserRanges:
         nw_df = nw.from_native(df, eager_only=True)
         timestamps = _extract_timestamps_s(nw_df, "datetime")
 
-        uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
+        uid_values, indices, ends = _build_time_ordered_user_ranges(
             nw_df,
             "uid",
             "datetime",
@@ -302,7 +302,6 @@ class TestBuildTimeOrderedUserRanges:
         assert "Indexing@fallback" not in captured.out
         assert uid_values == ["a", "b"]
         assert np.asarray(indices).tolist() == [3, 1, 2, 0]
-        assert np.asarray(starts).tolist() == [0, 2]
         assert np.asarray(ends).tolist() == [2, 4]
 
 

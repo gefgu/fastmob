@@ -125,14 +125,13 @@ def number_of_visits(
             return _to_native({"number_of_visits": counts}, df)
         return _to_native({uid_col: uid_values, "number_of_visits": counts}, df)
 
-    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
     counts = _dispatch_kernel(
         number_of_visits_indexed_numpy,
         number_of_visits_indexed_arrow,
         [],
         len(df),
         indices,
-        starts,
         ends,
         use_arrow=use_arrow,
     )

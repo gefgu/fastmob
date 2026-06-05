@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 
 use crate::utils::{
-    ranges_from_sorted_values, split_ranges, validate_coord_ranges, validate_indexed_coord_ranges,
+    ends_from_ranges, ranges_from_sorted_values, validate_coord_ranges, validate_indexed_coord_ends,
 };
 
 pub type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
@@ -164,13 +164,15 @@ pub fn radius_of_gyration_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
     indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
 ) -> Result<Vec<f64>, String> {
-    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
+    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
 
     let mut valid_indices = Vec::new();
-    let mut valid_ranges = Vec::with_capacity(ranges.len());
-    for &(start, end) in ranges {
+    let mut valid_ranges = Vec::with_capacity(ends.len());
+    for i in 0..ends.len() {
+        let start = if i == 0 { 0 } else { ends[i - 1] };
+        let end = ends[i];
         let valid_start = valid_indices.len();
         for &idx in &indices[start..end] {
             if !latitudes[idx].is_nan() && !longitudes[idx].is_nan() {
@@ -190,11 +192,8 @@ pub fn radius_of_gyration_indexed_impl(
     Ok(results)
 }
 
-pub fn split_user_index_ranges(
-    (indices, ranges): UserIndexRanges,
-) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
-    let (starts, ends) = split_ranges(ranges);
-    (indices, starts, ends)
+pub fn split_user_index_ranges((indices, ranges): UserIndexRanges) -> (Vec<usize>, Vec<usize>) {
+    (indices, ends_from_ranges(&ranges))
 }
 
 pub fn user_indices_for_ord_values<T: Ord>(values: &[T]) -> UserIndexRanges {
@@ -237,10 +236,7 @@ pub fn user_indices_for_f64_values_at_indices(
     (indices, ranges)
 }
 
-pub fn valid_coord_indices(
-    latitudes: &[f64],
-    longitudes: &[f64],
-) -> Result<Vec<usize>, String> {
+pub fn valid_coord_indices(latitudes: &[f64], longitudes: &[f64]) -> Result<Vec<usize>, String> {
     if latitudes.len() != longitudes.len() {
         return Err("latitudes and longitudes must have the same length".to_string());
     }

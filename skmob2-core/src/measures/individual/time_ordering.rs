@@ -1,15 +1,14 @@
 use rayon::prelude::*;
 
-use crate::utils::{split_ranges, validate_uid_len};
+use crate::utils::{ends_from_ranges, validate_uid_len};
 
 pub type IndexRanges = Vec<(usize, usize)>;
 pub type OrderedIndexRanges = (Vec<usize>, IndexRanges);
 
 pub fn split_ordered_index_ranges(
     (indices, ranges): OrderedIndexRanges,
-) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
-    let (starts, ends) = split_ranges(ranges);
-    (indices, starts, ends)
+) -> (Vec<usize>, Vec<usize>) {
+    (indices, ends_from_ranges(&ranges))
 }
 
 pub fn time_ordered_indices_single_user(timestamps: &[f64]) -> OrderedIndexRanges {
@@ -20,6 +19,9 @@ pub fn time_ordered_indices_single_user(timestamps: &[f64]) -> OrderedIndexRange
             .then(left.cmp(&right))
     });
     let n = indices.len();
+    if n == 0 {
+        return (indices, Vec::new());
+    }
     (indices, vec![(0, n)])
 }
 

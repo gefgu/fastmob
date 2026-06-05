@@ -161,12 +161,14 @@ pub fn compress_trajectory_representatives_indexed_impl(
     lats: &[f64],
     lngs: &[f64],
     sorted_indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
     spatial_radius_km: f64,
 ) -> CompressRepresentatives {
-    let per_user_rows: Vec<Vec<CompressRepresentativeRow>> = ranges
-        .par_iter()
-        .map(|&(start, end)| {
+    let per_user_rows: Vec<Vec<CompressRepresentativeRow>> = (0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             compress_user_representatives_indexed(
                 lats,
                 lngs,

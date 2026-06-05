@@ -133,7 +133,7 @@ def distance_straight_line(
         return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)
 
     timestamps = _extract_timestamps_ms(df, datetime_col)
-    uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
+    uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
     )
     distances = _dispatch_kernel(
@@ -141,7 +141,6 @@ def distance_straight_line(
         total_distance_indexed_arrow,
         [df.get_column(lat_col), df.get_column(lng_col)],
         indices,
-        starts,
         ends,
         use_arrow=use_arrow,
     )

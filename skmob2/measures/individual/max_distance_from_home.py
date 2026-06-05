@@ -173,7 +173,7 @@ def max_distance_from_home(
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)
 
-    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     # Two-stage call: home_location first, then max_distance_from_point. In
     # the Arrow path the home coordinates are passed back as Arrow arrays;
@@ -184,7 +184,6 @@ def max_distance_from_home(
             lngs.to_arrow(),
             hours.to_arrow(),
             indices,
-            starts,
             ends,
             float(start_night),
             float(end_night),
@@ -195,7 +194,6 @@ def max_distance_from_home(
             lats.to_arrow(),
             lngs.to_arrow(),
             indices,
-            starts,
             ends,
         )
         if hasattr(max_distances, "to_pyarrow"):
@@ -206,7 +204,6 @@ def max_distance_from_home(
             lngs.to_numpy(),
             hours.to_numpy(),
             indices,
-            starts,
             ends,
             float(start_night),
             float(end_night),
@@ -217,7 +214,6 @@ def max_distance_from_home(
             lats.to_numpy(),
             lngs.to_numpy(),
             indices,
-            starts,
             ends,
         )
 

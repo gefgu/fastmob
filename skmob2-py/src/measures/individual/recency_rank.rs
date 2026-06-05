@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use skmob2_core::measures::individual::recency_rank::recency_rank_indexed_impl;
 
-use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends};
+use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow};
 
 type RecencyRankNumpy<'py> = (
     Bound<'py, PyArray1<f64>>,
@@ -26,15 +26,13 @@ pub fn recency_rank_indexed_numpy<'py>(
     latitudes: PyReadonlyArray1<'py, f64>,
     longitudes: PyReadonlyArray1<'py, f64>,
     indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<RecencyRankNumpy<'py>> {
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     let (out_lats, out_lngs, out_starts, out_ends) = recency_rank_indexed_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
         indices.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
     )
     .map_err(PyValueError::new_err)?;
     Ok((
@@ -51,17 +49,15 @@ pub fn recency_rank_indexed_arrow<'py>(
     latitudes: PyArray,
     longitudes: PyArray,
     indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<RecencyRankArrow<'py>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     let (out_lats, out_lngs, out_starts, out_ends) = recency_rank_indexed_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
         indices.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
     )
     .map_err(PyValueError::new_err)?;
     Ok((

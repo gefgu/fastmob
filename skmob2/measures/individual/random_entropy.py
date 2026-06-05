@@ -113,14 +113,13 @@ def random_entropy(
     )
 
     use_arrow = _is_polars_backed(df)
-    uid_values, indices, starts, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     if use_arrow:
         n_locs_raw = number_of_locations_indexed_arrow(
             df.get_column(lat_col).to_arrow(),
             df.get_column(lng_col).to_arrow(),
             indices,
-            starts,
             ends,
         )
         n_locs = _arrow_result_values(n_locs_raw).to_pylist()
@@ -129,7 +128,6 @@ def random_entropy(
             df.get_column(lat_col).to_numpy(),
             df.get_column(lng_col).to_numpy(),
             indices,
-            starts,
             ends,
         ).tolist()
 

@@ -327,7 +327,7 @@ def jump_lengths(
         indices = _as_index_array(indices)
         starts = _as_index_array(starts)
         ends = _as_index_array(ends)
-        uid_values = _uid_values_from_index_ranges(uids, indices, starts, use_arrow=use_arrow)
+        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
     except ValueError as exc:
         if "unsupported" not in str(exc):
             raise

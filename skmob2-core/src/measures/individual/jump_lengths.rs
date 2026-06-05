@@ -54,9 +54,7 @@ pub fn validate_time_ordered_inputs(
         return Err("latitudes and longitudes must have the same length".to_string());
     }
     if latitudes.len() != timestamps.len() {
-        return Err(
-            "latitudes, longitudes, and timestamps must have the same length".to_string(),
-        );
+        return Err("latitudes, longitudes, and timestamps must have the same length".to_string());
     }
     Ok(())
 }
@@ -139,11 +137,11 @@ pub fn jump_lengths_km(latitudes: Vec<f64>, longitudes: Vec<f64>) -> Result<Vec<
 
     let coords: Vec<(f64, f64)> = latitudes.into_iter().zip(longitudes).collect();
 
-    let lengths: Vec<f64> = coords
-        .par_windows(2)
-        .map(|window| {
-            let (lat1, lon1) = window[0];
-            let (lat2, lon2) = window[1];
+    let lengths: Vec<f64> = (0..coords.len().saturating_sub(1))
+        .into_par_iter()
+        .map(|idx| {
+            let (lat1, lon1) = coords[idx];
+            let (lat2, lon2) = coords[idx + 1];
             haversine_km(lat1, lon1, lat2, lon2)
         })
         .collect();

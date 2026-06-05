@@ -7,7 +7,7 @@ use skmob2_core::measures::individual::jump_lengths::{
 
 use super::jump_lengths::{PyNonOrderedJumpLengths, PyPresortedJumpLengths};
 use super::time_ordering::{
-    ordered_index_ranges_into_numpy, time_ordered_indices_from_numpy_uids,
+    ordered_index_ranges_into_start_end_numpy, time_ordered_indices_from_numpy_uids,
 };
 
 #[pyfunction]
@@ -28,7 +28,7 @@ pub fn jump_lengths_non_ordered_numpy<'py>(
     let (indices, ranges, values) =
         time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)
             .map_err(PyValueError::new_err)?;
-    let (indices, starts, ends) = ordered_index_ranges_into_numpy(py, (indices, ranges));
+    let (indices, starts, ends) = ordered_index_ranges_into_start_end_numpy(py, (indices, ranges));
     Ok((indices, starts, ends, values.into_pyarray(py)))
 }
 

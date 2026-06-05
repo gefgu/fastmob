@@ -5,7 +5,7 @@ use skmob2_core::preprocessing::filter_traj::{
     FilterConfig as CoreFilterConfig, filter_trajectory_impl, filter_trajectory_indexed_impl,
 };
 
-use crate::utils::{arrow_values, as_f64_array, bool_results_into_arrow, ranges_from_starts_ends};
+use crate::utils::{arrow_values, as_f64_array, bool_results_into_arrow, validate_indexed_ends};
 
 #[pyclass(name = "FilterConfig", from_py_object)]
 #[derive(Clone, Copy)]
@@ -103,8 +103,7 @@ pub fn filter_trajectory_numpy<'py>(
     let lngs = longitudes.as_slice()?;
     let times = timestamps_s.as_slice()?;
 
-    let keep_mask =
-        py.detach(|| filter_trajectory_impl(lats, lngs, times, &ranges, &config.0));
+    let keep_mask = py.detach(|| filter_trajectory_impl(lats, lngs, times, &ranges, &config.0));
 
     Ok(PyArray1::from_vec(py, keep_mask))
 }
@@ -126,8 +125,7 @@ pub fn filter_trajectory_arrow(
     let lngs = arrow_values(&longitudes);
     let times = arrow_values(&timestamps_s);
 
-    let keep_mask =
-        py.detach(|| filter_trajectory_impl(lats, lngs, times, &ranges, &config.0));
+    let keep_mask = py.detach(|| filter_trajectory_impl(lats, lngs, times, &ranges, &config.0));
 
     Ok(bool_results_into_arrow(keep_mask))
 }
@@ -140,7 +138,6 @@ pub fn filter_trajectory_indexed_numpy<'py>(
     longitudes: PyReadonlyArray1<'py, f64>,
     timestamps_s: PyReadonlyArray1<'py, f64>,
     sorted_indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     config: PyFilterConfig,
 ) -> PyResult<Bound<'py, PyArray1<bool>>> {
@@ -148,11 +145,11 @@ pub fn filter_trajectory_indexed_numpy<'py>(
     let lngs = longitudes.as_slice()?;
     let times = timestamps_s.as_slice()?;
     let indices = sorted_indices.as_slice()?;
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ends = ends.as_slice()?;
+    validate_indexed_ends(lats.len(), indices, ends)?;
 
-    let keep_mask = py.detach(|| {
-        filter_trajectory_indexed_impl(lats, lngs, times, indices, &ranges, &config.0)
-    });
+    let keep_mask =
+        py.detach(|| filter_trajectory_indexed_impl(lats, lngs, times, indices, ends, &config.0));
 
     Ok(PyArray1::from_vec(py, keep_mask))
 }
@@ -165,7 +162,6 @@ pub fn filter_trajectory_indexed_arrow(
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
     sorted_indices: PyReadonlyArray1<usize>,
-    starts: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
     config: PyFilterConfig,
 ) -> PyResult<ArrowPyArray> {
@@ -177,11 +173,11 @@ pub fn filter_trajectory_indexed_arrow(
     let lngs = arrow_values(&longitudes);
     let times = arrow_values(&timestamps_s);
     let indices = sorted_indices.as_slice()?;
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
+    let ends = ends.as_slice()?;
+    validate_indexed_ends(lats.len(), indices, ends)?;
 
-    let keep_mask = py.detach(|| {
-        filter_trajectory_indexed_impl(lats, lngs, times, indices, &ranges, &config.0)
-    });
+    let keep_mask =
+        py.detach(|| filter_trajectory_indexed_impl(lats, lngs, times, indices, ends, &config.0));
 
     Ok(bool_results_into_arrow(keep_mask))
 }

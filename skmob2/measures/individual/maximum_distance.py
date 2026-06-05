@@ -141,7 +141,7 @@ def maximum_distance(
         return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)
 
     timestamps = _extract_timestamps_ms(df, datetime_col)
-    uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
+    uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
     )
     max_distances = _dispatch_kernel(
@@ -149,7 +149,6 @@ def maximum_distance(
         maximum_distance_indexed_arrow,
         [df.get_column(lat_col), df.get_column(lng_col)],
         indices,
-        starts,
         ends,
         use_arrow=use_arrow,
     )
@@ -160,6 +159,11 @@ def maximum_distance(
         return _to_native({"maximum_distance": max_distances}, df)
 
     max_distances = np.asarray(max_distances, dtype=float)
-    short_mask = np.asarray(ends, dtype=np.uintp) - np.asarray(starts, dtype=np.uintp) < 2
+    ends_array = np.asarray(ends, dtype=np.uintp)
+    starts_array = np.empty_like(ends_array)
+    if len(ends_array):
+        starts_array[0] = 0
+        starts_array[1:] = ends_array[:-1]
+    short_mask = ends_array - starts_array < 2
     max_distances[short_mask] = math.nan
     return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)

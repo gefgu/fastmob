@@ -185,15 +185,17 @@ pub fn detect_stay_locations_batch_indexed_impl(
     longitudes: &[f64],
     timestamps_s: &[f64],
     sorted_indices: &[usize],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
     stop_radius_km: f64,
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
 ) -> StayLocationsBatchResult {
-    let per_user_stops: Vec<Vec<Stop>> = ranges
-        .par_iter()
-        .map(|&(start, end)| {
+    let per_user_stops: Vec<Vec<Stop>> = (0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             detect_stops_for_user_indexed(
                 latitudes,
                 longitudes,

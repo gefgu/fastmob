@@ -6,7 +6,7 @@ use skmob2_core::measures::individual::home_location::{
     home_location_impl, home_location_indexed_impl,
 };
 
-use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow, ranges_from_starts_ends};
+use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow};
 
 type PyHomeResults<'py> = (Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>);
 
@@ -41,18 +41,16 @@ pub fn home_location_indexed_numpy<'py>(
     longitudes: PyReadonlyArray1<'py, f64>,
     hours: PyReadonlyArray1<'py, f64>,
     indices: PyReadonlyArray1<'py, usize>,
-    starts: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     start_night: f64,
     end_night: f64,
 ) -> PyResult<PyHomeResults<'py>> {
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     let (home_lats, home_lngs) = home_location_indexed_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
         hours.as_slice()?,
         indices.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
         start_night,
         end_night,
     )
@@ -95,7 +93,6 @@ pub fn home_location_indexed_arrow(
     longitudes: PyArray,
     hours: PyArray,
     indices: PyReadonlyArray1<usize>,
-    starts: PyReadonlyArray1<usize>,
     ends: PyReadonlyArray1<usize>,
     start_night: f64,
     end_night: f64,
@@ -103,13 +100,12 @@ pub fn home_location_indexed_arrow(
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let hours = as_f64_array(hours, "hours")?;
-    let ranges = ranges_from_starts_ends(starts.as_slice()?, ends.as_slice()?)?;
     let (home_lats, home_lngs) = home_location_indexed_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
         arrow_values(&hours),
         indices.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
         start_night,
         end_night,
     )

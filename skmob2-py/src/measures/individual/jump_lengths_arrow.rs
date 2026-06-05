@@ -10,7 +10,7 @@ use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow};
 
 use super::jump_lengths::{PyNonOrderedJumpLengthsArrow, PyPresortedJumpLengthsArrow};
 use super::time_ordering::{
-    ordered_index_ranges_into_numpy, time_ordered_indices_from_arrow_uids,
+    ordered_index_ranges_into_start_end_numpy, time_ordered_indices_from_arrow_uids,
 };
 
 #[pyfunction]
@@ -34,7 +34,7 @@ pub fn jump_lengths_non_ordered_arrow<'py>(
     let (indices, ranges, values) =
         time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges)
             .map_err(PyValueError::new_err)?;
-    let (indices, starts, ends) = ordered_index_ranges_into_numpy(py, (indices, ranges));
+    let (indices, starts, ends) = ordered_index_ranges_into_start_end_numpy(py, (indices, ranges));
     Ok((indices, starts, ends, f64_results_into_arrow(values)))
 }
 
@@ -47,12 +47,9 @@ pub fn jump_lengths_presorted_arrow<'py>(
 ) -> PyResult<PyPresortedJumpLengthsArrow<'py>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let (starts, ends, values) = jump_lengths_presorted_impl(
-        arrow_values(&latitudes),
-        arrow_values(&longitudes),
-        &ranges,
-    )
-    .map_err(PyValueError::new_err)?;
+    let (starts, ends, values) =
+        jump_lengths_presorted_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)
+            .map_err(PyValueError::new_err)?;
     Ok((
         starts.into_pyarray(py),
         ends.into_pyarray(py),

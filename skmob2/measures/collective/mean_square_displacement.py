@@ -129,7 +129,7 @@ def mean_square_displacement(
 
     use_arrow = _is_polars_backed(df)
     timestamps = _extract_timestamps_s(df, datetime_col)
-    _uid_values, indices, starts, ends = _build_time_ordered_user_ranges(
+    _uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
     )
 
@@ -139,7 +139,6 @@ def mean_square_displacement(
             df.get_column(lng_col).to_arrow(),
             timestamps.to_arrow(),
             indices,
-            starts,
             ends,
             delta_s,
         )
@@ -148,7 +147,6 @@ def mean_square_displacement(
         df.get_column(lng_col).to_numpy(),
         timestamps.to_numpy(),
         indices,
-        starts,
         ends,
         delta_s,
     )
