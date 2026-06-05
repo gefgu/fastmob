@@ -7,8 +7,8 @@ use skmob2_core::preprocessing::compress_traj::{
 };
 
 use crate::utils::{
-    arrow_values, as_f64_array, f64_results_into_arrow, u64_results_into_arrow,
-    validate_indexed_ends,
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+    u64_results_into_arrow, validate_indexed_ends,
 };
 
 type CompressRepresentativesNumpy<'py> = (
@@ -103,7 +103,7 @@ pub fn compress_trajectory_representatives_indexed_numpy<'py>(
     let ends = ends.as_slice()?;
     validate_indexed_ends(lats.len(), idxs, ends)?;
     let (representative_indices, median_latitudes, median_longitudes) = py.detach(|| {
-        compress_trajectory_representatives_indexed_impl(lats, lngs, idxs, ends, spatial_radius_km)
+        compress_trajectory_representatives_indexed_impl(lats, lngs, idxs, ends, None, spatial_radius_km)
     });
     Ok((
         PyArray1::from_vec(py, representative_indices),
@@ -122,15 +122,23 @@ pub fn compress_trajectory_representatives_indexed_arrow(
     ends: PyReadonlyArray1<usize>,
     spatial_radius_km: f64,
 ) -> PyResult<CompressRepresentativesArrow> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
     let lats = arrow_values(&latitudes);
     let lngs = arrow_values(&longitudes);
     let idxs = sorted_indices.as_slice()?;
     let ends = ends.as_slice()?;
     validate_indexed_ends(lats.len(), idxs, ends)?;
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
     let (representative_indices, median_latitudes, median_longitudes) = py.detach(|| {
-        compress_trajectory_representatives_indexed_impl(lats, lngs, idxs, ends, spatial_radius_km)
+        compress_trajectory_representatives_indexed_impl(
+            lats,
+            lngs,
+            idxs,
+            ends,
+            valid_rows.as_deref(),
+            spatial_radius_km,
+        )
     });
     Ok((
         u64_results_into_arrow(

@@ -63,6 +63,18 @@ pub fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float64Array>
         .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))
 }
 
+pub fn arrow_valid_rows(arrays: &[&Float64Array]) -> Option<Vec<bool>> {
+    if arrays.iter().all(|a| a.null_count() == 0) {
+        return None;
+    }
+    let n = arrays[0].len();
+    Some(
+        (0..n)
+            .map(|idx| arrays.iter().all(|a| a.is_valid(idx)))
+            .collect(),
+    )
+}
+
 pub fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
     let start = array.offset();
     let end = start + array.len();

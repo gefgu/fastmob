@@ -17,8 +17,24 @@ from ..measures._common import (
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
-    _is_polars_backed,
-    _prepare_trajectory,
+)
+from skmob2.core.dispatch import TrajectoryDispatcher
+
+COMPRESS_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "compress_sorted": _compress_arrow,
+        "compress_indexed": _compress_indexed_arrow,
+        "unpack_result": lambda r: (
+            np.asarray(_arrow_result_values(r[0]), dtype=np.intp),
+            np.asarray(_arrow_result_values(r[1]), dtype=np.float64),
+            np.asarray(_arrow_result_values(r[2]), dtype=np.float64),
+        ),
+    },
+    numpy_ops={
+        "compress_sorted": _compress_numpy,
+        "compress_indexed": _compress_indexed_numpy,
+        "unpack_result": lambda r: r,
+    },
 )
 
 
@@ -46,7 +62,8 @@ def compress(
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
     sorted:
-        Whether the trajectory is already sorted by user and time.
+        Whether the trajectory is already sorted by user and time. When True,
+        assumes the data is pre-cleaned (no null lat/lng/datetime rows).
 
     Returns
     -------
@@ -103,32 +120,22 @@ def compress(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
+    ops = COMPRESS_DISPATCHER.get_ops(df)
+    use_arrow = COMPRESS_DISPATCHER.get_backend_key(df) == "arrow"
+
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    lats = df.get_column(lat_col)
-    lngs = df.get_column(lng_col)
-    use_arrow = _is_polars_backed(df)
 
     if sorted:
         _, ranges = _build_user_ranges(df, uid_col)
-
-        if use_arrow:
-            _i, _l, _g = _compress_arrow(lats.to_arrow(), lngs.to_arrow(), ranges, spatial_radius_km)
-            representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
-            median_lats = np.asarray(_arrow_result_values(_l), dtype=np.float64)
-            median_lngs = np.asarray(_arrow_result_values(_g), dtype=np.float64)
-        else:
-            representative_indices, median_lats, median_lngs = _compress_numpy(
-                lats.to_numpy(), lngs.to_numpy(), ranges, spatial_radius_km
-            )
+        result_raw = ops["compress_sorted"](lats_data, lngs_data, ranges, spatial_radius_km)
     else:
         _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -137,26 +144,9 @@ def compress(
             timestamps=timestamps_s,
             use_arrow=use_arrow,
         )
+        result_raw = ops["compress_indexed"](lats_data, lngs_data, sorted_indices, ends, spatial_radius_km)
 
-        if use_arrow:
-            _i, _l, _g = _compress_indexed_arrow(
-                lats.to_arrow(),
-                lngs.to_arrow(),
-                sorted_indices,
-                ends,
-                spatial_radius_km,
-            )
-            representative_indices = np.asarray(_arrow_result_values(_i), dtype=np.intp)
-            median_lats = np.asarray(_arrow_result_values(_l), dtype=np.float64)
-            median_lngs = np.asarray(_arrow_result_values(_g), dtype=np.float64)
-        else:
-            representative_indices, median_lats, median_lngs = _compress_indexed_numpy(
-                lats.to_numpy(),
-                lngs.to_numpy(),
-                sorted_indices,
-                ends,
-                spatial_radius_km,
-            )
+    representative_indices, median_lats, median_lngs = ops["unpack_result"](result_raw)
 
     result = df[representative_indices].with_columns(
         nw.new_series(lat_col, median_lats, backend=df.implementation),

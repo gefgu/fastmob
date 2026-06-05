@@ -6,11 +6,9 @@ use skmob2_core::preprocessing::filter_traj::{
 };
 
 use crate::utils::{
-    arrow_values, as_f64_array, as_nullable_f64_array, bool_results_into_arrow,
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, bool_results_into_arrow,
     validate_indexed_ends,
 };
-
-use arrow_array::Array;
 
 #[pyclass(name = "FilterConfig", from_py_object)]
 #[derive(Clone, Copy)]
@@ -182,22 +180,7 @@ pub fn filter_trajectory_indexed_arrow(
     let ends = ends.as_slice()?;
     validate_indexed_ends(lats.len(), indices, ends)?;
 
-    let valid_rows = if latitudes.null_count() == 0
-        && longitudes.null_count() == 0
-        && timestamps_s.null_count() == 0
-    {
-        None
-    } else {
-        Some(
-            (0..latitudes.len())
-                .map(|idx| {
-                    latitudes.is_valid(idx)
-                        && longitudes.is_valid(idx)
-                        && timestamps_s.is_valid(idx)
-                })
-                .collect::<Vec<_>>(),
-        )
-    };
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &timestamps_s]);
 
     let keep_mask = py.detach(|| {
         filter_trajectory_indexed_impl(

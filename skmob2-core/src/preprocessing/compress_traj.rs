@@ -68,29 +68,45 @@ fn compress_user_representatives(
     rows
 }
 
+fn is_valid_indexed_compress_row(
+    lats: &[f64],
+    lngs: &[f64],
+    valid_rows: Option<&[bool]>,
+    idx: usize,
+) -> bool {
+    valid_rows.is_none_or(|valid| valid[idx]) && lats[idx].is_finite() && lngs[idx].is_finite()
+}
+
 fn compress_user_representatives_indexed(
     lats: &[f64],
     lngs: &[f64],
     user_indices: &[usize],
+    valid_rows: Option<&[bool]>,
     spatial_radius_km: f64,
 ) -> Vec<CompressRepresentativeRow> {
-    let n = user_indices.len();
+    let valid_indices: Vec<usize> = user_indices
+        .iter()
+        .copied()
+        .filter(|&idx| is_valid_indexed_compress_row(lats, lngs, valid_rows, idx))
+        .collect();
+
+    let n = valid_indices.len();
     if n == 0 {
         return Vec::new();
     }
     if n == 1 {
-        let orig = user_indices[0];
+        let orig = valid_indices[0];
         return vec![(orig, lats[orig], lngs[orig])];
     }
 
     let mut groups: Vec<(usize, usize)> = Vec::new();
-    let mut lat_0 = lats[user_indices[0]];
-    let mut lon_0 = lngs[user_indices[0]];
+    let mut lat_0 = lats[valid_indices[0]];
+    let mut lon_0 = lngs[valid_indices[0]];
     let mut group_start = 0usize;
 
     for i in 0..(n - 1) {
-        let lat = lats[user_indices[i + 1]];
-        let lon = lngs[user_indices[i + 1]];
+        let lat = lats[valid_indices[i + 1]];
+        let lon = lngs[valid_indices[i + 1]];
         let dist = haversine_km(lat_0, lon_0, lat, lon);
 
         if dist > spatial_radius_km {
@@ -109,12 +125,12 @@ fn compress_user_representatives_indexed(
     for (group_start_local, group_end_local) in groups {
         lat_buf.clear();
         lng_buf.clear();
-        for &orig in &user_indices[group_start_local..group_end_local] {
+        for &orig in &valid_indices[group_start_local..group_end_local] {
             lat_buf.push(lats[orig]);
             lng_buf.push(lngs[orig]);
         }
         rows.push((
-            user_indices[group_start_local],
+            valid_indices[group_start_local],
             median_slice_in_place(&mut lat_buf),
             median_slice_in_place(&mut lng_buf),
         ));
@@ -162,6 +178,7 @@ pub fn compress_trajectory_representatives_indexed_impl(
     lngs: &[f64],
     sorted_indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
     spatial_radius_km: f64,
 ) -> CompressRepresentatives {
     let per_user_rows: Vec<Vec<CompressRepresentativeRow>> = (0..ends.len())
@@ -173,6 +190,7 @@ pub fn compress_trajectory_representatives_indexed_impl(
                 lats,
                 lngs,
                 &sorted_indices[start..end],
+                valid_rows,
                 spatial_radius_km,
             )
         })
