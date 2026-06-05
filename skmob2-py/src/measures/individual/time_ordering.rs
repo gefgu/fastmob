@@ -13,10 +13,14 @@ use skmob2_core::measures::individual::time_ordering::{
 };
 use skmob2_core::utils::{split_ranges, validate_uid_len};
 
-use crate::utils::{arrow_values, as_f64_array};
+use crate::utils::{arrow_values, as_f64_array, as_nullable_f64_array};
 
 type OrderedNumpyResult<'py> = (Bound<'py, PyArray1<usize>>, Bound<'py, PyArray1<usize>>);
-
+type OrderedStartEndNumpyResult<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+);
 pub fn ordered_index_ranges_into_numpy<'py>(
     py: Python<'py>,
     ordered: OrderedIndexRanges,
@@ -28,11 +32,7 @@ pub fn ordered_index_ranges_into_numpy<'py>(
 pub fn ordered_index_ranges_into_start_end_numpy<'py>(
     py: Python<'py>,
     (indices, ranges): OrderedIndexRanges,
-) -> (
-    Bound<'py, PyArray1<usize>>,
-    Bound<'py, PyArray1<usize>>,
-    Bound<'py, PyArray1<usize>>,
-) {
+) -> OrderedStartEndNumpyResult<'py> {
     let (starts, ends) = split_ranges(ranges);
     (
         indices.into_pyarray(py),
@@ -162,7 +162,7 @@ pub fn time_ordered_user_indices_arrow<'py>(
     uids: &Bound<'py, PyAny>,
     timestamps: PyArray,
 ) -> PyResult<OrderedNumpyResult<'py>> {
-    let timestamps = as_f64_array(timestamps, "timestamps")?;
+    let timestamps = as_nullable_f64_array(timestamps, "timestamps")?;
     let timestamp_values = arrow_values(&timestamps);
     let time_ordered_indices = time_ordered_indices_from_arrow_uids(py, uids, timestamp_values)?;
     Ok(ordered_index_ranges_into_numpy(py, time_ordered_indices))

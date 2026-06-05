@@ -5,7 +5,12 @@ use skmob2_core::preprocessing::filter_traj::{
     FilterConfig as CoreFilterConfig, filter_trajectory_impl, filter_trajectory_indexed_impl,
 };
 
-use crate::utils::{arrow_values, as_f64_array, bool_results_into_arrow, validate_indexed_ends};
+use crate::utils::{
+    arrow_values, as_f64_array, as_nullable_f64_array, bool_results_into_arrow,
+    validate_indexed_ends,
+};
+
+use arrow_array::Array;
 
 #[pyclass(name = "FilterConfig", from_py_object)]
 #[derive(Clone, Copy)]
@@ -148,8 +153,9 @@ pub fn filter_trajectory_indexed_numpy<'py>(
     let ends = ends.as_slice()?;
     validate_indexed_ends(lats.len(), indices, ends)?;
 
-    let keep_mask =
-        py.detach(|| filter_trajectory_indexed_impl(lats, lngs, times, indices, ends, &config.0));
+    let keep_mask = py.detach(|| {
+        filter_trajectory_indexed_impl(lats, lngs, times, indices, ends, None, &config.0)
+    });
 
     Ok(PyArray1::from_vec(py, keep_mask))
 }
@@ -165,9 +171,9 @@ pub fn filter_trajectory_indexed_arrow(
     ends: PyReadonlyArray1<usize>,
     config: PyFilterConfig,
 ) -> PyResult<ArrowPyArray> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    let timestamps_s = as_nullable_f64_array(timestamps_s, "timestamps_s")?;
 
     let lats = arrow_values(&latitudes);
     let lngs = arrow_values(&longitudes);
@@ -176,8 +182,34 @@ pub fn filter_trajectory_indexed_arrow(
     let ends = ends.as_slice()?;
     validate_indexed_ends(lats.len(), indices, ends)?;
 
-    let keep_mask =
-        py.detach(|| filter_trajectory_indexed_impl(lats, lngs, times, indices, ends, &config.0));
+    let valid_rows = if latitudes.null_count() == 0
+        && longitudes.null_count() == 0
+        && timestamps_s.null_count() == 0
+    {
+        None
+    } else {
+        Some(
+            (0..latitudes.len())
+                .map(|idx| {
+                    latitudes.is_valid(idx)
+                        && longitudes.is_valid(idx)
+                        && timestamps_s.is_valid(idx)
+                })
+                .collect::<Vec<_>>(),
+        )
+    };
+
+    let keep_mask = py.detach(|| {
+        filter_trajectory_indexed_impl(
+            lats,
+            lngs,
+            times,
+            indices,
+            ends,
+            valid_rows.as_deref(),
+            &config.0,
+        )
+    });
 
     Ok(bool_results_into_arrow(keep_mask))
 }

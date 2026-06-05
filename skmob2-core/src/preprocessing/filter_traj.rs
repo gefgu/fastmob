@@ -166,6 +166,7 @@ pub fn filter_trajectory_impl(
     mask
 }
 
+#[allow(clippy::too_many_arguments)]
 fn filter_user_slice_indexed(
     lats: &[f64],
     lngs: &[f64],
@@ -282,28 +283,47 @@ fn filter_user_slice_indexed(
     }
 }
 
+fn is_valid_indexed_filter_row(
+    lats: &[f64],
+    lngs: &[f64],
+    times: &[f64],
+    valid_rows: Option<&[bool]>,
+    idx: usize,
+) -> bool {
+    valid_rows.is_none_or(|valid| valid[idx])
+        && lats[idx].is_finite()
+        && lngs[idx].is_finite()
+        && times[idx].is_finite()
+}
+
 pub fn filter_trajectory_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
     timestamps_s: &[f64],
     sorted_indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
     config: &FilterConfig,
 ) -> Vec<bool> {
     let n = latitudes.len();
+    debug_assert_eq!(longitudes.len(), n);
+    debug_assert_eq!(timestamps_s.len(), n);
+    debug_assert!(valid_rows.is_none_or(|valid| valid.len() == n));
+
     let mut global_mask = vec![true; n];
 
     let mask_addr = global_mask.as_mut_ptr() as usize;
     (0..ends.len()).into_par_iter().for_each_init(
         || {
             (
+                Vec::<usize>::new(),
                 Vec::<bool>::new(),
                 Vec::<usize>::new(),
                 Vec::<(f64, f64)>::with_capacity(config.max_loop),
                 Vec::<bool>::new(),
             )
         },
-        |(keep_buf, kept_idx_buf, dr_dt_buf, drop_local_idx_buf), i| {
+        |(valid_indices_buf, keep_buf, kept_idx_buf, dr_dt_buf, drop_local_idx_buf), i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
             let end = ends[i];
             if start >= end {
@@ -311,11 +331,30 @@ pub fn filter_trajectory_indexed_impl(
             }
 
             let user_indices = &sorted_indices[start..end];
+            valid_indices_buf.clear();
+            let mask_ptr = mask_addr as *mut bool;
+
+            for &idx in user_indices {
+                if is_valid_indexed_filter_row(
+                    latitudes,
+                    longitudes,
+                    timestamps_s,
+                    valid_rows,
+                    idx,
+                ) {
+                    valid_indices_buf.push(idx);
+                } else {
+                    unsafe {
+                        *mask_ptr.add(idx) = false;
+                    }
+                }
+            }
+
             filter_user_slice_indexed(
                 latitudes,
                 longitudes,
                 timestamps_s,
-                user_indices,
+                valid_indices_buf,
                 config,
                 keep_buf,
                 kept_idx_buf,
@@ -323,9 +362,8 @@ pub fn filter_trajectory_indexed_impl(
                 drop_local_idx_buf,
             );
 
-            let mask_ptr = mask_addr as *mut bool;
             for (local_idx, &keep) in keep_buf.iter().enumerate() {
-                let absolute_original_idx = user_indices[local_idx];
+                let absolute_original_idx = valid_indices_buf[local_idx];
                 unsafe {
                     *mask_ptr.add(absolute_original_idx) = keep;
                 }

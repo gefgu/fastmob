@@ -502,20 +502,21 @@ def _prepare_trajectory(
     nw_df = _with_datetime_column(nw_df, datetime_col)
 
     start = time.perf_counter_ns()
-    df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col]) if drop_nulls else nw_df
-    print(f"Null dropping took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
+    if drop_nulls:
+        nw_df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col]) if drop_nulls else nw_df
+        print(f"Null dropping took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
     if sort:
         sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
-        df = df.sort(*sort_cols)
+        nw_df = nw_df.sort(*sort_cols)
 
-    df = df.with_columns(
+    nw_df = nw_df.with_columns(
         nw.col(lat_col).cast(nw.Float64),
         nw.col(lng_col).cast(nw.Float64),
     )
     if sort:
-        df = df.drop(_ROW_ORDER_COL)
+        nw_df = nw_df.drop(_ROW_ORDER_COL)
 
-    return df
+    return nw_df
 
 
 def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, list[tuple[int, int]]]:
