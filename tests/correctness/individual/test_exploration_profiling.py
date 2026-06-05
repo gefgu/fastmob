@@ -108,6 +108,22 @@ def test_gmm_method_row_count():
     assert len(result) == n_users
 
 
+def test_impute_gaps_parameter_preserves_profile_output_shape():
+    """impute_gaps is accepted and still returns one profiled row per user."""
+    _skip_if_no_core()
+    from skmob2.measures.individual.mobility_profiling import exploration_profiling
+
+    df = _make_visits(n_each=1, visits_per_user=6)
+    base = pd.Timestamp("2020-01-01 02:00")
+    df["start_timestamp"] = [base + pd.Timedelta(minutes=15 * i) for i in range(len(df))]
+    df["end_timestamp"] = df["start_timestamp"]
+
+    result = exploration_profiling(df, cold_start_strategy="none", impute_gaps=True)
+
+    assert len(result) == df["agent_id"].nunique()
+    assert "profile" in result.columns
+
+
 def test_too_few_users_raises():
     """Fewer than 3 users triggers ValueError."""
     _skip_if_no_core()

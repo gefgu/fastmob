@@ -20,3 +20,50 @@ def test_output_path_uses_preprocessing_suite_name(tmp_path: Path):
         suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf")
         == tmp_path / "skmob_preprocessing_speed_prebuilt_tdf.json"
     )
+
+
+def test_selected_specs_filters_metrics():
+    args = suite.parse_args(["--library", "skmob2", "--metrics", "cluster", "filter"])
+
+    assert [spec.name for spec in suite.selected_specs(args)] == ["filter", "cluster"]
+
+
+def test_merge_payload_replaces_selected_metric_only():
+    existing = {
+        "metadata": {"iterations": 5, "sizes": [1000, 4000000]},
+        "results": [
+            {
+                "size": 1000,
+                "label": "1k",
+                "rows": 1000,
+                "metrics": {"filter": {"status": "ok"}},
+            },
+            {
+                "size": 4000000,
+                "label": "4M",
+                "rows": 4000000,
+                "metrics": {
+                    "filter": {"status": "ok"},
+                    "cluster": {"status": "error"},
+                },
+            },
+        ],
+    }
+    partial = {
+        "metadata": {"iterations": 3, "sizes": [4000000]},
+        "results": [
+            {
+                "size": 4000000,
+                "label": "4M",
+                "rows": 4000000,
+                "metrics": {"cluster": {"status": "ok"}},
+            },
+        ],
+    }
+
+    merged = suite.merge_payload(existing, partial)
+
+    assert merged["metadata"]["iterations"] == 3
+    assert merged["results"][0]["metrics"] == {"filter": {"status": "ok"}}
+    assert merged["results"][1]["metrics"]["filter"] == {"status": "ok"}
+    assert merged["results"][1]["metrics"]["cluster"] == {"status": "ok"}

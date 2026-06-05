@@ -44,6 +44,8 @@ def _expand_to_5min_trajectory(
     location_id_col: str,
     start_col: str,
     end_col: str,
+    *,
+    impute_gaps: bool = False,
 ) -> Any:
     user_values = nw_df.get_column(user_id_col).to_list()
     location_values = nw_df.get_column(location_id_col).to_list()
@@ -66,6 +68,9 @@ def _expand_to_5min_trajectory(
                 seen.add(key)
             timestamp = timestamp + _FIVE_MINUTES
 
+    if impute_gaps:
+        rows = _impute_5min_gaps(rows)
+
     rows.sort(key=lambda row: (str(row[0]), row[1]))
     return nw.from_dict(
         {
@@ -75,6 +80,61 @@ def _expand_to_5min_trajectory(
         },
         backend=nw_df.implementation,
     )
+
+
+def _impute_5min_gaps(rows: list[tuple[Any, Any, Any]]) -> list[tuple[Any, Any, Any]]:
+    if not rows:
+        return rows
+
+    rows_by_user: dict[Any, list[tuple[Any, Any, Any]]] = {}
+    for row in rows:
+        rows_by_user.setdefault(row[0], []).append(row)
+
+    imputed_rows: list[tuple[Any, Any, Any]] = []
+    for uid, user_rows in rows_by_user.items():
+        user_rows.sort(key=lambda row: row[1])
+        anchors = _gap_imputation_anchors(user_rows)
+        observed_by_timestamp = {timestamp: location for _, timestamp, location in user_rows}
+
+        timestamp = user_rows[0][1]
+        last_timestamp = user_rows[-1][1]
+        while timestamp <= last_timestamp:
+            location = observed_by_timestamp.get(timestamp)
+            if location is None:
+                location = _anchor_for_hour(anchors, timestamp.hour)
+            if location is not None:
+                imputed_rows.append((uid, timestamp, location))
+            timestamp = timestamp + _FIVE_MINUTES
+
+    return imputed_rows
+
+
+def _gap_imputation_anchors(user_rows: list[tuple[Any, Any, Any]]) -> dict[str, Any]:
+    windows = {
+        "home": {2, 3, 4, 5},
+        "work_a": {10},
+        "work_b": {14, 15, 16},
+    }
+
+    anchors: dict[str, Any] = {}
+    for name, hours in windows.items():
+        counts: dict[Any, int] = {}
+        for _, timestamp, location in user_rows:
+            if timestamp.hour in hours:
+                counts[location] = counts.get(location, 0) + 1
+        if counts:
+            anchors[name] = max(counts, key=counts.get)
+    return anchors
+
+
+def _anchor_for_hour(anchors: dict[str, Any], hour: int) -> Any:
+    if hour in {2, 3, 4, 5}:
+        return anchors.get("home")
+    if hour == 10:
+        return anchors.get("work_a")
+    if hour in {14, 15, 16}:
+        return anchors.get("work_b")
+    return None
 
 
 def _apply_cold_start_strategy(
@@ -217,6 +277,7 @@ def intermittance_and_degree_of_return(
     cold_start_strategy: COLD_START_STRATEGIES = "frequency",
     known_suffixes: tuple[str, ...] = ("_HOME", "_WORK"),
     use_trajectory: bool = True,
+    impute_gaps: bool = False,
 ) -> Any:
     """Compute intermittancy and degree of return per user using vectorized operations.
 
@@ -254,11 +315,20 @@ def intermittance_and_degree_of_return(
     use_trajectory:
         If True, and both start and end timestamp columns are available, expand
         each stay into observed 5-minute slices from ``ceil(start, "5min")`` to
-        ``floor(end, "5min")`` without imputing missing gaps. Duplicate
+        ``floor(end, "5min")``. Duplicate
         ``(user, timestamp)`` slices keep the first input occurrence. If no end
         timestamp column is available, the function falls back to treating each
         input row as one sequence event. If False, each input row is always one
         sequence event.
+    impute_gaps:
+        If True, and trajectory reconstruction is possible, fill missing
+        5-minute slices between each user's first and last observed slice using
+        per-user anchors inferred from observed locations: hours 2-5 use the
+        most frequent nighttime location, hour 10 uses the most frequent
+        location at 10, and hours 14-16 use the most frequent afternoon
+        location. Missing slices outside those windows, or inside a window with
+        no inferred anchor, remain absent. Ignored when ``use_trajectory=False``
+        or when no end timestamp column is available.
 
     Returns
     -------
@@ -313,6 +383,7 @@ def intermittance_and_degree_of_return(
                 location_id_col=location_id_col,
                 start_col=datetime_col,
                 end_col=end_timestamp_col,
+                impute_gaps=impute_gaps,
             )
             timestamp_col = _TRAJECTORY_TIMESTAMP_COL
 
@@ -410,6 +481,7 @@ def exploration_profiling(
     clustering_method: CLUSTERING_METHODS = "kmeans",
     random_seed: int = 42,
     n_iterations: int = 300,
+    impute_gaps: bool = False,
 ) -> Any:
     """Compute intermittency and degree of return, then cluster users into mobility profiles.
 
@@ -444,6 +516,10 @@ def exploration_profiling(
         Seed for the clustering algorithm — ensures reproducible results.
     n_iterations:
         Maximum iterations for the clustering algorithm.
+    impute_gaps:
+        If True, pass through to :func:`intermittance_and_degree_of_return` to
+        fill eligible missing 5-minute trajectory slices before computing
+        return/exploration statistics.
 
     Returns
     -------
@@ -513,6 +589,7 @@ def exploration_profiling(
         datetime_col=datetime_col,
         cold_start_strategy=cold_start_strategy,
         known_suffixes=known_suffixes,
+        impute_gaps=impute_gaps,
     )
 
     n_users = len(stats) if hasattr(stats, "__len__") else stats.shape[0]

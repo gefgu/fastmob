@@ -153,6 +153,28 @@ def write_json(payload: dict[str, Any], output_path: Path) -> Path:
     return output_path
 
 
+def merge_payload(existing: dict[str, Any], partial: dict[str, Any]) -> dict[str, Any]:
+    """Merge a partial benchmark payload into an existing result file."""
+    merged = dict(existing)
+    merged["metadata"] = {**existing.get("metadata", {}), **partial.get("metadata", {})}
+
+    results_by_label = {result["label"]: dict(result) for result in existing.get("results", [])}
+    for partial_result in partial.get("results", []):
+        label = partial_result["label"]
+        if label not in results_by_label:
+            results_by_label[label] = dict(partial_result)
+            continue
+
+        merged_result = results_by_label[label]
+        merged_result.update({key: value for key, value in partial_result.items() if key != "metrics"})
+        merged_metrics = dict(merged_result.get("metrics", {}))
+        merged_metrics.update(partial_result.get("metrics", {}))
+        merged_result["metrics"] = merged_metrics
+
+    merged["results"] = sorted(results_by_label.values(), key=lambda result: result.get("size", 0))
+    return merged
+
+
 def positive_int(value: str) -> int:
     parsed = int(value)
     if parsed <= 0:
@@ -302,6 +324,14 @@ def make_skmob_tdf(skmob_module: Any, df: Any) -> Any:
         datetime="check-in_time",
         user_id="user",
     )
+
+
+def make_skmob_cluster_tdf(skmob_module: Any, df: Any) -> Any:
+    valid_df = df.dropna(subset=["latitude", "longitude"]).copy()
+    dropped = len(df) - len(valid_df)
+    if dropped:
+        print(f"    dropped {dropped} rows with missing coordinates for skmob cluster")
+    return make_skmob_tdf(skmob_module, valid_df)
 
 
 def movingpandas_radius_of_gyration(tc: Any) -> list[float]:
@@ -590,6 +620,7 @@ def benchmark_skmob2_size(
     df: Any,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
@@ -613,7 +644,7 @@ def benchmark_skmob2_size(
                 retries=retries,
                 input_order=input_order,
             )
-            for spec in PREPROCESSING_METRICS
+            for spec in specs
         },
     }
 
@@ -623,6 +654,7 @@ def benchmark_skmob_size(
     skmob_module: Any,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     timing_mode: str,
     iterations: int,
     sleep_seconds: float,
@@ -644,23 +676,37 @@ def benchmark_skmob_size(
         def make_input() -> Any:
             return make_skmob_tdf(skmob_module, pandas_slice)
 
+    metrics = {}
+    for spec in specs:
+        metric_make_input = make_input
+        if spec.name == "cluster":
+            if timing_mode == "prebuilt_tdf":
+                cluster_tdf = make_skmob_cluster_tdf(skmob_module, pandas_slice)
+
+                def metric_make_input(cluster_tdf=cluster_tdf) -> Any:
+                    return cluster_tdf
+
+            else:
+
+                def metric_make_input() -> Any:
+                    return make_skmob_cluster_tdf(skmob_module, pandas_slice)
+
+        metrics[spec.name] = benchmark_metric(
+            spec,
+            "skmob",
+            metric_make_input,
+            profile=profile,
+            iterations=iterations,
+            sleep_seconds=sleep_seconds,
+            retries=retries,
+            input_order=input_order,
+        )
+
     return {
         "size": size,
         "label": size_label(size),
         "rows": len(pandas_slice),
-        "metrics": {
-            spec.name: benchmark_metric(
-                spec,
-                "skmob",
-                make_input,
-                profile=profile,
-                iterations=iterations,
-                sleep_seconds=sleep_seconds,
-                retries=retries,
-                input_order=input_order,
-            )
-            for spec in PREPROCESSING_METRICS
-        },
+        "metrics": metrics,
     }
 
 
@@ -668,6 +714,7 @@ def benchmark_movingpandas_size(
     data_path: Path,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     repeat_factor: int = 1,
     iterations: int,
     sleep_seconds: float,
@@ -683,7 +730,7 @@ def benchmark_movingpandas_size(
             "size": size,
             "label": size_label(size),
             "rows": 0,
-            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in PREPROCESSING_METRICS},
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in specs},
         }
 
     rows = len(tc.to_point_gdf())
@@ -703,7 +750,7 @@ def benchmark_movingpandas_size(
                 retries=retries,
                 input_order=input_order,
             )
-            for spec in PREPROCESSING_METRICS
+            for spec in specs
         },
     }
 
@@ -737,6 +784,7 @@ def build_metadata(
         "retries": args.retries,
         "repeat_dataset": args.repeat_dataset,
         "sizes": args.sizes,
+        "metrics": args.metrics,
         "input_order": args.input_order,
         "input_cache_path": None if input_cache_path is None else str(input_cache_path),
         "input_cache_status": input_cache_status,
@@ -777,6 +825,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
     data_path = Path(args.data_path)
     if not data_path.exists():
         raise SystemExit(f"Dataset not found at {data_path}. Place the Brightkite file there before running.")
+    specs = selected_specs(args)
 
     if args.library == "skmob2":
         selected_backend = backend or args.backend
@@ -798,6 +847,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             benchmark_skmob2_size(
                 df,
                 size,
+                specs=specs,
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
@@ -821,6 +871,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             benchmark_movingpandas_size(
                 data_path,
                 size,
+                specs=specs,
                 repeat_factor=args.repeat_dataset,
                 profile=args.profile,
                 iterations=args.iterations,
@@ -855,6 +906,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             raw_df,
             skmob_module,
             size,
+            specs=specs,
             timing_mode=args.timing_mode,
             profile=args.profile,
             iterations=args.iterations,
@@ -889,6 +941,11 @@ def concrete_input_orders(args: argparse.Namespace) -> Iterable[str]:
     return (args.input_order,)
 
 
+def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
+    requested = set(args.metrics)
+    return tuple(spec for spec in PREPROCESSING_METRICS if spec.name in requested)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone preprocessing speed benchmarks.")
     parser.add_argument("--library", choices=["skmob2", "skmob", "movingpandas"], required=True)
@@ -907,6 +964,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Repeat the Brightkite dataset this many times, forcing unique user ids for each repeat.",
     )
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
+    parser.add_argument(
+        "--metrics",
+        choices=[spec.name for spec in PREPROCESSING_METRICS],
+        nargs="+",
+        default=[spec.name for spec in PREPROCESSING_METRICS],
+        help="Only run the selected preprocessing metrics.",
+    )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="Merge selected sizes/metrics into an existing output JSON instead of replacing the whole file.",
+    )
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
     args = parser.parse_args(argv)
@@ -930,6 +999,8 @@ def main(argv: list[str] | None = None) -> int:
                 order_args.profile,
                 order_args.input_order,
             )
+            if order_args.append and output_path.exists():
+                payload = merge_payload(load_catalog(output_path), payload)
             write_json(payload, output_path)
             print(f"\nWrote results to {output_path}")
     return 0

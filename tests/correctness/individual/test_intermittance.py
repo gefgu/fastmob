@@ -205,3 +205,105 @@ def test_use_trajectory_false_ignores_end_timestamp():
     assert row["mean_exploration"] == pytest.approx(1.0)
     assert row["mean_return"] == pytest.approx(0.0)
     assert row["degree_of_return"] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_impute_gaps_false_preserves_observed_slices_only():
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", "u1"],
+            "location_id": ["home", "shop"],
+            "start_timestamp": [
+                pd.Timestamp("2020-01-01 02:00"),
+                pd.Timestamp("2020-01-01 02:15"),
+            ],
+            "end_timestamp": [
+                pd.Timestamp("2020-01-01 02:05"),
+                pd.Timestamp("2020-01-01 02:15"),
+            ],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none", impute_gaps=False)
+    row = result.iloc[0]
+
+    assert row["mean_exploration"] == pytest.approx(1.0)
+    assert row["mean_return"] == pytest.approx(1.0)
+    assert row["intermittency"] == pytest.approx(2.0)
+    assert row["degree_of_return"] == pytest.approx(np.arctan2(1.0, 1.0))
+
+
+def test_impute_gaps_fills_missing_nighttime_slice_with_home_anchor():
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", "u1"],
+            "location_id": ["home", "shop"],
+            "start_timestamp": [
+                pd.Timestamp("2020-01-01 02:00"),
+                pd.Timestamp("2020-01-01 02:15"),
+            ],
+            "end_timestamp": [
+                pd.Timestamp("2020-01-01 02:05"),
+                pd.Timestamp("2020-01-01 02:15"),
+            ],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none", impute_gaps=True)
+    row = result.iloc[0]
+
+    assert row["mean_exploration"] == pytest.approx(1.0)
+    assert row["mean_return"] == pytest.approx(2.0)
+    assert row["intermittency"] == pytest.approx(3.0)
+    assert row["degree_of_return"] == pytest.approx(np.arctan2(2.0, 1.0))
+
+
+def test_impute_gaps_leaves_missing_slice_absent_without_anchor():
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", "u1"],
+            "location_id": ["home", "shop"],
+            "start_timestamp": [
+                pd.Timestamp("2020-01-01 08:00"),
+                pd.Timestamp("2020-01-01 08:15"),
+            ],
+            "end_timestamp": [
+                pd.Timestamp("2020-01-01 08:05"),
+                pd.Timestamp("2020-01-01 08:15"),
+            ],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(df, cold_start_strategy="none", impute_gaps=True)
+    row = result.iloc[0]
+
+    assert row["mean_exploration"] == pytest.approx(1.0)
+    assert row["mean_return"] == pytest.approx(1.0)
+    assert row["intermittency"] == pytest.approx(2.0)
+    assert row["degree_of_return"] == pytest.approx(np.arctan2(1.0, 1.0))
+
+
+def test_impute_gaps_polars_backend_matches_input():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", "u1"],
+            "location_id": ["home", "shop"],
+            "start_timestamp": [
+                pd.Timestamp("2020-01-01 02:00"),
+                pd.Timestamp("2020-01-01 02:15"),
+            ],
+            "end_timestamp": [
+                pd.Timestamp("2020-01-01 02:05"),
+                pd.Timestamp("2020-01-01 02:15"),
+            ],
+        }
+    )
+
+    result = intermittance_and_degree_of_return(
+        pl.from_pandas(df),
+        cold_start_strategy="none",
+        impute_gaps=True,
+    )
+
+    assert isinstance(result, pl.DataFrame)
+    assert result["mean_return"].to_list() == pytest.approx([2.0])

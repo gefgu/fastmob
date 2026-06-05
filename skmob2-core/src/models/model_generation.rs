@@ -2,7 +2,7 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 
-use crate::models::od::{validate_equal_lengths, CachedGravityOdRows};
+use crate::models::od::{CachedGravityOdRows, validate_equal_lengths};
 use crate::utils::haversine::haversine_km;
 
 type RadiationResult = Result<(Vec<usize>, Vec<usize>, Vec<f64>), String>;
@@ -464,7 +464,10 @@ pub fn model_truncated_power_law_samples(
 // Distance matrix
 // ---------------------------------------------------------------------------
 
-pub fn model_distance_matrix_impl(latitudes: &[f64], longitudes: &[f64]) -> Result<Vec<f64>, String> {
+pub fn model_distance_matrix_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+) -> Result<Vec<f64>, String> {
     let n = validate_equal_lengths(&[
         ("longitudes", longitudes.len()),
         ("latitudes", latitudes.len()),

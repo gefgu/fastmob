@@ -255,8 +255,7 @@ fn process_single_user<'a>(user_id: &str, visits: &[Visit<'a>]) -> Vec<DailyMoti
 
     // visits are already sorted by [user_id, start_timestamp] from Python
     // so date_ids are already grouped by day within each user
-    let daily_chunks: Vec<&[Visit<'_>]> =
-        visits.chunk_by(|a, b| a.date_id == b.date_id).collect();
+    let daily_chunks: Vec<&[Visit<'_>]> = visits.chunk_by(|a, b| a.date_id == b.date_id).collect();
 
     let mut results = Vec::with_capacity(daily_chunks.len());
 

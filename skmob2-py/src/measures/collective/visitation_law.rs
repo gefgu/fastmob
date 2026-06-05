@@ -13,8 +13,13 @@ pub fn visitation_distances_km(
     location_latitudes: Vec<f64>,
     location_longitudes: Vec<f64>,
 ) -> PyResult<Vec<f64>> {
-    core_visitation_distances_km(home_latitudes, home_longitudes, location_latitudes, location_longitudes)
-        .map_err(PyValueError::new_err)
+    core_visitation_distances_km(
+        home_latitudes,
+        home_longitudes,
+        location_latitudes,
+        location_longitudes,
+    )
+    .map_err(PyValueError::new_err)
 }
 
 #[pyfunction]

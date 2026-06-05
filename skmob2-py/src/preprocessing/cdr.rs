@@ -33,8 +33,7 @@ pub fn cdr_visitation_stays(
     timestamps_s: Vec<f64>,
     ranges: Vec<(usize, usize)>,
 ) -> PyResult<VisitationBatchResult> {
-    cdr_visitation_stays_impl(&venue_codes, &timestamps_s, &ranges)
-        .map_err(PyValueError::new_err)
+    cdr_visitation_stays_impl(&venue_codes, &timestamps_s, &ranges).map_err(PyValueError::new_err)
 }
 
 #[pyfunction]

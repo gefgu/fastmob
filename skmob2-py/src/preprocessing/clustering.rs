@@ -28,6 +28,5 @@ pub fn cluster_gmm(
     tolerance: f64,
     seed: u64,
 ) -> PyResult<Vec<usize>> {
-    cluster_gmm_impl(values, n_clusters, max_iter, tolerance, seed)
-        .map_err(PyValueError::new_err)
+    cluster_gmm_impl(values, n_clusters, max_iter, tolerance, seed).map_err(PyValueError::new_err)
 }

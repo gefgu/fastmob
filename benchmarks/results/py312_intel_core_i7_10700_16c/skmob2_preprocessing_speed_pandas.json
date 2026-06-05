@@ -11,6 +11,12 @@
     "input_type": "pandas.DataFrame",
     "iterations": 5,
     "library": "skmob2",
+    "metrics": [
+      "filter",
+      "compress",
+      "stay_locations",
+      "cluster"
+    ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
     "profile": "speed",
@@ -18,244 +24,49 @@
     "repeat_dataset": 1,
     "retries": 0,
     "sizes": [
-      1000,
-      10000,
-      100000,
-      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "preprocessing",
-    "timestamp_utc": "2026-06-03T16:54:53.326681+00:00",
+    "timestamp_utc": "2026-06-05T18:18:02.432450+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
     {
-      "label": "1k",
-      "metrics": {
-        "compress": {
-          "average_seconds": 0.0058418411761522295,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0050480249337852,
-          "status": "ok",
-          "times_seconds": [
-            0.0051511910278350115,
-            0.0050480249337852,
-            0.005096575943753123,
-            0.005248619010671973,
-            0.008664794964715838
-          ]
-        },
-        "filter": {
-          "average_seconds": 0.004477054346352816,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.004176711896434426,
-          "status": "ok",
-          "times_seconds": [
-            0.004580420907586813,
-            0.004299602936953306,
-            0.004762229975312948,
-            0.004176711896434426,
-            0.0045663060154765844
-          ]
-        },
-        "stay_locations": {
-          "average_seconds": 0.01696197222918272,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.004542284877970815,
-          "status": "ok",
-          "times_seconds": [
-            0.025286786956712604,
-            0.025088093942031264,
-            0.025174849200993776,
-            0.004717846168205142,
-            0.004542284877970815
-          ]
-        }
-      },
-      "rows": 1000,
-      "size": 1000
-    },
-    {
-      "label": "10k",
-      "metrics": {
-        "compress": {
-          "average_seconds": 0.013768893014639617,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.005538999801501632,
-          "status": "ok",
-          "times_seconds": [
-            0.010562783107161522,
-            0.031076827086508274,
-            0.010844392003491521,
-            0.010821463074535131,
-            0.005538999801501632
-          ]
-        },
-        "filter": {
-          "average_seconds": 0.00890966053120792,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.005237990990281105,
-          "status": "ok",
-          "times_seconds": [
-            0.009702277835458517,
-            0.009889981942251325,
-            0.01000111410394311,
-            0.00971693778410554,
-            0.005237990990281105
-          ]
-        },
-        "stay_locations": {
-          "average_seconds": 0.007889264402911067,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.005820275051519275,
-          "status": "ok",
-          "times_seconds": [
-            0.011493382975459099,
-            0.010375809855759144,
-            0.005820275051519275,
-            0.005902667064219713,
-            0.0058541870675981045
-          ]
-        }
-      },
-      "rows": 10000,
-      "size": 10000
-    },
-    {
-      "label": "100k",
-      "metrics": {
-        "compress": {
-          "average_seconds": 0.01689837626181543,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.00857307412661612,
-          "status": "ok",
-          "times_seconds": [
-            0.00857307412661612,
-            0.008652813034132123,
-            0.012447629123926163,
-            0.013630941975861788,
-            0.04118742304854095
-          ]
-        },
-        "filter": {
-          "average_seconds": 0.010587025247514249,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.008392808958888054,
-          "status": "ok",
-          "times_seconds": [
-            0.01296085910871625,
-            0.008392808958888054,
-            0.008417768171057105,
-            0.013002604013308883,
-            0.010161085985600948
-          ]
-        },
-        "stay_locations": {
-          "average_seconds": 0.0327508247923106,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.016744385939091444,
-          "status": "ok",
-          "times_seconds": [
-            0.05454641696996987,
-            0.016744385939091444,
-            0.05330571997910738,
-            0.019610265037044883,
-            0.019547336036339402
-          ]
-        }
-      },
-      "rows": 100000,
-      "size": 100000
-    },
-    {
-      "label": "1M",
-      "metrics": {
-        "compress": {
-          "average_seconds": 0.05324934842064977,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.03796303691342473,
-          "status": "ok",
-          "times_seconds": [
-            0.04226276814006269,
-            0.07440504198893905,
-            0.03818807494826615,
-            0.07342782011255622,
-            0.03796303691342473
-          ]
-        },
-        "filter": {
-          "average_seconds": 0.06182857379317284,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0457444591447711,
-          "status": "ok",
-          "times_seconds": [
-            0.049747403943911195,
-            0.04930981690995395,
-            0.08523434796370566,
-            0.0457444591447711,
-            0.07910684100352228
-          ]
-        },
-        "stay_locations": {
-          "average_seconds": 0.11126953302882611,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.10232876311056316,
-          "status": "ok",
-          "times_seconds": [
-            0.10244183801114559,
-            0.1416130638681352,
-            0.10232876311056316,
-            0.10298281395807862,
-            0.106981186196208
-          ]
-        }
-      },
-      "rows": 1000000,
-      "size": 1000000
-    },
-    {
       "label": "4M",
       "metrics": {
+        "cluster": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "import failed: No module named 'skmob2.dispatch'",
+          "status": "skipped",
+          "times_seconds": []
+        },
         "compress": {
-          "average_seconds": 0.2854502586182207,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.2737985209096223,
-          "status": "ok",
-          "times_seconds": [
-            0.28298754896968603,
-            0.2760657260660082,
-            0.2775660220067948,
-            0.31683347513899207,
-            0.2737985209096223
-          ]
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "import failed: No module named 'skmob2.dispatch'",
+          "status": "skipped",
+          "times_seconds": []
         },
         "filter": {
-          "average_seconds": 0.3174917765893042,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.31616007816046476,
-          "status": "ok",
-          "times_seconds": [
-            0.3182145638857037,
-            0.31810109387151897,
-            0.3174362489953637,
-            0.3175468980334699,
-            0.31616007816046476
-          ]
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "import failed: No module named 'skmob2.dispatch'",
+          "status": "skipped",
+          "times_seconds": []
         },
         "stay_locations": {
-          "average_seconds": 0.5115222733933479,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.49293019296601415,
-          "status": "ok",
-          "times_seconds": [
-            0.49752737302333117,
-            0.5389825028833002,
-            0.49678328004665673,
-            0.49293019296601415,
-            0.5313880180474371
-          ]
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "import failed: No module named 'skmob2.dispatch'",
+          "status": "skipped",
+          "times_seconds": []
         }
       },
       "rows": 4000000,

@@ -9,9 +9,7 @@ fn visitation_distances_impl(
     location_longitudes: &[f64],
 ) -> Result<Vec<f64>, String> {
     if home_latitudes.len() != home_longitudes.len() {
-        return Err(
-            "home_latitudes and home_longitudes must have the same length".to_string(),
-        );
+        return Err("home_latitudes and home_longitudes must have the same length".to_string());
     }
     if location_latitudes.len() != location_longitudes.len() {
         return Err(
@@ -19,9 +17,7 @@ fn visitation_distances_impl(
         );
     }
     if home_latitudes.len() != location_latitudes.len() {
-        return Err(
-            "home and location coordinate arrays must have the same length".to_string(),
-        );
+        return Err("home and location coordinate arrays must have the same length".to_string());
     }
 
     Ok((0..home_latitudes.len())

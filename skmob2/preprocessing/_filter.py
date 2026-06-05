@@ -17,9 +17,24 @@ from ..measures._common import (
     _detect_trajectory_columns,
     _extract_timestamps_s,
     _prepare_trajectory,
-    _use_arrow_kernel_path,
 )
 
+# Import the new dispatcher from wherever you saved it
+from skmob2.core.dispatch import TrajectoryDispatcher
+
+# Instantiate the dispatcher for this specific module
+FILTER_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "filter_sorted": _filter_trajectory_arrow,
+        "filter_indexed": _filter_trajectory_indexed_arrow,
+        "format_mask": _arrow_result_values,
+    },
+    numpy_ops={
+        "filter_sorted": _filter_trajectory_numpy,
+        "filter_indexed": _filter_trajectory_indexed_numpy,
+        "format_mask": lambda mask: mask,  # No-op for NumPy
+    }
+)
 
 def filter(
     traj: Any,
@@ -60,7 +75,6 @@ def filter(
     DataFrame
         Filtered trajectory in the same backend as input.
 
-
     Examples
     --------
     >>> import pandas as pd
@@ -100,9 +114,13 @@ def filter(
     References
     ----------
     - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), <a href="https://dl.acm.org/citation.cfm?id=2743025">https://dl.acm.org/citation.cfm?id=2743025</a>
-
     """
     df = nw.from_native(traj, eager_only=True)
+    
+    # 1. Fetch backend context from the dispatcher
+    ops = FILTER_DISPATCHER.get_ops(df)
+    use_arrow = FILTER_DISPATCHER.get_backend_key(df) == "arrow"
+
     start = time.perf_counter_ns()
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -112,7 +130,6 @@ def filter(
         uid_col=uid_col,
     )
     print(f"Column detection took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
-    use_arrow = _use_arrow_kernel_path(df)
 
     start = time.perf_counter_ns()
     df = _prepare_trajectory(
@@ -128,8 +145,14 @@ def filter(
     start = time.perf_counter_ns()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     print(f"Timestamp extraction took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
+    
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
+
+    # 2. Extract arrays dynamically using the backend's method
+    lats_data = ops["extract_data"](lats)
+    lngs_data = ops["extract_data"](lngs)
+    times_data = ops["extract_data"](timestamps_s)
 
     config = FilterConfig(
         max_speed_kmh=max_speed_kmh,
@@ -141,27 +164,12 @@ def filter(
     sorted = use_arrow or sorted
 
     start = time.perf_counter_ns()
+    
+    # 3. Build ranges and select the appropriate core function from the dictionary
     if sorted:
         _, ranges = _build_user_ranges(df, uid_col)
-
-        if use_arrow:
-            keep_mask = _arrow_result_values(
-                _filter_trajectory_arrow(
-                    lats.to_arrow(),
-                    lngs.to_arrow(),
-                    timestamps_s.to_arrow(),
-                    ranges,
-                    config,
-                )
-            )
-        else:
-            keep_mask = _filter_trajectory_numpy(
-                lats.to_numpy(),
-                lngs.to_numpy(),
-                timestamps_s.to_numpy(),
-                ranges,
-                config,
-            )
+        filter_func = ops["filter_sorted"]
+        args = (lats_data, lngs_data, times_data, ranges, config)
     else:
         _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -170,27 +178,13 @@ def filter(
             timestamps=timestamps_s,
             use_arrow=use_arrow,
         )
+        filter_func = ops["filter_indexed"]
+        args = (lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-        if use_arrow:
-            keep_mask = _arrow_result_values(
-                _filter_trajectory_indexed_arrow(
-                    lats.to_arrow(),
-                    lngs.to_arrow(),
-                    timestamps_s.to_arrow(),
-                    sorted_indices,
-                    ends,
-                    config,
-                )
-            )
-        else:
-            keep_mask = _filter_trajectory_indexed_numpy(
-                lats.to_numpy(),
-                lngs.to_numpy(),
-                timestamps_s.to_numpy(),
-                sorted_indices,
-                ends,
-                config,
-            )
+    # 4. Execute the math and format the resulting mask dynamically
+    raw_mask = filter_func(*args)
+    keep_mask = ops["format_mask"](raw_mask)
+    
     print(f"Filtering took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
 
     native_df = df.to_native()
@@ -200,6 +194,5 @@ def filter(
     return df.filter(
         nw.new_series("__keep__", keep_mask, backend=df.implementation)
     ).to_native()
-
 
 filter.__module__ = "skmob2.preprocessing"
