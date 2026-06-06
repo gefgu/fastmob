@@ -25,6 +25,8 @@ from benchmarks.utils import (
     concrete_backends as iter_concrete_backends,
     concrete_input_orders as iter_concrete_input_orders,
     error_result,
+    load_catalog,
+    merge_payload,
     nonnegative_float,
     nonnegative_int,
     positive_int,
@@ -452,6 +454,7 @@ def benchmark_skmob2_size(
     df: Any,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
@@ -490,7 +493,7 @@ def benchmark_skmob2_size(
         "size": size,
         "label": size_label(size),
         "rows": len(size_df),
-        "metrics": {spec.name: benchmark_spec(spec) for spec in INDIVIDUAL_METRICS},
+        "metrics": {spec.name: benchmark_spec(spec) for spec in specs},
     }
 
 
@@ -524,6 +527,7 @@ def benchmark_skmob_size(
     skmob_module: Any,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     timing_mode: str,
     iterations: int,
     sleep_seconds: float,
@@ -562,7 +566,7 @@ def benchmark_skmob_size(
                 input_order=input_order,
                 case_timeout_seconds=case_timeout_seconds,
             )
-            for spec in INDIVIDUAL_METRICS
+            for spec in specs
         },
     }
 
@@ -571,6 +575,7 @@ def benchmark_movingpandas_size(
     data_path: Path,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
@@ -586,7 +591,7 @@ def benchmark_movingpandas_size(
             "size": size,
             "label": size_label(size),
             "rows": 0,
-            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in INDIVIDUAL_METRICS},
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in specs},
         }
 
     rows = len(tc.to_point_gdf())
@@ -607,7 +612,7 @@ def benchmark_movingpandas_size(
                 input_order=input_order,
                 case_timeout_seconds=case_timeout_seconds,
             )
-            for spec in INDIVIDUAL_METRICS
+            for spec in specs
         },
     }
 
@@ -641,6 +646,7 @@ def build_metadata(
         "retries": args.retries,
         "case_timeout_seconds": args.case_timeout_seconds,
         "sizes": args.sizes,
+        "metrics": args.metrics,
         "input_order": args.input_order,
         "input_cache_path": None if input_cache_path is None else str(input_cache_path),
         "input_cache_status": input_cache_status,
@@ -677,6 +683,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
     data_path = Path(args.data_path)
     if not data_path.exists():
         raise SystemExit(f"Dataset not found at {data_path}. Place the Brightkite file there before running.")
+    specs = selected_specs(args)
 
     if args.library == "skmob2":
         selected_backend = backend or args.backend
@@ -697,6 +704,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             benchmark_skmob2_size(
                 df,
                 size,
+                specs=specs,
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
@@ -721,6 +729,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             benchmark_movingpandas_size(
                 data_path,
                 size,
+                specs=specs,
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
@@ -754,6 +763,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             raw_df,
             skmob_module,
             size,
+            specs=specs,
             timing_mode=args.timing_mode,
             profile=args.profile,
             iterations=args.iterations,
@@ -783,6 +793,11 @@ def concrete_input_orders(args: argparse.Namespace) -> Iterable[str]:
     return iter_concrete_input_orders(args.input_order)
 
 
+def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
+    requested = set(args.metrics)
+    return tuple(spec for spec in INDIVIDUAL_METRICS if spec.name in requested)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone individual speed benchmarks.")
     parser.add_argument("--library", choices=["skmob2", "skmob", "movingpandas"], required=True)
@@ -801,6 +816,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Abort an individual metric case after this many seconds and record it as an error.",
     )
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
+    parser.add_argument(
+        "--metrics",
+        choices=[spec.name for spec in INDIVIDUAL_METRICS],
+        nargs="+",
+        default=[spec.name for spec in INDIVIDUAL_METRICS],
+        help="Only run the selected individual metrics.",
+    )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="Merge selected sizes/metrics into an existing output JSON instead of replacing the whole file.",
+    )
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
     args = parser.parse_args(argv)
@@ -824,6 +851,8 @@ def main(argv: list[str] | None = None) -> int:
                 order_args.profile,
                 order_args.input_order,
             )
+            if order_args.append and output_path.exists():
+                payload = merge_payload(load_catalog(output_path), payload)
             write_json(payload, output_path)
             print(f"\nWrote results to {output_path}")
     return 0

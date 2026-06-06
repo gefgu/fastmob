@@ -1,6 +1,7 @@
 {
   "metadata": {
     "backend": "polars",
+    "case_timeout_seconds": null,
     "cpu_cores": 16,
     "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
     "cpu_vendor": "intel",
@@ -11,22 +12,21 @@
     "input_type": "polars.DataFrame",
     "iterations": 5,
     "library": "skmob2",
+    "metrics": [
+      "k_radius_of_gyration"
+    ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
     "profile": "speed",
     "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
     "retries": 0,
     "sizes": [
-      1000,
-      10000,
-      100000,
-      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "individual",
-    "timestamp_utc": "2026-05-30T19:11:59.015338+00:00",
+    "timestamp_utc": "2026-06-06T20:50:27.330090+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -1232,16 +1232,16 @@
           ]
         },
         "k_radius_of_gyration": {
-          "average_seconds": 0.09999929359182716,
+          "average_seconds": 0.12547753257676958,
           "iterations_completed": 5,
-          "minimum_seconds": 0.0847658880520612,
+          "minimum_seconds": 0.10974603006616235,
           "status": "ok",
           "times_seconds": [
-            0.10642533493228257,
-            0.0847658880520612,
-            0.09241313394159079,
-            0.11593600711785257,
-            0.10045610391534865
+            0.14276631688699126,
+            0.10974603006616235,
+            0.11297529004514217,
+            0.12014381866902113,
+            0.14175620721653104
           ]
         },
         "location_frequency": {
@@ -1323,16 +1323,16 @@
           ]
         },
         "radius_of_gyration": {
-          "average_seconds": 0.13383470065891742,
+          "average_seconds": 0.1536109706386924,
           "iterations_completed": 5,
-          "minimum_seconds": 0.12317130202427506,
+          "minimum_seconds": 0.14607308199629188,
           "status": "ok",
           "times_seconds": [
-            0.12317130202427506,
-            0.13408598699606955,
-            0.1390383280813694,
-            0.13345149205997586,
-            0.13942639413289726
+            0.15658158203586936,
+            0.14607308199629188,
+            0.1506996052339673,
+            0.15701702004298568,
+            0.15768356388434768
           ]
         },
         "random_entropy": {
