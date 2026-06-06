@@ -19,6 +19,35 @@ import pytest
 
 EXPECTED_ENTROPY: float = 5 * math.log2(5) / 6
 
+def _skmob_true_entropy(sequence: list) -> float:
+    """Match scikit-mobility's private _true_entropy estimator (LZ77 scan).
+
+    Kept as a public function for test compatibility and as a reference
+    implementation.  The measure itself uses the Rust batch kernel which
+    implements the same algorithm.
+    """
+    n = len(sequence)
+    if n <= 1:
+        return 0.0
+
+    sum_lambda = 3.0
+
+    def in_seq(prefix: list, candidate: list) -> bool:
+        for i in range(len(prefix) - len(candidate) + 1):
+            if prefix[i : i + len(candidate)] == candidate:
+                return True
+        return False
+
+    for i in range(1, n - 1):
+        j = i + 1
+        while j < n and in_seq(sequence[:i], sequence[i:j]):
+            j += 1
+        if j == n:
+            j += 1
+        sum_lambda += j - i
+
+    return float(n * math.log2(n) / sum_lambda)
+
 
 def _to_dict(df) -> dict:
     """Convert a real_entropy result DataFrame to {uid: entropy_value}."""
@@ -50,7 +79,6 @@ def test_real_entropy_known_values(synthetic_tdf):
 def test_real_entropy_repeated_location():
     """A sequence with repeated visits captures temporal correlations."""
     from skmob2.measures.individual.real_entropy import real_entropy
-    from skmob2.measures.individual.real_entropy import _skmob_true_entropy
 
     # User "a": alternates between two locations — strong temporal structure
     df = pd.DataFrame(
@@ -91,7 +119,6 @@ def test_real_entropy_single_location():
 def test_real_entropy_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
     from skmob2.measures.individual.real_entropy import real_entropy
-    from skmob2.measures.individual.real_entropy import _skmob_true_entropy
 
     df = pd.DataFrame(
         {
@@ -114,7 +141,6 @@ def test_real_entropy_no_uid():
 def test_real_entropy_multiple_users_independent():
     """Each user's entropy is computed independently from others."""
     from skmob2.measures.individual.real_entropy import real_entropy
-    from skmob2.measures.individual.real_entropy import _skmob_true_entropy
 
     df = pd.DataFrame(
         {

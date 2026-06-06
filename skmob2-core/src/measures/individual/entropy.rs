@@ -1,6 +1,8 @@
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::utils::validate_indexed_coord_ends;
+
 type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 
 // skmob-compatible LZ77 entropy estimator — matches scikit-mobility's _true_entropy.
@@ -54,6 +56,41 @@ pub fn real_entropy_batch(
         .collect();
 
     Ok(entropies)
+}
+
+pub fn real_entropy_indexed_impl(
+    lats: &[f64],
+    lngs: &[f64],
+    indices: &[usize],
+    ends: &[usize],
+    valid_rows: Option<&[bool]>,
+) -> Result<Vec<f64>, String> {
+    validate_indexed_coord_ends(lats, lngs, indices, ends)?;
+
+    Ok((0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
+
+            let mut ids_by_pair: FxHashMap<(u64, u64), usize> = FxHashMap::default();
+            let mut token_ids = Vec::with_capacity(end - start);
+
+            for &idx in &indices[start..end] {
+                if valid_rows.is_none_or(|v| v[idx])
+                    && lats[idx].is_finite()
+                    && lngs[idx].is_finite()
+                {
+                    let pair = (lats[idx].to_bits(), lngs[idx].to_bits());
+                    let next_id = ids_by_pair.len();
+                    let id = *ids_by_pair.entry(pair).or_insert(next_id);
+                    token_ids.push(id);
+                }
+            }
+
+            skmob_lz77_entropy(&token_ids)
+        })
+        .collect())
 }
 
 fn encode_tokens(tokens: &[String]) -> Vec<usize> {

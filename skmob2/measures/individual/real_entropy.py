@@ -4,42 +4,32 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 import narwhals as nw
-import pandas as pd
-from skmob2._core import real_entropy_batch as _real_entropy_batch_rust
 
-from .._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from skmob2._core import (
+    real_entropy_indexed_arrow,
+    real_entropy_indexed_numpy,
+)
+from skmob2.core.dispatch import TrajectoryDispatcher
 
+from .._common import (
+    _arrow_result_values,
+    _build_time_ordered_user_ranges,
+    _detect_trajectory_columns,
+    _extract_timestamps_ms,
+    _with_datetime_column,
+)
 
-def _skmob_true_entropy(sequence: list) -> float:
-    """Match scikit-mobility's private _true_entropy estimator (LZ77 scan).
-
-    Kept as a public function for test compatibility and as a reference
-    implementation.  The measure itself uses the Rust batch kernel which
-    implements the same algorithm.
-    """
-    n = len(sequence)
-    if n <= 1:
-        return 0.0
-
-    sum_lambda = 3.0
-
-    def in_seq(prefix: list, candidate: list) -> bool:
-        for i in range(len(prefix) - len(candidate) + 1):
-            if prefix[i : i + len(candidate)] == candidate:
-                return True
-        return False
-
-    for i in range(1, n - 1):
-        j = i + 1
-        while j < n and in_seq(sequence[:i], sequence[i:j]):
-            j += 1
-        if j == n:
-            j += 1
-        sum_lambda += j - i
-
-    return float(n * np.log2(n) / sum_lambda)
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "real_entropy_indexed": real_entropy_indexed_arrow,
+        "format_result": lambda values: _arrow_result_values(values).to_pylist(),
+    },
+    numpy_ops={
+        "real_entropy_indexed": real_entropy_indexed_numpy,
+        "format_result": lambda values: values.tolist(),
+    },
+)
 
 
 def real_entropy(
@@ -54,8 +44,8 @@ def real_entropy(
 
     Real entropy is estimated using the Kontoyiannis (1998) Lempel-Ziv
     entropy rate estimator applied to the sequence of visited locations.
-    Each location is encoded as the string ``"<lat>_<lng>"`` using exact
-    float equality — matching the skmob convention (no spatial clustering).
+    Each location is encoded as the exact ``(lat, lng)`` float pair using
+    bitwise equality — matching the skmob convention (no spatial clustering).
 
     The estimator captures both the frequency and the order of visits,
     unlike random entropy (which ignores order) and uncorrelated entropy
@@ -129,35 +119,30 @@ def real_entropy(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
+    df = _with_datetime_column(df, datetime_col)
+    df = df.drop_nulls(subset=[datetime_col]).with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
-    native = df.to_native()
-    if isinstance(native, pd.DataFrame):
-        tokens = (native[lat_col].astype(str) + "_" + native[lng_col].astype(str)).tolist()
-    else:
-        loc_key_col = "__skmob2_loc_key__"
-        df = df.with_columns(
-            (nw.col(lat_col).cast(nw.String) + nw.lit("_") + nw.col(lng_col).cast(nw.String)).alias(loc_key_col)
-        )
-        tokens = df.get_column(loc_key_col).to_list()
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
 
-    if uid_col is None:
-        entropies = _real_entropy_batch_rust(tokens, [(0, len(tokens))])
-        return nw.from_dict(
-            {"real_entropy": entropies},
-            backend=df.implementation,
-        ).to_native()
+    timestamps = _extract_timestamps_ms(df, datetime_col)
+    uid_values, indices, ends = _build_time_ordered_user_ranges(
+        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+    )
 
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    entropies = _real_entropy_batch_rust(tokens, ranges)
+    raw = ops["real_entropy_indexed"](
+        ops["extract_data"](df.get_column(lat_col)),
+        ops["extract_data"](df.get_column(lng_col)),
+        indices,
+        ends,
+    )
+    entropies = ops["format_result"](raw)
 
-    return nw.from_dict(
-        {uid_col: uid_values, "real_entropy": entropies},
-        backend=df.implementation,
-    ).to_native()
+    result_dict: dict[str, Any] = {"real_entropy": entropies}
+    if uid_col is not None:
+        result_dict[uid_col] = uid_values
+
+    return nw.from_dict(result_dict, backend=df.implementation).to_native()

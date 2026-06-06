@@ -319,6 +319,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_py::detect_stay_locations_batch_numpy,
         m
