@@ -260,10 +260,37 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
     result = radius_of_gyration(df)
     actual = _rog_map(result)
 
-    assert list(result["uid"]) == ["a", "b", "c"]
+    assert list(result["uid"]) == ["b", "a", "c"]
     expected = {
         uid: radius_of_gyration_km(list(map(tuple, df.loc[df["uid"] == uid, ["lat", "lng"]].to_numpy())))
-        for uid in ["a", "b", "c"]
+        for uid in ["b", "a", "c"]
+    }
+    for uid, expected_value in expected.items():
+        np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
+
+
+def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
+    """The sorted=True fast path computes on already grouped user slices."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_km
+    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "b", "b", "c"],
+            "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
+            "lat": [0.0, 1.0, 10.0, 11.0, 20.0],
+            "lng": [0.0, 1.0, 30.0, 31.0, 40.0],
+        }
+    )
+
+    result = radius_of_gyration(df, sorted=True)
+    actual = _rog_map(result)
+
+    assert list(result["uid"]) == ["a", "b", "c"]
+    expected = {
+        uid: radius_of_gyration_km(list(map(tuple, rows[["lat", "lng"]].to_numpy())))
+        for uid, rows in df.groupby("uid", sort=False)
     }
     for uid, expected_value in expected.items():
         np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
@@ -287,10 +314,10 @@ def test_radius_of_gyration_pandas_filters_invalid_coordinates_in_rust():
     result = radius_of_gyration(df)
     actual = _rog_map(result)
 
-    assert list(result["uid"]) == ["a", "b", "c"]
+    assert list(result["uid"]) == ["b", "a", "c"]
     expected = {
         uid: radius_of_gyration_km(list(map(tuple, rows[["lat", "lng"]].to_numpy())))
-        for uid, rows in df.dropna(subset=["lat", "lng"]).groupby("uid", sort=True)
+        for uid, rows in df.dropna(subset=["lat", "lng"]).groupby("uid", sort=False)
     }
     assert set(actual) == set(expected)
     for uid, expected_value in expected.items():
@@ -315,10 +342,10 @@ def test_radius_of_gyration_polars_filters_invalid_coordinates_in_rust():
     result = radius_of_gyration(pl.from_pandas(df_pd)).to_pandas()
     actual = _rog_map(result)
 
-    assert list(result["uid"]) == ["a", "b", "c"]
+    assert list(result["uid"]) == ["b", "a", "c"]
     expected = {
         uid: radius_of_gyration_km(list(map(tuple, rows[["lat", "lng"]].to_numpy())))
-        for uid, rows in df_pd.dropna(subset=["lat", "lng"]).groupby("uid", sort=True)
+        for uid, rows in df_pd.dropna(subset=["lat", "lng"]).groupby("uid", sort=False)
     }
     assert set(actual) == set(expected)
     for uid, expected_value in expected.items():
@@ -391,28 +418,37 @@ def test_build_indexed_user_ranges_handles_empty_dataframe():
 
 
 def test_radius_of_gyration_user_indices_numpy_helper():
-    """Rust NumPy uid-index helper groups sorted stable row indexes."""
+    """Rust NumPy uid-index helper groups first-seen stable row indexes."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2._core import radius_of_gyration_user_indices_numpy
 
-    indices, ends = radius_of_gyration_user_indices_numpy(np.array([2, 1, 2, 3, 1, 3], dtype=np.int64))
+    indices, ends = radius_of_gyration_user_indices_numpy(np.array([0, 1, 0, 2, 1, 2], dtype=np.uint64), 3)
 
     assert isinstance(indices, np.ndarray)
-    assert indices.tolist() == [1, 4, 0, 2, 3, 5]
+    assert indices.tolist() == [0, 2, 1, 4, 3, 5]
     assert ends.tolist() == [2, 4, 6]
 
 
 def test_radius_of_gyration_user_indices_arrow_helper():
-    """Rust Arrow uid-index helper supports string uid arrays."""
+    """Rust Arrow uid-index helper supports UInt64 uid code arrays."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from skmob2._core import radius_of_gyration_user_indices_arrow
 
-    indices, ends = radius_of_gyration_user_indices_arrow(pa.array(["b", "a", "b", "c", "a", "c"]))
+    indices, ends = radius_of_gyration_user_indices_arrow(pa.array([0, 1, 0, 2, 1, 2], type=pa.uint64()), 3)
 
     assert isinstance(indices, np.ndarray)
-    assert indices.tolist() == [1, 4, 0, 2, 3, 5]
+    assert indices.tolist() == [0, 2, 1, 4, 3, 5]
     assert ends.tolist() == [2, 4, 6]
+
+
+def test_radius_of_gyration_user_indices_rejects_out_of_range_codes():
+    """Rust uid-index helper validates codes against num_groups before allocation."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import radius_of_gyration_user_indices_numpy
+
+    with pytest.raises(ValueError, match="less than num_groups"):
+        radius_of_gyration_user_indices_numpy(np.array([0, 2], dtype=np.uint64), 2)
 
 
 def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
@@ -477,11 +513,12 @@ def test_radius_of_gyration_indexed_numpy_helper_matches_contiguous_helper():
     ends = np.array([2, 4, 6], dtype=np.uintp)
     indexed_ranges = [(0, 2), (2, 4), (4, 6)]
 
-    result = radius_of_gyration_indexed_numpy(lats, lngs, indices, ends)
+    result, counts = radius_of_gyration_indexed_numpy(lats, lngs, indices, ends)
     expected_lats = np.array([0.0, 1.0, 10.0, 11.0, 20.0, 21.0], dtype=np.float64)
     expected_lngs = np.array([0.0, 1.0, 30.0, 31.0, 40.0, 41.0], dtype=np.float64)
     expected = radius_of_gyration_numpy(expected_lats, expected_lngs, indexed_ranges)
 
+    assert counts.tolist() == [2, 2, 2]
     np.testing.assert_allclose(result, expected, rtol=0.0, atol=1e-12)
 
 
@@ -496,14 +533,15 @@ def test_radius_of_gyration_indexed_arrow_helper_matches_numpy_helper():
     indices = np.array([1, 4, 0, 2, 3, 5], dtype=np.uintp)
     ends = np.array([2, 4, 6], dtype=np.uintp)
 
-    result_arrow = radius_of_gyration_indexed_arrow(
+    result_arrow, counts_arrow = radius_of_gyration_indexed_arrow(
         pa.array(lats, type=pa.float64()),
         pa.array(lngs, type=pa.float64()),
         indices,
         ends,
     )
-    result_numpy = radius_of_gyration_indexed_numpy(lats, lngs, indices, ends)
+    result_numpy, counts_numpy = radius_of_gyration_indexed_numpy(lats, lngs, indices, ends)
 
+    assert counts_arrow.tolist() == counts_numpy.tolist() == [2, 2, 2]
     np.testing.assert_allclose(np.asarray(result_arrow), result_numpy, rtol=0.0, atol=1e-12)
 
 
@@ -596,16 +634,21 @@ def test_radius_of_gyration_indexed_numpy_index_bounds_raise():
         )
 
 
-def test_radius_of_gyration_arrow_nulls_are_filtered():
-    """Arrow helper skips null coordinates."""
+def test_radius_of_gyration_indexed_arrow_nulls_are_filtered():
+    """Arrow indexed helper skips null coordinates and reports valid counts."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import radius_of_gyration_arrow
+    from skmob2._core import radius_of_gyration_indexed_arrow
 
     lats = pa.array([0.0, None], type=pa.float64())
     lngs = pa.array([0.0, 1.0], type=pa.float64())
+    indices = np.array([0, 1], dtype=np.uintp)
+    ends = np.array([2], dtype=np.uintp)
 
-    np.testing.assert_allclose(np.asarray(radius_of_gyration_arrow(lats, lngs, [(0, 2)])), [0.0], rtol=0.0, atol=1e-12)
+    values, counts = radius_of_gyration_indexed_arrow(lats, lngs, indices, ends)
+
+    assert counts.tolist() == [1]
+    np.testing.assert_allclose(np.asarray(values), [0.0], rtol=0.0, atol=1e-12)
 
 
 @pytest.mark.skmob

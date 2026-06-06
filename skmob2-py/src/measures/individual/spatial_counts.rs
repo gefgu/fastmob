@@ -7,7 +7,9 @@ use skmob2_core::measures::individual::spatial_counts::{
     number_of_visits_indexed_impl,
 };
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, u64_results_into_arrow};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, u64_results_into_arrow,
+};
 
 #[pyfunction]
 pub fn number_of_visits_numpy<'py>(

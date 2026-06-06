@@ -6,7 +6,9 @@ use skmob2_core::measures::individual::home_location::{
     home_location_impl, home_location_indexed_impl,
 };
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+};
 
 type PyHomeResults<'py> = (Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>);
 

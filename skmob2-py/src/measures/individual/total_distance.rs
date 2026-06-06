@@ -6,7 +6,9 @@ use skmob2_core::measures::individual::total_distance::{
     total_distance_impl, total_distance_indexed_impl,
 };
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+};
 
 #[pyfunction]
 pub fn total_distance_batch_km(

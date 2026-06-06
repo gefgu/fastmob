@@ -76,9 +76,7 @@ pub fn waiting_times_indexed_impl(
             let valid: Vec<usize> = indices[start..end]
                 .iter()
                 .copied()
-                .filter(|&idx| {
-                    valid_rows.is_none_or(|v| v[idx]) && timestamps_s[idx].is_finite()
-                })
+                .filter(|&idx| valid_rows.is_none_or(|v| v[idx]) && timestamps_s[idx].is_finite())
                 .collect();
             if valid.len() < 2 {
                 return Vec::new();
@@ -105,9 +103,7 @@ pub fn waiting_times_indexed_flat_impl(
         let valid: Vec<usize> = indices[start..end]
             .iter()
             .copied()
-            .filter(|&idx| {
-                valid_rows.is_none_or(|v| v[idx]) && timestamps_s[idx].is_finite()
-            })
+            .filter(|&idx| valid_rows.is_none_or(|v| v[idx]) && timestamps_s[idx].is_finite())
             .collect();
         for pos in 1..valid.len() {
             waits.push(timestamps_s[valid[pos]] - timestamps_s[valid[pos - 1]]);

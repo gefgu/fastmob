@@ -7,23 +7,6 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 
-/// Extracts each element of an Arrow `PrimitiveArray` as `Option<T::Native>`, mapping nulls to `None`.
-pub fn primitive_option_values<T>(array: &PrimitiveArray<T>) -> Vec<Option<T::Native>>
-where
-    T: arrow_array::types::ArrowPrimitiveType,
-    T::Native: Copy,
-{
-    (0..array.len())
-        .map(|idx| {
-            if array.is_null(idx) {
-                None
-            } else {
-                Some(array.value(idx))
-            }
-        })
-        .collect()
-}
-
 pub fn f64_results_into_arrow(results: Vec<f64>) -> PyArray {
     let array: ArrayRef = Arc::new(Float64Array::from(results));
     PyArray::from_array_ref(array)

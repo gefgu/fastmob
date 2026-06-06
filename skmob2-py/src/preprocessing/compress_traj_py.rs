@@ -103,7 +103,14 @@ pub fn compress_trajectory_representatives_indexed_numpy<'py>(
     let ends = ends.as_slice()?;
     validate_indexed_ends(lats.len(), idxs, ends)?;
     let (representative_indices, median_latitudes, median_longitudes) = py.detach(|| {
-        compress_trajectory_representatives_indexed_impl(lats, lngs, idxs, ends, None, spatial_radius_km)
+        compress_trajectory_representatives_indexed_impl(
+            lats,
+            lngs,
+            idxs,
+            ends,
+            None,
+            spatial_radius_km,
+        )
     });
     Ok((
         PyArray1::from_vec(py, representative_indices),

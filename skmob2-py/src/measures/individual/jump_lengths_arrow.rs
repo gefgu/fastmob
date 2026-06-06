@@ -6,7 +6,9 @@ use skmob2_core::measures::individual::jump_lengths::{
     jump_lengths_presorted_impl, time_ordered_flat_values_impl, validate_time_ordered_inputs,
 };
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+};
 
 use super::jump_lengths::{PyNonOrderedJumpLengthsArrow, PyPresortedJumpLengthsArrow};
 use super::time_ordering::{
@@ -14,12 +16,14 @@ use super::time_ordering::{
 };
 
 #[pyfunction]
+#[pyo3(signature = (uids, timestamps, latitudes, longitudes, num_groups = None))]
 pub fn jump_lengths_non_ordered_arrow<'py>(
     py: Python<'py>,
     uids: &Bound<'py, PyAny>,
     timestamps: PyArray,
     latitudes: PyArray,
     longitudes: PyArray,
+    num_groups: Option<usize>,
 ) -> PyResult<PyNonOrderedJumpLengthsArrow<'py>> {
     let timestamps = as_nullable_f64_array(timestamps, "timestamps")?;
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
@@ -31,10 +35,17 @@ pub fn jump_lengths_non_ordered_arrow<'py>(
     validate_time_ordered_inputs(latitudes_vals, longitudes_vals, timestamps_vals)
         .map_err(PyValueError::new_err)?;
 
-    let (indices, ranges) = time_ordered_indices_from_arrow_uids(py, uids, timestamps_vals)?;
-    let (indices, ranges, values) =
-        time_ordered_flat_values_impl(latitudes_vals, longitudes_vals, timestamps_vals, indices, ranges, valid_rows.as_deref())
-            .map_err(PyValueError::new_err)?;
+    let (indices, ranges) =
+        time_ordered_indices_from_arrow_uids(py, uids, timestamps_vals, num_groups)?;
+    let (indices, ranges, values) = time_ordered_flat_values_impl(
+        latitudes_vals,
+        longitudes_vals,
+        timestamps_vals,
+        indices,
+        ranges,
+        valid_rows.as_deref(),
+    )
+    .map_err(PyValueError::new_err)?;
     let (indices, starts, ends) = ordered_index_ranges_into_start_end_numpy(py, (indices, ranges));
     Ok((indices, starts, ends, f64_results_into_arrow(values)))
 }

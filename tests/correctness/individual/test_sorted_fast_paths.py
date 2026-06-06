@@ -142,7 +142,7 @@ def test_sorted_waiting_times_and_jump_lengths_merge_match_default_single_user()
     )
 
 
-def test_sorted_radius_of_gyration_preserves_all_invalid_user_filtering():
+def test_sorted_radius_of_gyration_requires_clean_input_for_invalid_user_filtering():
     pd = pytest.importorskip("pandas")
     from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
 
@@ -154,7 +154,7 @@ def test_sorted_radius_of_gyration_preserves_all_invalid_user_filtering():
             "lng": [np.nan, np.nan, 0.0],
         }
     )
-    sorted_input = _sorted_df(raw)
+    sorted_input = _sorted_df(raw.dropna(subset=["lat", "lng"]))
 
     default_result = radius_of_gyration(raw)
     sorted_result = radius_of_gyration(sorted_input, sorted=True)

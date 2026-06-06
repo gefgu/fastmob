@@ -19,6 +19,7 @@ from .._common import (
     _build_presorted_user_ranges,
     _build_user_ranges,
     _extract_timestamps_ms,
+    _factorize_uids_uint64,
     _detect_trajectory_columns,
     _to_native,
     _uid_values_from_index_ranges,
@@ -102,8 +103,18 @@ def _route_non_ordered_jump_lengths(
     lngs_data: Any,
     *,
     merge: bool,
+    num_groups: int | None = None,
 ) -> tuple[Any, Any, Any, Any]:
-    indices, starts, ends, values = ops["non_ordered"](uids_data, timestamps_data, lats_data, lngs_data)
+    if num_groups is None:
+        indices, starts, ends, values = ops["non_ordered"](uids_data, timestamps_data, lats_data, lngs_data)
+    else:
+        indices, starts, ends, values = ops["non_ordered"](
+            uids_data,
+            timestamps_data,
+            lats_data,
+            lngs_data,
+            num_groups,
+        )
     values = ops["flat_values"](values)
     if merge:
         return indices, starts, ends, values
@@ -287,17 +298,18 @@ def jump_lengths(
         return _to_native({"jump_lengths": jump_values}, df)
 
     uids = df.get_column(uid_col)
-    uids_data = ops["extract_data"](uids)
+    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=True)
+    uids_data = ops["extract_data"](uid_codes)
     try:
         indices, starts, ends, jump_values = _route_non_ordered_jump_lengths(
-            ops, uids_data, timestamps_data, lats_data, lngs_data, merge=merge
+            ops, uids_data, timestamps_data, lats_data, lngs_data, merge=merge, num_groups=num_groups
         )
         indices = _as_index_array(indices)
         starts = _as_index_array(starts)
         ends = _as_index_array(ends)
         uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
     except ValueError as exc:
-        if "unsupported" not in str(exc):
+        if "unsupported" not in str(exc) and "expected uint64" not in str(exc):
             raise
         uid_values, indices, ranges = _build_time_ordered_ranges_fallback(df, uid_col, datetime_col)
         sorted_lats, sorted_lngs = _presorted_coordinate_series_from_indices(

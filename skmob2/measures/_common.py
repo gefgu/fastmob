@@ -7,6 +7,8 @@ from typing import Any, Iterable
 import narwhals as nw
 import numpy as np
 
+from skmob2.core.dispatch import TrajectoryDispatcher
+
 _ROW_ORDER_COL = "__skmob2_row_order__"
 _USER_RANGE_START_COL = "__skmob2_user_range_start__"
 
@@ -115,6 +117,16 @@ def _is_pandas_backed(nw_df: nw.DataFrame) -> bool:
     return hasattr(native, "iloc") and hasattr(native, "dtypes")
 
 
+def _is_pyarrow_backed(nw_df: nw.DataFrame) -> bool:
+    """Return True when a Narwhals DataFrame is backed by PyArrow."""
+    implementation = getattr(nw_df, "implementation", None)
+    if implementation is not None and getattr(implementation, "value", None) == "pyarrow":
+        return True
+
+    native = nw_df.to_native()
+    return hasattr(native, "column") and hasattr(native, "schema")
+
+
 def _empty_like(nw_df: nw.DataFrame, columns: list[str]) -> Any:
     """Build an empty native DataFrame using the same backend as ``nw_df``."""
     return nw.from_dict({col: [] for col in columns}, backend=nw_df.implementation).to_native()
@@ -213,6 +225,121 @@ def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
     return nw.from_dict(values_dict, backend=df.implementation).to_native()
 
 
+def _indexed_group_indices_numpy(uids: Any, num_groups: int) -> Any:
+    from skmob2._core import radius_of_gyration_user_indices_numpy  # noqa: PLC0415
+
+    return radius_of_gyration_user_indices_numpy(uids, num_groups)
+
+
+def _indexed_group_indices_arrow(uids: Any, num_groups: int) -> Any:
+    from skmob2._core import radius_of_gyration_user_indices_arrow  # noqa: PLC0415
+
+    return radius_of_gyration_user_indices_arrow(uids, num_groups)
+
+
+_INDEXED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={"group_indices": _indexed_group_indices_arrow},
+    numpy_ops={"group_indices": _indexed_group_indices_numpy},
+)
+
+
+def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
+    return nw.new_series(
+        "__skmob2_uid_codes__",
+        values,
+        dtype=nw.UInt64,
+        backend=df.implementation,
+    )
+
+
+def _factorize_numpy_values_uint64(values: Any, *, sort: bool) -> tuple[np.ndarray, int]:
+    import pandas as pd  # noqa: PLC0415 - pandas-backed factorization
+
+    codes, uniques = pd.factorize(values, sort=sort, use_na_sentinel=False)
+    return np.asarray(codes, dtype=np.uint64), len(uniques)
+
+
+def _factorize_polars_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
+    import polars as pl  # noqa: PLC0415
+
+    native = df.to_native()
+    unique_values = native.get_column(uid_col).unique(maintain_order=not sort)
+    if sort:
+        unique_values = unique_values.sort(nulls_last=True)
+        replacement_codes = pl.Series(
+            "__skmob2_uid_codes__",
+            np.arange(len(unique_values), dtype=np.uint64),
+        )
+        codes = native.select(
+            pl.col(uid_col)
+            .replace_strict(
+                unique_values,
+                replacement_codes,
+                return_dtype=pl.UInt64,
+            )
+            .alias("__code__")
+        ).get_column("__code__")
+        return codes, len(unique_values)
+
+    raw_codes = native.select(
+        pl.col(uid_col)
+        .cast(pl.Utf8)
+        .cast(pl.Categorical)
+        .to_physical()
+        .alias("__code__")
+    ).get_column("__code__")
+    max_code = raw_codes.max()
+    fill_value = 0 if max_code is None else max_code + 1
+    return raw_codes.fill_null(fill_value).cast(pl.UInt64), len(unique_values)
+
+
+def _factorize_pyarrow_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
+    import pyarrow as pa  # noqa: PLC0415
+    import pyarrow.compute as pc  # noqa: PLC0415
+
+    values = df.get_column(uid_col).to_arrow()
+    if sort:
+        unique_values = pc.unique(values)
+        sorted_values = pc.take(unique_values, pc.sort_indices(unique_values))
+        codes = pc.index_in(values, value_set=sorted_values)
+        num_groups = len(sorted_values)
+    else:
+        encoded = pc.dictionary_encode(values)
+        codes = pc.fill_null(
+            encoded.indices,
+            pa.scalar(len(encoded.dictionary), type=encoded.indices.type),
+        )
+        num_groups = len(encoded.dictionary) + int(encoded.indices.null_count > 0)
+    return pc.cast(codes, pa.uint64()), num_groups
+
+
+def _factorize_uids_uint64(
+    df: nw.DataFrame,
+    uid_col: str | None,
+    *,
+    sort: bool = False,
+) -> tuple[nw.Series, int] | None:
+    """Return dense UInt64 UID codes and group count while preserving original UID labels separately."""
+    if uid_col is None:
+        return None
+
+    if _is_pandas_backed(df):
+        native = df.to_native()
+        codes, num_groups = _factorize_numpy_values_uint64(native[uid_col], sort=sort)
+        return _uint64_series(df, codes), num_groups
+
+    if _is_polars_backed(df):
+        codes, num_groups = _factorize_polars_uids_uint64(df, uid_col, sort=sort)
+        return _uint64_series(df, codes), num_groups
+
+    if _is_pyarrow_backed(df):
+        codes, num_groups = _factorize_pyarrow_uids_uint64(df, uid_col, sort=sort)
+        return _uint64_series(df, codes), num_groups
+
+    codes, num_groups = _factorize_numpy_values_uint64(df.get_column(uid_col).to_numpy(), sort=sort)
+    return _uint64_series(df, codes), num_groups
+
+
 def _extract_timestamps_ms(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     """Return a Float64 Narwhals Series of millisecond Unix timestamps."""
     return df.with_columns(
@@ -254,35 +381,6 @@ def _uid_values_from_index_ranges(
     return uid_values[np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]].tolist()
 
 
-def _time_ordering_numpy_uids(uids: nw.Series) -> Any:
-    """Return NumPy UID values supported by the Rust time-ordering kernel."""
-    values = uids.to_numpy()
-    if values.dtype.kind not in {"O", "S", "U"}:
-        return values
-
-    import pandas as pd  # noqa: PLC0415 - used only for pandas/object string UID factorization
-
-    if values.dtype.kind == "O":
-        first_valid = None
-        for value in values:
-            try:
-                is_missing = pd.isna(value)
-            except (TypeError, ValueError):
-                is_missing = False
-            if isinstance(is_missing, (bool, np.bool_)) and is_missing:
-                continue
-            first_valid = value
-            break
-        if first_valid is None or not isinstance(first_valid, (str, bytes)):
-            return values
-
-    try:
-        codes, _uniques = pd.factorize(values, sort=True, use_na_sentinel=True)
-    except (TypeError, ValueError):
-        return values
-    return np.asarray(codes, dtype=np.int64)
-
-
 def _build_time_ordered_user_ranges(
     df: nw.DataFrame,
     uid_col: str | None,
@@ -306,13 +404,15 @@ def _build_time_ordered_user_ranges(
         return None, _as_index_array(indices), _as_index_array(ends)
 
     uids = df.get_column(uid_col)
+    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=True)
     try:
         if use_arrow:
-            indices, ends = time_ordered_user_indices_arrow(uids.to_arrow(), timestamps.to_arrow())
+            indices, ends = time_ordered_user_indices_arrow(uid_codes.to_arrow(), timestamps.to_arrow(), num_groups)
         else:
             indices, ends = time_ordered_user_indices_numpy(
-                _time_ordering_numpy_uids(uids),
+                uid_codes.to_numpy(),
                 timestamps.to_numpy(),
+                num_groups,
             )
         indices = _as_index_array(indices)
         ends = _as_index_array(ends)
@@ -341,7 +441,8 @@ def _build_indexed_user_ranges_fast(
     row_index_col: str = "__skmob2_fast_row_index__",
 ) -> tuple[list | None, Any, np.ndarray]:
     """Build grouped row indexes using Rust for supported UID dtypes."""
-    from skmob2._core import radius_of_gyration_user_indices_arrow, radius_of_gyration_user_indices_numpy
+    ops = _INDEXED_USER_RANGES_DISPATCHER.get_ops(df)
+    use_arrow = _INDEXED_USER_RANGES_DISPATCHER.get_backend_key(df) == "arrow"
 
     if uid_col is None:
         indices = np.arange(len(df), dtype=np.uintp)
@@ -349,11 +450,9 @@ def _build_indexed_user_ranges_fast(
         return None, indices, ends
 
     uids = df.get_column(uid_col)
+    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=False)
     try:
-        if use_arrow:
-            indices, ends = radius_of_gyration_user_indices_arrow(uids.to_arrow())
-        else:
-            indices, ends = radius_of_gyration_user_indices_numpy(uids.to_numpy())
+        indices, ends = ops["group_indices"](ops["extract_data"](uid_codes), num_groups)
         uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
         return uid_values, _as_index_array(indices), _as_index_array(ends)
     except ValueError as exc:

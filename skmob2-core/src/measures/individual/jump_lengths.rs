@@ -78,7 +78,8 @@ pub fn time_ordered_flat_values_impl(
 ) -> Result<(Vec<usize>, IndexRanges, Vec<f64>), String> {
     validate_time_ordered_inputs(latitudes, longitudes, timestamps)?;
     validate_indexed_coord_ranges(latitudes, longitudes, &indices, &ranges)?;
-    let values = jump_lengths_indexed_flat_impl(latitudes, longitudes, &indices, &ranges, valid_rows)?;
+    let values =
+        jump_lengths_indexed_flat_impl(latitudes, longitudes, &indices, &ranges, valid_rows)?;
     Ok((indices, ranges, values))
 }
 

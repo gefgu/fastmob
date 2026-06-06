@@ -454,12 +454,12 @@ def test_jump_lengths_non_ordered_numpy_helper_groups_and_sorts_by_time():
     pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
     from skmob2._core import jump_lengths_km, jump_lengths_non_ordered_numpy
 
-    uids = np.array([2, 1, 2, 1, 1, 2], dtype=np.int64)
+    uids = np.array([1, 0, 1, 0, 0, 1], dtype=np.uint64)
     timestamps = np.array([2.0, 2.0, 0.0, 0.0, 1.0, 1.0], dtype=np.float64)
     lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
     lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
 
-    indices, starts, ends, values = jump_lengths_non_ordered_numpy(uids, timestamps, lats, lngs)
+    indices, starts, ends, values = jump_lengths_non_ordered_numpy(uids, timestamps, lats, lngs, 2)
 
     assert isinstance(indices, np.ndarray)
     assert isinstance(values, np.ndarray)
@@ -494,16 +494,17 @@ def test_jump_lengths_non_ordered_numpy_helper_accepts_none_uid():
     np.testing.assert_allclose(result, jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]), rtol=0.0, atol=1e-12)
 
 
-def test_jump_lengths_non_ordered_arrow_helper_supports_strings():
+def test_jump_lengths_non_ordered_arrow_helper_accepts_uint64_uid_codes():
     pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from skmob2._core import jump_lengths_non_ordered_arrow
 
     indices, starts, ends, values = jump_lengths_non_ordered_arrow(
-        pa.array(["b", "a", "b", "a"]),
+        pa.array([1, 0, 1, 0], type=pa.uint64()),
         pa.array([1.0, 1.0, 0.0, 0.0]),
         pa.array([10.0, 0.0, 10.0, 0.0]),
         pa.array([2.0, 1.0, 0.0, 0.0]),
+        2,
     )
 
     assert isinstance(indices, np.ndarray)
@@ -514,16 +515,17 @@ def test_jump_lengths_non_ordered_arrow_helper_supports_strings():
     assert len(grouped) == 2
 
 
-def test_jump_lengths_non_ordered_arrow_helper_flat_values_supports_strings():
+def test_jump_lengths_non_ordered_arrow_helper_flat_values_accepts_uint64_uid_codes():
     pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from skmob2._core import jump_lengths_km, jump_lengths_non_ordered_arrow
 
     indices, starts, ends, values = jump_lengths_non_ordered_arrow(
-        pa.array(["b", "a", "b", "a"]),
+        pa.array([1, 0, 1, 0], type=pa.uint64()),
         pa.array([1.0, 1.0, 0.0, 0.0]),
         pa.array([10.0, 0.0, 10.0, 0.0]),
         pa.array([2.0, 1.0, 0.0, 0.0]),
+        2,
     )
 
     assert isinstance(indices, np.ndarray)

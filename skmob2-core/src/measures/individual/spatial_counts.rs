@@ -29,7 +29,10 @@ pub fn number_of_visits_indexed_impl(
             let end = ends[i];
             match valid_rows {
                 None => (end - start) as u64,
-                Some(valid) => indices[start..end].iter().filter(|&&idx| valid[idx]).count() as u64,
+                Some(valid) => indices[start..end]
+                    .iter()
+                    .filter(|&&idx| valid[idx])
+                    .count() as u64,
             }
         })
         .collect())

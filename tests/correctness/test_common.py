@@ -305,6 +305,49 @@ class TestBuildTimeOrderedUserRanges:
         assert np.asarray(ends).tolist() == [2, 4]
 
 
+class TestBuildIndexedUserRangesFast:
+    def test_pandas_string_uids_use_first_seen_numpy_rust_path(self):
+        import narwhals as nw
+        import numpy as np
+        from skmob2.measures._common import _build_indexed_user_ranges_fast
+
+        df = nw.from_native(
+            pd.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}),
+            eager_only=True,
+        )
+
+        uid_values, indices, ends = _build_indexed_user_ranges_fast(
+            df,
+            "uid",
+            use_arrow=False,
+        )
+
+        assert uid_values == ["b", "a", "c"]
+        assert np.asarray(indices).tolist() == [0, 2, 1, 4, 3, 5]
+        assert np.asarray(ends).tolist() == [2, 4, 6]
+
+    def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
+        import narwhals as nw
+        import numpy as np
+        from skmob2.measures._common import _build_indexed_user_ranges_fast
+
+        pl = pytest.importorskip("polars", reason="Polars not installed")
+        df = nw.from_native(
+            pl.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}),
+            eager_only=True,
+        )
+
+        uid_values, indices, ends = _build_indexed_user_ranges_fast(
+            df,
+            "uid",
+            use_arrow=True,
+        )
+
+        assert uid_values == ["b", "a", "c"]
+        assert np.asarray(indices).tolist() == [0, 2, 1, 4, 3, 5]
+        assert np.asarray(ends).tolist() == [2, 4, 6]
+
+
 # ---------------------------------------------------------------------------
 # _build_user_ranges
 # ---------------------------------------------------------------------------

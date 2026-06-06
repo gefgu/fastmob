@@ -11,12 +11,14 @@ use super::time_ordering::{
 };
 
 #[pyfunction]
+#[pyo3(signature = (uids, timestamps, latitudes, longitudes, num_groups = None))]
 pub fn jump_lengths_non_ordered_numpy<'py>(
     py: Python<'py>,
     uids: &Bound<'py, PyAny>,
     timestamps: PyReadonlyArray1<'py, f64>,
     latitudes: PyReadonlyArray1<'py, f64>,
     longitudes: PyReadonlyArray1<'py, f64>,
+    num_groups: Option<usize>,
 ) -> PyResult<PyNonOrderedJumpLengths<'py>> {
     let timestamps = timestamps.as_slice()?;
     let latitudes = latitudes.as_slice()?;
@@ -24,7 +26,7 @@ pub fn jump_lengths_non_ordered_numpy<'py>(
     validate_time_ordered_inputs(latitudes, longitudes, timestamps)
         .map_err(PyValueError::new_err)?;
 
-    let (indices, ranges) = time_ordered_indices_from_numpy_uids(py, uids, timestamps)?;
+    let (indices, ranges) = time_ordered_indices_from_numpy_uids(py, uids, timestamps, num_groups)?;
     let (indices, ranges, values) =
         time_ordered_flat_values_impl(latitudes, longitudes, timestamps, indices, ranges, None)
             .map_err(PyValueError::new_err)?;

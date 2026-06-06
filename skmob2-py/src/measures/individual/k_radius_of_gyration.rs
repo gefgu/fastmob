@@ -7,7 +7,9 @@ use skmob2_core::measures::individual::k_radius_of_gyration::{
     k_radius_of_gyration_km as core_k_rog_km,
 };
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+};
 
 #[pyfunction]
 pub fn k_radius_of_gyration_km(

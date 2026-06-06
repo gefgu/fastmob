@@ -1,8 +1,6 @@
 use rayon::prelude::*;
 
-use crate::utils::{
-    ends_from_ranges, ranges_from_sorted_values, validate_coord_ranges, validate_indexed_coord_ends,
-};
+use crate::utils::{ends_from_ranges, validate_coord_ranges, validate_indexed_coord_ends};
 
 pub type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
 
@@ -131,33 +129,24 @@ pub fn radius_of_gyration_batch_with_counts_impl(
 ) -> Result<(Vec<f64>, Vec<usize>), String> {
     validate_coord_ranges(latitudes, longitudes, ranges)?;
 
-    let mut valid_latitudes = Vec::new();
-    let mut valid_longitudes = Vec::new();
-    let mut valid_ranges = Vec::with_capacity(ranges.len());
-    let mut valid_counts = Vec::with_capacity(ranges.len());
-    for &(start, end) in ranges {
-        let valid_start = valid_latitudes.len();
-        for idx in start..end {
-            let lat = latitudes[idx];
-            let lng = longitudes[idx];
-            if !lat.is_nan() && !lng.is_nan() {
-                valid_latitudes.push(lat);
-                valid_longitudes.push(lng);
-            }
-        }
-        let valid_end = valid_latitudes.len();
-        valid_ranges.push((valid_start, valid_end));
-        valid_counts.push(valid_end - valid_start);
-    }
-
-    let results: Vec<f64> = valid_ranges
+    let results: Vec<f64> = ranges
         .par_iter()
-        .map(|&(start, end)| {
-            rog_for_parallel_slices(&valid_latitudes, &valid_longitudes, start, end)
-        })
+        .map(|&(start, end)| rog_for_parallel_slices(latitudes, longitudes, start, end))
         .collect();
+    let counts = ranges.iter().map(|&(start, end)| end - start).collect();
 
-    Ok((results, valid_counts))
+    Ok((results, counts))
+}
+
+fn is_valid_indexed_row(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    valid_rows: Option<&[bool]>,
+    idx: usize,
+) -> bool {
+    valid_rows.is_none_or(|rows| rows[idx])
+        && latitudes[idx].is_finite()
+        && longitudes[idx].is_finite()
 }
 
 pub fn radius_of_gyration_indexed_impl(
@@ -165,21 +154,39 @@ pub fn radius_of_gyration_indexed_impl(
     longitudes: &[f64],
     indices: &[usize],
     ends: &[usize],
-) -> Result<Vec<f64>, String> {
+) -> Result<(Vec<f64>, Vec<usize>), String> {
+    radius_of_gyration_indexed_with_valid_rows_impl(latitudes, longitudes, indices, ends, None)
+}
+
+pub fn radius_of_gyration_indexed_with_valid_rows_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    indices: &[usize],
+    ends: &[usize],
+    valid_rows: Option<&[bool]>,
+) -> Result<(Vec<f64>, Vec<usize>), String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
+    if let Some(valid_rows) = valid_rows {
+        if valid_rows.len() != latitudes.len() {
+            return Err("valid_rows and coordinates must have the same length".to_string());
+        }
+    }
 
     let mut valid_indices = Vec::new();
     let mut valid_ranges = Vec::with_capacity(ends.len());
+    let mut valid_counts = Vec::with_capacity(ends.len());
     for i in 0..ends.len() {
         let start = if i == 0 { 0 } else { ends[i - 1] };
         let end = ends[i];
         let valid_start = valid_indices.len();
         for &idx in &indices[start..end] {
-            if !latitudes[idx].is_nan() && !longitudes[idx].is_nan() {
+            if is_valid_indexed_row(latitudes, longitudes, valid_rows, idx) {
                 valid_indices.push(idx);
             }
         }
-        valid_ranges.push((valid_start, valid_indices.len()));
+        let valid_end = valid_indices.len();
+        valid_ranges.push((valid_start, valid_end));
+        valid_counts.push(valid_end - valid_start);
     }
 
     let results: Vec<f64> = valid_ranges
@@ -189,59 +196,56 @@ pub fn radius_of_gyration_indexed_impl(
         })
         .collect();
 
-    Ok(results)
+    Ok((results, valid_counts))
 }
 
 pub fn split_user_index_ranges((indices, ranges): UserIndexRanges) -> (Vec<usize>, Vec<usize>) {
     (indices, ends_from_ranges(&ranges))
 }
 
-pub fn user_indices_for_ord_values<T: Ord>(values: &[T]) -> UserIndexRanges {
-    let mut indices: Vec<usize> = (0..values.len()).collect();
-    indices.sort_by(|&left, &right| values[left].cmp(&values[right]).then(left.cmp(&right)));
-    let ranges = ranges_from_sorted_values(values, &indices);
-    (indices, ranges)
-}
-
-pub fn user_indices_for_ord_values_at_indices<T: Ord>(
-    values: &[T],
-    mut indices: Vec<usize>,
-) -> UserIndexRanges {
-    indices.sort_by(|&left, &right| values[left].cmp(&values[right]).then(left.cmp(&right)));
-    let ranges = ranges_from_sorted_values(values, &indices);
-    (indices, ranges)
-}
-
-pub fn user_indices_for_f64_values(values: &[f64]) -> UserIndexRanges {
-    let mut indices: Vec<usize> = (0..values.len()).collect();
-    indices.sort_by(|&left, &right| {
-        values[left]
-            .total_cmp(&values[right])
-            .then(left.cmp(&right))
-    });
-    let ranges = ranges_from_sorted_values(values, &indices);
-    (indices, ranges)
-}
-
-pub fn user_indices_for_f64_values_at_indices(
-    values: &[f64],
-    mut indices: Vec<usize>,
-) -> UserIndexRanges {
-    indices.sort_by(|&left, &right| {
-        values[left]
-            .total_cmp(&values[right])
-            .then(left.cmp(&right))
-    });
-    let ranges = ranges_from_sorted_values(values, &indices);
-    (indices, ranges)
-}
-
-pub fn valid_coord_indices(latitudes: &[f64], longitudes: &[f64]) -> Result<Vec<usize>, String> {
-    if latitudes.len() != longitudes.len() {
-        return Err("latitudes and longitudes must have the same length".to_string());
+pub fn user_indices_for_u64_codes(
+    codes: &[u64],
+    num_groups: usize,
+) -> Result<UserIndexRanges, String> {
+    if codes.is_empty() {
+        return Ok((Vec::new(), Vec::new()));
+    }
+    if num_groups == 0 {
+        return Err(
+            "num_groups must be greater than zero when uid codes are not empty".to_string(),
+        );
     }
 
-    Ok((0..latitudes.len())
-        .filter(|&idx| !latitudes[idx].is_nan() && !longitudes[idx].is_nan())
-        .collect())
+    let mut offsets = vec![0usize; num_groups];
+    for &code in codes {
+        let group_id =
+            usize::try_from(code).map_err(|_| "uid code must fit into usize".to_string())?;
+        let count = offsets
+            .get_mut(group_id)
+            .ok_or_else(|| "uid code must be less than num_groups".to_string())?;
+        *count += 1;
+    }
+
+    let mut ranges = Vec::with_capacity(num_groups);
+    let mut current_offset = 0usize;
+    for count in offsets.iter_mut() {
+        if *count == 0 {
+            continue;
+        }
+        let start = current_offset;
+        let end = current_offset + *count;
+        ranges.push((start, end));
+        *count = start;
+        current_offset = end;
+    }
+
+    let mut indices = vec![0usize; codes.len()];
+    for (row_idx, &code) in codes.iter().enumerate() {
+        let group_id = code as usize;
+        let pos = offsets[group_id];
+        indices[pos] = row_idx;
+        offsets[group_id] += 1;
+    }
+
+    Ok((indices, ranges))
 }

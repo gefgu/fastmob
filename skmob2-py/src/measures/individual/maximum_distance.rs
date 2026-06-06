@@ -6,7 +6,9 @@ use skmob2_core::measures::individual::maximum_distance::{
     maximum_distance_impl, maximum_distance_indexed_impl,
 };
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+};
 
 #[pyfunction]
 pub fn maximum_distance_batch_km(

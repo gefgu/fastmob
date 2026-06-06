@@ -4,7 +4,10 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use skmob2_core::measures::individual::location_frequency::location_frequency_indexed_impl;
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array, f64_results_into_arrow, u64_results_into_arrow};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_nullable_f64_array, f64_results_into_arrow,
+    u64_results_into_arrow,
+};
 
 type LocFreqNumpy<'py> = (
     Bound<'py, PyArray1<f64>>,
