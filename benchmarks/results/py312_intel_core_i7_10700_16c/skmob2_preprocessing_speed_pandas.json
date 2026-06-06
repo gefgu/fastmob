@@ -12,9 +12,6 @@
     "iterations": 5,
     "library": "skmob2",
     "metrics": [
-      "filter",
-      "compress",
-      "stay_locations",
       "cluster"
     ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
@@ -24,16 +21,12 @@
     "repeat_dataset": 1,
     "retries": 0,
     "sizes": [
-      1000,
-      10000,
-      100000,
-      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "preprocessing",
-    "timestamp_utc": "2026-06-05T22:13:47.333354+00:00",
+    "timestamp_utc": "2026-06-06T11:41:09.101854+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -277,16 +270,16 @@
       "label": "4M",
       "metrics": {
         "cluster": {
-          "average_seconds": 50.39813756868243,
+          "average_seconds": 43.72779653947801,
           "iterations_completed": 5,
-          "minimum_seconds": 50.29796589817852,
+          "minimum_seconds": 43.59764424432069,
           "status": "ok",
           "times_seconds": [
-            50.56081359973177,
-            50.32353206956759,
-            50.441419458948076,
-            50.29796589817852,
-            50.3669568169862
+            43.611521183047444,
+            43.59764424432069,
+            43.921405183151364,
+            43.781058019027114,
+            43.72735406784341
           ]
         },
         "compress": {
