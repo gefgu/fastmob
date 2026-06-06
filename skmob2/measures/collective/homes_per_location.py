@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-
 from .._common import _pick_existing_column, LAT_CANDIDATES, LNG_CANDIDATES
 from ..individual.home_location import home_location
 
@@ -108,12 +107,11 @@ def homes_per_location(
             f"Looked for: lat={LAT_CANDIDATES}, lng={LNG_CANDIDATES}. "
             f"Available columns: {cols}."
         )
-
     result = (
         nw_home.select([detected_lat, detected_lng])
         .group_by([detected_lat, detected_lng])
         .agg(nw.len().alias("n_homes"))
         .sort("n_homes", descending=True)
-    )
+    ).to_native()
 
-    return result.to_native()
+    return result

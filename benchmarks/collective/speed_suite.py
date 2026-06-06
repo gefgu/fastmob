@@ -11,33 +11,57 @@ from __future__ import annotations
 import argparse
 import importlib
 import inspect
-import json
-import multiprocessing as mp
 import platform
-import queue
 import sys
-import time
-import tracemalloc
-import warnings
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from benchmarks.sorted_input_cache import DEFAULT_INPUT_CACHE_DIR, load_or_create_sorted_input
-
+from benchmarks.sorted_input_cache import (
+    DEFAULT_INPUT_CACHE_DIR,
+    load_or_create_sorted_input,
+)
+from benchmarks.utils import (
+    concrete_backends as iter_concrete_backends,
+    concrete_input_orders as iter_concrete_input_orders,
+    error_result,
+    load_catalog,
+    merge_payload,
+    nonnegative_float,
+    nonnegative_int,
+    positive_int,
+    run_profiled_call,
+    run_profiled_call_isolated,
+    size_label,
+    skipped_result,
+    write_json,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
-SKMOB_CATALOG_PATH = Path(__file__).resolve().parents[1] / "skmob_public_api_catalog.json"
+DEFAULT_DATA_PATH = (
+    REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
+)
+SKMOB_CATALOG_PATH = (
+    Path(__file__).resolve().parents[1] / "skmob_public_api_catalog.json"
+)
 
 _BENCHMARK_DIR = Path(__file__).resolve().parents[1]
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
 from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
-MOVINGPANDAS_CATALOG_PATH = Path(__file__).resolve().parents[1] / "movingpandas_skmob_api_catalog.json"
+
+MOVINGPANDAS_CATALOG_PATH = (
+    Path(__file__).resolve().parents[1] / "movingpandas_skmob_api_catalog.json"
+)
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
 BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
+BRIGHTKITE_TRAJECTORY_KWARGS = {
+    "uid_col": "user",
+    "datetime_col": "check-in_time",
+    "lat_col": "latitude",
+    "lng_col": "longitude",
+}
 
 
 @dataclass(frozen=True)
@@ -122,38 +146,6 @@ class SkippedMetric(Exception):
     """Raised when a metric cannot be benchmarked in the selected library."""
 
 
-def size_label(size: int) -> str:
-    if size >= 1_000_000 and size % 1_000_000 == 0:
-        return f"{size // 1_000_000}M"
-    if size >= 1_000 and size % 1_000 == 0:
-        return f"{size // 1_000}k"
-    return str(size)
-
-
-def summarize_times(times: list[float]) -> dict[str, float | None]:
-    if not times:
-        return {"average_seconds": None, "minimum_seconds": None}
-    return {"average_seconds": sum(times) / len(times), "minimum_seconds": min(times)}
-
-
-def summarize_memory(peak_memory_mb: list[float]) -> dict[str, float | None]:
-    if not peak_memory_mb:
-        return {
-            "average_peak_memory_mb": None,
-            "minimum_peak_memory_mb": None,
-            "maximum_peak_memory_mb": None,
-        }
-    return {
-        "average_peak_memory_mb": sum(peak_memory_mb) / len(peak_memory_mb),
-        "minimum_peak_memory_mb": min(peak_memory_mb),
-        "maximum_peak_memory_mb": max(peak_memory_mb),
-    }
-
-
-def load_catalog(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def build_output_path(
     output_dir: Path,
     library: str,
@@ -170,40 +162,19 @@ def build_output_path(
     elif library == "skmob":
         filename = f"skmob_collective_{profile}_{order_part}{timing_mode}.json"
     else:
-        filename = f"movingpandas_collective_{profile}_{input_order}.json" if input_order != "raw" else f"movingpandas_collective_{profile}.json"
+        filename = (
+            f"movingpandas_collective_{profile}_{input_order}.json"
+            if input_order != "raw"
+            else f"movingpandas_collective_{profile}.json"
+        )
     return output_dir / filename
-
-
-def write_json(payload: dict[str, Any], output_path: Path) -> Path:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    return output_path
-
-
-def positive_int(value: str) -> int:
-    parsed = int(value)
-    if parsed <= 0:
-        raise argparse.ArgumentTypeError("must be greater than zero")
-    return parsed
-
-
-def nonnegative_int(value: str) -> int:
-    parsed = int(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("must be greater than or equal to zero")
-    return parsed
-
-
-def nonnegative_float(value: str) -> float:
-    parsed = float(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("must be greater than or equal to zero")
-    return parsed
 
 
 def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
     try:
-        module_path = spec.skmob2_module_path if library == "skmob2" else spec.skmob_module_path
+        module_path = (
+            spec.skmob2_module_path if library == "skmob2" else spec.skmob_module_path
+        )
         module = importlib.import_module(module_path)
     except Exception as exc:
         raise SkippedMetric(f"import failed: {exc}") from exc
@@ -214,8 +185,14 @@ def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
         raise SkippedMetric(f"metric not available: {spec.func_name}") from exc
 
 
-def metric_kwargs_for_library(spec: BenchmarkSpec, library: str, func: Callable[..., Any]) -> dict[str, Any]:
+def metric_kwargs_for_library(
+    spec: BenchmarkSpec, library: str, func: Callable[..., Any]
+) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
+    if library == "skmob2" and spec.name == "homes_per_location":
+        kwargs.update(BRIGHTKITE_TRAJECTORY_KWARGS)
+        return kwargs
+
     if library != "skmob":
         return kwargs
 
@@ -224,7 +201,10 @@ def metric_kwargs_for_library(spec: BenchmarkSpec, library: str, func: Callable[
     except (TypeError, ValueError):
         return kwargs
 
-    accepts_extra_kwargs = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
+    accepts_extra_kwargs = any(
+        param.kind == inspect.Parameter.VAR_KEYWORD
+        for param in signature.parameters.values()
+    )
     if "show_progress" in signature.parameters or accepts_extra_kwargs:
         kwargs.setdefault("show_progress", False)
     return kwargs
@@ -258,203 +238,6 @@ def make_skmob_tdf(skmob_module: Any, df: Any) -> Any:
         datetime="check-in_time",
         user_id="user",
     )
-
-
-def run_timed_call(
-    func: Callable[..., Any],
-    make_input: Callable[[], Any],
-    kwargs: dict[str, Any],
-    *,
-    iterations: int,
-    sleep_seconds: float,
-) -> dict[str, Any]:
-    print("    Warming up...")
-    call_benchmark_func(func, make_input(), kwargs)
-
-    times: list[float] = []
-    for i in range(iterations):
-        if sleep_seconds:
-            time.sleep(sleep_seconds)
-        start = time.perf_counter()
-        call_benchmark_func(func, make_input(), kwargs)
-        end = time.perf_counter()
-        duration = end - start
-        times.append(duration)
-        print(f"    Round {i + 1}: {duration:.4f} seconds")
-
-    summary = summarize_times(times)
-    print(f"    Average Time: {summary['average_seconds']:.4f} s")
-    print(f"    Minimum Time: {summary['minimum_seconds']:.4f} s")
-    return {
-        "status": "ok",
-        "times_seconds": times,
-        "iterations_completed": len(times),
-        **summary,
-    }
-
-
-def run_memory_call(
-    func: Callable[..., Any],
-    make_input: Callable[[], Any],
-    kwargs: dict[str, Any],
-    *,
-    iterations: int,
-    sleep_seconds: float,
-) -> dict[str, Any]:
-    print("    Warming up...")
-    call_benchmark_func(func, make_input(), kwargs)
-
-    current_memory_mb: list[float] = []
-    peak_memory_mb: list[float] = []
-    for i in range(iterations):
-        if sleep_seconds:
-            time.sleep(sleep_seconds)
-        tracemalloc.start()
-        try:
-            call_benchmark_func(func, make_input(), kwargs)
-            current_bytes, peak_bytes = tracemalloc.get_traced_memory()
-        finally:
-            tracemalloc.stop()
-        current_mb = current_bytes / (1024 * 1024)
-        peak_mb = peak_bytes / (1024 * 1024)
-        current_memory_mb.append(current_mb)
-        peak_memory_mb.append(peak_mb)
-        print(f"    Round {i + 1}: {peak_mb:.4f} MB peak")
-
-    summary = summarize_memory(peak_memory_mb)
-    print(f"    Average Peak Memory: {summary['average_peak_memory_mb']:.4f} MB")
-    print(f"    Minimum Peak Memory: {summary['minimum_peak_memory_mb']:.4f} MB")
-    print(f"    Maximum Peak Memory: {summary['maximum_peak_memory_mb']:.4f} MB")
-    return {
-        "status": "ok",
-        "peak_memory_mb": peak_memory_mb,
-        "current_memory_mb": current_memory_mb,
-        "iterations_completed": len(peak_memory_mb),
-        **summary,
-    }
-
-
-def run_profiled_call(
-    func: Callable[..., Any],
-    make_input: Callable[[], Any],
-    kwargs: dict[str, Any],
-    *,
-    profile: str,
-    iterations: int,
-    sleep_seconds: float,
-) -> dict[str, Any]:
-    if profile == "memory":
-        return run_memory_call(func, make_input, kwargs, iterations=iterations, sleep_seconds=sleep_seconds)
-    return run_timed_call(func, make_input, kwargs, iterations=iterations, sleep_seconds=sleep_seconds)
-
-
-def call_benchmark_func(func: Callable[..., Any], input_value: Any, kwargs: dict[str, Any]) -> Any:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        warnings.simplefilter("ignore", UserWarning)
-        return func(input_value, **kwargs)
-
-
-def empty_profile_result(status: str, reason: str, profile: str) -> dict[str, Any]:
-    if profile == "memory":
-        return {
-            "status": status,
-            "reason": reason,
-            "peak_memory_mb": [],
-            "current_memory_mb": [],
-            "iterations_completed": 0,
-            **summarize_memory([]),
-        }
-    return {
-        "status": status,
-        "reason": reason,
-        "times_seconds": [],
-        "iterations_completed": 0,
-        **summarize_times([]),
-    }
-
-
-def skipped_result(reason: str, profile: str = "speed") -> dict[str, Any]:
-    return empty_profile_result("skipped", reason, profile)
-
-
-def error_result(reason: str, profile: str = "speed") -> dict[str, Any]:
-    return empty_profile_result("error", reason, profile)
-
-
-def _profiled_call_worker(
-    result_queue: Any,
-    func: Callable[..., Any],
-    make_input: Callable[[], Any],
-    kwargs: dict[str, Any],
-    profile: str,
-    iterations: int,
-    sleep_seconds: float,
-) -> None:
-    try:
-        result_queue.put(
-            (
-                "ok",
-                run_profiled_call(
-                    func,
-                    make_input,
-                    kwargs,
-                    profile=profile,
-                    iterations=iterations,
-                    sleep_seconds=sleep_seconds,
-                ),
-            )
-        )
-    except BaseException as exc:
-        result_queue.put(("error", f"{type(exc).__name__}: {exc}"))
-
-
-def run_profiled_call_isolated(
-    func: Callable[..., Any],
-    make_input: Callable[[], Any],
-    kwargs: dict[str, Any],
-    *,
-    profile: str,
-    iterations: int,
-    sleep_seconds: float,
-    retries: int,
-) -> dict[str, Any]:
-    ctx = mp.get_context("fork")
-    attempts = retries + 1
-    last_reason = "benchmark did not produce a result"
-    for attempt in range(1, attempts + 1):
-        result_queue = ctx.Queue()
-        process = ctx.Process(
-            target=_profiled_call_worker,
-            args=(result_queue, func, make_input, kwargs, profile, iterations, sleep_seconds),
-        )
-        process.start()
-        process.join()
-
-        try:
-            status, payload = result_queue.get_nowait()
-        except queue.Empty:
-            status, payload = "error", f"child process exited with code {process.exitcode}"
-
-        result_queue.close()
-        result_queue.join_thread()
-
-        if process.exitcode == 0 and status == "ok":
-            return payload
-
-        if status == "ok":
-            last_reason = f"child process exited with code {process.exitcode} after reporting success"
-        else:
-            last_reason = str(payload)
-            if process.exitcode not in (0, None):
-                last_reason = f"{last_reason}; child process exited with code {process.exitcode}"
-
-        if attempt < attempts:
-            print(f"    attempt {attempt} failed: {last_reason}")
-            print(f"    retrying ({attempt + 1}/{attempts})...")
-
-    print(f"    error after {attempts} attempt(s): {last_reason}")
-    return error_result(last_reason, profile)
 
 
 def benchmark_metric(
@@ -504,10 +287,43 @@ def benchmark_metric(
         return error_result(str(exc), profile)
 
 
+def benchmark_specs(
+    specs: tuple[BenchmarkSpec, ...],
+    library: str,
+    make_input_for_spec: Callable[[BenchmarkSpec], Any],
+    *,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str,
+    retries: int,
+) -> dict[str, Any]:
+    return {
+        spec.name: benchmark_metric(
+            spec,
+            library,
+            lambda spec=spec: make_input_for_spec(spec),
+            profile=profile,
+            iterations=iterations,
+            sleep_seconds=sleep_seconds,
+            retries=retries,
+        )
+        for spec in specs
+    }
+
+
+def make_skmob2_metric_input(df: Any, spec: BenchmarkSpec) -> Any:
+    if spec.name == "od_metrics_per_area":
+        return make_od_input(df, precomputed=True)
+    if spec.name == "od_matrix":
+        return make_od_input(df)
+    return df
+
+
 def benchmark_skmob2_size(
     df: Any,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
@@ -516,29 +332,19 @@ def benchmark_skmob2_size(
     size_df = df.head(size)
     print(f"\nSize {size_label(size)} ({len(size_df)} rows)")
 
-    def make_input_for_spec(spec: BenchmarkSpec) -> Any:
-        if spec.name == "od_metrics_per_area":
-            return make_od_input(size_df, precomputed=True)
-        if spec.name == "od_matrix":
-            return make_od_input(size_df)
-        return make_collective_input(size_df)
-
     return {
         "size": size,
         "label": size_label(size),
         "rows": len(size_df),
-        "metrics": {
-            spec.name: benchmark_metric(
-                spec,
-                "skmob2",
-                lambda spec=spec: make_input_for_spec(spec),
-                profile=profile,
-                iterations=iterations,
-                sleep_seconds=sleep_seconds,
-                retries=retries,
-            )
-            for spec in COLLECTIVE_METRICS
-        },
+        "metrics": benchmark_specs(
+            specs,
+            "skmob2",
+            lambda spec: make_skmob2_metric_input(size_df, spec),
+            profile=profile,
+            iterations=iterations,
+            sleep_seconds=sleep_seconds,
+            retries=retries,
+        ),
     }
 
 
@@ -554,10 +360,14 @@ def make_collective_input(df: Any) -> Any:
             "location id": "location_id",
         }
     )
-    visits["start_timestamp"] = pd.to_datetime(visits["start_timestamp"], errors="coerce")
+    visits["start_timestamp"] = pd.to_datetime(
+        visits["start_timestamp"], errors="coerce"
+    )
     visits["datetime"] = visits["start_timestamp"]
     visits["area"] = visits["location_id"].astype(str)
-    visits = visits.sort_values(["user_id", "start_timestamp"], kind="mergesort").reset_index(drop=True)
+    visits = visits.sort_values(
+        ["user_id", "start_timestamp"], kind="mergesort"
+    ).reset_index(drop=True)
     if is_polars:
         import polars as pl
 
@@ -570,10 +380,16 @@ def make_od_input(df: Any, *, precomputed: bool = False) -> Any:
     is_polars = visits.__class__.__module__.startswith("polars")
     pdf = visits.to_pandas() if is_polars else visits.copy()
     pdf["origin_area"] = pdf["area"]
-    pdf["destination_area"] = pdf.groupby("user_id", sort=False)["area"].shift(-1).fillna(pdf["area"])
+    pdf["destination_area"] = (
+        pdf.groupby("user_id", sort=False)["area"].shift(-1).fillna(pdf["area"])
+    )
     od = pdf[["origin_area", "destination_area"]]
     if precomputed:
-        od = od.groupby(["origin_area", "destination_area"], as_index=False).size().rename(columns={"size": "count"})
+        od = (
+            od.groupby(["origin_area", "destination_area"], as_index=False)
+            .size()
+            .rename(columns={"size": "count"})
+        )
     if is_polars:
         import polars as pl
 
@@ -586,6 +402,7 @@ def benchmark_skmob_size(
     skmob_module: Any,
     size: int,
     *,
+    specs: tuple[BenchmarkSpec, ...],
     timing_mode: str,
     iterations: int,
     sleep_seconds: float,
@@ -610,29 +427,37 @@ def benchmark_skmob_size(
         "size": size,
         "label": size_label(size),
         "rows": len(pandas_slice),
-        "metrics": {
-            spec.name: benchmark_metric(
-                spec,
-                "skmob",
-                make_input,
-                profile=profile,
-                iterations=iterations,
-                sleep_seconds=sleep_seconds,
-                retries=retries,
-            )
-            for spec in COLLECTIVE_METRICS
-        },
+        "metrics": benchmark_specs(
+            specs,
+            "skmob",
+            lambda _spec: make_input(),
+            profile=profile,
+            iterations=iterations,
+            sleep_seconds=sleep_seconds,
+            retries=retries,
+        ),
     }
 
 
-def benchmark_movingpandas_size(size: int, *, profile: str = "speed") -> dict[str, Any]:
+def benchmark_movingpandas_size(
+    size: int,
+    *,
+    specs: tuple[BenchmarkSpec, ...],
+    profile: str = "speed",
+) -> dict[str, Any]:
     return {
         "size": size,
         "label": size_label(size),
         "rows": 0,
-        "metrics": {
-            spec.name: skipped_result("no benchmarkable MovingPandas analogue", profile) for spec in COLLECTIVE_METRICS
-        },
+        "metrics": benchmark_specs(
+            specs,
+            "movingpandas",
+            lambda _spec: None,
+            profile=profile,
+            iterations=0,
+            sleep_seconds=0,
+            retries=0,
+        ),
     }
 
 
@@ -664,6 +489,7 @@ def build_metadata(
         "sleep_seconds": args.sleep_seconds,
         "retries": args.retries,
         "sizes": args.sizes,
+        "metrics": args.metrics,
         "input_order": args.input_order,
         "input_cache_path": None if input_cache_path is None else str(input_cache_path),
         "input_cache_status": input_cache_status,
@@ -689,27 +515,40 @@ def load_brightkite_for_order(
         suite="collective",
         backend=backend,
         data_path=data_path,
-        load_raw=lambda: load_brightkite_polars(data_path) if backend == "polars" else load_brightkite_pandas(data_path),
+        load_raw=lambda: (
+            load_brightkite_polars(data_path)
+            if backend == "polars"
+            else load_brightkite_pandas(data_path)
+        ),
         uid_col="user",
         datetime_col="check-in_time",
     )
     return sorted_input.data, sorted_input.path, sorted_input.status
 
 
-def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[str, Any]:
+def run_suite(
+    args: argparse.Namespace, *, backend: str | None = None
+) -> dict[str, Any]:
     data_path = Path(args.data_path)
     if not data_path.exists() and args.library != "movingpandas":
-        raise SystemExit(f"Dataset not found at {data_path}. Place the Brightkite file there before running.")
+        raise SystemExit(
+            f"Dataset not found at {data_path}. Place the Brightkite file there before running."
+        )
+    specs = selected_specs(args)
 
     if args.library == "skmob2":
         selected_backend = backend or args.backend
         if selected_backend == "both":
-            raise ValueError("run_suite requires a concrete backend when library is skmob2")
+            raise ValueError(
+                "run_suite requires a concrete backend when library is skmob2"
+            )
         if selected_backend == "pandas":
             input_type = "pandas.DataFrame"
         else:
             input_type = "polars.DataFrame"
-        print(f"Loading {args.input_order} Brightkite into {selected_backend} from {data_path}...")
+        print(
+            f"Loading {args.input_order} Brightkite into {selected_backend} from {data_path}..."
+        )
         df, input_cache_path, input_cache_status = load_brightkite_for_order(
             data_path=data_path,
             backend=selected_backend,
@@ -720,6 +559,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             benchmark_skmob2_size(
                 df,
                 size,
+                specs=specs,
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
@@ -738,8 +578,16 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         return {"metadata": metadata, "results": results}
 
     if args.library == "movingpandas":
-        results = [benchmark_movingpandas_size(size, profile=args.profile) for size in args.sizes]
-        metadata = build_metadata(args, input_type="not_applicable", timing_mode="not_applicable", backend=None)
+        results = [
+            benchmark_movingpandas_size(size, specs=specs, profile=args.profile)
+            for size in args.sizes
+        ]
+        metadata = build_metadata(
+            args,
+            input_type="not_applicable",
+            timing_mode="not_applicable",
+            backend=None,
+        )
         return {"metadata": metadata, "results": results}
 
     print(f"Loading {args.input_order} Brightkite into pandas from {data_path}...")
@@ -759,6 +607,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             raw_df,
             skmob_module,
             size,
+            specs=specs,
             timing_mode=args.timing_mode,
             profile=args.profile,
             iterations=args.iterations,
@@ -779,31 +628,61 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
 
 
 def concrete_backends(args: argparse.Namespace) -> Iterable[str | None]:
-    if args.library != "skmob2":
-        return (None,)
-    if args.backend == "both":
-        return ("pandas", "polars")
-    return (args.backend,)
+    return iter_concrete_backends(args.library, args.backend)
 
 
 def concrete_input_orders(args: argparse.Namespace) -> Iterable[str]:
-    if args.input_order == "both":
-        return ("raw", "sorted")
-    return (args.input_order,)
+    return iter_concrete_input_orders(args.input_order)
+
+
+def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
+    requested = set(args.metrics)
+    return tuple(spec for spec in COLLECTIVE_METRICS if spec.name in requested)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run standalone collective speed benchmarks.")
-    parser.add_argument("--library", choices=["skmob2", "skmob", "movingpandas"], required=True)
-    parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
+    parser = argparse.ArgumentParser(
+        description="Run standalone collective speed benchmarks."
+    )
+    parser.add_argument(
+        "--library", choices=["skmob2", "skmob", "movingpandas"], required=True
+    )
+    parser.add_argument(
+        "--backend", choices=["pandas", "polars", "both"], default="both"
+    )
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
-    parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")
-    parser.add_argument("--input-order", choices=["raw", "sorted", "both"], default="raw")
+    parser.add_argument(
+        "--timing-mode",
+        choices=["prebuilt_tdf", "workflow_tdf"],
+        default="prebuilt_tdf",
+    )
+    parser.add_argument(
+        "--input-order", choices=["raw", "sorted", "both"], default="raw"
+    )
     parser.add_argument("--input-cache-dir", type=Path, default=DEFAULT_INPUT_CACHE_DIR)
     parser.add_argument("--iterations", type=positive_int, default=5)
-    parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
-    parser.add_argument("--retries", type=nonnegative_int, default=0, help="Retry a metric this many times after failure.")
+    parser.add_argument(
+        "--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5
+    )
+    parser.add_argument(
+        "--retries",
+        type=nonnegative_int,
+        default=0,
+        help="Retry a metric this many times after failure.",
+    )
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
+    parser.add_argument(
+        "--metrics",
+        choices=[spec.name for spec in COLLECTIVE_METRICS],
+        nargs="+",
+        default=[spec.name for spec in COLLECTIVE_METRICS],
+        help="Only run the selected collective metrics.",
+    )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="Merge selected sizes/metrics into an existing output JSON instead of replacing the whole file.",
+    )
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
     args = parser.parse_args(argv)
@@ -827,6 +706,8 @@ def main(argv: list[str] | None = None) -> int:
                 order_args.profile,
                 order_args.input_order,
             )
+            if order_args.append and output_path.exists():
+                payload = merge_payload(load_catalog(output_path), payload)
             write_json(payload, output_path)
             print(f"\nWrote results to {output_path}")
     return 0

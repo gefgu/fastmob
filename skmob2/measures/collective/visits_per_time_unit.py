@@ -114,8 +114,6 @@ def visits_per_time_unit(
         One row per non-empty time bin with columns
         ``[datetime_col, "n_visits"]``, sorted chronologically.
 
-
-
     Examples
     --------
     >>> import pandas as pd
@@ -156,9 +154,9 @@ def visits_per_time_unit(
     """
     if time_unit is not None:
         freq = time_unit
-    import pandas as pd  # noqa: PLC0415 - pandas offset aliases are the public compatibility contract
 
     df = nw.from_native(traj, eager_only=True)
+    
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
@@ -166,6 +164,7 @@ def visits_per_time_unit(
         lng_col=lng_col,
         uid_col=uid_col,
     )
+    
     df = _prepare_trajectory(
         df,
         datetime_col=datetime_col,
@@ -176,35 +175,17 @@ def visits_per_time_unit(
     )
 
     normalized_freq = _normalize_frequency_for_narwhals(freq)
-    if normalized_freq is not None:
-        try:
-            return (
-                df.select(nw.col(datetime_col).dt.truncate(normalized_freq).alias(datetime_col))
-                .group_by(datetime_col)
-                .agg(nw.len().alias("n_visits"))
-                .sort(datetime_col)
-                .to_native()
-            )
-        except Exception:
-            pass
+    
+    if normalized_freq is None:
+        raise ValueError(
+            f"Frequency string '{freq}' is not supported or could not be parsed. "
+            "Please use standard offset aliases like '1h', '15min', or '1D'."
+        )
 
-    native = df.select([datetime_col]).to_native()
-    if isinstance(native, pd.DataFrame):
-        pandas_df = native.copy()
-    else:
-        pandas_df = pd.DataFrame({datetime_col: df.get_column(datetime_col).to_list()})
-
-    pandas_df[datetime_col] = pd.to_datetime(pandas_df[datetime_col])
-    counts = pandas_df.set_index(datetime_col).resample(freq).size().rename("n_visits").reset_index()
-    counts = counts[counts["n_visits"] > 0].reset_index(drop=True)
-
-    if isinstance(df.to_native(), pd.DataFrame):
-        return counts
-
-    return nw.from_dict(
-        {
-            datetime_col: counts[datetime_col].tolist(),
-            "n_visits": counts["n_visits"].astype("int64").tolist(),
-        },
-        backend=df.implementation,
-    ).to_native()
+    return (
+        df.select(nw.col(datetime_col).dt.truncate(normalized_freq).alias(datetime_col))
+        .group_by(datetime_col)
+        .agg(nw.len().alias("n_visits"))
+        .sort(datetime_col)
+        .to_native()
+    )

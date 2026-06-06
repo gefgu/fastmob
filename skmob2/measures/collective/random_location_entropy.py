@@ -93,9 +93,8 @@ def random_location_entropy(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        sort=False,
     )
-
-    backend = df.implementation
 
     if uid_col is None:
         # Single user: each location is visited by exactly 1 user -> entropy = 0.
@@ -112,13 +111,11 @@ def random_location_entropy(
         .sort([lat_col, lng_col])
     )
 
-    n_users_list = grouped.get_column("__n_users__").to_list()
-    entropies = [math.log2(n) if n > 1 else 0.0 for n in n_users_list]
+    result = (
+        grouped.with_columns(
+            (nw.col("__n_users__").log() / math.log(2)).alias("random_entropy")
+        )
+        .select([lat_col, lng_col, "random_entropy"])
+    )
 
-    lats = grouped.get_column(lat_col).to_list()
-    lngs = grouped.get_column(lng_col).to_list()
-
-    return nw.from_dict(
-        {lat_col: lats, lng_col: lngs, "random_entropy": entropies},
-        backend=backend,
-    ).to_native()
+    return result.to_native()
