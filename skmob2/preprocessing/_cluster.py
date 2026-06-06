@@ -133,6 +133,7 @@ def cluster(
             min_samples=min_samples,
             algorithm="ball_tree",
             metric="haversine",
+            n_jobs=-1
         )
         raw_labels = db.fit(coords).labels_
 

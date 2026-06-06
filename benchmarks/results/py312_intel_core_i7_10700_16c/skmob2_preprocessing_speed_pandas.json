@@ -24,49 +24,309 @@
     "repeat_dataset": 1,
     "retries": 0,
     "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "preprocessing",
-    "timestamp_utc": "2026-06-05T18:18:02.432450+00:00",
+    "timestamp_utc": "2026-06-05T22:13:47.333354+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
     {
+      "label": "1k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 0.02490621553733945,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0202936758287251,
+          "status": "ok",
+          "times_seconds": [
+            0.0202936758287251,
+            0.021044288761913776,
+            0.021929445676505566,
+            0.02146919071674347,
+            0.039794476702809334
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.011154741887003184,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008401880040764809,
+          "status": "ok",
+          "times_seconds": [
+            0.008401880040764809,
+            0.008620081003755331,
+            0.00900638522580266,
+            0.02104791533201933,
+            0.008697447832673788
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.0027701099403202533,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.002661988139152527,
+          "status": "ok",
+          "times_seconds": [
+            0.0027451300993561745,
+            0.002661988139152527,
+            0.002793357241898775,
+            0.002772423904389143,
+            0.0028776503168046474
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.012286935653537511,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007897688075900078,
+          "status": "ok",
+          "times_seconds": [
+            0.018520186189562082,
+            0.008215819951146841,
+            0.018476320896297693,
+            0.008324663154780865,
+            0.007897688075900078
+          ]
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 0.12686135154217482,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.12267888430505991,
+          "status": "ok",
+          "times_seconds": [
+            0.13794552022591233,
+            0.1279564192518592,
+            0.12272518500685692,
+            0.12300074892118573,
+            0.12267888430505991
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.012173759192228318,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008818368893116713,
+          "status": "ok",
+          "times_seconds": [
+            0.009391572792083025,
+            0.02439016615971923,
+            0.009269769303500652,
+            0.008998918812721968,
+            0.008818368893116713
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.009728034399449826,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007883468177169561,
+          "status": "ok",
+          "times_seconds": [
+            0.007891915272921324,
+            0.016810922883450985,
+            0.008073352742940187,
+            0.007883468177169561,
+            0.007980512920767069
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.01574089191854,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009227437898516655,
+          "status": "ok",
+          "times_seconds": [
+            0.02414535777643323,
+            0.009227437898516655,
+            0.026074644178152084,
+            0.009609099943190813,
+            0.009647919796407223
+          ]
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 1.2434271339327096,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.2342042969539762,
+          "status": "ok",
+          "times_seconds": [
+            1.2406321060843766,
+            1.24043202213943,
+            1.2669268753379583,
+            1.2342042969539762,
+            1.2349403691478074
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.010687994118779898,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00947250984609127,
+          "status": "ok",
+          "times_seconds": [
+            0.010538622736930847,
+            0.00947250984609127,
+            0.010629883036017418,
+            0.012639783788472414,
+            0.010159171186387539
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.010301786474883556,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006566809024661779,
+          "status": "ok",
+          "times_seconds": [
+            0.015400873962789774,
+            0.01064351899549365,
+            0.006566809024661779,
+            0.007787381298840046,
+            0.011110349092632532
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.020135206170380116,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.019929138012230396,
+          "status": "ok",
+          "times_seconds": [
+            0.0201562880538404,
+            0.019976529758423567,
+            0.020329047925770283,
+            0.020285027101635933,
+            0.019929138012230396
+          ]
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "cluster": {
+          "average_seconds": 11.96423658998683,
+          "iterations_completed": 5,
+          "minimum_seconds": 11.910628302022815,
+          "status": "ok",
+          "times_seconds": [
+            11.996415950823575,
+            11.912111724726856,
+            11.993020612280816,
+            11.910628302022815,
+            12.009006360080093
+          ]
+        },
+        "compress": {
+          "average_seconds": 0.03847432779148221,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0350876790471375,
+          "status": "ok",
+          "times_seconds": [
+            0.0350876790471375,
+            0.039833996910601854,
+            0.039474467281252146,
+            0.03880634857341647,
+            0.03916914714500308
+          ]
+        },
+        "filter": {
+          "average_seconds": 0.05249012177810073,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.03687203489243984,
+          "status": "ok",
+          "times_seconds": [
+            0.03687203489243984,
+            0.07242052117362618,
+            0.040899321902543306,
+            0.07446930510923266,
+            0.03778942581266165
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.10776518359780311,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.10445258021354675,
+          "status": "ok",
+          "times_seconds": [
+            0.10924810403957963,
+            0.11093800002709031,
+            0.10445258021354675,
+            0.10951021872460842,
+            0.10467701498419046
+          ]
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
       "label": "4M",
       "metrics": {
         "cluster": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
-          "reason": "import failed: No module named 'skmob2.dispatch'",
-          "status": "skipped",
-          "times_seconds": []
+          "average_seconds": 50.39813756868243,
+          "iterations_completed": 5,
+          "minimum_seconds": 50.29796589817852,
+          "status": "ok",
+          "times_seconds": [
+            50.56081359973177,
+            50.32353206956759,
+            50.441419458948076,
+            50.29796589817852,
+            50.3669568169862
+          ]
         },
         "compress": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
-          "reason": "import failed: No module named 'skmob2.dispatch'",
-          "status": "skipped",
-          "times_seconds": []
+          "average_seconds": 0.16763442261144518,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.1513245701789856,
+          "status": "ok",
+          "times_seconds": [
+            0.1528828819282353,
+            0.19228972168639302,
+            0.15138734690845013,
+            0.1902875923551619,
+            0.1513245701789856
+          ]
         },
         "filter": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
-          "reason": "import failed: No module named 'skmob2.dispatch'",
-          "status": "skipped",
-          "times_seconds": []
+          "average_seconds": 0.182659715320915,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.18174982676282525,
+          "status": "ok",
+          "times_seconds": [
+            0.1823329208418727,
+            0.18319100607186556,
+            0.1821822989732027,
+            0.18174982676282525,
+            0.1838425239548087
+          ]
         },
         "stay_locations": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
-          "reason": "import failed: No module named 'skmob2.dispatch'",
-          "status": "skipped",
-          "times_seconds": []
+          "average_seconds": 0.3873397671617568,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.37308692187070847,
+          "status": "ok",
+          "times_seconds": [
+            0.38131027668714523,
+            0.3843609010800719,
+            0.37308692187070847,
+            0.37606512708589435,
+            0.4218756090849638
+          ]
         }
       },
       "rows": 4000000,

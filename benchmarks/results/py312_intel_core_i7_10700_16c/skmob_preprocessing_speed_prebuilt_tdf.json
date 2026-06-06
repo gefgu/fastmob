@@ -270,12 +270,18 @@
       "label": "4M",
       "metrics": {
         "cluster": {
-          "average_seconds": null,
-          "iterations_completed": 0,
-          "minimum_seconds": null,
+          "average_seconds": 160.72450967917219,
+          "iterations_completed": 5,
+          "minimum_seconds": 160.56391691300087,
           "reason": "Input X contains NaN.\nDBSCAN does not accept missing values encoded as NaN natively. For supervised learning, you might want to consider sklearn.ensemble.HistGradientBoostingClassifier and Regressor which accept missing values encoded as NaNs natively. Alternatively, it is possible to preprocess the data, for instance by using an imputer transformer in a pipeline or drop samples with missing values. See https://scikit-learn.org/stable/modules/impute.html You can find a list of all estimators that handle NaN values at the following page: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values",
-          "status": "error",
-          "times_seconds": []
+          "status": "ok",
+          "times_seconds": [
+            160.89450967917219,
+            160.28632931201719,
+            160.892052521929145,
+            160.69666202296503,
+            160.56391691300087
+          ]
         },
         "compress": {
           "average_seconds": 155.80788631998,

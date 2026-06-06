@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-import time
 from typing import Any, Iterable
 
 import narwhals as nw
@@ -501,10 +500,8 @@ def _prepare_trajectory(
 
     nw_df = _with_datetime_column(nw_df, datetime_col)
 
-    start = time.perf_counter_ns()
     if drop_nulls:
-        nw_df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col]) if drop_nulls else nw_df
-        print(f"Null dropping took {(time.perf_counter_ns() - start) / 1e9:.3f} seconds")
+        nw_df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
     if sort:
         sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
         nw_df = nw_df.sort(*sort_cols)

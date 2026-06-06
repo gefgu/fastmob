@@ -1,0 +1,25 @@
+title: Scikit-Mobility 2 - Optimization Workflow for Individual Metrics {
+  near: top-center
+  shape: text
+  style: {
+    font-size: 29
+    bold: true
+    underline: true
+  }
+}
+
+Data -> Extraction: Parses Columns and Backend Type
+
+Extraction -> Backend Routing: Arrow/Numpy/Conversion
+
+Backend Routing -> Sorted: Best for heavy workflows /\n Sort Penalty
+
+Backend Routing -> Indexed: Best for EDA
+
+Sorted -> Contiguous User Ranges: Contiguous Memory/\nAssumes clean data
+
+Indexed -> Indexed User Ranges: Sorts Indexes/\nCleans NaNs
+
+Contiguous User Ranges -> Optimized Compute: SIMD/Cache Locality
+
+Indexed User Ranges -> Indexed Compute: Low Memory Overhead

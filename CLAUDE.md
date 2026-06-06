@@ -239,7 +239,7 @@ Preserve `backend=nw_df.implementation` when constructing output dicts so the re
 
 What makes it fast:
 
-- **Do not sort the full dataframe unless the metric truly needs row order.** Radius of gyration is order-independent, so the wrapper calls `_prepare_trajectory(..., sort=False)` and preserves the input rows after null dropping and coordinate casting. This avoids the large temporary memory spike caused by sorting all columns.
+- **Do not sort the full dataframe unless the metric truly needs row order.** Radius of gyration is order-independent, so the wrapper avoids the large temporary memory spike caused by sorting all columns. (This implementation pre-dates `TrajectoryDispatcher`; new measures should follow the conventions in "Backend dispatch and null-handling conventions" instead.)
 - **Group with sorted indexes instead of sorted rows.** For user-level results, build a sorted row-index vector and user ranges, then let the Rust kernel read coordinates through those indexes. Sorting a skinny index representation is much cheaper than materializing a fully sorted trajectory dataframe.
 - **Filter invalid rows while building grouped indexes.** If a metric ignores rows with null/invalid coordinates, prefer backend-specific Rust helpers that produce valid row indexes and user ranges in one pass (for example `radius_of_gyration_valid_user_indices_*`). Keep a narrow Narwhals fallback only for unsupported user dtypes; do not materialize a cleaned, fully sorted dataframe on the main performance path.
 - **Keep Python out of the hot loop.** Python should detect columns, prepare arrays, choose the backend route, and assemble the final dataframe. Per-row grouping, range validation, index validation, and numeric computation belong in Rust.
@@ -256,6 +256,105 @@ When adding a new measure, first ask whether the metric is order-dependent:
 - If there is no user column, call a single contiguous Rust kernel over the whole coordinate array.
 
 The target shape is: small Narwhals wrapper, no pandas/polars imports, no Python per-row loops on large data, one batched Rust call, explicit validation in Rust, and correctness tests covering pandas and polars.
+
+> `radius_of_gyration` pre-dates `TrajectoryDispatcher` and is intentionally kept as-is; new measures must follow the conventions below.
+
+## Backend dispatch and null-handling conventions
+
+Two mandatory rules apply to every file under `skmob2/` that calls a Rust kernel.
+
+### Rule 1 — TrajectoryDispatcher
+
+Never write `if _is_polars_backed(df): ... else: ...` or `if use_arrow: ...` branching inline.
+Use a **module-level `TrajectoryDispatcher`** instance from `skmob2.core.dispatch` instead.
+The dispatcher injects `extract_data` automatically and holds all backend-specific ops.
+
+```python
+from skmob2.core.dispatch import TrajectoryDispatcher
+from skmob2._core import my_kernel_indexed_arrow as _kia, my_kernel_indexed_numpy as _kin
+from ..measures._common import _arrow_result_values
+import numpy as np
+
+MY_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "kernel_indexed": _kia,
+        "unpack": lambda r: (
+            np.asarray(_arrow_result_values(r[0]), dtype=np.float64),
+            # … one entry per output array
+        ),
+    },
+    numpy_ops={
+        "kernel_indexed": _kin,
+        "unpack": lambda r: r,
+    },
+)
+```
+
+Inside the public function:
+
+```python
+ops       = MY_DISPATCHER.get_ops(df)
+use_arrow = MY_DISPATCHER.get_backend_key(df) == "arrow"
+
+lats_data = ops["extract_data"](df.get_column(lat_col))
+lngs_data = ops["extract_data"](df.get_column(lng_col))
+raw    = ops["kernel_indexed"](lats_data, lngs_data, sorted_indices, ends, ...)
+result = ops["unpack"](raw)
+```
+
+Do **not** import `_is_polars_backed` in new or refactored files.
+Canonical references: `skmob2/preprocessing/_filter.py` and `skmob2/preprocessing/_compress.py`.
+
+### Rule 2 — Indexed path handles nulls natively; no global drop_nulls
+
+Do **not** call `_prepare_trajectory(..., drop_nulls=True)` on the default (non-`sorted`) path.
+Instead:
+
+1. Keep only the explicit coordinate cast:
+   ```python
+   df = df.with_columns(
+       nw.col(lat_col).cast(nw.Float64),
+       nw.col(lng_col).cast(nw.Float64),
+   )
+   ```
+2. The **Arrow**-indexed Rust binding uses `as_nullable_f64_array` on each coordinate/timestamp
+   array, then `arrow_valid_rows(&[&lat, &lng, ...])`, and passes `valid_rows.as_deref()` to
+   the core `_indexed_impl`.
+3. The **NumPy**-indexed Rust binding passes `None` for `valid_rows`; the core checks
+   `is_finite()` on each index before using it.
+4. The `sorted=True` fast path retains its assumption that the caller supplies pre-cleaned data;
+   `_prepare_trajectory(sort=True)` is acceptable there.
+
+`arrow_valid_rows` is already implemented in `skmob2-py/src/utils/py_helpers.rs`.
+
+### Rust template for adding `valid_rows` to an indexed core function
+
+In `skmob2-core/src/…/<measure>.rs`, add a validity helper and filter per-user indices:
+
+```rust
+fn is_valid_indexed_row(
+    lats: &[f64], lngs: &[f64], valid_rows: Option<&[bool]>, idx: usize,
+) -> bool {
+    valid_rows.is_none_or(|v| v[idx]) && lats[idx].is_finite() && lngs[idx].is_finite()
+}
+
+// In the per-user loop, replace direct iteration with a validity filter:
+let valid: Vec<usize> = user_indices.iter().copied()
+    .filter(|&i| is_valid_indexed_row(lats, lngs, valid_rows, i))
+    .collect();
+```
+
+Add `valid_rows: Option<&[bool]>` after `ends` in the `_indexed_impl` signature.
+
+In `skmob2-py/src/…/<measure>.rs`:
+- **NumPy binding**: keep `PyReadonlyArray1<f64>` inputs; pass `None` to core.
+- **Arrow binding**: change `as_f64_array` → `as_nullable_f64_array` for each coordinate /
+  timestamp array; add `let valid_rows = arrow_valid_rows(&[&lats, &lngs, ...]);`; pass
+  `valid_rows.as_deref()` to core.
+- Add `as_nullable_f64_array, arrow_valid_rows` to the `use crate::utils::` import.
+
+See `skmob2-core/src/preprocessing/compress_traj.rs` and
+`skmob2-py/src/preprocessing/compress_traj_py.rs` as the canonical Rust reference.
 
 ## Column name conventions
 
@@ -299,6 +398,10 @@ When adding a measure, choose the output pattern based on cardinality:
 3. Create the Python wrapper in `skmob2/measures/individual.py` (or a new file), following the pattern of `jump_lengths`.
 4. Re-export from `skmob2/measures/__init__.py` and `skmob2/__init__.py`.
 5. Add a correctness test in `tests/correctness/test_individual.py` and a benchmark in `benchmarks/bench_individual.py`.
+6. Follow **Rule 1**: instantiate a module-level `TrajectoryDispatcher`; do not use `_is_polars_backed`.
+7. Follow **Rule 2**: do not call `_prepare_trajectory(drop_nulls=True)` on the indexed path; add the explicit `Float64` cast; update the Arrow-indexed Rust binding with `as_nullable_f64_array` + `arrow_valid_rows`.
+
+See the "Backend dispatch and null-handling conventions" section above for templates.
 
 
 # Project Structure
