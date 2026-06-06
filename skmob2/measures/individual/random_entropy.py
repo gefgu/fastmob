@@ -1,18 +1,31 @@
 from __future__ import annotations
-import narwhals as nw
 
 import math
 from typing import Any
 
-from skmob2._core import number_of_locations_indexed_arrow, number_of_locations_indexed_numpy
+import narwhals as nw
+
+from skmob2._core import (
+    number_of_locations_indexed_arrow,
+    number_of_locations_indexed_numpy,
+)
+from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
-    _is_polars_backed,
     _detect_trajectory_columns,
-    _prepare_trajectory,
-    _to_native,
+)
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "number_of_locations_indexed": number_of_locations_indexed_arrow,
+        "format_counts": lambda values: _arrow_result_values(values).to_pylist(),
+    },
+    numpy_ops={
+        "number_of_locations_indexed": number_of_locations_indexed_numpy,
+        "format_counts": lambda values: values.tolist(),
+    },
 )
 
 
@@ -103,36 +116,41 @@ def random_entropy(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
+    df = df.with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
-    use_arrow = _is_polars_backed(df)
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    ops = _DISPATCHER.get_ops(df)
+    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
 
-    if use_arrow:
-        n_locs_raw = number_of_locations_indexed_arrow(
-            df.get_column(lat_col).to_arrow(),
-            df.get_column(lng_col).to_arrow(),
-            indices,
-            ends,
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(
+        df, uid_col, use_arrow=use_arrow
+    )
+
+    n_locs_raw = ops["number_of_locations_indexed"](
+        ops["extract_data"](df.get_column(lat_col)),
+        ops["extract_data"](df.get_column(lng_col)),
+        indices,
+        ends,
+    )
+    n_locs = ops["format_counts"](n_locs_raw)
+
+    result_dict: dict[str, Any] = {"__n_locations__": n_locs}
+    if uid_col is not None:
+        result_dict[uid_col] = uid_values
+
+    result = (
+        nw.from_dict(result_dict, backend=df.implementation)
+        .filter(nw.col("__n_locations__") > 0)
+        .with_columns(
+            nw.when(nw.col("__n_locations__") <= 1)
+            .then(nw.lit(0.0))
+            .otherwise(nw.col("__n_locations__").log() / math.log(2))
+            .alias("random_entropy")
         )
-        n_locs = _arrow_result_values(n_locs_raw).to_pylist()
-    else:
-        n_locs = number_of_locations_indexed_numpy(
-            df.get_column(lat_col).to_numpy(),
-            df.get_column(lng_col).to_numpy(),
-            indices,
-            ends,
-        ).tolist()
-
-    entropies = [math.log2(n) if n > 1 else 0.0 for n in n_locs]
+    )
 
     if uid_col is None:
-        return _to_native({"random_entropy": entropies}, df)
-    return _to_native({uid_col: uid_values, "random_entropy": entropies}, df)
+        return result.select(["random_entropy"]).to_native()
+    return result.select([uid_col, "random_entropy"]).to_native()

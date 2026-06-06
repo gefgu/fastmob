@@ -137,6 +137,90 @@ def test_random_entropy_matches_skmob(comparison_skmob):
         )
 
 
+def test_random_entropy_null_coordinates_ignored():
+    """NaN/None coordinates are ignored; valid locations still counted."""
+    import math
+
+    from skmob2.measures.individual.random_entropy import random_entropy
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a", "a", "a"],
+            "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
+            "lat": [1.0, 2.0, float("nan"), None, 3.0],
+            "lng": [1.0, 2.0, 3.0, 4.0, 3.0],
+        }
+    )
+    result = random_entropy(df)
+    mapping = _to_dict(result)
+    # rows 0,1,4 are valid → lat/lng (1,1),(2,2),(3,3) → 3 distinct locations
+    assert math.isclose(mapping["a"], math.log2(3), rel_tol=1e-9)
+
+
+def test_random_entropy_all_invalid_user_dropped_with_uid():
+    """Users where all coordinates are invalid are omitted from the result."""
+    from skmob2.measures.individual.random_entropy import random_entropy
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "b", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
+            "lat": [float("nan"), float("nan"), 1.0, 2.0],
+            "lng": [float("nan"), float("nan"), 1.0, 2.0],
+        }
+    )
+    result = random_entropy(df)
+    mapping = _to_dict(result)
+    assert "a" not in mapping
+    assert "b" in mapping
+
+
+def test_random_entropy_all_invalid_no_uid_returns_empty():
+    """All-invalid input with no uid column returns an empty result."""
+    from skmob2.measures.individual.random_entropy import random_entropy
+
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=2, freq="h"),
+            "lat": [float("nan"), float("nan")],
+            "lng": [float("nan"), float("nan")],
+        }
+    )
+    result = random_entropy(df)
+    nw_result = nw.from_native(result, eager_only=True)
+    assert "random_entropy" in nw_result.columns
+    assert len(nw_result) == 0
+
+
+def test_random_entropy_polars_null_coordinates_ignored():
+    """Polars Arrow-null coordinates are ignored; valid locations counted."""
+    import math
+
+    import pytest
+
+    polars = pytest.importorskip("polars")
+    from skmob2.measures.individual.random_entropy import random_entropy
+
+    df = polars.DataFrame(
+        {
+            "uid": ["a", "a", "a", "a"],
+            "datetime": [
+                "2020-01-01 00:00:00",
+                "2020-01-01 01:00:00",
+                "2020-01-01 02:00:00",
+                "2020-01-01 03:00:00",
+            ],
+            "lat": [1.0, 2.0, None, 3.0],
+            "lng": [1.0, 2.0, 3.0, 3.0],
+        }
+    ).with_columns(polars.col("datetime").str.to_datetime())
+    result = random_entropy(df)
+    nw_result = nw.from_native(result, eager_only=True)
+    row = {r["uid"]: r["random_entropy"] for r in nw_result.rows(named=True)}
+    # rows 0,1,3 are valid → (1,1),(2,2),(3,3) → 3 distinct locations
+    assert math.isclose(row["a"], math.log2(3), rel_tol=1e-9)
+
+
 def test_random_entropy_matches_cached_reference(comparison_skmob_reference):
     """random_entropy matches the cached skmob baseline without requiring the skmob environment."""
     from skmob2.measures.individual.random_entropy import random_entropy as skmob2_re
