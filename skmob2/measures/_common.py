@@ -244,9 +244,30 @@ def _indexed_group_indices_arrow(uids: Any, num_groups: int) -> Any:
     return radius_of_gyration_user_indices_arrow(uids, num_groups)
 
 
+def _time_ordered_user_indices_numpy(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
+    from skmob2._core import time_ordered_user_indices_numpy  # noqa: PLC0415
+
+    if uids is None:
+        return time_ordered_user_indices_numpy(None, timestamps)
+    return time_ordered_user_indices_numpy(uids, timestamps, num_groups)
+
+
+def _time_ordered_user_indices_arrow(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
+    from skmob2._core import time_ordered_user_indices_arrow  # noqa: PLC0415
+
+    if uids is None:
+        return time_ordered_user_indices_arrow(None, timestamps)
+    return time_ordered_user_indices_arrow(uids, timestamps, num_groups)
+
+
 _INDEXED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
     arrow_ops={"group_indices": _indexed_group_indices_arrow},
     numpy_ops={"group_indices": _indexed_group_indices_numpy},
+)
+
+_TIME_ORDERED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={"time_ordered_indices": _time_ordered_user_indices_arrow},
+    numpy_ops={"time_ordered_indices": _time_ordered_user_indices_numpy},
 )
 
 
@@ -386,35 +407,22 @@ def _build_time_ordered_user_ranges(
     df: nw.DataFrame,
     uid_col: str | None,
     datetime_col: str,
-    timestamps: nw.Series,
+    timestamps_data: Any,
     *,
-    use_arrow: bool,
     row_index_col: str = "__skmob2_time_order_row_index__",
 ) -> tuple[list | None, Any, np.ndarray]:
     """Build stable time-ordered indexes/ranges without sorting the full dataframe."""
-    from skmob2._core import (
-        time_ordered_user_indices_arrow,
-        time_ordered_user_indices_numpy,
-    )
+    ops = _TIME_ORDERED_USER_RANGES_DISPATCHER.get_ops(df)
+    use_arrow = _TIME_ORDERED_USER_RANGES_DISPATCHER.get_backend_key(df) == "arrow"
 
     if uid_col is None:
-        if use_arrow:
-            indices, ends = time_ordered_user_indices_arrow(None, timestamps.to_arrow())
-        else:
-            indices, ends = time_ordered_user_indices_numpy(None, timestamps.to_numpy())
+        indices, ends = ops["time_ordered_indices"](None, timestamps_data)
         return None, _as_index_array(indices), _as_index_array(ends)
 
     uids = df.get_column(uid_col)
-    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=True)
+    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=False)
     try:
-        if use_arrow:
-            indices, ends = time_ordered_user_indices_arrow(uid_codes.to_arrow(), timestamps.to_arrow(), num_groups)
-        else:
-            indices, ends = time_ordered_user_indices_numpy(
-                uid_codes.to_numpy(),
-                timestamps.to_numpy(),
-                num_groups,
-            )
+        indices, ends = ops["time_ordered_indices"](ops["extract_data"](uid_codes), timestamps_data, num_groups)
         indices = _as_index_array(indices)
         ends = _as_index_array(ends)
         uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
@@ -424,7 +432,10 @@ def _build_time_ordered_user_ranges(
             raise
 
     index_df = (
-        df.select([uid_col, datetime_col]).with_row_index(row_index_col).sort(uid_col, datetime_col, row_index_col)
+        df.select([uid_col, datetime_col])
+        .with_columns(uid_codes)
+        .with_row_index(row_index_col)
+        .sort("__skmob2_uid_codes__", datetime_col, row_index_col)
     )
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]

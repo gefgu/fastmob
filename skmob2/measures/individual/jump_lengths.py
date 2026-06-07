@@ -145,7 +145,6 @@ def jump_lengths(
         )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
 
@@ -154,10 +153,14 @@ def jump_lengths(
         v_starts, v_ends, flat_values = ops["presorted"](lats_data, lngs_data, ends)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
+        timestamps_data = ops["extract_data"](timestamps)
         uid_values, indices, ends = _build_time_ordered_user_ranges(
-            df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+            df, uid_col, datetime_col, timestamps_data
         )
-        v_starts, v_ends, flat_values = ops["indexed"](lats_data, lngs_data, indices, ends)
+        v_starts, v_ends, flat_values = ops["indexed"](
+            lats_data, lngs_data, indices, ends
+        )
+
     flat_values = ops["flat_values"](flat_values)
 
     if merge:

@@ -117,6 +117,7 @@ def distance_straight_line(
         nw.col(lng_col).cast(nw.Float64),
     )
 
+    ops = _DISPATCHER.get_ops(df)
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
@@ -133,8 +134,9 @@ def distance_straight_line(
         return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)
 
     timestamps = _extract_timestamps_ms(df, datetime_col)
+    timestamps_data = ops["extract_data"](timestamps)
     uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+        df, uid_col, datetime_col, timestamps_data
     )
     distances = _dispatch_kernel(
         total_distance_indexed_numpy,

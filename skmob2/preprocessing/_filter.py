@@ -123,7 +123,6 @@ def filter(
 
     # 1. Fetch backend context from the dispatcher
     ops = FILTER_DISPATCHER.get_ops(df)
-    use_arrow = FILTER_DISPATCHER.get_backend_key(df) == "arrow"
 
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -157,8 +156,7 @@ def filter(
             df,
             uid_col,
             datetime_col=datetime_col,
-            timestamps=timestamp_s,
-            use_arrow=use_arrow,
+            timestamps_data=times_data,
         )
         filter_func = ops["filter_indexed"]
         args = (lats_data, lngs_data, times_data, sorted_indices, ends, config)

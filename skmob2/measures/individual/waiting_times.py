@@ -168,7 +168,6 @@ def waiting_times(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps_s)
     if sorted:
@@ -182,7 +181,7 @@ def waiting_times(
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
     uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps_s, use_arrow=use_arrow
+        df, uid_col, datetime_col, timestamps_data
     )
     wt_values = _route_indexed_waiting_times(ops, timestamps_data, indices, ends, merge=merge)
 

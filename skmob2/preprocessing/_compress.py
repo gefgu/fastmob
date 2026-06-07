@@ -127,11 +127,11 @@ def compress(
     )
 
     ops = COMPRESS_DISPATCHER.get_ops(df)
-    use_arrow = COMPRESS_DISPATCHER.get_backend_key(df) == "arrow"
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
     timestamps_s = _extract_timestamps_s(df, datetime_col)
+    timestamps_data = ops["extract_data"](timestamps_s)
 
     if sorted:
         _, ranges = _build_user_ranges(df, uid_col)
@@ -141,8 +141,7 @@ def compress(
             df,
             uid_col,
             datetime_col=datetime_col,
-            timestamps=timestamps_s,
-            use_arrow=use_arrow,
+            timestamps_data=timestamps_data,
         )
         result_raw = ops["compress_indexed"](lats_data, lngs_data, sorted_indices, ends, spatial_radius_km)
 

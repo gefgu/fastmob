@@ -126,11 +126,10 @@ def real_entropy(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
-
     timestamps = _extract_timestamps_ms(df, datetime_col)
+    timestamps_data = ops["extract_data"](timestamps)
     uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+        df, uid_col, datetime_col, timestamps_data
     )
 
     raw = ops["real_entropy_indexed"](

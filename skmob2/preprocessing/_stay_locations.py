@@ -151,7 +151,6 @@ def stay_locations(
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     lats_data = ops["extract_data"](lats)
     lngs_data = ops["extract_data"](lngs)
     timestamps_data = ops["extract_data"](timestamps_s)
@@ -170,8 +169,7 @@ def stay_locations(
             df,
             uid_col,
             datetime_col=datetime_col,
-            timestamps=timestamps_s,
-            use_arrow=use_arrow,
+            timestamps_data=timestamps_data,
         )
         _result = ops["indexed"](
             lats_data, lngs_data, timestamps_data, sorted_indices, ends,

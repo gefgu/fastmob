@@ -294,14 +294,88 @@ class TestBuildTimeOrderedUserRanges:
             nw_df,
             "uid",
             "datetime",
-            timestamps,
-            use_arrow=False,
+            timestamps.to_numpy(),
         )
 
         captured = capsys.readouterr()
         assert "Indexing@fallback" not in captured.out
-        assert uid_values == ["a", "b"]
-        assert np.asarray(indices).tolist() == [3, 1, 2, 0]
+        assert uid_values == ["b", "a"]
+        assert np.asarray(indices).tolist() == [2, 0, 3, 1]
+        assert np.asarray(ends).tolist() == [2, 4]
+
+    def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
+        import narwhals as nw
+        import numpy as np
+        from skmob2.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+
+        pl = pytest.importorskip("polars", reason="Polars not installed")
+        df = pl.DataFrame(
+            {
+                "uid": ["b", "a", "b", "a"],
+                "datetime": [
+                    "2020-01-01 01:00:00",
+                    "2020-01-01 02:00:00",
+                    "2020-01-01 00:00:00",
+                    "2020-01-01 00:30:00",
+                ],
+                "lat": [0.0, 0.0, 0.0, 0.0],
+                "lng": [0.0, 0.0, 0.0, 0.0],
+            }
+        ).with_columns(pl.col("datetime").str.to_datetime())
+        nw_df = nw.from_native(df, eager_only=True)
+        timestamps = _extract_timestamps_s(nw_df, "datetime")
+
+        uid_values, indices, ends = _build_time_ordered_user_ranges(
+            nw_df,
+            "uid",
+            "datetime",
+            timestamps.to_arrow(),
+        )
+
+        assert uid_values == ["b", "a"]
+        assert np.asarray(indices).tolist() == [2, 0, 3, 1]
+        assert np.asarray(ends).tolist() == [2, 4]
+
+    def test_fallback_preserves_first_seen_user_order(self, monkeypatch):
+        import narwhals as nw
+        import numpy as np
+        import skmob2.measures._common as common
+        from skmob2.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+
+        df = pd.DataFrame(
+            {
+                "uid": ["b", "a", "b", "a"],
+                "datetime": pd.to_datetime(
+                    [
+                        "2020-01-01 01:00:00",
+                        "2020-01-01 02:00:00",
+                        "2020-01-01 00:00:00",
+                        "2020-01-01 00:30:00",
+                    ]
+                ),
+            }
+        )
+        nw_df = nw.from_native(df, eager_only=True)
+        timestamps = _extract_timestamps_s(nw_df, "datetime")
+
+        def unsupported(*args):
+            raise ValueError("unsupported dtype")
+
+        monkeypatch.setitem(
+            common._TIME_ORDERED_USER_RANGES_DISPATCHER.dispatch["numpy"],
+            "time_ordered_indices",
+            unsupported,
+        )
+
+        uid_values, indices, ends = _build_time_ordered_user_ranges(
+            nw_df,
+            "uid",
+            "datetime",
+            timestamps.to_numpy(),
+        )
+
+        assert uid_values == ["b", "a"]
+        assert np.asarray(indices).tolist() == [2, 0, 3, 1]
         assert np.asarray(ends).tolist() == [2, 4]
 
 

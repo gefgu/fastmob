@@ -128,13 +128,12 @@ def mean_square_displacement(
         return 0.0
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     timestamps = _extract_timestamps_s(df, datetime_col)
+    timestamps_data = ops["extract_data"](timestamps)
     _uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+        df, uid_col, datetime_col, timestamps_data
     )
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
-    timestamps_data = ops["extract_data"](timestamps)
     return ops["kernel"](lats_data, lngs_data, timestamps_data, indices, ends, delta_s)

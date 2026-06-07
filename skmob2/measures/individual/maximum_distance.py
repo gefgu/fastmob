@@ -120,6 +120,7 @@ def maximum_distance(
         nw.col(lng_col).cast(nw.Float64),
     )
 
+    ops = _DISPATCHER.get_ops(df)
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
@@ -143,8 +144,9 @@ def maximum_distance(
         return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)
 
     timestamps = _extract_timestamps_ms(df, datetime_col)
+    timestamps_data = ops["extract_data"](timestamps)
     uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
+        df, uid_col, datetime_col, timestamps_data
     )
     max_distances = _dispatch_kernel(
         maximum_distance_indexed_numpy,
