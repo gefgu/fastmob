@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
-use crate::utils::{validate_coord_ranges, validate_indexed_coord_ends};
+use crate::utils::{validate_coord_ends, validate_coord_ranges, validate_indexed_coord_ends};
 
 type HomeResults = (Vec<f64>, Vec<f64>);
 
@@ -129,6 +129,38 @@ pub fn home_location_impl(
     let homes: Vec<(f64, f64)> = ranges
         .par_iter()
         .map(|&(start, end)| best_location_for_range(&inputs, start, end, &night))
+        .collect();
+    Ok(homes.into_iter().unzip())
+}
+
+pub fn home_location_from_ends_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    hours: &[f64],
+    ends: &[usize],
+    start_night: f64,
+    end_night: f64,
+) -> Result<HomeResults, String> {
+    validate_coord_ends(latitudes, longitudes, ends)?;
+    if hours.len() != latitudes.len() {
+        return Err("hours, latitudes, and longitudes must have the same length".to_string());
+    }
+
+    let inputs = HomeInputs {
+        latitudes,
+        longitudes,
+        hours,
+    };
+    let night = NightWindow {
+        start: start_night,
+        end: end_night,
+    };
+    let homes: Vec<(f64, f64)> = (0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            best_location_for_range(&inputs, start, ends[i], &night)
+        })
         .collect();
     Ok(homes.into_iter().unzip())
 }

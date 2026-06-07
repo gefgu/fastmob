@@ -2,7 +2,8 @@ use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
 use crate::utils::{
-    validate_coord_ranges, validate_indexed_coord_ends, validate_indexed_ends, validate_ranges,
+    validate_coord_ends, validate_coord_ranges, validate_ends, validate_indexed_coord_ends,
+    validate_indexed_ends, validate_ranges,
 };
 
 pub fn number_of_visits_impl(
@@ -13,6 +14,16 @@ pub fn number_of_visits_impl(
     Ok(ranges
         .iter()
         .map(|&(start, end)| (end - start) as u64)
+        .collect())
+}
+
+pub fn number_of_visits_from_ends_impl(n_values: usize, ends: &[usize]) -> Result<Vec<u64>, String> {
+    validate_ends(n_values, ends)?;
+    Ok((0..ends.len())
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            (ends[i] - start) as u64
+        })
         .collect())
 }
 
@@ -47,6 +58,27 @@ pub fn number_of_locations_impl(
     Ok(ranges
         .par_iter()
         .map(|&(start, end)| {
+            let mut seen =
+                FxHashSet::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
+            for idx in start..end {
+                seen.insert((latitudes[idx].to_bits(), longitudes[idx].to_bits()));
+            }
+            seen.len() as u64
+        })
+        .collect())
+}
+
+pub fn number_of_locations_from_ends_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    ends: &[usize],
+) -> Result<Vec<u64>, String> {
+    validate_coord_ends(latitudes, longitudes, ends)?;
+    Ok((0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             let mut seen =
                 FxHashSet::with_capacity_and_hasher(end.saturating_sub(start), Default::default());
             for idx in start..end {

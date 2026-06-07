@@ -1,6 +1,8 @@
 use rayon::prelude::*;
 
-use crate::utils::{ends_from_ranges, validate_coord_ranges, validate_indexed_coord_ends};
+use crate::utils::{
+    ends_from_ranges, validate_coord_ends, validate_coord_ranges, validate_indexed_coord_ends,
+};
 
 pub type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
 
@@ -134,6 +136,38 @@ pub fn radius_of_gyration_batch_with_counts_impl(
         .map(|&(start, end)| rog_for_parallel_slices(latitudes, longitudes, start, end))
         .collect();
     let counts = ranges.iter().map(|&(start, end)| end - start).collect();
+
+    Ok((results, counts))
+}
+
+pub fn radius_of_gyration_from_ends_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    ends: &[usize],
+) -> Result<Vec<f64>, String> {
+    Ok(radius_of_gyration_from_ends_with_counts_impl(latitudes, longitudes, ends)?.0)
+}
+
+pub fn radius_of_gyration_from_ends_with_counts_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    ends: &[usize],
+) -> Result<(Vec<f64>, Vec<usize>), String> {
+    validate_coord_ends(latitudes, longitudes, ends)?;
+
+    let results: Vec<f64> = (0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            rog_for_parallel_slices(latitudes, longitudes, start, ends[i])
+        })
+        .collect();
+    let counts = (0..ends.len())
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            ends[i] - start
+        })
+        .collect();
 
     Ok((results, counts))
 }

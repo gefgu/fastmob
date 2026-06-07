@@ -32,6 +32,31 @@ pub fn validate_ranges(n: usize, ranges: &[(usize, usize)]) -> Result<(), String
     Ok(())
 }
 
+pub fn validate_ends(n: usize, ends: &[usize]) -> Result<(), String> {
+    let mut previous = 0usize;
+    for &end in ends {
+        if end < previous {
+            return Err("range ends must be monotonically non-decreasing".to_string());
+        }
+        if end > n {
+            return Err("range end must be within array bounds".to_string());
+        }
+        previous = end;
+    }
+    Ok(())
+}
+
+pub fn validate_coord_ends(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    ends: &[usize],
+) -> Result<(), String> {
+    if latitudes.len() != longitudes.len() {
+        return Err("latitudes and longitudes must have the same length".to_string());
+    }
+    validate_ends(latitudes.len(), ends)
+}
+
 pub fn validate_indexed_ranges(
     value_len: usize,
     indices: &[usize],

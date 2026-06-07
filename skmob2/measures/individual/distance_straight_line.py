@@ -13,16 +13,26 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
+    _arrow_result_values,
     _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
-    _dispatch_kernel,
     _extract_timestamps_ms,
     _detect_trajectory_columns,
-    _ranges_from_ends,
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "presorted": total_distance_arrow,
+        "indexed": total_distance_indexed_arrow,
+        "format_values": _arrow_result_values,
+    },
+    numpy_ops={
+        "presorted": total_distance_numpy,
+        "indexed": total_distance_indexed_numpy,
+        "format_values": lambda values: values,
+    },
+)
 
 
 def distance_straight_line(
@@ -118,17 +128,11 @@ def distance_straight_line(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
-        distances = _dispatch_kernel(
-            total_distance_numpy,
-            total_distance_arrow,
-            [df.get_column(lat_col), df.get_column(lng_col)],
-            ranges,
-            use_arrow=use_arrow,
-        )
+        distances = ops["format_values"](ops["presorted"](lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"distance_straight_line": distances}, df)
         return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)
@@ -138,14 +142,7 @@ def distance_straight_line(
     uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_data
     )
-    distances = _dispatch_kernel(
-        total_distance_indexed_numpy,
-        total_distance_indexed_arrow,
-        [df.get_column(lat_col), df.get_column(lng_col)],
-        indices,
-        ends,
-        use_arrow=use_arrow,
-    )
+    distances = ops["format_values"](ops["indexed"](lats_data, lngs_data, indices, ends))
 
     if uid_col is None:
         return _to_native({"distance_straight_line": distances}, df)

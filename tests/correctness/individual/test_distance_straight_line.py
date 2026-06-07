@@ -81,10 +81,11 @@ def test_total_distance_numpy_and_arrow_helpers_match_batch_helper():
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
     ranges = [(0, 3), (3, 5)]
+    ends = np.array([3, 5], dtype=np.uintp)
 
     expected = total_distance_batch_km(lats.tolist(), lngs.tolist(), ranges)
-    result_numpy = total_distance_numpy(lats, lngs, ranges)
-    result_arrow = total_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ranges)
+    result_numpy = total_distance_numpy(lats, lngs, ends)
+    result_arrow = total_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
 
     np.testing.assert_allclose(result_numpy, expected, rtol=0.0, atol=1e-12)
     np.testing.assert_allclose(result_arrow, expected, rtol=0.0, atol=1e-12)
@@ -96,9 +97,9 @@ def test_total_distance_numpy_helper_validation_errors():
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
-        total_distance_numpy(arr, arr[:1], [(0, 1)])
+        total_distance_numpy(arr, arr[:1], np.array([1], dtype=np.uintp))
     with pytest.raises(ValueError, match="range end"):
-        total_distance_numpy(arr, arr, [(0, 3)])
+        total_distance_numpy(arr, arr, np.array([3], dtype=np.uintp))
 
 
 @pytest.mark.skmob

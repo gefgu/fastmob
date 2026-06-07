@@ -3,7 +3,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use skmob2_core::measures::individual::total_distance::{
-    total_distance_impl, total_distance_indexed_impl,
+    total_distance_from_ends_impl, total_distance_impl, total_distance_indexed_impl,
 };
 
 use crate::utils::{
@@ -23,10 +23,14 @@ pub fn total_distance_batch_km(
 pub fn total_distance_numpy(
     latitudes: PyReadonlyArray1<f64>,
     longitudes: PyReadonlyArray1<f64>,
-    ranges: Vec<(usize, usize)>,
+    ends: PyReadonlyArray1<usize>,
 ) -> PyResult<Vec<f64>> {
-    total_distance_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)
-        .map_err(PyValueError::new_err)
+    total_distance_from_ends_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        ends.as_slice()?,
+    )
+    .map_err(PyValueError::new_err)
 }
 
 #[pyfunction]
@@ -52,12 +56,16 @@ pub fn total_distance_indexed_numpy<'py>(
 pub fn total_distance_arrow(
     latitudes: PyArray,
     longitudes: PyArray,
-    ranges: Vec<(usize, usize)>,
+    ends: PyReadonlyArray1<usize>,
 ) -> PyResult<Vec<f64>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    total_distance_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)
-        .map_err(PyValueError::new_err)
+    total_distance_from_ends_impl(
+        arrow_values(&latitudes),
+        arrow_values(&longitudes),
+        ends.as_slice()?,
+    )
+    .map_err(PyValueError::new_err)
 }
 
 #[pyfunction]

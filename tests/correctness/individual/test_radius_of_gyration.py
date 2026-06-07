@@ -475,8 +475,9 @@ def test_radius_of_gyration_numpy_helper_matches_batch_helper():
     lats = _SKMOB_TEST_LATS_LNGS[:, 0].astype(np.float64)
     lngs = _SKMOB_TEST_LATS_LNGS[:, 1].astype(np.float64)
     ranges = [(0, 5), (5, 8), (8, 9)]
+    ends = np.array([5, 8, 9], dtype=np.uintp)
 
-    result = radius_of_gyration_numpy(lats, lngs, ranges)
+    result = radius_of_gyration_numpy(lats, lngs, ends)
     expected = radius_of_gyration_batch_km(lats.tolist(), lngs.tolist(), ranges)
 
     np.testing.assert_allclose(result, expected, rtol=0.0, atol=1e-12)
@@ -490,14 +491,14 @@ def test_radius_of_gyration_arrow_helper_matches_numpy_helper():
 
     lats_np = _SKMOB_TEST_LATS_LNGS[:, 0].astype(np.float64)
     lngs_np = _SKMOB_TEST_LATS_LNGS[:, 1].astype(np.float64)
-    ranges = [(0, 5), (5, 8), (8, 9)]
+    ends = np.array([5, 8, 9], dtype=np.uintp)
 
     result_arrow = radius_of_gyration_arrow(
         pa.array(lats_np, type=pa.float64()),
         pa.array(lngs_np, type=pa.float64()),
-        ranges,
+        ends,
     )
-    result_numpy = radius_of_gyration_numpy(lats_np, lngs_np, ranges)
+    result_numpy = radius_of_gyration_numpy(lats_np, lngs_np, ends)
 
     np.testing.assert_allclose(result_arrow, result_numpy, rtol=0.0, atol=1e-12)
 
@@ -511,12 +512,11 @@ def test_radius_of_gyration_indexed_numpy_helper_matches_contiguous_helper():
     lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
     indices = np.array([1, 4, 0, 2, 3, 5], dtype=np.uintp)
     ends = np.array([2, 4, 6], dtype=np.uintp)
-    indexed_ranges = [(0, 2), (2, 4), (4, 6)]
 
     result, counts = radius_of_gyration_indexed_numpy(lats, lngs, indices, ends)
     expected_lats = np.array([0.0, 1.0, 10.0, 11.0, 20.0, 21.0], dtype=np.float64)
     expected_lngs = np.array([0.0, 1.0, 30.0, 31.0, 40.0, 41.0], dtype=np.float64)
-    expected = radius_of_gyration_numpy(expected_lats, expected_lngs, indexed_ranges)
+    expected = radius_of_gyration_numpy(expected_lats, expected_lngs, ends)
 
     assert counts.tolist() == [2, 2, 2]
     np.testing.assert_allclose(result, expected, rtol=0.0, atol=1e-12)
@@ -554,7 +554,7 @@ def test_radius_of_gyration_numpy_non_contiguous_raises():
     non_contig = arr[::2]
 
     with pytest.raises((ValueError, BufferError, TypeError)):
-        radius_of_gyration_numpy(non_contig, non_contig, [(0, len(non_contig))])
+        radius_of_gyration_numpy(non_contig, non_contig, np.array([len(non_contig)], dtype=np.uintp))
 
 
 def test_radius_of_gyration_numpy_mismatched_lengths_raise():
@@ -566,7 +566,7 @@ def test_radius_of_gyration_numpy_mismatched_lengths_raise():
     lngs = np.array([0.0], dtype=np.float64)
 
     with pytest.raises(ValueError, match="same length"):
-        radius_of_gyration_numpy(lats, lngs, [(0, 1)])
+        radius_of_gyration_numpy(lats, lngs, np.array([1], dtype=np.uintp))
 
 
 def test_radius_of_gyration_indexed_numpy_mismatched_lengths_raise():

@@ -19,7 +19,6 @@ from .._common import (
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _ranges_from_ends,
     _result_scalar,
     _to_native,
 )
@@ -167,10 +166,9 @@ def radius_of_gyration(
 
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
         lats_data = ops["extract_data"](df.get_column(lat_col))
         lngs_data = ops["extract_data"](df.get_column(lng_col))
-        raw_values, raw_counts = ops["rog_sorted"](lats_data, lngs_data, ranges)
+        raw_values, raw_counts = ops["rog_sorted"](lats_data, lngs_data, ends)
     else:
         lats_data = ops["extract_data"](df.get_column(lat_col))
         lngs_data = ops["extract_data"](df.get_column(lng_col))

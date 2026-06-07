@@ -13,15 +13,25 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
+    _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
-    _dispatch_kernel,
     _detect_trajectory_columns,
-    _ranges_from_ends,
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "presorted": number_of_visits_arrow,
+        "indexed": number_of_visits_indexed_arrow,
+        "format_values": _arrow_result_values,
+    },
+    numpy_ops={
+        "presorted": number_of_visits_numpy,
+        "indexed": number_of_visits_indexed_numpy,
+        "format_values": lambda values: values,
+    },
+)
 
 
 def number_of_visits(
@@ -109,18 +119,11 @@ def number_of_visits(
         nw.col(lng_col).cast(nw.Float64),
     )
 
+    ops = _DISPATCHER.get_ops(df)
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
-        counts = _dispatch_kernel(
-            number_of_visits_numpy,
-            number_of_visits_arrow,
-            [],
-            len(df),
-            ranges,
-            use_arrow=use_arrow,
-        )
+        counts = ops["format_values"](ops["presorted"](len(df), ends))
         if uid_col is None:
             return _to_native({"number_of_visits": counts}, df)
         return _to_native({uid_col: uid_values, "number_of_visits": counts}, df)
@@ -129,16 +132,7 @@ def number_of_visits(
         ~df.get_column(lat_col).is_null() & ~df.get_column(lng_col).is_null()
     ).to_numpy()
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
-    counts = _dispatch_kernel(
-        number_of_visits_indexed_numpy,
-        number_of_visits_indexed_arrow,
-        [],
-        len(df),
-        indices,
-        ends,
-        valid_mask,
-        use_arrow=use_arrow,
-    )
+    counts = ops["format_values"](ops["indexed"](len(df), indices, ends, valid_mask))
 
     if uid_col is None:
         return _to_native({"number_of_visits": counts}, df)

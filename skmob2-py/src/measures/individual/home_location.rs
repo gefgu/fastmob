@@ -3,7 +3,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use skmob2_core::measures::individual::home_location::{
-    home_location_impl, home_location_indexed_impl,
+    home_location_from_ends_impl, home_location_indexed_impl,
 };
 
 use crate::utils::{
@@ -19,15 +19,15 @@ pub fn home_location_numpy<'py>(
     latitudes: PyReadonlyArray1<'py, f64>,
     longitudes: PyReadonlyArray1<'py, f64>,
     hours: PyReadonlyArray1<'py, f64>,
-    ranges: Vec<(usize, usize)>,
+    ends: PyReadonlyArray1<'py, usize>,
     start_night: f64,
     end_night: f64,
 ) -> PyResult<PyHomeResults<'py>> {
-    let (home_lats, home_lngs) = home_location_impl(
+    let (home_lats, home_lngs) = home_location_from_ends_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
         hours.as_slice()?,
-        &ranges,
+        ends.as_slice()?,
         start_night,
         end_night,
     )
@@ -67,18 +67,18 @@ pub fn home_location_arrow(
     latitudes: PyArray,
     longitudes: PyArray,
     hours: PyArray,
-    ranges: Vec<(usize, usize)>,
+    ends: PyReadonlyArray1<usize>,
     start_night: f64,
     end_night: f64,
 ) -> PyResult<(PyArray, PyArray)> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
     let hours = as_f64_array(hours, "hours")?;
-    let (home_lats, home_lngs) = home_location_impl(
+    let (home_lats, home_lngs) = home_location_from_ends_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
         arrow_values(&hours),
-        &ranges,
+        ends.as_slice()?,
         start_night,
         end_night,
     )

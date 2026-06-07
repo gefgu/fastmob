@@ -2,7 +2,7 @@ use geo::{Distance, Haversine, Point};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
-use crate::utils::{validate_coord_ranges, validate_indexed_coord_ends};
+use crate::utils::{validate_coord_ends, validate_coord_ranges, validate_indexed_coord_ends};
 
 type LocationKey = (u64, u64);
 type LocationStats = (f64, f64, u64, f64, usize);
@@ -168,6 +168,66 @@ pub fn k_radius_of_gyration_impl(
     Ok(ranges
         .par_iter()
         .map(|&(start, end)| {
+            let mut stats: FxHashMap<LocationKey, LocationStats> = FxHashMap::default();
+            for idx in start..end {
+                let lat = latitudes[idx];
+                let lng = longitudes[idx];
+                let entry = stats.entry((lat.to_bits(), lng.to_bits())).or_insert((
+                    lat,
+                    lng,
+                    0,
+                    timestamps[idx],
+                    idx,
+                ));
+                entry.2 += 1;
+                if timestamps[idx].total_cmp(&entry.3).is_lt()
+                    || (timestamps[idx].total_cmp(&entry.3).is_eq() && idx < entry.4)
+                {
+                    entry.3 = timestamps[idx];
+                    entry.4 = idx;
+                }
+            }
+
+            let mut locations: Vec<LocationStats> = stats.into_values().collect();
+            locations.sort_by(|left, right| {
+                right
+                    .2
+                    .cmp(&left.2)
+                    .then(left.3.total_cmp(&right.3))
+                    .then(left.4.cmp(&right.4))
+            });
+
+            let top_len = k.min(locations.len());
+            let coords: Vec<(f64, f64)> = locations[..top_len]
+                .iter()
+                .map(|&(lat, lng, _, _, _)| (lat, lng))
+                .collect();
+            let counts: Vec<u64> = locations[..top_len]
+                .iter()
+                .map(|&(_, _, count, _, _)| count)
+                .collect();
+            k_radius_for_weighted_locations(&coords, &counts, k)
+        })
+        .collect())
+}
+
+pub fn k_radius_of_gyration_from_ends_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    timestamps: &[f64],
+    ends: &[usize],
+    k: usize,
+) -> Result<Vec<f64>, String> {
+    validate_coord_ends(latitudes, longitudes, ends)?;
+    if timestamps.len() != latitudes.len() {
+        return Err("timestamps, latitudes, and longitudes must have the same length".to_string());
+    }
+
+    Ok((0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
             let mut stats: FxHashMap<LocationKey, LocationStats> = FxHashMap::default();
             for idx in start..end {
                 let lat = latitudes[idx];

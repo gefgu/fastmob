@@ -19,7 +19,6 @@ from .._common import (
     _build_presorted_user_ends,
     _extract_timestamps_ms,
     _detect_trajectory_columns,
-    _ranges_from_ends,
     _to_native,
 )
 
@@ -153,8 +152,7 @@ def k_radius_of_gyration(
 
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
-        krg_values = ops["format_values"](ops["sorted"](lats, lngs, timestamps_data, ranges, k))
+        krg_values = ops["format_values"](ops["sorted"](lats, lngs, timestamps_data, ends, k))
         if uid_col is None:
             return _to_native({"k_radius_of_gyration": krg_values}, df)
         return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)

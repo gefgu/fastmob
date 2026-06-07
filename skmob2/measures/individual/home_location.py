@@ -13,16 +13,32 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
+    _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
-    _dispatch_pair_kernel,
     _extract_hours,
     _detect_trajectory_columns,
-    _ranges_from_ends,
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+
+def _format_arrow_pair(values: tuple[Any, Any]) -> tuple[Any, Any]:
+    first, second = values
+    return _arrow_result_values(first), _arrow_result_values(second)
+
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "presorted": home_location_arrow,
+        "indexed": home_location_indexed_arrow,
+        "format_pair": _format_arrow_pair,
+    },
+    numpy_ops={
+        "presorted": home_location_numpy,
+        "indexed": home_location_indexed_numpy,
+        "format_pair": lambda values: values,
+    },
+)
 
 
 def home_location(
@@ -126,18 +142,22 @@ def home_location(
     )
 
     df, hours = _extract_hours(df, datetime_col)
+    ops = _DISPATCHER.get_ops(df)
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    hours_data = ops["extract_data"](hours)
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
-        home_lats, home_lngs = _dispatch_pair_kernel(
-            home_location_numpy,
-            home_location_arrow,
-            [df.get_column(lat_col), df.get_column(lng_col), hours],
-            ranges,
-            float(start_night),
-            float(end_night),
-            use_arrow=use_arrow,
+        home_lats, home_lngs = ops["format_pair"](
+            ops["presorted"](
+                lats_data,
+                lngs_data,
+                hours_data,
+                ends,
+                float(start_night),
+                float(end_night),
+            )
         )
         if uid_col is None:
             return _to_native({lat_col: home_lats, lng_col: home_lngs}, df)
@@ -145,15 +165,16 @@ def home_location(
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
-    home_lats, home_lngs = _dispatch_pair_kernel(
-        home_location_indexed_numpy,
-        home_location_indexed_arrow,
-        [df.get_column(lat_col), df.get_column(lng_col), hours],
-        indices,
-        ends,
-        float(start_night),
-        float(end_night),
-        use_arrow=use_arrow,
+    home_lats, home_lngs = ops["format_pair"](
+        ops["indexed"](
+            lats_data,
+            lngs_data,
+            hours_data,
+            indices,
+            ends,
+            float(start_night),
+            float(end_night),
+        )
     )
 
     if uid_col is None:

@@ -17,11 +17,11 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
+    _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
     _extract_hours,
     _detect_trajectory_columns,
-    _ranges_from_ends,
     _to_native,
 )
 
@@ -31,12 +31,14 @@ _DISPATCHER = TrajectoryDispatcher(
         "home_indexed": home_location_indexed_arrow,
         "max_dist": max_distance_from_point_arrow,
         "max_dist_indexed": max_distance_from_point_indexed_arrow,
+        "format_values": _arrow_result_values,
     },
     numpy_ops={
         "home": home_location_numpy,
         "home_indexed": home_location_indexed_numpy,
         "max_dist": max_distance_from_point_numpy,
         "max_dist_indexed": max_distance_from_point_indexed_numpy,
+        "format_values": lambda values: values,
     },
 )
 
@@ -151,11 +153,8 @@ def max_distance_from_home(
     hours_data = ops["extract_data"](hours)
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
-        home_lats, home_lngs = ops["home"](lats_data, lngs_data, hours_data, ranges, float(start_night), float(end_night))
-        max_distances = ops["max_dist"](home_lats, home_lngs, lats_data, lngs_data, ranges)
-        if hasattr(max_distances, "to_pyarrow"):
-            max_distances = max_distances.to_pyarrow()
+        home_lats, home_lngs = ops["home"](lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night))
+        max_distances = ops["format_values"](ops["max_dist"](home_lats, home_lngs, lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)
@@ -163,9 +162,7 @@ def max_distance_from_home(
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
 
     home_lats, home_lngs = ops["home_indexed"](lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night))
-    max_distances = ops["max_dist_indexed"](home_lats, home_lngs, lats_data, lngs_data, indices, ends)
-    if hasattr(max_distances, "to_pyarrow"):
-        max_distances = max_distances.to_pyarrow()
+    max_distances = ops["format_values"](ops["max_dist_indexed"](home_lats, home_lngs, lats_data, lngs_data, indices, ends))
 
     if uid_col is None:
         return _to_native({"max_distance_from_home": max_distances}, df)
