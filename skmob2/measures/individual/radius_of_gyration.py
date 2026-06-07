@@ -17,8 +17,9 @@ from skmob2.core.dispatch import TrajectoryDispatcher
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _detect_trajectory_columns,
+    _ranges_from_ends,
     _result_scalar,
     _to_native,
 )
@@ -165,11 +166,8 @@ def radius_of_gyration(
         )
 
     if sorted:
-        if uid_col is None:
-            uid_values = None
-            ranges = [(0, len(df))]
-        else:
-            uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        ranges = _ranges_from_ends(ends)
         lats_data = ops["extract_data"](df.get_column(lat_col))
         lngs_data = ops["extract_data"](df.get_column(lng_col))
         raw_values, raw_counts = ops["rog_sorted"](lats_data, lngs_data, ranges)

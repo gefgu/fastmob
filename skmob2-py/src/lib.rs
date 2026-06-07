@@ -42,6 +42,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        measures::individual::jump_lengths_numpy::jump_lengths_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        measures::individual::jump_lengths_arrow::jump_lengths_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         measures::individual::jump_lengths_numpy::jump_lengths_non_ordered_numpy,
         m
     )?)?;

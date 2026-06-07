@@ -69,6 +69,44 @@ def test_benchmark_metric_records_import_skip():
     assert result["times_seconds"] == []
 
 
+def test_clean_sorted_trajectory_input_pandas_drops_nulls_and_nans():
+    pd = pytest.importorskip("pandas")
+    df = pd.DataFrame(
+        {
+            "user": [1, 1, None, 2, 2],
+            "check-in_time": pd.to_datetime(["2020-01-01", None, "2020-01-03", "2020-01-04", "2020-01-05"]),
+            "latitude": [0.0, 1.0, 2.0, float("nan"), 4.0],
+            "longitude": [0.0, 1.0, 2.0, 3.0, float("nan")],
+            "location id": ["a", "b", "c", "d", "e"],
+        }
+    )
+
+    cleaned = suite.clean_sorted_trajectory_input(df, backend="pandas")
+
+    assert len(cleaned) == 1
+    assert cleaned.iloc[0]["user"] == 1
+    assert cleaned.index.tolist() == [0]
+
+
+def test_clean_sorted_trajectory_input_polars_drops_nulls_and_nans():
+    pl = pytest.importorskip("polars")
+    df = pl.DataFrame(
+        {
+            "user": [1, 1, None, 2, 2],
+            "check-in_time": [None, "2020-01-02", "2020-01-03", "2020-01-04", "2020-01-05"],
+            "latitude": [0.0, 1.0, 2.0, float("nan"), 4.0],
+            "longitude": [0.0, 1.0, 2.0, 3.0, float("nan")],
+            "location id": ["a", "b", "c", "d", "e"],
+        }
+    )
+
+    cleaned = suite.clean_sorted_trajectory_input(df, backend="polars")
+
+    assert cleaned.height == 1
+    assert cleaned["user"].to_list() == [1]
+    assert cleaned["latitude"].to_list() == [1.0]
+
+
 def test_real_entropy_opt_in_suite_uses_expensive_registry(monkeypatch, tmp_path: Path):
     pd = pytest.importorskip("pandas")
     tiny = pd.DataFrame(

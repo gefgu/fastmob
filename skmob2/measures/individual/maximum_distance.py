@@ -15,11 +15,13 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
     _dispatch_kernel,
     _extract_timestamps_ms,
     _detect_trajectory_columns,
+    _ranges_from_ends,
+    _starts_from_ends,
     _to_native,
 )
 
@@ -120,7 +122,8 @@ def maximum_distance(
 
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
-        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        ranges = _ranges_from_ends(ends)
         max_distances = _dispatch_kernel(
             maximum_distance_numpy,
             maximum_distance_arrow,
@@ -134,7 +137,8 @@ def maximum_distance(
             return _to_native({"maximum_distance": max_distances}, df)
 
         max_distances = np.asarray(max_distances, dtype=float)
-        short_mask = np.fromiter((end - start < 2 for start, end in ranges), dtype=bool, count=len(ranges))
+        starts = _starts_from_ends(ends)
+        short_mask = np.asarray(ends - starts < 2, dtype=bool)
         max_distances[short_mask] = math.nan
         return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)
 

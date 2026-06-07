@@ -18,10 +18,11 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
     _extract_timestamps_s,
     _detect_trajectory_columns,
+    _ranges_from_ends,
     _to_native,
 )
 
@@ -171,7 +172,8 @@ def waiting_times(
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps_s)
     if sorted:
-        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        ranges = _ranges_from_ends(ends)
         wt_values = _route_presorted_waiting_times(ops, timestamps_data, ranges, merge=merge)
         if merge:
             return wt_values

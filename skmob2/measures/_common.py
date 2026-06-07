@@ -206,6 +206,13 @@ def _starts_from_ends(ends: Any) -> np.ndarray:
     return starts
 
 
+def _ranges_from_ends(ends: Any) -> list[tuple[int, int]]:
+    """Convert cumulative end boundaries to Python half-open ranges."""
+    starts = _starts_from_ends(ends)
+    ends = np.asarray(ends, dtype=np.uintp)
+    return list(zip(starts.tolist(), ends.tolist()))
+
+
 def _arrow_result_values(values: Any) -> Any:
     """Return a PyArrow value object when a pyo3-arrow wrapper is returned."""
     if hasattr(values, "to_pyarrow"):
@@ -637,27 +644,45 @@ def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, lis
     return uid_values, ranges
 
 
-def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
-    """Build contiguous user ranges for data already grouped by user."""
+def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, np.ndarray]:
+    """Build contiguous user group end indices for data already grouped by user."""
+    n = len(df)
     if uid_col is None:
-        return None, [(0, len(df))]
+        return None, np.array([n], dtype=np.uintp)
 
     if _is_pandas_backed(df):
         native = df.to_native()
-        n = len(native)
         if n == 0:
-            return [], []
+            return [], np.array([], dtype=np.uintp)
 
         uid_series = native[uid_col]
         boundaries = uid_series.ne(uid_series.shift(1)).fillna(True).to_numpy(dtype=bool, copy=False)
         starts_array = np.flatnonzero(boundaries)
-        starts = starts_array.tolist()
-        ends = starts[1:] + [n]
+        ends = np.empty(len(starts_array), dtype=np.uintp)
+        if len(starts_array) > 1:
+            ends[:-1] = starts_array[1:]
+        ends[-1] = n
         uid_values = uid_series.iloc[starts_array].tolist()
-        return uid_values, list(zip(starts, ends))
+        return uid_values, ends
 
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    return uid_values, ranges
+    if n == 0:
+        return [], np.array([], dtype=np.uintp)
+
+    starts_df = (
+        df.select([uid_col])
+        .with_row_index(_USER_RANGE_START_COL)
+        .filter((nw.col(uid_col) != nw.col(uid_col).shift(1)).fill_null(True))
+    )
+    starts = starts_df.get_column(_USER_RANGE_START_COL).to_list()
+    uid_values = starts_df.get_column(uid_col).to_list()
+    ends = np.asarray(starts[1:] + [n], dtype=np.uintp)
+    return uid_values, ends
+
+
+def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
+    """Build contiguous user ranges for data already grouped by user."""
+    uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    return uid_values, _ranges_from_ends(ends)
 
 
 def _build_indexed_user_ranges(
@@ -751,25 +776,3 @@ def _grouped_arrow_values(
     offsets[:-1] = starts
     offsets[-1] = ends[-1] if len(ends) else 0
     return pa.ListArray.from_arrays(offsets, _arrow_flat_result_values(values))
-
-
-def _take_numpy_coords(
-    lats: nw.Series,
-    lngs: nw.Series,
-    indices: np.ndarray,
-) -> tuple[Any, Any]:
-    """Index into lat/lng Narwhals series using a NumPy index array."""
-    arr = lats.to_numpy()
-    return arr[indices], lngs.to_numpy()[indices]
-
-
-def _take_arrow_coords(
-    lats: nw.Series,
-    lngs: nw.Series,
-    indices: np.ndarray,
-) -> tuple[Any, Any]:
-    """Index into lat/lng Narwhals series using a PyArrow take operation."""
-    import pyarrow as pa
-
-    take_idx = pa.array(indices.astype(np.int64, copy=False))
-    return lats.to_arrow().take(take_idx), lngs.to_arrow().take(take_idx)

@@ -14,10 +14,11 @@ from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _build_indexed_user_ranges_fast,
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _dispatch_pair_kernel,
     _extract_hours,
     _detect_trajectory_columns,
+    _ranges_from_ends,
     _to_native,
 )
 
@@ -127,7 +128,8 @@ def home_location(
     df, hours = _extract_hours(df, datetime_col)
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
-        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        ranges = _ranges_from_ends(ends)
         home_lats, home_lngs = _dispatch_pair_kernel(
             home_location_numpy,
             home_location_arrow,

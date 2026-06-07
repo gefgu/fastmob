@@ -1,9 +1,10 @@
-use numpy::IntoPyArray;
+use numpy::{IntoPyArray, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use skmob2_core::measures::individual::jump_lengths::{
-    jump_lengths_presorted_impl, time_ordered_flat_values_impl, validate_time_ordered_inputs,
+    jump_lengths_indexed_impl, jump_lengths_presorted_impl, time_ordered_flat_values_impl,
+    validate_time_ordered_inputs,
 };
 
 use crate::utils::{
@@ -55,13 +56,48 @@ pub fn jump_lengths_presorted_arrow<'py>(
     py: Python<'py>,
     latitudes: PyArray,
     longitudes: PyArray,
-    ranges: Vec<(usize, usize)>,
+    ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<PyPresortedJumpLengthsArrow<'py>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let (starts, ends, values) =
-        jump_lengths_presorted_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)
-            .map_err(PyValueError::new_err)?;
+    let (starts, ends, values) = jump_lengths_presorted_impl(
+        arrow_values(&latitudes),
+        arrow_values(&longitudes),
+        ends.as_slice()?,
+    )
+    .map_err(PyValueError::new_err)?;
+    Ok((
+        starts.into_pyarray(py),
+        ends.into_pyarray(py),
+        f64_results_into_arrow(values),
+    ))
+}
+
+#[pyfunction]
+pub fn jump_lengths_indexed_arrow<'py>(
+    py: Python<'py>,
+    latitudes: PyArray,
+    longitudes: PyArray,
+    indices: PyReadonlyArray1<'py, usize>,
+    ends: PyReadonlyArray1<'py, usize>,
+) -> PyResult<PyPresortedJumpLengthsArrow<'py>> {
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    if latitudes.len() != longitudes.len() {
+        return Err(PyValueError::new_err(
+            "latitudes and longitudes must have the same length",
+        ));
+    }
+
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
+    let (starts, ends, values) = jump_lengths_indexed_impl(
+        arrow_values(&latitudes),
+        arrow_values(&longitudes),
+        indices.as_slice()?,
+        ends.as_slice()?,
+        valid_rows.as_deref(),
+    )
+    .map_err(PyValueError::new_err)?;
     Ok((
         starts.into_pyarray(py),
         ends.into_pyarray(py),

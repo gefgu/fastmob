@@ -9,7 +9,12 @@ EXPENSIVE_INDIVIDUAL_METRICS = _base.EXPENSIVE_INDIVIDUAL_METRICS
 
 
 def parse_args(argv: list[str] | None = None):
-    args = _base.parse_args(argv)
+    old_metrics = _base.INDIVIDUAL_METRICS
+    try:
+        _base.INDIVIDUAL_METRICS = EXPENSIVE_INDIVIDUAL_METRICS
+        args = _base.parse_args(argv)
+    finally:
+        _base.INDIVIDUAL_METRICS = old_metrics
     args.expensive_metric = "real_entropy"
     return args
 

@@ -2,7 +2,10 @@ use rayon::prelude::*;
 
 use crate::measures::individual::time_ordering::IndexRanges;
 use crate::utils::haversine::{adjacent_haversine_distances_into_km, haversine_km};
-use crate::utils::{validate_coord_ranges, validate_indexed_coord_ranges};
+use crate::utils::{
+    ranges_from_ends, validate_coord_ranges, validate_indexed_coord_ends,
+    validate_indexed_coord_ranges,
+};
 
 type JumpLengthsPresortedResult = Result<(Vec<usize>, Vec<usize>, Vec<f64>), String>;
 
@@ -98,14 +101,15 @@ fn jump_offsets_for_ranges(ranges: &[(usize, usize)]) -> (Vec<usize>, Vec<usize>
 pub fn jump_lengths_presorted_impl(
     latitudes: &[f64],
     longitudes: &[f64],
-    ranges: &[(usize, usize)],
+    ends: &[usize],
 ) -> JumpLengthsPresortedResult {
-    validate_coord_ranges(latitudes, longitudes, ranges)?;
-    let (starts, ends) = jump_offsets_for_ranges(ranges);
-    let mut values = vec![0.0; ends.last().copied().unwrap_or(0)];
+    let ranges = ranges_from_ends(ends)?;
+    validate_coord_ranges(latitudes, longitudes, &ranges)?;
+    let (value_starts, value_ends) = jump_offsets_for_ranges(&ranges);
+    let mut values = vec![0.0; value_ends.last().copied().unwrap_or(0)];
     let mut rest = values.as_mut_slice();
     let mut chunks = Vec::with_capacity(ranges.len());
-    for (&start, &end) in starts.iter().zip(&ends) {
+    for (&start, &end) in value_starts.iter().zip(&value_ends) {
         let len = end - start;
         let (chunk, next) = rest.split_at_mut(len);
         chunks.push(chunk);
@@ -118,7 +122,43 @@ pub fn jump_lengths_presorted_impl(
         .for_each(|(chunk, &(start, end))| {
             write_jump_lengths_presorted_range(latitudes, longitudes, start, end, chunk);
         });
-    Ok((starts, ends, values))
+    Ok((value_starts, value_ends, values))
+}
+
+pub fn jump_lengths_indexed_impl(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    indices: &[usize],
+    ends: &[usize],
+    valid_rows: Option<&[bool]>,
+) -> JumpLengthsPresortedResult {
+    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
+    if let Some(valid_rows) = valid_rows {
+        if valid_rows.len() != latitudes.len() {
+            return Err("valid_rows and coordinates must have the same length".to_string());
+        }
+    }
+
+    let grouped_values: Vec<Vec<f64>> = (0..ends.len())
+        .into_par_iter()
+        .map(|i| {
+            let start = if i == 0 { 0 } else { ends[i - 1] };
+            let end = ends[i];
+            jump_lengths_for_indexed_range(latitudes, longitudes, indices, start, end, valid_rows)
+        })
+        .collect();
+
+    let mut value_starts = Vec::with_capacity(grouped_values.len());
+    let mut value_ends = Vec::with_capacity(grouped_values.len());
+    let total_len: usize = grouped_values.iter().map(Vec::len).sum();
+    let mut values = Vec::with_capacity(total_len);
+    for mut group in grouped_values {
+        value_starts.push(values.len());
+        values.append(&mut group);
+        value_ends.push(values.len());
+    }
+
+    Ok((value_starts, value_ends, values))
 }
 
 pub fn jump_lengths_indexed_flat_impl(

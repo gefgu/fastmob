@@ -13,7 +13,7 @@
     "iterations": 5,
     "library": "skmob2",
     "metrics": [
-      "k_radius_of_gyration"
+      "jump_lengths"
     ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
@@ -26,7 +26,7 @@
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "individual",
-    "timestamp_utc": "2026-06-06T20:50:23.178515+00:00",
+    "timestamp_utc": "2026-06-07T12:07:58.526140+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -1219,16 +1219,16 @@
           ]
         },
         "jump_lengths": {
-          "average_seconds": 0.4765579801052809,
+          "average_seconds": 0.4015248557552695,
           "iterations_completed": 5,
-          "minimum_seconds": 0.4517259788699448,
+          "minimum_seconds": 0.3900875011458993,
           "status": "ok",
           "times_seconds": [
-            0.49515739269554615,
-            0.45452017011120915,
-            0.4517259788699448,
-            0.49069156497716904,
-            0.49069479387253523
+            0.41458410397171974,
+            0.4087323029525578,
+            0.3971993075683713,
+            0.3970210631377995,
+            0.3900875011458993
           ]
         },
         "k_radius_of_gyration": {
@@ -1336,16 +1336,29 @@
           ]
         },
         "random_entropy": {
-          "average_seconds": 1.998401667550206,
+          "average_seconds": 0.09938074294477701,
           "iterations_completed": 5,
-          "minimum_seconds": 1.974570486228913,
+          "minimum_seconds": 0.06932438630610704,
           "status": "ok",
           "times_seconds": [
-            2.023875982966274,
-            1.982365382835269,
-            1.974570486228913,
-            2.0347670898772776,
-            1.9764293958432972
+            0.10852979496121407,
+            0.10153370257467031,
+            0.10851709684357047,
+            0.10899873403832316,
+            0.06932438630610704
+          ]
+        },
+        "real_entropy": {
+          "average_seconds": 9.304022871702909,
+          "iterations_completed": 5,
+          "minimum_seconds": 8.02035172097385,
+          "status": "ok",
+          "times_seconds": [
+            8.02035172097385,
+            9.55662558786571,
+            9.681726281996816,
+            9.65969958063215,
+            9.601711187046021
           ]
         },
         "recency_rank": {
@@ -1391,16 +1404,16 @@
           "times_seconds": []
         },
         "uncorrelated_entropy": {
-          "average_seconds": 1.6700095685198904,
+          "average_seconds": 0.07285335045307875,
           "iterations_completed": 5,
-          "minimum_seconds": 1.6410912270657718,
+          "minimum_seconds": 0.06282158941030502,
           "status": "ok",
           "times_seconds": [
-            1.6421194109134376,
-            1.6848763567395508,
-            1.696417239960283,
-            1.6855436079204082,
-            1.6410912270657718
+            0.06586469290778041,
+            0.06636044289916754,
+            0.06282158941030502,
+            0.06610023695975542,
+            0.10311979008838534
           ]
         },
         "waiting_times": {

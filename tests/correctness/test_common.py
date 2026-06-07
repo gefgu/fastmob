@@ -383,6 +383,58 @@ class TestBuildUserRanges:
 
 
 # ---------------------------------------------------------------------------
+# _build_presorted_user_ends
+# ---------------------------------------------------------------------------
+
+
+class TestBuildPresortedUserEnds:
+    def test_builds_ends_from_pandas_contiguous_uid_groups(self):
+        import narwhals as nw
+        from skmob2.measures._common import _build_presorted_user_ends
+
+        df = nw.from_native(pd.DataFrame({"uid": ["a", "a", "b", "b", "b", "c"]}), eager_only=True)
+
+        uid_values, ends = _build_presorted_user_ends(df, "uid")
+
+        assert uid_values == ["a", "b", "c"]
+        assert ends.tolist() == [2, 5, 6]
+
+    def test_builds_empty_ends_for_empty_uid_dataframe(self):
+        import narwhals as nw
+        from skmob2.measures._common import _build_presorted_user_ends
+
+        df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
+
+        uid_values, ends = _build_presorted_user_ends(df, "uid")
+
+        assert uid_values == []
+        assert ends.tolist() == []
+
+    def test_builds_single_end_without_uid_column(self):
+        import narwhals as nw
+        from skmob2.measures._common import _build_presorted_user_ends
+
+        df = nw.from_native(pd.DataFrame({"lat": [1.0, 2.0, 3.0]}), eager_only=True)
+
+        uid_values, ends = _build_presorted_user_ends(df, None)
+
+        assert uid_values is None
+        assert ends.tolist() == [3]
+
+    def test_builds_ends_from_polars_contiguous_uid_groups(self):
+        pl = pytest.importorskip("polars", reason="Polars not installed")
+        import narwhals as nw
+        from skmob2.measures._common import _build_presorted_user_ends
+
+        df = nw.from_native(pl.DataFrame({"uid": ["a", "a", "b", "b", "c"]}), eager_only=True)
+
+        uid_values, ends = _build_presorted_user_ends(df, "uid")
+
+        assert uid_values == ["a", "b", "c"]
+        assert ends.tolist() == [2, 4, 5]
+
+
+# ---------------------------------------------------------------------------
 # _shannon_entropy
 # ---------------------------------------------------------------------------
 

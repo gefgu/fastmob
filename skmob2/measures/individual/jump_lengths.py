@@ -4,6 +4,8 @@ from typing import Any
 
 import narwhals as nw
 from skmob2._core import (
+    jump_lengths_indexed_arrow,
+    jump_lengths_indexed_numpy,
     jump_lengths_presorted_arrow,
     jump_lengths_presorted_numpy,
 )
@@ -11,31 +13,27 @@ from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_flat_result_values,
-    _as_index_array,
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
     _grouped_arrow_values,
     _grouped_numpy_values,
-    _starts_from_ends,
-    _take_arrow_coords,
-    _take_numpy_coords,
     _to_native,
 )
 
 _DISPATCHER = TrajectoryDispatcher(
     arrow_ops={
+        "indexed": jump_lengths_indexed_arrow,
         "presorted": jump_lengths_presorted_arrow,
         "flat_values": _arrow_flat_result_values,
         "group": _grouped_arrow_values,
-        "take_coords": _take_arrow_coords,
     },
     numpy_ops={
+        "indexed": jump_lengths_indexed_numpy,
         "presorted": jump_lengths_presorted_numpy,
         "flat_values": lambda v: v,
         "group": _grouped_numpy_values,
-        "take_coords": _take_numpy_coords,
     },
 )
 
@@ -139,30 +137,27 @@ def jump_lengths(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = df.with_columns(
-        nw.col(lat_col).cast(nw.Float64),
-        nw.col(lng_col).cast(nw.Float64),
-    )
+    schema = df.schema
+    if schema[lat_col] != nw.Float64 or schema[lng_col] != nw.Float64:
+        df = df.with_columns(
+            nw.col(lat_col).cast(nw.Float64),
+            nw.col(lng_col).cast(nw.Float64),
+        )
 
     ops = _DISPATCHER.get_ops(df)
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
-    lats_full = df.get_column(lat_col)
-    lngs_full = df.get_column(lng_col)
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
 
     if sorted:
-        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
-        lats_data = ops["extract_data"](lats_full)
-        lngs_data = ops["extract_data"](lngs_full)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        v_starts, v_ends, flat_values = ops["presorted"](lats_data, lngs_data, ends)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
         uid_values, indices, ends = _build_time_ordered_user_ranges(
             df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
         )
-        indices = _as_index_array(indices)
-        lats_data, lngs_data = ops["take_coords"](lats_full, lngs_full, indices)
-        ranges = list(zip(_starts_from_ends(ends).tolist(), ends.tolist()))
-
-    v_starts, v_ends, flat_values = ops["presorted"](lats_data, lngs_data, ranges)
+        v_starts, v_ends, flat_values = ops["indexed"](lats_data, lngs_data, indices, ends)
     flat_values = ops["flat_values"](flat_values)
 
     if merge:

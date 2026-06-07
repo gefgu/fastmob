@@ -13,11 +13,12 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
     _dispatch_kernel,
     _extract_timestamps_ms,
     _detect_trajectory_columns,
+    _ranges_from_ends,
     _to_native,
 )
 
@@ -118,7 +119,8 @@ def distance_straight_line(
 
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
-        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        ranges = _ranges_from_ends(ends)
         distances = _dispatch_kernel(
             total_distance_numpy,
             total_distance_arrow,

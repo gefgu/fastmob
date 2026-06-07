@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "backend": "polars",
+    "case_timeout_seconds": null,
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/individual_loc-brightkite_totalCheckins.txt.gz_polars_sorted.parquet",
+    "input_cache_status": "reused_cleaned",
+    "input_order": "sorted",
+    "input_type": "polars.DataFrame",
+    "iterations": 5,
+    "library": "skmob2",
+    "metrics": [
+      "jump_lengths"
+    ],
+    "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "retries": 0,
+    "sizes": [
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "individual",
+    "timestamp_utc": "2026-06-07T12:06:19.442114+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "label": "4M",
+      "metrics": {
+        "jump_lengths": {
+          "average_seconds": 0.04621911980211735,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.03867394616827369,
+          "status": "ok",
+          "times_seconds": [
+            0.07213082863017917,
+            0.03966490179300308,
+            0.040205240715295076,
+            0.03867394616827369,
+            0.040420681703835726
+          ]
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}

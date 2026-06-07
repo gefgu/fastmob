@@ -18,9 +18,10 @@ from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _build_indexed_user_ranges_fast,
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _extract_hours,
     _detect_trajectory_columns,
+    _ranges_from_ends,
     _to_native,
 )
 
@@ -149,7 +150,8 @@ def max_distance_from_home(
     lngs_data = ops["extract_data"](lngs)
     hours_data = ops["extract_data"](hours)
     if sorted:
-        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        ranges = _ranges_from_ends(ends)
         home_lats, home_lngs = ops["home"](lats_data, lngs_data, hours_data, ranges, float(start_night), float(end_night))
         max_distances = ops["max_dist"](home_lats, home_lngs, lats_data, lngs_data, ranges)
         if hasattr(max_distances, "to_pyarrow"):

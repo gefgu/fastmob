@@ -414,9 +414,10 @@ def test_jump_lengths_presorted_numpy_helper_groups_by_ranges():
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
     ranges = [(0, 3), (3, 5)]
+    ends = np.array([3, 5], dtype=np.uintp)
 
-    starts, ends, values = jump_lengths_presorted_numpy(lats, lngs, ranges)
-    grouped = _grouped_from_offsets(starts, ends, values)
+    value_starts, value_ends, values = jump_lengths_presorted_numpy(lats, lngs, ends)
+    grouped = _grouped_from_offsets(value_starts, value_ends, values)
     expected = [jump_lengths_km(lats[start:end].tolist(), lngs[start:end].tolist()) for start, end in ranges]
 
     assert len(grouped) == 2
@@ -435,12 +436,12 @@ def test_jump_lengths_presorted_arrow_helper_matches_numpy_helper():
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
-    ranges = [(0, 3), (3, 5)]
+    ends = np.array([3, 5], dtype=np.uintp)
 
     arrow_starts, arrow_ends, arrow_values = jump_lengths_presorted_arrow(
-        pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ranges
+        pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends
     )
-    numpy_starts, numpy_ends, numpy_values = jump_lengths_presorted_numpy(lats, lngs, ranges)
+    numpy_starts, numpy_ends, numpy_values = jump_lengths_presorted_numpy(lats, lngs, ends)
     result_arrow = _grouped_from_offsets(arrow_starts, arrow_ends, _arrow_to_numpy(arrow_values))
     result_numpy = _grouped_from_offsets(numpy_starts, numpy_ends, numpy_values)
 
@@ -537,15 +538,115 @@ def test_jump_lengths_non_ordered_arrow_helper_flat_values_accepts_uint64_uid_co
     np.testing.assert_allclose(_arrow_to_numpy(values), expected, rtol=0.0, atol=1e-12)
 
 
+def test_jump_lengths_indexed_numpy_helper_groups_by_offsets():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_indexed_numpy, jump_lengths_km
+
+    lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
+    lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
+    indices = np.array([3, 4, 1, 2, 5, 0], dtype=np.uintp)
+    ends = np.array([3, 6], dtype=np.uintp)
+
+    starts, value_ends, values = jump_lengths_indexed_numpy(lats, lngs, indices, ends)
+
+    assert starts.tolist() == [0, 2]
+    assert value_ends.tolist() == [2, 4]
+    grouped = _grouped_from_offsets(starts, value_ends, values)
+    expected = [
+        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
+        jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]),
+    ]
+    for actual, expected_values in zip(grouped, expected):
+        np.testing.assert_allclose(actual, expected_values, rtol=0.0, atol=1e-12)
+
+
+def test_jump_lengths_indexed_arrow_helper_matches_numpy_helper():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import jump_lengths_indexed_arrow, jump_lengths_indexed_numpy
+
+    lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
+    lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
+    indices = np.array([3, 4, 1, 2, 5, 0], dtype=np.uintp)
+    ends = np.array([3, 6], dtype=np.uintp)
+
+    arrow_starts, arrow_ends, arrow_values = jump_lengths_indexed_arrow(
+        pa.array(lats), pa.array(lngs), indices, ends
+    )
+    numpy_starts, numpy_ends, numpy_values = jump_lengths_indexed_numpy(lats, lngs, indices, ends)
+
+    np.testing.assert_array_equal(arrow_starts, numpy_starts)
+    np.testing.assert_array_equal(arrow_ends, numpy_ends)
+    np.testing.assert_allclose(_arrow_to_numpy(arrow_values), numpy_values, rtol=0.0, atol=1e-12)
+
+
+def test_jump_lengths_indexed_numpy_helper_handles_empty_and_single_point_groups():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_indexed_numpy
+
+    lats = np.array([0.0, 1.0, 2.0], dtype=np.float64)
+    lngs = np.array([0.0, 1.0, 2.0], dtype=np.float64)
+    indices = np.array([0, 1, 2], dtype=np.uintp)
+    ends = np.array([0, 1, 3], dtype=np.uintp)
+
+    starts, value_ends, values = jump_lengths_indexed_numpy(lats, lngs, indices, ends)
+
+    assert starts.tolist() == [0, 0, 0]
+    assert value_ends.tolist() == [0, 0, 1]
+    assert len(values) == 1
+
+
+def test_jump_lengths_indexed_arrow_helper_filters_null_and_non_finite_coords():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import jump_lengths_indexed_arrow, jump_lengths_km
+
+    lats = pa.array([0.0, None, 0.0, float("nan"), 0.0])
+    lngs = pa.array([0.0, 5.0, 1.0, 7.0, 3.0])
+    indices = np.array([0, 1, 2, 3, 4], dtype=np.uintp)
+    ends = np.array([5], dtype=np.uintp)
+
+    starts, value_ends, values = jump_lengths_indexed_arrow(lats, lngs, indices, ends)
+
+    assert starts.tolist() == [0]
+    assert value_ends.tolist() == [2]
+    np.testing.assert_allclose(
+        _arrow_to_numpy(values),
+        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
+        rtol=0.0,
+        atol=1e-12,
+    )
+
+
 def test_jump_lengths_presorted_numpy_helper_validation_errors():
     pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
     from skmob2._core import jump_lengths_presorted_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
+    ends = np.array([1], dtype=np.uintp)
     with pytest.raises(ValueError, match="same length"):
-        jump_lengths_presorted_numpy(arr, arr[:1], [(0, 1)])
+        jump_lengths_presorted_numpy(arr, arr[:1], ends)
     with pytest.raises(ValueError, match="range end"):
-        jump_lengths_presorted_numpy(arr, arr, [(0, 3)])
+        jump_lengths_presorted_numpy(arr, arr, np.array([3], dtype=np.uintp))
+    with pytest.raises(ValueError, match="monotonically"):
+        jump_lengths_presorted_numpy(arr, arr, np.array([2, 1], dtype=np.uintp))
+
+
+def test_jump_lengths_indexed_numpy_helper_validation_errors():
+    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    from skmob2._core import jump_lengths_indexed_numpy
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+    indices = np.array([0, 1], dtype=np.uintp)
+    ends = np.array([2], dtype=np.uintp)
+    with pytest.raises(ValueError, match="same length"):
+        jump_lengths_indexed_numpy(arr, arr[:1], indices, ends)
+    with pytest.raises(ValueError, match="monotonically"):
+        jump_lengths_indexed_numpy(arr, arr, indices, np.array([2, 1], dtype=np.uintp))
+    with pytest.raises(ValueError, match="index must be within"):
+        jump_lengths_indexed_numpy(arr, arr, np.array([0, 2], dtype=np.uintp), ends)
+    with pytest.raises(ValueError, match="range end"):
+        jump_lengths_indexed_numpy(arr, arr, indices, np.array([3], dtype=np.uintp))
 
 
 def test_jump_lengths_non_ordered_numpy_helper_validation_errors():

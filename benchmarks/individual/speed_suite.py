@@ -49,6 +49,7 @@ from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
 MOVINGPANDAS_CATALOG_PATH = Path(__file__).resolve().parents[1] / "movingpandas_skmob_api_catalog.json"
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
 BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
+SORTED_TRAJECTORY_REQUIRED_COLUMNS = ["user", "check-in_time", "latitude", "longitude"]
 
 
 @dataclass(frozen=True)
@@ -347,6 +348,18 @@ def load_brightkite_movingpandas(data_path: Path, size: int) -> Any:
     gdf["check-in_time"] = pd.to_datetime(gdf["check-in_time"])
     gdf = gdf.set_index("check-in_time")
     return mpd.TrajectoryCollection(gdf, traj_id_col="user")
+
+
+def clean_sorted_trajectory_input(df: Any, *, backend: str) -> Any:
+    """Drop missing user/time/coordinate rows before sorted=True benchmarks."""
+    if backend == "polars":
+        import polars as pl
+
+        return df.drop_nulls(subset=SORTED_TRAJECTORY_REQUIRED_COLUMNS).filter(
+            pl.col("latitude").is_not_nan() & pl.col("longitude").is_not_nan()
+        )
+
+    return df.dropna(subset=SORTED_TRAJECTORY_REQUIRED_COLUMNS).reset_index(drop=True)
 
 
 def make_skmob_tdf(skmob_module: Any, df: Any) -> Any:
@@ -676,7 +689,11 @@ def load_brightkite_for_order(
         uid_col="user",
         datetime_col="check-in_time",
     )
-    return sorted_input.data, sorted_input.path, sorted_input.status
+    return (
+        clean_sorted_trajectory_input(sorted_input.data, backend=backend),
+        sorted_input.path,
+        f"{sorted_input.status}_cleaned",
+    )
 
 
 def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[str, Any]:

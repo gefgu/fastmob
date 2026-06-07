@@ -16,9 +16,10 @@ from skmob2.core.dispatch import TrajectoryDispatcher
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
-    _build_presorted_user_ranges,
+    _build_presorted_user_ends,
     _extract_timestamps_ms,
     _detect_trajectory_columns,
+    _ranges_from_ends,
     _to_native,
 )
 
@@ -151,7 +152,8 @@ def k_radius_of_gyration(
     timestamps_data = ops["extract_data"](timestamps)
 
     if sorted:
-        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        ranges = _ranges_from_ends(ends)
         krg_values = ops["format_values"](ops["sorted"](lats, lngs, timestamps_data, ranges, k))
         if uid_col is None:
             return _to_native({"k_radius_of_gyration": krg_values}, df)
