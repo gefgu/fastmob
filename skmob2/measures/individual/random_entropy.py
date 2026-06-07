@@ -122,11 +122,8 @@ def random_entropy(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
 
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(
-        df, uid_col, use_arrow=use_arrow
-    )
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
     n_locs_raw = ops["number_of_locations_indexed"](
         ops["extract_data"](df.get_column(lat_col)),

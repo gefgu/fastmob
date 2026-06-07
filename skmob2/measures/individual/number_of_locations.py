@@ -9,7 +9,6 @@ from skmob2._core import (
     number_of_locations_indexed_numpy,
     number_of_locations_numpy,
 )
-
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -125,7 +124,6 @@ def number_of_locations(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
     if sorted:
@@ -135,9 +133,13 @@ def number_of_locations(
             return _to_native({"number_of_locations": n_locs}, df)
         return _to_native({uid_col: uid_values, "number_of_locations": n_locs}, df)
 
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
+
     n_locs = ops["format_values"](ops["indexed"](lats_data, lngs_data, indices, ends))
 
     if uid_col is None:
-        return _to_native({"number_of_locations": n_locs}, df)
-    return _to_native({uid_col: uid_values, "number_of_locations": n_locs}, df)
+        result = _to_native({"number_of_locations": n_locs}, df)
+    else:
+        result = _to_native({uid_col: uid_values, "number_of_locations": n_locs}, df)
+
+    return result

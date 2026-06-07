@@ -143,7 +143,6 @@ def k_radius_of_gyration(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
 
     lats = ops["extract_data"](df.get_column(lat_col))
     lngs = ops["extract_data"](df.get_column(lng_col))
@@ -157,7 +156,7 @@ def k_radius_of_gyration(
             return _to_native({"k_radius_of_gyration": krg_values}, df)
         return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)
 
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
     krg_values = ops["format_values"](ops["indexed"](lats, lngs, timestamps_data, indices, ends, k))
 

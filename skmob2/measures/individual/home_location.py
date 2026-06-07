@@ -143,7 +143,6 @@ def home_location(
 
     df, hours = _extract_hours(df, datetime_col)
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
     hours_data = ops["extract_data"](hours)
@@ -163,7 +162,7 @@ def home_location(
             return _to_native({lat_col: home_lats, lng_col: home_lngs}, df)
         return _to_native({uid_col: uid_values, lat_col: home_lats, lng_col: home_lngs}, df)
 
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
     home_lats, home_lngs = ops["format_pair"](
         ops["indexed"](

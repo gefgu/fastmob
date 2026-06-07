@@ -147,7 +147,6 @@ def max_distance_from_home(
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     lats_data = ops["extract_data"](lats)
     lngs_data = ops["extract_data"](lngs)
     hours_data = ops["extract_data"](hours)
@@ -159,7 +158,7 @@ def max_distance_from_home(
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)
 
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
     home_lats, home_lngs = ops["home_indexed"](lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night))
     max_distances = ops["format_values"](ops["max_dist_indexed"](home_lats, home_lngs, lats_data, lngs_data, indices, ends))

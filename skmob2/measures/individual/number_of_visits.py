@@ -120,7 +120,6 @@ def number_of_visits(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         counts = ops["format_values"](ops["presorted"](len(df), ends))
@@ -131,7 +130,7 @@ def number_of_visits(
     valid_mask = (
         ~df.get_column(lat_col).is_null() & ~df.get_column(lng_col).is_null()
     ).to_numpy()
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col, use_arrow=use_arrow)
+    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
     counts = ops["format_values"](ops["indexed"](len(df), indices, ends, valid_mask))
 
     if uid_col is None:

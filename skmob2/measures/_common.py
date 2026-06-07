@@ -491,9 +491,6 @@ def _build_time_ordered_user_ranges(
 def _build_indexed_user_ranges_fast(
     df: nw.DataFrame,
     uid_col: str | None,
-    *,
-    use_arrow: bool,
-    row_index_col: str = "__skmob2_fast_row_index__",
 ) -> tuple[list | None, Any, np.ndarray]:
     """Build grouped row indexes using Rust for supported UID dtypes."""
     ops = _INDEXED_USER_RANGES_DISPATCHER.get_ops(df)
@@ -516,9 +513,7 @@ def _build_indexed_user_ranges_fast(
         if "unsupported" not in str(exc):
             raise
 
-    uid_values, indices, ranges = _build_indexed_user_ranges(
-        df, uid_col, row_index_col=row_index_col
-    )
+    uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col)
     ends = _ranges_to_ends(ranges)
     return uid_values, _as_index_array(indices), ends
 

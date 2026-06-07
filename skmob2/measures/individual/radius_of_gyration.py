@@ -148,7 +148,6 @@ def radius_of_gyration(
     df = nw.from_native(traj, eager_only=True)
 
     ops = ROG_DISPATCHER.get_ops(df)
-    use_arrow = ROG_DISPATCHER.get_backend_key(df) == "arrow"
 
     _, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -164,19 +163,13 @@ def radius_of_gyration(
             nw.col(lng_col).cast(nw.Float64),
         )
 
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        lats_data = ops["extract_data"](df.get_column(lat_col))
-        lngs_data = ops["extract_data"](df.get_column(lng_col))
         raw_values, raw_counts = ops["rog_sorted"](lats_data, lngs_data, ends)
     else:
-        lats_data = ops["extract_data"](df.get_column(lat_col))
-        lngs_data = ops["extract_data"](df.get_column(lng_col))
-        uid_values, indices, ends = _build_indexed_user_ranges_fast(
-            df,
-            uid_col,
-            use_arrow=use_arrow,
-        )
+        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
         raw_values, raw_counts = ops["rog_indexed"](lats_data, lngs_data, indices, ends)
 
     rog_values = ops["format_values"](raw_values)

@@ -390,11 +390,7 @@ class TestBuildIndexedUserRangesFast:
             eager_only=True,
         )
 
-        uid_values, indices, ends = _build_indexed_user_ranges_fast(
-            df,
-            "uid",
-            use_arrow=False,
-        )
+        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, "uid")
 
         assert uid_values == ["b", "a", "c"]
         assert np.asarray(indices).tolist() == [0, 2, 1, 4, 3, 5]
@@ -411,11 +407,7 @@ class TestBuildIndexedUserRangesFast:
             eager_only=True,
         )
 
-        uid_values, indices, ends = _build_indexed_user_ranges_fast(
-            df,
-            "uid",
-            use_arrow=True,
-        )
+        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, "uid")
 
         assert uid_values == ["b", "a", "c"]
         assert np.asarray(indices).tolist() == [0, 2, 1, 4, 3, 5]
