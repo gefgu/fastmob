@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import narwhals as nw
 import numpy as np
@@ -13,7 +15,7 @@ EXPECTED_WAITING_TIME_S = 3600.0
 EXPECTED_N_WAITS = 4  # 5 points → 4 intervals
 
 
-def _to_dict(df) -> dict[str, list[float]]:
+def _to_dict(df) -> dict[str, Any]:
     """Convert a waiting_times result DataFrame to {uid: [wait_seconds, ...]}."""
     nw_df = nw.from_native(df, eager_only=True)
     columns = nw_df.columns
@@ -79,7 +81,7 @@ def test_waiting_times_single_point_returns_empty_list():
     )
     result = waiting_times(df)
     mapping = _to_dict(result)
-    assert mapping["a"] == []
+    assert len(mapping["a"]) == 0
 
 
 def test_waiting_times_polars_known_values(synthetic_tdf_polars):
@@ -99,35 +101,76 @@ def test_waiting_times_polars_known_values(synthetic_tdf_polars):
             )
 
 
-def test_waiting_times_merge_returns_flat_list(synthetic_tdf):
-    """merge=True returns a single flat list of all waiting times."""
+def test_waiting_times_merge_returns_flat_array(synthetic_tdf):
+    """merge=True returns flat backend-native waiting times."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2.measures.individual.waiting_times import waiting_times
 
     result = waiting_times(synthetic_tdf, merge=True)
+    values = np.asarray(result, dtype=np.float64)
 
-    assert isinstance(result, list)
     # 3 users × 4 intervals = 12 waiting times total.
-    assert len(result) == 3 * EXPECTED_N_WAITS
-    for wt in result:
+    assert len(values) == 3 * EXPECTED_N_WAITS
+    for wt in values:
         assert abs(wt - EXPECTED_WAITING_TIME_S) < 1.0
 
 
-def test_waiting_times_numpy_and_arrow_helpers_match_batch_helper():
+def test_waiting_times_numpy_and_arrow_helpers_return_offsets_and_flat_values():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from skmob2._core import waiting_times_arrow, waiting_times_flat_numpy, waiting_times_numpy, waiting_times_seconds
+    from skmob2._core import (
+        waiting_times_arrow,
+        waiting_times_flat_numpy,
+        waiting_times_indexed_numpy,
+        waiting_times_numpy,
+        waiting_times_seconds,
+    )
 
     timestamps = np.array([0.0, 60.0, 90.0, 1000.0, 1060.0], dtype=np.float64)
-    ranges = [(0, 3), (3, 5)]
+    ends = np.array([3, 5], dtype=np.uintp)
 
-    expected = waiting_times_seconds(timestamps.tolist(), ranges)
-    result_numpy = waiting_times_numpy(timestamps, ranges)
-    result_arrow = waiting_times_arrow(pl.Series(timestamps).to_arrow(), ranges)
+    expected_starts = np.array([0, 2], dtype=np.uintp)
+    expected_ends = np.array([2, 3], dtype=np.uintp)
+    expected_values = np.array([60.0, 30.0, 60.0], dtype=np.float64)
 
-    assert result_numpy == expected
-    assert result_arrow == expected
-    assert waiting_times_flat_numpy(timestamps, ranges) == expected[0] + expected[1]
+    for starts, value_ends, values in (
+        waiting_times_seconds(timestamps.tolist(), ends.tolist()),
+        waiting_times_numpy(timestamps, ends),
+        waiting_times_arrow(pl.Series(timestamps).to_arrow(), ends),
+        waiting_times_indexed_numpy(timestamps, np.arange(len(timestamps), dtype=np.uintp), ends),
+    ):
+        np.testing.assert_array_equal(starts, expected_starts)
+        np.testing.assert_array_equal(value_ends, expected_ends)
+        np.testing.assert_allclose(np.asarray(values), expected_values)
+
+    np.testing.assert_allclose(
+        waiting_times_flat_numpy(timestamps, ends),
+        expected_values,
+    )
+
+
+def test_waiting_times_helper_offsets_include_empty_groups():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2._core import waiting_times_numpy
+
+    timestamps = np.array([0.0, 60.0, 120.0, 1000.0], dtype=np.float64)
+    ends = np.array([1, 3, 4], dtype=np.uintp)
+
+    starts, value_ends, values = waiting_times_numpy(timestamps, ends)
+
+    np.testing.assert_array_equal(starts, np.array([0, 0, 1], dtype=np.uintp))
+    np.testing.assert_array_equal(value_ends, np.array([0, 1, 1], dtype=np.uintp))
+    np.testing.assert_allclose(values, np.array([60.0], dtype=np.float64))
+
+
+def test_waiting_times_polars_result_uses_list_dtype(synthetic_tdf_polars):
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2.measures.individual.waiting_times import waiting_times
+
+    result = waiting_times(synthetic_tdf_polars)
+
+    assert result.schema["waiting_times"] == pl.List(pl.Float64)
 
 
 def test_waiting_times_numpy_helper_validation_errors():
@@ -136,7 +179,7 @@ def test_waiting_times_numpy_helper_validation_errors():
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="range end"):
-        waiting_times_numpy(arr, [(0, 3)])
+        waiting_times_numpy(arr, np.array([3], dtype=np.uintp))
 
 
 @pytest.mark.skmob

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import numpy as np
 from skmob2._core import (
     waiting_times_arrow,
     waiting_times_flat_arrow,
@@ -18,11 +17,13 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
+    _arrow_flat_result_values,
     _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
     _extract_timestamps_s,
     _detect_trajectory_columns,
-    _ranges_from_ends,
+    _grouped_arrow_values,
+    _grouped_numpy_values,
     _to_native,
 )
 
@@ -32,39 +33,18 @@ _DISPATCHER = TrajectoryDispatcher(
         "indexed_flat": waiting_times_indexed_flat_arrow,
         "presorted": waiting_times_arrow,
         "presorted_flat": waiting_times_flat_arrow,
+        "flat_values": _arrow_flat_result_values,
+        "group": _grouped_arrow_values,
     },
     numpy_ops={
         "indexed": waiting_times_indexed_numpy,
         "indexed_flat": waiting_times_indexed_flat_numpy,
         "presorted": waiting_times_numpy,
         "presorted_flat": waiting_times_flat_numpy,
+        "flat_values": lambda v: v,
+        "group": _grouped_numpy_values,
     },
 )
-
-
-def _route_indexed_waiting_times(
-    ops: dict,
-    timestamps_data: Any,
-    indices: np.ndarray,
-    ends: np.ndarray,
-    *,
-    merge: bool,
-) -> Any:
-    if merge:
-        return ops["indexed_flat"](timestamps_data, indices, ends)
-    return ops["indexed"](timestamps_data, indices, ends)
-
-
-def _route_presorted_waiting_times(
-    ops: dict,
-    timestamps_data: Any,
-    ranges: list[tuple[int, int]],
-    *,
-    merge: bool,
-) -> Any:
-    if merge:
-        return ops["presorted_flat"](timestamps_data, ranges)
-    return ops["presorted"](timestamps_data, ranges)
 
 
 def waiting_times(
@@ -91,9 +71,9 @@ def waiting_times(
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
     merge:
-        When ``True``, return a single flat Python list of all waiting times
-        across all users concatenated together.  When ``False`` (default),
-        return a DataFrame with one row per user.
+        When ``True``, return flat waiting times across all users using a
+        backend-appropriate array object. When ``False`` (default), return a
+        DataFrame with one row per user.
     datetime_col:
         Explicit datetime column name.  Auto-detected when None.
     lat_col:
@@ -108,10 +88,12 @@ def waiting_times(
 
     Returns
     -------
-    DataFrame or list
+    DataFrame or array-like
         When ``merge=False``: one row per user with columns
-        ``[uid_col, "waiting_times"]``; each cell is a list of floats (seconds).
-        When ``merge=True``: a flat Python ``list[float]`` of all waiting times.
+        ``[uid_col, "waiting_times"]``; each cell is an array-like sequence of
+        floats (seconds).
+        When ``merge=True``: flat waiting times as a NumPy array for NumPy-backed
+        inputs or a PyArrow array for Arrow-backed inputs.
         The returned DataFrame backend matches the input backend.
 
 
@@ -155,16 +137,12 @@ def waiting_times(
     - [PF2018] Pappalardo, L. & Simini, F. (2018) Data-driven generation of spatio-temporal routines in human mobility. Data Mining and Knowledge Discovery 32, 787-829, https://link.springer.com/article/10.1007/s10618-017-0548-4
     """
     df = nw.from_native(traj, eager_only=True)
-    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+    datetime_col, _lat_col, _lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
-    )
-    df = df.with_columns(
-        nw.col(lat_col).cast(nw.Float64),
-        nw.col(lng_col).cast(nw.Float64),
     )
 
     ops = _DISPATCHER.get_ops(df)
@@ -172,10 +150,13 @@ def waiting_times(
     timestamps_data = ops["extract_data"](timestamps_s)
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
-        wt_values = _route_presorted_waiting_times(ops, timestamps_data, ranges, merge=merge)
         if merge:
-            return wt_values
+            return ops["flat_values"](ops["presorted_flat"](timestamps_data, ends))
+        value_starts, value_ends, flat_values = ops["presorted"](timestamps_data, ends)
+        flat_values = ops["flat_values"](flat_values)
+        wt_values = ops["group"](
+            value_starts, value_ends, flat_values, value_offsets=True
+        )
         if uid_col is None:
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
@@ -183,10 +164,12 @@ def waiting_times(
     uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_data
     )
-    wt_values = _route_indexed_waiting_times(ops, timestamps_data, indices, ends, merge=merge)
-
     if merge:
-        return wt_values
+        return ops["flat_values"](ops["indexed_flat"](timestamps_data, indices, ends))
+
+    value_starts, value_ends, flat_values = ops["indexed"](timestamps_data, indices, ends)
+    flat_values = ops["flat_values"](flat_values)
+    wt_values = ops["group"](value_starts, value_ends, flat_values, value_offsets=True)
     if uid_col is None:
         return _to_native({"waiting_times": wt_values}, df)
     return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
