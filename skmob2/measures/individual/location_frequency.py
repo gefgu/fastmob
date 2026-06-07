@@ -3,30 +3,41 @@ import narwhals as nw
 
 from typing import Any
 
-from skmob2._core import location_frequency_indexed_arrow, location_frequency_indexed_numpy
+from skmob2._core import (
+    location_frequency_presorted_arrow,
+    location_frequency_presorted_numpy,
+    location_frequency_values_indexed_arrow,
+    location_frequency_values_indexed_numpy,
+)
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
+    _build_presorted_user_ends,
     _detect_trajectory_columns,
+    _take_uid_values,
     _to_native,
 )
 
 _DISPATCHER = TrajectoryDispatcher(
     arrow_ops={
-        "kernel": location_frequency_indexed_arrow,
+        "indexed": location_frequency_values_indexed_arrow,
+        "presorted": location_frequency_presorted_arrow,
         "unpack": lambda raw: (
-            _arrow_result_values(raw[0]).to_pylist(),
-            _arrow_result_values(raw[1]).to_pylist(),
-            _arrow_result_values(raw[2]).to_pylist(),
+            _arrow_result_values(raw[0]),
+            _arrow_result_values(raw[1]),
+            _arrow_result_values(raw[2]),
             raw[3],
             raw[4],
+            raw[5],
+            _arrow_result_values(raw[6]),
         ),
     },
     numpy_ops={
-        "kernel": location_frequency_indexed_numpy,
-        "unpack": lambda raw: (raw[0].tolist(), raw[1].tolist(), raw[2].tolist(), raw[3], raw[4]),
+        "indexed": location_frequency_values_indexed_numpy,
+        "presorted": location_frequency_presorted_numpy,
+        "unpack": lambda raw: raw,
     },
 )
 
@@ -40,6 +51,7 @@ def location_frequency(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    presorted: bool = False,
 ) -> Any:
     """Return visit frequency for each distinct location per user.
 
@@ -73,6 +85,9 @@ def location_frequency(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    presorted:
+        When True, trust that rows are already grouped by user and use the
+        contiguous fast path.
 
     Returns
     -------
@@ -137,47 +152,31 @@ def location_frequency(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
-
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
-    raw = ops["kernel"](lats_data, lngs_data, indices, ends)
-    out_lats, out_lngs, out_counts_list, out_starts, out_ends = ops["unpack"](raw)
 
-    freqs_all: list = []
-    per_user_freqs: list = []
-    uid_vals_all: list = []
-    for i, (s, e) in enumerate(zip(out_starts.tolist(), out_ends.tolist())):
-        seg = out_counts_list[s:e]
-        total = sum(seg)
-        if normalize:
-            user_freqs = [c / total for c in seg]
-        else:
-            user_freqs = [float(c) for c in seg]
-        freqs_all.extend(user_freqs)
-        per_user_freqs.append(user_freqs)
-        if uid_values is not None:
-            uid_vals_all.extend([uid_values[i]] * len(seg))
-
-    if uid_col is None:
-        if as_ranks:
-            return per_user_freqs[0]
-        return _to_native({lat_col: out_lats, lng_col: out_lngs, "location_frequency": freqs_all}, df)
+    if presorted:
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        raw = ops["presorted"](lats_data, lngs_data, ends, normalize)
+    else:
+        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
+        raw = ops["indexed"](lats_data, lngs_data, indices, ends, normalize)
+    out_lats, out_lngs, freqs, user_indices, _out_starts, _out_ends, rank_means = ops["unpack"](raw)
 
     if as_ranks:
-        max_locs = max(len(f) for f in per_user_freqs) if per_user_freqs else 0
-        ranks_lists: list = [[] for _ in range(max_locs)]
-        for user_freqs in per_user_freqs:
-            for rank_idx, freq in enumerate(user_freqs):
-                ranks_lists[rank_idx].append(freq)
-        return [sum(r) / len(r) for r in ranks_lists if r]
+        if hasattr(rank_means, "to_pylist"):
+            return rank_means.to_pylist()
+        return rank_means.tolist()
+
+    if uid_col is None:
+        return _to_native({lat_col: out_lats, lng_col: out_lngs, "location_frequency": freqs}, df)
 
     return _to_native(
         {
-            uid_col: uid_vals_all,
+            uid_col: _take_uid_values(uid_values, user_indices),
             lat_col: out_lats,
             lng_col: out_lngs,
-            "location_frequency": freqs_all,
+            "location_frequency": freqs,
         },
         df,
     )

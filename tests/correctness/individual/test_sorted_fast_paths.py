@@ -10,14 +10,17 @@ import pytest
 
 SPATIAL_FUNCTIONS = (
     "distance_straight_line",
+    "frequency_rank",
     "home_location",
     "jump_lengths",
     "k_radius_of_gyration",
+    "location_frequency",
     "max_distance_from_home",
     "maximum_distance",
     "number_of_locations",
     "number_of_visits",
     "radius_of_gyration",
+    "recency_rank",
     "waiting_times",
 )
 

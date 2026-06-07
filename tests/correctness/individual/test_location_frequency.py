@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import narwhals as nw
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -193,6 +194,100 @@ def test_location_frequency_as_ranks_returns_list():
     assert abs(ranks[0] - 0.625) < 1e-9
     # Rank-1 mean: user "a" has prob 0.25, user "b" has prob 0.5 → mean = 0.375
     assert abs(ranks[1] - 0.375) < 1e-9
+
+
+def test_location_frequency_presorted_matches_default_pandas():
+    """The presorted fast path matches indexed grouping for grouped input."""
+    from skmob2.measures.individual.location_frequency import location_frequency
+
+    raw = pd.DataFrame(
+        {
+            "uid": ["b", "a", "a", "b", "a", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=6, freq="h"),
+            "lat": [3.0, 1.0, 2.0, 3.0, 1.0, 4.0],
+            "lng": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        }
+    )
+    sorted_input = raw.sort_values(["uid", "datetime"], kind="mergesort")
+
+    assert _to_freq_dict(location_frequency(raw, normalize=False)) == _to_freq_dict(
+        location_frequency(sorted_input, normalize=False, presorted=True)
+    )
+    assert _to_freq_dict(location_frequency(raw, normalize=True)) == _to_freq_dict(
+        location_frequency(sorted_input, normalize=True, presorted=True)
+    )
+
+
+def test_location_frequency_presorted_as_ranks_matches_default():
+    """Rank-mean output is computed natively for presorted grouped input."""
+    from skmob2.measures.individual.location_frequency import location_frequency
+
+    raw = pd.DataFrame(
+        {
+            "uid": ["b", "a", "a", "a", "b", "b", "a", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=8, freq="h"),
+            "lat": [3.0, 1.0, 2.0, 1.0, 3.0, 4.0, 1.0, 4.0],
+            "lng": [0.0] * 8,
+        }
+    )
+    sorted_input = raw.sort_values(["uid", "datetime"], kind="mergesort")
+
+    np.testing.assert_allclose(
+        location_frequency(sorted_input, as_ranks=True, presorted=True),
+        location_frequency(raw, as_ranks=True),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
+def test_location_frequency_presorted_no_uid():
+    """Presorted works when the whole frame is one implicit user."""
+    from skmob2.measures.individual.location_frequency import location_frequency
+
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
+            "lat": [1.0, 1.0, 2.0, 1.0],
+            "lng": [0.0, 0.0, 0.0, 0.0],
+        }
+    )
+
+    result = location_frequency(df, normalize=False, presorted=True)
+    rows = {
+        (row["lat"], row["lng"]): row["location_frequency"]
+        for row in nw.from_native(result, eager_only=True).rows(named=True)
+    }
+    assert rows == {(1.0, 0.0): 3.0, (2.0, 0.0): 1.0}
+
+
+def test_location_frequency_presorted_polars_known_values():
+    """Polars/Arrow input uses the presorted Arrow-backed fast path."""
+    pl = pytest.importorskip("polars")
+    from skmob2.measures.individual.location_frequency import location_frequency
+
+    df = pl.DataFrame(
+        {
+            "uid": ["a", "a", "b", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
+            "lat": [1.0, 1.0, 2.0, 3.0],
+            "lng": [0.0, 0.0, 0.0, 0.0],
+        }
+    )
+
+    assert _to_freq_dict(location_frequency(df, normalize=False, presorted=True)) == {
+        "a": {(1.0, 0.0): 2.0},
+        "b": {(2.0, 0.0): 1.0, (3.0, 0.0): 1.0},
+    }
+
+
+def test_location_frequency_presorted_core_validation_errors():
+    """The native presorted helper validates monotonic end offsets."""
+    from skmob2._core import location_frequency_presorted_numpy
+
+    arr = np.array([1.0, 2.0], dtype=np.float64)
+    bad_ends = np.array([2, 1], dtype=np.uintp)
+    with pytest.raises(ValueError, match="monotonically"):
+        location_frequency_presorted_numpy(arr, arr, bad_ends, True)
 
 
 @pytest.mark.skmob

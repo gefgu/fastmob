@@ -194,11 +194,59 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        location_frequency::location_frequency_values_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::location_frequency_values_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::location_frequency_presorted_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::location_frequency_presorted_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::frequency_rank_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::frequency_rank_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::frequency_rank_presorted_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        location_frequency::frequency_rank_presorted_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         recency_rank::recency_rank_indexed_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
         recency_rank::recency_rank_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        recency_rank::recency_rank_values_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        recency_rank::recency_rank_values_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        recency_rank::recency_rank_presorted_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        recency_rank::recency_rank_presorted_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

@@ -246,6 +246,13 @@ def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
     return nw.from_dict(values_dict, backend=df.implementation).to_native()
 
 
+def _take_uid_values(uid_values: list | None, user_indices: Any) -> Any:
+    """Return one UID label per flat output row using vectorized positional take."""
+    if uid_values is None:
+        return None
+    return np.asarray(uid_values, dtype=object).take(np.asarray(user_indices, dtype=np.uintp))
+
+
 def _indexed_group_indices_numpy(uids: Any, num_groups: int) -> Any:
     from skmob2._core import radius_of_gyration_user_indices_numpy  # noqa: PLC0415
 

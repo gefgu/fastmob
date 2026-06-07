@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import narwhals as nw
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -138,6 +139,73 @@ def test_frequency_rank_polars_known_values(synthetic_tdf_polars):
     for uid, loc_ranks in mapping.items():
         assert len(loc_ranks) == 5
         assert set(loc_ranks.values()) == {1, 2, 3, 4, 5}
+
+
+def test_frequency_rank_presorted_matches_default_pandas():
+    """The presorted fast path matches indexed grouping for grouped input."""
+    from skmob2.measures.individual.frequency_rank import frequency_rank
+
+    raw = pd.DataFrame(
+        {
+            "uid": ["b", "a", "a", "b", "a", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=6, freq="h"),
+            "lat": [3.0, 1.0, 2.0, 3.0, 1.0, 4.0],
+            "lng": [0.0] * 6,
+        }
+    )
+    sorted_input = raw.sort_values(["uid", "datetime"], kind="mergesort")
+
+    assert _to_dict(frequency_rank(sorted_input, presorted=True)) == _to_dict(
+        frequency_rank(raw)
+    )
+
+
+def test_frequency_rank_presorted_no_uid():
+    """Presorted works when the whole frame is one implicit user."""
+    from skmob2.measures.individual.frequency_rank import frequency_rank
+
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=4, freq="h"),
+            "lat": [1.0, 2.0, 1.0, 1.0],
+            "lng": [0.0] * 4,
+        }
+    )
+    result = frequency_rank(df, presorted=True)
+    rows = {
+        row["lat"]: row["frequency_rank"]
+        for row in nw.from_native(result, eager_only=True).rows(named=True)
+    }
+    assert rows == {1.0: 1, 2.0: 2}
+
+
+def test_frequency_rank_presorted_polars_known_values():
+    """Polars/Arrow input uses the presorted Arrow-backed fast path."""
+    pl = pytest.importorskip("polars")
+    from skmob2.measures.individual.frequency_rank import frequency_rank
+
+    df = pl.DataFrame(
+        {
+            "uid": ["a", "a", "a", "b", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
+            "lat": [1.0, 2.0, 1.0, 3.0, 4.0],
+            "lng": [0.0] * 5,
+        }
+    )
+    mapping = _to_dict(frequency_rank(df, presorted=True))
+    assert mapping["a"][(1.0, 0.0)] == 1
+    assert mapping["a"][(2.0, 0.0)] == 2
+    assert set(mapping["b"].values()) == {1, 2}
+
+
+def test_frequency_rank_presorted_core_validation_errors():
+    """The native presorted helper validates monotonic end offsets."""
+    from skmob2._core import frequency_rank_presorted_numpy
+
+    arr = np.array([1.0, 2.0], dtype=np.float64)
+    bad_ends = np.array([2, 1], dtype=np.uintp)
+    with pytest.raises(ValueError, match="monotonically"):
+        frequency_rank_presorted_numpy(arr, arr, bad_ends)
 
 
 @pytest.mark.skmob
