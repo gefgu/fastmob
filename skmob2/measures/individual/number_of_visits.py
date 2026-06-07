@@ -41,7 +41,7 @@ def number_of_visits(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted: bool = False,
+    presorted: bool = False,
 ) -> Any:
     """Return the total number of trajectory points (visits) for each user.
 
@@ -64,7 +64,7 @@ def number_of_visits(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sorted:
+    presorted:
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
@@ -120,7 +120,7 @@ def number_of_visits(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    if sorted:
+    if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         counts = ops["format_values"](ops["presorted"](len(df), ends))
         if uid_col is None:

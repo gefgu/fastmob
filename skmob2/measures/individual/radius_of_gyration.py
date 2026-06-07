@@ -61,7 +61,7 @@ def radius_of_gyration(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted: bool = False,
+    presorted: bool = False,
 ):
     """Compute the radius of gyration (km) for each user in the trajectory.
 
@@ -94,7 +94,7 @@ def radius_of_gyration(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sorted:
+    presorted:
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
@@ -165,7 +165,7 @@ def radius_of_gyration(
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
-    if sorted:
+    if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw_values, raw_counts = ops["rog_sorted"](lats_data, lngs_data, ends)
     else:

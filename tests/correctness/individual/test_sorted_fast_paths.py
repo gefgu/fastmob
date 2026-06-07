@@ -99,16 +99,16 @@ def test_sorted_spatial_fast_path_matches_default_pandas(name):
     kwargs = _metric_kwargs(name)
 
     default_result = metric(raw, **kwargs)
-    sorted_result = metric(sorted_input, **kwargs, sorted=True)
+    sorted_result = metric(sorted_input, **kwargs, presorted=True)
 
     _assert_frames_equivalent(default_result, sorted_result)
 
 
 @pytest.mark.parametrize("name", SPATIAL_FUNCTIONS)
-def test_spatial_metric_accepts_sorted_keyword(name):
+def test_spatial_metric_accepts_presorted_keyword(name):
     module = __import__(f"skmob2.measures.individual.{name}", fromlist=[name])
     metric = getattr(module, name)
-    assert "sorted" in inspect.signature(metric).parameters
+    assert "presorted" in inspect.signature(metric).parameters
 
 
 def test_sorted_waiting_times_and_jump_lengths_merge_match_default_single_user():
@@ -129,13 +129,13 @@ def test_sorted_waiting_times_and_jump_lengths_merge_match_default_single_user()
     sorted_input = raw.sort_values("datetime", kind="mergesort")
 
     np.testing.assert_allclose(
-        jump_lengths(sorted_input, merge=True, sorted=True),
+        jump_lengths(sorted_input, merge=True, presorted=True),
         jump_lengths(raw, merge=True),
         rtol=1e-10,
         atol=1e-10,
     )
     np.testing.assert_allclose(
-        waiting_times(sorted_input, merge=True, sorted=True),
+        waiting_times(sorted_input, merge=True, presorted=True),
         waiting_times(raw, merge=True),
         rtol=1e-10,
         atol=1e-10,
@@ -157,7 +157,7 @@ def test_sorted_radius_of_gyration_requires_clean_input_for_invalid_user_filteri
     sorted_input = _sorted_df(raw.dropna(subset=["lat", "lng"]))
 
     default_result = radius_of_gyration(raw)
-    sorted_result = radius_of_gyration(sorted_input, sorted=True)
+    sorted_result = radius_of_gyration(sorted_input, presorted=True)
 
     _assert_frames_equivalent(default_result, sorted_result)
 
@@ -168,7 +168,7 @@ def test_sorted_spatial_fast_path_polars_smoke():
 
     raw = _tiny_unsorted_df()
     sorted_input = pl.from_pandas(_sorted_df(raw))
-    result = distance_straight_line(sorted_input, sorted=True)
+    result = distance_straight_line(sorted_input, presorted=True)
 
     assert result.height == 3
     assert "distance_straight_line" in result.columns

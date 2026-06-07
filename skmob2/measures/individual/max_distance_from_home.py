@@ -52,7 +52,7 @@ def max_distance_from_home(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted: bool = False,
+    presorted: bool = False,
 ) -> Any:
     """Return the maximum Haversine distance (km) from each user's home location.
 
@@ -81,7 +81,7 @@ def max_distance_from_home(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sorted:
+    presorted:
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
@@ -150,7 +150,7 @@ def max_distance_from_home(
     lats_data = ops["extract_data"](lats)
     lngs_data = ops["extract_data"](lngs)
     hours_data = ops["extract_data"](hours)
-    if sorted:
+    if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         home_lats, home_lngs = ops["home"](lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night))
         max_distances = ops["format_values"](ops["max_dist"](home_lats, home_lngs, lats_data, lngs_data, ends))

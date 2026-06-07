@@ -40,7 +40,7 @@ def number_of_locations(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted: bool = False,
+    presorted: bool = False,
 ) -> Any:
     """Return the number of distinct locations visited by each user.
 
@@ -62,7 +62,7 @@ def number_of_locations(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sorted:
+    presorted:
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
@@ -126,7 +126,7 @@ def number_of_locations(
     ops = _DISPATCHER.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
-    if sorted:
+    if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         n_locs = ops["format_values"](ops["presorted"](lats_data, lngs_data, ends))
         if uid_col is None:

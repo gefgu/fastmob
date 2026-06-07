@@ -274,7 +274,7 @@ def test_jump_lengths_sorted_true_uses_existing_grouped_order():
         }
     )
 
-    result = _normalize_result(jump_lengths(df, merge=False, sorted=True))
+    result = _normalize_result(jump_lengths(df, merge=False, presorted=True))
     np.testing.assert_allclose(result["a"], jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]))
     np.testing.assert_allclose(result["b"], jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]))
 
@@ -292,7 +292,7 @@ def test_jump_lengths_sorted_true_single_user_matches_normal_path():
         }
     )
 
-    sorted_result = jump_lengths(df, merge=False, sorted=True)
+    sorted_result = jump_lengths(df, merge=False, presorted=True)
     normal_result = jump_lengths(df, merge=False)
     np.testing.assert_allclose(
         sorted_result["jump_lengths"].iloc[0],
@@ -301,7 +301,7 @@ def test_jump_lengths_sorted_true_single_user_matches_normal_path():
         atol=1e-12,
     )
     np.testing.assert_allclose(
-        jump_lengths(df, merge=True, sorted=True),
+        jump_lengths(df, merge=True, presorted=True),
         jump_lengths(df, merge=True),
         rtol=0.0,
         atol=1e-12,

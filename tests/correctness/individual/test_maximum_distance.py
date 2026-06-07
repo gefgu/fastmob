@@ -100,7 +100,7 @@ def test_maximum_distance_sorted_single_point_group_returns_nan():
             "lng": [0.0, 0.0, 0.0],
         }
     )
-    result = maximum_distance(df, sorted=True)
+    result = maximum_distance(df, presorted=True)
     mapping = _to_dict(result)
 
     assert np.isnan(mapping["a"])

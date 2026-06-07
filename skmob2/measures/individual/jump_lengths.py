@@ -46,7 +46,7 @@ def jump_lengths(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted: bool = False,
+    presorted: bool = False,
 ):
     """Compute jump lengths (km) for each user in the trajectory.
 
@@ -72,7 +72,7 @@ def jump_lengths(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sorted:
+    presorted:
         When True, trust that rows are already grouped by user and ordered by
         datetime within each user, then use the presorted contiguous fast path.
 
@@ -148,7 +148,7 @@ def jump_lengths(
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
 
-    if sorted:
+    if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         v_starts, v_ends, flat_values = ops["presorted"](lats_data, lngs_data, ends)
     else:

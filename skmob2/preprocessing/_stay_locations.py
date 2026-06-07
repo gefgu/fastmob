@@ -59,7 +59,7 @@ def stay_locations(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted=False,
+    presorted=False,
 ) -> Any:
     """Detect stay locations (stops) in trajectory data.
 
@@ -82,7 +82,7 @@ def stay_locations(
         If set, trim trailing high-speed points from the end of each stop.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    sorted:
+    presorted:
         Whether the trajectory is already sorted by user and time.
 
     Returns
@@ -157,7 +157,7 @@ def stay_locations(
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
-    if sorted:
+    if presorted:
         uid_values, ranges = _build_user_ranges(df, uid_col)
         _result = ops["sorted"](
             lats_data, lngs_data, timestamps_data, ranges,

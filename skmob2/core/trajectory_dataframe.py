@@ -135,7 +135,7 @@ class TrajDataFrame(BaseDataFrame):
             lat_col=self.lat_col,
             lng_col=self.lng_col,
             uid_col=self.uid_col,
-            sorted=self.sorted,
+            presorted=self.sorted,
             merge=merge,
         )
 
@@ -148,7 +148,7 @@ class TrajDataFrame(BaseDataFrame):
             lat_col=self.lat_col,
             lng_col=self.lng_col,
             uid_col=self.uid_col,
-            # sorted=self.sorted,
+            # presorted=self.sorted,
             # merge=merge,
         )
 

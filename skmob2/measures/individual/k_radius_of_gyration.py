@@ -44,7 +44,7 @@ def k_radius_of_gyration(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted: bool = False,
+    presorted: bool = False,
 ):
     """Compute the k-radius of gyration (km) for each user in the trajectory.
 
@@ -79,7 +79,7 @@ def k_radius_of_gyration(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sorted:
+    presorted:
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
@@ -149,7 +149,7 @@ def k_radius_of_gyration(
     timestamps = _extract_timestamps_ms(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps)
 
-    if sorted:
+    if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         krg_values = ops["format_values"](ops["sorted"](lats, lngs, timestamps_data, ends, k))
         if uid_col is None:

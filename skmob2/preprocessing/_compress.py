@@ -46,7 +46,7 @@ def compress(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted=False,
+    presorted=False,
 ) -> Any:
     """Compress trajectory by collapsing nearby points into single representative points.
 
@@ -61,7 +61,7 @@ def compress(
         Minimum distance (km) between consecutive output points.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    sorted:
+    presorted:
         Whether the trajectory is already sorted by user and time. When True,
         assumes the data is pre-cleaned (no null lat/lng/datetime rows).
 
@@ -133,7 +133,7 @@ def compress(
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps_s)
 
-    if sorted:
+    if presorted:
         _, ranges = _build_user_ranges(df, uid_col)
         result_raw = ops["compress_sorted"](lats_data, lngs_data, ranges, spatial_radius_km)
     else:

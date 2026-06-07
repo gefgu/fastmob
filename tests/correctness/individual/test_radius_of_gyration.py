@@ -270,7 +270,7 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
 
 
 def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
-    """The sorted=True fast path computes on already grouped user slices."""
+    """The presorted=True fast path computes on already grouped user slices."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     from skmob2._core import radius_of_gyration_km
     from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
@@ -284,7 +284,7 @@ def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
         }
     )
 
-    result = radius_of_gyration(df, sorted=True)
+    result = radius_of_gyration(df, presorted=True)
     actual = _rog_map(result)
 
     assert list(result["uid"]) == ["a", "b", "c"]

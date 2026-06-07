@@ -24,7 +24,7 @@ def cluster(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted=False,
+    presorted=False,
     n_jobs: int | None = None,
 ) -> Any:
     """Cluster stop locations using DBSCAN with Haversine metric."""
@@ -43,7 +43,7 @@ def cluster(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
-        sort=not sorted,
+        sort=not presorted,
     )
 
     eps_rad = cluster_radius_km / _KMS_PER_RADIAN

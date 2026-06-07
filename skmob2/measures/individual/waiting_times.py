@@ -55,7 +55,7 @@ def waiting_times(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    sorted: bool = False,
+    presorted: bool = False,
 ) -> Any:
     """Return the waiting times (seconds) between consecutive GPS fixes for each user.
 
@@ -82,7 +82,7 @@ def waiting_times(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
-    sorted:
+    presorted:
         When True, trust that rows are already grouped by user and ordered by
         datetime within each user, then use the contiguous fast path.
 
@@ -148,7 +148,7 @@ def waiting_times(
     ops = _DISPATCHER.get_ops(df)
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps_s)
-    if sorted:
+    if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         if merge:
             return ops["flat_values"](ops["presorted_flat"](timestamps_data, ends))
