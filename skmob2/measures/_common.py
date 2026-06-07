@@ -282,11 +282,7 @@ def _factorize_polars_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool)
         return codes, len(unique_values)
 
     raw_codes = native.select(
-        pl.col(uid_col)
-        .cast(pl.Utf8)
-        .cast(pl.Categorical)
-        .to_physical()
-        .alias("__code__")
+        pl.col(uid_col).cast(pl.Utf8).cast(pl.Categorical).to_physical().alias("__code__")
     ).get_column("__code__")
     max_code = raw_codes.max()
     fill_value = 0 if max_code is None else max_code + 1
@@ -342,9 +338,9 @@ def _factorize_uids_uint64(
 
 def _extract_timestamps_ms(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     """Return a Float64 Narwhals Series of millisecond Unix timestamps."""
-    return df.with_columns(
-        nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64).alias("__ts_ms__")
-    ).get_column("__ts_ms__")
+    return df.with_columns(nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64).alias("__ts_ms__")).get_column(
+        "__ts_ms__"
+    )
 
 
 def _extract_timestamps_s(df: nw.DataFrame, datetime_col: str) -> nw.Series:
@@ -353,9 +349,7 @@ def _extract_timestamps_s(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     Goes through the millisecond path so backends with nanosecond or
     microsecond storage produce identical values.
     """
-    return df.with_columns(
-        (nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")
-    ).get_column("__ts_s__")
+    return df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")).get_column("__ts_s__")
 
 
 def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, nw.Series]:
@@ -423,9 +417,7 @@ def _build_time_ordered_user_ranges(
             raise
 
     index_df = (
-        df.select([uid_col, datetime_col])
-        .with_row_index(row_index_col)
-        .sort(uid_col, datetime_col, row_index_col)
+        df.select([uid_col, datetime_col]).with_row_index(row_index_col).sort(uid_col, datetime_col, row_index_col)
     )
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
@@ -689,3 +681,95 @@ def _build_indexed_user_ranges(
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
     return uid_values, indices, ranges
+
+
+def _value_offsets_from_index_ranges(
+    index_starts: Any,
+    index_ends: Any,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Convert row-index ranges to value-array offsets for non-ordered results.
+
+    For a group of n rows, the kernel produces n-1 jump values.  This converts
+    the per-user row-index spans into half-open slices into the flat output array.
+    """
+    starts = np.asarray(index_starts, dtype=np.uintp)
+    ends = np.asarray(index_ends, dtype=np.uintp)
+    lengths = np.maximum(ends - starts, 1) - 1
+    value_ends = np.cumsum(lengths, dtype=np.uintp)
+    value_starts = value_ends - lengths
+    return value_starts, value_ends
+
+
+def _grouped_numpy_values(
+    starts: Any,
+    ends: Any,
+    values: Any,
+    *,
+    value_offsets: bool = False,
+) -> list[np.ndarray]:
+    """Group a flat NumPy values array into per-user sub-arrays.
+
+    When ``value_offsets=True``, *starts*/*ends* are already value-space offsets.
+    When ``False``, they are row-index ranges converted via
+    :func:`_value_offsets_from_index_ranges`.
+    """
+    if value_offsets:
+        starts = np.asarray(starts, dtype=np.uintp)
+        ends = np.asarray(ends, dtype=np.uintp)
+    else:
+        starts, ends = _value_offsets_from_index_ranges(starts, ends)
+    values = np.asarray(values, dtype=np.float64)
+    return [values[int(s) : int(e)] for s, e in zip(starts, ends)]
+
+
+def _arrow_flat_result_values(values: Any) -> Any:
+    """Unwrap a pyo3-arrow wrapper and materialise into a concrete ``pa.Array``."""
+    values = _arrow_result_values(values)
+    if hasattr(values, "__arrow_c_array__"):
+        import pyarrow as pa
+
+        return pa.array(values)
+    return values
+
+
+def _grouped_arrow_values(
+    starts: Any,
+    ends: Any,
+    values: Any,
+    *,
+    value_offsets: bool = False,
+) -> Any:
+    """Group a flat Arrow values array into a ``pa.ListArray`` of per-user sub-arrays."""
+    import pyarrow as pa
+
+    if value_offsets:
+        starts = np.asarray(starts, dtype=np.uintp)
+        ends = np.asarray(ends, dtype=np.uintp)
+    else:
+        starts, ends = _value_offsets_from_index_ranges(starts, ends)
+    offsets = np.empty(len(starts) + 1, dtype=np.int32)
+    offsets[:-1] = starts
+    offsets[-1] = ends[-1] if len(ends) else 0
+    return pa.ListArray.from_arrays(offsets, _arrow_flat_result_values(values))
+
+
+def _take_numpy_coords(
+    lats: nw.Series,
+    lngs: nw.Series,
+    indices: np.ndarray,
+) -> tuple[Any, Any]:
+    """Index into lat/lng Narwhals series using a NumPy index array."""
+    arr = lats.to_numpy()
+    return arr[indices], lngs.to_numpy()[indices]
+
+
+def _take_arrow_coords(
+    lats: nw.Series,
+    lngs: nw.Series,
+    indices: np.ndarray,
+) -> tuple[Any, Any]:
+    """Index into lat/lng Narwhals series using a PyArrow take operation."""
+    import pyarrow as pa
+
+    take_idx = pa.array(indices.astype(np.int64, copy=False))
+    return lats.to_arrow().take(take_idx), lngs.to_arrow().take(take_idx)

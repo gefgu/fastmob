@@ -3,161 +3,35 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import numpy as np
 from skmob2._core import (
-    jump_lengths_non_ordered_arrow,
-    jump_lengths_non_ordered_numpy,
     jump_lengths_presorted_arrow,
     jump_lengths_presorted_numpy,
 )
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
-    _ROW_ORDER_COL,
+    _arrow_flat_result_values,
     _as_index_array,
-    _arrow_result_values,
     _build_presorted_user_ranges,
-    _build_user_ranges,
-    _extract_timestamps_ms,
-    _factorize_uids_uint64,
+    _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
+    _extract_timestamps_ms,
+    _grouped_arrow_values,
+    _grouped_numpy_values,
+    _starts_from_ends,
+    _take_arrow_coords,
+    _take_numpy_coords,
     _to_native,
-    _uid_values_from_index_ranges,
 )
-
-
-def _route_presorted_jump_lengths(
-    ops: dict,
-    lats_data: Any,
-    lngs_data: Any,
-    ranges: list[tuple[int, int]],
-    *,
-    merge: bool,
-) -> Any:
-    starts, ends, values = ops["presorted"](lats_data, lngs_data, ranges)
-    values = ops["flat_values"](values)
-    if merge:
-        return values
-    return ops["group"](starts, ends, values, value_offsets=True)
-
-
-def _arrow_flat_result_values(values: Any) -> Any:
-    values = _arrow_result_values(values)
-    if hasattr(values, "__arrow_c_array__"):
-        import pyarrow as pa
-
-        return pa.array(values)
-    return values
-
-
-def _grouped_numpy_values(starts: Any, ends: Any, values: Any, *, value_offsets: bool = False) -> list[np.ndarray]:
-    if value_offsets:
-        starts = np.asarray(starts, dtype=np.uintp)
-        ends = np.asarray(ends, dtype=np.uintp)
-    else:
-        starts, ends = _value_offsets_from_index_ranges(starts, ends)
-    values = np.asarray(values, dtype=np.float64)
-    return [values[int(start) : int(end)] for start, end in zip(starts, ends)]
-
-
-def _grouped_arrow_values(starts: Any, ends: Any, values: Any, *, value_offsets: bool = False) -> Any:
-    import pyarrow as pa
-
-    if value_offsets:
-        starts = np.asarray(starts, dtype=np.uintp)
-        ends = np.asarray(ends, dtype=np.uintp)
-    else:
-        starts, ends = _value_offsets_from_index_ranges(starts, ends)
-    offsets = np.empty(len(starts) + 1, dtype=np.int32)
-    offsets[:-1] = starts
-    offsets[-1] = ends[-1] if len(ends) else 0
-    return pa.ListArray.from_arrays(offsets, _arrow_flat_result_values(values))
-
-
-def _value_offsets_from_index_ranges(index_starts: Any, index_ends: Any) -> tuple[np.ndarray, np.ndarray]:
-    starts = np.asarray(index_starts, dtype=np.uintp)
-    ends = np.asarray(index_ends, dtype=np.uintp)
-    lengths = np.maximum(ends - starts, 1) - 1
-    value_ends = np.cumsum(lengths, dtype=np.uintp)
-    value_starts = value_ends - lengths
-    return value_starts, value_ends
-
-
-def _take_arrow_coords(lats: nw.Series, lngs: nw.Series, indices: np.ndarray) -> tuple[Any, Any]:
-    import pyarrow as pa
-
-    take_idx = pa.array(indices.astype(np.int64, copy=False))
-    return lats.to_arrow().take(take_idx), lngs.to_arrow().take(take_idx)
-
-
-def _take_numpy_coords(lats: nw.Series, lngs: nw.Series, indices: np.ndarray) -> tuple[Any, Any]:
-    arr = lats.to_numpy()
-    return arr[indices], lngs.to_numpy()[indices]
-
-
-def _route_non_ordered_jump_lengths(
-    ops: dict,
-    uids_data: Any,
-    timestamps_data: Any,
-    lats_data: Any,
-    lngs_data: Any,
-    *,
-    merge: bool,
-    num_groups: int | None = None,
-) -> tuple[Any, Any, Any, Any]:
-    if num_groups is None:
-        indices, starts, ends, values = ops["non_ordered"](uids_data, timestamps_data, lats_data, lngs_data)
-    else:
-        indices, starts, ends, values = ops["non_ordered"](
-            uids_data,
-            timestamps_data,
-            lats_data,
-            lngs_data,
-            num_groups,
-        )
-    values = ops["flat_values"](values)
-    if merge:
-        return indices, starts, ends, values
-    return (indices, starts, ends, ops["group"](starts, ends, values))
-
-
-def _build_time_ordered_ranges_fallback(
-    df: nw.DataFrame,
-    uid_col: str,
-    datetime_col: str,
-) -> tuple[list, list[int], list[tuple[int, int]]]:
-    index_df = (
-        df.select([uid_col, datetime_col]).with_row_index(_ROW_ORDER_COL).sort(uid_col, datetime_col, _ROW_ORDER_COL)
-    )
-    uid_values, ranges = _build_user_ranges(index_df, uid_col)
-    indices = [int(idx) for idx in index_df.get_column(_ROW_ORDER_COL).to_list()]
-    return uid_values, indices, ranges
-
-
-def _presorted_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
-    return _build_presorted_user_ranges(df, uid_col)
-
-
-def _presorted_coordinate_series_from_indices(
-    ops: dict,
-    lats: nw.Series,
-    lngs: nw.Series,
-    indices: Any,
-) -> tuple[Any, Any]:
-    indices = np.asarray(indices, dtype=np.uintp)
-    return ops["take_coords"](lats, lngs, indices)
-
 
 _DISPATCHER = TrajectoryDispatcher(
     arrow_ops={
-        "non_ordered": jump_lengths_non_ordered_arrow,
         "presorted": jump_lengths_presorted_arrow,
         "flat_values": _arrow_flat_result_values,
         "group": _grouped_arrow_values,
         "take_coords": _take_arrow_coords,
     },
     numpy_ops={
-        "non_ordered": jump_lengths_non_ordered_numpy,
         "presorted": jump_lengths_presorted_numpy,
         "flat_values": lambda v: v,
         "group": _grouped_numpy_values,
@@ -265,7 +139,6 @@ def jump_lengths(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-
     df = df.with_columns(
         nw.col(lat_col).cast(nw.Float64),
         nw.col(lng_col).cast(nw.Float64),
@@ -273,51 +146,29 @@ def jump_lengths(
 
     ops = _DISPATCHER.get_ops(df)
     use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
-    timestamps = _extract_timestamps_ms(df, datetime_col)
     lats_full = df.get_column(lat_col)
     lngs_full = df.get_column(lng_col)
-    timestamps_data = ops["extract_data"](timestamps)
-    lats_data = ops["extract_data"](lats_full)
-    lngs_data = ops["extract_data"](lngs_full)
 
     if sorted:
-        uid_values, ranges = _presorted_ranges(df, uid_col)
-        jump_values = _route_presorted_jump_lengths(ops, lats_data, lngs_data, ranges, merge=merge)
-        if merge:
-            return jump_values
-        if uid_col is None:
-            return _to_native({"jump_lengths": jump_values}, df)
-        return _to_native({uid_col: uid_values, "jump_lengths": jump_values}, df)
-
-    if uid_col is None:
-        _indices, _starts, _ends, jump_values = _route_non_ordered_jump_lengths(
-            ops, None, timestamps_data, lats_data, lngs_data, merge=merge
-        )
-        if merge:
-            return jump_values
-        return _to_native({"jump_lengths": jump_values}, df)
-
-    uids = df.get_column(uid_col)
-    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=True)
-    uids_data = ops["extract_data"](uid_codes)
-    try:
-        indices, starts, ends, jump_values = _route_non_ordered_jump_lengths(
-            ops, uids_data, timestamps_data, lats_data, lngs_data, merge=merge, num_groups=num_groups
+        uid_values, ranges = _build_presorted_user_ranges(df, uid_col)
+        lats_data = ops["extract_data"](lats_full)
+        lngs_data = ops["extract_data"](lngs_full)
+    else:
+        timestamps = _extract_timestamps_ms(df, datetime_col)
+        uid_values, indices, ends = _build_time_ordered_user_ranges(
+            df, uid_col, datetime_col, timestamps, use_arrow=use_arrow
         )
         indices = _as_index_array(indices)
-        starts = _as_index_array(starts)
-        ends = _as_index_array(ends)
-        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
-    except ValueError as exc:
-        if "unsupported" not in str(exc) and "expected uint64" not in str(exc):
-            raise
-        uid_values, indices, ranges = _build_time_ordered_ranges_fallback(df, uid_col, datetime_col)
-        sorted_lats, sorted_lngs = _presorted_coordinate_series_from_indices(
-            ops, lats_full, lngs_full, indices
-        )
-        jump_values = _route_presorted_jump_lengths(ops, sorted_lats, sorted_lngs, ranges, merge=merge)
+        lats_data, lngs_data = ops["take_coords"](lats_full, lngs_full, indices)
+        ranges = list(zip(_starts_from_ends(ends).tolist(), ends.tolist()))
+
+    v_starts, v_ends, flat_values = ops["presorted"](lats_data, lngs_data, ranges)
+    flat_values = ops["flat_values"](flat_values)
 
     if merge:
-        return jump_values
+        return flat_values
 
+    jump_values = ops["group"](v_starts, v_ends, flat_values, value_offsets=True)
+    if uid_col is None:
+        return _to_native({"jump_lengths": jump_values}, df)
     return _to_native({uid_col: uid_values, "jump_lengths": jump_values}, df)
