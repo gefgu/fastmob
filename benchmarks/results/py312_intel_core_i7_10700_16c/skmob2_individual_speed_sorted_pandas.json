@@ -13,7 +13,7 @@
     "iterations": 5,
     "library": "skmob2",
     "metrics": [
-      "jump_lengths"
+      "waiting_times"
     ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
@@ -26,7 +26,7 @@
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "individual",
-    "timestamp_utc": "2026-06-07T12:06:16.539520+00:00",
+    "timestamp_utc": "2026-06-07T13:56:38.205580+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -34,16 +34,42 @@
       "label": "4M",
       "metrics": {
         "jump_lengths": {
-          "average_seconds": 0.04363758740946651,
+          "average_seconds": 0.059834246430546044,
           "iterations_completed": 5,
-          "minimum_seconds": 0.041494596283882856,
+          "minimum_seconds": 0.0367671437561512,
           "status": "ok",
           "times_seconds": [
-            0.04189191572368145,
-            0.04299118276685476,
-            0.045985094271600246,
-            0.041494596283882856,
-            0.04582514800131321
+            0.0367671437561512,
+            0.06798981921747327,
+            0.055455117020756006,
+            0.06893878197297454,
+            0.07002037018537521
+          ]
+        },
+        "maximum_distance": {
+          "average_seconds": 0.05095132784917951,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0386700788512826,
+          "status": "ok",
+          "times_seconds": [
+            0.06830818392336369,
+            0.03903515078127384,
+            0.0386700788512826,
+            0.06981831695884466,
+            0.038924908731132746
+          ]
+        },
+        "waiting_times": {
+          "average_seconds": 0.057233274634927514,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.044432338792830706,
+          "status": "ok",
+          "times_seconds": [
+            0.044432338792830706,
+            0.04823731491342187,
+            0.08518111985176802,
+            0.059513283893465996,
+            0.04880231572315097
           ]
         }
       },
