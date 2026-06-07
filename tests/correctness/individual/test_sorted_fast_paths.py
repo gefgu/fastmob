@@ -12,6 +12,7 @@ SPATIAL_FUNCTIONS = (
     "distance_straight_line",
     "frequency_rank",
     "home_location",
+    "individual_mobility_network",
     "jump_lengths",
     "k_radius_of_gyration",
     "location_frequency",

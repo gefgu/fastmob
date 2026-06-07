@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 import narwhals as nw
+import numpy as np
 
 
 # Expected max-distance-from-home for the shared synthetic fixture.
@@ -78,6 +79,49 @@ def test_max_distance_from_home_polars_known_values(synthetic_tdf_polars):
     assert set(mapping.keys()) == set(EXPECTED_MAX_DIST_FROM_HOME.keys())
     for uid, expected in EXPECTED_MAX_DIST_FROM_HOME.items():
         assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
+
+
+def test_max_distance_from_home_polars_null_coordinates_are_ignored():
+    """Arrow-backed max-distance-from-home skips null coordinate rows."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2.measures.individual.max_distance_from_home import max_distance_from_home
+
+    df = pl.DataFrame(
+        {
+            "uid": ["a", "a", "a"],
+            "datetime": [
+                pd.Timestamp("2020-01-01 00:00"),
+                pd.Timestamp("2020-01-01 01:00"),
+                pd.Timestamp("2020-01-01 02:00"),
+            ],
+            "lat": [0.0, None, 0.0],
+            "lng": [0.0, 4.0, 2.0],
+        }
+    )
+
+    result = max_distance_from_home(df)
+    mapping = _to_dict(result)
+
+    assert abs(mapping["a"] - 222.3901604670658) < 1e-6
+
+
+def test_max_distance_from_point_indexed_arrow_null_coordinates_are_ignored():
+    """Arrow helper accepts nullable coordinate arrays and skips invalid rows."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import max_distance_from_point_indexed_arrow
+
+    home_lats = pa.array([0.0], type=pa.float64())
+    home_lngs = pa.array([0.0], type=pa.float64())
+    lats = pa.array([0.0, None, 0.0], type=pa.float64())
+    lngs = pa.array([0.0, 4.0, 2.0], type=pa.float64())
+    indices = np.array([0, 1, 2], dtype=np.uintp)
+    ends = np.array([3], dtype=np.uintp)
+
+    result = max_distance_from_point_indexed_arrow(home_lats, home_lngs, lats, lngs, indices, ends)
+
+    np.testing.assert_allclose(np.asarray(result), [222.3901604670658], rtol=0.0, atol=1e-6)
 
 
 @pytest.mark.skmob

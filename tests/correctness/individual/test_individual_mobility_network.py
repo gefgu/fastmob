@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import narwhals as nw
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -160,6 +161,167 @@ def test_imn_polars_known_values(synthetic_tdf_polars):
 
     assert set(edge_dict.keys()) == {"user_a", "user_b", "user_c"}
     assert len(edge_dict["user_a"]) == 4
+
+
+def test_imn_presorted_matches_default_pandas():
+    """The presorted fast path matches the default time-ordered indexed path."""
+    from skmob2.measures.individual.individual_mobility_network import (
+        individual_mobility_network,
+    )
+
+    raw = pd.DataFrame(
+        {
+            "uid": ["b", "a", "a", "b", "a", "b"],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-01 02:00",
+                    "2020-01-01 03:00",
+                    "2020-01-01 01:00",
+                    "2020-01-01 01:00",
+                    "2020-01-01 02:00",
+                    "2020-01-01 03:00",
+                ]
+            ),
+            "lat": [3.0, 1.0, 2.0, 3.0, 1.0, 4.0],
+            "lng": [0.0] * 6,
+        }
+    )
+    sorted_input = raw.assign(__row_order=np.arange(len(raw))).sort_values(
+        ["uid", "datetime", "__row_order"], kind="mergesort"
+    ).drop(columns=["__row_order"])
+
+    assert _to_edge_dict(individual_mobility_network(sorted_input, presorted=True)) == _to_edge_dict(
+        individual_mobility_network(raw)
+    )
+
+
+def test_imn_presorted_no_uid():
+    """Presorted works when the whole frame is one implicit user."""
+    from skmob2.measures.individual.individual_mobility_network import (
+        individual_mobility_network,
+    )
+
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+            "lat": [1.0, 2.0, 1.0],
+            "lng": [0.0] * 3,
+        }
+    )
+    result = individual_mobility_network(df, presorted=True)
+    edge_dict = _to_edge_dict(result)
+
+    assert edge_dict == {
+        "__single__": {
+            (1.0, 0.0, 2.0, 0.0): 1,
+            (2.0, 0.0, 1.0, 0.0): 1,
+        }
+    }
+
+
+def test_imn_presorted_polars_known_values():
+    """Polars/Arrow input uses the presorted Arrow-backed fast path."""
+    pl = pytest.importorskip("polars")
+    from skmob2.measures.individual.individual_mobility_network import (
+        individual_mobility_network,
+    )
+
+    df = pl.DataFrame(
+        {
+            "uid": ["a", "a", "a", "b", "b"],
+            "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
+            "lat": [1.0, 2.0, 1.0, 3.0, 4.0],
+            "lng": [0.0] * 5,
+        }
+    )
+    edge_dict = _to_edge_dict(individual_mobility_network(df, presorted=True))
+
+    assert edge_dict["a"] == {
+        (1.0, 0.0, 2.0, 0.0): 1,
+        (2.0, 0.0, 1.0, 0.0): 1,
+    }
+    assert edge_dict["b"] == {(3.0, 0.0, 4.0, 0.0): 1}
+
+
+def test_imn_presorted_self_loop_behavior():
+    """The native presorted path preserves self_loops semantics."""
+    from skmob2.measures.individual.individual_mobility_network import (
+        individual_mobility_network,
+    )
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "a", "a"],
+            "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+            "lat": [1.0, 1.0, 2.0],
+            "lng": [0.0] * 3,
+        }
+    )
+
+    without_loops = _to_edge_dict(individual_mobility_network(df, presorted=True, self_loops=False))
+    with_loops = _to_edge_dict(individual_mobility_network(df, presorted=True, self_loops=True))
+
+    assert (1.0, 0.0, 1.0, 0.0) not in without_loops["a"]
+    assert with_loops["a"][(1.0, 0.0, 1.0, 0.0)] == 1
+
+
+def test_imn_indexed_numpy_helper_smoke():
+    """The native indexed helper counts transitions from row-index ranges."""
+    from skmob2._core import individual_mobility_network_indexed_numpy
+
+    lats = np.array([1.0, 2.0, 1.0, 3.0], dtype=np.float64)
+    lngs = np.zeros(4, dtype=np.float64)
+    indices = np.array([0, 1, 2, 3], dtype=np.uintp)
+    ends = np.array([3, 4], dtype=np.uintp)
+
+    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_indexed_numpy(
+        lats, lngs, indices, ends, False
+    )
+
+    assert list(zip(lat_o.tolist(), lng_o.tolist(), lat_d.tolist(), lng_d.tolist(), n_trips.tolist())) == [
+        (1.0, 0.0, 2.0, 0.0, 1),
+        (2.0, 0.0, 1.0, 0.0, 1),
+    ]
+    assert user_indices.tolist() == [0, 0]
+
+
+def test_imn_presorted_numpy_helper_smoke():
+    """The native presorted helper counts contiguous grouped transitions."""
+    from skmob2._core import individual_mobility_network_presorted_numpy
+
+    lats = np.array([1.0, 2.0, 1.0, 3.0], dtype=np.float64)
+    lngs = np.zeros(4, dtype=np.float64)
+    ends = np.array([3, 4], dtype=np.uintp)
+
+    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_presorted_numpy(
+        lats, lngs, ends, False
+    )
+
+    assert list(zip(lat_o.tolist(), lng_o.tolist(), lat_d.tolist(), lng_d.tolist(), n_trips.tolist())) == [
+        (1.0, 0.0, 2.0, 0.0, 1),
+        (2.0, 0.0, 1.0, 0.0, 1),
+    ]
+    assert user_indices.tolist() == [0, 0]
+
+
+def test_imn_native_helper_validation_errors():
+    """Native helpers validate index and range boundaries."""
+    from skmob2._core import (
+        individual_mobility_network_indexed_numpy,
+        individual_mobility_network_presorted_numpy,
+    )
+
+    arr = np.array([1.0, 2.0], dtype=np.float64)
+    with pytest.raises(ValueError, match="monotonically"):
+        individual_mobility_network_presorted_numpy(arr, arr, np.array([2, 1], dtype=np.uintp), False)
+    with pytest.raises(ValueError, match="index must be within"):
+        individual_mobility_network_indexed_numpy(
+            arr,
+            arr,
+            np.array([0, 2], dtype=np.uintp),
+            np.array([2], dtype=np.uintp),
+            False,
+        )
 
 
 @pytest.mark.skmob

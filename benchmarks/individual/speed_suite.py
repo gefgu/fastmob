@@ -138,7 +138,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "random_entropy",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec(
         "uncorrelated_entropy",
@@ -146,7 +145,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "uncorrelated_entropy",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec(
         "location_frequency",
@@ -154,7 +152,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "location_frequency",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec(
         "individual_mobility_network",
@@ -162,7 +159,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "individual_mobility_network",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec(
         "recency_rank",
@@ -170,7 +166,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "recency_rank",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec(
         "frequency_rank",
@@ -178,7 +173,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "frequency_rank",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec("diversity", "skmob2.measures.individual.diversity", "skmob.measures.individual", "diversity", {}, input_kind="visits"),
     BenchmarkSpec(
@@ -187,7 +181,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "trajectory_entropy",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec(
         "trajectory_predictability",
@@ -195,7 +188,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "trajectory_predictability",
         {},
-        input_kind="visits",
     ),
     BenchmarkSpec("regularity", "skmob2.measures.individual.regularity", "skmob.measures.individual", "regularity", {}, input_kind="visits"),
     BenchmarkSpec(
@@ -204,7 +196,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "mean_area_volume",
         {},
-        input_kind="visits",
     ),
 )
 
@@ -296,7 +287,7 @@ def metric_kwargs_for_library(
 ) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
     if library == "skmob2" and input_order == "sorted" and spec.input_kind == "trajectory":
-        kwargs["sorted"] = True
+        kwargs["presorted"] = True
     if library != "skmob":
         return kwargs
 
@@ -351,7 +342,7 @@ def load_brightkite_movingpandas(data_path: Path, size: int) -> Any:
 
 
 def clean_sorted_trajectory_input(df: Any, *, backend: str) -> Any:
-    """Drop missing user/time/coordinate rows before sorted=True benchmarks."""
+    """Drop missing user/time/coordinate rows before presorted=True benchmarks."""
     if backend == "polars":
         import polars as pl
 

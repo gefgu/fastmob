@@ -13,7 +13,7 @@
     "iterations": 5,
     "library": "skmob2",
     "metrics": [
-      "waiting_times"
+      "number_of_visits"
     ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
@@ -26,7 +26,7 @@
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "individual",
-    "timestamp_utc": "2026-06-07T13:56:38.205580+00:00",
+    "timestamp_utc": "2026-06-07T17:53:21.896895+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -46,6 +46,19 @@
             0.07002037018537521
           ]
         },
+        "max_distance_from_home": {
+          "average_seconds": 0.11261160243302584,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0953537579625845,
+          "status": "ok",
+          "times_seconds": [
+            0.0953537579625845,
+            0.0987203549593687,
+            0.1393395122140646,
+            0.1342018279246986,
+            0.0954425591044128
+          ]
+        },
         "maximum_distance": {
           "average_seconds": 0.05095132784917951,
           "iterations_completed": 5,
@@ -57,6 +70,19 @@
             0.0386700788512826,
             0.06981831695884466,
             0.038924908731132746
+          ]
+        },
+        "number_of_visits": {
+          "average_seconds": 0.015223215147852898,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.01487694587558508,
+          "status": "ok",
+          "times_seconds": [
+            0.01598802674561739,
+            0.01487694587558508,
+            0.015153917018324137,
+            0.014938856940716505,
+            0.015158329159021378
           ]
         },
         "waiting_times": {

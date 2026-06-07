@@ -42,6 +42,7 @@ pub fn max_distance_from_point_from_ends_impl(
     latitudes: &[f64],
     longitudes: &[f64],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     if home_lats.len() != home_lngs.len() {
         return Err("home_lats and home_lngs must have the same length".to_string());
@@ -59,6 +60,7 @@ pub fn max_distance_from_point_from_ends_impl(
             let home_lat = home_lats[i];
             let home_lng = home_lngs[i];
             (start..end)
+                .filter(|&idx| valid_rows.is_none_or(|v| v[idx]))
                 .map(|idx| haversine_km(home_lat, home_lng, latitudes[idx], longitudes[idx]))
                 .fold(0.0f64, f64::max)
         })
@@ -74,6 +76,7 @@ pub fn max_distance_from_point_indexed_impl(
     longitudes: &[f64],
     indices: &[usize],
     ends: &[usize],
+    valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     if home_lats.len() != home_lngs.len() || home_lats.len() != ends.len() {
         return Err("home coordinates and ranges must have the same length".to_string());
@@ -89,6 +92,7 @@ pub fn max_distance_from_point_indexed_impl(
             let home_lng = home_lngs[i];
             indices[start..end]
                 .iter()
+                .filter(|&&idx| valid_rows.is_none_or(|v| v[idx]))
                 .map(|&idx| haversine_km(home_lat, home_lng, latitudes[idx], longitudes[idx]))
                 .fold(0.0f64, f64::max)
         })

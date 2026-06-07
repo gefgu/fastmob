@@ -3,8 +3,44 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+from skmob2._core import (
+    individual_mobility_network_indexed_arrow,
+    individual_mobility_network_indexed_numpy,
+    individual_mobility_network_presorted_arrow,
+    individual_mobility_network_presorted_numpy,
+)
+from skmob2.core.dispatch import TrajectoryDispatcher
 
-from .._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from .._common import (
+    _arrow_result_values,
+    _build_presorted_user_ends,
+    _build_time_ordered_user_ranges,
+    _detect_trajectory_columns,
+    _extract_timestamps_ms,
+    _take_uid_values,
+    _to_native,
+    _with_datetime_column,
+)
+
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "indexed": individual_mobility_network_indexed_arrow,
+        "presorted": individual_mobility_network_presorted_arrow,
+        "unpack": lambda raw: (
+            _arrow_result_values(raw[0]),
+            _arrow_result_values(raw[1]),
+            _arrow_result_values(raw[2]),
+            _arrow_result_values(raw[3]),
+            _arrow_result_values(raw[4]),
+            raw[5],
+        ),
+    },
+    numpy_ops={
+        "indexed": individual_mobility_network_indexed_numpy,
+        "presorted": individual_mobility_network_presorted_numpy,
+        "unpack": lambda raw: raw,
+    },
+)
 
 
 def individual_mobility_network(
@@ -15,6 +51,7 @@ def individual_mobility_network(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
+    presorted: bool = False,
 ) -> Any:
     """Return the individual mobility network as a directed edge-list DataFrame.
 
@@ -45,6 +82,9 @@ def individual_mobility_network(
         Explicit longitude column name.  Auto-detected when None.
     uid_col:
         Explicit user-ID column name.  Auto-detected when None.
+    presorted:
+        When True, trust that rows are already grouped by user and ordered by
+        datetime within each user, then use the contiguous fast path.
 
     Returns
     -------
@@ -105,90 +145,35 @@ def individual_mobility_network(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
+    df = _with_datetime_column(df, datetime_col)
+    df = df.drop_nulls(subset=[datetime_col]).with_columns(
+        nw.col(lat_col).cast(nw.Float64),
+        nw.col(lng_col).cast(nw.Float64),
     )
 
-    def _network_for_values(lat_list: list, lng_list: list) -> tuple[list, list, list, list, list[int]]:
-        """Build directed transition counts for a single user.
+    ops = _DISPATCHER.get_ops(df)
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
 
-        Returns five parallel lists: lat_origins, lng_origins, lat_dests,
-        lng_dests, n_trips — one entry per unique directed edge.
-        """
-        edge_counts: dict[tuple, int] = {}
-        for i in range(len(lat_list) - 1):
-            origin = (lat_list[i], lng_list[i])
-            dest = (lat_list[i + 1], lng_list[i + 1])
-            if not self_loops and origin == dest:
-                continue
-            edge = (origin, dest)
-            edge_counts[edge] = edge_counts.get(edge, 0) + 1
-
-        lat_origins: list = []
-        lng_origins: list = []
-        lat_dests: list = []
-        lng_dests: list = []
-        n_trips: list[int] = []
-        for (origin, dest), count in edge_counts.items():
-            lat_origins.append(origin[0])
-            lng_origins.append(origin[1])
-            lat_dests.append(dest[0])
-            lng_dests.append(dest[1])
-            n_trips.append(count)
-
-        return lat_origins, lng_origins, lat_dests, lng_dests, n_trips
-
-    if uid_col is None:
-        lat_origins, lng_origins, lat_dests, lng_dests, n_trips = _network_for_values(
-            df.get_column(lat_col).to_list(),
-            df.get_column(lng_col).to_list(),
+    if presorted:
+        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+        raw = ops["presorted"](lats_data, lngs_data, ends, self_loops)
+    else:
+        timestamps = _extract_timestamps_ms(df, datetime_col)
+        timestamps_data = ops["extract_data"](timestamps)
+        uid_values, indices, ends = _build_time_ordered_user_ranges(
+            df, uid_col, datetime_col, timestamps_data
         )
-        return nw.from_dict(
-            {
-                "lat_origin": lat_origins,
-                "lng_origin": lng_origins,
-                "lat_dest": lat_dests,
-                "lng_dest": lng_dests,
-                "n_trips": n_trips,
-            },
-            backend=df.implementation,
-        ).to_native()
+        raw = ops["indexed"](lats_data, lngs_data, indices, ends, self_loops)
+    lat_origins, lng_origins, lat_dests, lng_dests, n_trips, user_indices = ops["unpack"](raw)
 
-    uid_vals_all: list = []
-    lat_origins_all: list = []
-    lng_origins_all: list = []
-    lat_dests_all: list = []
-    lng_dests_all: list = []
-    n_trips_all: list[int] = []
-
-    lat_full = df.get_column(lat_col).to_list()
-    lng_full = df.get_column(lng_col).to_list()
-    uid_values, ranges = _build_user_ranges(df, uid_col)
-    for uid, (start, end) in zip(uid_values, ranges):
-        lat_origins, lng_origins, lat_dests, lng_dests, n_trips = _network_for_values(
-            lat_full[start:end],
-            lng_full[start:end],
-        )
-        n = len(n_trips)
-        uid_vals_all.extend([uid] * n)
-        lat_origins_all.extend(lat_origins)
-        lng_origins_all.extend(lng_origins)
-        lat_dests_all.extend(lat_dests)
-        lng_dests_all.extend(lng_dests)
-        n_trips_all.extend(n_trips)
-
-    return nw.from_dict(
-        {
-            uid_col: uid_vals_all,
-            "lat_origin": lat_origins_all,
-            "lng_origin": lng_origins_all,
-            "lat_dest": lat_dests_all,
-            "lng_dest": lng_dests_all,
-            "n_trips": n_trips_all,
-        },
-        backend=df.implementation,
-    ).to_native()
+    result_dict: dict[str, Any] = {
+        "lat_origin": lat_origins,
+        "lng_origin": lng_origins,
+        "lat_dest": lat_dests,
+        "lng_dest": lng_dests,
+        "n_trips": n_trips,
+    }
+    if uid_col is not None:
+        result_dict = {uid_col: _take_uid_values(uid_values, user_indices), **result_dict}
+    return _to_native(result_dict, df)

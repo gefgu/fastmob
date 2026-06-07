@@ -322,7 +322,7 @@ Instead:
    the core `_indexed_impl`.
 3. The **NumPy**-indexed Rust binding passes `None` for `valid_rows`; the core checks
    `is_finite()` on each index before using it.
-4. The `sorted=True` fast path retains its assumption that the caller supplies pre-cleaned data;
+4. The `presorted=True` fast path retains its assumption that the caller supplies pre-cleaned data;
    `_prepare_trajectory(sort=True)` is acceptable there.
 
 `arrow_valid_rows` is already implemented in `skmob2-py/src/utils/py_helpers.rs`.

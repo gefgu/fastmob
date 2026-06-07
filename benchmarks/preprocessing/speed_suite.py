@@ -160,7 +160,7 @@ def metric_kwargs_for_library(
 ) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
     if library == "skmob2" and input_order == "sorted" and spec.input_kind == "trajectory":
-        kwargs["sorted"] = True
+        kwargs["presorted"] = True
     if library != "skmob":
         return kwargs
 

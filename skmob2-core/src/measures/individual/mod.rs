@@ -1,5 +1,6 @@
 pub mod entropy;
 pub mod home_location;
+pub mod individual_mobility_network;
 pub mod jump_lengths;
 pub mod k_radius_of_gyration;
 pub mod location_frequency;

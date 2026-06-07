@@ -69,6 +69,22 @@ def test_benchmark_metric_records_import_skip():
     assert result["times_seconds"] == []
 
 
+def test_sorted_skmob2_trajectory_benchmark_uses_presorted_keyword():
+    spec = suite.BenchmarkSpec("maximum_distance", "unused", "unused", "maximum_distance", {})
+
+    kwargs = suite.metric_kwargs_for_library(spec, "skmob2", lambda **_kwargs: None, input_order="sorted")
+
+    assert kwargs == {"presorted": True}
+
+
+def test_sorted_skmob2_visit_benchmark_does_not_add_presorted_keyword():
+    spec = suite.BenchmarkSpec("random_entropy", "unused", "unused", "random_entropy", {}, input_kind="visits")
+
+    kwargs = suite.metric_kwargs_for_library(spec, "skmob2", lambda **_kwargs: None, input_order="sorted")
+
+    assert kwargs == {}
+
+
 def test_clean_sorted_trajectory_input_pandas_drops_nulls_and_nans():
     pd = pytest.importorskip("pandas")
     df = pd.DataFrame(

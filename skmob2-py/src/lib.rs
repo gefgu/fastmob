@@ -8,9 +8,9 @@ use pyo3::prelude::*;
 use measures::collective::{square_displacement, visitation_law};
 use measures::evaluation::{stvd_emd, wasserstein};
 use measures::individual::{
-    entropy, home_location, k_radius_of_gyration, location_frequency, max_distance_from_point,
-    maximum_distance, motifs, radius_of_gyration, recency_rank, spatial_counts, time_ordering,
-    total_distance, uncorrelated_entropy, waiting_times,
+    entropy, home_location, individual_mobility_network, k_radius_of_gyration, location_frequency,
+    max_distance_from_point, maximum_distance, motifs, radius_of_gyration, recency_rank,
+    spatial_counts, time_ordering, total_distance, uncorrelated_entropy, waiting_times,
 };
 use preprocessing::{cdr, clustering, compress_traj_py, filter_traj_py, stay_locations_py};
 
@@ -247,6 +247,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         recency_rank::recency_rank_presorted_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        individual_mobility_network::individual_mobility_network_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        individual_mobility_network::individual_mobility_network_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        individual_mobility_network::individual_mobility_network_presorted_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        individual_mobility_network::individual_mobility_network_presorted_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
