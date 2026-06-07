@@ -16,6 +16,15 @@ EXPECTED_MAX_DIST: dict[str, float] = {
 }
 
 
+def _arrow_to_numpy(values) -> np.ndarray:
+    if hasattr(values, "to_pyarrow"):
+        values = values.to_pyarrow()
+    try:
+        return values.to_numpy(zero_copy_only=False)
+    except TypeError:
+        return values.to_numpy()
+
+
 def _to_dict(df) -> dict[str, float]:
     """Convert a maximum_distance result DataFrame to {uid: distance_km}."""
     nw_df = nw.from_native(df, eager_only=True)
@@ -78,6 +87,26 @@ def test_maximum_distance_single_point_returns_nan():
     assert np.isnan(mapping["a"])
 
 
+def test_maximum_distance_sorted_single_point_group_returns_nan():
+    """The presorted backend emits NaN for groups with fewer than two points."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    from skmob2.measures.individual.maximum_distance import maximum_distance
+
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "b", "b"],
+            "datetime": pd.to_datetime(["2020-01-01", "2020-01-01", "2020-01-02"]),
+            "lat": [0.0, 0.0, 1.0],
+            "lng": [0.0, 0.0, 0.0],
+        }
+    )
+    result = maximum_distance(df, sorted=True)
+    mapping = _to_dict(result)
+
+    assert np.isnan(mapping["a"])
+    assert abs(mapping["b"] - 111.1950802335329) < 1e-5
+
+
 def test_maximum_distance_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
@@ -91,6 +120,26 @@ def test_maximum_distance_polars_known_values(synthetic_tdf_polars):
         assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
 
 
+def test_maximum_distance_polars_single_point_returns_nan():
+    """Arrow-backed high-level path keeps NaN semantics without Python patching."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2.measures.individual.maximum_distance import maximum_distance
+
+    df = pl.DataFrame(
+        {
+            "uid": ["a"],
+            "datetime": [pd.Timestamp("2020-01-01")],
+            "lat": [0.0],
+            "lng": [0.0],
+        }
+    )
+    result = maximum_distance(df)
+    mapping = _to_dict(result)
+
+    assert np.isnan(mapping["a"])
+
+
 def test_maximum_distance_numpy_and_arrow_helpers_match_batch_helper():
     pytest.importorskip("skmob2._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
@@ -99,13 +148,53 @@ def test_maximum_distance_numpy_and_arrow_helpers_match_batch_helper():
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
     ranges = [(0, 3), (3, 5)]
+    ends = np.array([3, 5], dtype=np.uintp)
 
     expected = maximum_distance_batch_km(lats.tolist(), lngs.tolist(), ranges)
-    result_numpy = maximum_distance_numpy(lats, lngs, ranges)
-    result_arrow = maximum_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ranges)
+    result_numpy = maximum_distance_numpy(lats, lngs, ends)
+    result_arrow = maximum_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
 
     np.testing.assert_allclose(result_numpy, expected, rtol=0.0, atol=1e-12)
-    np.testing.assert_allclose(result_arrow, expected, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(_arrow_to_numpy(result_arrow), expected, rtol=0.0, atol=1e-12)
+    assert hasattr(result_arrow, "__arrow_c_array__")
+
+
+def test_maximum_distance_helpers_return_nan_for_short_presorted_groups():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pl = pytest.importorskip("polars", reason="Install polars to run this test")
+    from skmob2._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
+
+    lats = np.array([0.0, 0.0, 1.0], dtype=np.float64)
+    lngs = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+    ranges = [(0, 1), (1, 3)]
+    ends = np.array([1, 3], dtype=np.uintp)
+
+    expected = maximum_distance_batch_km(lats.tolist(), lngs.tolist(), ranges)
+    result_numpy = maximum_distance_numpy(lats, lngs, ends)
+    result_arrow = maximum_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
+
+    assert np.isnan(expected[0])
+    assert np.isnan(result_numpy[0])
+    assert np.isnan(_arrow_to_numpy(result_arrow)[0])
+    np.testing.assert_allclose(result_numpy[1:], expected[1:], rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(_arrow_to_numpy(result_arrow)[1:], expected[1:], rtol=0.0, atol=1e-12)
+
+
+def test_maximum_distance_indexed_arrow_returns_nan_when_nulls_leave_one_valid_point():
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import maximum_distance_indexed_arrow
+
+    lats = pa.array([0.0, None, float("nan")])
+    lngs = pa.array([0.0, 1.0, 2.0])
+    indices = np.array([0, 1, 2], dtype=np.uintp)
+    ends = np.array([3], dtype=np.uintp)
+
+    result = maximum_distance_indexed_arrow(lats, lngs, indices, ends)
+
+    values = _arrow_to_numpy(result)
+    assert values.shape == (1,)
+    assert np.isnan(values[0])
 
 
 def test_maximum_distance_numpy_helper_validation_errors():
@@ -114,9 +203,11 @@ def test_maximum_distance_numpy_helper_validation_errors():
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
-        maximum_distance_numpy(arr, arr[:1], [(0, 1)])
+        maximum_distance_numpy(arr, arr[:1], np.array([1], dtype=np.uintp))
     with pytest.raises(ValueError, match="range end"):
-        maximum_distance_numpy(arr, arr, [(0, 3)])
+        maximum_distance_numpy(arr, arr, np.array([3], dtype=np.uintp))
+    with pytest.raises(ValueError, match="monotonically non-decreasing"):
+        maximum_distance_numpy(arr, arr, np.array([2, 1], dtype=np.uintp))
 
 
 @pytest.mark.skmob

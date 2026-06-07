@@ -3,7 +3,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use skmob2_core::measures::individual::maximum_distance::{
-    maximum_distance_impl, maximum_distance_indexed_impl,
+    maximum_distance_impl, maximum_distance_indexed_impl, maximum_distance_ranges_impl,
 };
 
 use crate::utils::{
@@ -16,17 +16,21 @@ pub fn maximum_distance_batch_km(
     longitudes: Vec<f64>,
     ranges: Vec<(usize, usize)>,
 ) -> PyResult<Vec<f64>> {
-    maximum_distance_impl(&latitudes, &longitudes, &ranges).map_err(PyValueError::new_err)
+    maximum_distance_ranges_impl(&latitudes, &longitudes, &ranges).map_err(PyValueError::new_err)
 }
 
 #[pyfunction]
 pub fn maximum_distance_numpy(
     latitudes: PyReadonlyArray1<f64>,
     longitudes: PyReadonlyArray1<f64>,
-    ranges: Vec<(usize, usize)>,
+    ends: PyReadonlyArray1<usize>,
 ) -> PyResult<Vec<f64>> {
-    maximum_distance_impl(latitudes.as_slice()?, longitudes.as_slice()?, &ranges)
-        .map_err(PyValueError::new_err)
+    maximum_distance_impl(
+        latitudes.as_slice()?,
+        longitudes.as_slice()?,
+        ends.as_slice()?,
+    )
+    .map_err(PyValueError::new_err)
 }
 
 #[pyfunction]
@@ -52,12 +56,18 @@ pub fn maximum_distance_indexed_numpy<'py>(
 pub fn maximum_distance_arrow(
     latitudes: PyArray,
     longitudes: PyArray,
-    ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
+    ends: PyReadonlyArray1<usize>,
+) -> PyResult<PyArray> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
-    maximum_distance_impl(arrow_values(&latitudes), arrow_values(&longitudes), &ranges)
-        .map_err(PyValueError::new_err)
+    Ok(f64_results_into_arrow(
+        maximum_distance_impl(
+            arrow_values(&latitudes),
+            arrow_values(&longitudes),
+            ends.as_slice()?,
+        )
+        .map_err(PyValueError::new_err)?,
+    ))
 }
 
 #[pyfunction]

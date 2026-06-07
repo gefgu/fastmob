@@ -31,7 +31,12 @@ DURATION_CANDIDATES: list[str] = ["duration_steps", "duration_minutes", "duratio
 PURPOSE_CANDIDATES: list[str] = ["purpose", "activity", "location_type"]
 LOCATION_TYPE_CANDIDATES: list[str] = ["location_type", "purpose", "activity"]
 ORIGIN_CANDIDATES: list[str] = ["origin_area", "Origin_Area", "area_o", "ORIGIN_AREA"]
-DEST_CANDIDATES: list[str] = ["destination_area", "Dest_Area", "area_d", "DESTINATION_AREA"]
+DEST_CANDIDATES: list[str] = [
+    "destination_area",
+    "Dest_Area",
+    "area_d",
+    "DESTINATION_AREA",
+]
 
 
 def _shannon_entropy(counts: list[int]) -> float:
@@ -120,7 +125,10 @@ def _is_pandas_backed(nw_df: nw.DataFrame) -> bool:
 def _is_pyarrow_backed(nw_df: nw.DataFrame) -> bool:
     """Return True when a Narwhals DataFrame is backed by PyArrow."""
     implementation = getattr(nw_df, "implementation", None)
-    if implementation is not None and getattr(implementation, "value", None) == "pyarrow":
+    if (
+        implementation is not None
+        and getattr(implementation, "value", None) == "pyarrow"
+    ):
         return True
 
     native = nw_df.to_native()
@@ -129,7 +137,9 @@ def _is_pyarrow_backed(nw_df: nw.DataFrame) -> bool:
 
 def _empty_like(nw_df: nw.DataFrame, columns: list[str]) -> Any:
     """Build an empty native DataFrame using the same backend as ``nw_df``."""
-    return nw.from_dict({col: [] for col in columns}, backend=nw_df.implementation).to_native()
+    return nw.from_dict(
+        {col: [] for col in columns}, backend=nw_df.implementation
+    ).to_native()
 
 
 def _dispatch_kernel(
@@ -183,9 +193,13 @@ def _as_index_array(values: Any) -> np.ndarray:
     return np.asarray(values, dtype=np.uintp)
 
 
-def _ranges_to_starts_ends(ranges: list[tuple[int, int]]) -> tuple[np.ndarray, np.ndarray]:
+def _ranges_to_starts_ends(
+    ranges: list[tuple[int, int]],
+) -> tuple[np.ndarray, np.ndarray]:
     """Convert Python range tuples to NumPy start/end arrays."""
-    starts = np.fromiter((start for start, _ in ranges), dtype=np.uintp, count=len(ranges))
+    starts = np.fromiter(
+        (start for start, _ in ranges), dtype=np.uintp, count=len(ranges)
+    )
     ends = np.fromiter((end for _, end in ranges), dtype=np.uintp, count=len(ranges))
     return starts, ends
 
@@ -244,7 +258,9 @@ def _indexed_group_indices_arrow(uids: Any, num_groups: int) -> Any:
     return radius_of_gyration_user_indices_arrow(uids, num_groups)
 
 
-def _time_ordered_user_indices_numpy(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
+def _time_ordered_user_indices_numpy(
+    uids: Any, timestamps: Any, num_groups: int | None = None
+) -> Any:
     from skmob2._core import time_ordered_user_indices_numpy  # noqa: PLC0415
 
     if uids is None:
@@ -252,7 +268,9 @@ def _time_ordered_user_indices_numpy(uids: Any, timestamps: Any, num_groups: int
     return time_ordered_user_indices_numpy(uids, timestamps, num_groups)
 
 
-def _time_ordered_user_indices_arrow(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
+def _time_ordered_user_indices_arrow(
+    uids: Any, timestamps: Any, num_groups: int | None = None
+) -> Any:
     from skmob2._core import time_ordered_user_indices_arrow  # noqa: PLC0415
 
     if uids is None:
@@ -280,14 +298,18 @@ def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
     )
 
 
-def _factorize_numpy_values_uint64(values: Any, *, sort: bool) -> tuple[np.ndarray, int]:
+def _factorize_numpy_values_uint64(
+    values: Any, *, sort: bool
+) -> tuple[np.ndarray, int]:
     import pandas as pd  # noqa: PLC0415 - pandas-backed factorization
 
     codes, uniques = pd.factorize(values, sort=sort, use_na_sentinel=False)
     return np.asarray(codes, dtype=np.uint64), len(uniques)
 
 
-def _factorize_polars_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
+def _factorize_polars_uids_uint64(
+    df: nw.DataFrame, uid_col: str, *, sort: bool
+) -> tuple[Any, int]:
     import polars as pl  # noqa: PLC0415
 
     native = df.to_native()
@@ -310,14 +332,20 @@ def _factorize_polars_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool)
         return codes, len(unique_values)
 
     raw_codes = native.select(
-        pl.col(uid_col).cast(pl.Utf8).cast(pl.Categorical).to_physical().alias("__code__")
+        pl.col(uid_col)
+        .cast(pl.Utf8)
+        .cast(pl.Categorical)
+        .to_physical()
+        .alias("__code__")
     ).get_column("__code__")
     max_code = raw_codes.max()
     fill_value = 0 if max_code is None else max_code + 1
     return raw_codes.fill_null(fill_value).cast(pl.UInt64), len(unique_values)
 
 
-def _factorize_pyarrow_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
+def _factorize_pyarrow_uids_uint64(
+    df: nw.DataFrame, uid_col: str, *, sort: bool
+) -> tuple[Any, int]:
     import pyarrow as pa  # noqa: PLC0415
     import pyarrow.compute as pc  # noqa: PLC0415
 
@@ -360,15 +388,17 @@ def _factorize_uids_uint64(
         codes, num_groups = _factorize_pyarrow_uids_uint64(df, uid_col, sort=sort)
         return _uint64_series(df, codes), num_groups
 
-    codes, num_groups = _factorize_numpy_values_uint64(df.get_column(uid_col).to_numpy(), sort=sort)
+    codes, num_groups = _factorize_numpy_values_uint64(
+        df.get_column(uid_col).to_numpy(), sort=sort
+    )
     return _uint64_series(df, codes), num_groups
 
 
 def _extract_timestamps_ms(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     """Return a Float64 Narwhals Series of millisecond Unix timestamps."""
-    return df.with_columns(nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64).alias("__ts_ms__")).get_column(
-        "__ts_ms__"
-    )
+    return df.with_columns(
+        nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64).alias("__ts_ms__")
+    ).get_column("__ts_ms__")
 
 
 def _extract_timestamps_s(df: nw.DataFrame, datetime_col: str) -> nw.Series:
@@ -377,12 +407,18 @@ def _extract_timestamps_s(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     Goes through the millisecond path so backends with nanosecond or
     microsecond storage produce identical values.
     """
-    return df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")).get_column("__ts_s__")
+    return df.with_columns(
+        (nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")
+    ).get_column("__ts_s__")
 
 
-def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, nw.Series]:
+def _extract_hours(
+    df: nw.DataFrame, datetime_col: str
+) -> tuple[nw.DataFrame, nw.Series]:
     """Add and return an ``__hour__`` Float64 column derived from datetime."""
-    df = df.with_columns(nw.col(datetime_col).dt.hour().cast(nw.Float64).alias("__hour__"))
+    df = df.with_columns(
+        nw.col(datetime_col).dt.hour().cast(nw.Float64).alias("__hour__")
+    )
     return df, df.get_column("__hour__")
 
 
@@ -395,12 +431,17 @@ def _uid_values_from_index_ranges(
 ) -> list:
     """Extract one UID label per indexed range without scanning all rows in Python."""
     starts = _starts_from_ends(ends)
+    first_row_indices = np.asarray(indices, dtype=np.uintp)[
+        np.asarray(starts, dtype=np.uintp)
+    ]
     if use_arrow:
+        import pyarrow.compute as pc  # noqa: PLC0415
+
         uid_arrow = uids.to_arrow()
-        return [uid_arrow[int(indices[int(start)])].as_py() for start in starts]
+        return pc.take(uid_arrow, first_row_indices).to_pylist()
 
     uid_values = uids.to_numpy()
-    return uid_values[np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]].tolist()
+    return uid_values[first_row_indices].tolist()
 
 
 def _build_time_ordered_user_ranges(
@@ -422,10 +463,14 @@ def _build_time_ordered_user_ranges(
     uids = df.get_column(uid_col)
     uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=False)
     try:
-        indices, ends = ops["time_ordered_indices"](ops["extract_data"](uid_codes), timestamps_data, num_groups)
+        indices, ends = ops["time_ordered_indices"](
+            ops["extract_data"](uid_codes), timestamps_data, num_groups
+        )
         indices = _as_index_array(indices)
         ends = _as_index_array(ends)
-        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
+        uid_values = _uid_values_from_index_ranges(
+            uids, indices, ends, use_arrow=use_arrow
+        )
         return uid_values, indices, ends
     except ValueError as exc:
         if "unsupported" not in str(exc):
@@ -463,13 +508,17 @@ def _build_indexed_user_ranges_fast(
     uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=False)
     try:
         indices, ends = ops["group_indices"](ops["extract_data"](uid_codes), num_groups)
-        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
+        uid_values = _uid_values_from_index_ranges(
+            uids, indices, ends, use_arrow=use_arrow
+        )
         return uid_values, _as_index_array(indices), _as_index_array(ends)
     except ValueError as exc:
         if "unsupported" not in str(exc):
             raise
 
-    uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col, row_index_col=row_index_col)
+    uid_values, indices, ranges = _build_indexed_user_ranges(
+        df, uid_col, row_index_col=row_index_col
+    )
     ends = _ranges_to_ends(ranges)
     return uid_values, _as_index_array(indices), ends
 
@@ -612,7 +661,11 @@ def _prepare_trajectory(
     if drop_nulls:
         nw_df = nw_df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
     if sort:
-        sort_cols = [uid_col, datetime_col, _ROW_ORDER_COL] if uid_col else [datetime_col, _ROW_ORDER_COL]
+        sort_cols = (
+            [uid_col, datetime_col, _ROW_ORDER_COL]
+            if uid_col
+            else [datetime_col, _ROW_ORDER_COL]
+        )
         nw_df = nw_df.sort(*sort_cols)
 
     nw_df = nw_df.with_columns(
@@ -625,7 +678,9 @@ def _prepare_trajectory(
     return nw_df
 
 
-def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, list[tuple[int, int]]]:
+def _build_user_ranges(
+    df: nw.DataFrame, uid_col: str | None
+) -> tuple[list, list[tuple[int, int]]]:
     """Split a uid-sorted DataFrame into per-user (uid_value, index_range) pairs.
 
     Returns
@@ -655,7 +710,9 @@ def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, lis
     return uid_values, ranges
 
 
-def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, np.ndarray]:
+def _build_presorted_user_ends(
+    df: nw.DataFrame, uid_col: str | None
+) -> tuple[list | None, np.ndarray]:
     """Build contiguous user group end indices for data already grouped by user."""
     n = len(df)
     if uid_col is None:
@@ -667,7 +724,11 @@ def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[l
             return [], np.array([], dtype=np.uintp)
 
         uid_series = native[uid_col]
-        boundaries = uid_series.ne(uid_series.shift(1)).fillna(True).to_numpy(dtype=bool, copy=False)
+        boundaries = (
+            uid_series.ne(uid_series.shift(1))
+            .fillna(True)
+            .to_numpy(dtype=bool, copy=False)
+        )
         starts_array = np.flatnonzero(boundaries)
         ends = np.empty(len(starts_array), dtype=np.uintp)
         if len(starts_array) > 1:
@@ -690,7 +751,9 @@ def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[l
     return uid_values, ends
 
 
-def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
+def _build_presorted_user_ranges(
+    df: nw.DataFrame, uid_col: str | None
+) -> tuple[list | None, list[tuple[int, int]]]:
     """Build contiguous user ranges for data already grouped by user."""
     uid_values, ends = _build_presorted_user_ends(df, uid_col)
     return uid_values, _ranges_from_ends(ends)
@@ -713,7 +776,9 @@ def _build_indexed_user_ranges(
     if n == 0:
         return [], [], []
 
-    index_df = df.select([uid_col]).with_row_index(row_index_col).sort(uid_col, row_index_col)
+    index_df = (
+        df.select([uid_col]).with_row_index(row_index_col).sort(uid_col, row_index_col)
+    )
     uid_values, ranges = _build_user_ranges(index_df, uid_col)
     indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
     return uid_values, indices, ranges

@@ -1,10 +1,8 @@
 from __future__ import annotations
-import narwhals as nw
 
-import math
 from typing import Any
 
-import numpy as np
+import narwhals as nw
 from skmob2._core import (
     maximum_distance_arrow,
     maximum_distance_indexed_arrow,
@@ -15,17 +13,26 @@ from skmob2._core import (
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
+    _arrow_result_values,
     _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
-    _dispatch_kernel,
-    _extract_timestamps_ms,
     _detect_trajectory_columns,
-    _ranges_from_ends,
-    _starts_from_ends,
+    _extract_timestamps_ms,
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={
+        "indexed": maximum_distance_indexed_arrow,
+        "presorted": maximum_distance_arrow,
+        "result_values": _arrow_result_values,
+    },
+    numpy_ops={
+        "indexed": maximum_distance_indexed_numpy,
+        "presorted": maximum_distance_numpy,
+        "result_values": lambda v: v,
+    },
+)
 
 
 def maximum_distance(
@@ -115,59 +122,33 @@ def maximum_distance(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = df.with_columns(
-        nw.col(lat_col).cast(nw.Float64),
-        nw.col(lng_col).cast(nw.Float64),
-    )
+    schema = df.schema
+    if schema[lat_col] != nw.Float64 or schema[lng_col] != nw.Float64:
+        df = df.with_columns(
+            nw.col(lat_col).cast(nw.Float64),
+            nw.col(lng_col).cast(nw.Float64),
+        )
 
     ops = _DISPATCHER.get_ops(df)
-    use_arrow = _DISPATCHER.get_backend_key(df) == "arrow"
+    lats_data = ops["extract_data"](df.get_column(lat_col))
+    lngs_data = ops["extract_data"](df.get_column(lng_col))
+
     if sorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        ranges = _ranges_from_ends(ends)
-        max_distances = _dispatch_kernel(
-            maximum_distance_numpy,
-            maximum_distance_arrow,
-            [df.get_column(lat_col), df.get_column(lng_col)],
-            ranges,
-            use_arrow=use_arrow,
+        max_distances = ops["result_values"](
+            ops["presorted"](lats_data, lngs_data, ends)
         )
-        if uid_col is None:
-            if len(df) < 2:
-                return _to_native({"maximum_distance": [math.nan]}, df)
-            return _to_native({"maximum_distance": max_distances}, df)
-
-        max_distances = np.asarray(max_distances, dtype=float)
-        starts = _starts_from_ends(ends)
-        short_mask = np.asarray(ends - starts < 2, dtype=bool)
-        max_distances[short_mask] = math.nan
-        return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)
-
-    timestamps = _extract_timestamps_ms(df, datetime_col)
-    timestamps_data = ops["extract_data"](timestamps)
-    uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps_data
-    )
-    max_distances = _dispatch_kernel(
-        maximum_distance_indexed_numpy,
-        maximum_distance_indexed_arrow,
-        [df.get_column(lat_col), df.get_column(lng_col)],
-        indices,
-        ends,
-        use_arrow=use_arrow,
-    )
+    else:
+        timestamps = _extract_timestamps_ms(df, datetime_col)
+        timestamps_data = ops["extract_data"](timestamps)
+        uid_values, indices, ends = _build_time_ordered_user_ranges(
+            df, uid_col, datetime_col, timestamps_data
+        )
+        max_distances = ops["result_values"](
+            ops["indexed"](lats_data, lngs_data, indices, ends)
+        )
 
     if uid_col is None:
-        if len(df) < 2:
-            return _to_native({"maximum_distance": [math.nan]}, df)
         return _to_native({"maximum_distance": max_distances}, df)
 
-    max_distances = np.asarray(max_distances, dtype=float)
-    ends_array = np.asarray(ends, dtype=np.uintp)
-    starts_array = np.empty_like(ends_array)
-    if len(ends_array):
-        starts_array[0] = 0
-        starts_array[1:] = ends_array[:-1]
-    short_mask = ends_array - starts_array < 2
-    max_distances[short_mask] = math.nan
     return _to_native({uid_col: uid_values, "maximum_distance": max_distances}, df)
