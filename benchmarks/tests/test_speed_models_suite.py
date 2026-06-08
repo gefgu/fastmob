@@ -37,6 +37,13 @@ def test_parse_args_defaults_to_speed_profile():
     assert args.n_agents == suite.DEFAULT_AGENT_COUNTS
     assert args.n_locations == suite.DEFAULT_LOCATION_COUNTS
     assert args.sizes == suite.DEFAULT_LOCATION_COUNTS
+    assert args.metrics == [spec.name for spec in suite.MODEL_BENCHMARKS]
+
+
+def test_selected_specs_filters_metrics():
+    args = suite.parse_args(["--library", "skmob2", "--metrics", "epr", "gravity_flows"])
+
+    assert [spec.name for spec in suite.selected_specs(args)] == ["gravity_flows", "epr"]
 
 
 def test_parse_args_accepts_sizes_as_location_alias():
@@ -264,6 +271,7 @@ def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
 
     assert payload["metadata"]["suite"] == "models"
     assert payload["metadata"]["library"] == "skmob2"
+    assert payload["metadata"]["metrics"] == [spec.name for spec in suite.MODEL_BENCHMARKS]
     assert payload["results"][0]["metrics"]["gravity_flows"]["status"] == "ok"
     assert payload["results"][1]["benchmark_group"] == "trajectory_models"
     assert payload["results"][1]["label"] == "3 agents / 2 locations"

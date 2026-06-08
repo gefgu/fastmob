@@ -483,6 +483,7 @@ def benchmark_size(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    specs: tuple[BenchmarkSpec, ...] = MODEL_BENCHMARKS,
 ) -> dict[str, Any]:
     size_tessellation = expand_tessellation(base_tessellation, size)
     n_agents = DEFAULT_AGENT_COUNTS[0]
@@ -494,7 +495,7 @@ def benchmark_size(
             "size": size,
             "label": size_label(size),
             "locations": len(size_tessellation),
-            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in MODEL_BENCHMARKS},
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in specs},
         }
 
     return {
@@ -512,7 +513,7 @@ def benchmark_size(
                 sleep_seconds=sleep_seconds,
                 n_agents=n_agents if spec in TRAJECTORY_MODEL_BENCHMARKS else None,
             )
-            for spec in MODEL_BENCHMARKS
+            for spec in specs
         },
     }
 
@@ -526,6 +527,7 @@ def benchmark_location_case(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    specs: tuple[BenchmarkSpec, ...] = LOCATION_MODEL_BENCHMARKS,
 ) -> dict[str, Any]:
     size_tessellation = expand_tessellation(base_tessellation, n_locations)
     print(f"\nLocation-only models: {location_case_label(n_locations)}")
@@ -537,7 +539,7 @@ def benchmark_location_case(
             "label": location_case_label(n_locations),
             "n_agents": None,
             "n_locations": len(size_tessellation),
-            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in LOCATION_MODEL_BENCHMARKS},
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in specs},
         }
 
     return {
@@ -555,7 +557,7 @@ def benchmark_location_case(
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-            for spec in LOCATION_MODEL_BENCHMARKS
+            for spec in specs
         },
     }
 
@@ -567,6 +569,7 @@ def benchmark_diary_case(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    specs: tuple[BenchmarkSpec, ...] = DIARY_MODEL_BENCHMARKS,
 ) -> dict[str, Any]:
     print("\nDiary-only models")
     return {
@@ -584,7 +587,7 @@ def benchmark_diary_case(
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-            for spec in DIARY_MODEL_BENCHMARKS
+            for spec in specs
         },
     }
 
@@ -599,6 +602,7 @@ def benchmark_trajectory_case(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    specs: tuple[BenchmarkSpec, ...] = TRAJECTORY_MODEL_BENCHMARKS,
 ) -> dict[str, Any]:
     size_tessellation = expand_tessellation(base_tessellation, n_locations)
     print(f"\nTrajectory models: {model_case_label(n_agents, n_locations)}")
@@ -610,7 +614,7 @@ def benchmark_trajectory_case(
             "label": model_case_label(n_agents, n_locations),
             "n_agents": n_agents,
             "n_locations": len(size_tessellation),
-            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in TRAJECTORY_MODEL_BENCHMARKS},
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in specs},
         }
 
     return {
@@ -629,7 +633,7 @@ def benchmark_trajectory_case(
                 sleep_seconds=sleep_seconds,
                 n_agents=n_agents,
             )
-            for spec in TRAJECTORY_MODEL_BENCHMARKS
+            for spec in specs
         },
     }
 
@@ -652,13 +656,18 @@ def build_metadata(args: argparse.Namespace) -> dict[str, Any]:
         "sleep_seconds": args.sleep_seconds,
         "n_agents": args.n_agents,
         "n_locations": args.n_locations,
+        "metrics": args.metrics,
     }
 
 
 def run_suite(args: argparse.Namespace) -> dict[str, Any]:
     base_tessellation, diary_training = load_model_inputs(Path(args.reference_dir))
     results = []
-    if LOCATION_MODEL_BENCHMARKS:
+    requested = {spec.name for spec in selected_specs(args)}
+    location_specs = tuple(spec for spec in LOCATION_MODEL_BENCHMARKS if spec.name in requested)
+    diary_specs = tuple(spec for spec in DIARY_MODEL_BENCHMARKS if spec.name in requested)
+    trajectory_specs = tuple(spec for spec in TRAJECTORY_MODEL_BENCHMARKS if spec.name in requested)
+    if location_specs:
         for n_locations in args.n_locations:
             results.append(
                 benchmark_location_case(
@@ -669,9 +678,10 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
                     profile=args.profile,
                     iterations=args.iterations,
                     sleep_seconds=args.sleep_seconds,
+                    specs=location_specs,
                 )
             )
-    if DIARY_MODEL_BENCHMARKS:
+    if diary_specs:
         results.append(
             benchmark_diary_case(
                 args.library,
@@ -679,9 +689,10 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
                 profile=args.profile,
                 iterations=args.iterations,
                 sleep_seconds=args.sleep_seconds,
+                specs=diary_specs,
             )
         )
-    if TRAJECTORY_MODEL_BENCHMARKS:
+    if trajectory_specs:
         for n_locations in args.n_locations:
             for n_agents in args.n_agents:
                 results.append(
@@ -694,9 +705,15 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
                         profile=args.profile,
                         iterations=args.iterations,
                         sleep_seconds=args.sleep_seconds,
+                        specs=trajectory_specs,
                     )
                 )
     return {"metadata": build_metadata(args), "results": results}
+
+
+def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
+    requested = set(args.metrics)
+    return tuple(spec for spec in MODEL_BENCHMARKS if spec.name in requested)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -707,6 +724,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--n-agents", type=positive_int, nargs="+", default=DEFAULT_AGENT_COUNTS)
     parser.add_argument("--n-locations", type=positive_int, nargs="+", default=None)
+    parser.add_argument(
+        "--metrics",
+        choices=[spec.name for spec in MODEL_BENCHMARKS],
+        nargs="+",
+        default=[spec.name for spec in MODEL_BENCHMARKS],
+        help="Only run the selected generation model metrics.",
+    )
     parser.add_argument(
         "--sizes",
         type=positive_int,
