@@ -1,15 +1,19 @@
+use arrow_array::Array;
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use skmob2_core::measures::individual::location_frequency::{
-    frequency_rank_indexed_impl, frequency_rank_presorted_impl, location_frequency_indexed_impl,
-    location_frequency_indexed_values_impl, location_frequency_presorted_values_impl,
+    frequency_rank_indexed_impl, frequency_rank_indexed_with_row_validity_impl,
+    frequency_rank_presorted_impl, frequency_rank_presorted_with_row_validity_impl,
+    location_frequency_indexed_impl, location_frequency_indexed_values_impl,
+    location_frequency_indexed_values_with_row_validity_impl,
+    location_frequency_indexed_with_row_validity_impl, location_frequency_presorted_values_impl,
+    location_frequency_presorted_values_with_row_validity_impl,
 };
 
 use crate::utils::{
-    arrow_valid_rows, arrow_values, as_nullable_f64_array, f64_results_into_arrow,
-    u64_results_into_arrow,
+    arrow_values, as_nullable_f64_array, f64_results_into_arrow, u64_results_into_arrow,
 };
 
 type LocFreqNumpy<'py> = (
@@ -92,15 +96,28 @@ pub fn location_frequency_indexed_arrow<'py>(
 ) -> PyResult<LocFreqArrow<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
-    let (out_lats, out_lngs, out_counts, out_starts, out_ends) = location_frequency_indexed_impl(
-        arrow_values(&latitudes),
-        arrow_values(&longitudes),
-        indices.as_slice()?,
-        ends.as_slice()?,
-        valid_rows.as_deref(),
-    )
-    .map_err(PyValueError::new_err)?;
+    let lat_values = arrow_values(&latitudes);
+    let lng_values = arrow_values(&longitudes);
+    let indices = indices.as_slice()?;
+    let ends = ends.as_slice()?;
+    let lat_nulls = latitudes.nulls();
+    let lng_nulls = longitudes.nulls();
+    let (out_lats, out_lngs, out_counts, out_starts, out_ends) =
+        if lat_nulls.is_none() && lng_nulls.is_none() {
+            location_frequency_indexed_impl(lat_values, lng_values, indices, ends, None)
+        } else {
+            location_frequency_indexed_with_row_validity_impl(
+                lat_values,
+                lng_values,
+                indices,
+                ends,
+                |idx| {
+                    lat_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                        && lng_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                },
+            )
+        }
+        .map_err(PyValueError::new_err)?;
     Ok((
         f64_results_into_arrow(out_lats),
         f64_results_into_arrow(out_lngs),
@@ -151,16 +168,30 @@ pub fn location_frequency_values_indexed_arrow<'py>(
 ) -> PyResult<LocFreqValuesArrow<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
+    let lat_values = arrow_values(&latitudes);
+    let lng_values = arrow_values(&longitudes);
+    let indices = indices.as_slice()?;
+    let ends = ends.as_slice()?;
+    let lat_nulls = latitudes.nulls();
+    let lng_nulls = longitudes.nulls();
     let (out_lats, out_lngs, out_values, out_user_indices, out_starts, out_ends, rank_means) =
-        location_frequency_indexed_values_impl(
-            arrow_values(&latitudes),
-            arrow_values(&longitudes),
-            indices.as_slice()?,
-            ends.as_slice()?,
-            normalize,
-            valid_rows.as_deref(),
-        )
+        if lat_nulls.is_none() && lng_nulls.is_none() {
+            location_frequency_indexed_values_impl(
+                lat_values, lng_values, indices, ends, normalize, None,
+            )
+        } else {
+            location_frequency_indexed_values_with_row_validity_impl(
+                lat_values,
+                lng_values,
+                indices,
+                ends,
+                normalize,
+                |idx| {
+                    lat_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                        && lng_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                },
+            )
+        }
         .map_err(PyValueError::new_err)?;
     Ok((
         f64_results_into_arrow(out_lats),
@@ -211,15 +242,26 @@ pub fn location_frequency_presorted_arrow<'py>(
 ) -> PyResult<LocFreqValuesArrow<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
+    let lat_values = arrow_values(&latitudes);
+    let lng_values = arrow_values(&longitudes);
+    let ends = ends.as_slice()?;
+    let lat_nulls = latitudes.nulls();
+    let lng_nulls = longitudes.nulls();
     let (out_lats, out_lngs, out_values, out_user_indices, out_starts, out_ends, rank_means) =
-        location_frequency_presorted_values_impl(
-            arrow_values(&latitudes),
-            arrow_values(&longitudes),
-            ends.as_slice()?,
-            normalize,
-            valid_rows.as_deref(),
-        )
+        if lat_nulls.is_none() && lng_nulls.is_none() {
+            location_frequency_presorted_values_impl(lat_values, lng_values, ends, normalize, None)
+        } else {
+            location_frequency_presorted_values_with_row_validity_impl(
+                lat_values,
+                lng_values,
+                ends,
+                normalize,
+                |idx| {
+                    lat_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                        && lng_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                },
+            )
+        }
         .map_err(PyValueError::new_err)?;
     Ok((
         f64_results_into_arrow(out_lats),
@@ -266,15 +308,28 @@ pub fn frequency_rank_indexed_arrow<'py>(
 ) -> PyResult<FrequencyRankArrow<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
-    let (out_lats, out_lngs, out_ranks, out_user_indices) = frequency_rank_indexed_impl(
-        arrow_values(&latitudes),
-        arrow_values(&longitudes),
-        indices.as_slice()?,
-        ends.as_slice()?,
-        valid_rows.as_deref(),
-    )
-    .map_err(PyValueError::new_err)?;
+    let lat_values = arrow_values(&latitudes);
+    let lng_values = arrow_values(&longitudes);
+    let indices = indices.as_slice()?;
+    let ends = ends.as_slice()?;
+    let lat_nulls = latitudes.nulls();
+    let lng_nulls = longitudes.nulls();
+    let (out_lats, out_lngs, out_ranks, out_user_indices) =
+        if lat_nulls.is_none() && lng_nulls.is_none() {
+            frequency_rank_indexed_impl(lat_values, lng_values, indices, ends, None)
+        } else {
+            frequency_rank_indexed_with_row_validity_impl(
+                lat_values,
+                lng_values,
+                indices,
+                ends,
+                |idx| {
+                    lat_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                        && lng_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                },
+            )
+        }
+        .map_err(PyValueError::new_err)?;
     Ok((
         f64_results_into_arrow(out_lats),
         f64_results_into_arrow(out_lngs),
@@ -314,14 +369,21 @@ pub fn frequency_rank_presorted_arrow<'py>(
 ) -> PyResult<FrequencyRankArrow<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
-    let (out_lats, out_lngs, out_ranks, out_user_indices) = frequency_rank_presorted_impl(
-        arrow_values(&latitudes),
-        arrow_values(&longitudes),
-        ends.as_slice()?,
-        valid_rows.as_deref(),
-    )
-    .map_err(PyValueError::new_err)?;
+    let lat_values = arrow_values(&latitudes);
+    let lng_values = arrow_values(&longitudes);
+    let ends = ends.as_slice()?;
+    let lat_nulls = latitudes.nulls();
+    let lng_nulls = longitudes.nulls();
+    let (out_lats, out_lngs, out_ranks, out_user_indices) =
+        if lat_nulls.is_none() && lng_nulls.is_none() {
+            frequency_rank_presorted_impl(lat_values, lng_values, ends, None)
+        } else {
+            frequency_rank_presorted_with_row_validity_impl(lat_values, lng_values, ends, |idx| {
+                lat_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+                    && lng_nulls.is_none_or(|nulls| nulls.is_valid(idx))
+            })
+        }
+        .map_err(PyValueError::new_err)?;
     Ok((
         f64_results_into_arrow(out_lats),
         f64_results_into_arrow(out_lngs),

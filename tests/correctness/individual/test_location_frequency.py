@@ -29,6 +29,12 @@ def _to_freq_dict(df) -> dict:
     return result
 
 
+def _arrow_list(array) -> list:
+    if hasattr(array, "to_pylist"):
+        return array.to_pylist()
+    return array.tolist()
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -288,6 +294,62 @@ def test_location_frequency_presorted_core_validation_errors():
     bad_ends = np.array([2, 1], dtype=np.uintp)
     with pytest.raises(ValueError, match="monotonically"):
         location_frequency_presorted_numpy(arr, arr, bad_ends, True)
+
+
+def test_location_frequency_indexed_arrow_nulls_are_filtered():
+    """Indexed Arrow helper skips null coordinates without materializing a mask."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import location_frequency_values_indexed_arrow
+
+    lats = pa.array([1.0, None, 1.0, 2.0], type=pa.float64())
+    lngs = pa.array([0.0, 0.0, None, 0.0], type=pa.float64())
+    indices = np.array([0, 1, 2, 3], dtype=np.uintp)
+    ends = np.array([4], dtype=np.uintp)
+
+    out_lats, out_lngs, values, *_ = location_frequency_values_indexed_arrow(
+        lats, lngs, indices, ends, False
+    )
+
+    rows = dict(zip(zip(_arrow_list(out_lats), _arrow_list(out_lngs)), _arrow_list(values)))
+    assert rows == {(1.0, 0.0): 1.0, (2.0, 0.0): 1.0}
+
+
+def test_location_frequency_presorted_arrow_nulls_are_filtered():
+    """Presorted Arrow helper skips null coordinates without materializing a mask."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import location_frequency_presorted_arrow
+
+    lats = pa.array([1.0, None, 1.0, 2.0], type=pa.float64())
+    lngs = pa.array([0.0, 0.0, None, 0.0], type=pa.float64())
+    ends = np.array([4], dtype=np.uintp)
+
+    out_lats, out_lngs, values, *_ = location_frequency_presorted_arrow(
+        lats, lngs, ends, False
+    )
+
+    rows = dict(zip(zip(_arrow_list(out_lats), _arrow_list(out_lngs)), _arrow_list(values)))
+    assert rows == {(1.0, 0.0): 1.0, (2.0, 0.0): 1.0}
+
+
+def test_location_frequency_indexed_arrow_sliced_null_bitmap_offsets():
+    """Sliced Arrow validity bitmaps are interpreted in logical row coordinates."""
+    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from skmob2._core import location_frequency_values_indexed_arrow
+
+    lats = pa.array([99.0, 1.0, None, 1.0, 2.0, 88.0], type=pa.float64()).slice(1, 4)
+    lngs = pa.array([99.0, 0.0, 0.0, None, 0.0, 88.0], type=pa.float64()).slice(1, 4)
+    indices = np.array([0, 1, 2, 3], dtype=np.uintp)
+    ends = np.array([4], dtype=np.uintp)
+
+    out_lats, out_lngs, values, *_ = location_frequency_values_indexed_arrow(
+        lats, lngs, indices, ends, False
+    )
+
+    rows = dict(zip(zip(_arrow_list(out_lats), _arrow_list(out_lngs)), _arrow_list(values)))
+    assert rows == {(1.0, 0.0): 1.0, (2.0, 0.0): 1.0}
 
 
 @pytest.mark.skmob

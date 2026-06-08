@@ -13,7 +13,27 @@
     "iterations": 5,
     "library": "skmob2",
     "metrics": [
-      "number_of_visits"
+      "distance_straight_line",
+      "home_location",
+      "jump_lengths",
+      "k_radius_of_gyration",
+      "max_distance_from_home",
+      "maximum_distance",
+      "number_of_locations",
+      "number_of_visits",
+      "radius_of_gyration",
+      "waiting_times",
+      "random_entropy",
+      "uncorrelated_entropy",
+      "location_frequency",
+      "individual_mobility_network",
+      "recency_rank",
+      "frequency_rank",
+      "diversity",
+      "trajectory_entropy",
+      "trajectory_predictability",
+      "regularity",
+      "mean_area_volume"
     ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
@@ -21,81 +41,1338 @@
     "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
     "retries": 0,
     "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "individual",
-    "timestamp_utc": "2026-06-07T17:53:24.632218+00:00",
+    "timestamp_utc": "2026-06-07T20:03:07.411109+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
     {
-      "label": "4M",
+      "label": "1k",
       "metrics": {
-        "jump_lengths": {
-          "average_seconds": 0.040438915509730576,
+        "distance_straight_line": {
+          "average_seconds": 0.004408664349466562,
           "iterations_completed": 5,
-          "minimum_seconds": 0.02555940067395568,
+          "minimum_seconds": 0.0009345654398202896,
           "status": "ok",
           "times_seconds": [
-            0.02555940067395568,
-            0.0639547691680491,
-            0.028786573093384504,
-            0.030796459410339594,
-            0.05309737520292401
+            0.0010080821812152863,
+            0.001234202180057764,
+            0.0010028863325715065,
+            0.0009345654398202896,
+            0.017863585613667965
+          ]
+        },
+        "diversity": {
+          "average_seconds": 0.012666958291083575,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006036931183189154,
+          "status": "ok",
+          "times_seconds": [
+            0.0064763459376990795,
+            0.03202410414814949,
+            0.006036931183189154,
+            0.009923107922077179,
+            0.008874302264302969
+          ]
+        },
+        "frequency_rank": {
+          "average_seconds": 0.004496174678206444,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0043671615421772,
+          "status": "ok",
+          "times_seconds": [
+            0.004538798239082098,
+            0.004542417358607054,
+            0.004367220215499401,
+            0.0043671615421772,
+            0.004665276035666466
+          ]
+        },
+        "home_location": {
+          "average_seconds": 0.0010839628987014294,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0010332949459552765,
+          "status": "ok",
+          "times_seconds": [
+            0.0010988609865307808,
+            0.0010332949459552765,
+            0.0010837861336767673,
+            0.0011277156881988049,
+            0.0010761567391455173
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.005783936288207769,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005665112286806107,
+          "status": "ok",
+          "times_seconds": [
+            0.0056916819885373116,
+            0.005830905865877867,
+            0.0058598751202225685,
+            0.005872106179594994,
+            0.005665112286806107
+          ]
+        },
+        "jump_lengths": {
+          "average_seconds": 0.0032587422057986258,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001648108009248972,
+          "status": "ok",
+          "times_seconds": [
+            0.0036747069098055363,
+            0.0037184180691838264,
+            0.00354804378002882,
+            0.003704434260725975,
+            0.001648108009248972
+          ]
+        },
+        "k_radius_of_gyration": {
+          "average_seconds": 0.005325248185545206,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005041402764618397,
+          "status": "ok",
+          "times_seconds": [
+            0.005041402764618397,
+            0.005397961009293795,
+            0.005254184827208519,
+            0.0055431402288377285,
+            0.0053895520977675915
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.004420377593487501,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004258953966200352,
+          "status": "ok",
+          "times_seconds": [
+            0.004444723017513752,
+            0.004258953966200352,
+            0.004367660731077194,
+            0.004528959281742573,
+            0.004501590970903635
           ]
         },
         "max_distance_from_home": {
-          "average_seconds": 0.04451534431427717,
+          "average_seconds": 0.005392387229949236,
           "iterations_completed": 5,
-          "minimum_seconds": 0.040565093979239464,
+          "minimum_seconds": 0.005235898308455944,
           "status": "ok",
           "times_seconds": [
-            0.040565093979239464,
-            0.04660878563299775,
-            0.045377195347100496,
-            0.04411596665158868,
-            0.04590967996045947
+            0.005396798253059387,
+            0.005351565778255463,
+            0.005235898308455944,
+            0.0055497391149401665,
+            0.005427934695035219
           ]
         },
         "maximum_distance": {
-          "average_seconds": 0.06112642465159297,
+          "average_seconds": 0.0033649714663624764,
           "iterations_completed": 5,
-          "minimum_seconds": 0.03776081884279847,
+          "minimum_seconds": 0.0032954420894384384,
           "status": "ok",
           "times_seconds": [
-            0.042919650208204985,
-            0.07606554497033358,
-            0.0832112361676991,
-            0.03776081884279847,
-            0.06567487306892872
+            0.003404906950891018,
+            0.0033987071365118027,
+            0.0032954420894384384,
+            0.0033706510439515114,
+            0.0033551501110196114
+          ]
+        },
+        "mean_area_volume": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "Could not detect required column(s): ['area', 'start_timestamp', 'end_timestamp']. Available columns: ['user', 'check-in_time', 'latitude', 'longitude', 'location id']",
+          "status": "error",
+          "times_seconds": []
+        },
+        "number_of_locations": {
+          "average_seconds": 0.004191198665648699,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004127837717533112,
+          "status": "ok",
+          "times_seconds": [
+            0.004183226730674505,
+            0.004190792329609394,
+            0.004322735592722893,
+            0.004127837717533112,
+            0.00413140095770359
           ]
         },
         "number_of_visits": {
-          "average_seconds": 0.019884683284908534,
+          "average_seconds": 0.0037603180855512617,
           "iterations_completed": 5,
-          "minimum_seconds": 0.013003020081669092,
+          "minimum_seconds": 0.0036300350911915302,
           "status": "ok",
           "times_seconds": [
-            0.04294232605025172,
-            0.013003020081669092,
-            0.013148371130228043,
-            0.013205463998019695,
-            0.017124235164374113
+            0.0036582881584763527,
+            0.003736283164471388,
+            0.0036300350911915302,
+            0.004016540944576263,
+            0.0037604430690407753
+          ]
+        },
+        "radius_of_gyration": {
+          "average_seconds": 0.0033906504511833193,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0019118040800094604,
+          "status": "ok",
+          "times_seconds": [
+            0.0037346910685300827,
+            0.0037352959625422955,
+            0.0037467852234840393,
+            0.0019118040800094604,
+            0.0038246759213507175
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.006849027425050736,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005973618943244219,
+          "status": "ok",
+          "times_seconds": [
+            0.007484178990125656,
+            0.006157157942652702,
+            0.005973618943244219,
+            0.007180447224527597,
+            0.007449734024703503
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.004992175661027431,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00487088318914175,
+          "status": "ok",
+          "times_seconds": [
+            0.005110086873173714,
+            0.00487088318914175,
+            0.004910956136882305,
+            0.005030508153140545,
+            0.005038443952798843
+          ]
+        },
+        "regularity": {
+          "average_seconds": 0.007917895540595054,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006075290963053703,
+          "status": "ok",
+          "times_seconds": [
+            0.007942188996821642,
+            0.012429110705852509,
+            0.006270275916904211,
+            0.006075290963053703,
+            0.006872611120343208
+          ]
+        },
+        "trajectory_entropy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "trajectory_predictability": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.004198427405208349,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004105845000594854,
+          "status": "ok",
+          "times_seconds": [
+            0.004105845000594854,
+            0.004132997244596481,
+            0.004217874258756638,
+            0.004183500539511442,
+            0.004351919982582331
           ]
         },
         "waiting_times": {
-          "average_seconds": 0.033963645715266465,
+          "average_seconds": 0.0042016333900392056,
           "iterations_completed": 5,
-          "minimum_seconds": 0.03314656671136618,
+          "minimum_seconds": 0.004103879909962416,
           "status": "ok",
           "times_seconds": [
-            0.03405400365591049,
-            0.03361601522192359,
-            0.03490502620115876,
-            0.03409661678597331,
-            0.03314656671136618
+            0.004158625844866037,
+            0.004103879909962416,
+            0.00427758926525712,
+            0.004203572869300842,
+            0.004264499060809612
+          ]
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "distance_straight_line": {
+          "average_seconds": 0.0010578637942671777,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0008996077813208103,
+          "status": "ok",
+          "times_seconds": [
+            0.001160874031484127,
+            0.001088521908968687,
+            0.0009184936061501503,
+            0.0012218216434121132,
+            0.0008996077813208103
+          ]
+        },
+        "diversity": {
+          "average_seconds": 0.0389794479124248,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.020283480640500784,
+          "status": "ok",
+          "times_seconds": [
+            0.05377280805259943,
+            0.047997862100601196,
+            0.020283480640500784,
+            0.020442015025764704,
+            0.0524010737426579
+          ]
+        },
+        "frequency_rank": {
+          "average_seconds": 0.0036006013862788675,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0012479405850172043,
+          "status": "ok",
+          "times_seconds": [
+            0.005131413694471121,
+            0.0014097560197114944,
+            0.005241103935986757,
+            0.0012479405850172043,
+            0.004972792696207762
+          ]
+        },
+        "home_location": {
+          "average_seconds": 0.004624318145215511,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001551539171487093,
+          "status": "ok",
+          "times_seconds": [
+            0.001551539171487093,
+            0.006225478369742632,
+            0.002678819000720978,
+            0.005954212974756956,
+            0.006711541209369898
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.007044036593288183,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006856849882751703,
+          "status": "ok",
+          "times_seconds": [
+            0.006889799144119024,
+            0.007153165992349386,
+            0.006856849882751703,
+            0.007383855991065502,
+            0.0069365119561553
+          ]
+        },
+        "jump_lengths": {
+          "average_seconds": 0.003598891291767359,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0009135538712143898,
+          "status": "ok",
+          "times_seconds": [
+            0.0009135538712143898,
+            0.004296743776649237,
+            0.004214131738990545,
+            0.004248080775141716,
+            0.004321946296840906
+          ]
+        },
+        "k_radius_of_gyration": {
+          "average_seconds": 0.0052258393727242945,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0018038228154182434,
+          "status": "ok",
+          "times_seconds": [
+            0.005934207234531641,
+            0.0018038228154182434,
+            0.006651056930422783,
+            0.005935056135058403,
+            0.005805053748190403
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.005366186890751123,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0049676247872412205,
+          "status": "ok",
+          "times_seconds": [
+            0.005510321818292141,
+            0.005427205003798008,
+            0.0049676247872412205,
+            0.005421292968094349,
+            0.005504489876329899
+          ]
+        },
+        "max_distance_from_home": {
+          "average_seconds": 0.006576857436448336,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006006428971886635,
+          "status": "ok",
+          "times_seconds": [
+            0.006119642406702042,
+            0.006213061045855284,
+            0.007280593737959862,
+            0.007264561019837856,
+            0.006006428971886635
+          ]
+        },
+        "maximum_distance": {
+          "average_seconds": 0.003947303537279368,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0038023097440600395,
+          "status": "ok",
+          "times_seconds": [
+            0.0039700958877801895,
+            0.0038044038228690624,
+            0.0040507931262254715,
+            0.0038023097440600395,
+            0.004108915105462074
+          ]
+        },
+        "mean_area_volume": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "Could not detect required column(s): ['area', 'start_timestamp', 'end_timestamp']. Available columns: ['user', 'check-in_time', 'latitude', 'longitude', 'location id']",
+          "status": "error",
+          "times_seconds": []
+        },
+        "number_of_locations": {
+          "average_seconds": 0.004622141923755407,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004374044947326183,
+          "status": "ok",
+          "times_seconds": [
+            0.004740071948617697,
+            0.004858382046222687,
+            0.00448200386017561,
+            0.00465620681643486,
+            0.004374044947326183
+          ]
+        },
+        "number_of_visits": {
+          "average_seconds": 0.0037059727124869823,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.003568815067410469,
+          "status": "ok",
+          "times_seconds": [
+            0.0037516658194363117,
+            0.003568815067410469,
+            0.003716540988534689,
+            0.003725445829331875,
+            0.003767395857721567
+          ]
+        },
+        "radius_of_gyration": {
+          "average_seconds": 0.004266928229480982,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004040597006678581,
+          "status": "ok",
+          "times_seconds": [
+            0.0043031759560108185,
+            0.004218745976686478,
+            0.004040597006678581,
+            0.004507248289883137,
+            0.004264873918145895
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.007417598832398653,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006573129910975695,
+          "status": "ok",
+          "times_seconds": [
+            0.006573129910975695,
+            0.007159908767789602,
+            0.006573203951120377,
+            0.010037239640951157,
+            0.006744511891156435
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.004997191112488508,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001914782915264368,
+          "status": "ok",
+          "times_seconds": [
+            0.00566690182313323,
+            0.005951979197561741,
+            0.001914782915264368,
+            0.00567600829526782,
+            0.005776283331215382
+          ]
+        },
+        "regularity": {
+          "average_seconds": 0.0231010677292943,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012834351975470781,
+          "status": "ok",
+          "times_seconds": [
+            0.05084434477612376,
+            0.012834351975470781,
+            0.012980586849153042,
+            0.019227092154324055,
+            0.01961896289139986
+          ]
+        },
+        "trajectory_entropy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "trajectory_predictability": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.006074438523501158,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005830263718962669,
+          "status": "ok",
+          "times_seconds": [
+            0.005830263718962669,
+            0.005891783162951469,
+            0.006643274798989296,
+            0.0060503240674734116,
+            0.0059565468691289425
+          ]
+        },
+        "waiting_times": {
+          "average_seconds": 0.005033448711037636,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004928687121719122,
+          "status": "ok",
+          "times_seconds": [
+            0.004952407907694578,
+            0.0051118358969688416,
+            0.005186085589230061,
+            0.004988227039575577,
+            0.004928687121719122
+          ]
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "distance_straight_line": {
+          "average_seconds": 0.0057827035896480085,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005702516995370388,
+          "status": "ok",
+          "times_seconds": [
+            0.005702516995370388,
+            0.005794943310320377,
+            0.005823071114718914,
+            0.0057486556470394135,
+            0.005844330880790949
+          ]
+        },
+        "diversity": {
+          "average_seconds": 0.10195501530542969,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.08568621566519141,
+          "status": "ok",
+          "times_seconds": [
+            0.12087518023326993,
+            0.09209959395229816,
+            0.08568621566519141,
+            0.12430145032703876,
+            0.08681263634935021
+          ]
+        },
+        "frequency_rank": {
+          "average_seconds": 0.00908285304903984,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008854414336383343,
+          "status": "ok",
+          "times_seconds": [
+            0.008854414336383343,
+            0.009353519417345524,
+            0.0090231504291296,
+            0.009253669995814562,
+            0.008929511066526175
+          ]
+        },
+        "home_location": {
+          "average_seconds": 0.008751947712153197,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007105585653334856,
+          "status": "ok",
+          "times_seconds": [
+            0.0074781677685678005,
+            0.0075341262854635715,
+            0.01439407467842102,
+            0.007247784174978733,
+            0.007105585653334856
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.011365137342363597,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007136644795536995,
+          "status": "ok",
+          "times_seconds": [
+            0.01129815075546503,
+            0.01315721170976758,
+            0.013088532723486423,
+            0.01214514672756195,
+            0.007136644795536995
+          ]
+        },
+        "jump_lengths": {
+          "average_seconds": 0.004770956374704838,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0031662830151617527,
+          "status": "ok",
+          "times_seconds": [
+            0.00507406797260046,
+            0.005393116734921932,
+            0.005164036061614752,
+            0.0031662830151617527,
+            0.005057278089225292
+          ]
+        },
+        "k_radius_of_gyration": {
+          "average_seconds": 0.007903382647782564,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006715358234941959,
+          "status": "ok",
+          "times_seconds": [
+            0.011764782946556807,
+            0.007148782256990671,
+            0.007018298842012882,
+            0.006715358234941959,
+            0.0068696909584105015
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.006702215690165758,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.002304058987647295,
+          "status": "ok",
+          "times_seconds": [
+            0.009787296410650015,
+            0.009138858877122402,
+            0.002304058987647295,
+            0.009653598070144653,
+            0.0026272661052644253
+          ]
+        },
+        "max_distance_from_home": {
+          "average_seconds": 0.007853565271943808,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0035268571227788925,
+          "status": "ok",
+          "times_seconds": [
+            0.007820424158126116,
+            0.016499966848641634,
+            0.0035268571227788925,
+            0.003664648160338402,
+            0.007755930069833994
+          ]
+        },
+        "maximum_distance": {
+          "average_seconds": 0.004974131006747484,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004835836589336395,
+          "status": "ok",
+          "times_seconds": [
+            0.005155215971171856,
+            0.004835836589336395,
+            0.0050638597458601,
+            0.004900937434285879,
+            0.004914805293083191
+          ]
+        },
+        "mean_area_volume": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "Could not detect required column(s): ['area', 'start_timestamp', 'end_timestamp']. Available columns: ['user', 'check-in_time', 'latitude', 'longitude', 'location id']",
+          "status": "error",
+          "times_seconds": []
+        },
+        "number_of_locations": {
+          "average_seconds": 0.005235195718705654,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004093356896191835,
+          "status": "ok",
+          "times_seconds": [
+            0.005434051156044006,
+            0.005529701244086027,
+            0.004093356896191835,
+            0.005689982324838638,
+            0.0054288869723677635
+          ]
+        },
+        "number_of_visits": {
+          "average_seconds": 0.004303357005119324,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0040463111363351345,
+          "status": "ok",
+          "times_seconds": [
+            0.0042506856843829155,
+            0.0040463111363351345,
+            0.00439382204785943,
+            0.004251169040799141,
+            0.004574797116219997
+          ]
+        },
+        "radius_of_gyration": {
+          "average_seconds": 0.0053123337216675285,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001589748077094555,
+          "status": "ok",
+          "times_seconds": [
+            0.006217539310455322,
+            0.006114664021879435,
+            0.006208513397723436,
+            0.006431203801184893,
+            0.001589748077094555
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.013964325375854968,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009868856985121965,
+          "status": "ok",
+          "times_seconds": [
+            0.01004556193947792,
+            0.0101420977152884,
+            0.009868856985121965,
+            0.029533766210079193,
+            0.010231344029307365
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.00907225189730525,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00889158621430397,
+          "status": "ok",
+          "times_seconds": [
+            0.009113175328820944,
+            0.009064584970474243,
+            0.00914433877915144,
+            0.00889158621430397,
+            0.009147574193775654
+          ]
+        },
+        "regularity": {
+          "average_seconds": 0.055232396628707645,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.027829485945403576,
+          "status": "ok",
+          "times_seconds": [
+            0.07108421297743917,
+            0.07460505701601505,
+            0.07422266621142626,
+            0.027829485945403576,
+            0.028420560993254185
+          ]
+        },
+        "trajectory_entropy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "trajectory_predictability": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.016361963283270598,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009258609730750322,
+          "status": "ok",
+          "times_seconds": [
+            0.026501907967031002,
+            0.009728190954774618,
+            0.02659602276980877,
+            0.009258609730750322,
+            0.009725084993988276
+          ]
+        },
+        "waiting_times": {
+          "average_seconds": 0.006894778087735176,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006803327705711126,
+          "status": "ok",
+          "times_seconds": [
+            0.006970226764678955,
+            0.006803327705711126,
+            0.006946195848286152,
+            0.006917877122759819,
+            0.006836262997239828
+          ]
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "distance_straight_line": {
+          "average_seconds": 0.022087274678051473,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.014819937758147717,
+          "status": "ok",
+          "times_seconds": [
+            0.015407586935907602,
+            0.014819937758147717,
+            0.019761753734201193,
+            0.02993624610826373,
+            0.030510848853737116
+          ]
+        },
+        "diversity": {
+          "average_seconds": 1.0824646139517426,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.0458810511045158,
+          "status": "ok",
+          "times_seconds": [
+            1.121819298248738,
+            1.1079683671705425,
+            1.0483389873988926,
+            1.0883153658360243,
+            1.0458810511045158
+          ]
+        },
+        "frequency_rank": {
+          "average_seconds": 0.015458861831575632,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.011857007164508104,
+          "status": "ok",
+          "times_seconds": [
+            0.012749134097248316,
+            0.011857007164508104,
+            0.01720920903608203,
+            0.01783736003562808,
+            0.01764159882441163
+          ]
+        },
+        "home_location": {
+          "average_seconds": 0.018127633072435857,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.011252999771386385,
+          "status": "ok",
+          "times_seconds": [
+            0.019058301113545895,
+            0.014377232640981674,
+            0.033281989861279726,
+            0.0126676419749856,
+            0.011252999771386385
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.03168995743617416,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.02189010428264737,
+          "status": "ok",
+          "times_seconds": [
+            0.03804962709546089,
+            0.02189010428264737,
+            0.030463501811027527,
+            0.024938601069152355,
+            0.043107952922582626
+          ]
+        },
+        "jump_lengths": {
+          "average_seconds": 0.011632980778813362,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00684741185978055,
+          "status": "ok",
+          "times_seconds": [
+            0.00684741185978055,
+            0.007567849010229111,
+            0.010926241986453533,
+            0.02065197005867958,
+            0.012171430978924036
+          ]
+        },
+        "k_radius_of_gyration": {
+          "average_seconds": 0.015283240657299756,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009973250795155764,
+          "status": "ok",
+          "times_seconds": [
+            0.016614133957773447,
+            0.023528233636170626,
+            0.01585520664229989,
+            0.010445378255099058,
+            0.009973250795155764
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.018964081723242997,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012620424386113882,
+          "status": "ok",
+          "times_seconds": [
+            0.012620424386113882,
+            0.014544373843818903,
+            0.030190809164196253,
+            0.01900135213509202,
+            0.018463449086993933
+          ]
+        },
+        "max_distance_from_home": {
+          "average_seconds": 0.021113718487322332,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013141539879143238,
+          "status": "ok",
+          "times_seconds": [
+            0.020309602841734886,
+            0.044496823102235794,
+            0.013624019920825958,
+            0.013996606692671776,
+            0.013141539879143238
+          ]
+        },
+        "maximum_distance": {
+          "average_seconds": 0.007320345286279917,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006655246950685978,
+          "status": "ok",
+          "times_seconds": [
+            0.006984095089137554,
+            0.006655246950685978,
+            0.007102667819708586,
+            0.007521715946495533,
+            0.008338000625371933
+          ]
+        },
+        "mean_area_volume": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "Could not detect required column(s): ['area', 'start_timestamp', 'end_timestamp']. Available columns: ['user', 'check-in_time', 'latitude', 'longitude', 'location id']",
+          "status": "error",
+          "times_seconds": []
+        },
+        "number_of_locations": {
+          "average_seconds": 0.006822152435779572,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006655109114944935,
+          "status": "ok",
+          "times_seconds": [
+            0.006787145975977182,
+            0.006655109114944935,
+            0.006719440221786499,
+            0.006912644021213055,
+            0.007036422844976187
+          ]
+        },
+        "number_of_visits": {
+          "average_seconds": 0.009463287889957428,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004083794075995684,
+          "status": "ok",
+          "times_seconds": [
+            0.004133423324674368,
+            0.004083794075995684,
+            0.009086309000849724,
+            0.017273861914873123,
+            0.012739051133394241
+          ]
+        },
+        "radius_of_gyration": {
+          "average_seconds": 0.014839457999914884,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012623680755496025,
+          "status": "ok",
+          "times_seconds": [
+            0.012623680755496025,
+            0.013719471171498299,
+            0.020117210689932108,
+            0.013740125112235546,
+            0.013996802270412445
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.035183415096253154,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.02045898698270321,
+          "status": "ok",
+          "times_seconds": [
+            0.07195245893672109,
+            0.02045898698270321,
+            0.02139062713831663,
+            0.021058692131191492,
+            0.041056310292333364
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.019077697582542897,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.01479198457673192,
+          "status": "ok",
+          "times_seconds": [
+            0.018970279023051262,
+            0.01479198457673192,
+            0.017193921376019716,
+            0.02646208880469203,
+            0.017970214132219553
+          ]
+        },
+        "regularity": {
+          "average_seconds": 0.2663250731304288,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.23664237698540092,
+          "status": "ok",
+          "times_seconds": [
+            0.28149694623425603,
+            0.23664237698540092,
+            0.2781232721172273,
+            0.24197764415293932,
+            0.2933851261623204
+          ]
+        },
+        "trajectory_entropy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "trajectory_predictability": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.020325723197311164,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.020059863105416298,
+          "status": "ok",
+          "times_seconds": [
+            0.02026832429692149,
+            0.020328130107373,
+            0.020059863105416298,
+            0.020728737115859985,
+            0.02024356136098504
+          ]
+        },
+        "waiting_times": {
+          "average_seconds": 0.02159437695518136,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013836807571351528,
+          "status": "ok",
+          "times_seconds": [
+            0.032659908290952444,
+            0.014120370149612427,
+            0.03343829978257418,
+            0.013836807571351528,
+            0.013916498981416225
+          ]
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
+      "label": "4M",
+      "metrics": {
+        "distance_straight_line": {
+          "average_seconds": 0.04873293275013566,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.026096968911588192,
+          "status": "ok",
+          "times_seconds": [
+            0.08566192537546158,
+            0.03151996387168765,
+            0.07005241326987743,
+            0.030333392322063446,
+            0.026096968911588192
+          ]
+        },
+        "diversity": {
+          "average_seconds": 6.773267081473023,
+          "iterations_completed": 5,
+          "minimum_seconds": 6.67931455373764,
+          "status": "ok",
+          "times_seconds": [
+            6.711098243948072,
+            6.8190441047772765,
+            6.974635830614716,
+            6.682242674287409,
+            6.67931455373764
+          ]
+        },
+        "frequency_rank": {
+          "average_seconds": 0.06248075654730201,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04963523615151644,
+          "status": "ok",
+          "times_seconds": [
+            0.05108610400930047,
+            0.080975575838238,
+            0.05119223985821009,
+            0.07951462687924504,
+            0.04963523615151644
+          ]
+        },
+        "home_location": {
+          "average_seconds": 0.03913427768275142,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.036500377114862204,
+          "status": "ok",
+          "times_seconds": [
+            0.041261530946940184,
+            0.037138027139008045,
+            0.037554476875811815,
+            0.04321697633713484,
+            0.036500377114862204
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.0749023649841547,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06439153384417295,
+          "status": "ok",
+          "times_seconds": [
+            0.06932958867400885,
+            0.06439153384417295,
+            0.10699654882773757,
+            0.06787137081846595,
+            0.06592278275638819
+          ]
+        },
+        "jump_lengths": {
+          "average_seconds": 0.041850059293210506,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.02964023035019636,
+          "status": "ok",
+          "times_seconds": [
+            0.05869979318231344,
+            0.031120350118726492,
+            0.02964023035019636,
+            0.031218689866364002,
+            0.058571232948452234
+          ]
+        },
+        "k_radius_of_gyration": {
+          "average_seconds": 0.0643451053649187,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04270385205745697,
+          "status": "ok",
+          "times_seconds": [
+            0.07629029778763652,
+            0.07336104474961758,
+            0.052577175199985504,
+            0.04270385205745697,
+            0.07679315702989697
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.058659983612596986,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04931762907654047,
+          "status": "ok",
+          "times_seconds": [
+            0.08620921615511179,
+            0.05083040101453662,
+            0.052677018102258444,
+            0.04931762907654047,
+            0.05426565371453762
+          ]
+        },
+        "max_distance_from_home": {
+          "average_seconds": 0.05744406152516603,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04921762878075242,
+          "status": "ok",
+          "times_seconds": [
+            0.04921762878075242,
+            0.04962131101638079,
+            0.05017636902630329,
+            0.05009078187867999,
+            0.08811421692371368
+          ]
+        },
+        "maximum_distance": {
+          "average_seconds": 0.03555716909468174,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.02785285422578454,
+          "status": "ok",
+          "times_seconds": [
+            0.060770350974053144,
+            0.030301411170512438,
+            0.028987249825149775,
+            0.029873979277908802,
+            0.02785285422578454
+          ]
+        },
+        "mean_area_volume": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "Could not detect required column(s): ['area', 'start_timestamp', 'end_timestamp']. Available columns: ['user', 'check-in_time', 'latitude', 'longitude', 'location id']",
+          "status": "error",
+          "times_seconds": []
+        },
+        "number_of_locations": {
+          "average_seconds": 0.03863460412248969,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.02064420096576214,
+          "status": "ok",
+          "times_seconds": [
+            0.06028049672022462,
+            0.02064420096576214,
+            0.023259521927684546,
+            0.06310278875753284,
+            0.025886012241244316
+          ]
+        },
+        "number_of_visits": {
+          "average_seconds": 0.01740686297416687,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013441871851682663,
+          "status": "ok",
+          "times_seconds": [
+            0.018264921847730875,
+            0.019026177003979683,
+            0.018639986868947744,
+            0.013441871851682663,
+            0.017661357298493385
+          ]
+        },
+        "radius_of_gyration": {
+          "average_seconds": 0.05384999951347709,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.03589051216840744,
+          "status": "ok",
+          "times_seconds": [
+            0.03599647106602788,
+            0.10434731002897024,
+            0.056934192311018705,
+            0.03589051216840744,
+            0.03608151199296117
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.09502340909093618,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.07694538543000817,
+          "status": "ok",
+          "times_seconds": [
+            0.07694538543000817,
+            0.11924608517438173,
+            0.07986311288550496,
+            0.07827587518841028,
+            0.12078658677637577
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.04906536061316728,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04422109108418226,
+          "status": "ok",
+          "times_seconds": [
+            0.04821403231471777,
+            0.051007427740842104,
+            0.050967270974069834,
+            0.04422109108418226,
+            0.05091698095202446
+          ]
+        },
+        "regularity": {
+          "average_seconds": 1.4133262082003057,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.3889667987823486,
+          "status": "ok",
+          "times_seconds": [
+            1.4385456829331815,
+            1.4438928137533367,
+            1.3941022087819874,
+            1.3889667987823486,
+            1.4011235367506742
+          ]
+        },
+        "trajectory_entropy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "trajectory_predictability": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "ranges must be valid half-open intervals into tokens",
+          "status": "error",
+          "times_seconds": []
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.0962754881940782,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0794872585684061,
+          "status": "ok",
+          "times_seconds": [
+            0.08572651213034987,
+            0.08097302308306098,
+            0.11656430503353477,
+            0.0794872585684061,
+            0.11862634215503931
+          ]
+        },
+        "waiting_times": {
+          "average_seconds": 0.03981596864759922,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.033473934046924114,
+          "status": "ok",
+          "times_seconds": [
+            0.06322484090924263,
+            0.033473934046924114,
+            0.035188314970582724,
+            0.03367575816810131,
+            0.03351699514314532
           ]
         }
       },
