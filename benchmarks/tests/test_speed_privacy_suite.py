@@ -62,7 +62,7 @@ def test_parse_args_defaults_to_both_skmob2_backends():
     assert args.input_order == "raw"
     assert tuple(suite.concrete_backends(args)) == ("pandas", "polars")
     assert tuple(suite.concrete_input_orders(args)) == ("raw",)
-    assert args.repeat_factor == 1
+    assert args.repeat_dataset == 1000
 
 
 def test_parse_args_expands_both_input_orders():

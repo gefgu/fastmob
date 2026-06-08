@@ -392,7 +392,7 @@ def build_metadata(
         "dataset_path": str(args.data_path),
         "iterations": args.iterations,
         "sleep_seconds": args.sleep_seconds,
-        "repeat_factor": args.repeat_factor,
+        "repeat_dataset": args.repeat_dataset,
         "input_order": args.input_order,
         "input_cache_path": None if input_cache_path is None else str(input_cache_path),
         "input_cache_status": input_cache_status,
@@ -405,12 +405,12 @@ def load_privacy_toy_for_order(
     backend: str,
     input_order: str,
     input_cache_dir: Path,
-    repeat_factor: int,
+    repeat_dataset: int,
 ) -> tuple[Any, Path | None, str]:
     if input_order == "raw":
         if backend == "polars":
-            return load_privacy_toy_polars(data_path, repeat_factor), None, "not_applicable"
-        return repeat_privacy_toy_pandas(load_privacy_toy_pandas(data_path), repeat_factor), None, "not_applicable"
+            return load_privacy_toy_polars(data_path, repeat_dataset), None, "not_applicable"
+        return repeat_privacy_toy_pandas(load_privacy_toy_pandas(data_path), repeat_dataset), None, "not_applicable"
 
     sorted_input = load_or_create_sorted_input(
         cache_dir=input_cache_dir,
@@ -418,13 +418,13 @@ def load_privacy_toy_for_order(
         backend=backend,
         data_path=data_path,
         load_raw=(
-            lambda: load_privacy_toy_polars(data_path, repeat_factor)
+            lambda: load_privacy_toy_polars(data_path, repeat_dataset)
             if backend == "polars"
-            else repeat_privacy_toy_pandas(load_privacy_toy_pandas(data_path), repeat_factor)
+            else repeat_privacy_toy_pandas(load_privacy_toy_pandas(data_path), repeat_dataset)
         ),
         uid_col="uid",
         datetime_col="datetime",
-        repeat_factor=repeat_factor,
+        repeat_factor=repeat_dataset,
     )
     return sorted_input.data, sorted_input.path, sorted_input.status
 
@@ -448,7 +448,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             backend=selected_backend,
             input_order=args.input_order,
             input_cache_dir=Path(args.input_cache_dir),
-            repeat_factor=args.repeat_factor,
+            repeat_dataset=args.repeat_dataset,
         )
         metadata = build_metadata(
             args,
@@ -476,7 +476,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         backend="pandas",
         input_order=args.input_order,
         input_cache_dir=Path(args.input_cache_dir),
-        repeat_factor=args.repeat_factor,
+        repeat_dataset=args.repeat_dataset,
     )
     try:
         skmob_module = importlib.import_module("skmob")
@@ -530,7 +530,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--input-cache-dir", type=Path, default=DEFAULT_INPUT_CACHE_DIR)
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
-    parser.add_argument("--repeat-factor", type=positive_int, default=1)
+    parser.add_argument(
+        "--repeat-dataset",
+        type=positive_int,
+        default=1000,
+        help="Repeat the privacy toy dataset this many times, forcing unique user ids for each repeat.",
+    )
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
     args = parser.parse_args(argv)

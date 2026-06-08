@@ -3,11 +3,26 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from itertools import combinations
 from typing import Any
 
+import narwhals as nw
+
 from ._constants import DATETIME, INSTANCE, INSTANCE_ELEMENT, LATITUDE, LONGITUDE, PRIVACY_RISK, PROBABILITY, UID
-from ._dataframe import _backend, _records, _rows_by_uid, _to_native, _uid_values
+from ._dataframe import _as_frame
+
+_CANDIDATE_UID = "__candidate_uid__"
+_CANDIDATE_POS = "__candidate_pos__"
+_COMBO_IDX = "__combo_idx__"
+_EFFECTIVE_LENGTH = "__effective_length__"
+_MATCH_COUNT = "__match_count__"
+_POS = "__pos__"
+_ROW_NR = "__row_nr__"
+_TARGET_UID = "__target_uid__"
+_USER_LENGTH = "__user_length__"
+
+
+def _empty_frame(reference: nw.DataFrame, columns: list[str]) -> nw.DataFrame:
+    return nw.from_dict({column: [] for column in columns}, backend=reference.implementation)
 
 
 class Attack(ABC):
@@ -47,158 +62,223 @@ class Attack(ABC):
         show_progress: bool = False,
     ) -> Any:
         del show_progress
-        backend = _backend(traj)
-        rows = _records(traj)
+        df = _as_frame(traj)
+        target_uids = self._target_uids(df, targets)
+        instance_values = self._instance_values(df)
+        candidate_values = self._candidate_values(df)
+        instances = self._generate_instances(instance_values, target_uids)
 
+        if len(instances) == 0:
+            return self._empty_result(df, force_instances)
+
+        match_counts = self._match_counts(candidate_values, instances)
+        probs = match_counts.with_columns((1.0 / nw.col(_MATCH_COUNT)).alias(PROBABILITY))
+
+        if force_instances:
+            return self._force_instance_output(df, instances, probs).to_native()
+
+        result = (
+            probs.group_by(_TARGET_UID)
+            .agg(nw.col(PROBABILITY).max().alias(PRIVACY_RISK))
+            .rename({_TARGET_UID: UID})
+            .sort(UID)
+            .select([UID, PRIVACY_RISK])
+        )
+        return result.to_native()
+
+    def _target_uids(self, df: nw.DataFrame, targets: Any) -> nw.DataFrame:
         if targets is None:
-            target_uids = {row[UID] for row in rows}
-        elif isinstance(targets, list):
-            target_uids = set(targets)
+            return df.select(UID).unique().sort(UID)
+        if isinstance(targets, list):
+            return nw.from_dict({UID: targets}, backend=df.implementation).unique().sort(UID)
+        return _as_frame(targets).select(UID).unique().sort(UID)
+
+    def _instance_values(self, df: nw.DataFrame) -> nw.DataFrame:
+        return self._with_user_position(df.select(self._instance_columns()))
+
+    def _candidate_values(self, df: nw.DataFrame) -> nw.DataFrame:
+        return self._with_user_position(df.select(self._candidate_columns())).rename(
+            {UID: _CANDIDATE_UID, _POS: _CANDIDATE_POS}
+        )
+
+    def _with_user_position(self, df: nw.DataFrame) -> nw.DataFrame:
+        return (
+            df.with_row_index(_ROW_NR)
+            .with_columns(
+                nw.col(_ROW_NR).rank(method="ordinal").over(UID).cast(nw.Int64).alias(_POS),
+                nw.len().over(UID).alias(_USER_LENGTH),
+            )
+            .drop(_ROW_NR)
+        )
+
+    def _instance_columns(self) -> list[str]:
+        columns = [UID, LATITUDE, LONGITUDE]
+        if self._has_datetime:
+            columns.append(DATETIME)
+        columns.extend(self._metric_columns())
+        return columns
+
+    def _candidate_columns(self) -> list[str]:
+        return self._instance_columns()
+
+    @property
+    def _has_datetime(self) -> bool:
+        return True
+
+    def _metric_columns(self) -> list[str]:
+        return []
+
+    def _match_columns(self) -> list[str]:
+        return [LATITUDE, LONGITUDE]
+
+    def _generate_instances(self, values: nw.DataFrame, target_uids: nw.DataFrame) -> nw.DataFrame:
+        target_values = (
+            values.join(target_uids, on=UID, how="semi")
+            .with_columns(
+                nw.when(nw.col(_USER_LENGTH) < self.knowledge_length)
+                .then(nw.col(_USER_LENGTH))
+                .otherwise(self.knowledge_length)
+                .cast(nw.Int64)
+                .alias(_EFFECTIVE_LENGTH)
+            )
+        )
+        if len(target_values) == 0:
+            return self._empty_instances(values)
+
+        lengths = [int(length) for length in sorted(target_values.select(_EFFECTIVE_LENGTH).unique().get_column(_EFFECTIVE_LENGTH).to_list())]
+        frames = [self._generate_instances_of_length(target_values.filter(nw.col(_EFFECTIVE_LENGTH) == length), length) for length in lengths]
+        frames = [frame for frame in frames if len(frame) > 0]
+        if not frames:
+            return self._empty_instances(values)
+        return nw.concat(frames, how="vertical").sort([_TARGET_UID, INSTANCE, INSTANCE_ELEMENT])
+
+    def _generate_instances_of_length(self, values: nw.DataFrame, length: int) -> nw.DataFrame:
+        source = values.rename({UID: _TARGET_UID})
+        if length == 1:
+            wide = source.select([_TARGET_UID, nw.col(_POS).alias(f"{_POS}_1"), *self._wide_value_exprs(1)])
         else:
-            target_uids = _uid_values(targets)
+            wide = source.select([_TARGET_UID, nw.col(_POS).alias(f"{_POS}_1"), *self._wide_value_exprs(1)])
+            for idx in range(2, length + 1):
+                right = source.select([_TARGET_UID, nw.col(_POS).alias(f"{_POS}_{idx}"), *self._wide_value_exprs(idx)])
+                wide = wide.join(right, on=_TARGET_UID, how="inner").filter(nw.col(f"{_POS}_{idx}") > nw.col(f"{_POS}_{idx - 1}"))
 
-        grouped = _rows_by_uid(rows)
-        target_grouped = {uid: grouped[uid] for uid in sorted(grouped) if uid in target_uids}
-        prepared_group_counts = self._prepare_group_counts(grouped.values())
+        sort_cols = [_TARGET_UID, *[f"{_POS}_{idx}" for idx in range(1, length + 1)]]
+        wide = (
+            wide.sort(sort_cols)
+            .with_row_index(_COMBO_IDX)
+            .with_columns(nw.col(_COMBO_IDX).rank(method="ordinal").over(_TARGET_UID).cast(nw.Int64).alias(INSTANCE))
+            .drop(_COMBO_IDX)
+        )
+        return self._wide_instances_to_long(wide, length)
 
+    def _wide_value_exprs(self, idx: int) -> list[Any]:
+        return [nw.col(column).alias(f"{column}_{idx}") for column in self._value_columns()]
+
+    def _wide_instances_to_long(self, wide: nw.DataFrame, length: int) -> nw.DataFrame:
+        frames = []
+        for idx in range(1, length + 1):
+            frames.append(
+                wide.select(
+                    [
+                        _TARGET_UID,
+                        INSTANCE,
+                        nw.lit(idx).alias(INSTANCE_ELEMENT),
+                        *[nw.col(f"{column}_{idx}").alias(column) for column in self._value_columns()],
+                    ]
+                )
+            )
+        return nw.concat(frames, how="vertical").sort([_TARGET_UID, INSTANCE, INSTANCE_ELEMENT])
+
+    def _value_columns(self) -> list[str]:
+        return [column for column in self._instance_columns() if column != UID]
+
+    def _empty_instances(self, reference: nw.DataFrame) -> nw.DataFrame:
+        return _empty_frame(reference, [_TARGET_UID, INSTANCE, INSTANCE_ELEMENT, *self._value_columns()])
+
+    def _empty_result(self, reference: nw.DataFrame, force_instances: bool) -> Any:
         if force_instances:
-            out = {
-                LATITUDE: [],
-                LONGITUDE: [],
-                DATETIME: [],
-                UID: [],
-                INSTANCE: [],
-                INSTANCE_ELEMENT: [],
-                PROBABILITY: [],
-            }
-            for single_rows in target_grouped.values():
-                inst_result = self._risk(single_rows, prepared_group_counts, force_instances=True)
-                for key in out:
-                    out[key].extend(inst_result[key])
-            return _to_native(out, backend)
+            return nw.from_dict(
+                {
+                    LATITUDE: [],
+                    LONGITUDE: [],
+                    DATETIME: [],
+                    UID: [],
+                    INSTANCE: [],
+                    INSTANCE_ELEMENT: [],
+                    PROBABILITY: [],
+                },
+                backend=reference.implementation,
+            ).to_native()
+        return nw.from_dict({UID: [], PRIVACY_RISK: []}, backend=reference.implementation).to_native()
 
-        uids: list[Any] = []
-        risks: list[float] = []
-        for uid, single_rows in target_grouped.items():
-            uids.append(uid)
-            risks.append(self._risk(single_rows, prepared_group_counts, force_instances=False))
-        return _to_native({UID: uids, PRIVACY_RISK: risks}, backend)
+    def _force_instance_output(self, reference: nw.DataFrame, instances: nw.DataFrame, probs: nw.DataFrame) -> nw.DataFrame:
+        out = instances.join(probs, on=[_TARGET_UID, INSTANCE], how="left")
+        if DATETIME not in out.columns:
+            out = out.with_columns(nw.lit(None).alias(DATETIME))
+        return (
+            out.rename({_TARGET_UID: UID})
+            .select([LATITUDE, LONGITUDE, DATETIME, UID, INSTANCE, INSTANCE_ELEMENT, PROBABILITY])
+            .sort([UID, INSTANCE, INSTANCE_ELEMENT])
+        )
 
-    def _generate_instances(self, single_traj: Any):
-        rows = _records(single_traj)
-        size = len(rows)
-        length = size if self.knowledge_length > size else self.knowledge_length
-        return combinations(rows, length)
+    def _required_key_count(self, instances: nw.DataFrame, keys: list[str]) -> nw.DataFrame:
+        return (
+            instances.select([_TARGET_UID, INSTANCE, *keys])
+            .unique()
+            .group_by([_TARGET_UID, INSTANCE])
+            .agg(nw.len().alias("__required_keys__"))
+        )
 
-    def _prepare_group(self, single_traj: Any) -> Any:
-        return single_traj
+    def _candidate_key_count(self, candidates: nw.DataFrame, keys: list[str]) -> nw.DataFrame:
+        return (
+            candidates.select([_CANDIDATE_UID, *keys])
+            .unique()
+            .group_by(_CANDIDATE_UID)
+            .agg(nw.len().alias("__candidate_keys__"))
+        )
 
-    def _prepared_group_key(self, prepared_group: Any) -> Any:
-        return None
+    def _set_match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame, keys: list[str]) -> nw.DataFrame:
+        required = self._required_key_count(instances, keys)
+        matched = (
+            instances.select([_TARGET_UID, INSTANCE, *keys])
+            .unique()
+            .join(candidates.select([_CANDIDATE_UID, *keys]).unique(), on=keys, how="inner")
+            .group_by([_TARGET_UID, INSTANCE, _CANDIDATE_UID])
+            .agg(nw.len().alias("__matched_keys__"))
+            .join(required, on=[_TARGET_UID, INSTANCE], how="inner")
+            .filter(nw.col("__matched_keys__") == nw.col("__required_keys__"))
+        )
+        return self._count_candidates(matched)
 
-    def _prepare_group_counts(self, groups: Any) -> list[tuple[Any, int]]:
-        grouped: list[tuple[Any, int]] = []
-        keyed: dict[Any, list[Any]] = {}
-        for group in groups:
-            prepared = self._prepare_group(group)
-            key = self._prepared_group_key(prepared)
-            if key is None:
-                grouped.append((prepared, 1))
-                continue
-            existing = keyed.get(key)
-            if existing is None:
-                keyed[key] = [prepared, 1]
-            else:
-                existing[1] += 1
-        grouped.extend((prepared, count) for prepared, count in keyed.values())
-        return grouped
+    def _multiset_match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame, keys: list[str]) -> nw.DataFrame:
+        required_counts = (
+            instances.group_by([_TARGET_UID, INSTANCE, *keys])
+            .agg(nw.len().alias("__required_count__"))
+        )
+        required_keys = required_counts.group_by([_TARGET_UID, INSTANCE]).agg(nw.len().alias("__required_keys__"))
+        candidate_counts = (
+            candidates.group_by([_CANDIDATE_UID, *keys])
+            .agg(nw.len().alias("__candidate_count__"))
+        )
+        matched = (
+            required_counts.join(candidate_counts, on=keys, how="inner")
+            .filter(nw.col("__candidate_count__") >= nw.col("__required_count__"))
+            .group_by([_TARGET_UID, INSTANCE, _CANDIDATE_UID])
+            .agg(nw.len().alias("__matched_keys__"))
+            .join(required_keys, on=[_TARGET_UID, INSTANCE], how="inner")
+            .filter(nw.col("__matched_keys__") == nw.col("__required_keys__"))
+        )
+        return self._count_candidates(matched)
 
-    def _prepare_instance(self, instance: Any) -> Any:
-        return instance
-
-    def _match_prepared(self, prepared_group: Any, prepared_instance: Any) -> int:
-        return self._match(prepared_group, prepared_instance)
-
-    def _risk(self, single_traj: Any, all_groups: list[tuple[Any, int]], force_instances: bool = False) -> Any:
-        instances = self._generate_instances(single_traj)
-        risk = 0.0
-
-        if force_instances:
-            inst_data = {
-                LATITUDE: [],
-                LONGITUDE: [],
-                DATETIME: [],
-                UID: [],
-                INSTANCE: [],
-                INSTANCE_ELEMENT: [],
-                PROBABILITY: [],
-            }
-            inst_id = 1
-            for instance in instances:
-                prepared_instance = self._prepare_instance(instance)
-                matches = sum(count for group, count in all_groups if self._match_prepared(group, prepared_instance))
-                prob = 1.0 / matches
-                for elem_count, elem in enumerate(instance, start=1):
-                    values = list(elem.values())
-                    inst_data[LATITUDE].append(values[0])
-                    inst_data[LONGITUDE].append(values[1])
-                    inst_data[DATETIME].append(values[2])
-                    inst_data[UID].append(values[3])
-                    inst_data[INSTANCE].append(inst_id)
-                    inst_data[INSTANCE_ELEMENT].append(elem_count)
-                    inst_data[PROBABILITY].append(prob)
-                inst_id += 1
-            return inst_data
-
-        for instance in instances:
-            prepared_instance = self._prepare_instance(instance)
-            matches = sum(count for group, count in all_groups if self._match_prepared(group, prepared_instance))
-            prob = 1.0 / matches
-            if prob > risk:
-                risk = prob
-            if risk == 1.0:
-                break
-        return risk
+    def _count_candidates(self, matched: nw.DataFrame) -> nw.DataFrame:
+        return (
+            matched.group_by([_TARGET_UID, INSTANCE])
+            .agg(nw.len().alias(_MATCH_COUNT))
+            .select([_TARGET_UID, INSTANCE, _MATCH_COUNT])
+        )
 
     @abstractmethod
-    def assess_risk(
-        self,
-        traj: Any,
-        targets: Any = None,
-        force_instances: bool = False,
-        show_progress: bool = False,
-    ) -> Any:
-        """Assess privacy risk for users in a trajectory DataFrame.
-
-        Parameters
-        ----------
-        traj:
-            Trajectory DataFrame with ``uid``, ``lat``, ``lng``, and
-            ``datetime`` columns. Any Narwhals-compatible eager DataFrame is
-            accepted.
-        targets:
-            Optional user selection. Pass None for all users, a list of user
-            IDs, or a DataFrame whose ``uid`` values identify the users to
-            assess.
-        force_instances:
-            If False, return one maximum risk per user. If True, return one
-            row per known observation in every generated instance with that
-            instance's re-identification probability.
-        show_progress:
-            Accepted for compatibility; currently ignored.
-
-        Returns
-        -------
-        DataFrame
-            If ``force_instances`` is False, columns are ``["uid", "risk"]``.
-            If True, columns are ``["lat", "lng", "datetime", "uid",
-            "instance", "instance_elem", "prob"]``. The returned backend
-            matches the input backend.
-        """
-        pass
-
-    @abstractmethod
-    def _match(self, single_traj: Any, instance: Any) -> int:
+    def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         pass
 
 

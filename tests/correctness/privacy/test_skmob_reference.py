@@ -184,6 +184,8 @@ def _normalized(df: Any) -> pd.DataFrame:
 def _assert_cached_match(result: Any, expected: pd.DataFrame) -> None:
     actual_df = _normalized(result)
     expected_df = _normalized(expected)
+    actual_df = actual_df.astype(object).where(pd.notna(actual_df), None)
+    expected_df = expected_df.astype(object).where(pd.notna(expected_df), None)
     assert list(actual_df.columns) == list(expected_df.columns)
     assert_frame_equal(actual_df, expected_df, check_dtype=False, check_exact=False, rtol=1e-12, atol=1e-12)
 

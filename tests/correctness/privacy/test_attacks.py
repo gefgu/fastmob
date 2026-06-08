@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 import narwhals as nw
+from pandas.testing import assert_frame_equal
 
 from skmob2.privacy import attacks
 from skmob2 import privacy
@@ -112,17 +113,20 @@ def privacy_frequency_tdf():
     return df
 
 
-def _records(df):
-    return nw.from_native(df, eager_only=True).rows(named=True)
-
-
 def _risk_map(df):
     nw_df = nw.from_native(df, eager_only=True)
     return {row["uid"]: row["risk"] for row in nw_df.rows(named=True)}
 
 
-def _single(df, uid):
-    return df[df["uid"] == uid]
+def _native_to_pandas(df):
+    if hasattr(df, "to_pandas"):
+        return df.to_pandas()
+    return pd.DataFrame(df).copy()
+
+
+def _normalized(df):
+    out = _native_to_pandas(df)
+    return out.sort_values(list(out.columns), kind="mergesort").reset_index(drop=True)
 
 
 def test_privacy_attack_imports_are_compatible():
@@ -141,87 +145,133 @@ def test_assess_risk_schema(privacy_tdf):
     assert nw.from_native(result, eager_only=True).columns == ["uid", "risk"]
 
 
-def test_location_match(privacy_tdf):
-    first_instance = _records(privacy_tdf[:2])
-    second_instance = _records(pd.concat([privacy_tdf[0:1], privacy_tdf[3:4]]))
-    attack = attacks.LocationAttack(knowledge_length=1)
+def test_location_multiset_matching_preserves_duplicates():
+    df = pd.DataFrame(
+        {
+            "lat": [1.0, 1.0, 1.0, 2.0],
+            "lng": [1.0, 1.0, 1.0, 2.0],
+            "datetime": pd.to_datetime(["2020-01-01", "2020-01-02", "2020-01-01", "2020-01-02"]),
+            "uid": [1, 1, 2, 2],
+        }
+    )
 
-    first_matches = [attack._match(_single(privacy_tdf, uid), first_instance) for uid in range(1, 7)]
-    second_matches = [attack._match(_single(privacy_tdf, uid), second_instance) for uid in range(1, 7)]
+    result = attacks.LocationAttack(knowledge_length=2).assess_risk(df, targets=[1])
 
-    assert 1.0 / sum(first_matches) == 1.0 / 4.0
-    assert 1.0 / sum(second_matches) == 1.0 / 3.0
-
-
-def test_location_sequence_match(privacy_tdf):
-    first_instance = _records(privacy_tdf[:2])
-    second_instance = _records(pd.concat([privacy_tdf[0:1], privacy_tdf[3:4]]))
-    attack = attacks.LocationSequenceAttack(knowledge_length=1)
-
-    first_matches = [attack._match(_single(privacy_tdf, uid), first_instance) for uid in range(1, 7)]
-    second_matches = [attack._match(_single(privacy_tdf, uid), second_instance) for uid in range(1, 7)]
-
-    assert 1.0 / sum(first_matches) == 1.0 / 3.0
-    assert 1.0 / sum(second_matches) == 1.0 / 2.0
+    assert _risk_map(result) == {1: pytest.approx(1.0)}
 
 
-@pytest.mark.parametrize("precision,expected", [("day", 1.0), ("month", 1.0 / 4.0)])
-def test_location_time_match(privacy_tdf, precision, expected):
-    attack = attacks.LocationTimeAttack(knowledge_length=1, time_precision=precision)
-    with_tmp = privacy_tdf.copy()
-    with_tmp["tmp"] = with_tmp["datetime"].apply(lambda dt: attacks._date_time_precision(dt, precision))
-    first_instance = _records(with_tmp[:2])
-    matches = [attack._match(_single(with_tmp, uid), first_instance) for uid in range(1, 7)]
+def test_location_sequence_matching_preserves_order_with_repeats():
+    df = pd.DataFrame(
+        {
+            "lat": [1.0, 2.0, 1.0, 1.0, 1.0, 2.0],
+            "lng": [1.0, 2.0, 1.0, 1.0, 1.0, 2.0],
+            "datetime": pd.to_datetime(
+                ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-01", "2020-01-02", "2020-01-03"]
+            ),
+            "uid": [1, 1, 1, 2, 2, 2],
+        }
+    )
 
-    assert 1.0 / sum(matches) == expected
+    result = attacks.LocationSequenceAttack(knowledge_length=3).assess_risk(df, targets=[1])
 
-
-def test_unique_location_match(privacy_frequency_tdf):
-    freq = attacks._frequency_vector(privacy_frequency_tdf)
-    instance = _records(freq)[1:3]
-    attack = attacks.UniqueLocationAttack(knowledge_length=1)
-    matches = [attack._match(_single(freq, uid), instance) for uid in range(1, 5)]
-
-    assert 1.0 / sum(matches) == 1.0 / 3.0
+    assert _risk_map(result) == {1: pytest.approx(1.0)}
 
 
-@pytest.mark.parametrize("tolerance,expected", [(0.0, 1.0 / 2.0), (0.5, 1.0 / 3.0)])
-def test_location_frequency_match(privacy_frequency_tdf, tolerance, expected):
-    freq = attacks._frequency_vector(privacy_frequency_tdf)
-    instance = _records(freq)[1:3]
-    attack = attacks.LocationFrequencyAttack(knowledge_length=1, tolerance=tolerance)
-    matches = [attack._match(_single(freq, uid), instance) for uid in range(1, 5)]
+@pytest.mark.parametrize("precision,expected", [("day", 1.0), ("month", 1.0 / 3.0)])
+def test_location_time_public_risk(privacy_tdf, precision, expected):
+    result = attacks.LocationTimeAttack(knowledge_length=2, time_precision=precision).assess_risk(privacy_tdf, targets=[1])
 
-    assert 1.0 / sum(matches) == expected
+    assert _risk_map(result) == {1: pytest.approx(expected)}
 
 
-@pytest.mark.parametrize("tolerance,expected", [(0.0, 1.0), (1.0, 1.0 / 3.0)])
-def test_location_probability_match(privacy_frequency_tdf, tolerance, expected):
-    prob = attacks._probability_vector(privacy_frequency_tdf)
-    instance = _records(prob)[1:3]
-    attack = attacks.LocationProbabilityAttack(knowledge_length=1, tolerance=tolerance)
-    matches = [attack._match(_single(prob, uid), instance) for uid in range(1, 5)]
+def test_date_time_precision_uses_hour_minute_second():
+    dt = pd.Timestamp("2011-02-03 08:34:04")
 
-    assert 1.0 / sum(matches) == expected
+    assert attacks._date_time_precision(dt, "Hour") == "2011238"
+    assert attacks._date_time_precision(dt, "Minute") == "201123834"
+    assert attacks._date_time_precision(dt, "Second") == "2011238344"
 
 
-@pytest.mark.parametrize("tolerance,expected", [(0.0, 1.0 / 2.0), (1.0, 1.0 / 3.0)])
-def test_location_proportion_match(privacy_frequency_tdf, tolerance, expected):
-    freq = attacks._frequency_vector(privacy_frequency_tdf)
-    instance = _records(freq)[1:3]
-    attack = attacks.LocationProportionAttack(knowledge_length=1, tolerance=tolerance)
-    matches = [attack._match(_single(freq, uid), instance) for uid in range(1, 5)]
+def test_location_time_hour_precision_distinguishes_hours():
+    df = pd.DataFrame(
+        {
+            "lat": [1.0, 1.0],
+            "lng": [2.0, 2.0],
+            "datetime": pd.to_datetime(["2011-02-03 08:34:04", "2011-02-03 09:34:04"]),
+            "uid": [1, 2],
+        }
+    )
 
-    assert 1.0 / sum(matches) == expected
+    result = attacks.LocationTimeAttack(knowledge_length=1, time_precision="Hour").assess_risk(df, targets=[1])
+
+    assert _risk_map(result) == {1: pytest.approx(1.0)}
 
 
-def test_home_work_match(privacy_frequency_tdf):
-    freq = attacks._frequency_vector(privacy_frequency_tdf)
-    instance = _records(_single(freq, 1))[:2]
-    attack = attacks.HomeWorkAttack()
-    matches = [attack._match(_single(freq, uid), instance) for uid in range(1, 5)]
+def test_frequency_vector_matches_polars(privacy_frequency_tdf):
+    pl = pytest.importorskip("polars")
 
-    assert 1.0 / sum(matches) == 1.0 / 2.0
+    pandas_result = _normalized(attacks._frequency_vector(privacy_frequency_tdf))
+    polars_result = _normalized(attacks._frequency_vector(pl.from_pandas(privacy_frequency_tdf)))
+
+    assert_frame_equal(polars_result, pandas_result, check_dtype=False)
+
+
+def test_probability_vector_matches_polars_and_sums_per_user(privacy_frequency_tdf):
+    pl = pytest.importorskip("polars")
+
+    pandas_result = _normalized(attacks._probability_vector(privacy_frequency_tdf))
+    polars_result = _normalized(attacks._probability_vector(pl.from_pandas(privacy_frequency_tdf)))
+
+    assert_frame_equal(polars_result, pandas_result, check_dtype=False)
+    totals = pandas_result.groupby("uid")["prob"].sum()
+    assert all(total == pytest.approx(1.0) for total in totals)
+
+
+def test_unique_location_public_risk(privacy_frequency_tdf):
+    result = attacks.UniqueLocationAttack(knowledge_length=2).assess_risk(privacy_frequency_tdf)
+
+    assert _risk_map(result) == {
+        1: pytest.approx(1.0 / 2.0),
+        2: pytest.approx(1.0),
+        3: pytest.approx(1.0 / 3.0),
+        4: pytest.approx(1.0 / 2.0),
+    }
+
+
+@pytest.mark.parametrize("tolerance,expected", [(0.0, 1.0), (0.5, 1.0 / 2.0)])
+def test_location_frequency_public_risk(privacy_frequency_tdf, tolerance, expected):
+    result = attacks.LocationFrequencyAttack(knowledge_length=2, tolerance=tolerance).assess_risk(
+        privacy_frequency_tdf,
+        targets=[1],
+    )
+
+    assert _risk_map(result) == {1: pytest.approx(expected)}
+
+
+@pytest.mark.parametrize("tolerance,expected", [(0.0, 1.0), (1.0, 1.0 / 2.0)])
+def test_location_probability_public_risk(privacy_frequency_tdf, tolerance, expected):
+    result = attacks.LocationProbabilityAttack(knowledge_length=2, tolerance=tolerance).assess_risk(
+        privacy_frequency_tdf,
+        targets=[1],
+    )
+
+    assert _risk_map(result) == {1: pytest.approx(expected)}
+
+
+@pytest.mark.parametrize("tolerance,expected", [(0.0, 1.0), (1.0, 1.0 / 2.0)])
+def test_location_proportion_public_risk(privacy_frequency_tdf, tolerance, expected):
+    result = attacks.LocationProportionAttack(knowledge_length=2, tolerance=tolerance).assess_risk(
+        privacy_frequency_tdf,
+        targets=[1],
+    )
+
+    assert _risk_map(result) == {1: pytest.approx(expected)}
+
+
+def test_home_work_public_risk(privacy_frequency_tdf):
+    result = attacks.HomeWorkAttack().assess_risk(privacy_frequency_tdf, targets=[1])
+
+    assert _risk_map(result) == {1: pytest.approx(1.0 / 2.0)}
 
 
 def test_assess_risk_all_users_and_targets(privacy_tdf):

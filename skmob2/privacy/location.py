@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ._constants import DATETIME, LATITUDE, LONGITUDE, PRECISION_LEVELS, TEMP, UID
-from ._dataframe import _as_frame, _date_time_precision, _group_counts, _records, _records_like, _to_native
-from .base import Attack
+import narwhals as nw
+
+from ._constants import DATETIME, INSTANCE, INSTANCE_ELEMENT, LATITUDE, LONGITUDE, PRECISION_LEVELS, TEMP, UID
+from ._dataframe import _as_frame, _with_date_time_precision
+from .base import _CANDIDATE_POS, _CANDIDATE_UID, _TARGET_UID, Attack
 
 
 class LocationAttack(Attack):
@@ -31,28 +33,11 @@ class LocationAttack(Attack):
 
         Parameters are the same as :meth:`skmob2.privacy.base.Attack.assess_risk`.
         """
-        sorted_traj = _as_frame(traj).sort([UID, DATETIME]).to_native()
+        sorted_traj = _as_frame(traj).sort([UID, DATETIME])
         return self._all_risks(sorted_traj, targets, force_instances, show_progress)
 
-    def _match(self, single_traj: Any, instance: Any) -> int:
-        rows = _records(single_traj)
-        inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
-
-    def _prepare_group(self, single_traj: Any) -> Any:
-        return _group_counts(_records(single_traj), [LATITUDE, LONGITUDE])
-
-    def _prepared_group_key(self, prepared_group: Any) -> Any:
-        return tuple(sorted(prepared_group.items()))
-
-    def _prepare_instance(self, instance: Any) -> Any:
-        return _group_counts(_records_like(instance, []), [LATITUDE, LONGITUDE])
-
-    def _match_prepared(self, locs: Any, inst: Any) -> int:
-        for key, inst_count in inst.items():
-            if locs.get(key, 0) < inst_count:
-                return 0
-        return 1
+    def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
+        return self._multiset_match_counts(candidates, instances, [LATITUDE, LONGITUDE])
 
 
 class LocationSequenceAttack(Attack):
@@ -77,57 +62,54 @@ class LocationSequenceAttack(Attack):
 
         Parameters are the same as :meth:`skmob2.privacy.base.Attack.assess_risk`.
         """
-        sorted_traj = _as_frame(traj).sort([UID, DATETIME]).to_native()
+        sorted_traj = _as_frame(traj).sort([UID, DATETIME])
         return self._all_risks(sorted_traj, targets, force_instances, show_progress)
 
-    def _match(self, single_traj: Any, instance: Any) -> int:
-        rows = _records(single_traj)
-        inst = _records_like(instance, list(rows[0]) if rows else [])
-        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst))
+    def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
+        instance_lengths = instances.group_by([_TARGET_UID, INSTANCE]).agg(
+            nw.col(INSTANCE_ELEMENT).max().alias("__instance_length__")
+        )
+        lengths = [int(length) for length in sorted(instance_lengths.select("__instance_length__").unique().get_column("__instance_length__").to_list())]
+        if not lengths:
+            return self._count_candidates(instances.select([_TARGET_UID, INSTANCE, _CANDIDATE_UID]))
 
-    def _prepare_group(self, single_traj: Any) -> Any:
-        return [(row[LATITUDE], row[LONGITUDE]) for row in _records(single_traj)]
+        candidate_locs = candidates.select([_CANDIDATE_UID, _CANDIDATE_POS, LATITUDE, LONGITUDE])
+        matched_frames = []
+        for length in lengths:
+            length_instances = instances.join(
+                instance_lengths.filter(nw.col("__instance_length__") == length).drop("__instance_length__"),
+                on=[_TARGET_UID, INSTANCE],
+                how="inner",
+            )
+            state = (
+                length_instances.filter(nw.col(INSTANCE_ELEMENT) == 1)
+                .select([_TARGET_UID, INSTANCE, LATITUDE, LONGITUDE])
+                .join(candidate_locs, on=[LATITUDE, LONGITUDE], how="inner")
+                .group_by([_TARGET_UID, INSTANCE, _CANDIDATE_UID])
+                .agg(nw.col(_CANDIDATE_POS).min().alias("__matched_pos__"))
+            )
+            for elem in range(2, length + 1):
+                required = length_instances.filter(nw.col(INSTANCE_ELEMENT) == elem).select(
+                    [_TARGET_UID, INSTANCE, LATITUDE, LONGITUDE]
+                )
+                state = (
+                    state.join(required, on=[_TARGET_UID, INSTANCE], how="inner")
+                    .join(candidate_locs, on=[_CANDIDATE_UID, LATITUDE, LONGITUDE], how="inner")
+                    .filter(nw.col(_CANDIDATE_POS) > nw.col("__matched_pos__"))
+                    .group_by([_TARGET_UID, INSTANCE, _CANDIDATE_UID])
+                    .agg(nw.col(_CANDIDATE_POS).min().alias("__matched_pos__"))
+                )
+            matched_frames.append(state)
 
-    def _prepared_group_key(self, prepared_group: Any) -> Any:
-        return tuple(prepared_group)
-
-    def _prepare_instance(self, instance: Any) -> Any:
-        return [(row[LATITUDE], row[LONGITUDE]) for row in _records_like(instance, [])]
-
-    def _match_prepared(self, rows: Any, inst: Any) -> int:
-        if not inst:
-            return 1
-        inst_idx = 0
-        for row in rows:
-            current = inst[inst_idx]
-            if current == row:
-                inst_idx += 1
-                if inst_idx == len(inst):
-                    return 1
-        return 0
+        return self._count_candidates(nw.concat(matched_frames, how="vertical"))
 
 
-class LocationTimeAttack(Attack):
+class LocationTimeAttack(LocationAttack):
     """Assess risk from locations observed at a selected time precision.
 
     The attacker knows up to ``knowledge_length`` location/time observations.
     Matching ignores order but requires latitude, longitude, and the datetime
     value truncated to ``time_precision`` to match.
-
-    Parameters
-    ----------
-    knowledge_length:
-        Number of observations known by the attacker.
-    time_precision:
-        Datetime precision used for matching. Valid values are ``"Year"``,
-        ``"Month"``, ``"Day"``, ``"Hour"``, ``"Minute"``, ``"Second"``, and
-        their lowercase forms. The default is ``"Hour"``.
-
-    Raises
-    ------
-    ValueError
-        If ``knowledge_length`` is less than 1 or ``time_precision`` is not a
-        supported value.
     """
 
     def __init__(self, knowledge_length: int, time_precision: str = "Hour"):
@@ -145,6 +127,9 @@ class LocationTimeAttack(Attack):
             raise ValueError("Possible time precisions are: Year, Month, Day, Hour, Minute, Second")
         self._time_precision = val
 
+    def _instance_columns(self) -> list[str]:
+        return [UID, LATITUDE, LONGITUDE, DATETIME, TEMP]
+
     def assess_risk(
         self,
         traj: Any,
@@ -157,36 +142,11 @@ class LocationTimeAttack(Attack):
         Parameters are the same as :meth:`skmob2.privacy.base.Attack.assess_risk`.
         """
         sorted_df = _as_frame(traj).sort([UID, DATETIME])
-        rows = []
-        for row in sorted_df.rows(named=True):
-            updated = dict(row)
-            updated[TEMP] = _date_time_precision(updated[DATETIME], self.time_precision)
-            rows.append(updated)
-        columns = sorted_df.columns + [TEMP]
-        transformed = {column: [row[column] for row in rows] for column in columns}
-        return self._all_risks(
-            _to_native(transformed, sorted_df.implementation), targets, force_instances, show_progress
-        )
+        transformed = _with_date_time_precision(sorted_df, DATETIME, TEMP, self.time_precision)
+        return self._all_risks(transformed, targets, force_instances, show_progress)
 
-    def _match(self, single_traj: Any, instance: Any) -> int:
-        rows = _records(single_traj)
-        inst_rows = _records_like(instance, list(rows[0]) if rows else [])
-        return self._match_prepared(self._prepare_group(rows), self._prepare_instance(inst_rows))
-
-    def _prepare_group(self, single_traj: Any) -> Any:
-        return _group_counts(_records(single_traj), [LATITUDE, LONGITUDE, TEMP])
-
-    def _prepared_group_key(self, prepared_group: Any) -> Any:
-        return tuple(sorted(prepared_group.items()))
-
-    def _prepare_instance(self, instance: Any) -> Any:
-        return _group_counts(_records_like(instance, []), [LATITUDE, LONGITUDE, TEMP])
-
-    def _match_prepared(self, locs: Any, inst: Any) -> int:
-        for key, inst_count in inst.items():
-            if locs.get(key, 0) < inst_count:
-                return 0
-        return 1
+    def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
+        return self._multiset_match_counts(candidates, instances, [LATITUDE, LONGITUDE, TEMP])
 
 
 __all__ = ["LocationAttack", "LocationSequenceAttack", "LocationTimeAttack"]

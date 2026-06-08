@@ -25,13 +25,9 @@ from ._dataframe import (
     _backend,
     _date_time_precision,
     _frequency_vector,
-    _group_counts,
     _probability_vector,
-    _records,
-    _records_like,
-    _rows_by_uid,
     _to_native,
-    _uid_values,
+    _with_date_time_precision,
 )
 from .base import Attack
 from .frequency import (
@@ -68,14 +64,10 @@ __all__ = [
     "INSTANCE_ELEMENT",
     "PRECISION_LEVELS",
     "_as_frame",
-    "_records",
-    "_records_like",
     "_backend",
     "_to_native",
-    "_uid_values",
-    "_rows_by_uid",
-    "_group_counts",
     "_frequency_vector",
     "_probability_vector",
+    "_with_date_time_precision",
     "_date_time_precision",
 ]
