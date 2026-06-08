@@ -12,11 +12,65 @@ from .base import _CANDIDATE_POS, _CANDIDATE_UID, _TARGET_UID, Attack
 
 
 class LocationAttack(Attack):
-    """Assess risk from a set of visited locations.
+    """Location Attack: assess re-identification risk from visited locations.
 
-    The attacker knows up to ``knowledge_length`` location observations for a
-    user. Matching ignores visit order and time, but preserves repeated
-    occurrences of the same latitude/longitude pair.
+    The attacker knows the coordinates of up to ``knowledge_length`` location
+    observations for a target user [TIST2018]_ [MOB2018]_.  Matching is
+    multiset-based: the instance locations must appear in the candidate
+    trajectory with at least the same frequency, regardless of visit order or
+    timestamp.
+
+    Parameters
+    ----------
+    knowledge_length : int
+        Number of location observations known by the attacker.
+
+    Attributes
+    ----------
+    knowledge_length : int
+        Number of trajectory observations known by the attacker.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.privacy.attacks import LocationAttack
+    >>> traj = pd.DataFrame(
+    ...     {
+    ...         "uid": [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6],
+    ...         "lat": [43.843, 43.544, 43.708, 43.779, 43.843, 43.708, 43.843, 43.544,
+    ...                 43.544, 43.708, 43.843, 43.779, 43.708, 43.544, 43.779, 43.708,
+    ...                 43.779, 43.843, 43.843, 43.544],
+    ...         "lng": [10.508, 10.326, 10.404, 11.246, 10.508, 10.404, 10.508, 10.326,
+    ...                 10.326, 10.404, 10.508, 11.246, 10.404, 10.326, 11.246, 10.404,
+    ...                 11.246, 10.508, 10.508, 10.326],
+    ...         "datetime": pd.to_datetime([
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-03 10:34", "2011-02-04 10:34",
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-04 10:34", "2011-02-04 11:34",
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-04 10:34", "2011-02-04 11:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34", "2011-02-04 12:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34", "2011-02-05 12:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34",
+    ...         ]),
+    ...     }
+    ... )
+    >>> at = LocationAttack(knowledge_length=2)
+    >>> print(at.assess_risk(traj).to_string(index=False))
+     uid      risk
+       1  0.333333
+       2  1.000000
+       3  0.333333
+       4  0.333333
+       5  0.333333
+       6  0.250000
+
+    References
+    ----------
+    - [TIST2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2017)
+      A Data Mining Approach to Assess Privacy Risk in Human Mobility Data.
+      ACM Trans. Intell. Syst. Technol. 9(3), Article 31.
+      https://doi.org/10.1145/3106774
+    - [MOB2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2018)
+      Analyzing Privacy Risk in Human Mobility Data. STAF Workshops 2018: 114-129.
     """
 
     def __init__(self, knowledge_length: int):
@@ -29,9 +83,34 @@ class LocationAttack(Attack):
         force_instances: bool = False,
         show_progress: bool = False,
     ) -> Any:
-        """Assess privacy risk for users in a trajectory DataFrame.
+        """Assess privacy risk for each user in the trajectory.
 
-        Parameters are the same as :meth:`skmob2.privacy.base.Attack.assess_risk`.
+        Parameters
+        ----------
+        traj : DataFrame-like
+            Trajectory dataframe; any Narwhals-compatible eager backend
+            (pandas, polars, …). Must have ``uid``, ``lat``, ``lng``, and
+            ``datetime`` columns (auto-detected by name).
+        targets : DataFrame-like or list of int, optional
+            Subset of user IDs to assess. When None (default), risk is
+            computed for every user in ``traj``.
+        force_instances : bool, optional
+            When True, return one row per background-knowledge instance
+            element with its re-identification probability instead of the
+            per-user maximum. Default: False.
+        show_progress : bool, optional
+            Accepted for API compatibility with skmob; has no effect in
+            skmob2. Default: False.
+
+        Returns
+        -------
+        pandas.DataFrame or polars.DataFrame
+            When ``force_instances=False``: one row per user with columns
+            ``["uid", "risk"]``.
+            When ``force_instances=True``: one row per instance element with
+            columns ``["lat", "lng", "datetime", "uid", "instance",
+            "instance_elem", "prob"]``.
+            The returned backend matches the input backend.
         """
         sorted_traj = _as_frame(traj).sort([UID, DATETIME])
         return self._all_risks(sorted_traj, targets, force_instances, show_progress)
@@ -41,11 +120,64 @@ class LocationAttack(Attack):
 
 
 class LocationSequenceAttack(Attack):
-    """Assess risk from a chronologically ordered sequence of locations.
+    """Location Sequence Attack: assess risk from an ordered location sequence.
 
-    The attacker knows up to ``knowledge_length`` locations and their relative
-    order. Matching ignores timestamps but requires the known locations to
-    appear as an ordered subsequence of a user's trajectory.
+    The attacker knows the coordinates of up to ``knowledge_length`` locations
+    and their relative temporal order [TIST2018]_ [MOB2018]_.  Matching
+    requires the known locations to appear as an ordered subsequence of the
+    candidate trajectory — timestamps are not used, only the visit order.
+
+    Parameters
+    ----------
+    knowledge_length : int
+        Number of ordered location observations known by the attacker.
+
+    Attributes
+    ----------
+    knowledge_length : int
+        Number of trajectory observations known by the attacker.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.privacy.attacks import LocationSequenceAttack
+    >>> traj = pd.DataFrame(
+    ...     {
+    ...         "uid": [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6],
+    ...         "lat": [43.843, 43.544, 43.708, 43.779, 43.843, 43.708, 43.843, 43.544,
+    ...                 43.544, 43.708, 43.843, 43.779, 43.708, 43.544, 43.779, 43.708,
+    ...                 43.779, 43.843, 43.843, 43.544],
+    ...         "lng": [10.508, 10.326, 10.404, 11.246, 10.508, 10.404, 10.508, 10.326,
+    ...                 10.326, 10.404, 10.508, 11.246, 10.404, 10.326, 11.246, 10.404,
+    ...                 11.246, 10.508, 10.508, 10.326],
+    ...         "datetime": pd.to_datetime([
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-03 10:34", "2011-02-04 10:34",
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-04 10:34", "2011-02-04 11:34",
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-04 10:34", "2011-02-04 11:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34", "2011-02-04 12:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34", "2011-02-05 12:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34",
+    ...         ]),
+    ...     }
+    ... )
+    >>> at = LocationSequenceAttack(knowledge_length=2)
+    >>> print(at.assess_risk(traj).to_string(index=False))
+     uid      risk
+       1  0.500000
+       2  1.000000
+       3  1.000000
+       4  0.500000
+       5  1.000000
+       6  0.333333
+
+    References
+    ----------
+    - [TIST2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2017)
+      A Data Mining Approach to Assess Privacy Risk in Human Mobility Data.
+      ACM Trans. Intell. Syst. Technol. 9(3), Article 31.
+      https://doi.org/10.1145/3106774
+    - [MOB2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2018)
+      Analyzing Privacy Risk in Human Mobility Data. STAF Workshops 2018: 114-129.
     """
 
     def __init__(self, knowledge_length: int):
@@ -58,9 +190,34 @@ class LocationSequenceAttack(Attack):
         force_instances: bool = False,
         show_progress: bool = False,
     ) -> Any:
-        """Assess privacy risk for users in a trajectory DataFrame.
+        """Assess privacy risk for each user in the trajectory.
 
-        Parameters are the same as :meth:`skmob2.privacy.base.Attack.assess_risk`.
+        Parameters
+        ----------
+        traj : DataFrame-like
+            Trajectory dataframe; any Narwhals-compatible eager backend
+            (pandas, polars, …). Must have ``uid``, ``lat``, ``lng``, and
+            ``datetime`` columns (auto-detected by name).
+        targets : DataFrame-like or list of int, optional
+            Subset of user IDs to assess. When None (default), risk is
+            computed for every user in ``traj``.
+        force_instances : bool, optional
+            When True, return one row per background-knowledge instance
+            element with its re-identification probability instead of the
+            per-user maximum. Default: False.
+        show_progress : bool, optional
+            Accepted for API compatibility with skmob; has no effect in
+            skmob2. Default: False.
+
+        Returns
+        -------
+        pandas.DataFrame or polars.DataFrame
+            When ``force_instances=False``: one row per user with columns
+            ``["uid", "risk"]``.
+            When ``force_instances=True``: one row per instance element with
+            columns ``["lat", "lng", "datetime", "uid", "instance",
+            "instance_elem", "prob"]``.
+            The returned backend matches the input backend.
         """
         sorted_traj = _as_frame(traj).sort([UID, DATETIME])
         return self._all_risks(sorted_traj, targets, force_instances, show_progress)
@@ -105,11 +262,79 @@ class LocationSequenceAttack(Attack):
 
 
 class LocationTimeAttack(LocationAttack):
-    """Assess risk from locations observed at a selected time precision.
+    """Location Time Attack: assess risk from locations and timestamps.
 
-    The attacker knows up to ``knowledge_length`` location/time observations.
-    Matching ignores order but requires latitude, longitude, and the datetime
-    value truncated to ``time_precision`` to match.
+    The attacker knows the coordinates and timestamps (truncated to
+    ``time_precision``) of up to ``knowledge_length`` observations
+    [TIST2018]_ [MOB2018]_.  Matching requires latitude, longitude, and the
+    truncated datetime to coincide, regardless of visit order.
+
+    Parameters
+    ----------
+    knowledge_length : int
+        Number of location/time observations known by the attacker.
+    time_precision : str, optional
+        Datetime component to use when comparing timestamps.  One of
+        ``"Year"``, ``"Month"``, ``"Day"``, ``"Hour"``, ``"Minute"``,
+        ``"Second"``. Default: ``"Hour"``.
+
+    Attributes
+    ----------
+    knowledge_length : int
+        Number of trajectory observations known by the attacker.
+    time_precision : str
+        Datetime precision used to match known observations.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.privacy.attacks import LocationTimeAttack
+    >>> traj = pd.DataFrame(
+    ...     {
+    ...         "uid": [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6],
+    ...         "lat": [43.843, 43.544, 43.708, 43.779, 43.843, 43.708, 43.843, 43.544,
+    ...                 43.544, 43.708, 43.843, 43.779, 43.708, 43.544, 43.779, 43.708,
+    ...                 43.779, 43.843, 43.843, 43.544],
+    ...         "lng": [10.508, 10.326, 10.404, 11.246, 10.508, 10.404, 10.508, 10.326,
+    ...                 10.326, 10.404, 10.508, 11.246, 10.404, 10.326, 11.246, 10.404,
+    ...                 11.246, 10.508, 10.508, 10.326],
+    ...         "datetime": pd.to_datetime([
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-03 10:34", "2011-02-04 10:34",
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-04 10:34", "2011-02-04 11:34",
+    ...             "2011-02-03 08:34", "2011-02-03 09:34", "2011-02-04 10:34", "2011-02-04 11:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34", "2011-02-04 12:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34", "2011-02-05 12:34",
+    ...             "2011-02-04 10:34", "2011-02-04 11:34",
+    ...         ]),
+    ...     }
+    ... )
+    >>> at = LocationTimeAttack(knowledge_length=2, time_precision="Hour")
+    >>> print(at.assess_risk(traj).to_string(index=False))
+     uid  risk
+       1   1.0
+       2   1.0
+       3   1.0
+       4   1.0
+       5   1.0
+       6   0.5
+    >>> at.time_precision = "Month"
+    >>> print(at.assess_risk(traj).to_string(index=False))
+     uid      risk
+       1  0.333333
+       2  1.000000
+       3  0.333333
+       4  0.333333
+       5  0.333333
+       6  0.250000
+
+    References
+    ----------
+    - [TIST2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2017)
+      A Data Mining Approach to Assess Privacy Risk in Human Mobility Data.
+      ACM Trans. Intell. Syst. Technol. 9(3), Article 31.
+      https://doi.org/10.1145/3106774
+    - [MOB2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2018)
+      Analyzing Privacy Risk in Human Mobility Data. STAF Workshops 2018: 114-129.
     """
 
     def __init__(self, knowledge_length: int, time_precision: str = "Hour"):
@@ -137,9 +362,34 @@ class LocationTimeAttack(LocationAttack):
         force_instances: bool = False,
         show_progress: bool = False,
     ) -> Any:
-        """Assess privacy risk for users in a trajectory DataFrame.
+        """Assess privacy risk for each user in the trajectory.
 
-        Parameters are the same as :meth:`skmob2.privacy.base.Attack.assess_risk`.
+        Parameters
+        ----------
+        traj : DataFrame-like
+            Trajectory dataframe; any Narwhals-compatible eager backend
+            (pandas, polars, …). Must have ``uid``, ``lat``, ``lng``, and
+            ``datetime`` columns (auto-detected by name).
+        targets : DataFrame-like or list of int, optional
+            Subset of user IDs to assess. When None (default), risk is
+            computed for every user in ``traj``.
+        force_instances : bool, optional
+            When True, return one row per background-knowledge instance
+            element with its re-identification probability instead of the
+            per-user maximum. Default: False.
+        show_progress : bool, optional
+            Accepted for API compatibility with skmob; has no effect in
+            skmob2. Default: False.
+
+        Returns
+        -------
+        pandas.DataFrame or polars.DataFrame
+            When ``force_instances=False``: one row per user with columns
+            ``["uid", "risk"]``.
+            When ``force_instances=True``: one row per instance element with
+            columns ``["lat", "lng", "datetime", "uid", "instance",
+            "instance_elem", "prob"]``.
+            The returned backend matches the input backend.
         """
         sorted_df = _as_frame(traj).sort([UID, DATETIME])
         transformed = _with_date_time_precision(sorted_df, DATETIME, TEMP, self.time_precision)

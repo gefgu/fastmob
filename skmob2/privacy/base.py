@@ -26,18 +26,44 @@ def _empty_frame(reference: nw.DataFrame, columns: list[str]) -> nw.DataFrame:
 
 
 class Attack(ABC):
-    """Abstract base class for privacy attacks.
+    """Abstract base class for privacy risk attacks.
+
+    Implements the background-knowledge attack framework from [TIST2018]_
+    [MOB2018]_. For each target user, all combinations of
+    ``knowledge_length`` observations are generated as background-knowledge
+    instances. Each instance is matched against every candidate trajectory;
+    the re-identification probability of an instance is
+    ``1 / number_of_matching_candidates``. The reported risk is the maximum
+    probability across all instances for that user.
+
+    Concrete subclasses must override :meth:`_match_counts`.
 
     Parameters
     ----------
-    knowledge_length:
-        Number of observations known by the attacker. Values greater than a
-        user's trajectory length are capped to that user's available rows.
+    knowledge_length : int
+        Number of observations known by the attacker for each target user.
+        Values greater than a user's trajectory length are capped to that
+        user's available rows.
+
+    Attributes
+    ----------
+    knowledge_length : int
+        Number of trajectory observations known by the attacker.
 
     Raises
     ------
     ValueError
         If ``knowledge_length`` is less than 1.
+
+    References
+    ----------
+    - [TIST2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2017)
+      A Data Mining Approach to Assess Privacy Risk in Human Mobility Data.
+      ACM Trans. Intell. Syst. Technol. 9(3), Article 31.
+      https://doi.org/10.1145/3106774
+    - [MOB2018] Pellungrini, R., Pappalardo, L., Pratesi, F. & Monreale, A. (2018)
+      Analyzing Privacy Risk in Human Mobility Data.
+      STAF Workshops 2018: 114-129.
     """
 
     def __init__(self, knowledge_length: int):
