@@ -31,7 +31,39 @@ class DatasetBuilder(ABC):
 
 
 def load_dataset(name, drop_columns=False, auth=None, show_progress=False):
-    """Load one of the original scikit-mobility datasets."""
+    """Load dataset.
+
+    Load one of the datasets that are present in the repository of scikit-mobility.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset to load (e.g., ``foursquare_nyc``).
+    drop_columns : bool, optional
+        Whether to keep additional columns when returning a TrajDataFrame. The default is ``False``.
+    auth : tuple of str, optional
+        Pair of strings ``(user, password)`` used when the dataset requires authentication.
+        The default is ``None``.
+    show_progress : bool, optional
+        If ``True``, show a progress bar during download. The default is ``False``.
+
+    Returns
+    -------
+    TrajDataFrame or FlowDataFrame or GeoDataFrame or DataFrame
+        An object containing the downloaded dataset.
+
+    Examples
+    --------
+    >>> from skmob2.data import load_dataset, list_datasets
+    >>> tdf_nyc = load_dataset("foursquare_nyc", drop_columns=True)
+    >>> print(tdf_nyc.head())
+       uid        lat        lng                  datetime
+    0  470  40.719810 -74.002581 2012-04-03 18:00:09+00:00
+    1  979  40.606800 -74.044170 2012-04-03 18:00:25+00:00
+    2   69  40.716162 -73.883070 2012-04-03 18:02:24+00:00
+    3  395  40.745164 -73.982519 2012-04-03 18:02:41+00:00
+    4   87  40.740104 -73.989658 2012-04-03 18:03:00+00:00
+    """
     if type(name) is not str:
         raise ValueError("The argument `name` must be a string.")
     if type(drop_columns) is not bool:
@@ -91,7 +123,30 @@ def load_dataset(name, drop_columns=False, auth=None, show_progress=False):
 
 
 def list_datasets(details=False, data_types=None):
-    """List available original scikit-mobility datasets."""
+    """List datasets.
+
+    List all the names of the datasets available in the data module of scikit-mobility.
+
+    Parameters
+    ----------
+    details : bool, optional
+        Whether to return full metadata for each dataset instead of the name only.
+        The default is ``False``.
+    data_types : str or list of str, optional
+        Specify which dataset types to show. Accepted values: ``"trajectory"``, ``"flow"``,
+        ``"shape"``, ``"auxiliar"``. The default is ``None`` (all types).
+
+    Returns
+    -------
+    list of str or dict
+        A list of dataset names, or a dict mapping name to metadata when ``details=True``.
+
+    Examples
+    --------
+    >>> from skmob2.data import list_datasets
+    >>> list_datasets()
+    ['flow_foursquare_nyc', 'foursquare_nyc', 'nyc_boundaries', 'parking_san_francisco', 'taxi_san_francisco']
+    """
     if type(details) is not bool:
         raise ValueError("The argument `details` must be a boolean.")
     if data_types is not None and type(data_types) is not str:
@@ -121,7 +176,34 @@ def list_datasets(details=False, data_types=None):
 
 
 def get_dataset_info(name):
-    """Return metadata for a dataset."""
+    """Get dataset info.
+
+    Return the metadata stored in the JSON file associated with the dataset.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset to query (e.g., ``foursquare_nyc``).
+
+    Returns
+    -------
+    dict
+        A dictionary containing the dataset metadata.
+
+    Examples
+    --------
+    >>> from skmob2.data import get_dataset_info
+    >>> get_dataset_info("foursquare_nyc")
+    {'name': 'Foursquare_NYC',
+     'description': 'Dataset containing the Foursquare checkins of individuals moving in New York City',
+     'url': 'http://www-public.it-sudparis.eu/~zhang_da/pub/dataset_tsmc2014.zip',
+     'hash': 'cbe3fdab373d24b09b5fc53509c8958c77ff72b6c1a68589ce337d4f9a80235b',
+     'auth': 'no',
+     'data_type': 'trajectory',
+     'download_format': 'zip',
+     'sep': '\\t',
+     'encoding': 'ISO-8859-1'}
+    """
     path_info = DATASETS_DIR / name / f"{name}.json"
     try:
         with path_info.open(encoding="utf-8") as handle:
