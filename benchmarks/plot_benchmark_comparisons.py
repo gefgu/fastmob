@@ -244,6 +244,8 @@ def metric_rows(
     optimized_result: dict[str, Any],
     sort_mode: str,
     expected_metrics: list[str] | None = None,
+    *,
+    skip_invalid: bool = False,
 ) -> list[dict[str, Any]]:
     original_metrics = original_result.get("metrics", {})
     optimized_metrics = optimized_result.get("metrics", {})
@@ -251,8 +253,12 @@ def metric_rows(
     rows = []
     missing_reasons = missing_metric_reasons(original_metrics, optimized_metrics, metric_names)
     if missing_reasons:
-        reason_lines = "; ".join(f"{metric}: {reason}" for metric, reason in missing_reasons)
-        raise ValueError(f"Cannot plot incomplete benchmark result: {reason_lines}")
+        if skip_invalid:
+            invalid_metrics = {metric for metric, _ in missing_reasons}
+            metric_names = [metric for metric in metric_names if metric not in invalid_metrics]
+        else:
+            reason_lines = "; ".join(f"{metric}: {reason}" for metric, reason in missing_reasons)
+            raise ValueError(f"Cannot plot incomplete benchmark result: {reason_lines}")
 
     for metric in metric_names:
         original_time = original_metrics[metric]["average_seconds"]
@@ -1999,7 +2005,13 @@ def generate_plots(args: argparse.Namespace) -> int:
     generated = 0
     for label in labels:
         try:
-            rows = metric_rows(original_results[label], optimized_results[label], args.sort, expected_metrics)
+            rows = metric_rows(
+                original_results[label],
+                optimized_results[label],
+                args.sort,
+                expected_metrics,
+                skip_invalid=getattr(args, "skip_invalid", False),
+            )
         except ValueError as exc:
             print(f"ERROR for {label}: {exc}")
             return 1
@@ -2088,6 +2100,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--standalone",
         action="store_true",
         help="Generate skmob2-only plots without requiring an original skmob JSON.",
+    )
+    parser.add_argument(
+        "--skip-invalid",
+        action="store_true",
+        help="Skip missing, skipped, or errored metrics instead of failing the whole comparison plot.",
     )
     return parser
 

@@ -2,8 +2,8 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/evaluation/speed_suite.py --backend pandas --sizes 10000
-    python benchmarks/evaluation/speed_suite.py --backend polars --sizes 1000 10000 100000
+    python benchmarks/evaluation/speed_suite.py --library skmob2 --sizes 1000 10000
+    python benchmarks/evaluation/speed_suite.py --library skmob --sizes 1000 10000 100000
 """
 
 from __future__ import annotations
@@ -18,72 +18,96 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
+import numpy as np
+
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "results"
-DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000]
-BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
-
-# Column name used in Brightkite for latitudes (the numeric column we compare).
-_LAT_COL = "latitude"
-# Column used as user ID in Brightkite.
-_UID_COL = "user"
+DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
+DEFAULT_SEED = 20260608
+INPUT_SOURCE = "synthetic"
 
 
 @dataclass(frozen=True)
 class BenchmarkSpec:
     name: str
-    module_path: str
+    skmob2_module_path: str
+    skmob_module_path: str
     func_name: str
-    input_kind: str  # "array_pair" | "df_pair" | "df_pair_column"
+    input_kind: str = "array_pair"
     kwargs: dict[str, Any] = field(default_factory=dict)
-    # For "df_pair_column" the positional column argument to pass.
-    column: str | None = None
 
 
-EVALUATION_METRICS: tuple[BenchmarkSpec, ...] = (
+LEGACY_EVALUATION_METRICS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec(
-        "wasserstein_distance",
-        "skmob2.measures.evaluation.metrics",
-        "wasserstein_distance",
-        "array_pair",
+        "common_part_of_commuters",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "common_part_of_commuters",
     ),
     BenchmarkSpec(
-        "histogram_jensen_shannon_divergence",
-        "skmob2.measures.evaluation.metrics",
-        "histogram_jensen_shannon_divergence",
-        "array_pair",
-        kwargs={"bin_size": 1.0},
+        "common_part_of_links",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "common_part_of_links",
     ),
     BenchmarkSpec(
-        "column_distribution_wasserstein_distance",
-        "skmob2.measures.evaluation.distribution",
-        "column_distribution_wasserstein_distance",
-        "df_pair_column",
-        column=_LAT_COL,
+        "common_part_of_commuters_distance",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "common_part_of_commuters_distance",
+        input_kind="distance_pair",
     ),
     BenchmarkSpec(
-        "column_distribution_jensen_shannon_divergence",
-        "skmob2.measures.evaluation.distribution",
-        "column_distribution_jensen_shannon_divergence",
-        "df_pair_column",
-        column=_LAT_COL,
+        "r_squared",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "r_squared",
     ),
     BenchmarkSpec(
-        "visits_per_user_wasserstein_distance",
-        "skmob2.measures.evaluation.distribution",
-        "visits_per_user_wasserstein_distance",
-        "df_pair",
+        "rmse",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "rmse",
     ),
     BenchmarkSpec(
-        "visits_per_user_jensen_shannon_divergence",
-        "skmob2.measures.evaluation.distribution",
-        "visits_per_user_jensen_shannon_divergence",
-        "df_pair",
+        "nrmse",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "nrmse",
+    ),
+    BenchmarkSpec(
+        "information_gain",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "information_gain",
+    ),
+    BenchmarkSpec(
+        "pearson_correlation",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "pearson_correlation",
+    ),
+    BenchmarkSpec(
+        "spearman_correlation",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "spearman_correlation",
+    ),
+    BenchmarkSpec(
+        "kullback_leibler_divergence",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "kullback_leibler_divergence",
+    ),
+    BenchmarkSpec(
+        "max_error",
+        "skmob2.measures.evaluation",
+        "skmob.measures.evaluation",
+        "max_error",
     ),
 )
+EVALUATION_METRICS = LEGACY_EVALUATION_METRICS
 
 
 class SkippedMetric(Exception):
@@ -138,44 +162,24 @@ def nonnegative_float(value: str) -> float:
     return parsed
 
 
-def build_output_path(output_dir: Path, backend: str, profile: str = "speed") -> Path:
-    return output_dir / f"skmob2_evaluation_{profile}_{backend}.json"
+def build_output_path(output_dir: Path, library: str, profile: str = "speed") -> Path:
+    return output_dir / f"{library}_evaluation_{profile}_{INPUT_SOURCE}.json"
 
 
-def load_brightkite_pandas(data_path: Path) -> Any:
-    import pandas as pd
-
-    df = pd.read_csv(data_path, sep="\t", header=None, names=BRIGHTKITE_COLUMNS)
-    df["check-in_time"] = pd.to_datetime(df["check-in_time"], errors="coerce")
-    return df
-
-
-def load_brightkite_polars(data_path: Path) -> Any:
-    import polars as pl
-
-    return pl.read_csv(
-        data_path,
-        separator="\t",
-        has_header=False,
-        new_columns=BRIGHTKITE_COLUMNS,
-        try_parse_dates=True,
-    )
+def module_path_for_library(spec: BenchmarkSpec, library: str) -> str:
+    if library == "skmob2":
+        return spec.skmob2_module_path
+    if library == "skmob":
+        return spec.skmob_module_path
+    raise ValueError(f"unknown library: {library}")
 
 
-def split_in_half(df: Any) -> tuple[Any, Any]:
-    """Split a DataFrame into two roughly equal halves."""
-    mid = len(df) // 2
-    try:
-        return df.head(mid), df.tail(len(df) - mid)
-    except TypeError:
-        return df[:mid], df[mid:]
-
-
-def import_metric(spec: BenchmarkSpec) -> Callable[..., Any]:
+def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
     import importlib
 
+    module_path = module_path_for_library(spec, library)
     try:
-        module = importlib.import_module(spec.module_path)
+        module = importlib.import_module(module_path)
     except Exception as exc:
         raise SkippedMetric(f"import failed: {exc}") from exc
 
@@ -185,47 +189,46 @@ def import_metric(spec: BenchmarkSpec) -> Callable[..., Any]:
         raise SkippedMetric(f"metric not available: {spec.func_name}") from exc
 
 
+def synthetic_seed(size: int, seed: int, input_kind: str) -> int:
+    kind_offset = 17 if input_kind == "distance_pair" else 0
+    return seed + size + kind_offset
+
+
+def make_synthetic_pair(size: int, *, seed: int, input_kind: str = "array_pair") -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(synthetic_seed(size, seed, input_kind))
+    if input_kind == "distance_pair":
+        observed = rng.gamma(shape=2.0, scale=8.0, size=size) + 0.001
+        predicted = observed * rng.lognormal(mean=0.0, sigma=0.15, size=size)
+        return observed.astype(float, copy=False), predicted.astype(float, copy=False)
+
+    observed = rng.lognormal(mean=2.0, sigma=0.8, size=size) + 0.001
+    noise = rng.normal(loc=1.0, scale=0.08, size=size)
+    predicted = np.maximum(observed * noise, 0.001)
+    return observed.astype(float, copy=False), predicted.astype(float, copy=False)
+
+
+def make_inputs_for_size(size: int, *, seed: int) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    return {
+        "array_pair": make_synthetic_pair(size, seed=seed, input_kind="array_pair"),
+        "distance_pair": make_synthetic_pair(size, seed=seed, input_kind="distance_pair"),
+    }
+
+
 def call_benchmark_func(
     func: Callable[..., Any],
-    input_value: Any,
+    input_value: tuple[np.ndarray, np.ndarray],
     spec: BenchmarkSpec,
 ) -> Any:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
         warnings.simplefilter("ignore", UserWarning)
-        if spec.input_kind == "array_pair":
-            arr1, arr2 = input_value
-            return func(arr1, arr2, **spec.kwargs)
-        if spec.input_kind == "df_pair_column":
-            df1, df2 = input_value
-            return func(df1, df2, spec.column, **spec.kwargs)
-        # "df_pair"
-        df1, df2 = input_value
-        return func(df1, df2, **spec.kwargs)
-
-
-def make_array_pair_from_df(df: Any, col: str) -> tuple[Any, Any]:
-    """Extract a column and split into two numpy arrays."""
-    try:
-        import narwhals as nw
-
-        ndf = nw.from_native(df, eager_only=True)
-        arr = ndf.get_column(col).to_numpy()
-    except Exception:
-        arr = df[col].to_numpy()
-    mid = len(arr) // 2
-    return arr[:mid], arr[mid:]
-
-
-def make_input_for_spec(spec: BenchmarkSpec, df1: Any, df2: Any) -> Any:
-    if spec.input_kind == "array_pair":
-        return make_array_pair_from_df(df1, _LAT_COL)
-    return df1, df2
+        arr1, arr2 = input_value
+        return func(arr1, arr2, **spec.kwargs)
 
 
 def run_timed_call(
     func: Callable[..., Any],
-    make_input: Callable[[], Any],
+    make_input: Callable[[], tuple[np.ndarray, np.ndarray]],
     spec: BenchmarkSpec,
     *,
     iterations: int,
@@ -258,7 +261,7 @@ def run_timed_call(
 
 def run_memory_call(
     func: Callable[..., Any],
-    make_input: Callable[[], Any],
+    make_input: Callable[[], tuple[np.ndarray, np.ndarray]],
     spec: BenchmarkSpec,
     *,
     iterations: int,
@@ -326,7 +329,8 @@ def error_result(reason: str, profile: str = "speed") -> dict[str, Any]:
 
 def benchmark_metric(
     spec: BenchmarkSpec,
-    make_input: Callable[[], Any],
+    library: str,
+    make_input: Callable[[], tuple[np.ndarray, np.ndarray]],
     *,
     iterations: int,
     sleep_seconds: float,
@@ -334,7 +338,7 @@ def benchmark_metric(
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
     try:
-        func = import_metric(spec)
+        func = import_metric(spec, library)
     except SkippedMetric as exc:
         print(f"    skipped: {exc}")
         return skipped_result(str(exc), profile)
@@ -349,28 +353,27 @@ def benchmark_metric(
 
 
 def benchmark_size(
-    df: Any,
     size: int,
     *,
+    library: str,
+    seed: int,
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
 ) -> dict[str, Any]:
-    try:
-        sliced = df.head(size)
-    except TypeError:
-        sliced = df[:size]
-    df1, df2 = split_in_half(sliced)
+    inputs_by_kind = make_inputs_for_size(size, seed=seed)
 
-    print(f"\nSize {size_label(size)} ({len(sliced)} rows)")
+    print(f"\nSize {size_label(size)} ({size} values)")
     return {
         "size": size,
         "label": size_label(size),
-        "rows": len(sliced),
+        "values": size,
+        "input_source": INPUT_SOURCE,
         "metrics": {
             spec.name: benchmark_metric(
                 spec,
-                lambda spec=spec, df1=df1, df2=df2: make_input_for_spec(spec, df1, df2),
+                library,
+                lambda spec=spec: inputs_by_kind[spec.input_kind],
                 profile=profile,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
@@ -380,25 +383,12 @@ def benchmark_size(
     }
 
 
-def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[str, Any]:
-    data_path = Path(args.data_path)
-    if not data_path.exists():
-        raise SystemExit(f"Dataset not found at {data_path}. Place the Brightkite file there before running.")
-
-    selected_backend = backend or args.backend
-    if selected_backend == "pandas":
-        print(f"Loading Brightkite into pandas from {data_path}...")
-        df = load_brightkite_pandas(data_path)
-        input_type = "pandas.DataFrame"
-    else:
-        print(f"Loading Brightkite into Polars from {data_path}...")
-        df = load_brightkite_polars(data_path)
-        input_type = "polars.DataFrame"
-
+def run_suite(args: argparse.Namespace) -> dict[str, Any]:
     results = [
         benchmark_size(
-            df,
             size,
+            library=args.library,
+            seed=args.seed,
             profile=args.profile,
             iterations=args.iterations,
             sleep_seconds=args.sleep_seconds,
@@ -408,46 +398,39 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
 
     metadata = {
         "suite": "evaluation",
-        "library": "skmob2",
+        "library": args.library,
         "profile": args.profile,
-        "backend": selected_backend,
-        "input_type": input_type,
+        "input_source": INPUT_SOURCE,
+        "input_type": "numpy.ndarray",
         "python_version": sys.version,
         "platform": platform.platform(),
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "dataset_path": str(args.data_path),
         "iterations": args.iterations,
         "sleep_seconds": args.sleep_seconds,
         "sizes": args.sizes,
+        "seed": args.seed,
     }
     return {"metadata": metadata, "results": results}
 
 
-def concrete_backends(args: argparse.Namespace) -> Iterable[str]:
-    if args.backend == "both":
-        return ("pandas", "polars")
-    return (args.backend,)
-
-
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone evaluation speed benchmarks.")
-    parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="pandas")
+    parser.add_argument("--library", choices=["skmob2", "skmob"], default="skmob2")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    for backend in concrete_backends(args):
-        payload = run_suite(args, backend=backend)
-        output_path = build_output_path(Path(args.output_dir), backend, args.profile)
-        write_json(payload, output_path)
-        print(f"\nWrote results to {output_path}")
+    payload = run_suite(args)
+    output_path = build_output_path(Path(args.output_dir), args.library, args.profile)
+    write_json(payload, output_path)
+    print(f"\nWrote results to {output_path}")
     return 0
 
 

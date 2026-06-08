@@ -36,6 +36,28 @@ def test_metric_rows_requires_expected_metric_timings():
     assert "missing_metric: missing from original skmob JSON" in message
 
 
+def test_metric_rows_can_skip_invalid_metrics():
+    rows = plot.metric_rows(
+        {
+            "metrics": {
+                "ok_metric": {"status": "ok", "average_seconds": 2.0},
+                "errored_metric": {"status": "error", "reason": "boom", "average_seconds": None},
+            }
+        },
+        {
+            "metrics": {
+                "ok_metric": {"status": "ok", "average_seconds": 1.0},
+                "errored_metric": {"status": "ok", "average_seconds": 1.0},
+            }
+        },
+        "speedup",
+        ["ok_metric", "errored_metric", "missing_metric"],
+        skip_invalid=True,
+    )
+
+    assert rows == [{"metric": "ok_metric", "original": 2.0, "optimized": 1.0, "speedup": 2.0}]
+
+
 def test_metric_rows_uses_catalog_order_and_sorts_model_metrics():
     rows = plot.metric_rows(
         {
@@ -141,6 +163,8 @@ def _model_args(original_json: Path, optimized_json: Path, tmp_path: Path) -> ar
         large_json_skmob=None,
         large_loc_json_skmob2=None,
         large_loc_json_skmob=None,
+        standalone=False,
+        skip_invalid=False,
     )
 
 

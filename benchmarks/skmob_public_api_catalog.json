@@ -620,6 +620,94 @@
       "skmob2_module": "skmob2.measures.collective.od",
       "default_kwargs": {},
       "input_kind": "collective"
+    },
+    {
+      "name": "common_part_of_commuters",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "common_part_of_links",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "common_part_of_commuters_distance",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "distance_pair"
+    },
+    {
+      "name": "r_squared",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "rmse",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "nrmse",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "information_gain",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "pearson_correlation",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "spearman_correlation",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "kullback_leibler_divergence",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
+    },
+    {
+      "name": "max_error",
+      "suite": "evaluation",
+      "legacy_module": "skmob.measures.evaluation",
+      "skmob2_module": "skmob2.measures.evaluation",
+      "default_kwargs": {},
+      "input_kind": "array_pair"
     }
   ]
 }
