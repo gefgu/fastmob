@@ -24,23 +24,23 @@ def random_location_entropy(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent all rows are treated as
         coming from a single individual (entropy will be 0 everywhere).
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per distinct ``(lat, lng)`` location with columns
         ``[lat_col, lng_col, "random_entropy"]``.
         The returned backend matches the input backend.
@@ -78,6 +78,10 @@ def random_location_entropy(
     29.942673 -90.064455           0.000
     29.948116 -90.063436           0.000
     29.948125 -90.063510           0.000
+
+    See Also
+    --------
+    uncorrelated_location_entropy : Location entropy weighted by visitor frequency.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

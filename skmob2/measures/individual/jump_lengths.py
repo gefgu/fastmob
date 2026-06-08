@@ -55,38 +55,41 @@ def jump_lengths(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory data; any Narwhals-compatible eager dataframe (pandas,
         polars, …).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    merge:
+    merge : bool, optional
         When True, return flat jump lengths across all users using a
         backend-appropriate array object.  When False (default), return a
         per-user dataframe.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and ordered by
         datetime within each user, then use the presorted contiguous fast path.
 
     Returns
     -------
-    DataFrame | array-like
+    pandas.DataFrame or polars.DataFrame or array-like
         When ``merge=False``: a dataframe with columns ``[uid_col, "jump_lengths"]``
         where each row holds an array-like sequence of jump lengths for one
         user.  The returned backend matches the input backend.
         When ``merge=True``: flat jump lengths as a NumPy array for NumPy-backed
-        inputs or a PyArrow array for Arrow-backed inputs. Unsupported fallback
-        paths may return a Python list.
+        inputs or a PyArrow array for Arrow-backed inputs.
 
-
+    Warning
+    -------
+    The trajectory must be sorted in ascending order by datetime.  Pass
+    ``presorted=True`` only when rows are already grouped by user and ordered
+    by datetime within each group.
 
     Examples
     --------
@@ -127,7 +130,10 @@ def jump_lengths(
     - [GHB2008] Gonzalez, M. C., Hidalgo, C. A. & Barabasi, A. L. (2008) Understanding individual human mobility patterns. Nature, 453, 779-782, https://www.nature.com/articles/nature06958.
     - [PRQPG2013] Pappalardo, L., Rinzivillo, S., Qu, Z., Pedreschi, D. & Giannotti, F. (2013) Understanding the patterns of car travel. European Physics Journal Special Topics 215(1), 61-73, https://link.springer.com/article/10.1140%2Fepjst%2Fe2013-01715-5
 
-
+    See Also
+    --------
+    maximum_distance : Largest single jump length per user.
+    distance_straight_line : Sum of all jump lengths per user.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

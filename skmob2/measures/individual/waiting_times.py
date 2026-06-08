@@ -59,36 +59,45 @@ def waiting_times(
 ) -> Any:
     """Return the waiting times (seconds) between consecutive GPS fixes for each user.
 
-    The waiting time at position i is the number of seconds elapsed between
-    trajectory point i and point i+1, within the same user's sorted trajectory.
-    Users with fewer than 2 points receive an empty list.
+    A waiting time (or inter-time) :math:`\\Delta t` is the elapsed time
+    between two consecutive trajectory points of individual :math:`u`
+    [SKWB2010]_ [PF2018]_:
+
+    .. math::
+
+        \\Delta t = |t(r_i) - t(r_{i+1})|
+
+    where :math:`r_i` and :math:`r_{i+1}` are two consecutive points in the
+    time-ordered trajectory and :math:`t(r)` is the time when :math:`u`
+    visited point :math:`r`.  Users with fewer than 2 points receive an empty
+    list.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    merge:
+    merge : bool, optional
         When ``True``, return flat waiting times across all users using a
         backend-appropriate array object. When ``False`` (default), return a
         DataFrame with one row per user.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and ordered by
         datetime within each user, then use the contiguous fast path.
 
     Returns
     -------
-    DataFrame or array-like
+    pandas.DataFrame or polars.DataFrame or array-like
         When ``merge=False``: one row per user with columns
         ``[uid_col, "waiting_times"]``; each cell is an array-like sequence of
         floats (seconds).
@@ -96,7 +105,11 @@ def waiting_times(
         inputs or a PyArrow array for Arrow-backed inputs.
         The returned DataFrame backend matches the input backend.
 
-
+    Warning
+    -------
+    The trajectory must be sorted in ascending order by datetime.  Pass
+    ``presorted=True`` only when rows are already grouped by user and ordered
+    by datetime within each group.
 
     Examples
     --------

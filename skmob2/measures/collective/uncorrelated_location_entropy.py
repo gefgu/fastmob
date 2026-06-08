@@ -30,28 +30,26 @@ def uncorrelated_location_entropy(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent all rows are treated as
         coming from a single individual (entropy will be 0 everywhere).
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per distinct ``(lat, lng)`` location with columns
         ``[lat_col, lng_col, "uncorrelated_entropy"]``.
         The returned backend matches the input backend.
-
-
 
     Examples
     --------
@@ -90,6 +88,10 @@ def uncorrelated_location_entropy(
     References
     ----------
     - [CML2011] Cho, E., Myers, S. A. & Leskovec, J. (2011) Friendship and mobility: user movement in location-based social networks. In Proceedings of the 17th ACM SIGKDD international conference on Knowledge discovery and data mining, 1082-1090, https://dl.acm.org/citation.cfm?id=2020579
+
+    See Also
+    --------
+    random_location_entropy : Baseline entropy assuming uniform visitation across users.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

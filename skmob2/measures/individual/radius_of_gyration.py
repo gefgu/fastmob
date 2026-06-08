@@ -81,30 +81,28 @@ def radius_of_gyration(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory data; any Narwhals-compatible eager dataframe (pandas,
         polars, …).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[uid_col, "radius_of_gyration"]``.
         The returned backend matches the input backend.
-
-
 
     Examples
     --------
@@ -143,7 +141,9 @@ def radius_of_gyration(
     - [GHB2008] Gonzalez, M. C., Hidalgo, C. A. & Barabasi, A. L. (2008) Understanding individual human mobility patterns. Nature, 453, 779-782, https://www.nature.com/articles/nature06958.
     - [PRQPG2013] Pappalardo, L., Rinzivillo, S., Qu, Z., Pedreschi, D. & Giannotti, F. (2013) Understanding the patterns of car travel. European Physics Journal Special Topics 215(1), 61-73, https://link.springer.com/article/10.1140%2Fepjst%2Fe2013-01715-5
 
-
+    See Also
+    --------
+    k_radius_of_gyration : Radius of gyration restricted to the k most-visited locations.
     """
     df = nw.from_native(traj, eager_only=True)
 

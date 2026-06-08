@@ -64,28 +64,29 @@ def k_radius_of_gyration(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory data; any Narwhals-compatible eager dataframe (pandas,
         polars, ...).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    k:
+    k : int, optional
         Number of most-visited locations to consider.  Defaults to 2.
-    datetime_col:
+        Valid range: :math:`[2, +\infty)`.
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[uid_col, "k_radius_of_gyration"]``.
         The returned backend matches the input backend.
 
@@ -127,7 +128,9 @@ def k_radius_of_gyration(
     ----------
     - [PSRPGB2015] Pappalardo, L., Simini, F. Rinzivillo, S., Pedreschi, D. Giannotti, F. & Barabasi, A. L. (2015) Returners and Explorers dichotomy in human mobility. Nature Communications 6, https://www.nature.com/articles/ncomms9166
 
-
+    See Also
+    --------
+    radius_of_gyration : Radius of gyration over all visited locations.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

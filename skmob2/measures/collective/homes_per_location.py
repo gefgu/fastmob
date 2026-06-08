@@ -19,35 +19,41 @@ def homes_per_location(
 ) -> Any:
     """Return the number of users whose home is at each distinct location.
 
-    Calls :func:`~skmob2.measures.individual.home_location.home_location` to
-    assign a home ``(lat, lng)`` to every user, then groups and counts.
+    The number of home locations at location :math:`j` is computed as
+    [PRS2016]_:
+
+    .. math::
+
+        N_{\\text{homes}}(j) = \\bigl|\\{h_u \\mid h_u = j,\\, u \\in U\\}\\bigr|
+
+    where :math:`h_u` indicates the home location of individual :math:`u`
+    (see :func:`~skmob2.measures.individual.home_location`) and :math:`U`
+    is the set of all individuals.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
-    start_night:
+    start_night : int, optional
         Hour (0–23) at which the nighttime window begins.  Default: 22.
-    end_night:
+    end_night : int, optional
         Hour (0–23) at which the nighttime window ends (exclusive).  Default: 7.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per distinct home location with columns
         ``[lat_col, lng_col, "n_homes"]``, sorted by descending count.
         The returned backend matches the input backend.
-
-
 
     Examples
     --------
@@ -84,6 +90,11 @@ def homes_per_location(
     References
     ----------
     - [PRS2016] Pappalardo, L., Rinzivillo, S. & Simini, F. (2016) Human Mobility Modelling: exploration and preferential return meet the gravity model. Procedia Computer Science 83, 934-939, http://dx.doi.org/10.1016/j.procs.2016.04.188
+
+    See Also
+    --------
+    visits_per_location : Total visit count per location across all users.
+    home_location : Inferred home location from nighttime visits (individual measure).
     """
     home_df = home_location(
         traj,

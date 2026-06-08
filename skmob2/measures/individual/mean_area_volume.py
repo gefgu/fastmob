@@ -42,20 +42,20 @@ def mean_area_volume(
 
     Parameters
     ----------
-    visits:
+    visits : DataFrame-like
         Any Narwhals-compatible eager dataframe with one row per stay event.
-    area_col:
+    area_col : str or None, optional
         Area column name. Auto-detected from ``LOCATION_CANDIDATES`` when None.
-    user_id_col:
+    user_id_col : str or None, optional
         User ID column. Auto-detected from ``USER_ID_CANDIDATES`` when None.
-    start_col:
+    start_col : str or None, optional
         Stay start timestamp. Auto-detected from ``TIMESTAMP_CANDIDATES`` when None.
-    end_col:
+    end_col : str or None, optional
         Stay end timestamp. Auto-detected from ``["end_timestamp", "end_time"]`` when None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         Same backend as input. Columns: ``area``, ``time_bin`` (``"HH:MM"``),
         ``mean_volume``. Rows where ``mean_volume == 0`` are excluded.
         Sorted by ``(area, time_bin)``.

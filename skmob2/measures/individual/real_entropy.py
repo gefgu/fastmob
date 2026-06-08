@@ -53,27 +53,31 @@ def real_entropy(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[uid_col, "real_entropy"]``.
         The returned backend matches the input backend.
 
-
+    Warning
+    -------
+    The trajectory must be sorted in ascending order by datetime, as the
+    Kontoyiannis estimator is applied to the time-ordered sequence of
+    locations.
 
     Examples
     --------
@@ -110,6 +114,11 @@ def real_entropy(
     References
     ----------
     - [SQBB2010] Song, C., Qu, Z., Blumm, N. & Barabasi, A. L. (2010) Limits of Predictability in Human Mobility. Science 327(5968), 1018-1021, https://science.sciencemag.org/content/327/5968/1018
+
+    See Also
+    --------
+    random_entropy : Maximum possible entropy assuming uniform visitation.
+    uncorrelated_entropy : Entropy weighted by visit frequency (ignores temporal order).
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

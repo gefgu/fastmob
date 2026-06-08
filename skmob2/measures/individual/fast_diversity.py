@@ -23,7 +23,7 @@ def fast_diversity(sequence) -> float:
 
     Parameters
     ----------
-    sequence:
+    sequence : iterable
         An iterable of hashable elements.
 
     Returns

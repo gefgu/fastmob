@@ -56,43 +56,49 @@ def max_distance_from_home(
 ) -> Any:
     """Return the maximum Haversine distance (km) from each user's home location.
 
-    The home location is computed via :func:`home_location` using the
-    nighttime-window heuristic.  The distance is the maximum Haversine
-    distance from that home point to any trajectory point for the user.
+    The maximum distance from home :math:`dh_{max}(u)` of an individual
+    :math:`u` is defined as [CM2015]_:
+
+    .. math::
+
+        dh_{max}(u) = \\max_{1 \\leq i \\leq n_u} dist(r_i, h(u))
+
+    where :math:`n_u` is the number of recorded points for :math:`u`,
+    :math:`r_i` is a location as a :math:`(lat, lng)` pair, :math:`h(u)` is
+    the home location of :math:`u` (see :func:`home_location`), and
+    :math:`dist` is the Haversine distance.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    start_night:
+    start_night : int, optional
         Hour (0–23) at which the nighttime window begins.  Forwarded to
         :func:`home_location`.  Default: 22.
-    end_night:
+    end_night : int, optional
         Hour (0–23) at which the nighttime window ends (exclusive).  Forwarded
         to :func:`home_location`.  Default: 7.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[uid_col, "max_distance_from_home"]``.
         Distance values are in kilometres.  The returned backend matches the
         input backend.
-
-
 
     Examples
     --------
@@ -129,6 +135,11 @@ def max_distance_from_home(
     References
     ----------
     - [CM2015] Canzian, L. & Musolesi, M. (2015) Trajectories of depression: unobtrusive monitoring of depressive states by means of smartphone mobility traces analysis. Proceedings of the 2015 ACM International Joint Conference on Pervasive and Ubiquitous Computing, 1293-1304, https://dl.acm.org/citation.cfm?id=2805845
+
+    See Also
+    --------
+    home_location : Inferred home location from nighttime visits.
+    maximum_distance : Largest single jump length per user.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

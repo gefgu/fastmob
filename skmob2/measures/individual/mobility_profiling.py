@@ -289,17 +289,17 @@ def intermittance_and_degree_of_return(
 
     Parameters
     ----------
-    visits:
+    visits : DataFrame-like
         A DataFrame (any Narwhals-compatible backend) with visit rows.
-    user_id_col:
+    user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
-    location_id_col:
+    location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if None.
-    datetime_col:
+    datetime_col : str or None, optional
         Column name for visit timestamps. Auto-detected if None. Required when
         ``cold_start_strategy="baseline"`` (used to count distinct active days).
         Also used as the stay start timestamp when ``use_trajectory=True``.
-    cold_start_strategy:
+    cold_start_strategy : str, optional
         How to initialize "known" places.
 
         * ``"frequency"`` — locations visited at or above mean frequency (×0.8).
@@ -310,9 +310,9 @@ def intermittance_and_degree_of_return(
         * ``"max_frequency"`` — top 10 % by visit count.
         * ``"suffix"`` — locations whose ID ends with any of ``known_suffixes``.
         * ``"none"`` — no cold-start; every first visit is an exploration.
-    known_suffixes:
+    known_suffixes : tuple of str, optional
         Used only when ``cold_start_strategy="suffix"``.
-    use_trajectory:
+    use_trajectory : bool, optional
         If True, and both start and end timestamp columns are available, expand
         each stay into observed 5-minute slices from ``ceil(start, "5min")`` to
         ``floor(end, "5min")``. Duplicate
@@ -320,7 +320,7 @@ def intermittance_and_degree_of_return(
         timestamp column is available, the function falls back to treating each
         input row as one sequence event. If False, each input row is always one
         sequence event.
-    impute_gaps:
+    impute_gaps : bool, optional
         If True, and trajectory reconstruction is possible, fill missing
         5-minute slices between each user's first and last observed slice using
         per-user anchors inferred from observed locations: hours 2-5 use the
@@ -332,7 +332,7 @@ def intermittance_and_degree_of_return(
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns
         ``[user_id_col, "intermittency", "degree_of_return", "mean_return",
         "mean_exploration"]``. The returned backend matches the input backend.
@@ -495,35 +495,35 @@ def exploration_profiling(
 
     Parameters
     ----------
-    visits:
+    visits : DataFrame-like
         A DataFrame (any Narwhals-compatible backend) with visit rows.
-    user_id_col:
+    user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if ``None``.
-    location_id_col:
+    location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if ``None``.
-    datetime_col:
+    datetime_col : str or None, optional
         Column name for visit timestamps. Auto-detected if ``None``. Required
         when ``cold_start_strategy="baseline"``.
-    cold_start_strategy:
+    cold_start_strategy : str, optional
         How to initialize known places. Passed directly to
         :func:`intermittance_and_degree_of_return`.
-    known_suffixes:
+    known_suffixes : tuple of str, optional
         Location ID suffixes treated as known (only used when
         ``cold_start_strategy="suffix"``).
-    clustering_method:
+    clustering_method : str, optional
         ``"kmeans"`` for K-Means or ``"gmm"`` for Gaussian Mixture Model.
-    random_seed:
+    random_seed : int, optional
         Seed for the clustering algorithm — ensures reproducible results.
-    n_iterations:
+    n_iterations : int, optional
         Maximum iterations for the clustering algorithm.
-    impute_gaps:
+    impute_gaps : bool, optional
         If True, pass through to :func:`intermittance_and_degree_of_return` to
         fill eligible missing 5-minute trajectory slices before computing
         return/exploration statistics.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[user_id_col, "intermittency",
         "degree_of_return", "mean_return", "mean_exploration", "profile"]``.
         The ``"profile"`` column contains one of ``"routiners"``,
