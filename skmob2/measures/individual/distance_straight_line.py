@@ -46,37 +46,49 @@ def distance_straight_line(
 ) -> Any:
     """Return the total trajectory length (km) for each user.
 
-    The total distance (called "distance straight line" in skmob) is the sum
-    of Haversine distances between all consecutive GPS fixes in a user's sorted
-    trajectory.
+    The distance straight line :math:`d_{SL}` travelled by an individual
+    :math:`u` is the sum of Haversine distances between consecutive GPS fixes
+    in the time-ordered trajectory [WTDED2015]_:
+
+    .. math::
+
+        d_{SL}(u) = \\sum_{j=2}^{n_u} dist(r_{j-1}, r_j)
+
+    where :math:`n_u` is the number of recorded points for :math:`u`,
+    :math:`r_j` is the :math:`j`-th point as a :math:`(lat, lng)` pair, and
+    :math:`dist` is the Haversine distance between two points.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and ordered by
         datetime within each user, then use the contiguous fast path.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[uid_col, "distance_straight_line"]``.
         Distance values are in kilometres.
         The returned backend matches the input backend.
 
-
+    Warning
+    -------
+    The trajectory must be sorted in ascending order by datetime.  Pass
+    ``presorted=True`` only when rows are already grouped by user and ordered
+    by datetime within each group.
 
     Examples
     --------
@@ -113,6 +125,11 @@ def distance_straight_line(
     References
     ----------
     - [WTDED2015] Williams, N. E., Thomas, T. A., Dunbar, M., Eagle, N. & Dobra, A. (2015) Measures of Human Mobility Using Mobile Phone Records Enhanced with GIS Data. PLOS ONE 10(7): e0133630. https://doi.org/10.1371/journal.pone.0133630
+
+    See Also
+    --------
+    jump_lengths : Individual jump distances between consecutive points.
+    maximum_distance : Largest single jump length per user.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

@@ -55,40 +55,44 @@ def individual_mobility_network(
 ) -> Any:
     """Return the individual mobility network as a directed edge-list DataFrame.
 
-    For each user, builds a directed weighted graph where nodes are distinct
-    locations (``lat``, ``lng`` pairs) and each edge ``(origin -> dest)``
-    represents a transition between consecutive trajectory points.  The edge
-    weight ``n_trips`` counts how many times that transition occurred.
+    An Individual Mobility Network (IMN) of an individual :math:`u` is a
+    directed weighted graph :math:`G_u = (V, E)` where :math:`V` is the set
+    of distinct visited locations and :math:`E` is the set of directed trips
+    between locations [RGNPPG2014]_ [BL2012]_ [SQBB2010]_.  The edge weight
+    function
 
-    The output format matches the skmob ``individual.individual_mobility_network``
-    return shape: one row per ``(uid, origin, destination)`` triple.
+    .. math::
+
+        \\omega: E \\to \\mathbb{N}
+
+    returns the number of times :math:`u` travelled that edge.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    self_loops:
+    self_loops : bool, optional
         When ``False`` (default), consecutive visits to the same location are
         skipped so no self-loop edges are created.  When ``True``, a step
         that stays at the same location contributes to a ``(loc, loc)`` edge.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and ordered by
         datetime within each user, then use the contiguous fast path.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per directed edge with columns
         ``[uid_col, "lat_origin", "lng_origin", "lat_dest", "lng_dest",
         "n_trips"]``.

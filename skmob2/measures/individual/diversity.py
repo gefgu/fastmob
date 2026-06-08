@@ -31,19 +31,19 @@ def diversity(
 
     Parameters
     ----------
-    visits:
+    visits : DataFrame-like
         A DataFrame (any Narwhals-compatible backend) with visit rows.
-    user_id_col:
+    user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
-    location_id_col:
+    location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if None.
-    location_type_col:
+    location_type_col : str or None, optional
         Column name for the location type / activity purpose.
         Auto-detected if None; set explicitly to ``None`` to disable.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[user_id_col, "diversity"]``.
         The returned backend matches the input backend.
 

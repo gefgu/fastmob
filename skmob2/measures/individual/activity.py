@@ -245,26 +245,26 @@ def activity_transition_matrix(
 
     Parameters
     ----------
-    visits:
+    visits : DataFrame-like
         A DataFrame (any Narwhals-compatible backend) with at least an activity
         column and, optionally, a user-ID and timestamp column.
-    activity_col:
+    activity_col : str or None, optional
         Column name for the activity/purpose type. Auto-detected if None.
-    user_id_col:
+    user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
-    timestamp_col:
+    timestamp_col : str or None, optional
         Column name for the visit timestamp used for sorting. Auto-detected if
         None (rows are used in their current order when no timestamp is found).
-    day_col:
+    day_col : str or None, optional
         Column name for the day-of-week string. Auto-detected if None.
-    day_filter:
+    day_filter : str or None, optional
         One of ``None`` (all days), ``"weekdays"`` (Mon–Fri only), or
         ``"weekends"`` (Sat–Sun only). When not None, ``day_col`` must be
         resolvable.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         Transition matrix as percentages. Pandas inputs return a pandas matrix
         with activity labels as index/columns; other backends return a native
         dataframe with an ``activity`` label column plus one column per target

@@ -47,17 +47,17 @@ def od_matrix(
 
     Parameters
     ----------
-    trips:
+    trips : DataFrame-like
         A DataFrame (pandas, polars, or any Narwhals-compatible backend) with
         at least two columns representing origin and destination areas.
-    origin_col:
+    origin_col : str or None, optional
         Column name for the origin area. Auto-detected if None.
-    destination_col:
+    destination_col : str or None, optional
         Column name for the destination area. Auto-detected if None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         Long-format OD counts with columns
         ``[origin_col, destination_col, "count"]``,
         returned in the caller's original backend.
@@ -107,17 +107,17 @@ def od_metrics_per_area(
 
     Parameters
     ----------
-    od_df:
+    od_df : DataFrame-like
         Long-format OD DataFrame as returned by :func:`od_matrix`, with
         columns ``[origin_col, destination_col, "count"]``.
-    origin_col:
+    origin_col : str or None, optional
         Column name for the origin area. Auto-detected if None.
-    destination_col:
+    destination_col : str or None, optional
         Column name for the destination area. Auto-detected if None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         DataFrame with columns ``["area_code", "MoveInside", "InComing",
         "OutGoing", "Total"]``, one row per area, returned in the caller's
         original backend.

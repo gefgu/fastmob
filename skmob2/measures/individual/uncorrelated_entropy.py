@@ -53,30 +53,28 @@ def uncorrelated_entropy(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    normalize:
+    normalize : bool, optional
         When True, divide the Shannon entropy by \\(\\log_2(n_\\mathrm{distinct})\\)
         to normalise into ``[0, 1]``.  Default False.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[uid_col, "uncorrelated_entropy"]``.
         The returned backend matches the input backend.
-
-
 
     Examples
     --------
@@ -115,6 +113,11 @@ def uncorrelated_entropy(
     - [EP2009] Eagle, N. & Pentland, A. S. (2009) Eigenbehaviors: identifying structure in routine. Behavioral Ecology and Sociobiology 63(7), 1057-1066, https://link.springer.com/article/10.1007/s00265-009-0830-6
     - [SQBB2010] Song, C., Qu, Z., Blumm, N. & Barabasi, A. L. (2010) Limits of Predictability in Human Mobility. Science 327(5968), 1018-1021, https://science.sciencemag.org/content/327/5968/1018
     - [PVGSPG2016] Pappalardo, L., Vanhoof, M., Gabrielli, L., Smoreda, Z., Pedreschi, D. & Giannotti, F. (2016) An analytical framework to nowcast well-being using mobile phone data. International Journal of Data Science and Analytics 2(75), 75-92, https://link.springer.com/article/10.1007/s41060-016-0013-2
+
+    See Also
+    --------
+    random_entropy : Maximum possible entropy assuming uniform visitation.
+    real_entropy : Entropy that captures temporal order and frequency of visits.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

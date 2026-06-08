@@ -54,42 +54,49 @@ def home_location(
 ) -> Any:
     """Return the most-visited nighttime location for each user.
 
-    The home location is the (lat, lng) pair visited most often during the
-    nighttime window ``[start_night, 24) ∪ [0, end_night)``.  When a user
-    has no nighttime records, the most-visited location across all hours is
-    used as the fallback.
+    The home location :math:`h(u)` of an individual :math:`u` is the location
+    visited most often during the nighttime window
+    ``[start_night, 24) ∪ [0, end_night)`` [CBTDHVSB2012]_ [PSO2012]_:
+
+    .. math::
+
+        h(u) = \\arg\\max_{i}
+            \\bigl|\\{r_i \\mid t(r_i) \\in [t_{\\text{start}}, t_{\\text{end}}]\\}\\bigr|
+
+    where :math:`r_i` is a location visited by :math:`u`, :math:`t(r_i)` is
+    the time of the visit, and :math:`t_{\\text{start}}` / :math:`t_{\\text{end}}`
+    bound the nighttime window.  When a user has no nighttime records, the
+    most-visited location across all hours is used as a fallback.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    start_night:
+    start_night : int, optional
         Hour (0–23) at which the nighttime window begins.  Default: 22.
-    end_night:
+    end_night : int, optional
         Hour (0–23) at which the nighttime window ends (exclusive).  Default: 7.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[uid_col, lat_col, lng_col]`` (using
         the detected column names).  The returned backend matches the input
         backend.
-
-
 
     Examples
     --------
@@ -127,6 +134,10 @@ def home_location(
     ----------
     - [CBTDHVSB2012] Csaji, B. C., Browet, A., Traag, V. A., Delvenne, J.-C., Huens, E., Van Dooren, P., Smoreda, Z. & Blondel, V. D. (2012) Exploring the Mobility of Mobile Phone Users. Physica A: Statistical Mechanics and its Applications 392(6), 1459-1473, https://www.sciencedirect.com/science/article/pii/S0378437112010059
     - [PSO2012] Phithakkitnukoon, S., Smoreda, Z. & Olivier, P. (2012) Socio-geography of human mobility: A study using longitudinal mobile phone data. PLOS ONE 7(6): e39253. https://doi.org/10.1371/journal.pone.0039253
+
+    See Also
+    --------
+    max_distance_from_home : Maximum distance from the inferred home location.
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

@@ -23,27 +23,25 @@ def visits_per_location(
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None (not used for
         aggregation, but retained for consistent preprocessing).
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per distinct ``(lat, lng)`` location with columns
         ``[lat_col, lng_col, "n_visits"]``, sorted by descending visit count.
         The returned backend matches the input backend.
-
-
 
     Examples
     --------
@@ -82,6 +80,11 @@ def visits_per_location(
     References
     ----------
     - [PF2018] Pappalardo, L. & Simini, F. (2018) Data-driven generation of spatio-temporal routines in human mobility. Data Mining and Knowledge Discovery 32, 787-829, https://link.springer.com/article/10.1007/s10618-017-0548-4
+
+    See Also
+    --------
+    homes_per_location : Number of users whose home is at each location.
+    location_frequency : Per-user visit frequency (individual measure).
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

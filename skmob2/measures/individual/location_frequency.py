@@ -55,50 +55,57 @@ def location_frequency(
 ) -> Any:
     """Return visit frequency for each distinct location per user.
 
-    Counts how many times each ``(lat, lng)`` location was visited by each
-    user, optionally normalizing counts to visit probabilities that sum to 1
-    within each user.
+    The visitation frequency :math:`f(r_i)` of location :math:`r_i` for
+    individual :math:`u` is the probability of visiting that location
+    [SKWB2010]_ [PF2018]_:
+
+    .. math::
+
+        f(r_i) = \\frac{n(r_i)}{n_u}
+
+    where :math:`n(r_i)` is the number of visits to location :math:`r_i` by
+    :math:`u`, and :math:`n_u` is the total number of data points in
+    :math:`u`'s trajectory.  When ``normalize=False``, raw visit counts
+    :math:`n(r_i)` are returned instead.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
-    normalize:
+    normalize : bool, optional
         When ``True`` (default), the ``"location_frequency"`` column contains
         the probability of visiting that location (count / total_visits), so
         each user's frequencies sum to 1.0.  When ``False``, raw visit counts
         are returned.
-    as_ranks:
+    as_ranks : bool, optional
         When ``True``, return a Python list where element *i* is the mean
         visit frequency of the *i*-th most-visited location across all users
         (rank-1 = most visited).  The list length equals the maximum number
         of distinct locations visited by any single user.  When ``False``
         (default), return a DataFrame.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted:
+    presorted : bool, optional
         When True, trust that rows are already grouped by user and use the
         contiguous fast path.
 
     Returns
     -------
-    DataFrame or list
+    pandas.DataFrame or polars.DataFrame or list
         When ``as_ranks=False``: one row per ``(user, location)`` pair with
         columns ``[uid_col, lat_col, lng_col, "location_frequency"]``.
         When ``as_ranks=True``: a flat Python ``list[float]`` of mean
         per-rank frequencies.
         The returned DataFrame backend matches the input backend.
-
-
 
     Examples
     --------
@@ -136,7 +143,13 @@ def location_frequency(
 
     References
     ----------
+    - [SKWB2010] Song, C., Koren, T., Wang, P. & Barabasi, A.L. (2010) Modelling the scaling properties of human mobility. Nature Physics 6, 818-823, https://www.nature.com/articles/nphys1760
     - [PF2018] Pappalardo, L. & Simini, F. (2018) Data-driven generation of spatio-temporal routines in human mobility. Data Mining and Knowledge Discovery 32, 787-829, https://link.springer.com/article/10.1007/s10618-017-0548-4
+
+    See Also
+    --------
+    frequency_rank : Rank locations by visit frequency (1 = most visited).
+    visits_per_location : Total visits per location across all users (collective measure).
     """
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(

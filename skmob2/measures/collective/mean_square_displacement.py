@@ -35,35 +35,38 @@ def mean_square_displacement(
 ) -> float:
     """Return the mean square displacement (km²) across all users.
 
-    For each user the square displacement is computed as the squared Haversine
-    distance (in km) between their first recorded position ``r0`` and the last
-    position whose timestamp satisfies ``datetime <= r0_time + delta_t``, where
-    ``delta_t = timedelta(days=days, hours=hours, minutes=minutes)``.
+    The mean squared displacement (MSD) measures the average deviation of
+    position from a reference point over time [FS2002]_ [BHG2006]_
+    [SKWB2010]_:
 
-    The function then returns the arithmetic mean of these per-user values —
-    matching the skmob ``collective.mean_square_displacement`` formula exactly.
+    .. math::
+
+        \\text{MSD}(t) = \\frac{1}{N} \\sum_{i=1}^{N}
+            \\bigl|r^{(i)}(t) - r^{(i)}(0)\\bigr|^2
+
+    where :math:`N` is the number of individuals, :math:`r^{(i)}(0)` is the
+    reference position (first recorded point) of individual :math:`i`, and
+    :math:`r^{(i)}(t)` is their position at time offset :math:`t`.
 
     Parameters
     ----------
-    traj:
+    traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
-        polars, …).  Must have datetime, latitude, and longitude columns.  The
-        trajectory must be sorted by datetime within each user (``_prepare_trajectory``
-        performs this sort automatically).
-    days:
+        polars, …).  Must have datetime, latitude, and longitude columns.
+    days : int, optional
         Days component of the time offset from each user's start time.
         Defaults to 0.
-    hours:
+    hours : int, optional
         Hours component of the time offset.  Defaults to 1.
-    minutes:
+    minutes : int, optional
         Minutes component of the time offset.  Defaults to 0.
-    datetime_col:
+    datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col:
+    lat_col : str or None, optional
         Explicit latitude column name.  Auto-detected when None.
-    lng_col:
+    lng_col : str or None, optional
         Explicit longitude column name.  Auto-detected when None.
-    uid_col:
+    uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
 
     Returns
@@ -72,7 +75,10 @@ def mean_square_displacement(
         Mean square displacement in km².  Returns 0.0 when the trajectory is
         empty or every user's displacement window is trivially at the start.
 
-
+    Warning
+    -------
+    The trajectory must be sorted in ascending order by datetime within each
+    user for the displacement window to be computed correctly.
 
     Examples
     --------

@@ -189,25 +189,25 @@ def trajectory_entropy(
 
     Parameters
     ----------
-    visits:
+    visits : DataFrame-like
         A DataFrame (any Narwhals-compatible backend) with visit rows.
-    user_id_col:
+    user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
-    location_id_col:
+    location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if None.
-    location_type_col:
+    location_type_col : str or None, optional
         Column name for the location type / activity purpose. Auto-detected
         if None; set explicitly to ``None`` to disable.
-    timestamp_col:
+    timestamp_col : str or None, optional
         Column name for ordering visits. Auto-detected if None; when no
         timestamp column is found the row order is preserved.
-    normalized:
+    normalized : bool, optional
         When True (default), divide raw entropy by ``log2(n)`` and clip to
         ``[0, 1]``. When False, return raw Kontoyiannis bits.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns ``[user_id_col, "entropy"]``.
         The returned backend matches the input backend.
 
@@ -286,21 +286,21 @@ def trajectory_predictability(
 
     Parameters
     ----------
-    visits:
+    visits : DataFrame-like
         A DataFrame (any Narwhals-compatible backend) with visit rows.
-    user_id_col:
+    user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
-    location_id_col:
+    location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if None.
-    location_type_col:
+    location_type_col : str or None, optional
         Column name for the location type / activity purpose. Auto-detected
         if None; set explicitly to ``None`` to disable.
-    timestamp_col:
+    timestamp_col : str or None, optional
         Column name for ordering visits. Auto-detected if None.
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame or polars.DataFrame
         One row per user with columns
         ``[user_id_col, "real_entropy", "predictability",
         "n_unique_locations", "n_steps"]``.

@@ -42,28 +42,28 @@ def discover_daily_motifs_from_agents(
 
     Parameters
     ----------
-    df:
+    df : DataFrame-like
         Input visits DataFrame (any backend).  Must contain at minimum
         user_id, location_id, purpose, start_timestamp, and end_timestamp
         columns (or their auto-detected equivalents).
-    user_id_col:
+    user_id_col : str or None, optional
         User identifier column.  Auto-detected if None.
-    location_id_col:
+    location_id_col : str or None, optional
         Location identifier column.  Auto-detected if None.
-    purpose_col:
+    purpose_col : str or None, optional
         Activity purpose column (``"HOME"``, ``"WORK"``, etc.).
         Defaults to ``"purpose"`` if found.
-    timestamp_col:
+    timestamp_col : str or None, optional
         Start-time column.  Defaults to ``"start_timestamp"`` if found.
-    end_timestamp_col:
+    end_timestamp_col : str or None, optional
         End-time column.  Defaults to ``"end_timestamp"`` if found.
-    duration_col:
+    duration_col : str or None, optional
         Duration column used for primary-home selection.  Defaults to
         ``"duration_minutes"`` if found.
 
     Returns
     -------
-    tuple[DataFrame, DataFrame]
+    tuple[pandas.DataFrame or polars.DataFrame, pandas.DataFrame or polars.DataFrame]
         ``(daily_motifs_df, motif_distribution_df)`` in the same backend as
         the input ``df``.
 
