@@ -77,12 +77,23 @@ def flow_dataframe(
     return FlowDataFrame(rows, columns=list(columns), tessellation=tessellation, tile_id=tile_id)
 
 
-def trajectory_dataframe(rows: list[tuple[Any, float, float, Any]], parameters: dict | None = None) -> TrajDataFrame:
-    df = pd.DataFrame(rows, columns=[UID, LATITUDE, LONGITUDE, DATETIME])
-    if df.empty:
+def trajectory_dataframe(rows: Any, parameters: dict | None = None) -> TrajDataFrame:
+    if isinstance(rows, (list, tuple)):
+        df = pd.DataFrame(rows, columns=[UID, LATITUDE, LONGITUDE, DATETIME])
+    else:
+        df = rows
+    if len(df) == 0:
         frame = pd.DataFrame(columns=[UID, DATETIME, LATITUDE, LONGITUDE])
     else:
-        frame = df.sort_values([UID, DATETIME]).reset_index(drop=True)[[UID, DATETIME, LATITUDE, LONGITUDE]]
+        try:
+            frame = (
+                nw.from_native(df, eager_only=True)
+                .sort([UID, DATETIME])
+                .select([UID, DATETIME, LATITUDE, LONGITUDE])
+                .to_native()
+            )
+        except Exception:
+            frame = df.sort_values([UID, DATETIME]).reset_index(drop=True)[[UID, DATETIME, LATITUDE, LONGITUDE]]
     return TrajDataFrame(frame, parameters=parameters)
 
 

@@ -1,16 +1,69 @@
 from __future__ import annotations
 
-import inspect
+from typing import Any
 
+import narwhals as nw
 import numpy as np
 
 from ._common import (
+    LATITUDE,
+    LONGITUDE,
     RELEVANCE,
     tessellation_lat_lngs,
     to_pandas_frame,
     trajectory_dataframe,
 )
 from .gravity import Gravity
+
+
+def _unwrap_native_frame(df: Any) -> Any:
+    return getattr(df, "df", df)
+
+
+def _tessellation_arrays(
+    spatial_tessellation: Any, relevance_column: str | None
+) -> tuple[Any, Any, np.ndarray, np.ndarray]:
+    native = _unwrap_native_frame(spatial_tessellation)
+    nw_df = nw.from_native(native, eager_only=True)
+    columns = set(nw_df.columns)
+    if "geometry" in columns:
+        pandas_frame = to_pandas_frame(spatial_tessellation)
+        lats_lngs = tessellation_lat_lngs(pandas_frame)
+        relevances = (
+            np.ones(len(pandas_frame), dtype=float)
+            if relevance_column is None
+            else pandas_frame[relevance_column].fillna(0).to_numpy(dtype=float)
+        )
+        return pandas_frame, nw.from_native(pandas_frame, eager_only=True).implementation, lats_lngs, relevances
+
+    if LATITUDE in columns and LONGITUDE in columns:
+        lat_col, lng_col = LATITUDE, LONGITUDE
+    elif "latitude" in columns and "longitude" in columns:
+        lat_col, lng_col = "latitude", "longitude"
+    elif "lat" in columns and "lon" in columns:
+        lat_col, lng_col = "lat", "lon"
+    else:
+        raise ValueError("spatial_tessellation must include a geometry column or latitude/longitude columns.")
+
+    lats = np.asarray(nw_df.get_column(lat_col).to_numpy(), dtype=float)
+    lngs = np.asarray(nw_df.get_column(lng_col).to_numpy(), dtype=float)
+    if relevance_column is None:
+        relevances = np.ones(len(nw_df), dtype=float)
+    else:
+        relevances = np.asarray(nw_df.get_column(relevance_column).to_numpy(), dtype=float)
+        relevances = np.nan_to_num(relevances, nan=0.0)
+    return nw_df.to_native(), nw_df.implementation, np.column_stack((lats, lngs)), relevances
+
+
+def _trajectory_native_frame(agent_ids: Any, lats: Any, lngs: Any, timestamps: Any, backend: Any) -> Any:
+    datetime_values = np.asarray(timestamps, dtype="datetime64[s]").astype("datetime64[ms]")
+    values = {
+        "uid": agent_ids,
+        "lat": lats,
+        "lng": lngs,
+        "datetime": datetime_values,
+    }
+    return nw.from_dict(values, backend=backend).to_native()
 
 
 def compute_od_matrix(
@@ -43,7 +96,6 @@ class EPR:
         self._gamma = gamma
         self._tau = tau
         self._beta = beta
-        self._od_matrix = None
         self._spatial_tessellation = None
         self.lats_lngs = None
         self.relevances = None
@@ -88,22 +140,19 @@ class EPR:
         start_date,
         end_date,
         spatial_tessellation,
-        gravity_singly={},
+        gravity_singly=None,
         n_agents=1,
         starting_locations=None,
-        od_matrix=None,
         relevance_column=RELEVANCE,
         random_state=None,
         log_file=None,
         show_progress=False,
     ):
         if starting_locations is not None and len(starting_locations) < n_agents:
-            raise IndexError(
-                "The number of starting locations is smaller than the number of agents."
-            )
-        if gravity_singly == {}:
+            raise IndexError("The number of starting locations is smaller than the number of agents.")
+        if gravity_singly is None:
             self.gravity_singly = Gravity(gravity_type="singly constrained")
-        elif type(gravity_singly) is Gravity:
+        elif isinstance(gravity_singly, Gravity):
             if gravity_singly.gravity_type == "singly constrained":
                 self.gravity_singly = gravity_singly
             else:
@@ -111,133 +160,81 @@ class EPR:
                     "Argument `gravity_singly` should be a skmob.models.gravity.Gravity object with argument `gravity_type` equal to 'singly constrained'."
                 )
         else:
-            raise TypeError(
-                "Argument `gravity_singly` should be of type skmob.models.gravity.Gravity."
-            )
+            raise TypeError("Argument `gravity_singly` should be of type skmob.models.gravity.Gravity.")
 
-        # Get parameters used in the generation for metadata recording
-        frame = inspect.currentframe()
-        args, _, _, arg_values = inspect.getargvalues(frame)
         parameters = {
             "model": {
                 "class": self.__class__.__init__,
                 "generate": {
-                    i: arg_values[i]
-                    for i in args[1:]
-                    if i
-                    not in [
-                        "spatial_tessellation",
-                        "od_matrix",
-                        "log_file",
-                        "starting_locations",
-                    ]
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "gravity_singly": gravity_singly,
+                    "n_agents": n_agents,
+                    "relevance_column": relevance_column,
+                    "random_state": random_state,
+                    "show_progress": show_progress,
                 },
             }
         }
 
-        if random_state is not None:
-            np.random.seed(random_state)
+        if random_state is not None and int(random_state) < 0:
+            raise ValueError("random_state must be a non-negative integer.")
 
         self._trajectories_ = []
-        self._spatial_tessellation = to_pandas_frame(spatial_tessellation)
-        num_locs = len(self._spatial_tessellation)
-        self.lats_lngs = tessellation_lat_lngs(self._spatial_tessellation)
-        self.relevances = (
-            np.ones(num_locs)
-            if relevance_column is None
-            else self._spatial_tessellation[relevance_column]
-            .fillna(0)
-            .to_numpy(dtype=float)
+        self._spatial_tessellation, output_backend, self.lats_lngs, self.relevances = _tessellation_arrays(
+            spatial_tessellation, relevance_column
         )
-        self._od_matrix = None if od_matrix is None else self._dense_rust_od_matrix(od_matrix)
 
-        agent_seeds = np.random.randint(0, 2**31, size=n_agents, dtype=np.int64)
-        start_values = (
-            list(starting_locations) if starting_locations is not None else None
-        )
-        resolved_starts = [
-            (
-                int(start_values.pop())
-                if start_values is not None
-                else int(np.random.choice(num_locs))
-            )
-            for _ in range(n_agents)
-        ]
+        start_values = None if starting_locations is None else np.asarray(starting_locations, dtype=np.int64)
 
         rows = self._epr_generate_parallel(
             start_date,
             end_date,
-            resolved_starts,
-            agent_seeds,
-            od_matrix=self._od_matrix,
+            n_agents,
+            random_state=None if random_state is None else int(random_state),
+            starting_locations=start_values,
+            output_backend=output_backend,
         )
         return trajectory_dataframe(rows, parameters=parameters)
 
     def _epr_generate_parallel(
-        self, start_date, end_date, resolved_starts, agent_seeds, od_matrix=None
+        self,
+        start_date,
+        end_date,
+        n_agents,
+        *,
+        random_state=None,
+        starting_locations=None,
+        output_backend=None,
     ):
-        import pandas as pd
         from skmob2 import _core
 
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
-        lats = np.asarray(self.lats_lngs[:, 0], dtype=float)
-        lngs = np.asarray(self.lats_lngs[:, 1], dtype=float)
-        seeds = np.asarray(agent_seeds, dtype=np.int64)
-        starts = np.asarray(resolved_starts, dtype=np.int64)
-        if od_matrix is None:
-            agent_ids, lats_out, lngs_out, timestamps = _core.model_epr_simulate_agents(
-                lats,
-                lngs,
-                np.asarray(self.relevances, dtype=float),
-                float(self._rho),
-                float(self._gamma),
-                float(self._beta),
-                float(self._tau),
-                float(self._min_wait_time),
-                start_ts,
-                end_ts,
-                seeds,
-                starts,
-                self.gravity_singly.deterrence_func_type,
-                float(self.gravity_singly.deterrence_func_args[0]),
-                float(self.gravity_singly.origin_exp),
-                float(self.gravity_singly.destination_exp),
-            )
-        else:
-            agent_ids, lats_out, lngs_out, timestamps = (
-                _core.model_epr_simulate_agents_from_od(
-                    lats,
-                    lngs,
-                    np.asarray(od_matrix, dtype=float).ravel(),
-                    float(self._rho),
-                    float(self._gamma),
-                    float(self._beta),
-                    float(self._tau),
-                    float(self._min_wait_time),
-                    start_ts,
-                    end_ts,
-                    seeds,
-                    starts,
-                )
-            )
-        return [
-            (
-                int(agent_ids[k]),
-                float(lats_out[k]),
-                float(lngs_out[k]),
-                pd.Timestamp(int(timestamps[k]), unit="s"),
-            )
-            for k in range(len(agent_ids))
-        ]
-
-    def _dense_rust_od_matrix(self, od_matrix):
-        if od_matrix is None:
-            return None
-        dense = np.asarray(od_matrix, dtype=float)
-        if dense.shape != (len(self.lats_lngs), len(self.lats_lngs)):
-            raise ValueError("od_matrix must be a dense square matrix with one row per location.")
-        return dense
+        lats = np.ascontiguousarray(self.lats_lngs[:, 0], dtype=float)
+        lngs = np.ascontiguousarray(self.lats_lngs[:, 1], dtype=float)
+        relevances = np.ascontiguousarray(self.relevances, dtype=float)
+        starts = None if starting_locations is None else np.ascontiguousarray(starting_locations, dtype=np.int64)
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_epr_simulate_agents(
+            lats,
+            lngs,
+            relevances,
+            float(self._rho),
+            float(self._gamma),
+            float(self._beta),
+            float(self._tau),
+            float(self._min_wait_time),
+            start_ts,
+            end_ts,
+            self.gravity_singly.deterrence_func_type,
+            float(self.gravity_singly.deterrence_func_args[0]),
+            float(self.gravity_singly.origin_exp),
+            float(self.gravity_singly.destination_exp),
+            int(n_agents),
+            random_state,
+            starts,
+        )
+        return _trajectory_native_frame(agent_ids, lats_out, lngs_out, timestamps, output_backend)
 
 
 class DensityEPR(EPR):
@@ -264,10 +261,9 @@ class DensityEPR(EPR):
         start_date,
         end_date,
         spatial_tessellation,
-        gravity_singly={},
+        gravity_singly=None,
         n_agents=1,
         starting_locations=None,
-        od_matrix=None,
         relevance_column=RELEVANCE,
         random_state=None,
         log_file=None,
@@ -280,7 +276,6 @@ class DensityEPR(EPR):
             gravity_singly=gravity_singly,
             n_agents=n_agents,
             starting_locations=starting_locations,
-            od_matrix=od_matrix,
             relevance_column=relevance_column,
             random_state=random_state,
             log_file=log_file,
@@ -312,10 +307,9 @@ class SpatialEPR(EPR):
         start_date,
         end_date,
         spatial_tessellation,
-        gravity_singly={},
+        gravity_singly=None,
         n_agents=1,
         starting_locations=None,
-        od_matrix=None,
         random_state=None,
         log_file=None,
         show_progress=False,
@@ -327,7 +321,6 @@ class SpatialEPR(EPR):
             gravity_singly=gravity_singly,
             n_agents=n_agents,
             starting_locations=starting_locations,
-            od_matrix=od_matrix,
             relevance_column=None,
             random_state=random_state,
             log_file=log_file,
@@ -348,10 +341,9 @@ class Ditras(EPR):
         start_date,
         end_date,
         spatial_tessellation,
-        gravity_singly={},
+        gravity_singly=None,
         n_agents=1,
         starting_locations=None,
-        od_matrix=None,
         relevance_column=RELEVANCE,
         random_state=None,
         log_file=None,
@@ -366,7 +358,6 @@ class Ditras(EPR):
             gravity_singly=gravity_singly,
             n_agents=n_agents,
             starting_locations=starting_locations,
-            od_matrix=od_matrix,
             relevance_column=relevance_column,
             random_state=random_state,
             log_file=log_file,

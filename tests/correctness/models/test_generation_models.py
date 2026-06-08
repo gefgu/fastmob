@@ -252,6 +252,42 @@ def test_epr_family_generates_trajectory(model_cls):
     assert result["datetime"].min() == start
 
 
+def test_epr_random_state_is_reproducible():
+    pytest.importorskip("powerlaw")
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 06:00:00")
+
+    first = EPR().generate(start, end, _tessellation(), n_agents=3, random_state=123).df
+    second = EPR().generate(start, end, _tessellation(), n_agents=3, random_state=123).df
+
+    pd.testing.assert_frame_equal(first, second)
+
+
+def test_epr_starting_locations_are_used_in_order():
+    pytest.importorskip("powerlaw")
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 01:00:00")
+    tess = _tessellation()
+
+    result = EPR().generate(start, end, tess, n_agents=2, starting_locations=[2, 1], random_state=0).df
+    first_points = result.sort_values(["uid", "datetime"]).groupby("uid", as_index=False).first()
+
+    np.testing.assert_allclose(first_points["lat"].to_numpy(), tess.loc[[2, 1], "lat"].to_numpy())
+    np.testing.assert_allclose(first_points["lng"].to_numpy(), tess.loc[[2, 1], "lng"].to_numpy())
+
+
+def test_epr_polars_tessellation_returns_polars_wrapped_frame():
+    pytest.importorskip("powerlaw")
+    pl = pytest.importorskip("polars")
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 06:00:00")
+
+    result = EPR().generate(start, end, pl.from_pandas(_tessellation()), n_agents=2, random_state=0)
+
+    assert isinstance(result.df, pl.DataFrame)
+    assert result.columns == ["uid", "datetime", "lat", "lng"]
+
+
 def test_geosim_generates_trajectory():
     pytest.importorskip("powerlaw")
     pytest.importorskip("igraph")

@@ -28,11 +28,10 @@ pub struct CachedGravityOdRows<'a> {
     cache: moka::sync::Cache<usize, Arc<[f64]>>,
     lats: &'a [f64],
     lons: &'a [f64],
-    rels: &'a [f64],
+    rels_dest: Vec<f64>,
+    rels_origin: Vec<f64>,
     deterrence_type: &'a str,
     deterrence_arg: f64,
-    origin_exp: f64,
-    dest_exp: f64,
 }
 
 impl<'a> CachedGravityOdRows<'a> {
@@ -40,21 +39,22 @@ impl<'a> CachedGravityOdRows<'a> {
     pub fn new(
         lats: &'a [f64],
         lons: &'a [f64],
-        rels: &'a [f64],
+        rels: &[f64],
         deterrence_type: &'a str,
         deterrence_arg: f64,
         origin_exp: f64,
         dest_exp: f64,
     ) -> Self {
+        let rels_dest: Vec<f64> = rels.iter().map(|&r| r.powf(dest_exp)).collect();
+        let rels_origin: Vec<f64> = rels.iter().map(|&r| r.powf(origin_exp)).collect();
         Self {
             cache: moka::sync::Cache::new(EPR_OD_CACHE_SIZE),
             lats,
             lons,
-            rels,
+            rels_dest,
+            rels_origin,
             deterrence_type,
             deterrence_arg,
-            origin_exp,
-            dest_exp,
         }
     }
 
@@ -64,38 +64,38 @@ impl<'a> CachedGravityOdRows<'a> {
                 origin,
                 self.lats,
                 self.lons,
-                self.rels,
+                &self.rels_dest,
+                &self.rels_origin,
                 self.deterrence_type,
                 self.deterrence_arg,
-                self.origin_exp,
-                self.dest_exp,
             ))
         })
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn gravity_od_row_seq(
     origin: usize,
     lats: &[f64],
     lons: &[f64],
-    rels: &[f64],
+    rels_dest: &[f64],
+    rels_origin: &[f64],
     deterrence_type: &str,
     deterrence_arg: f64,
-    origin_exp: f64,
-    dest_exp: f64,
 ) -> Vec<f64> {
     let n = lats.len();
+    let origin_power = rels_origin[origin];
     let mut row: Vec<f64> = (0..n)
         .map(|j| {
             if j == origin {
                 return 0.0;
             }
             let d = haversine_km(lats[origin], lons[origin], lats[j], lons[j]);
-            let s = deterrence(d, deterrence_type, deterrence_arg)
-                * rels[j].powf(dest_exp)
-                * rels[origin].powf(origin_exp);
-            if s.is_finite() { s } else { 0.0 }
+            let s = deterrence(d, deterrence_type, deterrence_arg) * rels_dest[j] * origin_power;
+            if s.is_finite() {
+                s
+            } else {
+                0.0
+            }
         })
         .collect();
     let total: f64 = row.iter().sum();
@@ -103,6 +103,11 @@ pub fn gravity_od_row_seq(
         row.iter_mut().for_each(|v| *v /= total);
     } else if n > 0 {
         row.fill(1.0 / n as f64);
+    }
+    let mut cumsum = 0.0;
+    for value in &mut row {
+        cumsum += *value;
+        *value = cumsum;
     }
     row
 }
@@ -235,7 +240,11 @@ pub fn gravity_od_row_impl(
             let score = deterrence(distance, deterrence_type, deterrence_arg)
                 * relevances[j].powf(destination_exp)
                 * relevances[origin].powf(origin_exp);
-            if score.is_finite() { score } else { 0.0 }
+            if score.is_finite() {
+                score
+            } else {
+                0.0
+            }
         })
         .collect();
     let total: f64 = row.iter().sum();

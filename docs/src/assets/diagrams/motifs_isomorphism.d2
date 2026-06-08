@@ -1,0 +1,83 @@
+direction: down
+
+title: Canonical ID & Bit-Packing Flow {
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+# Define reusable styles (D2 classes)
+classes: {
+  inputData: {
+    shape: parallelogram
+    style: {fill: "#f5f5f5"; stroke: "#616161"; stroke-width: 1; border-radius: 5}
+  }
+  process: {
+    shape: rectangle
+    style: {fill: "#e1f5fe"; stroke: "#0277bd"; stroke-width: 2; border-radius: 8}
+  }
+  highlight: {
+    shape: rectangle
+    style: {fill: "#fff9c4"; stroke: "#fbc02d"; stroke-width: 2; border-radius: 8}
+  }
+  bitwise: {
+    shape: rectangle
+    style: {fill: "#e8f5e9"; stroke: "#2e7d32"; stroke-width: 2; border-radius: 8}
+  }
+  outputData: {
+    shape: parallelogram
+    style: {fill: "#333333"; stroke: "#ffffff"; stroke-width: 2; font-color: "#ffffff"; border-radius: 5}
+  }
+}
+
+# Inputs
+Seq: "Input: Integer Edges\ne.g., (0,1), (1,0)" {class: inputData}
+NodeCount: "Input: Node Count (N)" {class: inputData}
+
+# Phase 1
+Canonical: {
+  label: "Phase 1: Canonical Adjacency Form (Solving Isomorphism)"
+  style: {fill: transparent; stroke: "#ccc"; stroke-dash: 5}
+
+  BuildAdj: "Build NxN Adjacency Matrix" {class: process}
+  Permute: "Generate all N! node permutations" {class: process}
+
+  EvalLoop: {
+    label: "Evaluation Loop"
+    style: {fill: transparent; stroke: "#999"; stroke-dash: 5}
+
+    Flatten: "Flatten matrix into a bit-string\n(read row-by-row)" {class: process}
+    Convert: "Convert bit-string to Integer" {class: process}
+
+    Flatten -> Convert
+  }
+
+  MaxOp: "Save the MAXIMUM Integer\n(best_matrix_int)" {class: highlight}
+
+  BuildAdj -> Permute
+  Permute -> EvalLoop.Flatten
+  EvalLoop.Convert -> MaxOp
+}
+
+# Phase 2
+Packing: {
+  label: "Phase 2: Final Bit-Packing"
+  direction: right
+  style: {fill: transparent; stroke: "#ccc"; stroke-dash: 5}
+
+  Shift: "Shift Node Count Left\n(N << 36)" {class: bitwise}
+  OR: "Bitwise OR\n(|)" {class: bitwise}
+}
+
+# Output
+Final: "Final Motif ID (i64)" {class: outputData}
+
+# Main Execution Routing
+Seq -> Canonical.BuildAdj
+NodeCount -> Packing.Shift
+Canonical.MaxOp -> Packing.OR: "best_matrix_int"
+Packing.Shift -> Packing.OR
+Packing.OR -> Final

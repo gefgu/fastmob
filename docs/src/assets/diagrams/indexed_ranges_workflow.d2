@@ -1,0 +1,62 @@
+direction: down
+
+title: Rust Parallel Indexer - Memory Mutation Lifecycle {
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+# Layers / Groupings
+Phase 1: {
+  label: "Phase 1: Frequency Counting"
+  style: {fill: "#f5f5f5"; stroke: "#9e9e9e"; border-radius: 8}
+
+  Step1: {
+    label: "1. Histogram Generation\nIterate over raw 'codes'. Increment frequencies inside 'offsets' array based on group_id."
+  }
+}
+
+Phase 2: {
+  label: "Phase 2: Prefix Sum & Bounds Resolution"
+  style: {fill: "#e8f5e9"; stroke: "#2e7d32"; border-radius: 8}
+
+  Step2: {
+    label: "2. Memory Blueprinting (Prefix Sum)\nTransform user frequency counts into absolute memory locations (cumulative offsets).\nConstruct the 'ranges' vector storing (start, end) tuples for each contiguous user block."
+  }
+}
+
+Phase 3: {
+  label: "Phase 3: Scatter Indices"
+  style: {fill: "#e3f2fd"; stroke: "#1565c0"; border-radius: 8}
+
+  Step3: {
+    label: "3. Index Map Generation\nScatter original row indices (0..n) into the un-sorted 'indices' array using tracking offsets."
+  }
+}
+
+Phase 4: {
+  label: "Phase 4: Rayon Parallel Segmented Sort"
+  style: {fill: "#ffebee"; stroke: "#c62828"; border-radius: 8}
+
+  Step4: {
+    label: "4. Unsafe Slice Splitting\nGet raw mutable pointer to 'indices'. Convert (start, end) ranges into isolated, non-overlapping chunks."
+  }
+
+  Step5: {
+    label: "5. Multithreaded Sort (par_iter)\nRayon workers concurrently sort each isolated slice by fetching data from the read-only 'timestamps' array."
+  }
+
+  Step4 -> Step5: Safe concurrent access guaranteed by disjoint memory ranges
+}
+
+# Main Pipeline Flow
+Input_Arrays: "Input: codes & timestamps"
+
+Input_Arrays -> Phase 1.Step1
+Phase 1.Step1 -> Phase 2.Step2: "offsets = [count_u0, count_u1, ...]"
+Phase 2.Step2 -> Phase 3.Step3: "offsets converted to cumulative starts"
+Phase 3.Step3 -> Phase 4.Step4: "Raw unsorted grouped indices"
+Phase 4.Step5 -> Output: "Output: (Sorted Indices, Ranges)"

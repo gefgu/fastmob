@@ -1,25 +1,111 @@
-title: Scikit-Mobility 2 - Optimization Workflow for Individual Metrics {
+direction: down
+
+title: Scikit-Mobility 2 - Generalized Architecture Workflow for Individual Metrics {
   near: top-center
   shape: text
   style: {
-    font-size: 29
+    font-size: 24
     bold: true
-    underline: true
   }
 }
 
-Data -> Extraction: Parses Columns and Backend Type
+# 1. Standardization & Extraction Layer
+Narwhals Layer: {
+  style: {
+    fill: "#e3f2fd"
+    stroke: "#1565c0"
+    stroke-width: 2
+    border-radius: 8
+  }
 
-Extraction -> Backend Routing: Arrow/Numpy/Conversion
+  Standardization: {
+    label: "Standardize DataFrame\n(Converts input to Narwhals eager format; validates and casts coordinates.)"
+  }
 
-Backend Routing -> Sorted: Best for heavy workflows /\n Sort Penalty
+  Dispatcher: {
+    label: "Ops Dispatcher\n(Inspects backend Arrow/NumPy and assigns the correct optimized function dictionary.)"
+  }
 
-Backend Routing -> Indexed: Best for EDA
+  Standardization -> Dispatcher: Extract Data Arrays
+}
 
-Sorted -> Contiguous User Ranges: Contiguous Memory/\nAssumes clean data
+# 2. Python-Side Pre-Processing
+Python Pre-Processing: {
+  style: {
+    fill: "#e8f5e9"
+    stroke: "#2e7d32"
+    stroke-width: 2
+    border-radius: 8
+  }
 
-Indexed -> Indexed User Ranges: Sorts Indexes/\nCleans NaNs
+  Contiguous Builder: {
+    label: "NumPy/Polars Masking\n(Finds slice boundaries using shift/masks for pre-grouped and pre-sorted data.)"
+  }
 
-Contiguous User Ranges -> Optimized Compute: SIMD/Cache Locality
+  Factorize UIDs: {
+    label: "Factorize to u64\n(Maps user IDs to contiguous integers to prepare for Rust-based parallel indexing.)"
+  }
+}
 
-Indexed User Ranges -> Indexed Compute: Low Memory Overhead
+# 3. Rust-Side Indexing Layer
+Rust Parallel Indexer: {
+  style: {
+    fill: "#ffebee"
+    stroke: "#c62828"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  Time Order Indexer: {
+    label: "time_ordered_indices\n(Uses Rayon to slice indices by user and parallel-sort by timestamp. Returns Ends & Indices.)"
+  }
+}
+
+# 4. Rust-Side Compute Layer
+Rust Compute Core: {
+  style: {
+    fill: "#fce4ec"
+    stroke: "#c2185b"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  Presorted Path: {
+    label: "Metric Function (Presorted)\n(Executes core algorithm linearly across pre-sliced ranges.)"
+  }
+
+  Indexed Path: {
+    label: "Metric Function (Indexed)\n(Executes core algorithm traversing raw arrays via the temporal index map.)"
+  }
+}
+
+# 5. Result Formatting Layer
+Post-Processing: {
+  style: {
+    fill: "#fff3e0"
+    stroke: "#ef6c00"
+    stroke-width: 2
+    border-radius: 8
+  }
+
+  Format Output: {
+    label: "Aggregate, Reshape & Return\n(Applies final aggregations and casts back to native Pandas/Polars.)"
+  }
+}
+
+# Main Execution Routing
+Input Trajectory -> Narwhals Layer.Standardization
+
+Narwhals Layer.Dispatcher -> Python Pre-Processing.Contiguous Builder: presorted = True
+Narwhals Layer.Dispatcher -> Python Pre-Processing.Factorize UIDs: presorted = False (Default)
+
+# Routing for presorted=True
+Python Pre-Processing.Contiguous Builder -> Rust Compute Core.Presorted Path: Passes coordinates & ends array
+
+# Routing for presorted=False
+Python Pre-Processing.Factorize UIDs -> Rust Parallel Indexer.Time Order Indexer: Passes u64 codes & timestamps
+Rust Parallel Indexer.Time Order Indexer -> Rust Compute Core.Indexed Path: Passes coordinates, indices & ends
+
+# Final Output
+Rust Compute Core.Presorted Path -> Post-Processing.Format Output: Raw Metric Results
+Rust Compute Core.Indexed Path -> Post-Processing.Format Output: Raw Metric Results

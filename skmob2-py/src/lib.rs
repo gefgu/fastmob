@@ -433,9 +433,5 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         models::model_generation::model_epr_simulate_agents,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        models::model_generation::model_epr_simulate_agents_from_od,
-        m
-    )?)?;
     Ok(())
 }

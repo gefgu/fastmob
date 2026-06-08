@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "backend": null,
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "skmob.TrajDataFrame",
+    "iterations": 5,
+    "library": "skmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "repeat_dataset": 10,
+    "sleep_seconds": 0.5,
+    "suite": "privacy",
+    "timestamp_utc": "2026-06-08T18:39:45.699746+00:00",
+    "timing_mode": "prebuilt_tdf"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 7.487343989312649,
+          "iterations_completed": 5,
+          "minimum_seconds": 7.32069164281711,
+          "status": "ok",
+          "times_seconds": [
+            7.768659638706595,
+            7.695572472177446,
+            7.32069164281711,
+            7.322550936136395,
+            7.329245256725699
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 80.67493672361597,
+          "iterations_completed": 5,
+          "minimum_seconds": 53.32301221229136,
+          "status": "ok",
+          "times_seconds": [
+            53.73729497892782,
+            53.32301221229136,
+            95.14045862015337,
+            100.71472217142582,
+            100.4591956352815
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 114.28913555247709,
+          "iterations_completed": 5,
+          "minimum_seconds": 103.0050666546449,
+          "status": "ok",
+          "times_seconds": [
+            103.0050666546449,
+            121.02148112794384,
+            120.76645249687135,
+            109.60006195679307,
+            117.05261552613229
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 77.57708243550732,
+          "iterations_completed": 5,
+          "minimum_seconds": 52.87081453157589,
+          "status": "ok",
+          "times_seconds": [
+            76.94781732093543,
+            82.43578968103975,
+            52.87081453157589,
+            82.63251097593457,
+            92.998479668051
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 44.86127453492954,
+          "iterations_completed": 5,
+          "minimum_seconds": 37.331525709014386,
+          "status": "ok",
+          "times_seconds": [
+            51.5365588190034,
+            56.5283029070124,
+            37.331525709014386,
+            39.46842065593228,
+            39.44156458368525
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 84.20038800938055,
+          "iterations_completed": 5,
+          "minimum_seconds": 40.83795151906088,
+          "status": "ok",
+          "times_seconds": [
+            40.83795151906088,
+            81.5928212068975,
+            94.06830470776185,
+            82.56002336926758,
+            121.94283924391493
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 353.14412110270933,
+          "iterations_completed": 5,
+          "minimum_seconds": 107.95481972489506,
+          "status": "ok",
+          "times_seconds": [
+            680.4775900868699,
+            679.6096687209792,
+            168.5246097156778,
+            107.95481972489506,
+            129.15391726512462
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 41.06568650323898,
+          "iterations_completed": 5,
+          "minimum_seconds": 38.490303402766585,
+          "status": "ok",
+          "times_seconds": [
+            38.490303402766585,
+            39.4430040223524,
+            44.448835283052176,
+            40.985343208070844,
+            41.96094659995288
+          ]
+        }
+      },
+      "rows": 230
+    }
+  ]
+}
