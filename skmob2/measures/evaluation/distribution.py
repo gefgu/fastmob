@@ -20,6 +20,7 @@ from skmob2.measures._common import (
     _pick_existing_column,
 )
 
+from ._utils import _is_null, _series_values
 from .metrics import histogram_jensen_shannon_divergence, wasserstein_distance
 from .temporal import (
     _DAY_PERIOD_COLUMN,
@@ -27,7 +28,6 @@ from .temporal import (
     _WEEKDAY_ORDER,
     _day_period,
 )
-from ._utils import _is_null, _series_values
 
 
 def _resolve_column(df: nw.DataFrame, explicit: str | None, candidates: list[str], role: str) -> str:

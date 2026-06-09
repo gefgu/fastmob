@@ -1,7 +1,8 @@
 from __future__ import annotations
-import narwhals as nw
 
 from typing import Any
+
+import narwhals as nw
 
 from skmob2._core import uncorrelated_entropy_indexed_arrow, uncorrelated_entropy_indexed_numpy
 from skmob2.core.dispatch import TrajectoryDispatcher

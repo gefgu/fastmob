@@ -16,12 +16,12 @@ import narwhals as nw
 from skmob2 import _core
 
 from .._common import (
-    _pick_existing_column,
-    USER_ID_CANDIDATES,
+    DURATION_CANDIDATES,
     LOCATION_CANDIDATES,
     PURPOSE_CANDIDATES,
     TIMESTAMP_CANDIDATES,
-    DURATION_CANDIDATES,
+    USER_ID_CANDIDATES,
+    _pick_existing_column,
 )
 
 

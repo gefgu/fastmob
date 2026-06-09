@@ -1,18 +1,18 @@
 from __future__ import annotations
 
+import math
 from datetime import timedelta
 from typing import Any, Literal, get_args
 
-import math
-import numpy as np
 import narwhals as nw
+import numpy as np
 
 from .._common import (
-    _pick_existing_column,
-    USER_ID_CANDIDATES,
-    LOCATION_CANDIDATES,
     DATETIME_CANDIDATES,
+    LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,
+    USER_ID_CANDIDATES,
+    _pick_existing_column,
 )
 
 COLD_START_STRATEGIES = Literal["frequency", "baseline", "max_frequency", "suffix", "none"]
@@ -570,7 +570,7 @@ def exploration_profiling(
          u4          6.000             0.785          3.0             3.000  regulars
          u5          6.000             1.107          4.0             2.000 routiners
     """
-    from skmob2._core import cluster_kmeans, cluster_gmm
+    from skmob2._core import cluster_gmm, cluster_kmeans
 
     valid_methods = get_args(CLUSTERING_METHODS)
     if clustering_method not in valid_methods:

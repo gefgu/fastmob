@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
 from skmob2._core import (
     waiting_times_arrow,
     waiting_times_flat_arrow,
@@ -13,15 +14,14 @@ from skmob2._core import (
     waiting_times_indexed_numpy,
     waiting_times_numpy,
 )
-
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_flat_result_values,
     _build_presorted_user_ends,
     _build_time_ordered_user_ranges,
-    _extract_timestamps_s,
     _detect_trajectory_columns,
+    _extract_timestamps_s,
     _grouped_arrow_values,
     _grouped_numpy_values,
     _to_native,

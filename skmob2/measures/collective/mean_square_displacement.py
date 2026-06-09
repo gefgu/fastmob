@@ -1,8 +1,9 @@
 from __future__ import annotations
-import narwhals as nw
 
 from datetime import timedelta
 from typing import Any
+
+import narwhals as nw
 
 from skmob2._core import (
     mean_square_displacement_indexed_arrow,
@@ -12,8 +13,8 @@ from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _build_time_ordered_user_ranges,
-    _extract_timestamps_s,
     _detect_trajectory_columns,
+    _extract_timestamps_s,
 )
 
 _DISPATCHER = TrajectoryDispatcher(

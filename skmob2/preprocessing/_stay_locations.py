@@ -5,13 +5,19 @@ from typing import Any
 
 import narwhals as nw
 import numpy as np
+
 from skmob2._core import (
     detect_stay_locations_batch_arrow as _stay_arrow,
+)
+from skmob2._core import (
     detect_stay_locations_batch_indexed_arrow as _stay_indexed_arrow,
+)
+from skmob2._core import (
     detect_stay_locations_batch_indexed_numpy as _stay_indexed_numpy,
+)
+from skmob2._core import (
     detect_stay_locations_batch_numpy as _stay_numpy,
 )
-
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from ..measures._common import (

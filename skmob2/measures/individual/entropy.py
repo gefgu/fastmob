@@ -4,20 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 import narwhals as nw
+import numpy as np
+
 from skmob2._core import trajectory_entropy_batch as _trajectory_entropy_batch_rust
 from skmob2._core import trajectory_predictability_batch as _trajectory_predictability_batch_rust
 
 from .._common import (
-    _pick_existing_column,
-    _build_user_ranges,
-    USER_ID_CANDIDATES,
     LOCATION_CANDIDATES,
     LOCATION_TYPE_CANDIDATES,
     TIMESTAMP_CANDIDATES,
+    USER_ID_CANDIDATES,
+    _build_user_ranges,
+    _pick_existing_column,
 )
-
 
 # ---------------------------------------------------------------------------
 # Private helpers — entropy subsystem

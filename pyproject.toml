@@ -25,6 +25,7 @@ diversity = ["pydivsufsort"]
 generation = ["scipy", "powerlaw", "statsmodels", "python-igraph", "tqdm"]
 data = ["geopandas", "shapely", "pyproj", "requests"]
 tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
+visualization = ["folium", "matplotlib", "geojson"]
 dev = [
     "pre-commit",
     "maturin>=1.13,<2.0",

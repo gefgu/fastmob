@@ -4,12 +4,20 @@ from typing import Any
 
 import narwhals as nw
 import numpy as np
+
 from skmob2._core import (
     compress_trajectory_representatives_arrow as _compress_arrow,
+)
+from skmob2._core import (
     compress_trajectory_representatives_indexed_arrow as _compress_indexed_arrow,
+)
+from skmob2._core import (
     compress_trajectory_representatives_indexed_numpy as _compress_indexed_numpy,
+)
+from skmob2._core import (
     compress_trajectory_representatives_numpy as _compress_numpy,
 )
+from skmob2.core.dispatch import TrajectoryDispatcher
 
 from ..measures._common import (
     _arrow_result_values,
@@ -18,7 +26,6 @@ from ..measures._common import (
     _detect_trajectory_columns,
     _extract_timestamps_s,
 )
-from skmob2.core.dispatch import TrajectoryDispatcher
 
 COMPRESS_DISPATCHER = TrajectoryDispatcher(
     arrow_ops={

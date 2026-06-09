@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from skmob2.data.load import DatasetBuilder
 from skmob2.data._frames import TrajDataFrame
+from skmob2.data.load import DatasetBuilder
 from skmob2.tessellation import tilers
 
 

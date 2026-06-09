@@ -8,6 +8,10 @@ import narwhals as nw
 from .._common import _detect_trajectory_columns, _prepare_trajectory
 
 _FREQ_RE = re.compile(r"^\s*(?P<count>\d+)?\s*(?P<unit>[A-Za-z]+)\s*$")
+_CASE_SENSITIVE_ALIASES = {
+    "MS": "mo",  # pandas month-start = Narwhals month truncation
+}
+
 _FREQ_UNIT_ALIASES = {
     "ns": "ns",
     "nanosecond": "ns",
@@ -58,6 +62,8 @@ def _normalize_frequency_for_narwhals(freq: str) -> str | None:
         return None
 
     unit = match.group("unit")
+    if unit in _CASE_SENSITIVE_ALIASES:
+        return f"{count}{_CASE_SENSITIVE_ALIASES[unit]}"
     if any(char.isupper() for char in unit) and unit not in {"D", "H", "S", "T"}:
         return None
     if unit == "M":
@@ -177,9 +183,29 @@ def visits_per_time_unit(
     normalized_freq = _normalize_frequency_for_narwhals(freq)
     
     if normalized_freq is None:
-        raise ValueError(
-            f"Frequency string '{freq}' is not supported or could not be parsed. "
-            "Please use standard offset aliases like '1h', '15min', or '1D'."
+        # Pandas resample fallback for frequency strings Narwhals cannot truncate
+        # (e.g. "1W"). Uses nw.DataFrame.to_pandas() as the bridge; no direct
+        # pandas import needed. Preserves the caller's original backend via
+        # nw.from_dict(..., backend=backend).
+        backend = df.implementation
+        pd_df = df.select(datetime_col).to_pandas()
+        resampled = (
+            pd_df.resample(freq, on=datetime_col)
+            .size()
+            .rename("n_visits")
+            .reset_index()
+        )
+        resampled = resampled[resampled["n_visits"] > 0]
+        return (
+            nw.from_dict(
+                {
+                    datetime_col: resampled[datetime_col].tolist(),
+                    "n_visits": resampled["n_visits"].tolist(),
+                },
+                backend=backend,
+            )
+            .sort(datetime_col)
+            .to_native()
         )
 
     return (

@@ -6,16 +6,16 @@ import warnings
 from collections import Counter
 from typing import Any
 
-import numpy as np
 import narwhals as nw
+import numpy as np
 import pandas as pd
 
 from .._common import (
-    _pick_existing_column,
     ACTIVITY_CANDIDATES,
-    USER_ID_CANDIDATES,
-    TIMESTAMP_CANDIDATES,
     DAY_CANDIDATES,
+    TIMESTAMP_CANDIDATES,
+    USER_ID_CANDIDATES,
+    _pick_existing_column,
 )
 
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday"}
