@@ -1,7 +1,8 @@
 from __future__ import annotations
-import narwhals as nw
 
 from typing import Any
+
+import narwhals as nw
 
 from skmob2._core import (
     home_location_arrow,
@@ -9,15 +10,14 @@ from skmob2._core import (
     home_location_indexed_numpy,
     home_location_numpy,
 )
-
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
-    _extract_hours,
     _detect_trajectory_columns,
+    _extract_hours,
     _to_native,
 )
 

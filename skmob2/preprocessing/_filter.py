@@ -1,14 +1,26 @@
 from __future__ import annotations
+
 from typing import Any
 
 import narwhals as nw
+
 from skmob2._core import FilterConfig
 from skmob2._core import (
     filter_trajectory_arrow as _filter_trajectory_arrow,
+)
+from skmob2._core import (
     filter_trajectory_indexed_arrow as _filter_trajectory_indexed_arrow,
+)
+from skmob2._core import (
     filter_trajectory_indexed_numpy as _filter_trajectory_indexed_numpy,
+)
+from skmob2._core import (
     filter_trajectory_numpy as _filter_trajectory_numpy,
 )
+
+# Import the new dispatcher from wherever you saved it
+from skmob2.core.dispatch import TrajectoryDispatcher
+
 from ..measures._common import (
     _arrow_result_values,
     _build_time_ordered_user_ranges,
@@ -16,9 +28,6 @@ from ..measures._common import (
     _detect_trajectory_columns,
     _extract_timestamps_s,
 )
-
-# Import the new dispatcher from wherever you saved it
-from skmob2.core.dispatch import TrajectoryDispatcher
 
 # Instantiate the dispatcher for this specific module
 FILTER_DISPATCHER = TrajectoryDispatcher(

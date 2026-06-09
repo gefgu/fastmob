@@ -73,8 +73,8 @@ from .measures import (
     waiting_times,
     wasserstein_distance,
 )
-from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
 from .preprocessing import cluster, compress, filter, stay_locations
+from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
 
 __all__ = [
     "filter",

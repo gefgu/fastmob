@@ -9,7 +9,8 @@ import numpy as np
 # ---------------------------------------------------------------------------
 
 try:
-    from pydivsufsort import divsufsort as _divsufsort, kasai as _kasai
+    from pydivsufsort import divsufsort as _divsufsort
+    from pydivsufsort import kasai as _kasai
 except ImportError:
     _divsufsort = None
     _kasai = None

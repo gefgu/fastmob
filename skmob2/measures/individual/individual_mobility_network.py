@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
 from skmob2._core import (
     individual_mobility_network_indexed_arrow,
     individual_mobility_network_indexed_numpy,

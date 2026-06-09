@@ -1,7 +1,8 @@
 from __future__ import annotations
-import narwhals as nw
 
 from typing import Any
+
+import narwhals as nw
 
 from skmob2._core import (
     recency_rank_presorted_arrow,

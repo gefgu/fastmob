@@ -6,6 +6,7 @@ from typing import Any
 
 import narwhals as nw
 import numpy as np
+
 from skmob2._core import visitation_distances_arrow, visitation_distances_numpy
 
 from .._common import (

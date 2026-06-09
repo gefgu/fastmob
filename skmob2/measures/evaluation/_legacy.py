@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from .activity import activity_distribution_jensen_shannon_divergence, activity_transition_matrix_jensen_shannon_divergence
+from .activity import (
+    activity_distribution_jensen_shannon_divergence,
+    activity_transition_matrix_jensen_shannon_divergence,
+)
 from .distribution import (
     column_distribution_jensen_shannon_divergence,
     column_distribution_wasserstein_distance,
@@ -17,7 +20,11 @@ from .distribution import (
     visits_per_user_wasserstein_distance,
 )
 from .metrics import time_bin_matrix_jensen_shannon_divergence
-from .spatial import od_matrix_common_part_of_commuters, profile_metric_wasserstein_distance, radius_of_gyration_wasserstein_distance
+from .spatial import (
+    od_matrix_common_part_of_commuters,
+    profile_metric_wasserstein_distance,
+    radius_of_gyration_wasserstein_distance,
+)
 
 
 def _wasserstein_column_wrapper(metric_col: str):

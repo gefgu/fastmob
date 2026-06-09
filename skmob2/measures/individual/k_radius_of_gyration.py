@@ -1,8 +1,9 @@
 from __future__ import annotations
-import narwhals as nw
-import numpy as np
 
 from typing import Any
+
+import narwhals as nw
+import numpy as np
 
 from skmob2._core import (
     k_radius_of_gyration_arrow,
@@ -10,15 +11,14 @@ from skmob2._core import (
     k_radius_of_gyration_indexed_numpy,
     k_radius_of_gyration_numpy,
 )
-
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
-    _extract_timestamps_ms,
     _detect_trajectory_columns,
+    _extract_timestamps_ms,
     _to_native,
 )
 

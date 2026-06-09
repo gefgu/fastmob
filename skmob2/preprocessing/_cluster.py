@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import Any
-import numpy as np
+
 import narwhals as nw
+import numpy as np
 
 from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
 

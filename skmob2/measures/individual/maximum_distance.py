@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
 from skmob2._core import (
     maximum_distance_arrow,
     maximum_distance_indexed_arrow,
     maximum_distance_indexed_numpy,
     maximum_distance_numpy,
 )
-
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (

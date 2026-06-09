@@ -1,6 +1,6 @@
 """Generation models compatible with original scikit-mobility."""
 
-from .epr import DensityEPR, Ditras, EPR, SpatialEPR, compute_od_matrix
+from .epr import EPR, DensityEPR, Ditras, SpatialEPR, compute_od_matrix
 from .geosim import GeoSim
 from .gravity import (
     Gravity,

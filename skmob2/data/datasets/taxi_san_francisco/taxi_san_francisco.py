@@ -4,8 +4,8 @@ from datetime import timedelta
 
 import pandas as pd
 
-from skmob2.data.load import DatasetBuilder
 from skmob2.data._frames import TrajDataFrame
+from skmob2.data.load import DatasetBuilder
 
 
 class taxi_san_francisco(DatasetBuilder):

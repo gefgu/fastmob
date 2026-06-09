@@ -1,7 +1,8 @@
 from __future__ import annotations
-import narwhals as nw
 
 from typing import Any
+
+import narwhals as nw
 
 from skmob2._core import (
     number_of_visits_arrow,
@@ -9,7 +10,6 @@ from skmob2._core import (
     number_of_visits_indexed_numpy,
     number_of_visits_numpy,
 )
-
 from skmob2.core.dispatch import TrajectoryDispatcher
 
 from .._common import (

@@ -1,5 +1,6 @@
 from typing import Any, Callable, Dict
 
+
 class TrajectoryDispatcher:
     """Handles routing Narwhals DataFrames to backend-specific mathematical implementations."""
     
