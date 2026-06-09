@@ -6577,16 +6577,27 @@ tessellation = [
     { name = "shapely", version = "2.0.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "shapely", version = "2.1.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
+visualization = [
+    { name = "folium", version = "0.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "folium", version = "0.20.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "geojson" },
+    { name = "matplotlib", version = "3.7.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "matplotlib", version = "3.10.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "fiona", marker = "extra == 'dev-skmob'" },
+    { name = "folium", marker = "extra == 'visualization'" },
+    { name = "geojson", marker = "extra == 'visualization'" },
     { name = "geopandas", marker = "extra == 'data'" },
     { name = "geopandas", marker = "extra == 'dev'" },
     { name = "geopandas", marker = "extra == 'dev-movingpandas'" },
     { name = "geopandas", marker = "extra == 'tessellation'" },
     { name = "h3", marker = "extra == 'dev'" },
     { name = "h3", marker = "extra == 'tessellation'" },
+    { name = "matplotlib", marker = "extra == 'visualization'" },
     { name = "maturin", marker = "extra == 'dev'", specifier = ">=1.13,<2.0" },
     { name = "memray", marker = "extra == 'dev'" },
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.25" },
@@ -6628,7 +6639,7 @@ requires-dist = [
     { name = "tqdm", marker = "extra == 'generation'" },
     { name = "zensical", marker = "python_full_version >= '3.10' and extra == 'docs'", specifier = ">=0.0.41" },
 ]
-provides-extras = ["ai", "data", "dev", "dev-movingpandas", "dev-skmob", "diversity", "docs", "fitting", "generation", "tessellation"]
+provides-extras = ["ai", "data", "dev", "dev-movingpandas", "dev-skmob", "diversity", "docs", "fitting", "generation", "tessellation", "visualization"]
 
 [[package]]
 name = "statsmodels"
