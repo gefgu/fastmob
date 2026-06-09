@@ -418,19 +418,55 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(models::od::model_gravity_matrix_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(models::od::model_gravity_od_row_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(
-        models::model_generation::model_radiation_probabilities,
+        models::radiation::model_radiation_probabilities,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        models::model_generation::model_truncated_power_law_samples,
+        models::epr::model_truncated_power_law_samples,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        models::model_generation::model_distance_matrix_numpy,
+        models::distance::model_distance_matrix_numpy,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        models::model_generation::model_epr_simulate_agents,
+        models::epr::model_epr_simulate_agents,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::social_graph::model_social_graph_edges_to_csr,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::social_graph::model_social_graph_random_geometric,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_update_chain,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_normalize,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_build_cdf,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_batch_generate,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_generate,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::geosim::model_geosim_simulate_agents,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::sts_epr::model_sts_epr_simulate_agents,
         m
     )?)?;
     Ok(())

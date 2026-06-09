@@ -4,6 +4,8 @@ from typing import Any
 
 import numpy as np
 
+from skmob2 import _core
+
 from ._common import (
     FLOW,
     RELEVANCE,
@@ -43,62 +45,6 @@ def compute_distance_matrix(spatial_tessellation: Any, origins):
     return distance_matrix
 
 
-def _core_gravity_matrix(
-    coords,
-    relevances,
-    tot_outflows,
-    deterrence_func_type,
-    deterrence_func_args,
-    origin_exp,
-    destination_exp,
-    gravity_type,
-    out_format,
-):
-    try:
-        from skmob2 import _core
-    except Exception:
-        return None
-    try:
-        flat = _core.model_gravity_matrix_numpy(
-            np.asarray(coords[:, 0], dtype=float),
-            np.asarray(coords[:, 1], dtype=float),
-            np.asarray(relevances, dtype=float),
-            np.asarray(tot_outflows, dtype=float),
-            deterrence_func_type,
-            float(deterrence_func_args[0]),
-            float(origin_exp),
-            float(destination_exp),
-            gravity_type,
-            out_format,
-        )
-        return np.asarray(flat, dtype=float).reshape((len(coords), len(coords)))
-    except Exception:
-        return None
-
-
-def _core_gravity_od_row(coords, relevances, origin, gravity_singly):
-    try:
-        from skmob2 import _core
-    except Exception:
-        return None
-    try:
-        return np.asarray(
-            _core.model_gravity_od_row_numpy(
-                int(origin),
-                np.asarray(coords[:, 0], dtype=float),
-                np.asarray(coords[:, 1], dtype=float),
-                np.asarray(relevances, dtype=float),
-                gravity_singly.deterrence_func_type,
-                float(gravity_singly.deterrence_func_args[0]),
-                float(gravity_singly.origin_exp),
-                float(gravity_singly.destination_exp),
-            ),
-            dtype=float,
-        )
-    except Exception:
-        return None
-
-
 class Gravity:
     """Gravity model compatible with original scikit-mobility generation APIs."""
 
@@ -112,21 +58,17 @@ class Gravity:
         name="Gravity model",
     ):
         self._name = name
-        self._deterrence_func_type = deterrence_func_type
         self._deterrence_func_args = deterrence_func_args
         self._origin_exp = origin_exp
         self._destination_exp = destination_exp
         self._gravity_type = gravity_type
-        if self._deterrence_func_type == "exponential":
-            self._deterrence_func = exponential_deterrence_func
-        else:
-            if self._deterrence_func_type != "power_law":
-                print(
-                    'Deterrence function type "%s" not available. Power law will be used.\n'
-                    "Available deterrence functions are [power_law, exponential]" % self._deterrence_func_type
-                )
-                self._deterrence_func_type = "power_law"
-            self._deterrence_func = powerlaw_deterrence_func
+        if deterrence_func_type not in ("power_law", "exponential"):
+            print(
+                'Deterrence function type "%s" not available. Power law will be used.\n'
+                "Available deterrence functions are [power_law, exponential]" % deterrence_func_type
+            )
+            deterrence_func_type = "power_law"
+        self._deterrence_func_type = deterrence_func_type
 
     @property
     def name(self):
@@ -166,18 +108,6 @@ class Gravity:
             )
         )
 
-    def _compute_gravity_score(self, distance_matrix, relevances_orig, relevances_dest):
-        trip_probs_matrix = self._deterrence_func(distance_matrix, *self._deterrence_func_args)
-        trip_probs_matrix = (
-            trip_probs_matrix
-            * relevances_dest**self.destination_exp
-            * np.expand_dims(relevances_orig**self._origin_exp, axis=1)
-        )
-        np.putmask(trip_probs_matrix, np.isnan(trip_probs_matrix), 0.0)
-        np.putmask(trip_probs_matrix, np.isinf(trip_probs_matrix), 0.0)
-        np.fill_diagonal(trip_probs_matrix, 0.0)
-        return trip_probs_matrix
-
     def generate(
         self,
         spatial_tessellation,
@@ -201,53 +131,26 @@ class Gravity:
         if "flows" in out_format:
             if tot_outflows_column not in spatial_tessellation.columns:
                 raise KeyError("The column 'tot_outflows' must be present in the tessellation.")
-            tot_outflows = spatial_tessellation[tot_outflows_column].fillna(0).to_numpy(dtype=int)
+            tot_outflows = spatial_tessellation[tot_outflows_column].fillna(0).to_numpy(dtype=float)
+        else:
+            tot_outflows = np.zeros(n_locs, dtype=float)
 
         origins = np.arange(n_locs)
         coords = tessellation_lat_lngs(spatial_tessellation)
-        if out_format != "flows_sample":
-            od_matrix = _core_gravity_matrix(
-                coords,
-                relevances,
-                tot_outflows if "flows" in out_format else np.zeros(n_locs, dtype=float),
-                self._deterrence_func_type,
-                self._deterrence_func_args,
-                self._origin_exp,
-                self._destination_exp,
-                self._gravity_type,
-                out_format,
-            )
-            if od_matrix is not None:
-                return self._from_matrix_to_flowdf(od_matrix, origins, spatial_tessellation)
 
-        distance_matrix = compute_distance_matrix(spatial_tessellation, origins)
-        trip_probs_matrix = self._compute_gravity_score(distance_matrix, relevances, relevances)
-
-        if self._gravity_type == "globally constrained":
-            total = np.sum(trip_probs_matrix)
-            trip_probs_matrix = trip_probs_matrix / total if total else trip_probs_matrix
-            if out_format == "flows":
-                od_matrix = trip_probs_matrix * np.sum(tot_outflows)
-            elif out_format == "flows_sample":
-                od_matrix = np.reshape(
-                    np.random.multinomial(int(np.sum(tot_outflows)), trip_probs_matrix.flatten()),
-                    (n_locs, n_locs),
-                )
-            else:
-                od_matrix = trip_probs_matrix
-            return self._from_matrix_to_flowdf(od_matrix, origins, spatial_tessellation)
-
-        row_sums = np.sum(trip_probs_matrix, axis=1)
-        trip_probs_matrix = (trip_probs_matrix.T / row_sums).T
-        np.putmask(trip_probs_matrix, np.isnan(trip_probs_matrix), 0.0)
-        np.putmask(trip_probs_matrix, np.isinf(trip_probs_matrix), 0.0)
-
-        if out_format == "flows":
-            od_matrix = (trip_probs_matrix.T * tot_outflows).T
-        elif out_format == "flows_sample":
-            od_matrix = np.array([np.random.multinomial(int(tot_outflows[i]), trip_probs_matrix[i]) for i in origins])
-        else:
-            od_matrix = trip_probs_matrix
+        flat = _core.model_gravity_matrix_numpy(
+            np.asarray(coords[:, 0], dtype=float),
+            np.asarray(coords[:, 1], dtype=float),
+            np.asarray(relevances, dtype=float),
+            np.asarray(tot_outflows, dtype=float),
+            self._deterrence_func_type,
+            float(self._deterrence_func_args[0]),
+            float(self._origin_exp),
+            float(self._destination_exp),
+            self._gravity_type,
+            out_format,
+        )
+        od_matrix = np.asarray(flat, dtype=float).reshape((n_locs, n_locs))
         return self._from_matrix_to_flowdf(od_matrix, origins, spatial_tessellation)
 
     def _from_matrix_to_flowdf(self, flow_matrix, origins, spatial_tessellation):

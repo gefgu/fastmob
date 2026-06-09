@@ -1,27 +1,10 @@
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use skmob2_core::models::model_generation::{
-    model_distance_matrix_impl, model_radiation_probabilities_impl,
+use skmob2_core::models::epr::{
     model_truncated_power_law_samples as core_model_truncated_power_law_samples,
     simulate_epr_agents_from_cached_od_impl,
 };
-
-#[pyfunction]
-pub fn model_radiation_probabilities(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-    relevances: PyReadonlyArray1<f64>,
-    tot_outflows: PyReadonlyArray1<f64>,
-) -> PyResult<(Vec<usize>, Vec<usize>, Vec<f64>)> {
-    model_radiation_probabilities_impl(
-        latitudes.as_slice()?,
-        longitudes.as_slice()?,
-        relevances.as_slice()?,
-        tot_outflows.as_slice()?,
-    )
-    .map_err(PyValueError::new_err)
-}
 
 #[pyfunction]
 pub fn model_truncated_power_law_samples(
@@ -32,18 +15,6 @@ pub fn model_truncated_power_law_samples(
     seed: u64,
 ) -> Vec<f64> {
     core_model_truncated_power_law_samples(xmin, alpha, lambda_, n, seed)
-}
-
-#[pyfunction]
-pub fn model_distance_matrix_numpy<'py>(
-    py: Python<'py>,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
-) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    let lats = latitudes.as_slice()?;
-    let lons = longitudes.as_slice()?;
-    let flat = model_distance_matrix_impl(lats, lons).map_err(PyValueError::new_err)?;
-    Ok(flat.into_pyarray(py))
 }
 
 #[pyfunction]

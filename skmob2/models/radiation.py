@@ -4,6 +4,8 @@ import operator
 
 import numpy as np
 
+from skmob2 import _core
+
 from ._common import (
     RELEVANCE,
     TILE_ID,
@@ -15,32 +17,14 @@ from ._common import (
 )
 
 
-def _core_radiation_probabilities(lats_lngs, relevances, tot_outflows):
-    try:
-        from skmob2 import _core
-    except Exception:
-        return None
-    try:
-        origins, destinations, probabilities = _core.model_radiation_probabilities(
-            np.asarray(lats_lngs[:, 0], dtype=float),
-            np.asarray(lats_lngs[:, 1], dtype=float),
-            np.asarray(relevances, dtype=float),
-            np.asarray(tot_outflows, dtype=float),
-        )
-        return origins, destinations, np.asarray(probabilities, dtype=float)
-    except Exception:
-        return None
-
-
 class Radiation:
     """Radiation model compatible with original scikit-mobility generation APIs."""
 
     def __init__(self, name="Radiation model"):
         self.name_ = name
-        self._spatial_tessellation = None
-        self._out_format = None
 
     def _get_flows(self, origin, total_relevance):
+        """Reference implementation kept for test verification only."""
         edges = []
         probs = []
         origin_lat, origin_lng = self.lats_lngs[origin]
@@ -88,42 +72,60 @@ class Radiation:
         out_format="flows",
     ):
         spatial_tessellation = to_pandas_frame(spatial_tessellation)
-        self._out_format = out_format
         self._tile_id_column = tile_id_column
-        self.lats_lngs = tessellation_lat_lngs(spatial_tessellation)
-        self.relevances = spatial_tessellation[relevance_column].fillna(0).to_numpy(dtype=float)
-        if "flows" in out_format:
-            if tot_outflows_column not in spatial_tessellation.columns:
-                raise KeyError(
-                    "The column %s for the 'tot_outflows' must be present in the tessellation." % tot_outflows_column
-                )
-            self.tot_outflows = spatial_tessellation[tot_outflows_column].fillna(0).to_numpy(dtype=int)
+        lats_lngs = tessellation_lat_lngs(spatial_tessellation)
+        relevances = spatial_tessellation[relevance_column].fillna(0).to_numpy(dtype=float)
+
         if out_format not in ["flows", "flows_sample", "probabilities"]:
             raise ValueError(
                 'Value of out_format "%s" is not valid. \nValid values: flows, flows_sample, probabilities.'
                 % out_format
             )
-
-        if out_format != "flows_sample":
-            outflows = self.tot_outflows if "flows" in out_format else np.ones(len(self.lats_lngs), dtype=float)
-            core_result = _core_radiation_probabilities(self.lats_lngs, self.relevances, outflows)
-            if core_result is not None:
-                origins, destinations, probabilities = core_result
-                quantities = (
-                    np.rint(outflows[np.asarray(origins, dtype=int)] * probabilities)
-                    if out_format == "flows"
-                    else probabilities
+        if "flows" in out_format:
+            if tot_outflows_column not in spatial_tessellation.columns:
+                raise KeyError(
+                    "The column %s for the 'tot_outflows' must be present in the tessellation."
+                    % tot_outflows_column
                 )
-                all_flows = [
-                    [int(origin), int(destination), quantity]
-                    for origin, destination, quantity in zip(origins, destinations, quantities)
-                ]
-                return self._from_matrix_to_flowdf(all_flows, spatial_tessellation)
+            tot_outflows = spatial_tessellation[tot_outflows_column].fillna(0).to_numpy(dtype=int)
+            outflows = tot_outflows.astype(float)
+        else:
+            tot_outflows = None
+            outflows = np.ones(len(lats_lngs), dtype=float)
 
-        total_relevance = np.sum(self.relevances)
-        all_flows = []
-        for origin in range(len(spatial_tessellation)):
-            all_flows.extend(self._get_flows(origin, total_relevance))
+        origins_arr, destinations_arr, probabilities_arr = _core.model_radiation_probabilities(
+            np.asarray(lats_lngs[:, 0], dtype=float),
+            np.asarray(lats_lngs[:, 1], dtype=float),
+            np.asarray(relevances, dtype=float),
+            outflows,
+        )
+        origins_arr = np.asarray(origins_arr, dtype=int)
+        destinations_arr = np.asarray(destinations_arr, dtype=int)
+        probabilities_arr = np.asarray(probabilities_arr, dtype=float)
+
+        if out_format == "flows_sample":
+            quantities = np.zeros(len(origins_arr), dtype=float)
+            for origin_idx in np.unique(origins_arr):
+                mask = origins_arr == origin_idx
+                count = int(tot_outflows[origin_idx])
+                if count <= 0:
+                    continue
+                probs = probabilities_arr[mask]
+                prob_sum = probs.sum()
+                if prob_sum <= 0:
+                    continue
+                probs = probs / prob_sum
+                quantities[mask] = np.random.multinomial(count, probs)
+        elif out_format == "flows":
+            quantities = np.rint(outflows[origins_arr] * probabilities_arr)
+        else:
+            quantities = probabilities_arr
+
+        all_flows = [
+            [int(o), int(d), q]
+            for o, d, q in zip(origins_arr, destinations_arr, quantities)
+            if q > 0.0
+        ]
         return self._from_matrix_to_flowdf(all_flows, spatial_tessellation)
 
     def _from_matrix_to_flowdf(self, all_flows, spatial_tessellation):

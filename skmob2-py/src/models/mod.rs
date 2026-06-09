@@ -1,2 +1,8 @@
-pub mod model_generation;
+pub mod distance;
+pub mod epr;
+pub mod geosim;
+pub mod markov_diary;
 pub mod od;
+pub mod radiation;
+pub mod social_graph;
+pub mod sts_epr;
