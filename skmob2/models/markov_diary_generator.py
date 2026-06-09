@@ -13,7 +13,64 @@ _N_STATES = 48  # 24 hours × 2 typicality values
 
 
 class MarkovDiaryGenerator:
-    """Markov Diary Learner and Generator compatible with scikit-mobility."""
+    """Markov Diary Learner and Generator.
+
+    A *Mobility Diary Learner* (MDL) learns hourly temporal mobility patterns from
+    real individual trajectories and then synthesises new *mobility diaries* [PS2018]_.
+    A diary :math:`D(t)` is a sequence of *abstract locations* (``0`` = home,
+    ``1, 2, …`` = non-home destinations in decreasing visitation-frequency order)
+    at hourly resolution.
+
+    The learner translates each individual's trajectory into an abstract time series
+    and builds a Markov chain :math:`MD(t)` over 48 states: 24 hours of the day
+    :math:`\\times` 2 typicality values (1 = at the typical/home location, 0 = away).
+    Transition probabilities are estimated by counting state-to-state transitions
+    across all individuals.
+
+    A fitted ``MarkovDiaryGenerator`` can be passed to :class:`Ditras` or
+    :class:`STS_epr` to drive their temporal pattern.
+
+    Parameters
+    ----------
+    name : str, optional
+        Human-readable label for this instance. The default is ``"Markov diary"``.
+
+    Attributes
+    ----------
+    name : str
+        Human-readable label of this instance.
+    markov_chain_ : numpy.ndarray or None
+        Flattened CDF matrix built after :meth:`fit`. Shape ``(48 * 48,)``.
+        ``None`` before fitting.
+    time_slot_length : str
+        Length of each time slot (fixed at ``"1h"``).
+
+    Notes
+    -----
+    The ``fit`` method accepts any pandas-compatible dataframe. The trajectory
+    must contain a datetime column (auto-detected) and a user-ID column (``uid``
+    by default).
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skmob2.models import MarkovDiaryGenerator
+    >>> # Normally you would pass a real trajectory TrajDataFrame here.
+    >>> # This example uses an unfitted generator (home-only diary).
+    >>> mdg = MarkovDiaryGenerator()
+    >>> diary = mdg.generate(72, pd.Timestamp("2020-01-01 00:00:00"), random_state=0)
+    >>> print(diary.head())
+
+    References
+    ----------
+    .. [PS2018] Pappalardo, L. & Simini, F. (2018). Data-driven generation of
+       spatio-temporal routines in human mobility. *Data Mining and Knowledge
+       Discovery*, 32, 787–829.
+
+    See Also
+    --------
+    Ditras, STS_epr
+    """
 
     def __init__(self, name="Markov diary"):
         self._cdf_matrix_flat: np.ndarray | None = None
@@ -35,18 +92,10 @@ class MarkovDiaryGenerator:
         shift = int(dt_series.min().hour)
 
         loc2freq = loc_series.value_counts().to_dict()
-        loc2rank = {
-            loc: i + 1
-            for i, (loc, _) in enumerate(sorted(loc2freq.items(), key=lambda x: -x[1]))
-        }
+        loc2rank = {loc: i + 1 for i, (loc, _) in enumerate(sorted(loc2freq.items(), key=lambda x: -x[1]))}
 
         bins = dt_series.dt.floor(time_slot_length)
-        counts = (
-            pd.DataFrame({"bin": bins, "loc": loc_series})
-            .groupby(["bin", "loc"])
-            .size()
-            .reset_index(name="n")
-        )
+        counts = pd.DataFrame({"bin": bins, "loc": loc_series}).groupby(["bin", "loc"]).size().reset_index(name="n")
         counts["tiebreak"] = counts["loc"].map(loc2freq).fillna(0)
         counts.sort_values(["bin", "n", "tiebreak"], ascending=[True, False, False], inplace=True)
         best = counts.groupby("bin")["loc"].first()
@@ -61,6 +110,29 @@ class MarkovDiaryGenerator:
         return values, shift
 
     def fit(self, traj, n_individuals, lid="location"):
+        """Learn the Markov mobility diary from real trajectories.
+
+        Builds a 48-state Markov chain from the first ``n_individuals`` users in
+        ``traj``. Each state encodes an hour of the day (0–23) and a typicality
+        value (1 = home, 0 = away). The resulting transition probabilities are
+        stored in ``markov_chain_``.
+
+        Parameters
+        ----------
+        traj : DataFrame
+            Mobility trajectories. Must contain a datetime column and a ``uid``
+            column (auto-detected), plus the location column specified by ``lid``.
+        n_individuals : int
+            Number of individuals from ``traj`` to use for training.
+        lid : str, optional
+            Name of the column containing the location cluster identifier. The
+            default is ``"location"``.
+
+        Notes
+        -----
+        Modifies the internal Markov chain in-place. Call before passing this
+        instance to :class:`Ditras` or :class:`STS_epr`.
+        """
         traj = to_pandas_frame(traj)
         counts = np.zeros(_N_STATES * _N_STATES, dtype=np.float64)
         individuals = traj[UID].unique()
@@ -72,6 +144,36 @@ class MarkovDiaryGenerator:
         self._cdf_matrix_flat = _core.markov_diary_build_cdf(probs)
 
     def generate(self, diary_length, start_date, random_state=None):
+        """Generate a synthetic mobility diary.
+
+        Samples a sequence of hourly abstract locations from the fitted Markov chain
+        and returns a compact representation where consecutive identical locations
+        are collapsed to a single row.
+
+        Parameters
+        ----------
+        diary_length : int
+            Length of the diary in hours.
+        start_date : pandas.Timestamp or datetime
+            Starting timestamp for the diary.
+        random_state : int or None, optional
+            Random seed for reproducibility. The default is ``None``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A dataframe with columns:
+
+            - ``datetime`` — timestamp of each location change.
+            - ``abstract_location`` — abstract location identifier (``0`` = home,
+              ``1, 2, …`` = non-home locations in order of decreasing frequency as
+              learned from real data).
+
+        Notes
+        -----
+        If :meth:`fit` has not been called, a trivial diary is generated where the
+        agent stays at home (``abstract_location == 0``) for the entire period.
+        """
         if self._cdf_matrix_flat is None:
             # unfitted — build identity-like CDF (always advance 1 hour, stay home)
             probs = np.zeros(_N_STATES * _N_STATES, dtype=np.float64)
