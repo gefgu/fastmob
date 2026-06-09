@@ -1,0 +1,4 @@
+PHASE=skmob
+JOB=skmob_collective_speed_prebuilt_tdf
+STATUS=running
+LAST_UPDATED=2026-06-09T11:36:10Z

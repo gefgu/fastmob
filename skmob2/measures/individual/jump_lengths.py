@@ -85,11 +85,6 @@ def jump_lengths(
         When ``merge=True``: flat jump lengths as a NumPy array for NumPy-backed
         inputs or a PyArrow array for Arrow-backed inputs.
 
-    Warning
-    -------
-    The trajectory must be sorted in ascending order by datetime.  Pass
-    ``presorted=True`` only when rows are already grouped by user and ordered
-    by datetime within each group.
 
     Examples
     --------

@@ -162,8 +162,8 @@ def nonnegative_float(value: str) -> float:
     return parsed
 
 
-def build_output_path(output_dir: Path, library: str, profile: str = "speed") -> Path:
-    return output_dir / f"{library}_evaluation_{profile}_{INPUT_SOURCE}.json"
+def build_output_path(output_dir: Path, library: str, profile: str = "speed", backend: str = "pandas") -> Path:
+    return output_dir / f"{library}_evaluation_{profile}_{backend}.json"
 
 
 def module_path_for_library(spec: BenchmarkSpec, library: str) -> str:
@@ -416,6 +416,8 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone evaluation speed benchmarks.")
     parser.add_argument("--library", choices=["skmob2", "skmob"], default="skmob2")
+    parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="pandas",
+                        help="Backend label for output filename; evaluation uses numpy so computation is identical.")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
@@ -428,9 +430,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     payload = run_suite(args)
-    output_path = build_output_path(Path(args.output_dir), args.library, args.profile)
-    write_json(payload, output_path)
-    print(f"\nWrote results to {output_path}")
+    backends = ["pandas", "polars"] if args.backend == "both" else [args.backend]
+    for backend in backends:
+        output_path = build_output_path(Path(args.output_dir), args.library, args.profile, backend)
+        write_json(payload, output_path)
+        print(f"\nWrote results to {output_path}")
     return 0
 
 

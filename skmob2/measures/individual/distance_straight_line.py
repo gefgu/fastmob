@@ -84,11 +84,6 @@ def distance_straight_line(
         Distance values are in kilometres.
         The returned backend matches the input backend.
 
-    Warning
-    -------
-    The trajectory must be sorted in ascending order by datetime.  Pass
-    ``presorted=True`` only when rows are already grouped by user and ordered
-    by datetime within each group.
 
     Examples
     --------

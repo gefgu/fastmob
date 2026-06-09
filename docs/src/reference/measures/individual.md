@@ -22,184 +22,214 @@
 | [`activity_transition_matrix`](#skmob2.measures.individual.activity_transition_matrix) | Compute the activity transition matrix for a visits DataFrame. |
 | [`daily_activity_distribution`](#skmob2.measures.individual.daily_activity_distribution) | Compute a daily activity distribution matrix over fixed time bins. |
 | [`visit_purpose_distribution`](#skmob2.measures.individual.visit_purpose_distribution) | Compute visit-purpose counts and percentages. |
-| [`intermittance_and_degree_of_return`](#skmob2.measures.individual.intermittance_and_degree_of_return) | Compute intermittancy and degree of return per user using vectorized operations. |
-| [`exploration_profiling`](#skmob2.measures.individual.exploration_profiling) | Compute intermittency and degree of return, then cluster users into mobility profiles. |
 | [`regularity`](#skmob2.measures.individual.regularity) | Compute regularity per user. |
-| [`fast_diversity`](#skmob2.measures.individual.fast_diversity) | Compute the diversity of a sequence using suffix arrays. |
 | [`diversity`](#skmob2.measures.individual.diversity) | Compute trajectory diversity per user using suffix-array entropy. |
 | [`trajectory_entropy`](#skmob2.measures.individual.trajectory_entropy) | Compute Kontoyiannis entropy of mobility trajectories per user. |
 | [`trajectory_predictability`](#skmob2.measures.individual.trajectory_predictability) | Compute per-user maximum predictability via Fano's inequality. |
 | [`discover_daily_motifs_from_agents`](#skmob2.measures.individual.discover_daily_motifs_from_agents) | Discover daily mobility motifs for all agents in a dataset. |
-| [`mean_area_volume`](#skmob2.measures.individual.mean_area_volume) | Mean user volume per area and 10-minute time bin, averaged across days of the week. |
+<!-- | [`intermittance_and_degree_of_return`](#skmob2.measures.individual.intermittance_and_degree_of_return) | Compute intermittancy and degree of return per user using vectorized operations. | -->
+<!-- | [`exploration_profiling`](#skmob2.measures.individual.exploration_profiling) | Compute intermittency and degree of return, then cluster users into mobility profiles. | -->
+<!-- | [`fast_diversity`](#skmob2.measures.individual.fast_diversity) | Compute the diversity of a sequence using suffix arrays. | -->
+<!-- | [`mean_area_volume`](#skmob2.measures.individual.mean_area_volume) | Mean user volume per area and 10-minute time bin, averaged across days of the week. | -->
 
 ::: skmob2.measures.individual.distance_straight_line
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.frequency_rank
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.home_location
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.individual_mobility_network
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.jump_lengths
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.k_radius_of_gyration
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.location_frequency
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.max_distance_from_home
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.maximum_distance
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.number_of_locations
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.number_of_visits
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.radius_of_gyration
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.random_entropy
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.real_entropy
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.recency_rank
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.uncorrelated_entropy
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.waiting_times
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.activity_transition_matrix
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.daily_activity_distribution
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.visit_purpose_distribution
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.intermittance_and_degree_of_return
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.exploration_profiling
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.regularity
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.fast_diversity
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.diversity
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.trajectory_entropy
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.trajectory_predictability
     options:
       show_source: false
-
+      show_root_toc_entry: false
+      show_root_heading: false
 ---
 
 ::: skmob2.measures.individual.discover_daily_motifs_from_agents
     options:
       show_source: false
-
----
+      show_root_toc_entry: false
+      show_root_heading: false
+<!-- ---
 
 ::: skmob2.measures.individual.mean_area_volume
     options:
       show_source: false
+      show_root_toc_entry: false
+      show_root_heading: false -->

@@ -15,7 +15,7 @@ nav = [
   { "Home" = "index.md" },
   { "Features" = [
     { "Overview" = "features/index.md" },
-    { "Pandas Benchmarks" = "features/benchmark_pandas.md" },
+    { "Benchmarks" = "features/benchmarks.md" },
   ] },
   { "Learn" = "learn/index.md" },
   { "Reference" = [

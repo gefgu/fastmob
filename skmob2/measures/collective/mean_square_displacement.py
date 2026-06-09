@@ -75,10 +75,6 @@ def mean_square_displacement(
         Mean square displacement in km².  Returns 0.0 when the trajectory is
         empty or every user's displacement window is trivially at the start.
 
-    Warning
-    -------
-    The trajectory must be sorted in ascending order by datetime within each
-    user for the displacement window to be computed correctly.
 
     Examples
     --------

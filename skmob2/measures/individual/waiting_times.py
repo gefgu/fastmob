@@ -105,12 +105,6 @@ def waiting_times(
         inputs or a PyArrow array for Arrow-backed inputs.
         The returned DataFrame backend matches the input backend.
 
-    Warning
-    -------
-    The trajectory must be sorted in ascending order by datetime.  Pass
-    ``presorted=True`` only when rows are already grouped by user and ordered
-    by datetime within each group.
-
     Examples
     --------
     >>> import pandas as pd

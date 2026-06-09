@@ -73,11 +73,6 @@ def real_entropy(
         One row per user with columns ``[uid_col, "real_entropy"]``.
         The returned backend matches the input backend.
 
-    Warning
-    -------
-    The trajectory must be sorted in ascending order by datetime, as the
-    Kontoyiannis estimator is applied to the time-ordered sequence of
-    locations.
 
     Examples
     --------
