@@ -429,10 +429,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         models::distance::model_distance_matrix_numpy,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        models::epr::model_epr_simulate_agents,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(models::epr::model_epr_simulate_agents, m)?)?;
     m.add_function(wrap_pyfunction!(
         models::social_graph::model_social_graph_edges_to_csr,
         m
@@ -467,6 +464,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         models::sts_epr::model_sts_epr_simulate_agents,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::ditras::model_ditras_simulate_agents,
         m
     )?)?;
     Ok(())

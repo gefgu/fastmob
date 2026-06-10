@@ -63,8 +63,8 @@ pub fn markov_diary_update_chain_impl(
                     }
                 }
                 let next_state_h = (h + tau) % 24;
-                counts[state_idx(h, typical) * N_STATES
-                    + state_idx(next_state_h, non_typical)] += 1.0;
+                counts[state_idx(h, typical) * N_STATES + state_idx(next_state_h, non_typical)] +=
+                    1.0;
                 slot = j.saturating_sub(2);
                 slot += 1;
             } else {
@@ -219,20 +219,46 @@ pub fn markov_diary_generate_impl(
     (timestamps, abstract_locs)
 }
 
+/// Build a home-only CDF matrix: agents always remain at home (abstract_location=0).
+///
+/// Encodes a Markov chain that transitions hour-by-hour, always staying in the
+/// home/typical state (typicality=1). Used as a fallback when no diary has been fitted.
+fn markov_diary_home_only_cdf_impl() -> Vec<f64> {
+    let mut probs = vec![0.0_f64; N_MATRIX];
+    for h in 0..24_usize {
+        let next_h = (h + 1) % 24;
+        // State h*2+1 = home at hour h  →  state next_h*2+1 = home at hour next_h
+        probs[state_idx(h, 1) * N_STATES + state_idx(next_h, 1)] = 1.0;
+    }
+    markov_diary_build_cdf_impl(&probs)
+}
+
 /// Batch-generate diaries for `n_agents` in parallel (independent per agent).
 /// Returns flat arrays + per-agent slice boundaries.
+///
+/// When `cdf_matrix` is `None`, a home-only fallback CDF is used so that every
+/// diary slot carries `abstract_location = 0` (home).
 pub fn markov_diary_batch_generate_impl(
-    cdf_matrix: &[f64],
+    cdf_matrix: Option<&[f64]>,
     diary_length: usize,
     start_ts: i64,
     n_agents: usize,
     master_seed: u64,
 ) -> (Vec<i64>, Vec<i32>, Vec<usize>, Vec<usize>) {
+    let owned_cdf: Vec<f64>;
+    let cdf: &[f64] = match cdf_matrix {
+        Some(m) => m,
+        None => {
+            owned_cdf = markov_diary_home_only_cdf_impl();
+            &owned_cdf
+        }
+    };
+
     let results: Vec<(Vec<i64>, Vec<i32>)> = (0..n_agents)
         .into_par_iter()
         .map(|agent| {
             let seed = derive_agent_seed(master_seed, agent, 2);
-            markov_diary_generate_impl(cdf_matrix, diary_length, start_ts, seed)
+            markov_diary_generate_impl(cdf, diary_length, start_ts, seed)
         })
         .collect();
 

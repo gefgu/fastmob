@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import sys
 import importlib
+import sys
 
 import numpy as np
 import pandas as pd
 import pytest
-
 from skmob2.models import (
-    DensityEPR,
     EPR,
+    DensityEPR,
+    Ditras,
     GeoSim,
     Gravity,
     MarkovDiaryGenerator,
     Radiation,
-    STS_epr,
     SpatialEPR,
+    STS_epr,
     exponential_deterrence_func,
     powerlaw_deterrence_func,
 )
@@ -312,6 +312,67 @@ def test_sts_epr_generates_trajectory():
 
     assert list(result.columns) == ["uid", "datetime", "lat", "lng"]
     assert len(result) >= 2
+
+
+def test_ditras_generates_trajectory():
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 06:00:00")
+    mdg = MarkovDiaryGenerator()
+
+    result = Ditras(mdg).generate(start, end, _tessellation(), n_agents=2, random_state=0)
+
+    assert list(result.columns) == ["uid", "datetime", "lat", "lng"]
+    assert set(result["uid"]) == {1, 2}
+    assert result["datetime"].min() == start
+    assert len(result) >= 2
+
+
+def test_ditras_random_state_is_reproducible():
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 06:00:00")
+    mdg = MarkovDiaryGenerator()
+
+    first = Ditras(mdg).generate(start, end, _tessellation(), n_agents=3, random_state=42).df
+    second = Ditras(mdg).generate(start, end, _tessellation(), n_agents=3, random_state=42).df
+
+    pd.testing.assert_frame_equal(first, second)
+
+
+def test_ditras_starting_locations_are_used():
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 01:00:00")
+    tess = _tessellation()
+    mdg = MarkovDiaryGenerator()
+
+    result = Ditras(mdg).generate(start, end, tess, n_agents=2, starting_locations=[2, 1], random_state=0).df
+    first_points = result.sort_values(["uid", "datetime"]).groupby("uid", as_index=False).first()
+
+    np.testing.assert_allclose(first_points["lat"].to_numpy(), tess.loc[[2, 1], "lat"].to_numpy())
+    np.testing.assert_allclose(first_points["lng"].to_numpy(), tess.loc[[2, 1], "lng"].to_numpy())
+
+
+def test_ditras_polars_tessellation_returns_polars_wrapped_frame():
+    pl = pytest.importorskip("polars")
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 06:00:00")
+    mdg = MarkovDiaryGenerator()
+
+    result = Ditras(mdg).generate(start, end, pl.from_pandas(_tessellation()), n_agents=2, random_state=0)
+
+    assert isinstance(result.df, pl.DataFrame)
+    assert result.columns == ["uid", "datetime", "lat", "lng"]
+
+
+def test_ditras_unfitted_diary_stays_home():
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-03 00:00:00")
+    tess = _tessellation()
+    mdg = MarkovDiaryGenerator()  # NOT fitted → home-only CDF fallback in Rust
+
+    result = Ditras(mdg).generate(start, end, tess, n_agents=1, starting_locations=[0], random_state=7).df
+
+    np.testing.assert_allclose(result["lat"].to_numpy(), tess.loc[0, "lat"])
+    np.testing.assert_allclose(result["lng"].to_numpy(), tess.loc[0, "lng"])
 
 
 def test_cluster_imports_without_scikit_learn_until_called(monkeypatch):

@@ -873,25 +873,23 @@ class Ditras(EPR):
             Synthetic trajectories with columns ``uid``, ``datetime``, ``lat``,
             and ``lng``.
         """
-        from .markov_diary_generator import MarkovDiaryGenerator
+        from skmob2 import _core
 
-        if not isinstance(self._diary_generator, MarkovDiaryGenerator):
-            raise TypeError("diary_generator must be a MarkovDiaryGenerator.")
         if starting_locations is not None and len(starting_locations) < n_agents:
             raise IndexError("The number of starting locations is smaller than the number of agents.")
+        if random_state is not None and int(random_state) < 0:
+            raise ValueError("random_state must be a non-negative integer.")
         if gravity_singly is None:
             self.gravity_singly = Gravity(gravity_type="singly constrained")
         elif isinstance(gravity_singly, Gravity):
-            if gravity_singly.gravity_type == "singly constrained":
-                self.gravity_singly = gravity_singly
-            else:
+            if gravity_singly.gravity_type != "singly constrained":
                 raise AttributeError(
-                    "Argument `gravity_singly` should be a skmob.models.gravity.Gravity object with argument `gravity_type` equal to 'singly constrained'."
+                    "Argument `gravity_singly` should be a skmob.models.gravity.Gravity object "
+                    "with argument `gravity_type` equal to 'singly constrained'."
                 )
+            self.gravity_singly = gravity_singly
         else:
             raise TypeError("Argument `gravity_singly` should be of type skmob.models.gravity.Gravity.")
-        if random_state is not None and int(random_state) < 0:
-            raise ValueError("random_state must be a non-negative integer.")
 
         parameters = {
             "model": {
@@ -913,99 +911,47 @@ class Ditras(EPR):
             spatial_tessellation, relevance_column
         )
 
-        rng = np.random.default_rng(random_state)
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
-        diary_length = max(1, int(np.ceil((end_ts - start_ts) / 3600)))
-        n_locations = len(self.lats_lngs)
-        if n_locations == 0:
-            raise ValueError("spatial_tessellation must contain at least one location.")
-        global_relevances = np.nan_to_num(np.asarray(self.relevances, dtype=float), nan=0.0)
-        global_relevances = np.where(global_relevances > 0, global_relevances, 0.0)
-        global_probs = None
-        if global_relevances.sum() > 0:
-            global_probs = global_relevances / global_relevances.sum()
-        candidate_draw_size = min(256, n_locations)
+        total_h = (end_ts - start_ts) // 3600
 
-        start_values = None if starting_locations is None else np.asarray(starting_locations, dtype=np.int64)
-        agent_ids: list[int] = []
-        lats_out: list[float] = []
-        lngs_out: list[float] = []
-        timestamps: list[int] = []
-
-        def record(agent_id: int, loc: int, ts: int) -> None:
-            agent_ids.append(agent_id)
-            lats_out.append(float(self.lats_lngs[loc, 0]))
-            lngs_out.append(float(self.lats_lngs[loc, 1]))
-            timestamps.append(ts)
-
-        def weighted_choice(candidates: list[int], weights: np.ndarray) -> int:
-            if len(candidates) == 1:
-                return candidates[0]
-            clean = np.nan_to_num(weights.astype(float), nan=0.0, posinf=0.0, neginf=0.0)
-            total = clean.sum()
-            if total <= 0:
-                return int(rng.choice(candidates))
-            probs = clean / total
-            return int(rng.choice(candidates, p=probs))
-
-        for agent_index in range(n_agents):
-            agent_id = agent_index + 1
-            if start_values is not None and agent_index < len(start_values):
-                home = int(min(max(int(start_values[agent_index]), 0), n_locations - 1))
-            else:
-                home = int(rng.integers(0, n_locations))
-
-            current = home
-            visits = {home: 1}
-            record(agent_id, current, start_ts)
-
-            diary_seed = None if random_state is None else int(random_state) + agent_index
-            diary = self._diary_generator.generate(diary_length, start_date, random_state=diary_seed)
-            for _, diary_row in diary.iloc[1:].iterrows():
-                move_ts = int(diary_row["datetime"].timestamp())
-                if move_ts <= start_ts or move_ts >= end_ts:
-                    continue
-                abstract_location = int(diary_row["abstract_location"])
-                if abstract_location == 0:
-                    next_loc = home
-                else:
-                    visited_away = [loc for loc in visits if loc != home]
-                    s = max(1.0, float(len(visits)))
-                    explore = rng.random() < float(self._rho) * s ** (-float(self._gamma))
-                    sampled = rng.choice(
-                        n_locations,
-                        size=candidate_draw_size,
-                        replace=False,
-                        p=global_probs,
-                    )
-                    unvisited = [
-                        int(loc)
-                        for loc in sampled
-                        if int(loc) not in visits and int(loc) != current and int(loc) != home
-                    ]
-                    if explore and unvisited:
-                        weights = np.asarray(self.relevances[unvisited], dtype=float)
-                        next_loc = weighted_choice(unvisited, weights)
-                    elif visited_away:
-                        weights = np.array([visits[loc] for loc in visited_away], dtype=float)
-                        next_loc = weighted_choice(visited_away, weights)
-                    elif unvisited:
-                        weights = np.asarray(self.relevances[unvisited], dtype=float)
-                        next_loc = weighted_choice(unvisited, weights)
-                    else:
-                        next_loc = current
-
-                current = int(next_loc)
-                visits[current] = visits.get(current, 0) + 1
-                record(agent_id, current, move_ts)
-
-        order = np.lexsort((np.asarray(timestamps), np.asarray(agent_ids)))
-        rows = _trajectory_native_frame(
-            np.asarray(agent_ids, dtype=np.int64)[order],
-            np.asarray(lats_out, dtype=float)[order],
-            np.asarray(lngs_out, dtype=float)[order],
-            np.asarray(timestamps, dtype=np.int64)[order],
-            output_backend,
+        # Batch-generate diaries — pass None if unfitted; Rust builds home-only CDF fallback
+        diary_seed = int(random_state) if random_state is not None else int(np.random.randint(0, 2**31))
+        flat_ts, flat_locs, d_starts, d_ends = _core.markov_diary_batch_generate(
+            self._diary_generator._cdf_matrix_flat,
+            total_h,
+            start_ts,
+            n_agents,
+            diary_seed,
         )
+        diary_timestamps = np.asarray(flat_ts, dtype=np.int64)
+        diary_abs_locs = np.asarray(flat_locs, dtype=np.int32)
+        diary_starts_arr = np.asarray(d_starts, dtype=np.int64)
+        diary_ends_arr = np.asarray(d_ends, dtype=np.int64)
+
+        lats = np.ascontiguousarray(self.lats_lngs[:, 0], dtype=float)
+        lngs = np.ascontiguousarray(self.lats_lngs[:, 1], dtype=float)
+        relevances = np.ascontiguousarray(self.relevances, dtype=float)
+        starts = (
+            None if starting_locations is None else np.ascontiguousarray(np.asarray(starting_locations, dtype=np.int64))
+        )
+
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_ditras_simulate_agents(
+            lats,
+            lngs,
+            relevances,
+            diary_timestamps,
+            diary_abs_locs,
+            diary_starts_arr,
+            diary_ends_arr,
+            float(self._rho),
+            float(self._gamma),
+            start_ts,
+            end_ts,
+            int(n_agents),
+            None if random_state is None else int(random_state),
+            starts,
+        )
+
+        rows = _trajectory_native_frame(agent_ids, lats_out, lngs_out, timestamps, output_backend)
         return trajectory_dataframe(rows, parameters=parameters)

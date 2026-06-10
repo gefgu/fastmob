@@ -1,4 +1,5 @@
 pub mod distance;
+pub mod ditras;
 pub mod epr;
 pub mod geosim;
 pub mod markov_diary;
