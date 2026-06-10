@@ -323,6 +323,13 @@ def is_valid_time(value: Any) -> bool:
     return value > 0 and math.isfinite(value)
 
 
+def is_valid_memory(value: Any) -> bool:
+    """Like is_valid_time but accepts 0.0 — RSS-delta legitimately returns 0 for tiny ops."""
+    if not isinstance(value, (int, float)):
+        return False
+    return value >= 0 and math.isfinite(value)
+
+
 def display_metric_name(metric: str) -> str:
     return metric.replace("_", " ").replace("kl2", "")
 
@@ -805,8 +812,8 @@ def invalid_memory_metric_reason(metric_result: dict[str, Any], label: str) -> s
         if reason:
             return f"{label} status={status} ({reason})"
         return f"{label} status={status}"
-    if not is_valid_time(average_mb):
-        return f"{label} maximum_peak_memory_mb is not a positive finite number"
+    if not is_valid_memory(average_mb):
+        return f"{label} maximum_peak_memory_mb is not a finite non-negative number"
     return None
 
 
@@ -1455,7 +1462,7 @@ def _memory_location_only_rows(
             continue
         orig_mb = orig_m.get("maximum_peak_memory_mb")
         opt_mb = opt_m.get("maximum_peak_memory_mb")
-        if not is_valid_time(orig_mb) or not is_valid_time(opt_mb):
+        if not is_valid_memory(orig_mb) or not is_valid_memory(opt_mb):
             continue
         reduction_pct = (float(orig_mb) - float(opt_mb)) / float(orig_mb) * 100.0
         rows.append(
@@ -1481,7 +1488,7 @@ def _memory_location_only_standalone_rows(
         if not opt_m:
             continue
         opt_mb = opt_m.get("maximum_peak_memory_mb")
-        if not is_valid_time(opt_mb):
+        if not is_valid_memory(opt_mb):
             continue
         rows.append({"metric": display_metric_name(model), "optimized": float(opt_mb)})
     rows.sort(key=lambda r: r["optimized"], reverse=True)
@@ -1502,7 +1509,7 @@ def _memory_agent_based_standalone_rows(
             if not opt_m:
                 continue
             opt_mb = opt_m.get("maximum_peak_memory_mb")
-            if not is_valid_time(opt_mb):
+            if not is_valid_memory(opt_mb):
                 continue
             loc_label = format_size_label(n_locs)
             rows.append({"metric": f"{display_metric_name(model)} / {loc_label} locs", "optimized": float(opt_mb)})
@@ -1533,7 +1540,7 @@ def _memory_agent_based_rows(
                 continue
             orig_mb = orig_m.get("maximum_peak_memory_mb")
             opt_mb = opt_m.get("maximum_peak_memory_mb")
-            if not is_valid_time(orig_mb) or not is_valid_time(opt_mb):
+            if not is_valid_memory(orig_mb) or not is_valid_memory(opt_mb):
                 continue
             reduction_pct = (float(orig_mb) - float(opt_mb)) / float(orig_mb) * 100.0
             loc_label = format_size_label(n_locs)
