@@ -381,6 +381,13 @@ def output_name(suite: str, backend: str | None, size_label: str) -> str:
     return f"skmob2_vs_skmob_{suite}_{backend}_{safe_size}.png"
 
 
+def _resolve_output_dir(base: Path, *payloads: dict[str, Any]) -> Path:
+    """Return base/sorted/ when any payload was generated from sorted input."""
+    if any(p.get("metadata", {}).get("input_order") == "sorted" for p in payloads):
+        return base / "sorted"
+    return base
+
+
 def add_round_card(fig: plt.Figure) -> None:
     card = FancyBboxPatch(
         (0.025, 0.035),
@@ -1694,6 +1701,7 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
             requested = [format_size_label(size) for size in args.sizes]
             labels = [label for label in requested if label in optimized_results]
         expected_metrics = expected_metrics_from_catalog(args.catalog, args.suite)
+        out_dir = _resolve_output_dir(args.output_dir, optimized_payload)
         generated = 0
         for label in labels:
             rows = standalone_memory_metric_rows(optimized_results[label], args.sort, expected_metrics)
@@ -1702,7 +1710,7 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
                 continue
             safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
             backend_part = f"_{args.backend}" if args.backend else ""
-            output_path = args.output_dir / f"skmob2_{args.suite}{backend_part}_{safe_label}_memory.png"
+            output_path = out_dir / f"skmob2_{args.suite}{backend_part}_{safe_label}_memory.png"
             draw_memory_standalone_plot(
                 rows,
                 optimized_payload=optimized_payload,
@@ -1752,6 +1760,7 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
         print(f"ERROR: no expected metrics for suite '{args.suite}' in {args.catalog}.")
         return 2
 
+    out_dir = _resolve_output_dir(args.output_dir, original_payload, optimized_payload)
     generated = 0
     for label in labels:
         try:
@@ -1767,7 +1776,7 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
             out_name = f"skmob2_vs_skmob_{args.suite}_{safe_label}_memory.png"
         else:
             out_name = f"skmob2_vs_skmob_{args.suite}_{args.backend}_{safe_label}_memory.png"
-        output_path = args.output_dir / out_name
+        output_path = out_dir / out_name
         draw_memory_plot(
             rows,
             original_payload=original_payload,
@@ -1944,6 +1953,7 @@ def generate_plots(args: argparse.Namespace) -> int:
             requested = [format_size_label(size) for size in args.sizes]
             labels = [label for label in requested if label in optimized_results]
         expected_metrics = expected_metrics_from_catalog(args.catalog, args.suite)
+        out_dir = _resolve_output_dir(args.output_dir, optimized_payload)
         generated = 0
         for label in labels:
             rows = standalone_metric_rows(optimized_results[label], args.sort, expected_metrics)
@@ -1952,7 +1962,7 @@ def generate_plots(args: argparse.Namespace) -> int:
                 continue
             safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
             backend_part = f"_{args.backend}" if args.backend else ""
-            output_path = args.output_dir / f"skmob2_{args.suite}{backend_part}_{safe_label}.png"
+            output_path = out_dir / f"skmob2_{args.suite}{backend_part}_{safe_label}.png"
             draw_standalone_plot(
                 rows,
                 optimized_payload=optimized_payload,
@@ -2002,6 +2012,7 @@ def generate_plots(args: argparse.Namespace) -> int:
         print(f"ERROR: no expected metrics for suite '{args.suite}' in {args.catalog}.")
         return 2
 
+    out_dir = _resolve_output_dir(args.output_dir, original_payload, optimized_payload)
     generated = 0
     for label in labels:
         try:
@@ -2018,7 +2029,7 @@ def generate_plots(args: argparse.Namespace) -> int:
         if not rows:
             print(f"No valid overlapping metrics found for {label}; skipping.")
             continue
-        output_path = args.output_dir / output_name(args.suite, args.backend, label)
+        output_path = out_dir / output_name(args.suite, args.backend, label)
         draw_plot(
             rows,
             original_payload=original_payload,
