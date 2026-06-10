@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "backend": null,
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/privacy_privacy_toy.csv_pandas_repeat10_sorted.parquet",
+    "input_cache_status": "reused",
+    "input_order": "sorted",
+    "input_type": "skmob.TrajDataFrame",
+    "iterations": 5,
+    "library": "skmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "repeat_dataset": 10,
+    "sleep_seconds": 0.5,
+    "suite": "privacy",
+    "timestamp_utc": "2026-06-09T19:06:17.047508+00:00",
+    "timing_mode": "prebuilt_tdf"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 7.178056627046317,
+          "iterations_completed": 5,
+          "minimum_seconds": 7.146827860735357,
+          "status": "ok",
+          "times_seconds": [
+            7.146827860735357,
+            7.183532521594316,
+            7.185805236920714,
+            7.184072178788483,
+            7.190045337192714
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 33.5931016583927,
+          "iterations_completed": 5,
+          "minimum_seconds": 33.33074707724154,
+          "status": "ok",
+          "times_seconds": [
+            34.437006040941924,
+            33.49685131991282,
+            33.33074707724154,
+            33.3447468332015,
+            33.356157020665705
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 93.90910035958514,
+          "iterations_completed": 5,
+          "minimum_seconds": 91.85826435685158,
+          "status": "ok",
+          "times_seconds": [
+            96.35473770974204,
+            96.68729912023991,
+            92.6682154671289,
+            91.97698514396325,
+            91.85826435685158
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 25.270368214696646,
+          "iterations_completed": 5,
+          "minimum_seconds": 24.81143523612991,
+          "status": "ok",
+          "times_seconds": [
+            25.754737080074847,
+            25.773965652100742,
+            25.13353267684579,
+            24.87817042833194,
+            24.81143523612991
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 36.52381421979517,
+          "iterations_completed": 5,
+          "minimum_seconds": 36.49840199202299,
+          "status": "ok",
+          "times_seconds": [
+            36.518078797031194,
+            36.53833060292527,
+            36.53028949396685,
+            36.49840199202299,
+            36.533970213029534
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 18.202859983593225,
+          "iterations_completed": 5,
+          "minimum_seconds": 18.013886671047658,
+          "status": "ok",
+          "times_seconds": [
+            18.013886671047658,
+            18.058717040345073,
+            18.059205289930105,
+            18.070432046893984,
+            18.812058869749308
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 99.45343182124198,
+          "iterations_completed": 5,
+          "minimum_seconds": 99.38071467727423,
+          "status": "ok",
+          "times_seconds": [
+            99.38071467727423,
+            99.4407176328823,
+            99.48653898201883,
+            99.5584681420587,
+            99.40071967197582
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 26.694857174623756,
+          "iterations_completed": 5,
+          "minimum_seconds": 26.67968837590888,
+          "status": "ok",
+          "times_seconds": [
+            26.697269407100976,
+            26.69588855607435,
+            26.67968837590888,
+            26.702962751034647,
+            26.698476782999933
+          ]
+        }
+      },
+      "rows": 230
+    }
+  ]
+}

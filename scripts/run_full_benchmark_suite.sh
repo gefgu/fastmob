@@ -128,7 +128,7 @@ if [ "$PHASE" = "all" ] || [ "$PHASE" = "skmob" ]; then
         echo
         echo "==> Phase 2: skmob benchmarks in .venv-skmob ..."
 
-        for timing_mode in prebuilt_tdf workflow_tdf; do
+        for timing_mode in prebuilt_tdf; do
             for profile in speed memory; do
                 # individual
                 raw="skmob_individual_${profile}_${timing_mode}.json"

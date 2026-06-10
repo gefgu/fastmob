@@ -1,0 +1,809 @@
+{
+  "metadata": {
+    "backend": null,
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/collective_loc-brightkite_totalCheckins.txt.gz_pandas_sorted.parquet",
+    "input_cache_status": "reused",
+    "input_order": "sorted",
+    "input_type": "skmob.TrajDataFrame",
+    "iterations": 5,
+    "library": "skmob",
+    "metrics": [
+      "random_location_entropy",
+      "uncorrelated_location_entropy",
+      "mean_square_displacement",
+      "visits_per_location",
+      "homes_per_location",
+      "visits_per_time_unit",
+      "od_matrix",
+      "od_metrics_per_area"
+    ],
+    "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "memory",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "retries": 0,
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "collective",
+    "timestamp_utc": "2026-06-10T10:06:43.400141+00:00",
+    "timing_mode": "prebuilt_tdf"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "metrics": {
+        "homes_per_location": {
+          "average_peak_memory_mb": 0.24718151092529297,
+          "current_memory_mb": [
+            0.010153770446777344,
+            0.010472297668457031,
+            0.009805679321289062,
+            0.010244369506835938,
+            0.009939193725585938
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 0.2474527359008789,
+          "minimum_peak_memory_mb": 0.24704647064208984,
+          "peak_memory_mb": [
+            0.24715328216552734,
+            0.24715328216552734,
+            0.2471017837524414,
+            0.24704647064208984,
+            0.2474527359008789
+          ],
+          "status": "ok"
+        },
+        "mean_square_displacement": {
+          "average_peak_memory_mb": 0.1536783218383789,
+          "current_memory_mb": [
+            0.009394645690917969,
+            0.009185791015625,
+            0.008795738220214844,
+            0.008713722229003906,
+            0.008510589599609375
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 0.1537914276123047,
+          "minimum_peak_memory_mb": 0.153472900390625,
+          "peak_memory_mb": [
+            0.15373611450195312,
+            0.1537914276123047,
+            0.1537618637084961,
+            0.15362930297851562,
+            0.153472900390625
+          ],
+          "status": "ok"
+        },
+        "od_matrix": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_matrix",
+          "status": "skipped"
+        },
+        "od_metrics_per_area": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_metrics_per_area",
+          "status": "skipped"
+        },
+        "random_location_entropy": {
+          "average_peak_memory_mb": 0.30541267395019533,
+          "current_memory_mb": [
+            0.020406723022460938,
+            0.019557952880859375,
+            0.017566680908203125,
+            0.01839160919189453,
+            0.020465850830078125
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 0.3070344924926758,
+          "minimum_peak_memory_mb": 0.3036956787109375,
+          "peak_memory_mb": [
+            0.3064689636230469,
+            0.3059072494506836,
+            0.3036956787109375,
+            0.3039569854736328,
+            0.3070344924926758
+          ],
+          "status": "ok"
+        },
+        "uncorrelated_location_entropy": {
+          "average_peak_memory_mb": 0.31263046264648436,
+          "current_memory_mb": [
+            0.02839946746826172,
+            0.02491474151611328,
+            0.02367877960205078,
+            0.024191856384277344,
+            0.023122787475585938
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 0.3161478042602539,
+          "minimum_peak_memory_mb": 0.3108348846435547,
+          "peak_memory_mb": [
+            0.3161478042602539,
+            0.3126544952392578,
+            0.3114128112792969,
+            0.3121023178100586,
+            0.3108348846435547
+          ],
+          "status": "ok"
+        },
+        "visits_per_location": {
+          "average_peak_memory_mb": 0.11453781127929688,
+          "current_memory_mb": [
+            0.004218101501464844,
+            0.0046100616455078125,
+            0.004145622253417969,
+            0.0043926239013671875,
+            0.004146575927734375
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 0.11464500427246094,
+          "minimum_peak_memory_mb": 0.11440086364746094,
+          "peak_memory_mb": [
+            0.11454200744628906,
+            0.11464500427246094,
+            0.11440086364746094,
+            0.11464500427246094,
+            0.1144561767578125
+          ],
+          "status": "ok"
+        },
+        "visits_per_time_unit": {
+          "average_peak_memory_mb": 0.18441505432128907,
+          "current_memory_mb": [
+            0.0012454986572265625,
+            0.0012912750244140625,
+            0.0011882781982421875,
+            0.0012912750244140625,
+            0.0012388229370117188
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 0.18445491790771484,
+          "minimum_peak_memory_mb": 0.18435192108154297,
+          "peak_memory_mb": [
+            0.18440914154052734,
+            0.1844043731689453,
+            0.18435192108154297,
+            0.18445491790771484,
+            0.18445491790771484
+          ],
+          "status": "ok"
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "homes_per_location": {
+          "average_peak_memory_mb": 1.0881614685058594,
+          "current_memory_mb": [
+            0.013026237487792969,
+            0.013340950012207031,
+            0.013176918029785156,
+            0.013136863708496094,
+            0.013647079467773438
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 1.0883235931396484,
+          "minimum_peak_memory_mb": 1.0880794525146484,
+          "peak_memory_mb": [
+            1.088134765625,
+            1.088134765625,
+            1.0880794525146484,
+            1.088134765625,
+            1.0883235931396484
+          ],
+          "status": "ok"
+        },
+        "mean_square_displacement": {
+          "average_peak_memory_mb": 1.0854541778564453,
+          "current_memory_mb": [
+            0.011480331420898438,
+            0.011830329895019531,
+            0.012081146240234375,
+            0.011789321899414062,
+            0.011678695678710938
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 1.08563232421875,
+          "minimum_peak_memory_mb": 1.0853424072265625,
+          "peak_memory_mb": [
+            1.08544921875,
+            1.085397720336914,
+            1.08563232421875,
+            1.0853424072265625,
+            1.08544921875
+          ],
+          "status": "ok"
+        },
+        "od_matrix": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_matrix",
+          "status": "skipped"
+        },
+        "od_metrics_per_area": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_metrics_per_area",
+          "status": "skipped"
+        },
+        "random_location_entropy": {
+          "average_peak_memory_mb": 1.4110443115234375,
+          "current_memory_mb": [
+            0.04244709014892578,
+            0.05135917663574219,
+            0.059635162353515625,
+            0.046723365783691406,
+            0.04152870178222656
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 1.419525146484375,
+          "minimum_peak_memory_mb": 1.4077873229980469,
+          "peak_memory_mb": [
+            1.4078483581542969,
+            1.4122180938720703,
+            1.419525146484375,
+            1.4077873229980469,
+            1.4078426361083984
+          ],
+          "status": "ok"
+        },
+        "uncorrelated_location_entropy": {
+          "average_peak_memory_mb": 1.4078590393066406,
+          "current_memory_mb": [
+            0.040907859802246094,
+            0.04411792755126953,
+            0.04413318634033203,
+            0.04660511016845703,
+            0.04324817657470703
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 1.4080123901367188,
+          "minimum_peak_memory_mb": 1.4077796936035156,
+          "peak_memory_mb": [
+            1.4080123901367188,
+            1.4078350067138672,
+            1.407888412475586,
+            1.4077796936035156,
+            1.4077796936035156
+          ],
+          "status": "ok"
+        },
+        "visits_per_location": {
+          "average_peak_memory_mb": 0.9776702880859375,
+          "current_memory_mb": [
+            0.0035257339477539062,
+            0.004212379455566406,
+            0.0035848617553710938,
+            0.0037717819213867188,
+            0.0035495758056640625
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 0.9778900146484375,
+          "minimum_peak_memory_mb": 0.9775028228759766,
+          "peak_memory_mb": [
+            0.9776992797851562,
+            0.9778900146484375,
+            0.9775905609130859,
+            0.9776687622070312,
+            0.9775028228759766
+          ],
+          "status": "ok"
+        },
+        "visits_per_time_unit": {
+          "average_peak_memory_mb": 1.458763313293457,
+          "current_memory_mb": [
+            0.0015840530395507812,
+            0.0016279220581054688,
+            0.0015764236450195312,
+            0.0015230178833007812,
+            0.0016775131225585938
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 1.4588251113891602,
+          "minimum_peak_memory_mb": 1.4587202072143555,
+          "peak_memory_mb": [
+            1.4587268829345703,
+            1.4588232040405273,
+            1.4587202072143555,
+            1.4587211608886719,
+            1.4588251113891602
+          ],
+          "status": "ok"
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "homes_per_location": {
+          "average_peak_memory_mb": 10.703548431396484,
+          "current_memory_mb": [
+            0.02776336669921875,
+            0.025760650634765625,
+            0.025747299194335938,
+            0.02561664581298828,
+            0.024367332458496094
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 10.703765869140625,
+          "minimum_peak_memory_mb": 10.703466415405273,
+          "peak_memory_mb": [
+            10.703466415405273,
+            10.703521728515625,
+            10.703466415405273,
+            10.703521728515625,
+            10.703765869140625
+          ],
+          "status": "ok"
+        },
+        "mean_square_displacement": {
+          "average_peak_memory_mb": 10.700839614868164,
+          "current_memory_mb": [
+            0.025704383850097656,
+            0.025150299072265625,
+            0.024522781372070312,
+            0.02443218231201172,
+            0.024585723876953125
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 10.700963973999023,
+          "minimum_peak_memory_mb": 10.700780868530273,
+          "peak_memory_mb": [
+            10.700780868530273,
+            10.700836181640625,
+            10.700963973999023,
+            10.700836181640625,
+            10.700780868530273
+          ],
+          "status": "ok"
+        },
+        "od_matrix": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_matrix",
+          "status": "skipped"
+        },
+        "od_metrics_per_area": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_metrics_per_area",
+          "status": "skipped"
+        },
+        "random_location_entropy": {
+          "average_peak_memory_mb": 14.532804489135742,
+          "current_memory_mb": [
+            0.1730489730834961,
+            0.15426158905029297,
+            0.16883563995361328,
+            0.1707773208618164,
+            0.1743297576904297
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 14.626337051391602,
+          "minimum_peak_memory_mb": 14.509357452392578,
+          "peak_memory_mb": [
+            14.509441375732422,
+            14.50941276550293,
+            14.50947380065918,
+            14.626337051391602,
+            14.509357452392578
+          ],
+          "status": "ok"
+        },
+        "uncorrelated_location_entropy": {
+          "average_peak_memory_mb": 14.534941482543946,
+          "current_memory_mb": [
+            0.16393661499023438,
+            0.1734180450439453,
+            0.17001056671142578,
+            0.17603111267089844,
+            0.17679786682128906
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 14.62643051147461,
+          "minimum_peak_memory_mb": 14.509349822998047,
+          "peak_memory_mb": [
+            14.50958251953125,
+            14.509405136108398,
+            14.509349822998047,
+            14.62643051147461,
+            14.519939422607422
+          ],
+          "status": "ok"
+        },
+        "visits_per_location": {
+          "average_peak_memory_mb": 9.062448120117187,
+          "current_memory_mb": [
+            0.00374603271484375,
+            0.003993034362792969,
+            0.0037488937377929688,
+            0.0041027069091796875,
+            0.0038042068481445312
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 9.062583923339844,
+          "minimum_peak_memory_mb": 9.062284469604492,
+          "peak_memory_mb": [
+            9.062448501586914,
+            9.062583923339844,
+            9.062284469604492,
+            9.062583923339844,
+            9.062339782714844
+          ],
+          "status": "ok"
+        },
+        "visits_per_time_unit": {
+          "average_peak_memory_mb": 7.734233856201172,
+          "current_memory_mb": [
+            0.0015268325805664062,
+            0.0015277862548828125,
+            0.001430511474609375,
+            0.001583099365234375,
+            0.00157928466796875
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 7.734233856201172,
+          "minimum_peak_memory_mb": 7.734233856201172,
+          "peak_memory_mb": [
+            7.734233856201172,
+            7.734233856201172,
+            7.734233856201172,
+            7.734233856201172,
+            7.734233856201172
+          ],
+          "status": "ok"
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "homes_per_location": {
+          "average_peak_memory_mb": 106.87355842590333,
+          "current_memory_mb": [
+            0.06304264068603516,
+            0.0620880126953125,
+            0.06267452239990234,
+            0.06329822540283203,
+            0.06348133087158203
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 106.87378692626953,
+          "minimum_peak_memory_mb": 106.87343215942383,
+          "peak_memory_mb": [
+            106.87343215942383,
+            106.87354278564453,
+            106.87354278564453,
+            106.87348747253418,
+            106.87378692626953
+          ],
+          "status": "ok"
+        },
+        "mean_square_displacement": {
+          "average_peak_memory_mb": 106.87085609436035,
+          "current_memory_mb": [
+            0.03201770782470703,
+            0.03128242492675781,
+            0.030976295471191406,
+            0.030078887939453125,
+            0.029489517211914062
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 106.87101364135742,
+          "minimum_peak_memory_mb": 106.87077522277832,
+          "peak_memory_mb": [
+            106.87077522277832,
+            106.87083053588867,
+            106.87101364135742,
+            106.87083053588867,
+            106.87083053588867
+          ],
+          "status": "ok"
+        },
+        "od_matrix": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_matrix",
+          "status": "skipped"
+        },
+        "od_metrics_per_area": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_metrics_per_area",
+          "status": "skipped"
+        },
+        "random_location_entropy": {
+          "average_peak_memory_mb": 142.37246971130372,
+          "current_memory_mb": [
+            0.1769256591796875,
+            0.17800617218017578,
+            0.17760562896728516,
+            0.17794322967529297,
+            0.17479228973388672
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 142.3725185394287,
+          "minimum_peak_memory_mb": 142.37245750427246,
+          "peak_memory_mb": [
+            142.37245750427246,
+            142.37245750427246,
+            142.3725185394287,
+            142.37245750427246,
+            142.37245750427246
+          ],
+          "status": "ok"
+        },
+        "uncorrelated_location_entropy": {
+          "average_peak_memory_mb": 142.3725200653076,
+          "current_memory_mb": [
+            0.17728614807128906,
+            0.17812347412109375,
+            0.17813587188720703,
+            0.17734718322753906,
+            0.17745494842529297
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 142.37261772155762,
+          "minimum_peak_memory_mb": 142.37249565124512,
+          "peak_memory_mb": [
+            142.37261772155762,
+            142.37249565124512,
+            142.37249565124512,
+            142.37249565124512,
+            142.37249565124512
+          ],
+          "status": "ok"
+        },
+        "visits_per_location": {
+          "average_peak_memory_mb": 101.35495376586914,
+          "current_memory_mb": [
+            0.0040760040283203125,
+            0.004101753234863281,
+            0.0036916732788085938,
+            0.0038824081420898438,
+            0.0038557052612304688
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 101.35511207580566,
+          "minimum_peak_memory_mb": 101.35475730895996,
+          "peak_memory_mb": [
+            101.35492134094238,
+            101.35511207580566,
+            101.35475730895996,
+            101.35505676269531,
+            101.35492134094238
+          ],
+          "status": "ok"
+        },
+        "visits_per_time_unit": {
+          "average_peak_memory_mb": 77.25706958770752,
+          "current_memory_mb": [
+            0.00152587890625,
+            0.0014209747314453125,
+            0.0015316009521484375,
+            0.0015773773193359375,
+            0.0016794204711914062
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 77.25713729858398,
+          "minimum_peak_memory_mb": 77.25698852539062,
+          "peak_memory_mb": [
+            77.2570915222168,
+            77.2570915222168,
+            77.25698852539062,
+            77.2570390701294,
+            77.25713729858398
+          ],
+          "status": "ok"
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
+      "label": "4M",
+      "metrics": {
+        "homes_per_location": {
+          "average_peak_memory_mb": 427.6533088684082,
+          "current_memory_mb": [
+            0.1963176727294922,
+            0.19681167602539062,
+            0.19566822052001953,
+            0.1966695785522461,
+            0.1981668472290039
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 427.65352630615234,
+          "minimum_peak_memory_mb": 427.653226852417,
+          "peak_memory_mb": [
+            427.65328216552734,
+            427.653226852417,
+            427.653226852417,
+            427.65328216552734,
+            427.65352630615234
+          ],
+          "status": "ok"
+        },
+        "mean_square_displacement": {
+          "average_peak_memory_mb": 427.65065307617186,
+          "current_memory_mb": [
+            0.17574405670166016,
+            0.03930473327636719,
+            0.17565536499023438,
+            0.17542171478271484,
+            0.17539119720458984
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 427.65075302124023,
+          "minimum_peak_memory_mb": 427.65060234069824,
+          "peak_memory_mb": [
+            427.65060234069824,
+            427.6506538391113,
+            427.65075302124023,
+            427.65060234069824,
+            427.6506538391113
+          ],
+          "status": "ok"
+        },
+        "od_matrix": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_matrix",
+          "status": "skipped"
+        },
+        "od_metrics_per_area": {
+          "average_peak_memory_mb": null,
+          "current_memory_mb": [],
+          "iterations_completed": 0,
+          "maximum_peak_memory_mb": null,
+          "minimum_peak_memory_mb": null,
+          "peak_memory_mb": [],
+          "reason": "metric not available: od_metrics_per_area",
+          "status": "skipped"
+        },
+        "random_location_entropy": {
+          "average_peak_memory_mb": 561.5881359100342,
+          "current_memory_mb": [
+            0.1775970458984375,
+            0.17825603485107422,
+            0.17801189422607422,
+            0.17807579040527344,
+            0.17792892456054688
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 561.5882549285889,
+          "minimum_peak_memory_mb": 561.5880260467529,
+          "peak_memory_mb": [
+            561.5881328582764,
+            561.5881328582764,
+            561.5882549285889,
+            561.5880260467529,
+            561.5881328582764
+          ],
+          "status": "ok"
+        },
+        "uncorrelated_location_entropy": {
+          "average_peak_memory_mb": 561.5882740020752,
+          "current_memory_mb": [
+            0.17924976348876953,
+            0.1782369613647461,
+            0.1784677505493164,
+            0.17725276947021484,
+            0.1778564453125
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 561.5884609222412,
+          "minimum_peak_memory_mb": 561.588171005249,
+          "peak_memory_mb": [
+            561.5884609222412,
+            561.588228225708,
+            561.588171005249,
+            561.588171005249,
+            561.5883388519287
+          ],
+          "status": "ok"
+        },
+        "visits_per_location": {
+          "average_peak_memory_mb": 305.74889678955077,
+          "current_memory_mb": [
+            0.0036363601684570312,
+            0.0037717819213867188,
+            0.0035810470581054688,
+            0.0037717819213867188,
+            0.0036363601684570312
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 305.74913215637207,
+          "minimum_peak_memory_mb": 305.748722076416,
+          "peak_memory_mb": [
+            305.74888610839844,
+            305.74902153015137,
+            305.748722076416,
+            305.74913215637207,
+            305.748722076416
+          ],
+          "status": "ok"
+        },
+        "visits_per_time_unit": {
+          "average_peak_memory_mb": 308.9999994277954,
+          "current_memory_mb": [
+            0.0022115707397460938,
+            0.002262115478515625,
+            0.0021572113037109375,
+            0.0023546218872070312,
+            0.0020933151245117188
+          ],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 309.0002021789551,
+          "minimum_peak_memory_mb": 308.99994373321533,
+          "peak_memory_mb": [
+            308.99995040893555,
+            308.99995040893555,
+            308.99995040893555,
+            309.0002021789551,
+            308.99994373321533
+          ],
+          "status": "ok"
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}

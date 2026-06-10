@@ -16,6 +16,8 @@ nav = [
   { "Features" = [
     { "Overview" = "features/index.md" },
     { "Benchmarks" = "features/benchmarks.md" },
+    { "Optimizations" = "features/optimizations.md" },
+    { "Motifs" = "features/motifs.md" },
   ] },
   { "Learn" = "learn/index.md" },
   { "Reference" = [
@@ -82,6 +84,8 @@ show_symbol_type_heading = false
 show_symbol_type_toc = false
 
 [project.markdown_extensions.admonition]
+
+[project.markdown_extensions."docs.extensions.rst_math"]
 
 [project.markdown_extensions."pymdownx.arithmatex"]
 generic = true
