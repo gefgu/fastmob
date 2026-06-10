@@ -873,17 +873,85 @@ class Ditras(EPR):
             Synthetic trajectories with columns ``uid``, ``datetime``, ``lat``,
             and ``lng``.
         """
-        # Coverage-first compatibility: the spatial phase follows DensityEPR,
-        # while the diary generator is retained as public model state.
-        return super().generate(
-            start_date,
-            end_date,
-            spatial_tessellation,
-            gravity_singly=gravity_singly,
-            n_agents=n_agents,
-            starting_locations=starting_locations,
-            relevance_column=relevance_column,
-            random_state=random_state,
-            log_file=log_file,
-            show_progress=show_progress,
+        from skmob2 import _core
+
+        if starting_locations is not None and len(starting_locations) < n_agents:
+            raise IndexError("The number of starting locations is smaller than the number of agents.")
+        if random_state is not None and int(random_state) < 0:
+            raise ValueError("random_state must be a non-negative integer.")
+        if gravity_singly is None:
+            self.gravity_singly = Gravity(gravity_type="singly constrained")
+        elif isinstance(gravity_singly, Gravity):
+            if gravity_singly.gravity_type != "singly constrained":
+                raise AttributeError(
+                    "Argument `gravity_singly` should be a skmob.models.gravity.Gravity object "
+                    "with argument `gravity_type` equal to 'singly constrained'."
+                )
+            self.gravity_singly = gravity_singly
+        else:
+            raise TypeError("Argument `gravity_singly` should be of type skmob.models.gravity.Gravity.")
+
+        parameters = {
+            "model": {
+                "class": self.__class__.__init__,
+                "generate": {
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "gravity_singly": gravity_singly,
+                    "n_agents": n_agents,
+                    "relevance_column": relevance_column,
+                    "random_state": random_state,
+                    "show_progress": show_progress,
+                },
+            }
+        }
+
+        self._trajectories_ = []
+        self._spatial_tessellation, output_backend, self.lats_lngs, self.relevances = _tessellation_arrays(
+            spatial_tessellation, relevance_column
         )
+
+        start_ts = int(start_date.timestamp())
+        end_ts = int(end_date.timestamp())
+        total_h = (end_ts - start_ts) // 3600
+
+        # Batch-generate diaries — pass None if unfitted; Rust builds home-only CDF fallback
+        diary_seed = int(random_state) if random_state is not None else int(np.random.randint(0, 2**31))
+        flat_ts, flat_locs, d_starts, d_ends = _core.markov_diary_batch_generate(
+            self._diary_generator._cdf_matrix_flat,
+            total_h,
+            start_ts,
+            n_agents,
+            diary_seed,
+        )
+        diary_timestamps = np.asarray(flat_ts, dtype=np.int64)
+        diary_abs_locs = np.asarray(flat_locs, dtype=np.int32)
+        diary_starts_arr = np.asarray(d_starts, dtype=np.int64)
+        diary_ends_arr = np.asarray(d_ends, dtype=np.int64)
+
+        lats = np.ascontiguousarray(self.lats_lngs[:, 0], dtype=float)
+        lngs = np.ascontiguousarray(self.lats_lngs[:, 1], dtype=float)
+        relevances = np.ascontiguousarray(self.relevances, dtype=float)
+        starts = (
+            None if starting_locations is None else np.ascontiguousarray(np.asarray(starting_locations, dtype=np.int64))
+        )
+
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_ditras_simulate_agents(
+            lats,
+            lngs,
+            relevances,
+            diary_timestamps,
+            diary_abs_locs,
+            diary_starts_arr,
+            diary_ends_arr,
+            float(self._rho),
+            float(self._gamma),
+            start_ts,
+            end_ts,
+            int(n_agents),
+            None if random_state is None else int(random_state),
+            starts,
+        )
+
+        rows = _trajectory_native_frame(agent_ids, lats_out, lngs_out, timestamps, output_backend)
+        return trajectory_dataframe(rows, parameters=parameters)

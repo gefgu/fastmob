@@ -2,8 +2,8 @@ use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use skmob2_core::models::markov_diary::{
-    markov_diary_batch_generate_impl, markov_diary_build_cdf_impl,
-    markov_diary_generate_impl, markov_diary_normalize_impl, markov_diary_update_chain_impl,
+    markov_diary_batch_generate_impl, markov_diary_build_cdf_impl, markov_diary_generate_impl,
+    markov_diary_normalize_impl, markov_diary_update_chain_impl,
 };
 
 #[pyfunction]
@@ -42,7 +42,7 @@ pub fn markov_diary_build_cdf<'py>(
 #[pyo3(signature = (cdf_matrix, diary_length, start_ts, n_agents, master_seed))]
 pub fn markov_diary_batch_generate<'py>(
     py: Python<'py>,
-    cdf_matrix: PyReadonlyArray1<'py, f64>,
+    cdf_matrix: Option<PyReadonlyArray1<'py, f64>>,
     diary_length: usize,
     start_ts: i64,
     n_agents: usize,
@@ -53,9 +53,12 @@ pub fn markov_diary_batch_generate<'py>(
     Vec<usize>,
     Vec<usize>,
 )> {
-    let matrix = cdf_matrix.as_slice()?;
+    let cdf_slice: Option<&[f64]> = match &cdf_matrix {
+        Some(m) => Some(m.as_slice()?),
+        None => None,
+    };
     let (flat_ts, flat_locs, starts, ends) =
-        markov_diary_batch_generate_impl(matrix, diary_length, start_ts, n_agents, master_seed);
+        markov_diary_batch_generate_impl(cdf_slice, diary_length, start_ts, n_agents, master_seed);
     Ok((
         flat_ts.into_pyarray(py),
         flat_locs.into_pyarray(py),
