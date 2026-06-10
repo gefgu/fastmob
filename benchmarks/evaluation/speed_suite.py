@@ -12,9 +12,14 @@ import argparse
 import json
 import platform
 import sys
+import gc
+import os
 import time
-import tracemalloc
 import warnings
+
+import psutil
+
+_BENCH_PROC = psutil.Process(os.getpid())
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -267,25 +272,17 @@ def run_memory_call(
     iterations: int,
     sleep_seconds: float,
 ) -> dict[str, Any]:
-    print("    Warming up...")
-    call_benchmark_func(func, make_input(), spec)
-
-    current_memory_mb: list[float] = []
     peak_memory_mb: list[float] = []
     for i in range(iterations):
         if sleep_seconds:
             time.sleep(sleep_seconds)
-        tracemalloc.start()
-        try:
-            call_benchmark_func(func, make_input(), spec)
-            current_bytes, peak_bytes = tracemalloc.get_traced_memory()
-        finally:
-            tracemalloc.stop()
-        current_mb = current_bytes / (1024 * 1024)
-        peak_mb = peak_bytes / (1024 * 1024)
-        current_memory_mb.append(current_mb)
-        peak_memory_mb.append(peak_mb)
-        print(f"    Round {i + 1}: {peak_mb:.4f} MB peak")
+        gc.collect()
+        rss_before = _BENCH_PROC.memory_info().rss
+        call_benchmark_func(func, make_input(), spec)
+        rss_after = _BENCH_PROC.memory_info().rss
+        delta_mb = max(0.0, (rss_after - rss_before) / (1024 * 1024))
+        peak_memory_mb.append(delta_mb)
+        print(f"    Round {i + 1}: {delta_mb:.4f} MB peak")
 
     summary = summarize_memory(peak_memory_mb)
     print(f"    Average Peak Memory: {summary['average_peak_memory_mb']:.4f} MB")
@@ -294,7 +291,7 @@ def run_memory_call(
     return {
         "status": "ok",
         "peak_memory_mb": peak_memory_mb,
-        "current_memory_mb": current_memory_mb,
+        "current_memory_mb": [],
         "iterations_completed": len(peak_memory_mb),
         **summary,
     }
@@ -409,6 +406,7 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
         "sleep_seconds": args.sleep_seconds,
         "sizes": args.sizes,
         "seed": args.seed,
+        **({"memory_method": "rss_delta_psutil"} if args.profile == "memory" else {}),
     }
     return {"metadata": metadata, "results": results}
 

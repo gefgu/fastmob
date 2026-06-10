@@ -521,6 +521,7 @@ def build_metadata(
         "input_cache_status": input_cache_status,
         "skmob_catalog_path": str(SKMOB_CATALOG_PATH),
         "movingpandas_catalog_path": str(MOVINGPANDAS_CATALOG_PATH),
+        **({"memory_method": "rss_delta_psutil"} if args.profile == "memory" else {}),
     }
 
 

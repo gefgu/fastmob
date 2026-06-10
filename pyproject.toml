@@ -48,6 +48,7 @@ dev = [
     "pyproj",
     "h3",
     "requests",
+    "psutil",
 ]
 dev-skmob = [
     "fiona",

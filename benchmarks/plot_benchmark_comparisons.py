@@ -792,14 +792,14 @@ def format_mb(value: float) -> str:
 
 def invalid_memory_metric_reason(metric_result: dict[str, Any], label: str) -> str | None:
     status = metric_result.get("status")
-    average_mb = metric_result.get("average_peak_memory_mb")
+    average_mb = metric_result.get("maximum_peak_memory_mb")
     if status not in (None, "ok"):
         reason = metric_result.get("reason")
         if reason:
             return f"{label} status={status} ({reason})"
         return f"{label} status={status}"
     if not is_valid_time(average_mb):
-        return f"{label} average_peak_memory_mb is not a positive finite number"
+        return f"{label} maximum_peak_memory_mb is not a positive finite number"
     return None
 
 
@@ -842,8 +842,8 @@ def memory_metric_rows(
         reason_lines = "; ".join(f"{m}: {r}" for m, r in missing)
         raise ValueError(f"Cannot plot incomplete benchmark result: {reason_lines}")
     for metric in metric_names:
-        orig_mb = float(original_metrics[metric]["average_peak_memory_mb"])
-        opt_mb = float(optimized_metrics[metric]["average_peak_memory_mb"])
+        orig_mb = float(original_metrics[metric]["maximum_peak_memory_mb"])
+        opt_mb = float(optimized_metrics[metric]["maximum_peak_memory_mb"])
         reduction_pct = (orig_mb - opt_mb) / orig_mb * 100.0
         rows.append({"metric": metric, "original": orig_mb, "optimized": opt_mb, "reduction_pct": reduction_pct})
     if sort_mode == "speedup":
@@ -882,7 +882,7 @@ def standalone_memory_metric_rows(
         metric_result = optimized_metrics.get(metric)
         if metric_result is None or invalid_memory_metric_reason(metric_result, "skmob2"):
             continue
-        rows.append({"metric": metric, "optimized": float(metric_result["average_peak_memory_mb"])})
+        rows.append({"metric": metric, "optimized": float(metric_result["maximum_peak_memory_mb"])})
     rows.sort(key=lambda row: row["optimized"], reverse=(sort_mode != "speedup"))
     return rows
 
@@ -1446,8 +1446,8 @@ def _memory_location_only_rows(
         opt_m = opt_metrics.get(model)
         if not orig_m or not opt_m:
             continue
-        orig_mb = orig_m.get("average_peak_memory_mb")
-        opt_mb = opt_m.get("average_peak_memory_mb")
+        orig_mb = orig_m.get("maximum_peak_memory_mb")
+        opt_mb = opt_m.get("maximum_peak_memory_mb")
         if not is_valid_time(orig_mb) or not is_valid_time(opt_mb):
             continue
         reduction_pct = (float(orig_mb) - float(opt_mb)) / float(orig_mb) * 100.0
@@ -1473,7 +1473,7 @@ def _memory_location_only_standalone_rows(
         opt_m = opt_metrics.get(model)
         if not opt_m:
             continue
-        opt_mb = opt_m.get("average_peak_memory_mb")
+        opt_mb = opt_m.get("maximum_peak_memory_mb")
         if not is_valid_time(opt_mb):
             continue
         rows.append({"metric": display_metric_name(model), "optimized": float(opt_mb)})
@@ -1494,7 +1494,7 @@ def _memory_agent_based_standalone_rows(
             opt_m = opt_metrics.get(model)
             if not opt_m:
                 continue
-            opt_mb = opt_m.get("average_peak_memory_mb")
+            opt_mb = opt_m.get("maximum_peak_memory_mb")
             if not is_valid_time(opt_mb):
                 continue
             loc_label = format_size_label(n_locs)
@@ -1524,8 +1524,8 @@ def _memory_agent_based_rows(
             opt_m = opt_metrics.get(model)
             if not orig_m or not opt_m:
                 continue
-            orig_mb = orig_m.get("average_peak_memory_mb")
-            opt_mb = opt_m.get("average_peak_memory_mb")
+            orig_mb = orig_m.get("maximum_peak_memory_mb")
+            opt_mb = opt_m.get("maximum_peak_memory_mb")
             if not is_valid_time(orig_mb) or not is_valid_time(opt_mb):
                 continue
             reduction_pct = (float(orig_mb) - float(opt_mb)) / float(orig_mb) * 100.0

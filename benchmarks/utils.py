@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import multiprocessing as mp
+import os
 import queue
 import time
-import tracemalloc
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable
+
+import psutil
+
+_BENCH_PROC = psutil.Process(os.getpid())
 
 
 def size_label(size: int) -> str:
@@ -142,25 +147,17 @@ def run_memory_call(
     iterations: int,
     sleep_seconds: float,
 ) -> dict[str, Any]:
-    print("    Warming up...")
-    call_benchmark_func(func, make_input(), kwargs)
-
-    current_memory_mb: list[float] = []
     peak_memory_mb: list[float] = []
     for i in range(iterations):
         if sleep_seconds:
             time.sleep(sleep_seconds)
-        tracemalloc.start()
-        try:
-            call_benchmark_func(func, make_input(), kwargs)
-            current_bytes, peak_bytes = tracemalloc.get_traced_memory()
-        finally:
-            tracemalloc.stop()
-        current_mb = current_bytes / (1024 * 1024)
-        peak_mb = peak_bytes / (1024 * 1024)
-        current_memory_mb.append(current_mb)
-        peak_memory_mb.append(peak_mb)
-        print(f"    Round {i + 1}: {peak_mb:.4f} MB peak")
+        gc.collect()
+        rss_before = _BENCH_PROC.memory_info().rss
+        call_benchmark_func(func, make_input(), kwargs)
+        rss_after = _BENCH_PROC.memory_info().rss
+        delta_mb = max(0.0, (rss_after - rss_before) / (1024 * 1024))
+        peak_memory_mb.append(delta_mb)
+        print(f"    Round {i + 1}: {delta_mb:.4f} MB peak")
 
     summary = summarize_memory(peak_memory_mb)
     print(f"    Average Peak Memory: {summary['average_peak_memory_mb']:.4f} MB")
@@ -169,7 +166,7 @@ def run_memory_call(
     return {
         "status": "ok",
         "peak_memory_mb": peak_memory_mb,
-        "current_memory_mb": current_memory_mb,
+        "current_memory_mb": [],
         "iterations_completed": len(peak_memory_mb),
         **summary,
     }

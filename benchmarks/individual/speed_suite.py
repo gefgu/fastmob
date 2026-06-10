@@ -247,14 +247,6 @@ SKMOB2_ONLY_INDIVIDUAL_METRICS = {
     "mean_area_volume",
 }
 
-LARGE_POLARS_MEMORY_SKIP_METRICS = {
-    "frequency_rank",
-    "diversity",
-    "trajectory_entropy",
-    "trajectory_predictability",
-    "mean_area_volume",
-}
-
 
 class SkippedMetric(Exception):
     """Raised when a metric cannot be benchmarked in the selected library."""
@@ -539,16 +531,6 @@ def benchmark_skmob2_size(
         return size_df
 
     def benchmark_spec(spec: BenchmarkSpec) -> dict[str, Any]:
-        if (
-            profile == "memory"
-            and is_polars
-            and size >= 100_000
-            and spec.name in LARGE_POLARS_MEMORY_SKIP_METRICS
-        ):
-            reason = "large Polars memory case exceeded unattended benchmark budget under tracemalloc"
-            print(f"  {spec.name}")
-            print(f"    skipped: {reason}")
-            return skipped_result(reason, profile)
         return benchmark_metric(
             spec,
             "skmob2",
@@ -728,6 +710,7 @@ def build_metadata(
         "input_cache_status": input_cache_status,
         "skmob_catalog_path": str(SKMOB_CATALOG_PATH),
         "movingpandas_catalog_path": str(MOVINGPANDAS_CATALOG_PATH),
+        **({"memory_method": "rss_delta_psutil"} if args.profile == "memory" else {}),
     }
 
 
