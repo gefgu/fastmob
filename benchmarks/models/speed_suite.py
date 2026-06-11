@@ -653,7 +653,7 @@ def build_metadata(args: argparse.Namespace) -> dict[str, Any]:
         "n_agents": args.n_agents,
         "n_locations": args.n_locations,
         "metrics": args.metrics,
-        **({"memory_method": "rss_delta_psutil"} if args.profile == "memory" else {}),
+        **({"memory_method": "memray_peak_heap"} if args.profile == "memory" else {}),
     }
 
 

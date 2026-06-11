@@ -406,7 +406,7 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
         "sleep_seconds": args.sleep_seconds,
         "sizes": args.sizes,
         "seed": args.seed,
-        **({"memory_method": "rss_delta_psutil"} if args.profile == "memory" else {}),
+        **({"memory_method": "memray_peak_heap"} if args.profile == "memory" else {}),
     }
     return {"metadata": metadata, "results": results}
 

@@ -393,7 +393,7 @@ def build_metadata(
         "input_order": args.input_order,
         "input_cache_path": None if input_cache_path is None else str(input_cache_path),
         "input_cache_status": input_cache_status,
-        **({"memory_method": "rss_delta_psutil"} if args.profile == "memory" else {}),
+        **({"memory_method": "memray_peak_heap"} if args.profile == "memory" else {}),
     }
 
 

@@ -13,10 +13,6 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-import psutil
-
-_BENCH_PROC = psutil.Process(os.getpid())
-
 
 def size_label(size: int) -> str:
     if size >= 1_000_000 and size % 1_000_000 == 0:
@@ -147,17 +143,33 @@ def run_memory_call(
     iterations: int,
     sleep_seconds: float,
 ) -> dict[str, Any]:
+    import contextlib
+    import tempfile
+
+    import memray
+
     peak_memory_mb: list[float] = []
     for i in range(iterations):
         if sleep_seconds:
             time.sleep(sleep_seconds)
         gc.collect()
-        rss_before = _BENCH_PROC.memory_info().rss
-        call_benchmark_func(func, make_input(), kwargs)
-        rss_after = _BENCH_PROC.memory_info().rss
-        delta_mb = max(0.0, (rss_after - rss_before) / (1024 * 1024))
-        peak_memory_mb.append(delta_mb)
-        print(f"    Round {i + 1}: {delta_mb:.4f} MB peak")
+        with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+            tmp_path = f.name
+        os.unlink(tmp_path)  # memray requires the destination to not exist yet
+        try:
+            with memray.Tracker(tmp_path, native_traces=False):
+                call_benchmark_func(func, make_input(), kwargs)
+            reader = memray.FileReader(tmp_path)
+            peak_bytes = sum(
+                r.size
+                for r in reader.get_high_watermark_allocation_records(merge_threads=True)
+            )
+            peak_mb = peak_bytes / (1024 * 1024)
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(tmp_path)
+        peak_memory_mb.append(peak_mb)
+        print(f"    Round {i + 1}: {peak_mb:.4f} MB peak (memray)")
 
     summary = summarize_memory(peak_memory_mb)
     print(f"    Average Peak Memory: {summary['average_peak_memory_mb']:.4f} MB")
