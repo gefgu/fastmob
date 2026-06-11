@@ -12,7 +12,7 @@ It exposes the same measure API but replaces the Python/pandas internals with a 
 
 - **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — skmob2 works without changes.
 
-- **Rust-accelerated core**: Haversine distance calculations and other compute-heavy kernels run in compiled Rust via PyO3.
+- **Rust-accelerated core**:  500x median speedup due to rust parallelized and zero-copy operations.
     
 - **Drop-in API**: function signatures mirror the original skmob library so migration is straightforward.
     

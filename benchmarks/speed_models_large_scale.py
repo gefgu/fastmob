@@ -413,6 +413,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         args.n_agents = None
     if not hasattr(args, "n_locations"):
         args.n_locations = None
+    if not hasattr(args, "metrics"):
+        args.metrics = None
     if args.output_dir is None:
         args.output_dir = get_default_output_dir()
     return args
