@@ -354,7 +354,18 @@ def _run_measure(name: str, fn, tdf: skmob.TrajDataFrame, path: Path, *, reset_i
     print(f"    {path.name}")
     try:
         result = fn(tdf)
-        df = result.reset_index() if reset_index else result.reset_index(drop=True)
+        if reset_index:
+            # skmob 1.3.1 bug: calling reset_index() on the TrajDataFrame subclass
+            # for datasets with string UIDs mangles the columns (uid and the measure
+            # column disappear).  Convert to a plain pandas DataFrame first so that
+            # MultiIndex levels become regular columns correctly.
+            plain = pd.DataFrame(result)
+            if isinstance(plain.index, pd.MultiIndex):
+                df = plain.reset_index()
+            else:
+                df = plain.reset_index(drop=True)
+        else:
+            df = result.reset_index(drop=True)
         _save(df, path)
         return True
     except Exception as exc:

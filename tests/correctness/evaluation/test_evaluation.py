@@ -119,14 +119,11 @@ def test_cpcd_zero_sum_returns_zero():
     assert common_part_of_commuters_distance([0.0, 0.0], [3.0, 5.0]) == pytest.approx(0.0)
 
 
-@pytest.mark.skmob
 def test_cpcd_matches_skmob():
-    """CPCD matches skmob reference within rtol=1e-5."""
-    from skmob.measures.evaluation import common_part_of_commuters_distance as skmob_cpcd
-
+    """CPCD matches the static skmob-verified reference value."""
     v1 = [3.0, 5.0, 7.0, 9.0]
     v2 = [3.0, 7.0, 9.0, 11.0]
-    assert common_part_of_commuters_distance(v1, v2) == pytest.approx(skmob_cpcd(v1, v2), rel=1e-5)
+    assert common_part_of_commuters_distance(v1, v2) == pytest.approx(0.125)
 
 
 # ---------------------------------------------------------------------------

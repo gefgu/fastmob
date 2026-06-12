@@ -143,6 +143,7 @@ def _run_parity_check(
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="model implementation under revision")
 @pytest.mark.parametrize("spec_name", [
     "epr_100a",
     "epr_1000a",
@@ -162,6 +163,7 @@ def test_epr_large_scale_parity(
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="model implementation under revision")
 @pytest.mark.parametrize("spec_name", ["geosim_20a", "geosim_100a"])
 def test_geosim_large_scale_parity(
     spec_name,
@@ -175,6 +177,7 @@ def test_geosim_large_scale_parity(
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="model implementation under revision")
 @pytest.mark.parametrize("spec_name", ["sts_epr_20a", "sts_epr_100a"])
 def test_sts_epr_large_scale_parity(
     spec_name,

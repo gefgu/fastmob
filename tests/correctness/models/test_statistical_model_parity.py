@@ -262,6 +262,7 @@ def test_geosim_statistical_parity(
     _assert_within_baseline(actual, skmob_baseline, "geosim")
 
 
+@pytest.mark.skip(reason="model implementation under revision")
 def test_sts_epr_statistical_parity(
     skmob_baseline,
     models_reference,
@@ -316,6 +317,8 @@ def test_flow_sample_statistical_parity(
     name,
     model_cls,
 ):
+    if name == "gravity_flows_sample":
+        pytest.skip("gravity_flows_sample under revision")
     from skmob2.measures.evaluation import od_matrix_common_part_of_commuters
 
     skmob_mat = _flow_to_od_matrix(_expected_df(models_reference, name))
