@@ -220,6 +220,30 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         input_kind="visits",
     ),
     BenchmarkSpec(
+        "visit_purpose_distribution",
+        "skmob2.measures.individual.activity",
+        "skmob.measures.individual",
+        "visit_purpose_distribution",
+        {},
+        input_kind="visits",
+    ),
+    BenchmarkSpec(
+        "activity_transition_matrix",
+        "skmob2.measures.individual.activity",
+        "skmob.measures.individual",
+        "activity_transition_matrix",
+        {},
+        input_kind="visits",
+    ),
+    BenchmarkSpec(
+        "daily_activity_distribution",
+        "skmob2.measures.individual.activity",
+        "skmob.measures.individual",
+        "daily_activity_distribution",
+        {},
+        input_kind="visits",
+    ),
+    BenchmarkSpec(
         "mean_area_volume",
         "skmob2.measures.individual.mean_area_volume",
         "skmob.measures.individual",
@@ -523,7 +547,6 @@ def benchmark_skmob2_size(
 ) -> dict[str, Any]:
     size_df = df.head(size)
     print(f"\nSize {size_label(size)} ({len(size_df)} rows)")
-    is_polars = size_df.__class__.__module__.startswith("polars")
 
     def make_input_for_spec(spec: BenchmarkSpec) -> Any:
         if spec.input_kind == "visits":
@@ -570,6 +593,8 @@ def make_visit_input(df: Any) -> Any:
     visits["datetime"] = visits["start_timestamp"]
     visits["end_timestamp"] = visits["start_timestamp"] + pd.Timedelta(minutes=30)
     visits["area"] = visits["location_id"].astype(str)
+    purpose_codes = pd.factorize(visits["location_id"], sort=False)[0] % 8
+    visits["purpose"] = [f"ACTIVITY_{code}" for code in purpose_codes]
     visits = visits.sort_values(
         ["user_id", "start_timestamp"], kind="mergesort"
     ).reset_index(drop=True)

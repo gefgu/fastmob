@@ -3,19 +3,29 @@
 from __future__ import annotations
 
 import warnings
-from collections import Counter
 from typing import Any
 
 import narwhals as nw
 import numpy as np
 import pandas as pd
+from skmob2._core import (
+    activity_counts_arrow,
+    activity_counts_numpy,
+    activity_transition_counts_arrow,
+    activity_transition_counts_numpy,
+    daily_activity_percentages_arrow,
+    daily_activity_percentages_numpy,
+)
 
 from .._common import (
     ACTIVITY_CANDIDATES,
     DAY_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
+    _arrow_result_values,
+    _build_indexed_user_ranges_fast,
     _pick_existing_column,
+    _use_arrow_kernel_path,
 )
 
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday"}
@@ -90,6 +100,25 @@ def _resolve_end_column(columns: list[str], end_time_col: str | None) -> str | N
     return _pick_existing_column(columns, _END_TIMESTAMP_CANDIDATES)
 
 
+def _factorize_activities(df: nw.DataFrame, activity_col: str) -> tuple[list[Any], nw.Series]:
+    values = df.get_column(activity_col).to_list()
+    categories = sorted(set(values), key=lambda value: str(value))
+    category_idx = {category: index for index, category in enumerate(categories)}
+    codes = np.fromiter((category_idx[value] for value in values), dtype=np.uint64, count=len(values))
+    return categories, nw.new_series("__skmob2_activity_codes__", codes, dtype=nw.UInt64, backend=df.implementation)
+
+
+def _kernel_result(values: Any) -> np.ndarray:
+    return np.asarray(_arrow_result_values(values) if hasattr(values, "to_pyarrow") else values)
+
+
+def _activity_counts(df: nw.DataFrame, codes: nw.Series, n_activities: int) -> np.ndarray:
+    if _use_arrow_kernel_path(df):
+        return _kernel_result(activity_counts_arrow(codes.to_arrow(), n_activities)).astype(np.uint64, copy=False)
+    data = np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64)
+    return np.asarray(activity_counts_numpy(data, n_activities), dtype=np.uint64)
+
+
 def visit_purpose_distribution(
     visits: Any,
     activity_col: str | None = None,
@@ -127,15 +156,17 @@ def visit_purpose_distribution(
     df = _apply_day_filter(df, day_col, day_filter)
     df, resolved_activity_col = _with_activity_fallback(df, activity_col, unknown_label)
 
-    values = df.get_column(resolved_activity_col).to_list()
-    counts = Counter(values)
-    labels = sorted(counts, key=lambda label: (-counts[label], str(label)))
-    total = sum(counts.values())
-    percentages = [(counts[label] / total) * 100.0 if normalize and total else float(counts[label]) for label in labels]
+    categories, codes = _factorize_activities(df, resolved_activity_col)
+    category_counts = _activity_counts(df, codes, len(categories))
+    order = sorted(range(len(categories)), key=lambda index: (-int(category_counts[index]), str(categories[index])))
+    labels = [categories[index] for index in order]
+    counts = [int(category_counts[index]) for index in order]
+    total = sum(counts)
+    percentages = [(count / total) * 100.0 if normalize and total else float(count) for count in counts]
 
     output = {
         "activity": labels,
-        "count": [counts[label] for label in labels],
+        "count": counts,
         "percentage": percentages,
     }
     if is_pandas_input:
@@ -183,47 +214,35 @@ def daily_activity_distribution(
     df = _apply_day_filter(df, day_col, day_filter)
     df, resolved_activity_col = _with_activity_fallback(df, activity_col, unknown_label)
 
-    categories = sorted(df.get_column(resolved_activity_col).unique().to_list(), key=lambda value: str(value))
+    categories, codes = _factorize_activities(df, resolved_activity_col)
     n_bins = 1440 // bin_size_minutes
-    activity_matrix = np.full((len(categories), n_bins), np.nan)
-    category_idx = {category: idx for idx, category in enumerate(categories)}
+    starts = pd.to_datetime(df.get_column(start_time_col).to_list(), errors="coerce")
+    valid_rows = np.asarray(~pd.isna(starts), dtype=bool)
+    start_minutes = np.where(valid_rows, starts.hour * 60 + starts.minute, 0).astype(np.int64)
+    if end_time_col and end_time_col in df.columns:
+        ends = pd.to_datetime(df.get_column(end_time_col).to_list(), errors="coerce")
+        end_valid = np.asarray(~pd.isna(ends), dtype=bool)
+        end_minutes = np.where(end_valid, ends.hour * 60 + ends.minute, 1439).astype(np.int64)
+    else:
+        end_minutes = np.full(len(df), 1439, dtype=np.int64)
 
-    starts = df.get_column(start_time_col).to_list()
-    ends = df.get_column(end_time_col).to_list() if end_time_col and end_time_col in df.columns else [None] * len(df)
-    activities = df.get_column(resolved_activity_col).to_list()
-
-    for activity, start_value, end_value in zip(activities, starts, ends):
-        if pd.isna(start_value):
-            continue
-
-        start = pd.to_datetime(start_value)
-        if end_value is None or pd.isna(end_value):
-            end = start.replace(hour=23, minute=59, second=59)
-        else:
-            end = pd.to_datetime(end_value)
-
-        row_idx = category_idx[activity]
-        start_min = start.hour * 60 + start.minute
-        end_min = end.hour * 60 + end.minute
-
-        ranges = []
-        if end_min < start_min:
-            ranges.append((start_min // bin_size_minutes, n_bins - 1))
-            ranges.append((0, min(end_min // bin_size_minutes, n_bins - 1)))
-        else:
-            ranges.append((start_min // bin_size_minutes, min(end_min // bin_size_minutes, n_bins - 1)))
-
-        for start_bin, end_bin in ranges:
-            for bin_idx in range(start_bin, end_bin + 1):
-                activity_matrix[row_idx, bin_idx] = (
-                    1 if np.isnan(activity_matrix[row_idx, bin_idx]) else activity_matrix[row_idx, bin_idx] + 1
-                )
-
-    col_sums = np.nansum(activity_matrix, axis=0)
-    activity_matrix_pct = np.full_like(activity_matrix, np.nan, dtype=float)
-    for col in range(n_bins):
-        if col_sums[col] > 0:
-            activity_matrix_pct[:, col] = (activity_matrix[:, col] / col_sums[col]) * 100.0
+    if _use_arrow_kernel_path(df):
+        start_series = nw.new_series("start_minutes", start_minutes, dtype=nw.Int64, backend=df.implementation)
+        end_series = nw.new_series("end_minutes", end_minutes, dtype=nw.Int64, backend=df.implementation)
+        valid_series = nw.new_series("valid_rows", valid_rows, dtype=nw.Boolean, backend=df.implementation)
+        flat = _kernel_result(
+            daily_activity_percentages_arrow(
+                codes.to_arrow(), start_series.to_arrow(), end_series.to_arrow(), valid_series.to_arrow(),
+                len(categories), bin_size_minutes,
+            )
+        )
+    else:
+        flat = daily_activity_percentages_numpy(
+            np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64),
+            np.ascontiguousarray(start_minutes), np.ascontiguousarray(end_minutes),
+            np.ascontiguousarray(valid_rows), len(categories), bin_size_minutes,
+        )
+    activity_matrix_pct = np.asarray(flat, dtype=float).reshape(len(categories), n_bins)
 
     return activity_matrix_pct, categories, n_bins
 
@@ -346,25 +365,18 @@ def activity_transition_matrix(
             return pd.DataFrame()
         return nw.from_dict({"activity": []}, backend=nw_df.implementation).to_native()
 
-    activities = sorted(df.get_column(activity_col).unique().to_list())
+    activities, codes = _factorize_activities(df, activity_col)
     n_activities = len(activities)
-    act_idx = {a: i for i, a in enumerate(activities)}
-
-    transition_matrix = np.zeros((n_activities, n_activities))
-
-    if user_id_col:
-        uid_values = df.get_column(user_id_col).to_list()
-        act_values = df.get_column(activity_col).to_list()
-        start = 0
-        while start < len(act_values):
-            end = start + 1
-            while end < len(act_values) and uid_values[end] == uid_values[start]:
-                end += 1
-            _count_transition_values(act_values[start:end], act_idx, transition_matrix)
-            start = end
+    _, indices, ends = _build_indexed_user_ranges_fast(df, user_id_col)
+    if _use_arrow_kernel_path(df):
+        flat_counts = _kernel_result(
+            activity_transition_counts_arrow(codes.to_arrow(), indices, ends, n_activities)
+        )
     else:
-        _count_transition_values(df.get_column(activity_col).to_list(), act_idx, transition_matrix)
-
+        flat_counts = activity_transition_counts_numpy(
+            np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64), indices, ends, n_activities
+        )
+    transition_matrix = np.asarray(flat_counts, dtype=float).reshape(n_activities, n_activities)
     total = transition_matrix.sum()
     if total > 0:
         transition_matrix = (transition_matrix / total) * 100.0
@@ -376,9 +388,3 @@ def activity_transition_matrix(
     for idx, activity in enumerate(activities):
         output[str(activity)] = transition_matrix[:, idx].tolist()
     return nw.from_dict(output, backend=nw_df.implementation).to_native()
-
-
-def _count_transition_values(acts: list[Any], act_idx: dict, matrix: np.ndarray) -> None:
-    """Accumulate transition counts from one already-sorted activity sequence."""
-    for i in range(len(acts) - 1):
-        matrix[act_idx[acts[i]], act_idx[acts[i + 1]]] += 1
