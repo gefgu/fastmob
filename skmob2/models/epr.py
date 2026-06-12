@@ -913,16 +913,19 @@ class Ditras(EPR):
 
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
-        total_h = (end_ts - start_ts) // 3600
+        slots_per_day = getattr(self._diary_generator, "_slots_per_day", 24)
+        slot_seconds = 86400 // slots_per_day
+        total_slots = (end_ts - start_ts) // slot_seconds
 
         # Batch-generate diaries — pass None if unfitted; Rust builds home-only CDF fallback
         diary_seed = int(random_state) if random_state is not None else int(np.random.randint(0, 2**31))
         flat_ts, flat_locs, d_starts, d_ends = _core.markov_diary_batch_generate(
             self._diary_generator._cdf_matrix_flat,
-            total_h,
+            total_slots,
             start_ts,
             n_agents,
             diary_seed,
+            slots_per_day,
         )
         diary_timestamps = np.asarray(flat_ts, dtype=np.int64)
         diary_abs_locs = np.asarray(flat_locs, dtype=np.int32)
@@ -944,6 +947,10 @@ class Ditras(EPR):
             diary_abs_locs,
             diary_starts_arr,
             diary_ends_arr,
+            self.gravity_singly.deterrence_func_type,
+            float(self.gravity_singly.deterrence_func_args[0]),
+            float(self.gravity_singly.origin_exp),
+            float(self.gravity_singly.destination_exp),
             float(self._rho),
             float(self._gamma),
             start_ts,

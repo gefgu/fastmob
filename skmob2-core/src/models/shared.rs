@@ -10,7 +10,7 @@ pub(crate) fn sample_tpl_rng(rng: &mut impl Rng, xmin: f64, alpha: f64, lambda_:
     }
 }
 
-pub(crate) fn cdf_choice(rng: &mut impl Rng, cdf: &[f64]) -> usize {
+pub fn cdf_choice(rng: &mut impl Rng, cdf: &[f64]) -> usize {
     let n = cdf.len();
     if n == 0 {
         return 0;
@@ -24,7 +24,7 @@ pub(crate) fn cdf_choice(rng: &mut impl Rng, cdf: &[f64]) -> usize {
         .min(n - 1)
 }
 
-pub(crate) fn weighted_choice_excluding(
+pub fn weighted_choice_excluding(
     rng: &mut impl Rng,
     visited_locs: &[usize],
     visit_counts: &[u32],
@@ -52,7 +52,7 @@ pub(crate) fn weighted_choice_excluding(
 }
 
 #[inline(always)]
-pub(crate) fn derive_agent_seed(master_seed: u64, agent: usize, stream: u64) -> u64 {
+pub fn derive_agent_seed(master_seed: u64, agent: usize, stream: u64) -> u64 {
     let mut value = master_seed
         ^ ((agent as u64).wrapping_add(1)).wrapping_mul(0x9E37_79B9_7F4A_7C15)
         ^ stream.wrapping_mul(0xBF58_476D_1CE4_E5B9);

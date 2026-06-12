@@ -34,6 +34,10 @@ class MarkovDiaryGenerator:
     ----------
     name : str, optional
         Human-readable label for this instance. The default is ``"Markov diary"``.
+    granularity_minutes : int, optional
+        Temporal resolution of a diary slot, in minutes. Must be a positive
+        divisor of 1440. The default is ``60`` (hourly, 24 slots/day);
+        ``15`` gives 96 slots/day and ``5`` gives 288 slots/day.
 
     Attributes
     ----------
@@ -72,9 +76,14 @@ class MarkovDiaryGenerator:
     Ditras, STS_epr
     """
 
-    def __init__(self, name="Markov diary"):
+    def __init__(self, name="Markov diary", granularity_minutes=60):
+        if granularity_minutes <= 0 or 1440 % granularity_minutes != 0:
+            raise ValueError("granularity_minutes must be a positive divisor of 1440")
         self._cdf_matrix_flat: np.ndarray | None = None
         self._name = name
+        self._granularity_minutes = int(granularity_minutes)
+        self._slots_per_day = 1440 // int(granularity_minutes)
+        self._time_slot_length = f"{int(granularity_minutes)}min"
 
     @property
     def name(self):
@@ -156,6 +165,7 @@ class MarkovDiaryGenerator:
             timestamps_ns,
             np.ascontiguousarray(loc_codes, dtype=np.int64),
             int(n_individuals),
+            self._slots_per_day,
         )
 
     def generate(self, diary_length, start_date, random_state=None):
@@ -168,7 +178,9 @@ class MarkovDiaryGenerator:
         Parameters
         ----------
         diary_length : int
-            Length of the diary in hours.
+            Length of the diary in time slots (equal to hours when
+            ``granularity_minutes=60``; e.g. 96 slots = one day at 15-min
+            granularity).
         start_date : pandas.Timestamp or datetime
             Starting timestamp for the diary.
         random_state : int or None, optional
@@ -189,18 +201,12 @@ class MarkovDiaryGenerator:
         If :meth:`fit` has not been called, a trivial diary is generated where the
         agent stays at home (``abstract_location == 0``) for the entire period.
         """
-        if self._cdf_matrix_flat is None:
-            # unfitted — build identity-like CDF (always advance 1 hour, stay home)
-            probs = np.zeros(_N_STATES * _N_STATES, dtype=np.float64)
-            for h in range(24):
-                next_h = (h + 1) % 24
-                probs[(h * 2 + 1) * _N_STATES + (next_h * 2 + 1)] = 1.0
-            self._cdf_matrix_flat = _core.markov_diary_build_cdf(probs)
-
+        # When unfitted, pass cdf_matrix=None so the Rust core builds a home-only
+        # CDF sized for this generator's granularity (agent stays home all day).
         seed = int(random_state) if random_state is not None else int(np.random.randint(0, 2**31))
         start_ts = int(start_date.timestamp())
         ts_arr, locs_arr, starts, ends = _core.markov_diary_batch_generate(
-            self._cdf_matrix_flat, diary_length, start_ts, 1, seed
+            self._cdf_matrix_flat, diary_length, start_ts, 1, seed, self._slots_per_day
         )
         timestamps = [
             datetime.datetime.fromtimestamp(t, tz=datetime.timezone.utc).replace(tzinfo=None)
