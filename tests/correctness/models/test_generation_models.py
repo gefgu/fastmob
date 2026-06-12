@@ -239,6 +239,40 @@ def test_markov_diary_generator_fit_and_generate():
     assert diary["datetime"].is_monotonic_increasing
 
 
+def test_markov_diary_generator_fit_matches_legacy_python_preparation():
+    from skmob2 import _core
+
+    traj = pd.DataFrame(
+        {
+            "uid": [10, 10, 10, 10, 20, 20, 20, 20],
+            "datetime": pd.to_datetime(
+                [
+                    "2020-01-01 00:00:00",
+                    "2020-01-01 01:00:00",
+                    "2020-01-01 03:00:00",
+                    "2020-01-01 04:00:00",
+                    "2020-01-02 05:00:00",
+                    "2020-01-02 05:30:00",
+                    "2020-01-02 06:00:00",
+                    "2020-01-02 07:00:00",
+                ]
+            ),
+            "cluster": ["a", "b", "b", "a", "home", "home", "work", "home"],
+        }
+    )
+
+    legacy_counts = np.zeros(48 * 48, dtype=np.float64)
+    for uid in traj["uid"].unique()[:2]:
+        values, shift = MarkovDiaryGenerator._create_time_series(traj[traj["uid"] == uid], lid="cluster")
+        legacy_counts = _core.markov_diary_update_chain(values, shift, legacy_counts)
+    legacy_cdf = _core.markov_diary_build_cdf(_core.markov_diary_normalize(legacy_counts))
+
+    mdg = MarkovDiaryGenerator()
+    mdg.fit(traj, 2, lid="cluster")
+
+    np.testing.assert_allclose(mdg._cdf_matrix_flat, legacy_cdf)
+
+
 @pytest.mark.parametrize("model_cls", [EPR, DensityEPR, SpatialEPR])
 def test_epr_family_generates_trajectory(model_cls):
     pytest.importorskip("powerlaw")

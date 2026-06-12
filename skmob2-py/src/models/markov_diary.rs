@@ -2,8 +2,9 @@ use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use skmob2_core::models::markov_diary::{
-    markov_diary_batch_generate_impl, markov_diary_build_cdf_impl, markov_diary_generate_impl,
-    markov_diary_normalize_impl, markov_diary_update_chain_impl,
+    markov_diary_batch_generate_impl, markov_diary_build_cdf_impl,
+    markov_diary_fit_from_arrays_impl, markov_diary_generate_impl, markov_diary_normalize_impl,
+    markov_diary_update_chain_impl,
 };
 
 #[pyfunction]
@@ -36,6 +37,24 @@ pub fn markov_diary_build_cdf<'py>(
 ) -> Bound<'py, PyArray1<f64>> {
     let cdf = markov_diary_build_cdf_impl(probs.as_slice().unwrap_or(&[]));
     cdf.into_pyarray(py)
+}
+
+#[pyfunction]
+pub fn markov_diary_fit_from_arrays<'py>(
+    py: Python<'py>,
+    uids: PyReadonlyArray1<'py, i64>,
+    timestamps_ns: PyReadonlyArray1<'py, i64>,
+    loc_codes: PyReadonlyArray1<'py, i64>,
+    n_individuals: usize,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    let cdf = markov_diary_fit_from_arrays_impl(
+        uids.as_slice()?,
+        timestamps_ns.as_slice()?,
+        loc_codes.as_slice()?,
+        n_individuals,
+    )
+    .map_err(PyValueError::new_err)?;
+    Ok(cdf.into_pyarray(py))
 }
 
 #[pyfunction]

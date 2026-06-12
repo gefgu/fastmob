@@ -1,11 +1,13 @@
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 
 use crate::models::shared::{cdf_choice, derive_agent_seed};
 
 const N_STATES: usize = 48; // 24 hours × 2 typicality values
 const N_MATRIX: usize = N_STATES * N_STATES;
+const HOUR_NS: i64 = 3_600_000_000_000;
 
 // State encoding: state_idx = hour * 2 + typicality
 // typicality: 0 = non-typical (other), 1 = typical (home)
@@ -124,6 +126,215 @@ pub fn markov_diary_build_cdf_impl(probs: &[f64]) -> Vec<f64> {
         }
     }
     cdf
+}
+
+fn validate_fit_inputs(
+    uids: &[i64],
+    timestamps_ns: &[i64],
+    loc_codes: &[i64],
+) -> Result<(), String> {
+    if uids.len() != timestamps_ns.len() || uids.len() != loc_codes.len() {
+        return Err("uids, timestamps_ns, and loc_codes must have the same length".to_string());
+    }
+    if uids.iter().any(|&uid| uid < 0) {
+        return Err("uids must contain non-negative factorized codes".to_string());
+    }
+    if loc_codes.iter().any(|&loc| loc < 0) {
+        return Err("loc_codes must contain non-negative factorized codes".to_string());
+    }
+    Ok(())
+}
+
+fn floor_hour(ns: i64) -> i64 {
+    ns.div_euclid(HOUR_NS)
+}
+
+fn location_ranks(
+    rows: &[usize],
+    loc_codes: &[i64],
+) -> (
+    FxHashMap<i64, usize>,
+    FxHashMap<i64, usize>,
+    FxHashMap<i64, usize>,
+) {
+    let mut freq: FxHashMap<i64, usize> = FxHashMap::default();
+    let mut first_seen: FxHashMap<i64, usize> = FxHashMap::default();
+    for (pos, &row) in rows.iter().enumerate() {
+        let loc = loc_codes[row];
+        *freq.entry(loc).or_insert(0) += 1;
+        first_seen.entry(loc).or_insert(pos);
+    }
+
+    let mut locs: Vec<i64> = freq.keys().copied().collect();
+    locs.sort_by(|a, b| {
+        freq[b]
+            .cmp(&freq[a])
+            .then_with(|| first_seen[a].cmp(&first_seen[b]))
+            .then_with(|| a.cmp(b))
+    });
+
+    let ranks = locs
+        .into_iter()
+        .enumerate()
+        .map(|(idx, loc)| (loc, idx + 1))
+        .collect();
+    (ranks, freq, first_seen)
+}
+
+fn best_locations_by_hour(
+    rows: &[usize],
+    timestamps_ns: &[i64],
+    loc_codes: &[i64],
+    freq: &FxHashMap<i64, usize>,
+    first_seen: &FxHashMap<i64, usize>,
+) -> FxHashMap<i64, i64> {
+    let mut counts_by_hour: FxHashMap<i64, FxHashMap<i64, usize>> = FxHashMap::default();
+    for &row in rows {
+        let hour = floor_hour(timestamps_ns[row]);
+        let loc = loc_codes[row];
+        let loc_counts = counts_by_hour.entry(hour).or_default();
+        *loc_counts.entry(loc).or_insert(0) += 1;
+    }
+
+    let mut best_by_hour: FxHashMap<i64, i64> = FxHashMap::default();
+    for (hour, loc_counts) in counts_by_hour {
+        let mut best_loc: Option<i64> = None;
+        let mut best_count = 0usize;
+        let mut best_freq = 0usize;
+        let mut best_first_seen = usize::MAX;
+        for (loc, count) in loc_counts {
+            let global_freq = freq[&loc];
+            let first = first_seen[&loc];
+            let better = count > best_count
+                || (count == best_count
+                    && (global_freq > best_freq
+                        || (global_freq == best_freq
+                            && (first < best_first_seen
+                                || (first == best_first_seen
+                                    && best_loc.is_none_or(|current| loc < current))))));
+            if better {
+                best_loc = Some(loc);
+                best_count = count;
+                best_freq = global_freq;
+                best_first_seen = first;
+            }
+        }
+        if let Some(loc) = best_loc {
+            best_by_hour.insert(hour, loc);
+        }
+    }
+    best_by_hour
+}
+
+fn create_time_series_for_rows(
+    timestamps_ns: &[i64],
+    loc_codes: &[i64],
+    rows: &[usize],
+) -> Result<Option<(Vec<usize>, usize)>, String> {
+    if rows.is_empty() {
+        return Ok(None);
+    }
+
+    let min_hour = rows
+        .iter()
+        .map(|&row| floor_hour(timestamps_ns[row]))
+        .min()
+        .ok_or_else(|| "cannot create a time series for an empty user".to_string())?;
+    let max_hour = rows
+        .iter()
+        .map(|&row| floor_hour(timestamps_ns[row]))
+        .max()
+        .ok_or_else(|| "cannot create a time series for an empty user".to_string())?;
+    let len_i64 = max_hour - min_hour + 1;
+    let len = usize::try_from(len_i64).map_err(|_| "time series is too long".to_string())?;
+    let shift = min_hour.rem_euclid(24) as usize;
+
+    let (ranks, freq, first_seen) = location_ranks(rows, loc_codes);
+    let best_by_hour = best_locations_by_hour(rows, timestamps_ns, loc_codes, &freq, &first_seen);
+    let mut hourly_locs: Vec<Option<i64>> = vec![None; len];
+    for (hour, loc) in best_by_hour {
+        let idx = usize::try_from(hour - min_hour)
+            .map_err(|_| "hour index is out of bounds".to_string())?;
+        hourly_locs[idx] = Some(loc);
+    }
+
+    let mut last = None;
+    for loc in &mut hourly_locs {
+        if loc.is_some() {
+            last = *loc;
+        } else {
+            *loc = last;
+        }
+    }
+    if hourly_locs.first().is_some_and(Option::is_none) {
+        if let Some(first_loc) = hourly_locs.iter().copied().flatten().next() {
+            for loc in hourly_locs.iter_mut().take_while(|loc| loc.is_none()) {
+                *loc = Some(first_loc);
+            }
+        }
+    }
+
+    let values = hourly_locs
+        .into_iter()
+        .map(|loc| loc.and_then(|code| ranks.get(&code).copied()).unwrap_or(0))
+        .collect();
+    Ok(Some((values, shift)))
+}
+
+pub fn markov_diary_fit_from_arrays_impl(
+    uids: &[i64],
+    timestamps_ns: &[i64],
+    loc_codes: &[i64],
+    n_individuals: usize,
+) -> Result<Vec<f64>, String> {
+    validate_fit_inputs(uids, timestamps_ns, loc_codes)?;
+    if n_individuals == 0 || uids.is_empty() {
+        return Ok(markov_diary_build_cdf_impl(&vec![0.0; N_MATRIX]));
+    }
+
+    let selected_users = uids
+        .iter()
+        .copied()
+        .filter(|&uid| uid >= 0)
+        .max()
+        .map(|max_uid| n_individuals.min(max_uid as usize + 1))
+        .unwrap_or(0);
+    if selected_users == 0 {
+        return Ok(markov_diary_build_cdf_impl(&vec![0.0; N_MATRIX]));
+    }
+
+    let mut rows_by_user: Vec<Vec<usize>> = (0..selected_users).map(|_| Vec::new()).collect();
+    for (row, &uid) in uids.iter().enumerate() {
+        let user = uid as usize;
+        if user < selected_users {
+            rows_by_user[user].push(row);
+        }
+    }
+
+    let counts = rows_by_user
+        .par_iter()
+        .map(|rows| -> Result<Vec<f64>, String> {
+            let mut local_counts = vec![0.0_f64; N_MATRIX];
+            if let Some((values, shift)) =
+                create_time_series_for_rows(timestamps_ns, loc_codes, rows)?
+            {
+                markov_diary_update_chain_impl(&values, shift, &mut local_counts)?;
+            }
+            Ok(local_counts)
+        })
+        .try_reduce(
+            || vec![0.0_f64; N_MATRIX],
+            |mut acc, local| {
+                for (target, value) in acc.iter_mut().zip(local) {
+                    *target += value;
+                }
+                Ok(acc)
+            },
+        )?;
+
+    let mut probs = counts;
+    markov_diary_normalize_impl(&mut probs);
+    Ok(markov_diary_build_cdf_impl(&probs))
 }
 
 /// Generate one diary from the CDF matrix.
@@ -275,4 +486,84 @@ pub fn markov_diary_batch_generate_impl(
     }
 
     (flat_ts, flat_locs, starts, ends)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ns(hours: i64) -> i64 {
+        hours * HOUR_NS
+    }
+
+    #[test]
+    fn create_time_series_ranks_locations_by_frequency_then_first_seen() {
+        let timestamps = vec![ns(0), ns(1), ns(2), ns(3)];
+        let locs = vec![7, 9, 9, 7];
+        let rows = vec![0, 1, 2, 3];
+
+        let (values, shift) = create_time_series_for_rows(&timestamps, &locs, &rows)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(shift, 0);
+        assert_eq!(values, vec![1, 2, 2, 1]);
+    }
+
+    #[test]
+    fn create_time_series_forward_fills_missing_hourly_bins() {
+        let timestamps = vec![ns(0), ns(2)];
+        let locs = vec![3, 4];
+        let rows = vec![0, 1];
+
+        let (values, shift) = create_time_series_for_rows(&timestamps, &locs, &rows)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(shift, 0);
+        assert_eq!(values, vec![1, 1, 2]);
+    }
+
+    #[test]
+    fn create_time_series_chooses_bin_location_by_count_then_global_frequency() {
+        let timestamps = vec![ns(0), ns(0), ns(1)];
+        let locs = vec![2, 1, 1];
+        let rows = vec![0, 1, 2];
+
+        let (values, shift) = create_time_series_for_rows(&timestamps, &locs, &rows)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(shift, 0);
+        assert_eq!(values, vec![1, 1]);
+    }
+
+    #[test]
+    fn create_time_series_uses_first_seen_as_final_bin_tiebreaker() {
+        let timestamps = vec![ns(0), ns(0)];
+        let locs = vec![20, 10];
+        let rows = vec![0, 1];
+
+        let (values, shift) = create_time_series_for_rows(&timestamps, &locs, &rows)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(shift, 0);
+        assert_eq!(values, vec![1]);
+    }
+
+    #[test]
+    fn fit_from_arrays_limits_users_by_first_seen_factorized_order() {
+        let uids = vec![0, 0, 1, 1];
+        let timestamps = vec![ns(0), ns(1), ns(0), ns(1)];
+        let locs = vec![1, 1, 1, 2];
+
+        let cdf = markov_diary_fit_from_arrays_impl(&uids, &timestamps, &locs, 1).unwrap();
+        let row_start = state_idx(0, 1) * N_STATES;
+        let home_to_hour_one_home = row_start + state_idx(1, 1);
+        let home_to_hour_one_away = row_start + state_idx(1, 0);
+
+        assert_eq!(cdf[home_to_hour_one_away], 0.0);
+        assert_eq!(cdf[home_to_hour_one_home], 1.0);
+    }
 }

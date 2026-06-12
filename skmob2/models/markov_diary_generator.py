@@ -133,15 +133,30 @@ class MarkovDiaryGenerator:
         Modifies the internal Markov chain in-place. Call before passing this
         instance to :class:`Ditras` or :class:`STS_epr`.
         """
+        if n_individuals < 0:
+            raise ValueError("n_individuals must be greater than or equal to zero")
+
         traj = to_pandas_frame(traj)
-        counts = np.zeros(_N_STATES * _N_STATES, dtype=np.float64)
-        individuals = traj[UID].unique()
-        for individual in individuals[:n_individuals]:
-            ind_df = traj[traj[UID] == individual]
-            values, shift = self._create_time_series(ind_df, lid=lid)
-            counts = _core.markov_diary_update_chain(values, shift, counts)
-        probs = _core.markov_diary_normalize(counts)
-        self._cdf_matrix_flat = _core.markov_diary_build_cdf(probs)
+        missing = [column for column in (UID, DATETIME, lid) if column not in traj.columns]
+        if missing:
+            raise ValueError(f"trajectory is missing required columns: {missing}")
+
+        uid_codes, _ = pd.factorize(traj[UID], sort=False)
+        if np.any(uid_codes < 0):
+            raise ValueError(f"trajectory column {UID!r} must not contain null values")
+
+        dt_series = pd.to_datetime(traj[DATETIME])
+        if dt_series.isna().any():
+            raise ValueError(f"trajectory column {DATETIME!r} must not contain null values")
+        timestamps_ns = np.ascontiguousarray(dt_series.to_numpy(dtype="datetime64[ns]").astype(np.int64), dtype=np.int64)
+
+        loc_codes, _ = pd.factorize(traj[lid].astype("str"), sort=False)
+        self._cdf_matrix_flat = _core.markov_diary_fit_from_arrays(
+            np.ascontiguousarray(uid_codes, dtype=np.int64),
+            timestamps_ns,
+            np.ascontiguousarray(loc_codes, dtype=np.int64),
+            int(n_individuals),
+        )
 
     def generate(self, diary_length, start_date, random_state=None):
         """Generate a synthetic mobility diary.

@@ -451,6 +451,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_fit_from_arrays,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         models::markov_diary::markov_diary_batch_generate,
         m
     )?)?;
