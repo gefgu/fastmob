@@ -63,9 +63,12 @@ The numbers are environment-specific, so they should be read as benchmark eviden
 
 ## Models
 
-#### Models - Speed
+#### Models Agents - Speed
 ![Simple models speed benchmark](../assets/benchmarks/model_agent_based_100_agents.png)
 
+
+#### Models Agents - Speed (No rust core yet...)
+![Simple models speed benchmark](../assets/benchmarks/model_location_only_10k_locations.png)
 
 
 ## Privacy

@@ -6,7 +6,7 @@
 
 **skmob2** is a high-performance reimplementation of the [skmob](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library.
 
-It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/) so any eager dataframe (pandas, polars, …) is accepted as input.
+It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/narwhals/) so any eager dataframe (pandas, polars, …) is accepted as input.
 
 # Key Features
 
@@ -19,6 +19,8 @@ It exposes the same measure API but replaces the Python/pandas internals with a 
 - **Measured validation**: correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
 
 - **Zero-Copy**: Scikit-Mobility 2 process the data where it lives. Instead of copying, it directly access your dataframe in the memory, saving memory and making the processing faster.
+
+- **Lightweight**: Python Wheels ship with less than 30KB. 
 
 
 ## Installation

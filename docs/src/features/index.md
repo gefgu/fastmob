@@ -9,3 +9,5 @@
 - **Measured validation**: correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
 
 - **Zero-Copy**: Scikit-Mobility 2 process the data where it lives. Instead of copying, it directly access your dataframe in the memory, saving memory and making the processing faster.
+
+- **Lightweight**: Python Wheels ship with less than 30KB. 

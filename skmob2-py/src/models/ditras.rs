@@ -8,6 +8,7 @@ use skmob2_core::models::ditras::simulate_ditras_agents_impl;
 #[pyo3(signature = (
     latitudes, longitudes, relevances,
     diary_timestamps, diary_abs_locs, diary_starts, diary_ends,
+    deterrence_type, deterrence_arg, origin_exp, destination_exp,
     rho, gamma, start_ts, end_ts,
     n_agents, master_seed=None, starting_locs=None
 ))]
@@ -20,6 +21,10 @@ pub fn model_ditras_simulate_agents<'py>(
     diary_abs_locs: PyReadonlyArray1<'py, i32>,
     diary_starts: PyReadonlyArray1<'py, i64>,
     diary_ends: PyReadonlyArray1<'py, i64>,
+    deterrence_type: &str,
+    deterrence_arg: f64,
+    origin_exp: f64,
+    destination_exp: f64,
     rho: f64,
     gamma: f64,
     start_ts: i64,
@@ -61,6 +66,10 @@ pub fn model_ditras_simulate_agents<'py>(
         da_raw,
         &ds,
         &de,
+        deterrence_type,
+        deterrence_arg,
+        origin_exp,
+        destination_exp,
         rho,
         gamma,
         start_ts,

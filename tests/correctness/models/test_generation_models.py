@@ -43,6 +43,21 @@ def _native_frame(df):
     return df.df if hasattr(df, "df") else df
 
 
+def _always_away_diary_generator() -> MarkovDiaryGenerator:
+    from skmob2 import _core
+
+    n_states = 48
+    probs = np.zeros(n_states * n_states, dtype=float)
+    for h in range(24):
+        next_h = (h + 1) % 24
+        probs[(h * 2 + 1) * n_states + (next_h * 2)] = 1.0
+        probs[(h * 2) * n_states + (next_h * 2)] = 1.0
+
+    mdg = MarkovDiaryGenerator()
+    mdg._cdf_matrix_flat = _core.markov_diary_build_cdf(probs)
+    return mdg
+
+
 def _expected_gravity(tessellation, deterrence, gravity_type, out_format, origin_exp=1.5, destination_exp=2.0):
     relevance = tessellation["relevance"].to_numpy(dtype=float)
     outflows = tessellation["tot_outflow"].to_numpy(dtype=float)
@@ -407,6 +422,75 @@ def test_ditras_unfitted_diary_stays_home():
 
     np.testing.assert_allclose(result["lat"].to_numpy(), tess.loc[0, "lat"])
     np.testing.assert_allclose(result["lng"].to_numpy(), tess.loc[0, "lng"])
+
+
+def test_ditras_exploration_uses_gravity_distance():
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 02:00:00")
+    tess = pd.DataFrame(
+        {
+            "tile_id": [0, 1, 2],
+            "lat": [45.0, 45.01, 47.0],
+            "lng": [7.0, 7.01, 9.0],
+            "relevance": [1.0, 1.0, 1.0],
+        }
+    )
+    n_agents = 1200
+
+    result = Ditras(_always_away_diary_generator()).generate(
+        start,
+        end,
+        tess,
+        n_agents=n_agents,
+        starting_locations=[0] * n_agents,
+        random_state=11,
+    ).df
+    away = result[result["datetime"] > start]
+
+    near_visits = ((away["lat"] == tess.loc[1, "lat"]) & (away["lng"] == tess.loc[1, "lng"])).sum()
+    far_visits = ((away["lat"] == tess.loc[2, "lat"]) & (away["lng"] == tess.loc[2, "lng"])).sum()
+
+    assert near_visits > far_visits * 20
+
+
+def test_ditras_custom_gravity_changes_exploration_distribution():
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 02:00:00")
+    tess = pd.DataFrame(
+        {
+            "tile_id": [0, 1, 2],
+            "lat": [45.0, 45.01, 45.02],
+            "lng": [7.0, 7.01, 7.02],
+            "relevance": [1.0, 1.0, 10.0],
+        }
+    )
+    n_agents = 1200
+    mdg = _always_away_diary_generator()
+
+    default = Ditras(mdg).generate(
+        start,
+        end,
+        tess,
+        n_agents=n_agents,
+        starting_locations=[0] * n_agents,
+        random_state=7,
+    ).df
+    custom = Ditras(mdg).generate(
+        start,
+        end,
+        tess,
+        gravity_singly=Gravity(destination_exp=4.0, gravity_type="singly constrained"),
+        n_agents=n_agents,
+        starting_locations=[0] * n_agents,
+        random_state=7,
+    ).df
+
+    default_away = default[default["datetime"] > start]
+    custom_away = custom[custom["datetime"] > start]
+    default_far = ((default_away["lat"] == tess.loc[2, "lat"]) & (default_away["lng"] == tess.loc[2, "lng"])).sum()
+    custom_far = ((custom_away["lat"] == tess.loc[2, "lat"]) & (custom_away["lng"] == tess.loc[2, "lng"])).sum()
+
+    assert custom_far > default_far + 250
 
 
 def test_cluster_imports_without_scikit_learn_until_called(monkeypatch):
