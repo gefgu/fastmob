@@ -60,6 +60,7 @@ from benchmark_env import get_default_output_dir  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REFERENCE_DIR = REPO_ROOT / "tests" / "shared" / "skmob_reference" / "models"
 DEFAULT_SIZES = [1000, 5000, 10000]
+CUSTOM_STS_EPR_METRIC = "sts_epr_custom"
 
 MODEL_SEED = 2
 MODEL_START_EPR = "2020-01-01 08:00:00"
@@ -309,6 +310,7 @@ def benchmark_location_large_size(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    benchmarks: tuple[Any, ...] = LOCATION_MODEL_BENCHMARKS,
 ) -> dict[str, Any]:
     size_tessellation = expand_tessellation(base_tessellation, size)
     print(f"\nLocation-only models: {location_case_label(size)}")
@@ -322,7 +324,7 @@ def benchmark_location_large_size(
             "label": location_case_label(size),
             "n_agents": None,
             "n_locations": len(size_tessellation),
-            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in LOCATION_MODEL_BENCHMARKS},
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in benchmarks},
         }
 
     return {
@@ -340,13 +342,14 @@ def benchmark_location_large_size(
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-            for spec in LOCATION_MODEL_BENCHMARKS
+            for spec in benchmarks
         },
     }
 
 
 def run_large_suite(args: argparse.Namespace) -> dict[str, Any]:
     base_tessellation, diary_training = load_model_inputs(Path(args.reference_dir))
+    selected_benchmarks = selected_specs(args)
 
     results = []
     for size in args.sizes:
@@ -360,12 +363,13 @@ def run_large_suite(args: argparse.Namespace) -> dict[str, Any]:
                     profile=args.profile,
                     iterations=args.iterations,
                     sleep_seconds=args.sleep_seconds,
+                    benchmarks=selected_benchmarks,
                 )
             )
         else:
             if args.library == "skmob":
                 kept, skipped = [], []
-                for s in LARGE_SCALE_BENCHMARKS:
+                for s in selected_benchmarks:
                     est = _estimate_skmob_seconds(s, size)
                     if est > _SKMOB_SKIP_THRESHOLD_S:
                         skipped.append((s, est))
@@ -377,7 +381,7 @@ def run_large_suite(args: argparse.Namespace) -> dict[str, Any]:
                         print(f"  {s.name}: ~{est/60:.1f} min estimated")
                 benchmarks = tuple(kept)
             else:
-                benchmarks = LARGE_SCALE_BENCHMARKS
+                benchmarks = selected_benchmarks
 
             results.append(
                 benchmark_large_size(
@@ -396,6 +400,22 @@ def run_large_suite(args: argparse.Namespace) -> dict[str, Any]:
     return {"metadata": meta, "results": results}
 
 
+def selected_specs(args: argparse.Namespace) -> tuple[Any, ...]:
+    requested = set(args.metrics)
+    if args.mode == "location":
+        return tuple(spec for spec in LOCATION_MODEL_BENCHMARKS if spec.name in requested)
+    specs = [spec for spec in LARGE_SCALE_BENCHMARKS if spec.name in requested]
+    if CUSTOM_STS_EPR_METRIC in requested:
+        specs.append(
+            LargeBenchmarkSpec(
+                f"sts_epr_{args.sts_epr_agents}a",
+                "sts_epr",
+                {"n_agents": args.sts_epr_agents, "relevance_column": "population"},
+            )
+        )
+    return tuple(specs)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run large-scale generation model benchmarks.")
     parser.add_argument("--library", choices=["skmob2", "skmob"], required=True)
@@ -405,6 +425,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--iterations", type=positive_int, default=3)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)
+    parser.add_argument(
+        "--metrics",
+        choices=[
+            *[spec.name for spec in LARGE_SCALE_BENCHMARKS],
+            *[spec.name for spec in LOCATION_MODEL_BENCHMARKS],
+            CUSTOM_STS_EPR_METRIC,
+        ],
+        nargs="+",
+        default=[spec.name for spec in LARGE_SCALE_BENCHMARKS],
+        help="Only run the selected large-scale model metrics.",
+    )
+    parser.add_argument(
+        "--sts-epr-agents",
+        type=positive_int,
+        default=500,
+        help=f"Agent count used when --metrics includes {CUSTOM_STS_EPR_METRIC}.",
+    )
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--reference-dir", type=Path, default=DEFAULT_REFERENCE_DIR)
     args = parser.parse_args(argv)
@@ -413,8 +450,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         args.n_agents = None
     if not hasattr(args, "n_locations"):
         args.n_locations = None
-    if not hasattr(args, "metrics"):
-        args.metrics = None
+    if CUSTOM_STS_EPR_METRIC in args.metrics:
+        args.n_agents = [args.sts_epr_agents]
+    if args.mode == "location" and args.metrics == [spec.name for spec in LARGE_SCALE_BENCHMARKS]:
+        args.metrics = [spec.name for spec in LOCATION_MODEL_BENCHMARKS]
     if args.output_dir is None:
         args.output_dir = get_default_output_dir()
     return args

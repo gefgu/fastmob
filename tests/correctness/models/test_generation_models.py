@@ -363,6 +363,61 @@ def test_sts_epr_generates_trajectory():
     assert len(result) >= 2
 
 
+def test_sts_epr_does_not_build_default_distance_matrix(monkeypatch):
+    sts_module = importlib.import_module("skmob2.models.sts_epr")
+    start = pd.Timestamp("2020-01-01 00:00:00")
+    end = pd.Timestamp("2020-01-01 01:00:00")
+    mdg = MarkovDiaryGenerator()
+    mdg._cdf_matrix_flat = np.array([1.0], dtype=float)
+    captured = {}
+
+    def fail_distance_matrix(*args, **kwargs):
+        raise AssertionError("distance matrix should not be built by Python")
+
+    def fake_simulate_agents(*args):
+        captured["distances_len"] = len(args[3])
+        return (
+            np.array([1], dtype=np.int64),
+            np.array([45.0], dtype=np.float64),
+            np.array([7.0], dtype=np.float64),
+            np.array([int(start.timestamp())], dtype=np.int64),
+        )
+
+    monkeypatch.setattr(sts_module._core, "model_distance_matrix_numpy", fail_distance_matrix)
+    monkeypatch.setattr(
+        sts_module._core,
+        "model_social_graph_random_geometric",
+        lambda n_agents, radius, seed: (
+            np.array([0, 0], dtype=np.int64),
+            np.array([], dtype=np.int64),
+        ),
+    )
+    monkeypatch.setattr(
+        sts_module._core,
+        "markov_diary_batch_generate",
+        lambda *args: (
+            np.array([int(start.timestamp())], dtype=np.int64),
+            np.array([0], dtype=np.int32),
+            np.array([0], dtype=np.int64),
+            np.array([1], dtype=np.int64),
+        ),
+    )
+    monkeypatch.setattr(sts_module._core, "model_sts_epr_simulate_agents", fake_simulate_agents)
+
+    result = STS_epr().generate(
+        start,
+        end,
+        _tessellation(3),
+        mdg,
+        n_agents=1,
+        random_state=0,
+        relevance_column="relevance",
+    )
+
+    assert captured["distances_len"] == 0
+    assert list(result.columns) == ["uid", "datetime", "lat", "lng"]
+
+
 def test_ditras_generates_trajectory():
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 06:00:00")

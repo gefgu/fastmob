@@ -40,14 +40,38 @@ impl SocialGraph {
 }
 
 // ---------------------------------------------------------------------------
-// Agent state
+// Reusable scratch buffers — one instance per simulation, passed by &mut
+// ---------------------------------------------------------------------------
+
+pub(crate) struct GeoSimScratch {
+    pub candidates: Vec<usize>,
+    pub cdf: Vec<f64>,
+    pub sims: Vec<f64>,
+    pub neighbors: Vec<usize>,
+}
+
+impl GeoSimScratch {
+    pub fn new() -> Self {
+        Self {
+            candidates: Vec::with_capacity(200),
+            cdf: Vec::with_capacity(200),
+            sims: Vec::with_capacity(64),
+            neighbors: Vec::with_capacity(64),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Agent state (sparse visit representation)
 // ---------------------------------------------------------------------------
 
 pub(crate) struct GeoSimAgentState {
     pub current_location: usize,
     pub home_location: usize,
-    pub location_vector: Vec<f64>,
-    pub s: f64,
+    pub visited_locs: Vec<usize>,  // sparse list of visited location indices
+    pub visit_counts: Vec<u32>,    // dense counts[loc]; 0 = unvisited
+    pub total_visits: f64,
+    pub s: f64,                    // unique-location count (len of visited_locs)
     pub time_next_move: i64,
 }
 
@@ -56,17 +80,21 @@ impl GeoSimAgentState {
         Self {
             current_location: 0,
             home_location: 0,
-            location_vector: vec![0.0_f64; n_locations],
+            visited_locs: Vec::with_capacity(200),
+            visit_counts: vec![0u32; n_locations],
+            total_visits: 0.0,
             s: 0.0,
             time_next_move: start_ts,
         }
     }
 
     pub fn visit(&mut self, loc: usize) {
-        if self.location_vector[loc] == 0.0 {
+        if self.visit_counts[loc] == 0 {
             self.s += 1.0;
+            self.visited_locs.push(loc);
         }
-        self.location_vector[loc] += 1.0;
+        self.visit_counts[loc] += 1;
+        self.total_visits += 1.0;
     }
 }
 
@@ -81,13 +109,30 @@ pub(crate) struct PendingMove {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Internal helpers
 // ---------------------------------------------------------------------------
 
-pub(crate) fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
-    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
-    let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+// O(min(|a|,|b|)) cosine similarity over sparse visited sets.
+pub(crate) fn cosine_similarity_sparse(
+    a_locs: &[usize],
+    a_counts: &[u32],
+    b_locs: &[usize],
+    b_counts: &[u32],
+) -> f64 {
+    let dot: f64 = a_locs
+        .iter()
+        .map(|&l| (a_counts[l] as f64) * (b_counts[l] as f64))
+        .sum();
+    let norm_a: f64 = a_locs
+        .iter()
+        .map(|&l| (a_counts[l] as f64).powi(2))
+        .sum::<f64>()
+        .sqrt();
+    let norm_b: f64 = b_locs
+        .iter()
+        .map(|&l| (b_counts[l] as f64).powi(2))
+        .sum::<f64>()
+        .sqrt();
     if norm_a == 0.0 || norm_b == 0.0 {
         0.0
     } else {
@@ -95,20 +140,15 @@ pub(crate) fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
     }
 }
 
-fn weighted_choice(rng: &mut impl Rng, weights: &[f64]) -> Option<usize> {
-    let total: f64 = weights.iter().sum();
-    if total <= 0.0 {
-        return None;
-    }
+// Sample from a strictly-increasing CDF stored in `cdf`, returning the
+// corresponding index into `candidates`.
+fn cdf_sample(rng: &mut impl Rng, candidates: &[usize], cdf: &[f64]) -> usize {
+    let total = cdf[cdf.len() - 1];
     let threshold = rng.gen_range(0.0_f64..1.0) * total;
-    let mut cumsum = 0.0;
-    for (i, &w) in weights.iter().enumerate() {
-        cumsum += w;
-        if cumsum > threshold {
-            return Some(i);
-        }
-    }
-    Some(weights.len() - 1)
+    let idx = cdf
+        .partition_point(|&v| v <= threshold)
+        .min(candidates.len() - 1);
+    candidates[idx]
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -127,12 +167,20 @@ fn update_edge_similarity(
     for edge_idx in graph.edge_range(agent) {
         if graph.next_update_s[edge_idx] <= current_ts {
             let neighbor = graph.neighbors[edge_idx];
-            graph.mobility_similarity[edge_idx] =
-                cosine_similarity(&agents[agent].location_vector, &agents[neighbor].location_vector);
+            graph.mobility_similarity[edge_idx] = cosine_similarity_sparse(
+                &agents[agent].visited_locs,
+                &agents[agent].visit_counts,
+                &agents[neighbor].visited_locs,
+                &agents[neighbor].visit_counts,
+            );
             graph.next_update_s[edge_idx] = current_ts + dt_update_s;
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Public hot-path helpers
+// ---------------------------------------------------------------------------
 
 pub(crate) fn make_social_action(
     agent: usize,
@@ -140,11 +188,10 @@ pub(crate) fn make_social_action(
     graph: &mut SocialGraph,
     mode: SocialMode,
     rng: &mut impl Rng,
-    n_locations: usize,
     current_ts: i64,
     dt_update_s: i64,
+    scratch: &mut GeoSimScratch,
 ) -> Option<usize> {
-    // Update stale edges for this agent
     update_edge_similarity(agent, agents, graph, current_ts, dt_update_s);
 
     let range = graph.edge_range(agent);
@@ -152,66 +199,116 @@ pub(crate) fn make_social_action(
         return None;
     }
 
-    let sims: Vec<f64> = range.clone().map(|e| graph.mobility_similarity[e]).collect();
-    let neighbors: Vec<usize> = range.map(|e| graph.neighbors[e]).collect();
+    // Collect edge data into scratch without allocating.
+    scratch.sims.clear();
+    scratch.neighbors.clear();
+    for e in range {
+        scratch.sims.push(graph.mobility_similarity[e]);
+        scratch.neighbors.push(graph.neighbors[e]);
+    }
 
-    // Choose contact weighted by mobility similarity (or uniform if all zero)
-    let contact_idx = if sims.iter().all(|&s| s == 0.0) {
-        rng.gen_range(0..sims.len())
+    // Choose contact weighted by similarity, uniform fallback when all zero.
+    let contact_idx = if scratch.sims.iter().all(|&s| s == 0.0) {
+        rng.gen_range(0..scratch.sims.len())
     } else {
-        weighted_choice(rng, &sims).unwrap_or(0)
+        let total: f64 = scratch.sims.iter().sum();
+        let threshold = rng.gen_range(0.0_f64..1.0) * total;
+        let mut cumsum = 0.0_f64;
+        let mut chosen = scratch.sims.len() - 1;
+        for (i, &w) in scratch.sims.iter().enumerate() {
+            cumsum += w;
+            if cumsum > threshold {
+                chosen = i;
+                break;
+            }
+        }
+        chosen
     };
-    let contact = neighbors[contact_idx];
+    let contact = scratch.neighbors[contact_idx];
 
-    let agent_lv = &agents[agent].location_vector;
-    let contact_lv = &agents[contact].location_vector;
+    let agent_counts = &agents[agent].visit_counts;
+    let contact_counts = &agents[contact].visit_counts;
+    let contact_locs = &agents[contact].visited_locs;
+    let agent_locs = &agents[agent].visited_locs;
 
-    let feasible: Vec<usize> = (0..n_locations)
-        .filter(|&loc| match mode {
-            SocialMode::Exploration => agent_lv[loc] == 0.0,
-            SocialMode::Return => agent_lv[loc] >= 1.0,
-        })
-        .collect();
-    if feasible.is_empty() {
+    scratch.candidates.clear();
+    scratch.cdf.clear();
+
+    match mode {
+        SocialMode::Exploration => {
+            // Feasible: contact's visited locations the agent hasn't been to.
+            // All entries in contact_locs have count >= 1, so weight is always > 0.
+            let mut cumsum = 0.0_f64;
+            for &loc in contact_locs {
+                if agent_counts[loc] == 0 {
+                    scratch.candidates.push(loc);
+                    cumsum += contact_counts[loc] as f64;
+                    scratch.cdf.push(cumsum);
+                }
+            }
+        }
+        SocialMode::Return => {
+            // Feasible: agent's visited locations the contact has also visited.
+            let mut cumsum = 0.0_f64;
+            for &loc in agent_locs {
+                let w = contact_counts[loc] as f64;
+                if w > 0.0 {
+                    scratch.candidates.push(loc);
+                    cumsum += w;
+                    scratch.cdf.push(cumsum);
+                }
+            }
+        }
+    }
+
+    if scratch.candidates.is_empty() || scratch.cdf.last().copied().unwrap_or(0.0) <= 0.0 {
         return None;
     }
 
-    let weights: Vec<f64> = feasible.iter().map(|&loc| contact_lv[loc]).collect();
-    if weights.iter().all(|&w| w == 0.0) {
-        return None;
-    }
-    weighted_choice(rng, &weights).map(|idx| feasible[idx])
+    Some(cdf_sample(rng, &scratch.candidates, &scratch.cdf))
 }
 
 pub(crate) fn make_individual_return(
     agent: usize,
     agents: &[GeoSimAgentState],
     rng: &mut impl Rng,
+    scratch: &mut GeoSimScratch,
 ) -> Option<usize> {
-    let lv = &agents[agent].location_vector;
-    let feasible: Vec<usize> = (0..lv.len()).filter(|&loc| lv[loc] >= 1.0).collect();
-    if feasible.is_empty() {
+    let state = &agents[agent];
+    if state.visited_locs.is_empty() {
         return None;
     }
-    let weights: Vec<f64> = feasible.iter().map(|&loc| lv[loc]).collect();
-    weighted_choice(rng, &weights).map(|idx| feasible[idx])
+    scratch.candidates.clear();
+    scratch.cdf.clear();
+    let mut cumsum = 0.0_f64;
+    for &loc in &state.visited_locs {
+        scratch.candidates.push(loc);
+        cumsum += state.visit_counts[loc] as f64;
+        scratch.cdf.push(cumsum);
+    }
+    if cumsum <= 0.0 {
+        return None;
+    }
+    Some(cdf_sample(rng, &scratch.candidates, &scratch.cdf))
 }
 
 pub(crate) fn make_individual_exploration(
     agent: usize,
     agents: &[GeoSimAgentState],
+    n_locations: usize,
     rng: &mut impl Rng,
+    scratch: &mut GeoSimScratch,
 ) -> Option<usize> {
-    let lv = &agents[agent].location_vector;
-    let feasible: Vec<usize> = (0..lv.len()).filter(|&loc| lv[loc] == 0.0).collect();
-    if feasible.is_empty() {
+    let counts = &agents[agent].visit_counts;
+    scratch.candidates.clear();
+    scratch.candidates.extend((0..n_locations).filter(|&j| counts[j] == 0));
+    if scratch.candidates.is_empty() {
         return None;
     }
-    Some(feasible[rng.gen_range(0..feasible.len())])
+    Some(scratch.candidates[rng.gen_range(0..scratch.candidates.len())])
 }
 
 /// Choose location following the EPR+social decision tree with fallback chain.
-/// Always returns a valid location index.
 pub(crate) fn choose_location_geosim(
     agent: usize,
     agents: &[GeoSimAgentState],
@@ -223,79 +320,34 @@ pub(crate) fn choose_location_geosim(
     n_locations: usize,
     current_ts: i64,
     dt_update_s: i64,
+    scratch: &mut GeoSimScratch,
 ) -> usize {
     let s = agents[agent].s.max(1.0);
     let p_explore = rho * s.powf(-gamma);
-    let p_social = alpha;
 
     let explore = rng.gen_range(0.0_f64..1.0) < p_explore;
-    let social = rng.gen_range(0.0_f64..1.0) < p_social;
+    let social = rng.gen_range(0.0_f64..1.0) < alpha;
 
     let location = if explore {
         if social {
-            // social exploration → individual exploration → individual return
-            make_social_action(
-                agent,
-                agents,
-                graph,
-                SocialMode::Exploration,
-                rng,
-                n_locations,
-                current_ts,
-                dt_update_s,
-            )
-            .or_else(|| make_individual_exploration(agent, agents, rng))
-            .or_else(|| make_individual_return(agent, agents, rng))
+            make_social_action(agent, agents, graph, SocialMode::Exploration, rng, current_ts, dt_update_s, scratch)
+                .or_else(|| make_individual_exploration(agent, agents, n_locations, rng, scratch))
+                .or_else(|| make_individual_return(agent, agents, rng, scratch))
         } else {
-            // individual exploration → social exploration → individual return
-            make_individual_exploration(agent, agents, rng)
-                .or_else(|| {
-                    make_social_action(
-                        agent,
-                        agents,
-                        graph,
-                        SocialMode::Exploration,
-                        rng,
-                        n_locations,
-                        current_ts,
-                        dt_update_s,
-                    )
-                })
-                .or_else(|| make_individual_return(agent, agents, rng))
+            make_individual_exploration(agent, agents, n_locations, rng, scratch)
+                .or_else(|| make_social_action(agent, agents, graph, SocialMode::Exploration, rng, current_ts, dt_update_s, scratch))
+                .or_else(|| make_individual_return(agent, agents, rng, scratch))
         }
     } else if social {
-        // social return → individual return → individual exploration
-        make_social_action(
-            agent,
-            agents,
-            graph,
-            SocialMode::Return,
-            rng,
-            n_locations,
-            current_ts,
-            dt_update_s,
-        )
-        .or_else(|| make_individual_return(agent, agents, rng))
-        .or_else(|| make_individual_exploration(agent, agents, rng))
+        make_social_action(agent, agents, graph, SocialMode::Return, rng, current_ts, dt_update_s, scratch)
+            .or_else(|| make_individual_return(agent, agents, rng, scratch))
+            .or_else(|| make_individual_exploration(agent, agents, n_locations, rng, scratch))
     } else {
-        // individual return → social return → individual exploration
-        make_individual_return(agent, agents, rng)
-            .or_else(|| {
-                make_social_action(
-                    agent,
-                    agents,
-                    graph,
-                    SocialMode::Return,
-                    rng,
-                    n_locations,
-                    current_ts,
-                    dt_update_s,
-                )
-            })
-            .or_else(|| make_individual_exploration(agent, agents, rng))
+        make_individual_return(agent, agents, rng, scratch)
+            .or_else(|| make_social_action(agent, agents, graph, SocialMode::Return, rng, current_ts, dt_update_s, scratch))
+            .or_else(|| make_individual_exploration(agent, agents, n_locations, rng, scratch))
     };
 
-    // Last resort: stay at current location
     location.unwrap_or(agents[agent].current_location)
 }
 
@@ -323,7 +375,6 @@ pub(crate) fn apply_pending_moves(
             keep.push(mv);
         }
     }
-    // sort apply by timestamp then agent for determinism
     apply.sort_by_key(|m| (m.timestamp, m.agent));
     for mv in apply {
         agents[mv.agent].visit(mv.location);
@@ -376,20 +427,18 @@ pub fn simulate_geosim_impl(
     let alpha_param = 1.0 + beta;
     let lambda_ = 1.0 / tau;
 
-    // Init agents
     let mut agents: Vec<GeoSimAgentState> = (0..n_agents)
         .map(|_| GeoSimAgentState::new(n_locations, start_ts))
         .collect();
 
-    // Init social graph
     let mut graph = SocialGraph::new(neighbor_starts.to_vec(), neighbors.to_vec(), start_ts);
 
-    // Starting locations
     for (i, agent) in agents.iter_mut().enumerate() {
         let loc = match starting_locs {
             Some(sl) if i < sl.len() => sl[i].min(n_locations - 1),
             _ => {
-                let mut rng = Xoshiro256PlusPlus::seed_from_u64(derive_agent_seed(master_seed, i, 1));
+                let mut rng =
+                    Xoshiro256PlusPlus::seed_from_u64(derive_agent_seed(master_seed, i, 1));
                 rng.gen_range(0..n_locations)
             }
         };
@@ -397,19 +446,17 @@ pub fn simulate_geosim_impl(
         agent.home_location = loc;
         agent.visit(loc);
 
-        // Sample initial waiting time
-        let mut rng = Xoshiro256PlusPlus::seed_from_u64(derive_agent_seed(master_seed, i, 0));
+        let mut rng =
+            Xoshiro256PlusPlus::seed_from_u64(derive_agent_seed(master_seed, i, 0));
         let wait_h = sample_tpl_rng(&mut rng, xmin, alpha_param, lambda_);
         agent.time_next_move = start_ts + (wait_h * 3600.0) as i64;
     }
 
-    // Output trajectory buffers
     let mut out_agents: Vec<i64> = Vec::new();
     let mut out_ts: Vec<i64> = Vec::new();
     let mut out_lats_vec: Vec<f64> = Vec::new();
     let mut out_lngs_vec: Vec<f64> = Vec::new();
 
-    // Record initial positions
     for (i, agent) in agents.iter().enumerate() {
         out_agents.push(i as i64 + 1);
         out_ts.push(start_ts);
@@ -417,18 +464,17 @@ pub fn simulate_geosim_impl(
         out_lngs_vec.push(lngs[agent.current_location]);
     }
 
-    // Per-agent RNG (one per agent, for the movement decision)
     let mut rngs: Vec<Xoshiro256PlusPlus> = (0..n_agents)
         .map(|i| Xoshiro256PlusPlus::seed_from_u64(derive_agent_seed(master_seed, i, 0)))
         .collect();
 
-    // Priority queue: (time_next_move, agent_id)
     let mut heap: BinaryHeap<(Reverse<i64>, usize)> = BinaryHeap::new();
     for (i, agent) in agents.iter().enumerate() {
         heap.push((Reverse(agent.time_next_move), i));
     }
 
     let mut pending: Vec<PendingMove> = Vec::new();
+    let mut scratch = GeoSimScratch::new();
 
     while let Some((Reverse(current_ts), agent)) = heap.peek().copied() {
         if current_ts >= end_ts {
@@ -436,7 +482,6 @@ pub fn simulate_geosim_impl(
         }
         heap.pop();
 
-        // Flush moves older than the indipendency window
         let cutoff = current_ts - indipendency_window_s;
         apply_pending_moves(
             &mut pending,
@@ -450,7 +495,6 @@ pub fn simulate_geosim_impl(
             &mut out_lngs_vec,
         );
 
-        // Choose location for this agent
         let loc = choose_location_geosim(
             agent,
             &agents,
@@ -462,16 +506,15 @@ pub fn simulate_geosim_impl(
             n_locations,
             current_ts,
             dt_update_mob_sim_s,
+            &mut scratch,
         );
 
-        // Stage the move
         pending.push(PendingMove {
             agent,
             location: loc,
             timestamp: current_ts,
         });
 
-        // Sample next waiting time
         let wait_h = sample_tpl_rng(&mut rngs[agent], xmin, alpha_param, lambda_);
         let next_ts = current_ts + (wait_h * 3600.0) as i64;
         agents[agent].time_next_move = next_ts;
@@ -481,7 +524,6 @@ pub fn simulate_geosim_impl(
         }
     }
 
-    // Flush all remaining pending moves
     apply_pending_moves(
         &mut pending,
         &mut agents,

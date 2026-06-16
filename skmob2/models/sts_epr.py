@@ -154,7 +154,8 @@ class STS_epr:
             it is chosen uniformly at random. The default is ``False``.
         distance_matrix : numpy.ndarray or None, optional
             Pre-computed ``(n_locs, n_locs)`` distance matrix in kilometres. If
-            ``None``, distances are computed on the fly. The default is ``None``.
+            ``None``, the Rust simulator uses cached gravity OD rows instead of a
+            full matrix. The default is ``None``.
         relevance_column : str or None, optional
             Name of the column in ``spatial_tessellation`` used as location
             relevance. The default is ``None`` (falls back to ``"relevance"``).
@@ -221,7 +222,7 @@ class STS_epr:
         if distance_matrix is not None:
             flat_distances = np.ascontiguousarray(np.asarray(distance_matrix, dtype=np.float64).ravel())
         else:
-            flat_distances = np.ascontiguousarray(_core.model_distance_matrix_numpy(lats, lngs), dtype=np.float64)
+            flat_distances = np.empty(0, dtype=np.float64)
 
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
