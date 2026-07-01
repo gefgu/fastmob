@@ -6,7 +6,7 @@
     "cpu_vendor": "intel",
     "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
     "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/preprocessing_loc-brightkite_totalCheckins.txt.gz_polars_sorted.parquet",
-    "input_cache_status": "created",
+    "input_cache_status": "reused",
     "input_order": "sorted",
     "input_type": "polars.DataFrame",
     "iterations": 5,
@@ -24,16 +24,12 @@
     "repeat_dataset": 1,
     "retries": 0,
     "sizes": [
-      1000,
-      10000,
-      100000,
-      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "preprocessing",
-    "timestamp_utc": "2026-06-09T02:01:42.346238+00:00",
+    "timestamp_utc": "2026-06-21T13:25:00.130442+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -277,55 +273,55 @@
       "label": "4M",
       "metrics": {
         "cluster": {
-          "average_seconds": 43.09208774473518,
+          "average_seconds": 42.100836670584975,
           "iterations_completed": 5,
-          "minimum_seconds": 42.65278944699094,
+          "minimum_seconds": 41.49279514094815,
           "status": "ok",
           "times_seconds": [
-            43.015714545268565,
-            44.02636209502816,
-            42.90806969907135,
-            42.65278944699094,
-            42.857502937316895
+            41.57015324104577,
+            42.45477718813345,
+            42.42752658482641,
+            42.558931197971106,
+            41.49279514094815
           ]
         },
         "compress": {
-          "average_seconds": 0.80734704406932,
+          "average_seconds": 0.7720758635550737,
           "iterations_completed": 5,
-          "minimum_seconds": 0.7974227042868733,
+          "minimum_seconds": 0.7638728432357311,
           "status": "ok",
           "times_seconds": [
-            0.8350534420460463,
-            0.8003383507020772,
-            0.7974227042868733,
-            0.8057619091123343,
-            0.7981588141992688
+            0.7638728432357311,
+            0.7790673351846635,
+            0.7742118122987449,
+            0.7721739551052451,
+            0.771053371950984
           ]
         },
         "filter": {
-          "average_seconds": 0.7777103043161333,
+          "average_seconds": 0.7640619458630681,
           "iterations_completed": 5,
-          "minimum_seconds": 0.7574012777768075,
+          "minimum_seconds": 0.7617296571843326,
           "status": "ok",
           "times_seconds": [
-            0.7985230018384755,
-            0.7574012777768075,
-            0.7866995562799275,
-            0.7815434969961643,
-            0.7643841886892915
+            0.7637474699877203,
+            0.7632279717363417,
+            0.7653308650478721,
+            0.7662737653590739,
+            0.7617296571843326
           ]
         },
         "stay_locations": {
-          "average_seconds": 0.9795680994167923,
+          "average_seconds": 0.9467632744461298,
           "iterations_completed": 5,
-          "minimum_seconds": 0.9756745519116521,
+          "minimum_seconds": 0.9442652817815542,
           "status": "ok",
           "times_seconds": [
-            0.9804948968812823,
-            0.9789503873325884,
-            0.9797931481152773,
-            0.9756745519116521,
-            0.9829275128431618
+            0.9479123414494097,
+            0.9481592760421336,
+            0.9444144410081208,
+            0.9490650319494307,
+            0.9442652817815542
           ]
         }
       },

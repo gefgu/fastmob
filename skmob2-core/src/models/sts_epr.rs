@@ -198,7 +198,15 @@ fn make_social_action_local(
     if neighbor_indices.is_empty() {
         return None;
     }
-    update_edge_sim_local(agent, agents, neighbor_indices, edge_sim, edge_upd, current_ts, dt_update_s);
+    update_edge_sim_local(
+        agent,
+        agents,
+        neighbor_indices,
+        edge_sim,
+        edge_upd,
+        current_ts,
+        dt_update_s,
+    );
 
     scratch.sims.clear();
     scratch.sims.extend_from_slice(edge_sim);
@@ -304,22 +312,112 @@ fn sts_epr_choose_location_local(
 
     let location = if explore {
         if social {
-            make_social_action_local(agent, agents, neighbor_indices, edge_sim, edge_upd, SocialMode::Exploration, rng, current_ts, dt_update_s, scratch)
-                .or_else(|| sts_epr_exploration(agent, agents, distances, od_rows, relevances, n_locations, rng, scratch))
-                .or_else(|| make_individual_return(agent, agents, rng, scratch))
+            make_social_action_local(
+                agent,
+                agents,
+                neighbor_indices,
+                edge_sim,
+                edge_upd,
+                SocialMode::Exploration,
+                rng,
+                current_ts,
+                dt_update_s,
+                scratch,
+            )
+            .or_else(|| {
+                sts_epr_exploration(
+                    agent,
+                    agents,
+                    distances,
+                    od_rows,
+                    relevances,
+                    n_locations,
+                    rng,
+                    scratch,
+                )
+            })
+            .or_else(|| make_individual_return(agent, agents, rng, scratch))
         } else {
-            sts_epr_exploration(agent, agents, distances, od_rows, relevances, n_locations, rng, scratch)
-                .or_else(|| make_social_action_local(agent, agents, neighbor_indices, edge_sim, edge_upd, SocialMode::Exploration, rng, current_ts, dt_update_s, scratch))
-                .or_else(|| make_individual_return(agent, agents, rng, scratch))
+            sts_epr_exploration(
+                agent,
+                agents,
+                distances,
+                od_rows,
+                relevances,
+                n_locations,
+                rng,
+                scratch,
+            )
+            .or_else(|| {
+                make_social_action_local(
+                    agent,
+                    agents,
+                    neighbor_indices,
+                    edge_sim,
+                    edge_upd,
+                    SocialMode::Exploration,
+                    rng,
+                    current_ts,
+                    dt_update_s,
+                    scratch,
+                )
+            })
+            .or_else(|| make_individual_return(agent, agents, rng, scratch))
         }
     } else if social {
-        make_social_action_local(agent, agents, neighbor_indices, edge_sim, edge_upd, SocialMode::Return, rng, current_ts, dt_update_s, scratch)
-            .or_else(|| make_individual_return(agent, agents, rng, scratch))
-            .or_else(|| sts_epr_exploration(agent, agents, distances, od_rows, relevances, n_locations, rng, scratch))
+        make_social_action_local(
+            agent,
+            agents,
+            neighbor_indices,
+            edge_sim,
+            edge_upd,
+            SocialMode::Return,
+            rng,
+            current_ts,
+            dt_update_s,
+            scratch,
+        )
+        .or_else(|| make_individual_return(agent, agents, rng, scratch))
+        .or_else(|| {
+            sts_epr_exploration(
+                agent,
+                agents,
+                distances,
+                od_rows,
+                relevances,
+                n_locations,
+                rng,
+                scratch,
+            )
+        })
     } else {
         make_individual_return(agent, agents, rng, scratch)
-            .or_else(|| make_social_action_local(agent, agents, neighbor_indices, edge_sim, edge_upd, SocialMode::Return, rng, current_ts, dt_update_s, scratch))
-            .or_else(|| sts_epr_exploration(agent, agents, distances, od_rows, relevances, n_locations, rng, scratch))
+            .or_else(|| {
+                make_social_action_local(
+                    agent,
+                    agents,
+                    neighbor_indices,
+                    edge_sim,
+                    edge_upd,
+                    SocialMode::Return,
+                    rng,
+                    current_ts,
+                    dt_update_s,
+                    scratch,
+                )
+            })
+            .or_else(|| {
+                sts_epr_exploration(
+                    agent,
+                    agents,
+                    distances,
+                    od_rows,
+                    relevances,
+                    n_locations,
+                    rng,
+                    scratch,
+                )
+            })
     };
 
     location.unwrap_or(agents[agent].current_location)
@@ -399,7 +497,13 @@ pub fn simulate_sts_epr_impl(
     let master_seed = master_seed.unwrap_or_else(rand::random);
     let od_rows = if distances.is_empty() {
         Some(CachedGravityOdRows::new(
-            lats, lngs, relevances, "power_law", -2.0, 1.0, 1.0,
+            lats,
+            lngs,
+            relevances,
+            "power_law",
+            -2.0,
+            1.0,
+            1.0,
         ))
     } else {
         None
@@ -422,8 +526,16 @@ pub fn simulate_sts_epr_impl(
             AgentParData {
                 rng: Xoshiro256PlusPlus::seed_from_u64(derive_agent_seed(master_seed, i, 0)),
                 diary: DiaryState {
-                    diary_start: if i < diary_starts.len() { diary_starts[i] } else { 0 },
-                    diary_end: if i < diary_ends.len() { diary_ends[i] } else { 0 },
+                    diary_start: if i < diary_starts.len() {
+                        diary_starts[i]
+                    } else {
+                        0
+                    },
+                    diary_end: if i < diary_ends.len() {
+                        diary_ends[i]
+                    } else {
+                        0
+                    },
                     diary_idx: 1,
                 },
                 scratch: GeoSimScratch::new(),
@@ -442,10 +554,18 @@ pub fn simulate_sts_epr_impl(
             if i < sl.len() {
                 sl[i].min(n_locations - 1)
             } else {
-                pick_starting_loc(relevances, &mut par_data[i].rng, starting_locs_mode_relevance)
+                pick_starting_loc(
+                    relevances,
+                    &mut par_data[i].rng,
+                    starting_locs_mode_relevance,
+                )
             }
         } else {
-            pick_starting_loc(relevances, &mut par_data[i].rng, starting_locs_mode_relevance)
+            pick_starting_loc(
+                relevances,
+                &mut par_data[i].rng,
+                starting_locs_mode_relevance,
+            )
         };
         agent.current_location = loc;
         agent.home_location = loc;

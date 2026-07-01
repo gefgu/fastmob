@@ -9,18 +9,17 @@ Run from the repository root, for example:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib
 import json
 import platform
 import sys
 import gc
 import os
+import tempfile
 import time
 import warnings
 
-import psutil
-
-_BENCH_PROC = psutil.Process(os.getpid())
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -212,17 +211,30 @@ def run_memory_call(
     iterations: int,
     sleep_seconds: float,
 ) -> dict[str, Any]:
+    import memray
+
     peak_memory_mb: list[float] = []
     for i in range(iterations):
         if sleep_seconds:
             time.sleep(sleep_seconds)
         gc.collect()
-        rss_before = _BENCH_PROC.memory_info().rss
-        call_benchmark_func(func, make_input(), kwargs)
-        rss_after = _BENCH_PROC.memory_info().rss
-        delta_mb = max(0.0, (rss_after - rss_before) / (1024 * 1024))
-        peak_memory_mb.append(delta_mb)
-        print(f"    Round {i + 1}: {delta_mb:.4f} MB peak")
+        with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+            tmp_path = f.name
+        os.unlink(tmp_path)
+        try:
+            with memray.Tracker(tmp_path, native_traces=False):
+                call_benchmark_func(func, make_input(), kwargs)
+            reader = memray.FileReader(tmp_path)
+            peak_bytes = sum(
+                record.size
+                for record in reader.get_high_watermark_allocation_records(merge_threads=True)
+            )
+            peak_mb = peak_bytes / (1024 * 1024)
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(tmp_path)
+        peak_memory_mb.append(peak_mb)
+        print(f"    Round {i + 1}: {peak_mb:.4f} MB peak (memray)")
 
     summary = summarize_memory(peak_memory_mb)
     print(f"    Average Peak Memory: {summary['average_peak_memory_mb']:.4f} MB")
@@ -286,6 +298,7 @@ def benchmark_attack(
     iterations: int,
     sleep_seconds: float,
     profile: str = "speed",
+    input_order: str = "raw",
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
     try:
@@ -294,11 +307,15 @@ def benchmark_attack(
         print(f"    skipped: {exc}")
         return skipped_result(str(exc), profile)
 
+    assess_kwargs = dict(spec.assess_kwargs)
+    if library == "skmob2" and input_order == "sorted":
+        assess_kwargs["presorted"] = True
+
     try:
         return run_profiled_call(
             func,
             make_input,
-            spec.assess_kwargs,
+            assess_kwargs,
             profile=profile,
             iterations=iterations,
             sleep_seconds=sleep_seconds,
@@ -308,7 +325,14 @@ def benchmark_attack(
         return error_result(str(exc), profile)
 
 
-def benchmark_skmob2(df: Any, *, iterations: int, sleep_seconds: float, profile: str = "speed") -> dict[str, Any]:
+def benchmark_skmob2(
+    df: Any,
+    *,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str = "speed",
+    input_order: str = "raw",
+) -> dict[str, Any]:
     print(f"\nPrivacy toy ({len(df)} rows)")
     return {
         "rows": len(df),
@@ -320,6 +344,7 @@ def benchmark_skmob2(df: Any, *, iterations: int, sleep_seconds: float, profile:
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
                 profile=profile,
+                input_order=input_order,
             )
             for spec in PRIVACY_ATTACKS
         },
@@ -464,6 +489,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
                     iterations=args.iterations,
                     sleep_seconds=args.sleep_seconds,
                     profile=args.profile,
+                    input_order=args.input_order,
                 )
             ],
         }

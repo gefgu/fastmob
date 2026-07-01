@@ -8,8 +8,16 @@ pub fn model_social_graph_edges_to_csr(
     dsts: PyReadonlyArray1<i64>,
     n_nodes: usize,
 ) -> PyResult<(Vec<i64>, Vec<i64>)> {
-    let s: Vec<usize> = srcs.as_slice()?.iter().map(|&v| v.max(0) as usize).collect();
-    let d: Vec<usize> = dsts.as_slice()?.iter().map(|&v| v.max(0) as usize).collect();
+    let s: Vec<usize> = srcs
+        .as_slice()?
+        .iter()
+        .map(|&v| v.max(0) as usize)
+        .collect();
+    let d: Vec<usize> = dsts
+        .as_slice()?
+        .iter()
+        .map(|&v| v.max(0) as usize)
+        .collect();
     let (starts, nbrs) = edges_to_csr(&s, &d, n_nodes);
     Ok((
         starts.into_iter().map(|v| v as i64).collect(),

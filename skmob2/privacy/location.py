@@ -7,8 +7,8 @@ from typing import Any
 import narwhals as nw
 
 from ._constants import DATETIME, INSTANCE, INSTANCE_ELEMENT, LATITUDE, LONGITUDE, PRECISION_LEVELS, TEMP, UID
-from ._dataframe import _as_frame, _with_date_time_precision
 from .base import _CANDIDATE_POS, _CANDIDATE_UID, _TARGET_UID, Attack
+from ._rust import LOCATION, SEQUENCE, TIME, assess_risk_rust
 
 
 class LocationAttack(Attack):
@@ -82,6 +82,8 @@ class LocationAttack(Attack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -112,8 +114,16 @@ class LocationAttack(Attack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        sorted_traj = _as_frame(traj).sort([UID, DATETIME])
-        return self._all_risks(sorted_traj, targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=LOCATION,
+            knowledge_length=self.knowledge_length,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+            include_datetime=True,
+        )
 
     def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         return self._multiset_match_counts(candidates, instances, [LATITUDE, LONGITUDE])
@@ -189,6 +199,8 @@ class LocationSequenceAttack(Attack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -219,8 +231,16 @@ class LocationSequenceAttack(Attack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        sorted_traj = _as_frame(traj).sort([UID, DATETIME])
-        return self._all_risks(sorted_traj, targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=SEQUENCE,
+            knowledge_length=self.knowledge_length,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+            include_datetime=True,
+        )
 
     def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         instance_lengths = instances.group_by([_TARGET_UID, INSTANCE]).agg(
@@ -361,6 +381,8 @@ class LocationTimeAttack(LocationAttack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -391,9 +413,17 @@ class LocationTimeAttack(LocationAttack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        sorted_df = _as_frame(traj).sort([UID, DATETIME])
-        transformed = _with_date_time_precision(sorted_df, DATETIME, TEMP, self.time_precision)
-        return self._all_risks(transformed, targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=TIME,
+            knowledge_length=self.knowledge_length,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+            time_precision=self.time_precision,
+            include_datetime=True,
+        )
 
     def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         return self._multiset_match_counts(candidates, instances, [LATITUDE, LONGITUDE, TEMP])

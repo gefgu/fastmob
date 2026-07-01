@@ -1,6 +1,7 @@
 mod measures;
 mod models;
 mod preprocessing;
+mod privacy;
 mod utils;
 
 use pyo3::prelude::*;
@@ -491,6 +492,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         models::ditras::model_ditras_simulate_agents,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        privacy::privacy_assess_risk_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        privacy::privacy_assess_risk_presorted_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        privacy::privacy_assess_risk_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        privacy::privacy_assess_risk_presorted_arrow,
         m
     )?)?;
     Ok(())

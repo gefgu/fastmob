@@ -334,6 +334,47 @@ def test_polars_input_matches_pandas(privacy_tdf):
     assert polars_result == pandas_result
 
 
+@pytest.mark.parametrize(
+    "attack",
+    [
+        attacks.LocationAttack(knowledge_length=2),
+        attacks.LocationTimeAttack(knowledge_length=2),
+        attacks.UniqueLocationAttack(knowledge_length=2),
+        attacks.LocationFrequencyAttack(knowledge_length=2),
+        attacks.LocationProbabilityAttack(knowledge_length=2),
+        attacks.LocationProportionAttack(knowledge_length=2),
+        attacks.HomeWorkAttack(),
+    ],
+)
+def test_order_independent_attacks_do_not_require_time_sorted_input(privacy_tdf, attack):
+    shuffled = privacy_tdf.sample(frac=1, random_state=7).reset_index(drop=True)
+
+    expected = _risk_map(attack.assess_risk(privacy_tdf))
+    actual = _risk_map(attack.assess_risk(shuffled))
+
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        attacks.LocationAttack(knowledge_length=2),
+        attacks.LocationSequenceAttack(knowledge_length=2),
+        attacks.LocationTimeAttack(knowledge_length=2),
+        attacks.UniqueLocationAttack(knowledge_length=2),
+        attacks.LocationFrequencyAttack(knowledge_length=2),
+        attacks.LocationProbabilityAttack(knowledge_length=2),
+        attacks.LocationProportionAttack(knowledge_length=2),
+        attacks.HomeWorkAttack(),
+    ],
+)
+def test_presorted_privacy_path_matches_default_on_sorted_input(privacy_tdf, attack):
+    expected = _risk_map(attack.assess_risk(privacy_tdf))
+    actual = _risk_map(attack.assess_risk(privacy_tdf, presorted=True))
+
+    assert actual == expected
+
+
 @pytest.mark.skmob
 @pytest.mark.parametrize(
     ("skmob2_factory", "skmob_factory"),

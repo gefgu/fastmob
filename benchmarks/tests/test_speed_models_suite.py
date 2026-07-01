@@ -101,32 +101,44 @@ def test_expand_tessellation_repeats_with_unique_tile_ids():
     assert expanded["tile_id"].tolist() == ["a_0", "b_0", "a_1", "b_1", "a_2"]
 
 
-def test_run_memory_call_tracks_each_iteration_with_tracemalloc(monkeypatch):
-    calls = {"func": 0, "start": 0, "get": 0, "stop": 0}
+def test_run_memory_call_tracks_each_iteration_with_memray(monkeypatch):
+    calls = {"func": 0, "tracker_enter": 0, "tracker_exit": 0, "reader": 0}
 
     def fake_func():
         calls["func"] += 1
 
-    def fake_start():
-        calls["start"] += 1
+    class FakeRecord:
+        def __init__(self, size):
+            self.size = size
 
-    def fake_get_traced_memory():
-        calls["get"] += 1
-        return calls["get"] * 1024 * 1024, calls["get"] * 2 * 1024 * 1024
+    class FakeTracker:
+        def __init__(self, path, native_traces=False):
+            self.path = path
+            self.native_traces = native_traces
 
-    def fake_stop():
-        calls["stop"] += 1
+        def __enter__(self):
+            calls["tracker_enter"] += 1
 
-    monkeypatch.setattr(suite.tracemalloc, "start", fake_start)
-    monkeypatch.setattr(suite.tracemalloc, "get_traced_memory", fake_get_traced_memory)
-    monkeypatch.setattr(suite.tracemalloc, "stop", fake_stop)
+        def __exit__(self, exc_type, exc, tb):
+            calls["tracker_exit"] += 1
+
+    class FakeReader:
+        def __init__(self, path):
+            calls["reader"] += 1
+            self.path = path
+
+        def get_high_watermark_allocation_records(self, merge_threads=True):
+            return [FakeRecord(calls["reader"] * 1024 * 1024)]
+
+    fake_memray = types.SimpleNamespace(Tracker=FakeTracker, FileReader=FakeReader)
+    monkeypatch.setitem(sys.modules, "memray", fake_memray)
 
     result = suite.run_memory_call(fake_func, iterations=2, sleep_seconds=0.0)
 
-    assert calls == {"func": 3, "start": 2, "get": 2, "stop": 2}
+    assert calls == {"func": 2, "tracker_enter": 2, "tracker_exit": 2, "reader": 2}
     assert result["status"] == "ok"
-    assert result["peak_memory_mb"] == [2.0, 4.0]
-    assert result["average_peak_memory_mb"] == pytest.approx(3.0)
+    assert result["peak_memory_mb"] == [1.0, 2.0]
+    assert result["average_peak_memory_mb"] == pytest.approx(1.5)
     assert "times_seconds" not in result
 
 

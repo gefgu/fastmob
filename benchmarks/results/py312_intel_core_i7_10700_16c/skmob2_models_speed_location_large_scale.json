@@ -6,7 +6,12 @@
     "input_type": "cached_skmob_model_reference",
     "iterations": 3,
     "library": "skmob2",
-    "metrics": null,
+    "metrics": [
+      "gravity_flows",
+      "gravity_probabilities",
+      "radiation_flows",
+      "radiation_probabilities"
+    ],
     "n_agents": null,
     "n_locations": null,
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
@@ -15,159 +20,55 @@
     "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
     "sleep_seconds": 0.5,
     "suite": "models_location_large_scale",
-    "timestamp_utc": "2026-06-11T10:34:56.822086+00:00"
+    "timestamp_utc": "2026-06-21T15:33:04.630702+00:00"
   },
   "results": [
-    {
-      "benchmark_group": "location_models",
-      "label": "1000 locations",
-      "metrics": {
-        "gravity_flows": {
-          "average_seconds": 0.835064676279823,
-          "iterations_completed": 3,
-          "minimum_seconds": 0.8106686417013407,
-          "status": "ok",
-          "times_seconds": [
-            0.8106686417013407,
-            0.8479035780765116,
-            0.8466218090616167
-          ]
-        },
-        "gravity_probabilities": {
-          "average_seconds": 0.8561501145983735,
-          "iterations_completed": 3,
-          "minimum_seconds": 0.8352067191153765,
-          "status": "ok",
-          "times_seconds": [
-            0.8846650910563767,
-            0.8485785336233675,
-            0.8352067191153765
-          ]
-        },
-        "radiation_flows": {
-          "average_seconds": 0.27397573630635935,
-          "iterations_completed": 3,
-          "minimum_seconds": 0.26277552312240005,
-          "status": "ok",
-          "times_seconds": [
-            0.26277552312240005,
-            0.2633140906691551,
-            0.29583759512752295
-          ]
-        },
-        "radiation_probabilities": {
-          "average_seconds": 1.5211062331994374,
-          "iterations_completed": 3,
-          "minimum_seconds": 1.4553612377494574,
-          "status": "ok",
-          "times_seconds": [
-            1.4553612377494574,
-            1.5463189319707453,
-            1.5616385298781097
-          ]
-        }
-      },
-      "n_agents": null,
-      "n_locations": 1000
-    },
-    {
-      "benchmark_group": "location_models",
-      "label": "5000 locations",
-      "metrics": {
-        "gravity_flows": {
-          "average_seconds": 18.6611435781233,
-          "iterations_completed": 3,
-          "minimum_seconds": 17.892451560124755,
-          "status": "ok",
-          "times_seconds": [
-            17.892451560124755,
-            18.359890698920935,
-            19.731088475324214
-          ]
-        },
-        "gravity_probabilities": {
-          "average_seconds": 18.36509506823495,
-          "iterations_completed": 3,
-          "minimum_seconds": 17.828058967832476,
-          "status": "ok",
-          "times_seconds": [
-            17.95326930610463,
-            19.313956930767745,
-            17.828058967832476
-          ]
-        },
-        "radiation_flows": {
-          "average_seconds": 7.123390551190823,
-          "iterations_completed": 3,
-          "minimum_seconds": 7.056295130867511,
-          "status": "ok",
-          "times_seconds": [
-            7.056295130867511,
-            7.155244209803641,
-            7.158632312901318
-          ]
-        },
-        "radiation_probabilities": {
-          "average_seconds": 35.597798860942326,
-          "iterations_completed": 3,
-          "minimum_seconds": 34.84348803013563,
-          "status": "ok",
-          "times_seconds": [
-            36.92763187084347,
-            35.02227668184787,
-            34.84348803013563
-          ]
-        }
-      },
-      "n_agents": null,
-      "n_locations": 5000
-    },
     {
       "benchmark_group": "location_models",
       "label": "10000 locations",
       "metrics": {
         "gravity_flows": {
-          "average_seconds": 73.6259929924272,
+          "average_seconds": 71.52772897621617,
           "iterations_completed": 3,
-          "minimum_seconds": 70.85275877825916,
+          "minimum_seconds": 70.17201996780932,
           "status": "ok",
           "times_seconds": [
-            73.60369757702574,
-            76.4215226219967,
-            70.85275877825916
+            70.17201996780932,
+            71.20981663186103,
+            73.20135032897815
           ]
         },
         "gravity_probabilities": {
-          "average_seconds": 74.14932696924855,
+          "average_seconds": 71.02203681444128,
           "iterations_completed": 3,
-          "minimum_seconds": 71.78900231001899,
+          "minimum_seconds": 68.00042988313362,
           "status": "ok",
           "times_seconds": [
-            76.84322277503088,
-            71.78900231001899,
-            73.81575582269579
+            74.53464221209288,
+            68.00042988313362,
+            70.53103834809735
           ]
         },
         "radiation_flows": {
-          "average_seconds": 28.32313426490873,
+          "average_seconds": 49.54170939605683,
           "iterations_completed": 3,
-          "minimum_seconds": 28.02682135393843,
+          "minimum_seconds": 49.278689184226096,
           "status": "ok",
           "times_seconds": [
-            28.36660496611148,
-            28.02682135393843,
-            28.57597647467628
+            49.62360850907862,
+            49.278689184226096,
+            49.722830494865775
           ]
         },
         "radiation_probabilities": {
-          "average_seconds": 143.0046977167949,
+          "average_seconds": 162.35900531507409,
           "iterations_completed": 3,
-          "minimum_seconds": 142.68075308622792,
+          "minimum_seconds": 155.4177041836083,
           "status": "ok",
           "times_seconds": [
-            143.23022774700075,
-            143.10311231715605,
-            142.68075308622792
+            168.07400819240138,
+            155.4177041836083,
+            163.58530356921256
           ]
         }
       },

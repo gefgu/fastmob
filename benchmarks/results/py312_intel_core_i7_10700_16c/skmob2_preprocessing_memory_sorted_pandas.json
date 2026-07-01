@@ -9,9 +9,9 @@
     "input_cache_status": "reused",
     "input_order": "sorted",
     "input_type": "pandas.DataFrame",
-    "iterations": 3,
+    "iterations": 5,
     "library": "skmob2",
-    "memory_method": "rss_delta_psutil",
+    "memory_method": "memray_peak_heap",
     "metrics": [
       "filter",
       "compress",
@@ -25,16 +25,12 @@
     "repeat_dataset": 1,
     "retries": 0,
     "sizes": [
-      1000,
-      10000,
-      100000,
-      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "preprocessing",
-    "timestamp_utc": "2026-06-10T18:12:22.087188+00:00",
+    "timestamp_utc": "2026-06-21T13:40:28.948531+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -278,54 +274,62 @@
       "label": "4M",
       "metrics": {
         "cluster": {
-          "average_peak_memory_mb": 54.755208333333336,
+          "average_peak_memory_mb": 456.71778373718263,
           "current_memory_mb": [],
-          "iterations_completed": 3,
-          "maximum_peak_memory_mb": 164.265625,
-          "minimum_peak_memory_mb": 0.0,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 456.7197551727295,
+          "minimum_peak_memory_mb": 456.7157573699951,
           "peak_memory_mb": [
-            164.265625,
-            0.0,
-            0.0
+            456.718412399292,
+            456.7157573699951,
+            456.7197551727295,
+            456.71688652038574,
+            456.71810722351074
           ],
           "status": "ok"
         },
         "compress": {
-          "average_peak_memory_mb": 22.055989583333332,
+          "average_peak_memory_mb": 178.01474056243896,
           "current_memory_mb": [],
-          "iterations_completed": 3,
-          "maximum_peak_memory_mb": 66.1328125,
-          "minimum_peak_memory_mb": 0.0,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 178.0160207748413,
+          "minimum_peak_memory_mb": 178.01392269134521,
           "peak_memory_mb": [
-            66.1328125,
-            0.0,
-            0.03515625
+            178.01392269134521,
+            178.01446437835693,
+            178.01458644866943,
+            178.01470851898193,
+            178.0160207748413
           ],
           "status": "ok"
         },
         "filter": {
-          "average_peak_memory_mb": 120.40364583333333,
+          "average_peak_memory_mb": 276.98752918243406,
           "current_memory_mb": [],
-          "iterations_completed": 3,
-          "maximum_peak_memory_mb": 361.1875,
-          "minimum_peak_memory_mb": 0.00390625,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 276.9886255264282,
+          "minimum_peak_memory_mb": 276.9871759414673,
           "peak_memory_mb": [
-            361.1875,
-            0.01953125,
-            0.00390625
+            276.98749256134033,
+            276.9886255264282,
+            276.9871759414673,
+            276.9871759414673,
+            276.9871759414673
           ],
           "status": "ok"
         },
         "stay_locations": {
-          "average_peak_memory_mb": 0.2786458333333333,
+          "average_peak_memory_mb": 277.0313346862793,
           "current_memory_mb": [],
-          "iterations_completed": 3,
-          "maximum_peak_memory_mb": 0.81640625,
-          "minimum_peak_memory_mb": 0.0078125,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 277.0332145690918,
+          "minimum_peak_memory_mb": 277.0294609069824,
           "peak_memory_mb": [
-            0.81640625,
-            0.0078125,
-            0.01171875
+            277.03059005737305,
+            277.03217697143555,
+            277.0294609069824,
+            277.0332145690918,
+            277.0312309265137
           ],
           "status": "ok"
         }

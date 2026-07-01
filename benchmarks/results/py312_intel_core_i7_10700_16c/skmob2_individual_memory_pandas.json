@@ -10,7 +10,7 @@
     "input_cache_status": "not_applicable",
     "input_order": "raw",
     "input_type": "pandas.DataFrame",
-    "iterations": 1,
+    "iterations": 5,
     "library": "skmob2",
     "memory_method": "memray_peak_heap",
     "metrics": [
@@ -34,6 +34,9 @@
       "trajectory_entropy",
       "trajectory_predictability",
       "regularity",
+      "visit_purpose_distribution",
+      "activity_transition_matrix",
+      "daily_activity_distribution",
       "mean_area_volume"
     ],
     "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
@@ -42,16 +45,12 @@
     "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
     "retries": 0,
     "sizes": [
-      1000,
-      10000,
-      100000,
-      1000000,
       4000000
     ],
     "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
-    "sleep_seconds": 0.0,
+    "sleep_seconds": 0.5,
     "suite": "individual",
-    "timestamp_utc": "2026-06-11T09:33:28.757293+00:00",
+    "timestamp_utc": "2026-06-21T14:09:09.180762+00:00",
     "timing_mode": "measure_only"
   },
   "results": [
@@ -998,113 +997,183 @@
     {
       "label": "4M",
       "metrics": {
-        "distance_straight_line": {
-          "average_peak_memory_mb": 95.95048141479492,
+        "activity_transition_matrix": {
+          "average_peak_memory_mb": 680.9970405578613,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 95.95048141479492,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 680.997486114502,
+          "minimum_peak_memory_mb": 680.9967842102051,
+          "peak_memory_mb": [
+            680.9973640441895,
+            680.9967842102051,
+            680.9967842102051,
+            680.997486114502,
+            680.9967842102051
+          ],
+          "status": "ok"
+        },
+        "daily_activity_distribution": {
+          "average_peak_memory_mb": 833.4449172973633,
+          "current_memory_mb": [],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 834.0353775024414,
+          "minimum_peak_memory_mb": 833.0353775024414,
+          "peak_memory_mb": [
+            833.0822525024414,
+            834.0353775024414,
+            833.0362014770508,
+            833.0353775024414,
+            834.0353775024414
+          ],
+          "status": "ok"
+        },
+        "distance_straight_line": {
+          "average_peak_memory_mb": 96.00136375427246,
+          "current_memory_mb": [],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 96.20361137390137,
           "minimum_peak_memory_mb": 95.95048141479492,
           "peak_memory_mb": [
-            95.95048141479492
+            96.20361137390137,
+            95.95048141479492,
+            95.95048141479492,
+            95.9510612487793,
+            95.9511833190918
           ],
           "status": "ok"
         },
         "diversity": {
-          "average_peak_memory_mb": 538.3646774291992,
+          "average_peak_memory_mb": 683.7970481872559,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 538.3646774291992,
-          "minimum_peak_memory_mb": 538.3646774291992,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 685.998104095459,
+          "minimum_peak_memory_mb": 681.9967842102051,
           "peak_memory_mb": [
-            538.3646774291992
+            685.998104095459,
+            683.9967842102051,
+            683.9967842102051,
+            682.9967842102051,
+            681.9967842102051
           ],
           "status": "ok"
         },
         "frequency_rank": {
-          "average_peak_memory_mb": 95.4644603729248,
+          "average_peak_memory_mb": 95.46474723815918,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 95.4644603729248,
-          "minimum_peak_memory_mb": 95.4644603729248,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 95.46784782409668,
+          "minimum_peak_memory_mb": 95.46211051940918,
           "peak_memory_mb": [
-            95.4644603729248
+            95.46211051940918,
+            95.46558952331543,
+            95.46784782409668,
+            95.46607780456543,
+            95.46211051940918
           ],
           "status": "ok"
         },
         "home_location": {
-          "average_peak_memory_mb": 95.95048141479492,
+          "average_peak_memory_mb": 95.95185165405273,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 95.95048141479492,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 95.95319747924805,
           "minimum_peak_memory_mb": 95.95048141479492,
           "peak_memory_mb": [
-            95.95048141479492
+            95.95135116577148,
+            95.95145797729492,
+            95.9527702331543,
+            95.95048141479492,
+            95.95319747924805
           ],
           "status": "ok"
         },
         "individual_mobility_network": {
-          "average_peak_memory_mb": 345.91294860839844,
+          "average_peak_memory_mb": 345.9121925354004,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 345.91294860839844,
-          "minimum_peak_memory_mb": 345.91294860839844,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 345.9132881164551,
+          "minimum_peak_memory_mb": 345.9115180969238,
           "peak_memory_mb": [
-            345.91294860839844
+            345.9131202697754,
+            345.9132881164551,
+            345.9115180969238,
+            345.9115180969238,
+            345.9115180969238
           ],
           "status": "ok"
         },
         "jump_lengths": {
-          "average_peak_memory_mb": 123.03899765014648,
+          "average_peak_memory_mb": 123.04010238647462,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 123.03899765014648,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 123.04110336303711,
           "minimum_peak_memory_mb": 123.03899765014648,
           "peak_memory_mb": [
-            123.03899765014648
+            123.03899765014648,
+            123.04110336303711,
+            123.04064559936523,
+            123.03899765014648,
+            123.04076766967773
           ],
           "status": "ok"
         },
         "k_radius_of_gyration": {
-          "average_peak_memory_mb": 95.95048141479492,
+          "average_peak_memory_mb": 95.95250778198242,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 95.95048141479492,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 95.95356369018555,
           "minimum_peak_memory_mb": 95.95048141479492,
           "peak_memory_mb": [
-            95.95048141479492
+            95.9531364440918,
+            95.9525260925293,
+            95.95356369018555,
+            95.95048141479492,
+            95.95283126831055
           ],
           "status": "ok"
         },
         "location_frequency": {
-          "average_peak_memory_mb": 95.85909080505371,
+          "average_peak_memory_mb": 95.86121482849121,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 95.85909080505371,
-          "minimum_peak_memory_mb": 95.85909080505371,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 95.86214256286621,
+          "minimum_peak_memory_mb": 95.86040306091309,
           "peak_memory_mb": [
-            95.85909080505371
+            95.86040306091309,
+            95.86214256286621,
+            95.86113548278809,
+            95.86061668395996,
+            95.86177635192871
           ],
           "status": "ok"
         },
         "max_distance_from_home": {
-          "average_peak_memory_mb": 95.95109176635742,
+          "average_peak_memory_mb": 95.95321578979492,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 95.95109176635742,
-          "minimum_peak_memory_mb": 95.95109176635742,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 95.95469284057617,
+          "minimum_peak_memory_mb": 95.95051193237305,
           "peak_memory_mb": [
-            95.95109176635742
+            95.9541130065918,
+            95.95319747924805,
+            95.95051193237305,
+            95.95469284057617,
+            95.95356369018555
           ],
           "status": "ok"
         },
         "maximum_distance": {
-          "average_peak_memory_mb": 95.94989013671875,
+          "average_peak_memory_mb": 95.9508544921875,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 95.94989013671875,
-          "minimum_peak_memory_mb": 95.94989013671875,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 95.9539794921875,
+          "minimum_peak_memory_mb": 95.94918823242188,
           "peak_memory_mb": [
-            95.94989013671875
+            95.94918823242188,
+            95.94918823242188,
+            95.95272827148438,
+            95.94918823242188,
+            95.9539794921875
           ],
           "status": "ok"
         },
@@ -1119,68 +1188,92 @@
           "status": "error"
         },
         "number_of_locations": {
-          "average_peak_memory_mb": 65.43276596069336,
+          "average_peak_memory_mb": 65.43317489624023,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 65.43276596069336,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 65.43481063842773,
           "minimum_peak_memory_mb": 65.43276596069336,
           "peak_memory_mb": [
-            65.43276596069336
+            65.43276596069336,
+            65.43276596069336,
+            65.43276596069336,
+            65.43276596069336,
+            65.43481063842773
           ],
           "status": "ok"
         },
         "number_of_visits": {
-          "average_peak_memory_mb": 69.24828720092773,
+          "average_peak_memory_mb": 69.24897079467773,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 69.24828720092773,
-          "minimum_peak_memory_mb": 69.24828720092773,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 69.25143051147461,
+          "minimum_peak_memory_mb": 69.24746322631836,
           "peak_memory_mb": [
-            69.24828720092773
+            69.25143051147461,
+            69.24746322631836,
+            69.25103378295898,
+            69.24746322631836,
+            69.24746322631836
           ],
           "status": "ok"
         },
         "radius_of_gyration": {
-          "average_peak_memory_mb": 65.43148803710938,
+          "average_peak_memory_mb": 65.4319580078125,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 65.43148803710938,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 65.433837890625,
           "minimum_peak_memory_mb": 65.43148803710938,
           "peak_memory_mb": [
+            65.43148803710938,
+            65.43148803710938,
+            65.43148803710938,
+            65.433837890625,
             65.43148803710938
           ],
           "status": "ok"
         },
         "random_entropy": {
-          "average_peak_memory_mb": 65.43331527709961,
+          "average_peak_memory_mb": 65.43435287475586,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 65.43331527709961,
-          "minimum_peak_memory_mb": 65.43331527709961,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 65.43600082397461,
+          "minimum_peak_memory_mb": 65.43273544311523,
           "peak_memory_mb": [
-            65.43331527709961
+            65.43508529663086,
+            65.43450546264648,
+            65.43600082397461,
+            65.43343734741211,
+            65.43273544311523
           ],
           "status": "ok"
         },
         "recency_rank": {
-          "average_peak_memory_mb": 125.98184013366699,
+          "average_peak_memory_mb": 125.98301811218262,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 125.98184013366699,
-          "minimum_peak_memory_mb": 125.98184013366699,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 125.98870658874512,
+          "minimum_peak_memory_mb": 125.97982597351074,
           "peak_memory_mb": [
-            125.98184013366699
+            125.98187065124512,
+            125.98870658874512,
+            125.98217582702637,
+            125.98251152038574,
+            125.97982597351074
           ],
           "status": "ok"
         },
         "regularity": {
-          "average_peak_memory_mb": 461.5826072692871,
+          "average_peak_memory_mb": 680.9967842102051,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 461.5826072692871,
-          "minimum_peak_memory_mb": 461.5826072692871,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 680.9967842102051,
+          "minimum_peak_memory_mb": 680.9967842102051,
           "peak_memory_mb": [
-            461.5826072692871
+            680.9967842102051,
+            680.9967842102051,
+            680.9967842102051,
+            680.9967842102051,
+            680.9967842102051
           ],
           "status": "ok"
         },
@@ -1205,24 +1298,47 @@
           "status": "error"
         },
         "uncorrelated_entropy": {
-          "average_peak_memory_mb": 65.43273544311523,
+          "average_peak_memory_mb": 65.43332138061524,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 65.43273544311523,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 65.43386459350586,
           "minimum_peak_memory_mb": 65.43273544311523,
           "peak_memory_mb": [
+            65.43355941772461,
+            65.43371200561523,
+            65.43273544311523,
+            65.43386459350586,
             65.43273544311523
           ],
           "status": "ok"
         },
-        "waiting_times": {
-          "average_peak_memory_mb": 123.03995895385742,
+        "visit_purpose_distribution": {
+          "average_peak_memory_mb": 680.9967842102051,
           "current_memory_mb": [],
-          "iterations_completed": 1,
-          "maximum_peak_memory_mb": 123.03995895385742,
-          "minimum_peak_memory_mb": 123.03995895385742,
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 680.9967842102051,
+          "minimum_peak_memory_mb": 680.9967842102051,
           "peak_memory_mb": [
-            123.03995895385742
+            680.9967842102051,
+            680.9967842102051,
+            680.9967842102051,
+            680.9967842102051,
+            680.9967842102051
+          ],
+          "status": "ok"
+        },
+        "waiting_times": {
+          "average_peak_memory_mb": 123.03927230834961,
+          "current_memory_mb": [],
+          "iterations_completed": 5,
+          "maximum_peak_memory_mb": 123.04043197631836,
+          "minimum_peak_memory_mb": 123.03898239135742,
+          "peak_memory_mb": [
+            123.03898239135742,
+            123.04043197631836,
+            123.03898239135742,
+            123.03898239135742,
+            123.03898239135742
           ],
           "status": "ok"
         }

@@ -3,11 +3,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 
 /// Build a CSR adjacency list from an undirected edge list.
 /// Edges are symmetrised; self-loops are ignored.
-pub fn edges_to_csr(
-    srcs: &[usize],
-    dsts: &[usize],
-    n_nodes: usize,
-) -> (Vec<usize>, Vec<usize>) {
+pub fn edges_to_csr(srcs: &[usize], dsts: &[usize], n_nodes: usize) -> (Vec<usize>, Vec<usize>) {
     let mut adj: Vec<Vec<usize>> = vec![Vec::new(); n_nodes];
     for (&s, &d) in srcs.iter().zip(dsts.iter()) {
         if s != d && s < n_nodes && d < n_nodes {
@@ -33,11 +29,7 @@ pub fn edges_to_csr(
 /// Random Geometric Graph: place `n_nodes` points uniformly in [0,1]²
 /// and connect pairs within Euclidean distance `radius`.
 /// Returns CSR adjacency (simple, undirected, no self-loops).
-pub fn random_geometric_graph(
-    n_nodes: usize,
-    radius: f64,
-    seed: u64,
-) -> (Vec<usize>, Vec<usize>) {
+pub fn random_geometric_graph(n_nodes: usize, radius: f64, seed: u64) -> (Vec<usize>, Vec<usize>) {
     if n_nodes == 0 {
         return (vec![0usize], Vec::new());
     }

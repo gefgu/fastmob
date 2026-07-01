@@ -7,6 +7,7 @@
     "iterations": 3,
     "library": "skmob2",
     "metrics": [
+      "epr_10000a",
       "sts_epr_custom"
     ],
     "n_agents": [
@@ -19,22 +20,33 @@
     "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
     "sleep_seconds": 0.5,
     "suite": "models_large_scale",
-    "timestamp_utc": "2026-06-16T13:19:43.852168+00:00"
+    "timestamp_utc": "2026-06-21T15:36:22.789729+00:00"
   },
   "results": [
     {
       "label": "10k",
       "locations": 10000,
       "metrics": {
-        "sts_epr_10000a": {
-          "average_seconds": 3.089050690488269,
+        "epr_10000a": {
+          "average_seconds": 40.16776097208882,
           "iterations_completed": 3,
-          "minimum_seconds": 3.0416159820742905,
+          "minimum_seconds": 40.05076336301863,
           "status": "ok",
           "times_seconds": [
-            3.1183790280483663,
-            3.0416159820742905,
-            3.10715706134215
+            40.14387677097693,
+            40.30864278227091,
+            40.05076336301863
+          ]
+        },
+        "sts_epr_10000a": {
+          "average_seconds": 8.039783646042148,
+          "iterations_completed": 3,
+          "minimum_seconds": 8.005914357025176,
+          "status": "ok",
+          "times_seconds": [
+            8.06432439526543,
+            8.005914357025176,
+            8.049112185835838
           ]
         }
       },

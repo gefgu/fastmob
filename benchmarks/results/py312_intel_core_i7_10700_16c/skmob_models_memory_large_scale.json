@@ -5,7 +5,7 @@
     "cpu_vendor": "intel",
     "input_type": "cached_skmob_model_reference",
     "iterations": 1,
-    "library": "skmob2",
+    "library": "skmob",
     "memory_method": "memray_peak_heap",
     "metrics": [
       "epr_10000a"
@@ -14,11 +14,11 @@
     "n_locations": null,
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
     "profile": "memory",
-    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
     "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
     "sleep_seconds": 0.5,
     "suite": "models_large_scale",
-    "timestamp_utc": "2026-06-25T21:31:39.845667+00:00"
+    "timestamp_utc": "2026-06-25T21:51:15.632037+00:00"
   },
   "results": [
     {
@@ -26,15 +26,13 @@
       "locations": 10000,
       "metrics": {
         "epr_10000a": {
-          "average_peak_memory_mb": 345.23483339945477,
+          "average_peak_memory_mb": 11793.320833206177,
           "current_memory_mb": [],
-          "iterations_completed": 3,
-          "maximum_peak_memory_mb": 346.1188735961914,
-          "minimum_peak_memory_mb": 344.0529479980469,
+          "iterations_completed": 1,
+          "maximum_peak_memory_mb": 11793.320833206177,
+          "minimum_peak_memory_mb": 11793.320833206177,
           "peak_memory_mb": [
-            345.532678604126,
-            344.0529479980469,
-            346.1188735961914
+            11793.320833206177
           ],
           "status": "ok"
         }

@@ -2,7 +2,7 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 
-use crate::models::od::{validate_equal_lengths, CachedGravityOdRows};
+use crate::models::od::{CachedGravityOdRows, validate_equal_lengths};
 use crate::models::shared::{
     cdf_choice, derive_agent_seed, estimate_records_per_agent, sample_tpl_rng,
     validate_starting_locs_length, weighted_choice_excluding,
@@ -54,11 +54,7 @@ fn record_visits(
 }
 
 #[inline(always)]
-fn clear_visits(
-    visited_locs: &mut Vec<usize>,
-    visit_counts: &mut [u32],
-    total_visits: &mut f64,
-) {
+fn clear_visits(visited_locs: &mut Vec<usize>, visit_counts: &mut [u32], total_visits: &mut f64) {
     for &loc in visited_locs.iter() {
         visit_counts[loc] = 0;
     }
@@ -178,15 +174,16 @@ pub fn simulate_epr_agents_from_cached_od_impl(
             || AgentThreadState::new(n),
             |state, agent| {
                 let seed = derive_agent_seed(master_seed, agent, 0);
-                let sl = match starting_locs_slice {
-                    Some(starts) => (starts[agent].max(0) as usize).min(n - 1),
-                    None => {
-                        let mut start_rng = Xoshiro256PlusPlus::seed_from_u64(
-                            derive_agent_seed(master_seed, agent, 1),
-                        );
-                        start_rng.gen_range(0..n)
-                    }
-                };
+                let sl =
+                    match starting_locs_slice {
+                        Some(starts) => (starts[agent].max(0) as usize).min(n - 1),
+                        None => {
+                            let mut start_rng = Xoshiro256PlusPlus::seed_from_u64(
+                                derive_agent_seed(master_seed, agent, 1),
+                            );
+                            start_rng.gen_range(0..n)
+                        }
+                    };
                 let mut out_agents = Vec::with_capacity(records_per_agent);
                 let mut out_lats = Vec::with_capacity(records_per_agent);
                 let mut out_lons = Vec::with_capacity(records_per_agent);
@@ -216,10 +213,7 @@ pub fn simulate_epr_agents_from_cached_od_impl(
         )
         .collect();
 
-    let total: usize = agent_trajectories
-        .iter()
-        .map(|(a, _, _, _)| a.len())
-        .sum();
+    let total: usize = agent_trajectories.iter().map(|(a, _, _, _)| a.len()).sum();
     let mut out_agents: Vec<i64> = Vec::with_capacity(total);
     let mut out_lats: Vec<f64> = Vec::with_capacity(total);
     let mut out_lons_: Vec<f64> = Vec::with_capacity(total);

@@ -7,13 +7,14 @@ from typing import Any
 import narwhals as nw
 
 from ._constants import FREQUENCY, INSTANCE, INSTANCE_ELEMENT, LATITUDE, LONGITUDE, PROBABILITY, UID
-from ._dataframe import _frequency_vector, _probability_vector
 from .base import (
     _CANDIDATE_UID,
     _POS,
     _TARGET_UID,
     Attack,
 )
+from ._rust import FREQUENCY as FREQUENCY_ATTACK
+from ._rust import HOME_WORK, PROBABILITY_ATTACK, PROPORTION, UNIQUE_LOCATION, assess_risk_rust
 
 
 class UniqueLocationAttack(Attack):
@@ -91,6 +92,8 @@ class UniqueLocationAttack(Attack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -121,7 +124,15 @@ class UniqueLocationAttack(Attack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        return self._all_risks(_frequency_vector(traj), targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=UNIQUE_LOCATION,
+            knowledge_length=self.knowledge_length,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+        )
 
     def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         return self._set_match_counts(candidates, instances, [LATITUDE, LONGITUDE])
@@ -231,6 +242,8 @@ class LocationFrequencyAttack(Attack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -261,7 +274,16 @@ class LocationFrequencyAttack(Attack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        return self._all_risks(_frequency_vector(traj), targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=FREQUENCY_ATTACK,
+            knowledge_length=self.knowledge_length,
+            tolerance=self.tolerance,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+        )
 
     def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         return self._metric_tolerance_match_counts(candidates, instances, FREQUENCY)
@@ -353,6 +375,8 @@ class LocationProbabilityAttack(LocationFrequencyAttack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -383,7 +407,16 @@ class LocationProbabilityAttack(LocationFrequencyAttack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        return self._all_risks(_probability_vector(traj), targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=PROBABILITY_ATTACK,
+            knowledge_length=self.knowledge_length,
+            tolerance=self.tolerance,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+        )
 
     def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         return self._metric_tolerance_match_counts(candidates, instances, PROBABILITY)
@@ -447,6 +480,8 @@ class LocationProportionAttack(LocationFrequencyAttack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -477,7 +512,16 @@ class LocationProportionAttack(LocationFrequencyAttack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        return self._all_risks(_frequency_vector(traj), targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=PROPORTION,
+            knowledge_length=self.knowledge_length,
+            tolerance=self.tolerance,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+        )
 
     def _match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame) -> nw.DataFrame:
         candidate_freq = "__candidate_freq__"
@@ -601,6 +645,8 @@ class HomeWorkAttack(UniqueLocationAttack):
         targets: Any = None,
         force_instances: bool = False,
         show_progress: bool = False,
+        *,
+        presorted: bool = False,
     ) -> Any:
         """Assess privacy risk for each user in the trajectory.
 
@@ -631,7 +677,15 @@ class HomeWorkAttack(UniqueLocationAttack):
             "instance_elem", "prob"]``.
             The returned backend matches the input backend.
         """
-        return self._all_risks(_frequency_vector(traj), targets, force_instances, show_progress)
+        del show_progress
+        return assess_risk_rust(
+            traj,
+            attack_kind=HOME_WORK,
+            knowledge_length=self.knowledge_length,
+            targets=targets,
+            force_instances=force_instances,
+            presorted=presorted,
+        )
 
 
 __all__ = [

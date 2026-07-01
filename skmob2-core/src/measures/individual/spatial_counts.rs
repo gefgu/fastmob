@@ -17,7 +17,10 @@ pub fn number_of_visits_impl(
         .collect())
 }
 
-pub fn number_of_visits_from_ends_impl(n_values: usize, ends: &[usize]) -> Result<Vec<u64>, String> {
+pub fn number_of_visits_from_ends_impl(
+    n_values: usize,
+    ends: &[usize],
+) -> Result<Vec<u64>, String> {
     validate_ends(n_values, ends)?;
     Ok((0..ends.len())
         .map(|i| {
