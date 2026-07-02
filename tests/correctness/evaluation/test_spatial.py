@@ -6,7 +6,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skmob2.measures.evaluation import od_matrix_common_part_of_commuters
+from skmob2.measures.evaluation import (
+    od_matrix_common_part_of_commuters,
+    trajectory_common_part_of_commuters,
+)
 
 
 def _skip_if_no_core():
@@ -29,6 +32,136 @@ def test_od_matrix_common_part_aligns_origins_and_destinations():
     left = pd.DataFrame([[10, 0], [0, 5]], index=["a", "b"], columns=["x", "y"])
     right = pd.DataFrame([[5, 5], [0, 5]], index=["a", "c"], columns=["x", "z"])
     assert od_matrix_common_part_of_commuters(left, right) == pytest.approx(1.0 / 3.0)
+
+
+def _trajectory_od_matrix(df: pd.DataFrame, resolution: int) -> pd.DataFrame:
+    h3 = pytest.importorskip("h3")
+
+    points = df[["uid", "datetime", "lat", "lng"]].copy()
+    points["_datetime"] = pd.to_datetime(points["datetime"], errors="coerce")
+    points["_lat"] = pd.to_numeric(points["lat"], errors="coerce")
+    points["_lng"] = pd.to_numeric(points["lng"], errors="coerce")
+    points = points.dropna(subset=["uid", "_datetime", "_lat", "_lng"])
+    points = points[
+        points["_lat"].between(-90, 90)
+        & points["_lng"].between(-180, 180)
+    ]
+    points = points.sort_values(["uid", "_datetime"], kind="mergesort")
+    points["origin"] = [
+        h3.latlng_to_cell(lat, lng, resolution)
+        for lat, lng in zip(points["_lat"], points["_lng"])
+    ]
+    points["destination"] = points.groupby("uid")["origin"].shift(-1)
+    trips = points.dropna(subset=["destination"])
+    trips = trips[trips["origin"] != trips["destination"]]
+    if trips.empty:
+        return pd.DataFrame(dtype=float)
+    return trips.groupby(["origin", "destination"]).size().unstack(fill_value=0).astype(float)
+
+
+def _reference_trajectory_cpc(left: pd.DataFrame, right: pd.DataFrame, resolution: int) -> float:
+    return od_matrix_common_part_of_commuters(
+        _trajectory_od_matrix(left, resolution),
+        _trajectory_od_matrix(right, resolution),
+    )
+
+
+def _trajectory_fixture() -> tuple[pd.DataFrame, pd.DataFrame]:
+    left = pd.DataFrame(
+        {
+            "uid": ["u1", "u2", "u1", "u1", "u2", "u1", "u3", "u3"],
+            "datetime": pd.to_datetime(
+                [
+                    "2026-01-01 10:00:00",
+                    "2026-01-01 09:00:00",
+                    "2026-01-01 08:00:00",
+                    "2026-01-01 09:00:00",
+                    "2026-01-01 08:00:00",
+                    "2026-01-01 11:00:00",
+                    "2026-01-01 08:00:00",
+                    "2026-01-01 09:00:00",
+                ]
+            ),
+            "lat": [48.90, 48.90, 48.85, 48.85, 48.85, 999.0, 48.80, 48.80],
+            "lng": [2.45, 2.45, 2.35, 2.35, 2.35, 2.50, 2.30, 2.30],
+        }
+    )
+    right = pd.DataFrame(
+        {
+            "uid": ["u1", "u1", "u2", "u2", "u4"],
+            "datetime": pd.to_datetime(
+                [
+                    "2026-01-01 08:00:00",
+                    "2026-01-01 09:00:00",
+                    "2026-01-01 08:00:00",
+                    "2026-01-01 09:00:00",
+                    "2026-01-01 09:00:00",
+                ]
+            ),
+            "lat": [48.85, 48.90, 48.85, 48.90, 48.70],
+            "lng": [2.35, 2.45, 2.35, 2.45, 2.20],
+        }
+    )
+    return left, right
+
+
+def test_trajectory_common_part_matches_od_matrix_reference():
+    _skip_if_no_core()
+    left, right = _trajectory_fixture()
+
+    result = trajectory_common_part_of_commuters(left, right, resolution=9)
+
+    assert result == pytest.approx(_reference_trajectory_cpc(left, right, 9))
+
+
+def test_trajectory_common_part_identical_is_one():
+    _skip_if_no_core()
+    left, _ = _trajectory_fixture()
+
+    assert trajectory_common_part_of_commuters(left, left, resolution=9) == pytest.approx(1.0)
+
+
+def test_trajectory_common_part_empty_or_self_loop_only_returns_zero():
+    _skip_if_no_core()
+    loops = pd.DataFrame(
+        {
+            "uid": ["u1", "u1"],
+            "datetime": pd.to_datetime(["2026-01-01 08:00:00", "2026-01-01 09:00:00"]),
+            "lat": [48.85, 48.85],
+            "lng": [2.35, 2.35],
+        }
+    )
+
+    assert trajectory_common_part_of_commuters(loops, loops, resolution=9) == pytest.approx(0.0)
+
+
+def test_trajectory_common_part_dataframe_method_and_public_exports():
+    _skip_if_no_core()
+    import skmob2
+
+    left, right = _trajectory_fixture()
+    left_tdf = skmob2.TrajDataFrame(left)
+    right_tdf = skmob2.TrajDataFrame(right)
+
+    assert hasattr(skmob2, "trajectory_common_part_of_commuters")
+    assert hasattr(skmob2.measures, "trajectory_common_part_of_commuters")
+    assert left_tdf.common_part_of_commuters(right_tdf, resolution=9) == pytest.approx(
+        trajectory_common_part_of_commuters(left, right, resolution=9)
+    )
+
+
+def test_trajectory_common_part_polars_smoke():
+    _skip_if_no_core()
+    pl = pytest.importorskip("polars")
+    left, right = _trajectory_fixture()
+
+    result = trajectory_common_part_of_commuters(
+        pl.from_pandas(left),
+        pl.from_pandas(right),
+        resolution=9,
+    )
+
+    assert result == pytest.approx(_reference_trajectory_cpc(left, right, 9))
 
 
 # ---------------------------------------------------------------------------

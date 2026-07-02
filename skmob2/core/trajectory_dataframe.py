@@ -263,6 +263,16 @@ class TrajDataFrame(BaseDataFrame):
             uid_col=self.uid_col,
         )
 
+    def common_part_of_commuters(self, other, resolution: int = 9) -> float:
+        """Compute trajectory CPC against another trajectory at an H3 resolution."""
+        from skmob2.measures.evaluation import trajectory_common_part_of_commuters
+
+        return trajectory_common_part_of_commuters(
+            self,
+            other,
+            resolution=resolution,
+        )
+
     # ------------------------------------------------------------------
     # Preprocessing methods
     # ------------------------------------------------------------------

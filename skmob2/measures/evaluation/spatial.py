@@ -9,7 +9,23 @@ import numpy as np
 
 from skmob2._core import stvd_emd_arrow as _stvd_emd_arrow
 from skmob2._core import stvd_emd_numpy as _stvd_emd_numpy
-from skmob2.measures._common import DURATION_CANDIDATES, _is_polars_backed, _pick_existing_column
+from skmob2._core import (
+    trajectory_common_part_of_commuters_arrow as _trajectory_cpc_arrow,
+)
+from skmob2._core import (
+    trajectory_common_part_of_commuters_numpy as _trajectory_cpc_numpy,
+)
+from skmob2.measures._common import (
+    DURATION_CANDIDATES,
+    _as_index_array,
+    _build_time_ordered_user_ranges,
+    _detect_trajectory_columns,
+    _extract_timestamps_ms,
+    _is_polars_backed,
+    _pick_existing_column,
+    _use_arrow_kernel_path,
+    _with_datetime_column,
+)
 
 from .distribution import column_distribution_wasserstein_distance
 from .metrics import wasserstein_distance
@@ -41,6 +57,143 @@ def od_matrix_common_part_of_commuters(od1: Any, od2: Any) -> float:
     min_flows = float(np.minimum(values1, values2).sum())
     total_flows = float(np.asarray(values1).sum() + np.asarray(values2).sum())
     return 0.0 if total_flows == 0.0 else float(2.0 * min_flows / total_flows)
+
+
+def _trajectory_input(
+    traj: Any,
+    *,
+    datetime_col: str | None,
+    lat_col: str | None,
+    lng_col: str | None,
+    uid_col: str | None,
+) -> tuple[nw.DataFrame, str, str, str, str | None]:
+    native = getattr(traj, "df", traj)
+    datetime_col = datetime_col or getattr(traj, "datetime_col", None)
+    lat_col = lat_col or getattr(traj, "lat_col", None)
+    lng_col = lng_col or getattr(traj, "lng_col", None)
+    uid_col = uid_col or getattr(traj, "uid_col", None)
+
+    df = nw.from_native(native, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+
+    df = _with_datetime_column(df, datetime_col)
+    schema = df.schema
+    if schema[lat_col] != nw.Float64 or schema[lng_col] != nw.Float64:
+        df = df.with_columns(
+            nw.col(lat_col).cast(nw.Float64),
+            nw.col(lng_col).cast(nw.Float64),
+        )
+
+    required = [datetime_col, lat_col, lng_col]
+    if uid_col is not None:
+        required.append(uid_col)
+    df = df.drop_nulls(subset=required)
+    return df, datetime_col, lat_col, lng_col, uid_col
+
+
+def _trajectory_cpc_inputs(
+    traj: Any,
+    *,
+    datetime_col: str | None,
+    lat_col: str | None,
+    lng_col: str | None,
+    uid_col: str | None,
+) -> tuple[nw.DataFrame, str, str, Any, Any, bool]:
+    df, datetime_col, lat_col, lng_col, uid_col = _trajectory_input(
+        traj,
+        datetime_col=datetime_col,
+        lat_col=lat_col,
+        lng_col=lng_col,
+        uid_col=uid_col,
+    )
+    timestamps = _extract_timestamps_ms(df, datetime_col)
+    use_arrow = _use_arrow_kernel_path(df)
+    timestamp_data = timestamps.to_arrow() if use_arrow else timestamps.to_numpy()
+    _, indices, ends = _build_time_ordered_user_ranges(
+        df, uid_col, datetime_col, timestamp_data
+    )
+    return (
+        df,
+        lat_col,
+        lng_col,
+        _as_index_array(indices),
+        _as_index_array(ends),
+        use_arrow,
+    )
+
+
+def trajectory_common_part_of_commuters(
+    traj_a: Any,
+    traj_b: Any,
+    resolution: int = 9,
+    *,
+    datetime_col_a: str | None = None,
+    lat_col_a: str | None = None,
+    lng_col_a: str | None = None,
+    uid_col_a: str | None = None,
+    datetime_col_b: str | None = None,
+    lat_col_b: str | None = None,
+    lng_col_b: str | None = None,
+    uid_col_b: str | None = None,
+) -> float:
+    """Compute trajectory CPC from sparse H3 OD flows without materialising an OD matrix.
+
+    Rows are ordered by user and datetime. Invalid coordinates, null required
+    fields, missing destinations, and self-loops are excluded before comparing
+    OD edge counts.
+    """
+    if not 0 <= int(resolution) <= 15:
+        raise ValueError(f"H3 resolution must be between 0 and 15, got {resolution}")
+
+    df_a, lat_a, lng_a, indices_a, ends_a, use_arrow_a = _trajectory_cpc_inputs(
+        traj_a,
+        datetime_col=datetime_col_a,
+        lat_col=lat_col_a,
+        lng_col=lng_col_a,
+        uid_col=uid_col_a,
+    )
+    df_b, lat_b, lng_b, indices_b, ends_b, use_arrow_b = _trajectory_cpc_inputs(
+        traj_b,
+        datetime_col=datetime_col_b,
+        lat_col=lat_col_b,
+        lng_col=lng_col_b,
+        uid_col=uid_col_b,
+    )
+
+    if use_arrow_a and use_arrow_b:
+        return float(
+            _trajectory_cpc_arrow(
+                df_a.get_column(lat_a).to_arrow(),
+                df_a.get_column(lng_a).to_arrow(),
+                indices_a,
+                ends_a,
+                df_b.get_column(lat_b).to_arrow(),
+                df_b.get_column(lng_b).to_arrow(),
+                indices_b,
+                ends_b,
+                int(resolution),
+            )
+        )
+
+    return float(
+        _trajectory_cpc_numpy(
+            df_a.get_column(lat_a).to_numpy(),
+            df_a.get_column(lng_a).to_numpy(),
+            indices_a,
+            ends_a,
+            df_b.get_column(lat_b).to_numpy(),
+            df_b.get_column(lng_b).to_numpy(),
+            indices_b,
+            ends_b,
+            int(resolution),
+        )
+    )
 
 
 def profile_metric_wasserstein_distance(df1: Any, df2: Any, metric_col: str) -> float:

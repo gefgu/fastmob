@@ -60,6 +60,7 @@ from .measures import (
     spearman_correlation,
     stvd_emd,
     time_bin_matrix_jensen_shannon_divergence,
+    trajectory_common_part_of_commuters,
     trajectory_entropy,
     trajectory_predictability,
     uncorrelated_entropy,
@@ -160,4 +161,5 @@ __all__ = [
     "motif_distribution_jensen_shannon_divergence",
     "profile_metric_wasserstein_distance",
     "radius_of_gyration_wasserstein_distance",
+    "trajectory_common_part_of_commuters",
 ]

@@ -7,7 +7,7 @@ mod utils;
 use pyo3::prelude::*;
 
 use measures::collective::{square_displacement, visitation_law};
-use measures::evaluation::{stvd_emd, wasserstein};
+use measures::evaluation::{stvd_emd, trajectory_cpc, wasserstein};
 use measures::individual::{
     activity, entropy, home_location, individual_mobility_network, k_radius_of_gyration,
     location_frequency, max_distance_from_point, maximum_distance, motifs, radius_of_gyration,
@@ -431,6 +431,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory_cpc::trajectory_common_part_of_commuters_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory_cpc::trajectory_common_part_of_commuters_arrow,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(wasserstein::wasserstein_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(wasserstein::wasserstein_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
