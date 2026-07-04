@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 import narwhals as nw
 import numpy as np
@@ -194,6 +194,79 @@ def trajectory_common_part_of_commuters(
             int(resolution),
         )
     )
+
+
+def trajectory_common_part_of_commuters_multi(
+    traj_a: Any,
+    traj_b: Any,
+    resolutions: Sequence[int] = (7, 8, 9),
+    *,
+    datetime_col_a: str | None = None,
+    lat_col_a: str | None = None,
+    lng_col_a: str | None = None,
+    uid_col_a: str | None = None,
+    datetime_col_b: str | None = None,
+    lat_col_b: str | None = None,
+    lng_col_b: str | None = None,
+    uid_col_b: str | None = None,
+) -> list[tuple[int, float]]:
+    """Compute trajectory CPC at multiple H3 resolutions, preparing each
+    trajectory's inputs only once instead of once per resolution.
+
+    Equivalent to calling :func:`trajectory_common_part_of_commuters` once per
+    resolution, but the dataframe conversion, column detection, datetime
+    casting, null-dropping, and time-ordered user-range construction done by
+    ``_trajectory_cpc_inputs`` are resolution-independent and were otherwise
+    being redone for every resolution -- tripling cost (or more) on large
+    trajectories for no benefit, since only the final H3-binning kernel call
+    actually depends on ``resolution``.
+    """
+    for resolution in resolutions:
+        if not 0 <= int(resolution) <= 15:
+            raise ValueError(f"H3 resolution must be between 0 and 15, got {resolution}")
+
+    df_a, lat_a, lng_a, indices_a, ends_a, use_arrow_a = _trajectory_cpc_inputs(
+        traj_a,
+        datetime_col=datetime_col_a,
+        lat_col=lat_col_a,
+        lng_col=lng_col_a,
+        uid_col=uid_col_a,
+    )
+    df_b, lat_b, lng_b, indices_b, ends_b, use_arrow_b = _trajectory_cpc_inputs(
+        traj_b,
+        datetime_col=datetime_col_b,
+        lat_col=lat_col_b,
+        lng_col=lng_col_b,
+        uid_col=uid_col_b,
+    )
+
+    use_arrow = use_arrow_a and use_arrow_b
+    if use_arrow:
+        lats_a = df_a.get_column(lat_a).to_arrow()
+        lngs_a = df_a.get_column(lng_a).to_arrow()
+        lats_b = df_b.get_column(lat_b).to_arrow()
+        lngs_b = df_b.get_column(lng_b).to_arrow()
+        kernel = _trajectory_cpc_arrow
+    else:
+        lats_a = df_a.get_column(lat_a).to_numpy()
+        lngs_a = df_a.get_column(lng_a).to_numpy()
+        lats_b = df_b.get_column(lat_b).to_numpy()
+        lngs_b = df_b.get_column(lng_b).to_numpy()
+        kernel = _trajectory_cpc_numpy
+
+    return [
+        (
+            int(resolution),
+            float(
+                kernel(
+                    lats_a, lngs_a, indices_a, ends_a,
+                    lats_b, lngs_b, indices_b, ends_b,
+                    int(resolution),
+                )
+            ),
+        )
+        for resolution in resolutions
+    ]
 
 
 def profile_metric_wasserstein_distance(df1: Any, df2: Any, metric_col: str) -> float:

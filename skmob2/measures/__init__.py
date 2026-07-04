@@ -35,6 +35,7 @@ from .evaluation import (
     stvd_emd,
     time_bin_matrix_jensen_shannon_divergence,
     trajectory_common_part_of_commuters,
+    trajectory_common_part_of_commuters_multi,
     visits_per_user_jensen_shannon_divergence,
     visits_per_user_wasserstein_distance,
     wasserstein_distance,
@@ -152,4 +153,5 @@ __all__ = [
     "profile_metric_wasserstein_distance",
     "radius_of_gyration_wasserstein_distance",
     "trajectory_common_part_of_commuters",
+    "trajectory_common_part_of_commuters_multi",
 ]

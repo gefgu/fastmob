@@ -39,6 +39,7 @@ from .spatial import (
     radius_of_gyration_wasserstein_distance,
     stvd_emd,
     trajectory_common_part_of_commuters,
+    trajectory_common_part_of_commuters_multi,
 )
 
 __all__ = [
@@ -57,6 +58,7 @@ __all__ = [
     "dwell_time_wasserstein_distance",
     "stvd_emd",
     "trajectory_common_part_of_commuters",
+    "trajectory_common_part_of_commuters_multi",
     "activity_distribution_jensen_shannon_divergence",
     "activity_transition_matrix_jensen_shannon_divergence",
     "motif_distribution_jensen_shannon_divergence",

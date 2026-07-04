@@ -9,6 +9,7 @@ import pytest
 from skmob2.measures.evaluation import (
     od_matrix_common_part_of_commuters,
     trajectory_common_part_of_commuters,
+    trajectory_common_part_of_commuters_multi,
 )
 
 
@@ -119,6 +120,39 @@ def test_trajectory_common_part_identical_is_one():
     left, _ = _trajectory_fixture()
 
     assert trajectory_common_part_of_commuters(left, left, resolution=9) == pytest.approx(1.0)
+
+
+def test_trajectory_common_part_multi_matches_single_resolution_calls():
+    _skip_if_no_core()
+    left, right = _trajectory_fixture()
+
+    multi_result = trajectory_common_part_of_commuters_multi(left, right, resolutions=(7, 8, 9))
+    single_results = [
+        (r, trajectory_common_part_of_commuters(left, right, resolution=r)) for r in (7, 8, 9)
+    ]
+
+    assert multi_result == pytest.approx(single_results)
+
+
+def test_trajectory_common_part_multi_prepares_inputs_only_once(monkeypatch):
+    _skip_if_no_core()
+    import skmob2.measures.evaluation.spatial as spatial_module
+
+    left, right = _trajectory_fixture()
+    calls = []
+    original = spatial_module._trajectory_cpc_inputs
+
+    def counting_wrapper(traj, **kwargs):
+        calls.append(traj)
+        return original(traj, **kwargs)
+
+    monkeypatch.setattr(spatial_module, "_trajectory_cpc_inputs", counting_wrapper)
+
+    trajectory_common_part_of_commuters_multi(left, right, resolutions=(7, 8, 9))
+
+    # Exactly one prep call per trajectory side, regardless of how many
+    # resolutions were requested.
+    assert len(calls) == 2
 
 
 def test_trajectory_common_part_empty_or_self_loop_only_returns_zero():

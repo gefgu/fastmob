@@ -61,6 +61,7 @@ from .measures import (
     stvd_emd,
     time_bin_matrix_jensen_shannon_divergence,
     trajectory_common_part_of_commuters,
+    trajectory_common_part_of_commuters_multi,
     trajectory_entropy,
     trajectory_predictability,
     uncorrelated_entropy,
@@ -162,4 +163,5 @@ __all__ = [
     "profile_metric_wasserstein_distance",
     "radius_of_gyration_wasserstein_distance",
     "trajectory_common_part_of_commuters",
+    "trajectory_common_part_of_commuters_multi",
 ]
