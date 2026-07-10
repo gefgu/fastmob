@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/jump_lengths.py."""
+"""Correctness tests for fkmob/measures/jump_lengths.py."""
 
 from __future__ import annotations
 
@@ -49,10 +49,10 @@ def _grouped_from_index_ranges(starts, ends, values) -> list[np.ndarray]:
 
 def test_jump_lengths_known_values(synthetic_tdf):
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     result = jump_lengths(synthetic_tdf, merge=False)
     normalized = _normalize_result(result)
@@ -74,10 +74,10 @@ def test_jump_lengths_known_values(synthetic_tdf):
 
 def test_jump_lengths_merge_returns_numpy_array(synthetic_tdf):
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     result = jump_lengths(synthetic_tdf, merge=True)
     assert isinstance(result, np.ndarray), "pandas merge=True should return a NumPy array"
@@ -89,12 +89,12 @@ def test_jump_lengths_merge_returns_numpy_array(synthetic_tdf):
 def test_jump_lengths_sorts_by_user_time_without_full_dataframe_ordering():
     """Interleaved input rows are ordered chronologically within each user."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     import pandas as pd
-    from skmob2._core import jump_lengths_km
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob._core import jump_lengths_km
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df = pd.DataFrame(
         {
@@ -134,12 +134,12 @@ def test_jump_lengths_sorts_by_user_time_without_full_dataframe_ordering():
 def test_jump_lengths_polars_sorts_by_user_time_without_full_dataframe_ordering():
     """Polars input uses Rust-side user/time ordering."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     polars = pytest.importorskip("polars", reason="Install polars to run this test")
-    from skmob2._core import jump_lengths_km
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob._core import jump_lengths_km
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df = polars.DataFrame(
         {
@@ -177,12 +177,12 @@ def test_jump_lengths_polars_sorts_by_user_time_without_full_dataframe_ordering(
 def test_jump_lengths_equal_timestamps_keep_input_order():
     """Rows tied on timestamp keep their original post-cleaning order."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     import pandas as pd
-    from skmob2._core import jump_lengths_km
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob._core import jump_lengths_km
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df = pd.DataFrame(
         {
@@ -205,11 +205,11 @@ def test_jump_lengths_equal_timestamps_keep_input_order():
 def test_jump_lengths_no_uid_column():
     """When no uid column is present the whole frame is treated as one user."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     import pandas as pd
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df = pd.DataFrame(
         {
@@ -226,12 +226,12 @@ def test_jump_lengths_no_uid_column():
 def test_jump_lengths_no_uid_column_sorts_by_time():
     """Without uid, the whole trajectory is still ordered by timestamp."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     import pandas as pd
-    from skmob2._core import jump_lengths_km
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob._core import jump_lengths_km
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df = pd.DataFrame(
         {
@@ -251,10 +251,10 @@ def test_jump_lengths_no_uid_column_sorts_by_time():
 
 
 def test_jump_lengths_sorted_true_uses_existing_grouped_order():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
     import pandas as pd
-    from skmob2._core import jump_lengths_km
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob._core import jump_lengths_km
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df = pd.DataFrame(
         {
@@ -280,9 +280,9 @@ def test_jump_lengths_sorted_true_uses_existing_grouped_order():
 
 
 def test_jump_lengths_sorted_true_single_user_matches_normal_path():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
     import pandas as pd
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df = pd.DataFrame(
         {
@@ -309,12 +309,12 @@ def test_jump_lengths_sorted_true_single_user_matches_normal_path():
 
 
 def test_jump_lengths_polars_known_values(synthetic_tdf_polars):
-    """Test skmob2.jump_lengths on Polars DataFrame with known values."""
+    """Test fkmob.jump_lengths on Polars DataFrame with known values."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     result = jump_lengths(synthetic_tdf_polars, merge=False)
     normalized = _normalize_result(result)
@@ -337,11 +337,11 @@ def test_jump_lengths_polars_known_values(synthetic_tdf_polars):
 def test_jump_lengths_polars_merge_returns_arrow_array(synthetic_tdf_polars):
     """Polars-backed merge=True keeps the flat result on the Arrow path."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     result = jump_lengths(synthetic_tdf_polars, merge=True)
     assert isinstance(result, pa.Array)
@@ -352,12 +352,12 @@ def test_jump_lengths_polars_merge_returns_arrow_array(synthetic_tdf_polars):
 def test_jump_lengths_polars_no_uid_column():
     """Test that Polars DataFrames work without uid column."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     polars = pytest.importorskip("polars", reason="Install polars to run this test")
     import pandas as pd
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     df_pandas = pd.DataFrame(
         {
@@ -372,15 +372,15 @@ def test_jump_lengths_polars_no_uid_column():
     assert len(result) == 1  # single row, no uid column
 
 
-def test_jump_lengths_polars_vs_pandas_skmob2():
-    """Verify that Polars and pandas produce identical skmob2 results."""
+def test_jump_lengths_polars_vs_pandas_fkmob():
+    """Verify that Polars and pandas produce identical fkmob results."""
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     polars = pytest.importorskip("polars", reason="Install polars to run this test")
     import pandas as pd
-    from skmob2.measures.individual.jump_lengths import jump_lengths as skmob2_jl
+    from fkmob.measures.individual.jump_lengths import jump_lengths as fkmob_jl
 
     df_pandas = pd.DataFrame(
         {
@@ -392,8 +392,8 @@ def test_jump_lengths_polars_vs_pandas_skmob2():
     )
     df_polars = polars.from_pandas(df_pandas)
 
-    result_pandas = skmob2_jl(df_pandas, merge=False)
-    result_polars = skmob2_jl(df_polars, merge=False)
+    result_pandas = fkmob_jl(df_pandas, merge=False)
+    result_polars = fkmob_jl(df_polars, merge=False)
     result_polars_pd = result_polars.to_pandas()
 
     pandas_norm = _normalize_result(result_pandas)
@@ -408,8 +408,8 @@ def test_jump_lengths_polars_vs_pandas_skmob2():
 
 
 def test_jump_lengths_presorted_numpy_helper_groups_by_ranges():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_km, jump_lengths_presorted_numpy
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_km, jump_lengths_presorted_numpy
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
@@ -429,10 +429,10 @@ def test_jump_lengths_presorted_numpy_helper_groups_by_ranges():
 
 
 def test_jump_lengths_presorted_arrow_helper_matches_numpy_helper():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
     pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import jump_lengths_presorted_arrow, jump_lengths_presorted_numpy
+    from fkmob._core import jump_lengths_presorted_arrow, jump_lengths_presorted_numpy
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
@@ -452,8 +452,8 @@ def test_jump_lengths_presorted_arrow_helper_matches_numpy_helper():
 
 
 def test_jump_lengths_non_ordered_numpy_helper_groups_and_sorts_by_time():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_km, jump_lengths_non_ordered_numpy
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_km, jump_lengths_non_ordered_numpy
 
     uids = np.array([1, 0, 1, 0, 0, 1], dtype=np.uint64)
     timestamps = np.array([2.0, 2.0, 0.0, 0.0, 1.0, 1.0], dtype=np.float64)
@@ -477,8 +477,8 @@ def test_jump_lengths_non_ordered_numpy_helper_groups_and_sorts_by_time():
 
 
 def test_jump_lengths_non_ordered_numpy_helper_accepts_none_uid():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_km, jump_lengths_non_ordered_numpy
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_km, jump_lengths_non_ordered_numpy
 
     timestamps = np.array([2.0, 0.0, 1.0], dtype=np.float64)
     lats = np.array([0.0, 0.0, 0.0], dtype=np.float64)
@@ -496,9 +496,9 @@ def test_jump_lengths_non_ordered_numpy_helper_accepts_none_uid():
 
 
 def test_jump_lengths_non_ordered_arrow_helper_accepts_uint64_uid_codes():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import jump_lengths_non_ordered_arrow
+    from fkmob._core import jump_lengths_non_ordered_arrow
 
     indices, starts, ends, values = jump_lengths_non_ordered_arrow(
         pa.array([1, 0, 1, 0], type=pa.uint64()),
@@ -517,9 +517,9 @@ def test_jump_lengths_non_ordered_arrow_helper_accepts_uint64_uid_codes():
 
 
 def test_jump_lengths_non_ordered_arrow_helper_flat_values_accepts_uint64_uid_codes():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import jump_lengths_km, jump_lengths_non_ordered_arrow
+    from fkmob._core import jump_lengths_km, jump_lengths_non_ordered_arrow
 
     indices, starts, ends, values = jump_lengths_non_ordered_arrow(
         pa.array([1, 0, 1, 0], type=pa.uint64()),
@@ -539,8 +539,8 @@ def test_jump_lengths_non_ordered_arrow_helper_flat_values_accepts_uint64_uid_co
 
 
 def test_jump_lengths_indexed_numpy_helper_groups_by_offsets():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_indexed_numpy, jump_lengths_km
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_indexed_numpy, jump_lengths_km
 
     lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
     lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
@@ -561,9 +561,9 @@ def test_jump_lengths_indexed_numpy_helper_groups_by_offsets():
 
 
 def test_jump_lengths_indexed_arrow_helper_matches_numpy_helper():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import jump_lengths_indexed_arrow, jump_lengths_indexed_numpy
+    from fkmob._core import jump_lengths_indexed_arrow, jump_lengths_indexed_numpy
 
     lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
     lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
@@ -581,8 +581,8 @@ def test_jump_lengths_indexed_arrow_helper_matches_numpy_helper():
 
 
 def test_jump_lengths_indexed_numpy_helper_handles_empty_and_single_point_groups():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_indexed_numpy
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_indexed_numpy
 
     lats = np.array([0.0, 1.0, 2.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0], dtype=np.float64)
@@ -597,9 +597,9 @@ def test_jump_lengths_indexed_numpy_helper_handles_empty_and_single_point_groups
 
 
 def test_jump_lengths_indexed_arrow_helper_filters_null_and_non_finite_coords():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import jump_lengths_indexed_arrow, jump_lengths_km
+    from fkmob._core import jump_lengths_indexed_arrow, jump_lengths_km
 
     lats = pa.array([0.0, None, 0.0, float("nan"), 0.0])
     lngs = pa.array([0.0, 5.0, 1.0, 7.0, 3.0])
@@ -619,8 +619,8 @@ def test_jump_lengths_indexed_arrow_helper_filters_null_and_non_finite_coords():
 
 
 def test_jump_lengths_presorted_numpy_helper_validation_errors():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_presorted_numpy
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_presorted_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     ends = np.array([1], dtype=np.uintp)
@@ -633,8 +633,8 @@ def test_jump_lengths_presorted_numpy_helper_validation_errors():
 
 
 def test_jump_lengths_indexed_numpy_helper_validation_errors():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_indexed_numpy
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_indexed_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     indices = np.array([0, 1], dtype=np.uintp)
@@ -650,8 +650,8 @@ def test_jump_lengths_indexed_numpy_helper_validation_errors():
 
 
 def test_jump_lengths_non_ordered_numpy_helper_validation_errors():
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2._core import jump_lengths_non_ordered_numpy
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob._core import jump_lengths_non_ordered_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
@@ -661,41 +661,41 @@ def test_jump_lengths_non_ordered_numpy_helper_validation_errors():
 @pytest.mark.skmob
 def test_jump_lengths_matches_skmob(comparison_skmob):
     pytest.importorskip(
-        "skmob2._core",
-        reason="Build the skmob2 extension first (maturin develop)",
+        "fkmob._core",
+        reason="Build the fkmob extension first (maturin develop)",
     )
     import pandas as pd
     from skmob.measures.individual import jump_lengths as skmob_jl
-    from skmob2.measures.individual.jump_lengths import jump_lengths as skmob2_jl
+    from fkmob.measures.individual.jump_lengths import jump_lengths as fkmob_jl
 
     skmob_result = skmob_jl(comparison_skmob, show_progress=False, merge=False)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_jl(skmob2_input, merge=False)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_jl(fkmob_input, merge=False)
 
     baseline = _normalize_result(skmob_result)
-    candidate = _normalize_result(skmob2_result)
+    candidate = _normalize_result(fkmob_result)
 
     assert set(baseline.keys()) == set(candidate.keys())
     for uid in baseline:
         left = baseline[uid]
         right = candidate[uid]
         assert left.shape == right.shape, f"Shape mismatch for uid={uid}"
-        # skmob uses its Python gislib Haversine implementation; skmob2 uses
+        # skmob uses its Python gislib Haversine implementation; fkmob uses
         # Rust geo::Haversine. Individual long jumps can differ by metres.
         assert np.allclose(left, right, rtol=2e-5, atol=1e-2), f"Value mismatch for uid={uid}"
 
 
 def test_jump_lengths_matches_cached_reference(comparison_skmob_reference):
     """jump_lengths matches the cached skmob baseline without requiring the skmob environment."""
-    pytest.importorskip("skmob2._core", reason="Build the skmob2 extension first (maturin develop)")
-    from skmob2.measures.individual.jump_lengths import jump_lengths as skmob2_jl
+    pytest.importorskip("fkmob._core", reason="Build the fkmob extension first (maturin develop)")
+    from fkmob.measures.individual.jump_lengths import jump_lengths as fkmob_jl
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("jump_lengths")
-    skmob2_result = skmob2_jl(ref.input_df, merge=False)
+    fkmob_result = fkmob_jl(ref.input_df, merge=False)
 
     baseline = _normalize_result(skmob_result)
-    candidate = _normalize_result(skmob2_result)
+    candidate = _normalize_result(fkmob_result)
 
     assert set(baseline.keys()) == set(candidate.keys())
     for uid in baseline:

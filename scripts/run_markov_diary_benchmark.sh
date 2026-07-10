@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Benchmark the current skmob2 MarkovDiaryGenerator.
+# Benchmark the current fkmob MarkovDiaryGenerator.
 #
 # Usage:
 #   bash scripts/run_markov_diary_benchmark.sh
@@ -12,7 +12,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-VENV="${SKMOB2_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
+VENV="${FKMOB_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
 if [ ! -x "$VENV/bin/python" ]; then
     VENV="$REPO_ROOT/.venv"
 fi

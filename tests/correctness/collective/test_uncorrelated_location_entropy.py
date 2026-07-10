@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2.measures.collective.uncorrelated_location_entropy."""
+"""Correctness tests for fkmob.measures.collective.uncorrelated_location_entropy."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import math
 import pandas as pd
 import pytest
 
-from skmob2.measures.collective.uncorrelated_location_entropy import uncorrelated_location_entropy
+from fkmob.measures.collective.uncorrelated_location_entropy import uncorrelated_location_entropy
 
 
 @pytest.fixture()

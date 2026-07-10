@@ -26,12 +26,12 @@ def test_model_registry_contains_expected_generation_models():
 
 
 def test_output_path_matches_library_and_profile(tmp_path: Path):
-    assert suite.build_output_path(tmp_path, "skmob2") == tmp_path / "skmob2_models_speed.json"
+    assert suite.build_output_path(tmp_path, "fkmob") == tmp_path / "fkmob_models_speed.json"
     assert suite.build_output_path(tmp_path, "skmob", "memory") == tmp_path / "skmob_models_memory.json"
 
 
 def test_parse_args_defaults_to_speed_profile():
-    args = suite.parse_args(["--library", "skmob2"])
+    args = suite.parse_args(["--library", "fkmob"])
 
     assert args.profile == "speed"
     assert args.n_agents == suite.DEFAULT_AGENT_COUNTS
@@ -41,24 +41,24 @@ def test_parse_args_defaults_to_speed_profile():
 
 
 def test_selected_specs_filters_metrics():
-    args = suite.parse_args(["--library", "skmob2", "--metrics", "epr", "gravity_flows"])
+    args = suite.parse_args(["--library", "fkmob", "--metrics", "epr", "gravity_flows"])
 
     assert [spec.name for spec in suite.selected_specs(args)] == ["gravity_flows", "epr"]
 
 
 def test_parse_args_accepts_sizes_as_location_alias():
-    args = suite.parse_args(["--library", "skmob2", "--sizes", "7", "11"])
+    args = suite.parse_args(["--library", "fkmob", "--sizes", "7", "11"])
 
     assert args.n_locations == [7, 11]
     assert args.sizes == [7, 11]
 
 
 def test_write_json_serializes_payload(tmp_path: Path):
-    output_path = suite.write_json({"metadata": {"library": "skmob2"}, "results": []}, tmp_path / "result.json")
+    output_path = suite.write_json({"metadata": {"library": "fkmob"}, "results": []}, tmp_path / "result.json")
 
     assert output_path == tmp_path / "result.json"
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
-        "metadata": {"library": "skmob2"},
+        "metadata": {"library": "fkmob"},
         "results": [],
     }
 
@@ -145,7 +145,7 @@ def test_run_memory_call_tracks_each_iteration_with_memray(monkeypatch):
 def test_benchmark_model_records_import_errors():
     spec = suite.BenchmarkSpec("missing", "missing", {})
 
-    result = suite.benchmark_model(spec, "skmob2", object(), object(), iterations=1, sleep_seconds=0.0)
+    result = suite.benchmark_model(spec, "fkmob", object(), object(), iterations=1, sleep_seconds=0.0)
 
     assert result["status"] == "skipped"
     assert result["times_seconds"] == []
@@ -174,7 +174,7 @@ def test_build_call_passes_agent_and_location_dimensions(monkeypatch):
             calls["geosim"] = {"locations": len(tessellation), "kwargs": kwargs}
             return None
 
-    fake_models = types.ModuleType("skmob2.models")
+    fake_models = types.ModuleType("fkmob.models")
     fake_models.Gravity = object
     fake_models.Radiation = object
     fake_models.MarkovDiaryGenerator = object
@@ -184,19 +184,19 @@ def test_build_call_passes_agent_and_location_dimensions(monkeypatch):
     fake_models.GeoSim = FakeGeoSim
     fake_models.STS_epr = object
 
-    monkeypatch.setitem(sys.modules, "skmob2.models", fake_models)
+    monkeypatch.setitem(sys.modules, "fkmob.models", fake_models)
     tessellation = pd.DataFrame({"tile_id": list("abc"), "lat": [1, 2, 3], "lng": [4, 5, 6]})
 
     suite.build_call(
         suite.BenchmarkSpec("epr", "epr", {"model": "EPR", "relevance_column": "population"}),
-        "skmob2",
+        "fkmob",
         tessellation,
         object(),
         n_agents=5,
     )()
     suite.build_call(
         suite.BenchmarkSpec("geosim", "geosim", {}),
-        "skmob2",
+        "fkmob",
         tessellation,
         object(),
         n_agents=4,
@@ -209,7 +209,7 @@ def test_build_call_passes_agent_and_location_dimensions(monkeypatch):
     assert calls["geosim"]["kwargs"]["social_graph"] == suite.social_graph(4)
 
 
-def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
+def test_fkmob_smoke_with_fake_models(monkeypatch, tmp_path: Path):
     pd = pytest.importorskip("pandas")
     calls = {"gravity": 0, "epr": 0}
 
@@ -223,7 +223,7 @@ def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
             calls["epr"] += 1
             return {"locations": len(tessellation), "kwargs": kwargs}
 
-    fake_models = types.ModuleType("skmob2.models")
+    fake_models = types.ModuleType("fkmob.models")
     fake_models.Gravity = FakeGravity
     fake_models.Radiation = FakeGravity
     fake_models.MarkovDiaryGenerator = object
@@ -233,7 +233,7 @@ def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
     fake_models.GeoSim = object
     fake_models.STS_epr = object
 
-    monkeypatch.setitem(sys.modules, "skmob2.models", fake_models)
+    monkeypatch.setitem(sys.modules, "fkmob.models", fake_models)
     monkeypatch.setattr(
         suite,
         "LOCATION_MODEL_BENCHMARKS",
@@ -264,7 +264,7 @@ def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
     args = suite.parse_args(
         [
             "--library",
-            "skmob2",
+            "fkmob",
             "--n-locations",
             "2",
             "--n-agents",
@@ -282,7 +282,7 @@ def test_skmob2_smoke_with_fake_models(monkeypatch, tmp_path: Path):
     payload = suite.run_suite(args)
 
     assert payload["metadata"]["suite"] == "models"
-    assert payload["metadata"]["library"] == "skmob2"
+    assert payload["metadata"]["library"] == "fkmob"
     assert payload["metadata"]["metrics"] == [spec.name for spec in suite.MODEL_BENCHMARKS]
     assert payload["results"][0]["metrics"]["gravity_flows"]["status"] == "ok"
     assert payload["results"][1]["benchmark_group"] == "trajectory_models"

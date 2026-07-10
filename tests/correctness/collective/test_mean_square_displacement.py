@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2.measures.collective.mean_square_displacement."""
+"""Correctness tests for fkmob.measures.collective.mean_square_displacement."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import math
 import pandas as pd
 import pytest
 
-from skmob2.measures.collective.mean_square_displacement import mean_square_displacement
-from skmob2._core import square_displacement_km2
+from fkmob.measures.collective.mean_square_displacement import mean_square_displacement
+from fkmob._core import square_displacement_km2
 
 
 # ---------------------------------------------------------------------------

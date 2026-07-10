@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generate statistical baselines for model generation comparison.
 #
-# Runs the baseline generator in both .venv (skmob2) and .venv-skmob (skmob).
+# Runs the baseline generator in both .venv (fkmob) and .venv-skmob (skmob).
 # The resulting JSON files are committed to tests/shared/ and used by
 # tests/correctness/models/test_statistical_model_parity.py.
 #
@@ -19,9 +19,9 @@ SCRIPT="$REPO/benchmarks/model_statistical_baseline.py"
 # Forward any extra arguments (e.g. --n-runs 50) to both invocations.
 EXTRA_ARGS=("$@")
 
-echo "=== skmob2 baseline (.venv) ==="
+echo "=== fkmob baseline (.venv) ==="
 source "$REPO/.venv/bin/activate"
-python "$SCRIPT" --library skmob2 "${EXTRA_ARGS[@]}"
+python "$SCRIPT" --library fkmob "${EXTRA_ARGS[@]}"
 
 echo ""
 echo "=== skmob baseline (.venv-skmob) ==="

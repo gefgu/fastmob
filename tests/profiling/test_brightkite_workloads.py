@@ -17,14 +17,14 @@ def _tiny_brightkite() -> pd.DataFrame:
     )
 
 
-def test_prepare_jump_lengths_method_uses_skmob2_trajdataframe(monkeypatch):
+def test_prepare_jump_lengths_method_uses_fkmob_trajdataframe(monkeypatch):
     monkeypatch.setattr(workloads, "load_brightkite", lambda rows, *, backend: _tiny_brightkite())
 
     prepared = workloads.prepare_workload(
         "jump_lengths",
         rows=3,
         backend="pandas",
-        implementation="skmob2",
+        implementation="fkmob",
         jump_lengths_entrypoint="method",
     )
 
@@ -35,14 +35,14 @@ def test_prepare_jump_lengths_method_uses_skmob2_trajdataframe(monkeypatch):
     assert prepared.jump_lengths_entrypoint == "method"
 
 
-def test_prepare_jump_lengths_function_uses_skmob2_trajdataframe(monkeypatch):
+def test_prepare_jump_lengths_function_uses_fkmob_trajdataframe(monkeypatch):
     monkeypatch.setattr(workloads, "load_brightkite", lambda rows, *, backend: _tiny_brightkite())
 
     prepared = workloads.prepare_workload(
         "jump_lengths",
         rows=3,
         backend="pandas",
-        implementation="skmob2",
+        implementation="fkmob",
         jump_lengths_entrypoint="function",
     )
 
@@ -55,13 +55,13 @@ def test_prepare_jump_lengths_function_uses_skmob2_trajdataframe(monkeypatch):
 
 def test_non_jump_lengths_trajectory_workload_keeps_plain_dataframe(monkeypatch):
     monkeypatch.setattr(workloads, "load_brightkite", lambda rows, *, backend: _tiny_brightkite())
-    workload = workloads.workload_registry("skmob2")["radius_of_gyration"]
+    workload = workloads.workload_registry("fkmob")["radius_of_gyration"]
 
     data = workloads.build_dataset_for_workload(
         workload,
         rows=3,
         backend="pandas",
-        implementation="skmob2",
+        implementation="fkmob",
         jump_lengths_entrypoint="method",
     )
 

@@ -16,7 +16,7 @@ A Python toolkit for analyzing human mobility data with backend-agnostic datafra
 ## Installation
 
 ```bash
-pip install skmob2
+pip install fkmob
 ```
 
 For development from source:
@@ -30,7 +30,7 @@ env -u CONDA_PREFIX uv run maturin develop
 
 ```python
 import pandas as pd
-from skmob2 import jump_lengths
+from fkmob import jump_lengths
 
 df = pd.DataFrame(
     {

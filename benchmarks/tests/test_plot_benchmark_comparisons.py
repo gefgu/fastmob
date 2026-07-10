@@ -82,9 +82,9 @@ def test_metric_rows_uses_catalog_order_and_sorts_model_metrics():
 
 def test_generate_plots_models_location_only(tmp_path: Path, monkeypatch):
     original_json = tmp_path / "skmob_models_speed.json"
-    optimized_json = tmp_path / "skmob2_models_speed.json"
+    optimized_json = tmp_path / "fkmob_models_speed.json"
     original_json.write_text(json.dumps(_location_model_payload("skmob", [12, 50])), encoding="utf-8")
-    optimized_json.write_text(json.dumps(_location_model_payload("skmob2", [12, 50])), encoding="utf-8")
+    optimized_json.write_text(json.dumps(_location_model_payload("fkmob", [12, 50])), encoding="utf-8")
 
     drawn = []
 
@@ -109,9 +109,9 @@ def test_generate_plots_models_location_only(tmp_path: Path, monkeypatch):
 
 def test_generate_plots_groups_model_matrix_by_agents(tmp_path: Path, monkeypatch):
     original_json = tmp_path / "skmob_models_speed.json"
-    optimized_json = tmp_path / "skmob2_models_speed.json"
+    optimized_json = tmp_path / "fkmob_models_speed.json"
     original_json.write_text(json.dumps(_model_matrix_payload("skmob")), encoding="utf-8")
-    optimized_json.write_text(json.dumps(_model_matrix_payload("skmob2")), encoding="utf-8")
+    optimized_json.write_text(json.dumps(_model_matrix_payload("fkmob")), encoding="utf-8")
 
     drawn = []
 
@@ -146,8 +146,8 @@ def test_generate_plots_groups_model_matrix_by_agents(tmp_path: Path, monkeypatc
 
 
 def test_comparison_title_does_not_repeat_backend():
-    assert plot.comparison_title("spatial", "polars") == "skmob2 vs skmob"
-    assert plot.comparison_title("visits", "pandas") == "skmob2 vs skmob"
+    assert plot.comparison_title("spatial", "polars") == "fkmob vs skmob"
+    assert plot.comparison_title("visits", "pandas") == "fkmob vs skmob"
 
 
 def _model_args(original_json: Path, optimized_json: Path, tmp_path: Path) -> argparse.Namespace:
@@ -159,9 +159,9 @@ def _model_args(original_json: Path, optimized_json: Path, tmp_path: Path) -> ar
         output_dir=tmp_path / "plots",
         sizes=None,
         sort="speedup",
-        large_json_skmob2=None,
+        large_json_fkmob=None,
         large_json_skmob=None,
-        large_loc_json_skmob2=None,
+        large_loc_json_fkmob=None,
         large_loc_json_skmob=None,
         standalone=False,
         skip_invalid=False,

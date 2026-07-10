@@ -2,7 +2,7 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/individual/speed_suite.py --library skmob2 --backend both
+    python benchmarks/individual/speed_suite.py --library fkmob --backend both
     python benchmarks/individual/speed_suite.py --library skmob
     python benchmarks/individual/speed_suite.py --library movingpandas
 """
@@ -64,7 +64,7 @@ SORTED_TRAJECTORY_REQUIRED_COLUMNS = ["user", "check-in_time", "latitude", "long
 @dataclass(frozen=True)
 class BenchmarkSpec:
     name: str
-    skmob2_module_path: str
+    fkmob_module_path: str
     skmob_module_path: str
     func_name: str
     kwargs: dict[str, Any]
@@ -75,7 +75,7 @@ class BenchmarkSpec:
 INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec(
         "distance_straight_line",
-        "skmob2.measures.individual.distance_straight_line",
+        "fkmob.measures.individual.distance_straight_line",
         "skmob.measures.individual",
         "distance_straight_line",
         {},
@@ -83,14 +83,14 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "home_location",
-        "skmob2.measures.individual.home_location",
+        "fkmob.measures.individual.home_location",
         "skmob.measures.individual",
         "home_location",
         {},
     ),
     BenchmarkSpec(
         "jump_lengths",
-        "skmob2.measures.individual.jump_lengths",
+        "fkmob.measures.individual.jump_lengths",
         "skmob.measures.individual",
         "jump_lengths",
         {"merge": False},
@@ -98,42 +98,42 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "k_radius_of_gyration",
-        "skmob2.measures.individual.k_radius_of_gyration",
+        "fkmob.measures.individual.k_radius_of_gyration",
         "skmob.measures.individual",
         "k_radius_of_gyration",
         {"k": 2},
     ),
     BenchmarkSpec(
         "max_distance_from_home",
-        "skmob2.measures.individual.max_distance_from_home",
+        "fkmob.measures.individual.max_distance_from_home",
         "skmob.measures.individual",
         "max_distance_from_home",
         {},
     ),
     BenchmarkSpec(
         "maximum_distance",
-        "skmob2.measures.individual.maximum_distance",
+        "fkmob.measures.individual.maximum_distance",
         "skmob.measures.individual",
         "maximum_distance",
         {},
     ),
     BenchmarkSpec(
         "number_of_locations",
-        "skmob2.measures.individual.number_of_locations",
+        "fkmob.measures.individual.number_of_locations",
         "skmob.measures.individual",
         "number_of_locations",
         {},
     ),
     BenchmarkSpec(
         "number_of_visits",
-        "skmob2.measures.individual.number_of_visits",
+        "fkmob.measures.individual.number_of_visits",
         "skmob.measures.individual",
         "number_of_visits",
         {},
     ),
     BenchmarkSpec(
         "radius_of_gyration",
-        "skmob2.measures.individual.radius_of_gyration",
+        "fkmob.measures.individual.radius_of_gyration",
         "skmob.measures.individual",
         "radius_of_gyration",
         {},
@@ -141,7 +141,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "waiting_times",
-        "skmob2.measures.individual.waiting_times",
+        "fkmob.measures.individual.waiting_times",
         "skmob.measures.individual",
         "waiting_times",
         {"merge": False},
@@ -149,49 +149,49 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "random_entropy",
-        "skmob2.measures.individual.random_entropy",
+        "fkmob.measures.individual.random_entropy",
         "skmob.measures.individual",
         "random_entropy",
         {},
     ),
     BenchmarkSpec(
         "uncorrelated_entropy",
-        "skmob2.measures.individual.uncorrelated_entropy",
+        "fkmob.measures.individual.uncorrelated_entropy",
         "skmob.measures.individual",
         "uncorrelated_entropy",
         {},
     ),
     BenchmarkSpec(
         "location_frequency",
-        "skmob2.measures.individual.location_frequency",
+        "fkmob.measures.individual.location_frequency",
         "skmob.measures.individual",
         "location_frequency",
         {},
     ),
     BenchmarkSpec(
         "individual_mobility_network",
-        "skmob2.measures.individual.individual_mobility_network",
+        "fkmob.measures.individual.individual_mobility_network",
         "skmob.measures.individual",
         "individual_mobility_network",
         {},
     ),
     BenchmarkSpec(
         "recency_rank",
-        "skmob2.measures.individual.recency_rank",
+        "fkmob.measures.individual.recency_rank",
         "skmob.measures.individual",
         "recency_rank",
         {},
     ),
     BenchmarkSpec(
         "frequency_rank",
-        "skmob2.measures.individual.frequency_rank",
+        "fkmob.measures.individual.frequency_rank",
         "skmob.measures.individual",
         "frequency_rank",
         {},
     ),
     BenchmarkSpec(
         "diversity",
-        "skmob2.measures.individual.diversity",
+        "fkmob.measures.individual.diversity",
         "skmob.measures.individual",
         "diversity",
         {},
@@ -199,21 +199,21 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "trajectory_entropy",
-        "skmob2.measures.individual.entropy",
+        "fkmob.measures.individual.entropy",
         "skmob.measures.individual",
         "trajectory_entropy",
         {},
     ),
     BenchmarkSpec(
         "trajectory_predictability",
-        "skmob2.measures.individual.entropy",
+        "fkmob.measures.individual.entropy",
         "skmob.measures.individual",
         "trajectory_predictability",
         {},
     ),
     BenchmarkSpec(
         "regularity",
-        "skmob2.measures.individual.regularity",
+        "fkmob.measures.individual.regularity",
         "skmob.measures.individual",
         "regularity",
         {},
@@ -221,7 +221,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "visit_purpose_distribution",
-        "skmob2.measures.individual.activity",
+        "fkmob.measures.individual.activity",
         "skmob.measures.individual",
         "visit_purpose_distribution",
         {},
@@ -229,7 +229,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "activity_transition_matrix",
-        "skmob2.measures.individual.activity",
+        "fkmob.measures.individual.activity",
         "skmob.measures.individual",
         "activity_transition_matrix",
         {},
@@ -237,7 +237,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "daily_activity_distribution",
-        "skmob2.measures.individual.activity",
+        "fkmob.measures.individual.activity",
         "skmob.measures.individual",
         "daily_activity_distribution",
         {},
@@ -245,7 +245,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "mean_area_volume",
-        "skmob2.measures.individual.mean_area_volume",
+        "fkmob.measures.individual.mean_area_volume",
         "skmob.measures.individual",
         "mean_area_volume",
         {},
@@ -255,7 +255,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
 EXPENSIVE_INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec(
         "real_entropy",
-        "skmob2.measures.individual.real_entropy",
+        "fkmob.measures.individual.real_entropy",
         "skmob.measures.individual",
         "real_entropy",
         {},
@@ -263,7 +263,7 @@ EXPENSIVE_INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
 )
 
-SKMOB2_ONLY_INDIVIDUAL_METRICS = {
+FKMOB_ONLY_INDIVIDUAL_METRICS = {
     "diversity",
     "trajectory_entropy",
     "trajectory_predictability",
@@ -285,10 +285,10 @@ def build_output_path(
     input_order: str = "raw",
 ) -> Path:
     order_part = "" if input_order == "raw" else f"{input_order}_"
-    if library == "skmob2":
+    if library == "fkmob":
         if backend is None or backend == "both":
-            raise ValueError("skmob2 output path requires a concrete backend")
-        filename = f"skmob2_individual_{profile}_{order_part}{backend}.json"
+            raise ValueError("fkmob output path requires a concrete backend")
+        filename = f"fkmob_individual_{profile}_{order_part}{backend}.json"
     elif library == "skmob":
         filename = f"skmob_individual_{profile}_{order_part}{timing_mode}.json"
     else:
@@ -306,7 +306,7 @@ def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
 
     try:
         module_path = (
-            spec.skmob2_module_path if library == "skmob2" else spec.skmob_module_path
+            spec.fkmob_module_path if library == "fkmob" else spec.skmob_module_path
         )
         module = importlib.import_module(module_path)
     except Exception as exc:
@@ -338,7 +338,7 @@ def metric_kwargs_for_library(
 ) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
     if (
-        library == "skmob2"
+        library == "fkmob"
         and input_order == "sorted"
         and spec.input_kind == "trajectory"
         and spec.name
@@ -492,8 +492,8 @@ def benchmark_metric(
     case_timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
-    if library == "skmob" and spec.name in SKMOB2_ONLY_INDIVIDUAL_METRICS:
-        reason = "skmob2-only benchmark; excluded from original skmob baseline"
+    if library == "skmob" and spec.name in FKMOB_ONLY_INDIVIDUAL_METRICS:
+        reason = "fkmob-only benchmark; excluded from original skmob baseline"
         print(f"    skipped: {reason}")
         return skipped_result(reason, profile)
     try:
@@ -533,7 +533,7 @@ def benchmark_metric(
         return error_result(str(exc), profile)
 
 
-def benchmark_skmob2_size(
+def benchmark_fkmob_size(
     df: Any,
     size: int,
     *,
@@ -556,7 +556,7 @@ def benchmark_skmob2_size(
     def benchmark_spec(spec: BenchmarkSpec) -> dict[str, Any]:
         return benchmark_metric(
             spec,
-            "skmob2",
+            "fkmob",
             lambda spec=spec: make_input_for_spec(spec),
             profile=profile,
             iterations=iterations,
@@ -781,11 +781,11 @@ def run_suite(
         )
     specs = selected_specs(args)
 
-    if args.library == "skmob2":
+    if args.library == "fkmob":
         selected_backend = backend or args.backend
         if selected_backend == "both":
             raise ValueError(
-                "run_suite requires a concrete backend when library is skmob2"
+                "run_suite requires a concrete backend when library is fkmob"
             )
         if selected_backend == "pandas":
             input_type = "pandas.DataFrame"
@@ -801,7 +801,7 @@ def run_suite(
             input_cache_dir=Path(args.input_cache_dir),
         )
         results = [
-            benchmark_skmob2_size(
+            benchmark_fkmob_size(
                 df,
                 size,
                 specs=specs,
@@ -903,7 +903,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Run standalone individual speed benchmarks."
     )
     parser.add_argument(
-        "--library", choices=["skmob2", "skmob", "movingpandas"], required=True
+        "--library", choices=["fkmob", "skmob", "movingpandas"], required=True
     )
     parser.add_argument(
         "--backend", choices=["pandas", "polars", "both"], default="both"

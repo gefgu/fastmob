@@ -30,11 +30,11 @@ for arg in "$@"; do
 done
 
 if [ "$FIX" -eq 1 ]; then
-    ruff check --fix skmob2 scripts tests "${CHECK_ARGS[@]}"
-    ruff format skmob2 scripts tests
+    ruff check --fix fkmob scripts tests "${CHECK_ARGS[@]}"
+    ruff format fkmob scripts tests
     cargo clippy --fix --all-targets --all-features --allow-dirty -- -D warnings
 else
-    ruff check skmob2 scripts tests "${CHECK_ARGS[@]}"
-    ruff format --check skmob2 scripts tests
+    ruff check fkmob scripts tests "${CHECK_ARGS[@]}"
+    ruff format --check fkmob scripts tests
     cargo clippy --all-targets --all-features -- -D warnings
 fi

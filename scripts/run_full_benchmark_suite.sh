@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Full benchmark suite: skmob2 (py312) → skmob (venv-skmob) → plots.
+# Full benchmark suite: fkmob (py312) → skmob (venv-skmob) → plots.
 #
 # Usage:
 #   bash scripts/run_full_benchmark_suite.sh
-#   bash scripts/run_full_benchmark_suite.sh --phase skmob2   # only Phase 1
+#   bash scripts/run_full_benchmark_suite.sh --phase fkmob   # only Phase 1
 #   bash scripts/run_full_benchmark_suite.sh --phase skmob    # only Phase 2
 #   bash scripts/run_full_benchmark_suite.sh --phase plots    # only Phase 3
 
@@ -73,47 +73,47 @@ both_orders_exist() {
 
 # ── Phase 0: Build ──────────────────────────────────────────────────────────
 
-if [ "$PHASE" = "all" ] || [ "$PHASE" = "skmob2" ]; then
+if [ "$PHASE" = "all" ] || [ "$PHASE" = "fkmob" ]; then
     echo
-    echo "==> Phase 0: Building skmob2._core in ${MAIN_VENV#$REPO_ROOT/} ..."
-    run_job "build_skmob2_core" "$MAIN_VENV" "build" -m maturin develop --uv
+    echo "==> Phase 0: Building fkmob._core in ${MAIN_VENV#$REPO_ROOT/} ..."
+    run_job "build_fkmob_core" "$MAIN_VENV" "build" -m maturin develop --uv
 fi
 
-# ── Phase 1: skmob2 benchmarks (always fresh) ────────────────────────────────
+# ── Phase 1: fkmob benchmarks (always fresh) ────────────────────────────────
 
-if [ "$PHASE" = "all" ] || [ "$PHASE" = "skmob2" ]; then
+if [ "$PHASE" = "all" ] || [ "$PHASE" = "fkmob" ]; then
     echo
-    echo "==> Phase 1: skmob2 benchmarks (fresh) in ${MAIN_VENV#$REPO_ROOT/} ..."
+    echo "==> Phase 1: fkmob benchmarks (fresh) in ${MAIN_VENV#$REPO_ROOT/} ..."
 
     for profile in speed memory; do
-        run_job "skmob2_preprocessing_${profile}_both" "$MAIN_VENV" "skmob2" \
+        run_job "fkmob_preprocessing_${profile}_both" "$MAIN_VENV" "fkmob" \
             benchmarks/preprocessing/speed_suite.py \
-            --library skmob2 --backend both --input-order both \
+            --library fkmob --backend both --input-order both \
             --profile "$profile" --output-dir "$OUTPUT_DIR"
 
-        run_job "skmob2_individual_${profile}_both" "$MAIN_VENV" "skmob2" \
+        run_job "fkmob_individual_${profile}_both" "$MAIN_VENV" "fkmob" \
             benchmarks/individual/speed_suite.py \
-            --library skmob2 --backend both --input-order both \
+            --library fkmob --backend both --input-order both \
             --profile "$profile" --output-dir "$OUTPUT_DIR"
 
-        run_job "skmob2_collective_${profile}_both" "$MAIN_VENV" "skmob2" \
+        run_job "fkmob_collective_${profile}_both" "$MAIN_VENV" "fkmob" \
             benchmarks/collective/speed_suite.py \
-            --library skmob2 --backend both --input-order both \
+            --library fkmob --backend both --input-order both \
             --profile "$profile" --output-dir "$OUTPUT_DIR"
 
-        run_job "skmob2_evaluation_${profile}_both" "$MAIN_VENV" "skmob2" \
+        run_job "fkmob_evaluation_${profile}_both" "$MAIN_VENV" "fkmob" \
             benchmarks/evaluation/speed_suite.py \
-            --library skmob2 --backend both \
+            --library fkmob --backend both \
             --profile "$profile" --output-dir "$OUTPUT_DIR"
 
-        run_job "skmob2_models_${profile}" "$MAIN_VENV" "skmob2" \
+        run_job "fkmob_models_${profile}" "$MAIN_VENV" "fkmob" \
             benchmarks/models/speed_suite.py \
-            --library skmob2 --n-agents 500 --n-locations 10000 \
+            --library fkmob --n-agents 500 --n-locations 10000 \
             --profile "$profile" --output-dir "$OUTPUT_DIR"
 
-        run_job "skmob2_privacy_${profile}_both" "$MAIN_VENV" "skmob2" \
+        run_job "fkmob_privacy_${profile}_both" "$MAIN_VENV" "fkmob" \
             benchmarks/privacy/speed_suite.py \
-            --library skmob2 --backend both --input-order both \
+            --library fkmob --backend both --input-order both \
             --repeat-dataset 10 \
             --profile "$profile" --output-dir "$OUTPUT_DIR"
     done

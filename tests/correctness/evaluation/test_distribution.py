@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2.measures.evaluation.distribution."""
+"""Correctness tests for fkmob.measures.evaluation.distribution."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import math
 import pandas as pd
 import pytest
 
-from skmob2.measures.evaluation import (
+from fkmob.measures.evaluation import (
     column_distribution_jensen_shannon_divergence,
     column_distribution_wasserstein_distance,
     visits_per_user_jensen_shannon_divergence,

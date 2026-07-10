@@ -1,15 +1,15 @@
 # Profile Python Scalene
 
-Profile Python functions in the skmob2 repository with Scalene, reduce Scalene JSON output, and explain CPU and memory hotspots.
+Profile Python functions in the fkmob repository with Scalene, reduce Scalene JSON output, and explain CPU and memory hotspots.
 
 ## Workflow
 
-Run from the repository root (`/home/gustavo/skmob2`) so imports, data paths, and `uv` environment resolution match the project.
+Run from the repository root (`/home/gustavo/fkmob`) so imports, data paths, and `uv` environment resolution match the project.
 
 Prefer explicit output paths outside the repo unless the user asks to persist artifacts:
 
 ```bash
-uv run scalene run --memory --profile-only skmob2 -o /tmp/scalene-profile.json .agents/skills/profile-python-scalene/scripts/profile_function.py --- skmob2.module:function --input-kind brightkite-pandas --rows 100000
+uv run scalene run --memory --profile-only fkmob -o /tmp/scalene-profile.json .agents/skills/profile-python-scalene/scripts/profile_function.py --- fkmob.module:function --input-kind brightkite-pandas --rows 100000
 ```
 
 Then inspect the profile with either Scalene's terminal view or the reducer:
@@ -19,14 +19,14 @@ uv run scalene view --cli -r /tmp/scalene-profile.json
 uv run python .agents/skills/profile-python-scalene/scripts/reduce_scalene_json.py /tmp/scalene-profile.json --top 20
 ```
 
-Use `--profile-only skmob2` for normal investigations. Add a comma-separated broader scope only when the question is about dependency overhead.
+Use `--profile-only fkmob` for normal investigations. Add a comma-separated broader scope only when the question is about dependency overhead.
 
 ## Profiling Callables
 
 Use `scripts/profile_function.py` to profile an importable callable. Targets use `module:function` syntax:
 
 ```bash
-uv run scalene run --memory --profile-only skmob2 -o /tmp/radius.json .agents/skills/profile-python-scalene/scripts/profile_function.py --- skmob2.measures.spatial.radius_of_gyration:radius_of_gyration --input-kind brightkite-pandas --rows 1000 --repeat 5
+uv run scalene run --memory --profile-only fkmob -o /tmp/radius.json .agents/skills/profile-python-scalene/scripts/profile_function.py --- fkmob.measures.spatial.radius_of_gyration:radius_of_gyration --input-kind brightkite-pandas --rows 1000 --repeat 5
 ```
 
 Input kinds:
@@ -39,7 +39,7 @@ Input kinds:
 Pass keyword arguments as JSON:
 
 ```bash
-uv run scalene run --memory --profile-only skmob2 -o /tmp/filter.json .agents/skills/profile-python-scalene/scripts/profile_function.py --- skmob2.preprocessing.filter:filter --kwargs-json '{"max_speed_kmh": 500}' --rows 10000
+uv run scalene run --memory --profile-only fkmob -o /tmp/filter.json .agents/skills/profile-python-scalene/scripts/profile_function.py --- fkmob.preprocessing.filter:filter --kwargs-json '{"max_speed_kmh": 500}' --rows 10000
 ```
 
 Use `--repeat` to increase sample counts when Scalene reports little activity. Keep `--rows` small first, then scale up after the call succeeds.

@@ -1,5 +1,5 @@
 ---
-name: skmob2 refactoring history
+name: fkmob refactoring history
 description: Completed refactors, deferred items, and known code smells with file+line references
 type: project
 ---
@@ -22,7 +22,7 @@ type: project
 
 ### R4: Motif hashing redesign — canonical adjacency-matrix IDs (2026-04-17)
 - **Smell:** `format_motif_id_v2` produced `"{n_nodes}_{n_edges}_{order}"` IDs that depended on insertion order into the dynamic library — two structurally identical graphs in different libraries got different IDs. `_is_isomorphic` used brute-force permutation search with no fast rejection.
-- **Change:** Added `_degree_sequence` (fast prefilter), `_canonical_adjacency_form` (max-permutation big-endian binary string), and `_motif_id` (returns `"m{n_nodes}:{bits}"`). Updated `_is_isomorphic` to use canonical form comparison. Updated `classify_or_add_motif_v2` to call `_motif_id(user_graph)` directly. Removed `format_motif_id_v2` entirely. Updated `measures/__init__.py` and `skmob2/__init__.py`.
+- **Change:** Added `_degree_sequence` (fast prefilter), `_canonical_adjacency_form` (max-permutation big-endian binary string), and `_motif_id` (returns `"m{n_nodes}:{bits}"`). Updated `_is_isomorphic` to use canonical form comparison. Updated `classify_or_add_motif_v2` to call `_motif_id(user_graph)` directly. Removed `format_motif_id_v2` entirely. Updated `measures/__init__.py` and `fkmob/__init__.py`.
 - **Tests updated:** `test_format_motif_id_v2_basic` → replaced with 3 new `_motif_id` tests. `test_classify_motif_1_returns_known_id` → now asserts `"m1:0"`. `test_classify_motif_2_returns_known_id` → now asserts `"m2:0110"`.
 - **Key canonical IDs:** single node (motif 1) = `"m1:0"`, simple return (motif 2) = `"m2:0110"`.
 
@@ -32,26 +32,26 @@ type: project
 - **Net effect:** No test failures; only the 5 pre-existing pyarrow failures remain.
 
 ### R6: Reorganize measures into domain subfolders (2026-04-17)
-- **Smell:** All 7 source files lived flat in `skmob2/measures/` with no grouping — hard to navigate, unclear which files relate to which domain.
-- **Change:** Created four domain subfolders under `skmob2/measures/`:
+- **Smell:** All 7 source files lived flat in `fkmob/measures/` with no grouping — hard to navigate, unclear which files relate to which domain.
+- **Change:** Created four domain subfolders under `fkmob/measures/`:
   - `spatial/` — `jump_lengths.py`, `radius_of_gyration.py`
   - `visits/` — `activity.py`, `intermittance.py` (renamed from `individual.py`), `motifs.py`
   - `flows/` — `od.py`
   - `fitting/` — `mobility_laws.py`
 - Each subfolder has an `__init__.py` re-exporting its public symbols.
-- `skmob2/measures/__init__.py` and `skmob2/__init__.py` updated to import from subfolders.
+- `fkmob/measures/__init__.py` and `fkmob/__init__.py` updated to import from subfolders.
 - Relative imports in each file updated: `from ._common import` → `from .._common import`.
 - Test files mirrored into `tests/correctness/spatial/`, `visits/`, `flows/`, `fitting/` with import paths updated accordingly.
 - Old `individual.py` → `visits/intermittance.py` (content unchanged; all 6 functions remain in one file).
-- Public API surface: unchanged. `from skmob2 import jump_lengths` etc. still works.
+- Public API surface: unchanged. `from fkmob import jump_lengths` etc. still works.
 - Test result: 131 passed, 5 pre-existing pyarrow failures (unchanged from pre-R6 baseline).
 
 ## Migration artifact cleanup (2026-04-17)
 
-### R7: Fix broken skmob2 import paths in mobility_analysis adapters
-- **Smell:** All 6 adapter files (`motifs.py`, `individual.py`, `spatial.py`, `activity.py`, `cdr_measures.py`, `mobility_laws.py`) still used pre-R6 flat import paths (`skmob2.measures.od`, `skmob2.measures.individual`, etc.). These were broken by the R6 subfolder reorganization. Also `motifs.py` imported `format_motif_id_v2` from skmob2 which was removed in R4 (the adapter has its own local copy).
-- **Change:** Updated all 6 adapter files to use new subfolder paths (`skmob2.measures.visits.*`, `skmob2.measures.flows.od`, `skmob2.measures.spatial.*`, `skmob2.measures.fitting.mobility_laws`). Removed 6 unused skmob2 aliases from `motifs.py` (only `_skmob2_discover_daily_motifs_from_agents` was actually called; the rest were shadowed by local implementations). Removed debug print block from `spatial.py` (lines 469-473 had a `# --- DEBUG: ---` block that printed to stdout).
-- **Tests:** skmob2 baseline unchanged — 131 passed, 5 pre-existing pyarrow failures.
+### R7: Fix broken fkmob import paths in mobility_analysis adapters
+- **Smell:** All 6 adapter files (`motifs.py`, `individual.py`, `spatial.py`, `activity.py`, `cdr_measures.py`, `mobility_laws.py`) still used pre-R6 flat import paths (`fkmob.measures.od`, `fkmob.measures.individual`, etc.). These were broken by the R6 subfolder reorganization. Also `motifs.py` imported `format_motif_id_v2` from fkmob which was removed in R4 (the adapter has its own local copy).
+- **Change:** Updated all 6 adapter files to use new subfolder paths (`fkmob.measures.visits.*`, `fkmob.measures.flows.od`, `fkmob.measures.spatial.*`, `fkmob.measures.fitting.mobility_laws`). Removed 6 unused fkmob aliases from `motifs.py` (only `_fkmob_discover_daily_motifs_from_agents` was actually called; the rest were shadowed by local implementations). Removed debug print block from `spatial.py` (lines 469-473 had a `# --- DEBUG: ---` block that printed to stdout).
+- **Tests:** fkmob baseline unchanged — 131 passed, 5 pre-existing pyarrow failures.
 - **Note:** The adapter's own `format_motif_id_v2` at `motifs.py:141` is intentional — it's the local `N_E_id` formatter used by `classify_or_add_motif_v2` in that file. Not a migration artifact.
 
 ## Completed (2026-04-20) — Post-batch audit fixes
@@ -107,7 +107,7 @@ type: project
 - **Note:** Row-iterative pandas logic was still inside function bodies — see R16.
 
 ### R16: Fully eliminate `import pandas` from `motifs.py` — replace with Narwhals (2026-04-20)
-- **Smells:** 4 remaining `import pandas as pd` inside function bodies (`_compute_primary_home_node_id`, `build_motif_graph`, `_build_daily_motif_records`, `discover_daily_motifs_from_agents`). Per project constraint, `import pandas` is forbidden inside `skmob2/` — even inside function bodies.
+- **Smells:** 4 remaining `import pandas as pd` inside function bodies (`_compute_primary_home_node_id`, `build_motif_graph`, `_build_daily_motif_records`, `discover_daily_motifs_from_agents`). Per project constraint, `import pandas` is forbidden inside `fkmob/` — even inside function bodies.
 - **Changes:**
   1. `_compute_primary_home_node_id`: now takes `nw.DataFrame`. Replaced pandas filter/copy/dt.hour/groupby/idxmax/value_counts with `nw.filter`, `nw.with_columns`, `nw.col.dt.hour()`, `nw.group_by().agg()`, `.sort(descending=True).row(0)`.
   2. `build_motif_graph`: eliminated `pd.DataFrame` prefix-row construction and `pd.concat`. The prefix node is now prepended directly as a Python string to the extracted `sequence` list — no intermediate DataFrame needed.
@@ -123,8 +123,8 @@ type: project
 - **Changes:**
   1. Full rewrite of `src/motifs.rs` — adds `compute_daily_motifs` kernel that runs per-user processing in parallel via Rayon. Internally: `compute_primary_home_node_id` (night HOME by duration, fallback to most frequent HOME), `compute_motif_from_daily_visits` (sequence build + consecutive dedup + edge collection + canonical form), `process_single_user` (look-back/look-ahead + per-day loop). Extracted `canonical_adjacency_form_internal` as a pure Rust fn (called inside the kernel without PyO3 overhead). Kept `canonical_adjacency_form` as thin `#[pyfunction]` wrapper.
   2. `src/lib.rs` — added `m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)`.
-  3. `skmob2/measures/visits/motifs.py` — stripped to: column detection → sort → flat list extraction → user_ranges computation → `_core.compute_daily_motifs(...)` call → result assembly with `nw.from_dict`. All Python helpers (`_DiGraph`, `_degree_sequence`, `_canonical_adjacency_form`, `_is_isomorphic`, `get_motif_library`, `_motif_id`, `_compute_primary_home_node_id`, `build_motif_graph`, `_build_daily_motif_records`) deleted. `discover_daily_motifs_from_agents` now returns a 2-tuple `(daily_df, dist_df)` (was returning only `daily_df` — fix needed for tests).
-  4. Removed `get_motif_library` from all four `__init__.py` files (`visits/`, `measures/`, root `skmob2/`, `skmob2/measures/__init__.py`).
+  3. `fkmob/measures/visits/motifs.py` — stripped to: column detection → sort → flat list extraction → user_ranges computation → `_core.compute_daily_motifs(...)` call → result assembly with `nw.from_dict`. All Python helpers (`_DiGraph`, `_degree_sequence`, `_canonical_adjacency_form`, `_is_isomorphic`, `get_motif_library`, `_motif_id`, `_compute_primary_home_node_id`, `build_motif_graph`, `_build_daily_motif_records`) deleted. `discover_daily_motifs_from_agents` now returns a 2-tuple `(daily_df, dist_df)` (was returning only `daily_df` — fix needed for tests).
+  4. Removed `get_motif_library` from all four `__init__.py` files (`visits/`, `measures/`, root `fkmob/`, `fkmob/measures/__init__.py`).
   5. Test file trimmed to 5 `test_discover_motifs_*` tests (removed tests for deleted helpers and the `dynamic_library_file` test).
 - **date_id encoding:** `nw.col("start_timestamp").dt.truncate("1d").cast(nw.Int64) // (86400 * 1_000_000)` gives days-since-epoch as Int32. Reverse: `date_id * 86400 * 1_000_000 → cast(Datetime("us"))`.
 - **Key Narwhals gotcha:** `.dt.date()` raises `NotImplementedError` on default pandas backend. Use `.dt.truncate("1d")` instead.
@@ -159,8 +159,8 @@ type: project
 - Split into: `intermittance.py` (just `intermittance_and_degree_of_return` + `_compute_single_idr`), `regularity.py`, `fast_diversity.py`, `diversity.py`, `entropy.py` (`trajectory_entropy` + `trajectory_predictability` + 3 private helpers: `_kontoyiannis_entropy`, `_fano_equation_term`, `_solve_max_predictability_with_fano`).
 - Private entropy helpers kept in `entropy.py` (Option C — tightly coupled to entropy logic).
 - Test files renamed: `test_individual_*.py` → `test_*.py`. New file `test_fast_diversity.py` for the suffix-array primitive.
-- Important gotcha: module name `fast_diversity` collides with the re-exported function in `visits/__init__.py`. The monkeypatch test must use `sys.modules["skmob2.measures.visits.fast_diversity"]` instead of `import skmob2.measures.visits.fast_diversity as mod` to get the module object.
-- Three `__init__.py` files updated: `visits/__init__.py`, `measures/__init__.py`, `skmob2/__init__.py`.
+- Important gotcha: module name `fast_diversity` collides with the re-exported function in `visits/__init__.py`. The monkeypatch test must use `sys.modules["fkmob.measures.visits.fast_diversity"]` instead of `import fkmob.measures.visits.fast_diversity as mod` to get the module object.
+- Three `__init__.py` files updated: `visits/__init__.py`, `measures/__init__.py`, `fkmob/__init__.py`.
 - Result: 131 passed, 5 pre-existing pyarrow failures (baseline unchanged).
 
 ### D2: `activity.py` and `intermittance.py` drop Narwhals mid-function

@@ -294,7 +294,7 @@ def _load_model_tessellation():
 
 def _patch_geopandas_apply_for_numpy2(gpd) -> None:
     """Avoid old GeoPandas ``copy=False`` paths that fail under NumPy 2."""
-    if getattr(gpd.GeoSeries.apply, "_skmob2_numpy2_patch", False):
+    if getattr(gpd.GeoSeries.apply, "_fkmob_numpy2_patch", False):
         return
     original_apply = gpd.GeoSeries.apply
 
@@ -307,7 +307,7 @@ def _patch_geopandas_apply_for_numpy2(gpd) -> None:
             series = pd.Series(list(self), index=self.index)
             return series.apply(lambda geom: func(geom, *args), **kwargs)
 
-    apply._skmob2_numpy2_patch = True
+    apply._fkmob_numpy2_patch = True
     gpd.GeoSeries.apply = apply
 
 
@@ -376,7 +376,7 @@ def _run_measure(name: str, fn, tdf: skmob.TrajDataFrame, path: Path, *, reset_i
 def _run_all(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- standardised input for skmob2 ---
+    # --- standardised input for fkmob ---
     print("    input.parquet")
     _save(pd.DataFrame(tdf).copy(), out_dir / "input.parquet")
 

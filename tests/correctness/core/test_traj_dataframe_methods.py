@@ -8,7 +8,7 @@ import pytest
 
 def _make_tdf():
     """Small synthetic TrajDataFrame for testing."""
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     df = pd.DataFrame(
         {
@@ -44,7 +44,7 @@ def test_sort_by_uid_and_datetime_returns_new_object():
 
 def test_sort_no_uid_col():
     """Sort on a trajectory without a uid column."""
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     df = pd.DataFrame(
         {
@@ -65,7 +65,7 @@ def test_sort_no_uid_col():
 
 
 def test_settings_from_copies_parameters():
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     df = pd.DataFrame(
         {
@@ -82,7 +82,7 @@ def test_settings_from_copies_parameters():
 
 
 def test_settings_from_copies_crs():
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     df = pd.DataFrame(
         {
@@ -104,7 +104,7 @@ def test_settings_from_copies_crs():
 
 
 def test_timezone_conversion_shifts_datetime():
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     df = pd.DataFrame(
         {
@@ -126,7 +126,7 @@ def test_timezone_conversion_shifts_datetime():
 
 def test_timezone_conversion_identity():
     """Converting to the same timezone should leave values unchanged."""
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     dt = pd.to_datetime("2020-06-15 12:00:00")
     df = pd.DataFrame(
@@ -150,7 +150,7 @@ def test_timezone_conversion_identity():
 
 def test_to_geodataframe_shape():
     gpd = pytest.importorskip("geopandas", reason="geopandas required")
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     df = pd.DataFrame(
         {
@@ -178,9 +178,9 @@ def test_plot_trajectory_missing_dep(monkeypatch):
 
     folium_backup = sys.modules.pop("folium", None)
     monkeypatch.setitem(sys.modules, "folium", None)
-    monkeypatch.setitem(sys.modules, "skmob2.utils.plot", None)
+    monkeypatch.setitem(sys.modules, "fkmob.utils.plot", None)
 
-    from skmob2 import TrajDataFrame
+    from fkmob import TrajDataFrame
 
     df = pd.DataFrame(
         {

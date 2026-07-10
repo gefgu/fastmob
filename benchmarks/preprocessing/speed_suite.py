@@ -2,7 +2,7 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/preprocessing/speed_suite.py --library skmob2 --backend both
+    python benchmarks/preprocessing/speed_suite.py --library fkmob --backend both
     python benchmarks/preprocessing/speed_suite.py --library skmob
     python benchmarks/preprocessing/speed_suite.py --library movingpandas
 """
@@ -54,7 +54,7 @@ BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "locatio
 @dataclass(frozen=True)
 class BenchmarkSpec:
     name: str
-    skmob2_module_path: str
+    fkmob_module_path: str
     skmob_module_path: str
     func_name: str
     kwargs: dict[str, Any]
@@ -65,7 +65,7 @@ class BenchmarkSpec:
 PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec(
         "filter",
-        "skmob2.preprocessing",
+        "fkmob.preprocessing",
         "skmob.preprocessing.filtering",
         "filter",
         {},
@@ -73,7 +73,7 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "compress",
-        "skmob2.preprocessing",
+        "fkmob.preprocessing",
         "skmob.preprocessing.compression",
         "compress",
         {},
@@ -82,7 +82,7 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "stay_locations",
-        "skmob2.preprocessing",
+        "fkmob.preprocessing",
         "skmob.preprocessing.detection",
         "stay_locations",
         {},
@@ -91,7 +91,7 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "cluster",
-        "skmob2.preprocessing",
+        "fkmob.preprocessing",
         "skmob.preprocessing.clustering",
         "cluster",
         {},
@@ -113,10 +113,10 @@ def build_output_path(
     input_order: str = "raw",
 ) -> Path:
     order_part = "" if input_order == "raw" else f"{input_order}_"
-    if library == "skmob2":
+    if library == "fkmob":
         if backend is None or backend == "both":
-            raise ValueError("skmob2 output path requires a concrete backend")
-        filename = f"skmob2_preprocessing_{profile}_{order_part}{backend}.json"
+            raise ValueError("fkmob output path requires a concrete backend")
+        filename = f"fkmob_preprocessing_{profile}_{order_part}{backend}.json"
     elif library == "skmob":
         filename = f"skmob_preprocessing_{profile}_{order_part}{timing_mode}.json"
     else:
@@ -129,7 +129,7 @@ def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
         patch_numpy_nan_for_skmob()
 
     try:
-        module_path = spec.skmob2_module_path if library == "skmob2" else spec.skmob_module_path
+        module_path = spec.fkmob_module_path if library == "fkmob" else spec.skmob_module_path
         module = importlib.import_module(module_path)
     except Exception as exc:
         raise SkippedMetric(f"import failed: {exc}") from exc
@@ -159,7 +159,7 @@ def metric_kwargs_for_library(
     input_order: str = "raw",
 ) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
-    if library == "skmob2" and input_order == "sorted" and spec.input_kind == "trajectory":
+    if library == "fkmob" and input_order == "sorted" and spec.input_kind == "trajectory":
         kwargs["presorted"] = True
     if library != "skmob":
         return kwargs
@@ -347,7 +347,7 @@ def benchmark_metric(
         return error_result(str(exc), profile)
 
 
-def benchmark_skmob2_size(
+def benchmark_fkmob_size(
     df: Any,
     size: int,
     *,
@@ -367,7 +367,7 @@ def benchmark_skmob2_size(
         "metrics": {
             spec.name: benchmark_metric(
                 spec,
-                "skmob2",
+                "fkmob",
                 lambda size_df=size_df: size_df,
                 profile=profile,
                 iterations=iterations,
@@ -559,10 +559,10 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         raise SystemExit(f"Dataset not found at {data_path}. Place the Brightkite file there before running.")
     specs = selected_specs(args)
 
-    if args.library == "skmob2":
+    if args.library == "fkmob":
         selected_backend = backend or args.backend
         if selected_backend == "both":
-            raise ValueError("run_suite requires a concrete backend when library is skmob2")
+            raise ValueError("run_suite requires a concrete backend when library is fkmob")
         if selected_backend == "pandas":
             input_type = "pandas.DataFrame"
         else:
@@ -576,7 +576,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             repeat_factor=args.repeat_dataset,
         )
         results = [
-            benchmark_skmob2_size(
+            benchmark_fkmob_size(
                 df,
                 size,
                 specs=specs,
@@ -674,7 +674,7 @@ def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone preprocessing speed benchmarks.")
-    parser.add_argument("--library", choices=["skmob2", "skmob", "movingpandas"], required=True)
+    parser.add_argument("--library", choices=["fkmob", "skmob", "movingpandas"], required=True)
     parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")

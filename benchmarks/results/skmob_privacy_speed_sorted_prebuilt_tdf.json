@@ -1,8 +1,8 @@
 {
   "metadata": {
     "backend": null,
-    "dataset_path": "/home/gustavo/skmob2/scikit-mobility/examples/privacy_toy.csv",
-    "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/privacy_privacy_toy.csv_pandas_repeat1_sorted.parquet",
+    "dataset_path": "/home/gustavo/fkmob/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": "/home/gustavo/fkmob/benchmarks/cache/privacy_privacy_toy.csv_pandas_repeat1_sorted.parquet",
     "input_cache_status": "reused",
     "input_order": "sorted",
     "input_type": "skmob.TrajDataFrame",

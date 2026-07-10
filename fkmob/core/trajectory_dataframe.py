@@ -1,0 +1,912 @@
+"""TrajDataFrame — Narwhals-backed trajectory wrapper."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import narwhals as nw
+import numpy as np
+import pandas as pd
+
+from fkmob.core.base import BaseDataFrame
+from fkmob.measures._common import _detect_trajectory_columns, _prepare_trajectory
+from fkmob.measures.individual import jump_lengths
+
+LATITUDE = "lat"
+LONGITUDE = "lng"
+DATETIME = "datetime"
+UID = "uid"
+TID = "tid"
+TILE_ID = "tile_id"
+DEFAULT_CRS = {"init": "epsg:4326"}
+
+
+class TrajDataFrame(BaseDataFrame):
+    """Narwhals-backed wrapper for trajectory data.
+
+    Accepts any eager DataFrame backend (pandas, polars, …) and exposes a
+    unified mobility-analysis API.  Column names are auto-detected from a
+    priority list; custom names can be supplied explicitly.
+
+    Parameters
+    ----------
+    df : DataFrame-like
+        Source data.  Accepted types: ``pandas.DataFrame``, ``polars.DataFrame``,
+        any Narwhals-compatible eager frame, plain ``list``, ``numpy.ndarray``, or
+        ``dict``.
+    sort : bool, optional
+        If ``True``, sort the underlying data by ``(uid, datetime)`` on
+        construction. Default ``False``.
+    timestamp : bool, optional
+        If ``True``, parse the datetime column from Unix timestamps. Default ``False``.
+    datetime_col : str, optional
+        Name of the datetime column in *df* (overrides auto-detection).
+    lat_col : str, optional
+        Name of the latitude column (overrides auto-detection).
+    lng_col : str, optional
+        Name of the longitude column (overrides auto-detection).
+    uid_col : str, optional
+        Name of the user-ID column (overrides auto-detection).
+    latitude : str, optional
+        Source column to rename to ``'lat'``.
+    longitude : str, optional
+        Source column to rename to ``'lng'``.
+    datetime : str, optional
+        Source column to rename to ``'datetime'``.
+    user_id : str, optional
+        Source column to rename to ``'uid'``.
+    trajectory_id : str, optional
+        Source column to rename to ``'tid'``.
+    crs : dict, optional
+        Coordinate reference system. Default ``{"init": "epsg:4326"}``.
+    parameters : dict, optional
+        Arbitrary metadata dictionary. Default ``{}``.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import fkmob
+    >>> data = [
+    ...     [1, 39.984094, 116.319236, "2008-10-23 13:53:05"],
+    ...     [1, 39.984198, 116.319322, "2008-10-23 13:53:06"],
+    ...     [1, 39.984224, 116.319402, "2008-10-23 13:53:11"],
+    ... ]
+    >>> df = pd.DataFrame(data, columns=["uid", "lat", "lng", "datetime"])
+    >>> tdf = fkmob.TrajDataFrame(df)
+    >>> tdf.uid_col
+    'uid'
+    """
+
+    def __init__(
+        self,
+        df,
+        sort: bool = False,
+        timestamp: bool = False,
+        datetime_col: str | None = None,
+        lat_col: str | None = None,
+        lng_col: str | None = None,
+        uid_col: str | None = None,
+        latitude: str | None = None,
+        longitude: str | None = None,
+        datetime: str | None = None,
+        user_id: str | None = None,
+        trajectory_id: str | None = None,
+        crs: dict | None = None,
+        parameters: dict | None = None,
+        **kwargs,
+    ):
+        if isinstance(df, TrajDataFrame):
+            super().__init__(df.df)
+            self.sorted = df.sorted
+            self.datetime_col = df.datetime_col
+            self.lat_col = df.lat_col
+            self.lng_col = df.lng_col
+            self.uid_col = df.uid_col
+            self.trajectory_id_col = getattr(df, "trajectory_id_col", TID)
+            self.crs = getattr(df, "crs", DEFAULT_CRS)
+            self.parameters = getattr(df, "parameters", {})
+            self._info = getattr(df, "_info", None)
+            return
+
+        latitude = LATITUDE if latitude is None else latitude
+        longitude = LONGITUDE if longitude is None else longitude
+        datetime = DATETIME if datetime is None else datetime
+        user_id = UID if user_id is None else user_id
+        trajectory_id = TID if trajectory_id is None else trajectory_id
+        self.crs = DEFAULT_CRS if crs is None else crs
+        self.parameters = {} if parameters is None else parameters
+        self._info = None
+
+        if latitude != LATITUDE or longitude != LONGITUDE or datetime != DATETIME or user_id != UID or trajectory_id != TID:
+            df = self._rename_columns(
+                df,
+                {
+                    latitude: LATITUDE,
+                    longitude: LONGITUDE,
+                    datetime: DATETIME,
+                    user_id: UID,
+                    trajectory_id: TID,
+                },
+            )
+
+        super().__init__(df)
+
+        self.sorted = False
+        datetime_col = DATETIME if datetime_col is None and DATETIME in self.df else datetime_col
+        lat_col = LATITUDE if lat_col is None and LATITUDE in self.df else lat_col
+        lng_col = LONGITUDE if lng_col is None and LONGITUDE in self.df else lng_col
+        uid_col = UID if uid_col is None and UID in self.df else uid_col
+        self.trajectory_id_col = TID if TID in self.df else None
+        self.datetime_col, self.lat_col, self.lng_col, self.uid_col = _detect_trajectory_columns(
+            self.df, datetime_col, lat_col, lng_col, uid_col
+        )
+
+        if timestamp and self.datetime_col is not None:
+            nw_df = nw.from_native(self.df)
+            col_dtype = nw_df.schema[self.datetime_col]
+            if not isinstance(col_dtype, nw.Datetime):
+                if "polars" in str(type(self.df)).lower():
+                    import polars as pl
+
+                    native_pl_df = nw_df.to_native()
+                    self.df = native_pl_df.with_columns(pl.col(self.datetime_col).str.to_datetime(time_zone="UTC"))
+                else:
+                    self.df = nw_df.with_columns(nw.col(self.datetime_col).str.to_datetime()).to_native()
+
+        if sort:
+            nw_df = nw.from_native(self.df, eager_only=True)
+            self.df = _prepare_trajectory(
+                nw_df,
+                datetime_col=self.datetime_col,
+                lat_col=self.lat_col,
+                lng_col=self.lng_col,
+                uid_col=self.uid_col,
+            ).to_native()
+            self.sorted = True
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _rename_columns(df, mapping):
+        mapping = {source: target for source, target in mapping.items() if source != target}
+        if not mapping:
+            return df
+        if isinstance(df, pd.DataFrame):
+            return df.copy().rename(columns=mapping)
+        if isinstance(df, dict):
+            return pd.DataFrame.from_dict(df).rename(columns=mapping)
+        if isinstance(df, (list, np.ndarray)) and len(df) > 0:
+            columns = [mapping.get(idx, idx) for idx in range(len(df[0]))]
+            return pd.DataFrame(df, columns=columns)
+        try:
+            return nw.from_native(df, eager_only=True).rename(mapping).to_native()
+        except Exception:
+            return df
+
+    def _to_pandas(self) -> pd.DataFrame:
+        """Return a pandas DataFrame regardless of the backing store."""
+        return nw.from_native(self.df, eager_only=True).to_pandas()
+
+    # ------------------------------------------------------------------
+    # Measure methods
+    # ------------------------------------------------------------------
+
+    def jump_lengths(self, merge: bool = False):
+        """Compute the jump lengths (km) between consecutive GPS points.
+
+        Parameters
+        ----------
+        merge : bool, optional
+            If ``True``, merge the result back onto the original DataFrame.
+            Default ``False``.
+
+        Returns
+        -------
+        DataFrame
+            A DataFrame with columns ``uid`` (when a user column is present)
+            and ``jump_lengths`` containing a list of distances per user.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1, 1],
+        ...     "lat": [0.0, 1.0, 2.0],
+        ...     "lng": [0.0, 0.0, 0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+        ... })
+        >>> tdf = fkmob.TrajDataFrame(df)
+        >>> tdf.jump_lengths()  # doctest: +SKIP
+        """
+        return jump_lengths(
+            self.df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            presorted=self.sorted,
+            merge=merge,
+        )
+
+    def radius_of_gyration(self):
+        """Compute the radius of gyration (km) for each user.
+
+        Returns
+        -------
+        DataFrame
+            A DataFrame with columns ``uid`` (when present) and
+            ``radius_of_gyration``.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1, 1],
+        ...     "lat": [0.0, 1.0, 2.0],
+        ...     "lng": [0.0, 0.0, 0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+        ... })
+        >>> tdf = fkmob.TrajDataFrame(df)
+        >>> tdf.radius_of_gyration()  # doctest: +SKIP
+        """
+        from fkmob.measures.individual import radius_of_gyration
+
+        return radius_of_gyration(
+            self.df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+
+    def common_part_of_commuters(self, other, resolution: int = 9) -> float:
+        """Compute trajectory CPC against another trajectory at an H3 resolution."""
+        from fkmob.measures.evaluation import trajectory_common_part_of_commuters
+
+        return trajectory_common_part_of_commuters(
+            self,
+            other,
+            resolution=resolution,
+        )
+
+    # ------------------------------------------------------------------
+    # Preprocessing methods
+    # ------------------------------------------------------------------
+
+    def compress(self, spatial_radius_km: float = 0.2, inplace: bool = False) -> "TrajDataFrame":
+        """Compress the trajectory by collapsing nearby consecutive points.
+
+        Parameters
+        ----------
+        spatial_radius_km : float, optional
+            Spatial radius (km) used to decide whether two consecutive points
+            belong to the same stop. Default 0.2.
+        inplace : bool, optional
+            If ``True``, modify this object and return ``self``.
+            If ``False`` (default), return a new ``TrajDataFrame``.
+
+        Returns
+        -------
+        TrajDataFrame
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1, 1],
+        ...     "lat": [0.0, 0.0001, 1.0],
+        ...     "lng": [0.0, 0.0001, 0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+        ... })
+        >>> tdf = fkmob.TrajDataFrame(df)
+        >>> tdf.compress()  # doctest: +SKIP
+        """
+        from fkmob.preprocessing import compress
+
+        kwargs = dict(
+            spatial_radius_km=spatial_radius_km,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+        if inplace:
+            self.df = compress(self.df, **kwargs)
+            return self
+
+        compressed_df = compress(self.df, **kwargs)
+        return TrajDataFrame(
+            compressed_df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+
+    def stay_locations(self, inplace: bool = False, **kwargs) -> "TrajDataFrame":
+        """Detect stay locations (stops) in the trajectory.
+
+        Parameters
+        ----------
+        inplace : bool, optional
+            If ``True``, modify this object and return ``self``.
+            If ``False`` (default), return a new ``TrajDataFrame``.
+        **kwargs
+            Extra keyword arguments forwarded to
+            ``fkmob.preprocessing.stay_locations``.
+
+        Returns
+        -------
+        TrajDataFrame
+            A DataFrame whose rows are detected stops, with an extra
+            ``leaving_datetime`` column.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1, 1, 1],
+        ...     "lat": [0.0, 0.0001, 0.0, 1.0],
+        ...     "lng": [0.0, 0.0, 0.0001, 0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=4, freq="30min"),
+        ... })
+        >>> tdf = fkmob.TrajDataFrame(df)
+        >>> tdf.stay_locations(minutes_for_a_stop=20)  # doctest: +SKIP
+        """
+        from fkmob.preprocessing import stay_locations
+
+        col_kwargs = dict(
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+        if inplace:
+            self.df = stay_locations(self.df, **col_kwargs, **kwargs)
+            return self
+
+        stay_df = stay_locations(self.df, **col_kwargs, **kwargs)
+        return TrajDataFrame(
+            stay_df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+
+    # ------------------------------------------------------------------
+    # Conversion methods
+    # ------------------------------------------------------------------
+
+    def to_flowdataframe(self, tessellation, self_loops: bool = True):
+        """Aggregate the trajectory into a FlowDataFrame using a tessellation.
+
+        Points outside the tessellation are silently dropped.
+
+        Parameters
+        ----------
+        tessellation : geopandas.GeoDataFrame
+            Spatial tessellation with a ``tile_id`` column and polygon geometries.
+        self_loops : bool, optional
+            If ``True`` (default), include movements that start and end in the
+            same tile.
+
+        Returns
+        -------
+        FlowDataFrame
+
+        Notes
+        -----
+        Requires ``fkmob[data]``::
+
+            pip install "fkmob[data]"
+
+        Examples
+        --------
+        >>> import fkmob
+        >>> tdf = fkmob.data.load_dataset("foursquare_nyc")  # doctest: +SKIP
+        >>> from fkmob.tessellation.tilers import tiler  # doctest: +SKIP
+        >>> tess = tiler.get("squared", base_shape="New York City", meters=2000)  # doctest: +SKIP
+        >>> fdf = tdf.to_flowdataframe(tess)  # doctest: +SKIP
+        """
+        from fkmob.core import FlowDataFrame
+
+        try:
+            import geopandas as gpd
+        except ImportError as exc:
+            raise ImportError("geopandas is required for flow datasets: pip install fkmob[data]") from exc
+
+        frame = self.df
+        if not isinstance(frame, pd.DataFrame):
+            frame = nw.from_native(frame, eager_only=True).to_pandas()
+        frame = frame.sort_values([self.uid_col, self.datetime_col], kind="mergesort").reset_index(drop=True)
+        points = gpd.GeoDataFrame(
+            frame.copy(),
+            geometry=gpd.points_from_xy(frame[self.lng_col], frame[self.lat_col]),
+            crs="EPSG:4326",
+        )
+        tess = tessellation
+        if getattr(tess, "crs", None) is None:
+            tess = tess.set_crs("EPSG:4326")
+        if points.crs != tess.crs:
+            points = points.to_crs(tess.crs)
+
+        joined = gpd.sjoin(points, tess[[TILE_ID, "geometry"]], how="left", predicate="within")
+        joined["destination"] = joined[TILE_ID].shift(-1)
+        joined["next_uid"] = joined[self.uid_col].shift(-1)
+        flow = joined[joined[self.uid_col] == joined["next_uid"]].dropna(subset=[TILE_ID, "destination"])
+        flow = flow.groupby([TILE_ID, "destination"], dropna=True).size().reset_index(name="flow")
+        flow = flow.rename(columns={TILE_ID: "origin"})
+        if not self_loops:
+            flow = flow[flow["origin"] != flow["destination"]]
+        return FlowDataFrame(flow, tessellation=tessellation)
+
+    def to_geodataframe(self):
+        """Convert to a ``geopandas.GeoDataFrame`` with Point geometry.
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            Same rows as the trajectory, with an additional ``geometry``
+            column containing ``shapely.geometry.Point`` objects built from
+            the latitude and longitude columns.
+
+        Notes
+        -----
+        Requires ``fkmob[data]``::
+
+            pip install "fkmob[data]"
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1],
+        ...     "lat": [48.8566, 48.8578],
+        ...     "lng": [2.3522, 2.3530],
+        ...     "datetime": pd.date_range("2020-01-01", periods=2, freq="h"),
+        ... })
+        >>> tdf = fkmob.TrajDataFrame(df)
+        >>> gdf = tdf.to_geodataframe()  # doctest: +SKIP
+        """
+        try:
+            import geopandas as gpd
+        except ImportError as exc:
+            raise ImportError('geopandas is required: pip install "fkmob[data]"') from exc
+
+        native_df = self._to_pandas()
+        return gpd.GeoDataFrame(
+            native_df,
+            geometry=gpd.points_from_xy(native_df[self.lng_col], native_df[self.lat_col]),
+            crs="EPSG:4326",
+        )
+
+    def mapping(self, tessellation, remove_na: bool = False) -> "TrajDataFrame":
+        """Assign each trajectory point to a tile in a spatial tessellation.
+
+        Adds a ``tile_id`` column to the result.
+
+        Parameters
+        ----------
+        tessellation : geopandas.GeoDataFrame
+            Spatial tessellation with Polygon or Point geometries and a
+            ``tile_id`` column.
+        remove_na : bool, optional
+            If ``True``, remove points that fall outside the tessellation.
+            Default ``False`` (keep them with ``NaN`` tile_id).
+
+        Returns
+        -------
+        TrajDataFrame
+            Original trajectory with an extra ``tile_id`` column.
+
+        Notes
+        -----
+        Requires ``fkmob[data]``::
+
+            pip install "fkmob[data]"
+
+        Examples
+        --------
+        >>> import fkmob
+        >>> tdf = fkmob.data.load_dataset("foursquare_nyc")  # doctest: +SKIP
+        >>> from fkmob.tessellation.tilers import tiler  # doctest: +SKIP
+        >>> tess = tiler.get("squared", base_shape="New York City", meters=2000)  # doctest: +SKIP
+        >>> mapped = tdf.mapping(tess)  # doctest: +SKIP
+        """
+        try:
+            import geopandas as gpd
+            from shapely.geometry import Point, Polygon
+        except ImportError as exc:
+            raise ImportError('geopandas and shapely are required: pip install "fkmob[data]"') from exc
+
+        gdf = self.to_geodataframe()
+
+        tess = tessellation
+        if getattr(tess, "crs", None) is None:
+            tess = tess.set_crs("EPSG:4326")
+        if gdf.crs != tess.crs:
+            gdf = gdf.to_crs(tess.crs)
+
+        tile_id_col = TILE_ID
+        # Ensure tessellation has the tile_id column
+        if tile_id_col not in tess.columns:
+            raise ValueError(f"Tessellation must have a '{tile_id_col}' column.")
+
+        if all(isinstance(x, Polygon) for x in tess.geometry):
+            how = "inner" if remove_na else "left"
+            joined = gpd.sjoin(gdf, tess[[tile_id_col, "geometry"]], how=how, predicate="within")
+            tile_ids = joined[[tile_id_col]]
+        elif all(isinstance(x, Point) for x in tess.geometry):
+            from fkmob.utils.utils import nearest
+
+            tile_series = nearest(gdf, tess, tile_id_col)
+            tile_ids = pd.DataFrame({tile_id_col: tile_series.values}, index=tile_series.index)
+        else:
+            raise ValueError("Tessellation geometry must be all Polygon or all Point.")
+
+        native_df = self._to_pandas()
+        result_df = native_df.merge(tile_ids, left_index=True, right_index=True)
+        return TrajDataFrame(
+            result_df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            crs=self.crs,
+            parameters=self.parameters.copy(),
+        )
+
+    # ------------------------------------------------------------------
+    # Utility methods
+    # ------------------------------------------------------------------
+
+    def sort_by_uid_and_datetime(self) -> "TrajDataFrame":
+        """Return a copy sorted by user ID then datetime.
+
+        Returns
+        -------
+        TrajDataFrame
+            New TrajDataFrame with rows sorted ascending by
+            ``(uid, datetime)``.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [2, 1, 1],
+        ...     "lat": [0.0, 1.0, 2.0],
+        ...     "lng": [0.0, 0.0, 0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+        ... })
+        >>> tdf = fkmob.TrajDataFrame(df)
+        >>> sorted_tdf = tdf.sort_by_uid_and_datetime()
+        """
+        sort_cols = []
+        if self.uid_col:
+            sort_cols.append(self.uid_col)
+        sort_cols.append(self.datetime_col)
+
+        nw_df = nw.from_native(self.df, eager_only=True)
+        sorted_df = nw_df.sort(sort_cols).to_native()
+
+        result = TrajDataFrame(
+            sorted_df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            crs=self.crs,
+            parameters=self.parameters.copy(),
+        )
+        result.sorted = True
+        return result
+
+    def settings_from(self, other: "TrajDataFrame") -> None:
+        """Copy metadata attributes from another TrajDataFrame.
+
+        Parameters
+        ----------
+        other : TrajDataFrame
+            Source TrajDataFrame to copy attributes from.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1], "lat": [0.0], "lng": [0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=1),
+        ... })
+        >>> tdf1 = fkmob.TrajDataFrame(df.copy())
+        >>> tdf2 = fkmob.TrajDataFrame(df.copy(), parameters={"source": "gps"})
+        >>> tdf1.settings_from(tdf2)
+        >>> tdf1.parameters
+        {'source': 'gps'}
+        """
+        self.crs = getattr(other, "crs", self.crs)
+        self.parameters = dict(getattr(other, "parameters", self.parameters))
+        self.sorted = getattr(other, "sorted", self.sorted)
+        self.uid_col = getattr(other, "uid_col", self.uid_col)
+        self.datetime_col = getattr(other, "datetime_col", self.datetime_col)
+        self.lat_col = getattr(other, "lat_col", self.lat_col)
+        self.lng_col = getattr(other, "lng_col", self.lng_col)
+        self.trajectory_id_col = getattr(other, "trajectory_id_col", self.trajectory_id_col)
+
+    def timezone_conversion(self, from_timezone: str, to_timezone: str) -> None:
+        """Convert the datetime column from one timezone to another, in place.
+
+        The result has timezone information stripped (tz-naive), matching the
+        behaviour of the original scikit-mobility implementation.
+
+        Parameters
+        ----------
+        from_timezone : str
+            Current timezone of the datetime column, e.g. ``'GMT'``.
+        to_timezone : str
+            Target timezone, e.g. ``'Asia/Shanghai'``.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fkmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1],
+        ...     "lat": [39.984, 39.985],
+        ...     "lng": [116.319, 116.320],
+        ...     "datetime": pd.to_datetime(["2008-10-23 05:53:05", "2008-10-23 05:53:06"]),
+        ... })
+        >>> tdf = fkmob.TrajDataFrame(df)
+        >>> tdf.timezone_conversion("GMT", "Asia/Shanghai")
+        >>> tdf[tdf.datetime_col].iloc[0]  # doctest: +SKIP
+        Timestamp('2008-10-23 13:53:05')
+        """
+        nw_df = nw.from_native(self.df, eager_only=True)
+        self.df = (
+            nw_df.with_columns(
+                nw.col(self.datetime_col)
+                .dt.replace_time_zone(from_timezone)
+                .dt.convert_time_zone(to_timezone)
+                .dt.replace_time_zone(None)
+            ).to_native()
+        )
+
+    # ------------------------------------------------------------------
+    # Visualization methods  (require fkmob[visualization])
+    # ------------------------------------------------------------------
+
+    def plot_trajectory(
+        self,
+        map_f=None,
+        max_users=None,
+        max_points: int = 1000,
+        style_function=None,
+        tiles: str = "cartodbpositron",
+        zoom: int = 12,
+        hex_color=None,
+        weight: float = 2,
+        opacity: float = 0.75,
+        dashArray: str = "0, 0",
+        start_end_markers: bool = True,
+        control_scale: bool = True,
+    ):
+        """Plot trajectories on an interactive Folium map.
+
+        Parameters
+        ----------
+        map_f : folium.Map, optional
+            Existing map to draw on. Creates a new map if ``None``.
+        max_users : int, optional
+            Maximum number of users to plot. Defaults to 10 with a warning.
+        max_points : int, optional
+            Maximum GPS points per user. Trajectories are down-sampled if
+            longer. Default 1000.
+        style_function : callable, optional
+            GeoJson style factory ``(weight, color, opacity, dashArray) → fn``.
+            Defaults to ``fkmob.utils.plot.traj_style_function``.
+        tiles : str, optional
+            Folium tile layer name. Default ``'cartodbpositron'``.
+        zoom : int, optional
+            Initial zoom level. Default 12.
+        hex_color : str, optional
+            Fixed hex color for all lines. Random color per user if ``None``.
+        weight : float, optional
+            Line thickness. Default 2.
+        opacity : float, optional
+            Line opacity. Default 0.75.
+        dashArray : str, optional
+            SVG dash pattern, e.g. ``'5, 5'``. Default ``'0, 0'`` (solid).
+        start_end_markers : bool, optional
+            Add green/red markers at start and end. Default ``True``.
+        control_scale : bool, optional
+            Add a map scale bar. Default ``True``.
+
+        Returns
+        -------
+        folium.Map
+
+        Notes
+        -----
+        Requires ``fkmob[visualization]``::
+
+            pip install "fkmob[visualization]"
+
+        Examples
+        --------
+        >>> import fkmob
+        >>> tdf = fkmob.data.load_dataset("foursquare_nyc")  # doctest: +SKIP
+        >>> m = tdf.plot_trajectory(zoom=12)  # doctest: +SKIP
+        """
+        try:
+            from fkmob.utils import plot
+        except ImportError as exc:
+            raise ImportError(
+                'Visualization requires extra dependencies: pip install "fkmob[visualization]"'
+            ) from exc
+
+        kwargs: dict[str, Any] = dict(
+            map_f=map_f,
+            max_users=max_users,
+            max_points=max_points,
+            tiles=tiles,
+            zoom=zoom,
+            hex_color=hex_color,
+            weight=weight,
+            opacity=opacity,
+            dashArray=dashArray,
+            start_end_markers=start_end_markers,
+            control_scale=control_scale,
+        )
+        if style_function is not None:
+            kwargs["style_function"] = style_function
+        return plot.plot_trajectory(self._to_pandas(), **kwargs)
+
+    def plot_stops(
+        self,
+        map_f=None,
+        max_users=None,
+        tiles: str = "cartodbpositron",
+        zoom: int = 12,
+        hex_color=None,
+        opacity: float = 0.3,
+        radius: float = 12,
+        number_of_sides: int = 4,
+        popup: bool = True,
+        control_scale: bool = True,
+    ):
+        """Plot detected stop locations on an interactive Folium map.
+
+        Requires a TrajDataFrame with a ``leaving_datetime`` column
+        (output of :func:`fkmob.preprocessing.stay_locations`).
+
+        Parameters
+        ----------
+        map_f : folium.Map, optional
+            Existing map. Creates a new map if ``None``.
+        max_users : int, optional
+            Maximum number of users to plot. Defaults to 10 with a warning.
+        tiles : str, optional
+            Folium tile layer. Default ``'cartodbpositron'``.
+        zoom : int, optional
+            Initial zoom. Default 12.
+        hex_color : str, optional
+            Fixed hex color. Random color per user if ``None``.
+        opacity : float, optional
+            Marker fill opacity. Default 0.3.
+        radius : float, optional
+            Marker radius. Default 12.
+        number_of_sides : int, optional
+            Number of polygon sides for each marker. Default 4.
+        popup : bool, optional
+            Show an info popup on click. Default ``True``.
+        control_scale : bool, optional
+            Add a scale bar. Default ``True``.
+
+        Returns
+        -------
+        folium.Map
+
+        Notes
+        -----
+        Requires ``fkmob[visualization]``::
+
+            pip install "fkmob[visualization]"
+
+        Examples
+        --------
+        >>> import fkmob
+        >>> tdf = fkmob.data.load_dataset("foursquare_nyc")  # doctest: +SKIP
+        >>> stdf = tdf.stay_locations(minutes_for_a_stop=20)  # doctest: +SKIP
+        >>> m = stdf.plot_stops(zoom=12)  # doctest: +SKIP
+        """
+        try:
+            from fkmob.utils import plot
+        except ImportError as exc:
+            raise ImportError(
+                'Visualization requires extra dependencies: pip install "fkmob[visualization]"'
+            ) from exc
+
+        return plot.plot_stops(
+            self._to_pandas(),
+            map_f=map_f,
+            max_users=max_users,
+            tiles=tiles,
+            zoom=zoom,
+            hex_color=hex_color,
+            opacity=opacity,
+            radius=radius,
+            number_of_sides=number_of_sides,
+            popup=popup,
+            control_scale=control_scale,
+        )
+
+    def plot_diary(
+        self,
+        user,
+        start_datetime=None,
+        end_datetime=None,
+        ax=None,
+        legend: bool = False,
+    ):
+        """Plot a mobility diary for a single user as a coloured time-span chart.
+
+        Requires a clustered stop DataFrame (output of
+        ``fkmob.preprocessing.cluster``), with ``cluster`` and
+        ``leaving_datetime`` columns.
+
+        Parameters
+        ----------
+        user : str or int
+            Identifier of the user to plot.
+        start_datetime : datetime, optional
+            Only stops after this datetime are included. Defaults to the
+            earliest stop.
+        end_datetime : datetime, optional
+            Only stops before this datetime are included. Defaults to the
+            latest departure.
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on. A new figure is created if ``None``.
+        legend : bool, optional
+            Show a cluster-ID legend. Default ``False``.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+
+        Notes
+        -----
+        Requires ``fkmob[visualization]``::
+
+            pip install "fkmob[visualization]"
+
+        Examples
+        --------
+        >>> import fkmob
+        >>> tdf = fkmob.data.load_dataset("foursquare_nyc")  # doctest: +SKIP
+        >>> stdf = tdf.stay_locations(minutes_for_a_stop=20)  # doctest: +SKIP
+        >>> cstdf = fkmob.preprocessing.cluster(stdf)  # doctest: +SKIP
+        >>> ax = cstdf.plot_diary(user=1)  # doctest: +SKIP
+        """
+        try:
+            from fkmob.utils import plot
+        except ImportError as exc:
+            raise ImportError(
+                'Visualization requires extra dependencies: pip install "fkmob[visualization]"'
+            ) from exc
+
+        return plot.plot_diary(
+            self._to_pandas(),
+            user=user,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
+            ax=ax,
+            legend=legend,
+        )

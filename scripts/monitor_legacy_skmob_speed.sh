@@ -55,7 +55,7 @@ while true; do
     fi
 
     legacy_count="$(find "$RESULTS_DIR" -maxdepth 1 -type f -name 'skmob_*.json' | wc -l)"
-    comparison_count="$(find "$RESULTS_DIR/plots" -maxdepth 1 -type f -name 'skmob2_vs_skmob*.png' 2>/dev/null | wc -l)"
+    comparison_count="$(find "$RESULTS_DIR/plots" -maxdepth 1 -type f -name 'fkmob_vs_skmob*.png' 2>/dev/null | wc -l)"
     log "legacy skmob JSON count: $legacy_count"
     log "comparison plot count: $comparison_count"
 

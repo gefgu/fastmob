@@ -12,7 +12,7 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-MAIN_VENV="${SKMOB2_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
+MAIN_VENV="${FKMOB_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
 SKMOB_VENV="$REPO_ROOT/.venv-skmob"
 MOVINGPANDAS_VENV="${MOVINGPANDAS_VENV:-$MAIN_VENV}"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -78,73 +78,73 @@ mkdir -p "$LOG_DIR"
 echo "==> Environment: ${ENV_SLUG}"
 echo "==> Results dir: ${OUTPUT_DIR#$REPO_ROOT/}"
 
-echo "==> Building skmob2._core in ${MAIN_VENV#$REPO_ROOT/} ..."
-run_job "build_skmob2_core" "$MAIN_VENV" -m maturin develop --uv
+echo "==> Building fkmob._core in ${MAIN_VENV#$REPO_ROOT/} ..."
+run_job "build_fkmob_core" "$MAIN_VENV" -m maturin develop --uv
 
 echo
-echo "==> Running skmob2 pandas/Polars benchmark suites in ${MAIN_VENV#$REPO_ROOT/} ..."
+echo "==> Running fkmob pandas/Polars benchmark suites in ${MAIN_VENV#$REPO_ROOT/} ..."
 for profile in "${PROFILES[@]}"; do
-    run_job "skmob2_individual_${profile}_both" \
+    run_job "fkmob_individual_${profile}_both" \
         "$MAIN_VENV" \
         benchmarks/individual/speed_suite.py \
         "$@" \
-        --library skmob2 \
+        --library fkmob \
         --backend both \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
-    run_job "skmob2_collective_${profile}_both" \
+    run_job "fkmob_collective_${profile}_both" \
         "$MAIN_VENV" \
         benchmarks/collective/speed_suite.py \
         "$@" \
-        --library skmob2 \
+        --library fkmob \
         --backend both \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
-    run_job "skmob2_preprocessing_${profile}_both" \
+    run_job "fkmob_preprocessing_${profile}_both" \
         "$MAIN_VENV" \
         benchmarks/preprocessing/speed_suite.py \
         "$@" \
-        --library skmob2 \
+        --library fkmob \
         --backend both \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
-    run_job "skmob2_evaluation_${profile}_both" \
+    run_job "fkmob_evaluation_${profile}_both" \
         "$MAIN_VENV" \
         benchmarks/evaluation/speed_suite.py \
         "$@" \
         --backend both \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
-    run_job "skmob2_models_${profile}" \
+    run_job "fkmob_models_${profile}" \
         "$MAIN_VENV" \
         benchmarks/models/speed_suite.py \
         "$@" \
-        --library skmob2 \
+        --library fkmob \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
-    run_job "skmob2_models_large_scale_${profile}" \
+    run_job "fkmob_models_large_scale_${profile}" \
         "$MAIN_VENV" \
         benchmarks/speed_models_large_scale.py \
         "$@" \
-        --library skmob2 \
+        --library fkmob \
         --mode trajectory \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
-    run_job "skmob2_models_location_large_scale_${profile}" \
+    run_job "fkmob_models_location_large_scale_${profile}" \
         "$MAIN_VENV" \
         benchmarks/speed_models_large_scale.py \
         "$@" \
-        --library skmob2 \
+        --library fkmob \
         --mode location \
         --profile "$profile" \
         --output-dir "$OUTPUT_DIR"
 done
 
 for profile in "${PROFILES[@]}"; do
-    run_job "skmob2_privacy_${profile}_both" \
+    run_job "fkmob_privacy_${profile}_both" \
         "$MAIN_VENV" \
         benchmarks/privacy/speed_suite.py \
-        --library skmob2 \
+        --library fkmob \
         --backend both \
         --profile "$profile" \
         --input-order both \

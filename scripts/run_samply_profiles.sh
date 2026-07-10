@@ -12,7 +12,7 @@
 #   bash scripts/run_samply_profiles.sh                              # full 4M-row sweep
 #
 # View a recorded trace with:
-#   samply load .profiles/samply/skmob2/<workload>.json.gz
+#   samply load .profiles/samply/fkmob/<workload>.json.gz
 #
 # Any extra arguments are forwarded directly to scripts/profile_brightkite_samply.py.
 

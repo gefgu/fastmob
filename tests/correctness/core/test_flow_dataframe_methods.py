@@ -8,7 +8,7 @@ import pytest
 
 def _make_fdf():
     """Small synthetic FlowDataFrame for testing."""
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     flows = pd.DataFrame(
         {
@@ -47,7 +47,7 @@ def test_get_flow_missing_pair_returns_zero():
 
 
 def test_settings_from_copies_parameters():
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     flows = pd.DataFrame({"origin": ["A"], "destination": ["B"], "flow": [10]})
     fdf1 = FlowDataFrame(flows.copy(), parameters={"year": 2020})
@@ -57,7 +57,7 @@ def test_settings_from_copies_parameters():
 
 
 def test_settings_from_copies_tile_id():
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     flows = pd.DataFrame({"origin": ["A"], "destination": ["B"], "flow": [10]})
     fdf1 = FlowDataFrame(flows.copy(), tile_id="custom_tile")
@@ -83,7 +83,7 @@ def test_to_matrix_shape_and_values():
 
 
 def test_to_matrix_empty():
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     flows = pd.DataFrame({"origin": [], "destination": [], "flow": []})
     fdf = FlowDataFrame(flows)
@@ -99,7 +99,7 @@ def test_to_matrix_empty():
 def test_get_geometry_returns_correct_shape():
     gpd = pytest.importorskip("geopandas", reason="geopandas required")
     from shapely.geometry import Point
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     # Build a minimal tessellation
     tess = gpd.GeoDataFrame(
@@ -116,7 +116,7 @@ def test_get_geometry_returns_correct_shape():
 def test_get_geometry_missing_tile_raises():
     gpd = pytest.importorskip("geopandas", reason="geopandas required")
     from shapely.geometry import Point
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     tess = gpd.GeoDataFrame(
         {"tile_id": ["A"], "geometry": [Point(0, 0)]},
@@ -130,7 +130,7 @@ def test_get_geometry_missing_tile_raises():
 
 
 def test_get_geometry_no_tessellation_raises():
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     flows = pd.DataFrame({"origin": ["A"], "destination": ["B"], "flow": [5]})
     fdf = FlowDataFrame(flows)
@@ -150,9 +150,9 @@ def test_plot_flows_missing_dep(monkeypatch):
 
     folium_backup = sys.modules.pop("folium", None)
     monkeypatch.setitem(sys.modules, "folium", None)
-    monkeypatch.setitem(sys.modules, "skmob2.utils.plot", None)
+    monkeypatch.setitem(sys.modules, "fkmob.utils.plot", None)
 
-    from skmob2 import FlowDataFrame
+    from fkmob import FlowDataFrame
 
     flows = pd.DataFrame({"origin": ["A"], "destination": ["B"], "flow": [5]})
     fdf = FlowDataFrame(flows)

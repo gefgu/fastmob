@@ -1,4 +1,4 @@
 interface:
   display_name: "Samply Rust Profiler"
-  short_description: "Profile skmob2 Rust kernels with Samply"
-  default_prompt: "Use $profile-rust-samply to profile a skmob2 Rust-backed workload with Samply and summarize the hottest native frames."
+  short_description: "Profile fkmob Rust kernels with Samply"
+  default_prompt: "Use $profile-rust-samply to profile a fkmob Rust-backed workload with Samply and summarize the hottest native frames."

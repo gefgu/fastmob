@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2.tessellation.tilers."""
+"""Correctness tests for fkmob.tessellation.tilers."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ gpd = pytest.importorskip("geopandas")
 shapely_geometry = pytest.importorskip("shapely.geometry")
 pytest.importorskip("h3")
 
-from skmob2.tessellation import tilers  # noqa: E402
+from fkmob.tessellation import tilers  # noqa: E402
 
 
 @pytest.fixture()

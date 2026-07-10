@@ -13,8 +13,8 @@ def test_preprocessing_registry_contains_expected_functions():
 
 def test_output_path_uses_preprocessing_suite_name(tmp_path: Path):
     assert (
-        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas")
-        == tmp_path / "skmob2_preprocessing_speed_pandas.json"
+        suite.build_output_path(tmp_path, "fkmob", "prebuilt_tdf", "pandas")
+        == tmp_path / "fkmob_preprocessing_speed_pandas.json"
     )
     assert (
         suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf")
@@ -23,23 +23,23 @@ def test_output_path_uses_preprocessing_suite_name(tmp_path: Path):
 
 
 def test_selected_specs_filters_metrics():
-    args = suite.parse_args(["--library", "skmob2", "--metrics", "cluster", "filter"])
+    args = suite.parse_args(["--library", "fkmob", "--metrics", "cluster", "filter"])
 
     assert [spec.name for spec in suite.selected_specs(args)] == ["filter", "cluster"]
 
 
-def test_sorted_skmob2_trajectory_benchmark_uses_presorted_keyword():
+def test_sorted_fkmob_trajectory_benchmark_uses_presorted_keyword():
     spec = suite.BenchmarkSpec("compress", "unused", "unused", "compress", {})
 
-    kwargs = suite.metric_kwargs_for_library(spec, "skmob2", lambda **_kwargs: None, input_order="sorted")
+    kwargs = suite.metric_kwargs_for_library(spec, "fkmob", lambda **_kwargs: None, input_order="sorted")
 
     assert kwargs == {"presorted": True}
 
 
-def test_sorted_skmob2_filter_benchmark_does_not_add_presorted_keyword():
+def test_sorted_fkmob_filter_benchmark_does_not_add_presorted_keyword():
     spec = suite.BenchmarkSpec("filter", "unused", "unused", "filter", {}, input_kind="filter")
 
-    kwargs = suite.metric_kwargs_for_library(spec, "skmob2", lambda **_kwargs: None, input_order="sorted")
+    kwargs = suite.metric_kwargs_for_library(spec, "fkmob", lambda **_kwargs: None, input_order="sorted")
 
     assert kwargs == {}
 

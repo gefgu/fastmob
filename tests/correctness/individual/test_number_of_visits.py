@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/spatial/number_of_visits.py."""
+"""Correctness tests for fkmob/measures/spatial/number_of_visits.py."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def _to_dict(df) -> dict[str, int]:
 
 def test_number_of_visits_known_values(synthetic_tdf):
     """Each user in the synthetic fixture has exactly 5 visit rows."""
-    from skmob2.measures.individual.number_of_visits import number_of_visits
+    from fkmob.measures.individual.number_of_visits import number_of_visits
 
     result = number_of_visits(synthetic_tdf)
     mapping = _to_dict(result)
@@ -52,7 +52,7 @@ def test_number_of_visits_known_values(synthetic_tdf):
 
 def test_number_of_visits_repeated_locations():
     """Repeated (lat, lng) pairs still count as separate visits."""
-    from skmob2.measures.individual.number_of_visits import number_of_visits
+    from fkmob.measures.individual.number_of_visits import number_of_visits
 
     df = pd.DataFrame(
         {
@@ -69,7 +69,7 @@ def test_number_of_visits_repeated_locations():
 
 def test_number_of_visits_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from skmob2.measures.individual.number_of_visits import number_of_visits
+    from fkmob.measures.individual.number_of_visits import number_of_visits
 
     df = pd.DataFrame(
         {
@@ -88,7 +88,7 @@ def test_number_of_visits_no_uid():
 
 def test_number_of_visits_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    from skmob2.measures.individual.number_of_visits import number_of_visits
+    from fkmob.measures.individual.number_of_visits import number_of_visits
 
     result = number_of_visits(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -100,36 +100,36 @@ def test_number_of_visits_polars_known_values(synthetic_tdf_polars):
 
 @pytest.mark.skmob
 def test_number_of_visits_matches_skmob(comparison_skmob):
-    """skmob2 result matches skmob on each comparison dataset."""
+    """fkmob result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import number_of_visits as skmob_nov
-    from skmob2.measures.individual.number_of_visits import number_of_visits as skmob2_nov
+    from fkmob.measures.individual.number_of_visits import number_of_visits as fkmob_nov
 
     skmob_result = skmob_nov(comparison_skmob)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_nov(skmob2_input)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_nov(fkmob_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["number_of_visits"].tolist()))
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert skmob_dict[uid] == skmob2_dict[uid], f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        assert skmob_dict[uid] == fkmob_dict[uid], f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
 
 
 def test_number_of_visits_matches_cached_reference(comparison_skmob_reference):
     """number_of_visits matches the cached skmob baseline without requiring the skmob environment."""
-    from skmob2.measures.individual.number_of_visits import number_of_visits as skmob2_nov
+    from fkmob.measures.individual.number_of_visits import number_of_visits as fkmob_nov
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("number_of_visits")
-    skmob2_result = skmob2_nov(ref.input_df)
+    fkmob_result = fkmob_nov(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["number_of_visits"].tolist()))
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert skmob_dict[uid] == skmob2_dict[uid], f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        assert skmob_dict[uid] == fkmob_dict[uid], f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"

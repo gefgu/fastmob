@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/radius_of_gyration.py."""
+"""Correctness tests for fkmob/measures/radius_of_gyration.py."""
 
 from __future__ import annotations
 
@@ -90,8 +90,8 @@ def _rog_map(result) -> dict:
 
 def test_radius_of_gyration_known_values_pandas(synthetic_tdf):
     """RoG on synthetic fixture (pandas backend), hardcoded expected values."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     result = radius_of_gyration(synthetic_tdf)
     assert "radius_of_gyration" in result.columns
@@ -113,9 +113,9 @@ def test_radius_of_gyration_known_values_pandas(synthetic_tdf):
 
 def test_radius_of_gyration_known_values_polars(synthetic_tdf_polars):
     """RoG on synthetic fixture (Polars backend), same expected values."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pytest.importorskip("polars", reason="Polars not installed")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     result = radius_of_gyration(synthetic_tdf_polars)
     assert "radius_of_gyration" in result.columns
@@ -139,9 +139,9 @@ def test_radius_of_gyration_known_values_polars(synthetic_tdf_polars):
 @pytest.mark.parametrize("fixture_name", ["skmob_ref_traj_pd", "skmob_ref_traj_pl"])
 def test_radius_of_gyration_skmob_reference_values(request, fixture_name):
     """RoG matches values computed by the Rust kernel directly."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_km
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_km
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     traj = request.getfixturevalue(fixture_name)
     result = radius_of_gyration(traj)
@@ -169,8 +169,8 @@ def test_radius_of_gyration_skmob_reference_values(request, fixture_name):
 
 def test_radius_of_gyration_no_uid_column():
     """When uid column is absent the result has a single RoG value."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -194,8 +194,8 @@ def test_radius_of_gyration_no_uid_column():
 
 def test_radius_of_gyration_single_point_user():
     """A user with one point should have RoG = 0."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -216,9 +216,9 @@ def test_radius_of_gyration_single_point_user():
 
 def test_radius_of_gyration_polars_pandas_agree():
     """Polars and pandas backends must produce identical RoG values."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Polars not installed")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df_pd = pd.DataFrame(
         {
@@ -244,9 +244,9 @@ def test_radius_of_gyration_polars_pandas_agree():
 
 def test_radius_of_gyration_indexed_handles_interleaved_users():
     """RoG groups by uid without sorting the full dataframe."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_km
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_km
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -271,9 +271,9 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
 
 def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
     """The presorted=True fast path computes on already grouped user slices."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_km
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_km
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -298,9 +298,9 @@ def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
 
 def test_radius_of_gyration_pandas_filters_invalid_coordinates_in_rust():
     """RoG ignores invalid coordinates without Python-side trajectory null drops."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_km
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_km
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -326,10 +326,10 @@ def test_radius_of_gyration_pandas_filters_invalid_coordinates_in_rust():
 
 def test_radius_of_gyration_polars_filters_invalid_coordinates_in_rust():
     """Arrow RoG path ignores null coordinates."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Polars not installed")
-    from skmob2._core import radius_of_gyration_km
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    from fkmob._core import radius_of_gyration_km
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df_pd = pd.DataFrame(
         {
@@ -354,9 +354,9 @@ def test_radius_of_gyration_polars_filters_invalid_coordinates_in_rust():
 
 def test_radius_of_gyration_no_uid_filters_invalid_coordinates():
     """No-uid RoG computes over valid coordinate rows only."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_km
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_km
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -373,8 +373,8 @@ def test_radius_of_gyration_no_uid_filters_invalid_coordinates():
 
 def test_radius_of_gyration_all_invalid_coordinates():
     """All-invalid inputs produce the empty-coordinate behavior."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     no_uid = pd.DataFrame(
         {
@@ -393,9 +393,9 @@ def test_radius_of_gyration_all_invalid_coordinates():
 
 def test_build_indexed_user_ranges_sorts_stable_row_indices():
     """Indexed grouping keeps original row order within each sorted uid group."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     import narwhals as nw
-    from skmob2.measures._common import _build_indexed_user_ranges
+    from fkmob.measures._common import _build_indexed_user_ranges
 
     df = nw.from_native(pd.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}), eager_only=True)
 
@@ -408,9 +408,9 @@ def test_build_indexed_user_ranges_sorts_stable_row_indices():
 
 def test_build_indexed_user_ranges_handles_empty_dataframe():
     """Indexed grouping handles empty inputs without touching backend sort."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     import narwhals as nw
-    from skmob2.measures._common import _build_indexed_user_ranges
+    from fkmob.measures._common import _build_indexed_user_ranges
 
     df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
 
@@ -419,8 +419,8 @@ def test_build_indexed_user_ranges_handles_empty_dataframe():
 
 def test_radius_of_gyration_user_indices_numpy_helper():
     """Rust NumPy uid-index helper groups first-seen stable row indexes."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_user_indices_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_user_indices_numpy
 
     indices, ends = radius_of_gyration_user_indices_numpy(np.array([0, 1, 0, 2, 1, 2], dtype=np.uint64), 3)
 
@@ -431,9 +431,9 @@ def test_radius_of_gyration_user_indices_numpy_helper():
 
 def test_radius_of_gyration_user_indices_arrow_helper():
     """Rust Arrow uid-index helper supports UInt64 uid code arrays."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import radius_of_gyration_user_indices_arrow
+    from fkmob._core import radius_of_gyration_user_indices_arrow
 
     indices, ends = radius_of_gyration_user_indices_arrow(pa.array([0, 1, 0, 2, 1, 2], type=pa.uint64()), 3)
 
@@ -444,8 +444,8 @@ def test_radius_of_gyration_user_indices_arrow_helper():
 
 def test_radius_of_gyration_user_indices_rejects_out_of_range_codes():
     """Rust uid-index helper validates codes against num_groups before allocation."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_user_indices_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_user_indices_numpy
 
     with pytest.raises(ValueError, match="less than num_groups"):
         radius_of_gyration_user_indices_numpy(np.array([0, 2], dtype=np.uint64), 2)
@@ -453,10 +453,10 @@ def test_radius_of_gyration_user_indices_rejects_out_of_range_codes():
 
 def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
     """Indexed grouping keeps string uid support on the Arrow-backed path."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Polars not installed")
     import narwhals as nw
-    from skmob2.measures._common import _build_indexed_user_ranges
+    from fkmob.measures._common import _build_indexed_user_ranges
 
     df = nw.from_native(pl.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}), eager_only=True)
 
@@ -469,8 +469,8 @@ def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
 
 def test_radius_of_gyration_numpy_helper_matches_batch_helper():
     """Zero-copy numpy helper must match the compatibility batch helper."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_batch_km, radius_of_gyration_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_batch_km, radius_of_gyration_numpy
 
     lats = _SKMOB_TEST_LATS_LNGS[:, 0].astype(np.float64)
     lngs = _SKMOB_TEST_LATS_LNGS[:, 1].astype(np.float64)
@@ -485,9 +485,9 @@ def test_radius_of_gyration_numpy_helper_matches_batch_helper():
 
 def test_radius_of_gyration_arrow_helper_matches_numpy_helper():
     """Arrow helper must match the numpy helper."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import radius_of_gyration_arrow, radius_of_gyration_numpy
+    from fkmob._core import radius_of_gyration_arrow, radius_of_gyration_numpy
 
     lats_np = _SKMOB_TEST_LATS_LNGS[:, 0].astype(np.float64)
     lngs_np = _SKMOB_TEST_LATS_LNGS[:, 1].astype(np.float64)
@@ -505,8 +505,8 @@ def test_radius_of_gyration_arrow_helper_matches_numpy_helper():
 
 def test_radius_of_gyration_indexed_numpy_helper_matches_contiguous_helper():
     """Indexed helper must match contiguous helper when indexes encode the groups."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_indexed_numpy, radius_of_gyration_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_indexed_numpy, radius_of_gyration_numpy
 
     lats = np.array([10.0, 0.0, 11.0, 20.0, 1.0, 21.0], dtype=np.float64)
     lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
@@ -524,9 +524,9 @@ def test_radius_of_gyration_indexed_numpy_helper_matches_contiguous_helper():
 
 def test_radius_of_gyration_indexed_arrow_helper_matches_numpy_helper():
     """Arrow indexed helper must match the NumPy indexed helper."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import radius_of_gyration_indexed_arrow, radius_of_gyration_indexed_numpy
+    from fkmob._core import radius_of_gyration_indexed_arrow, radius_of_gyration_indexed_numpy
 
     lats = np.array([10.0, 0.0, 11.0, 20.0, 1.0, 21.0], dtype=np.float64)
     lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
@@ -547,8 +547,8 @@ def test_radius_of_gyration_indexed_arrow_helper_matches_numpy_helper():
 
 def test_radius_of_gyration_numpy_non_contiguous_raises():
     """Non-contiguous numpy arrays must raise before copying."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_numpy
 
     arr = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
     non_contig = arr[::2]
@@ -559,8 +559,8 @@ def test_radius_of_gyration_numpy_non_contiguous_raises():
 
 def test_radius_of_gyration_numpy_mismatched_lengths_raise():
     """Latitude/longitude arrays must have matching lengths."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_numpy
 
     lats = np.array([0.0, 1.0], dtype=np.float64)
     lngs = np.array([0.0], dtype=np.float64)
@@ -571,8 +571,8 @@ def test_radius_of_gyration_numpy_mismatched_lengths_raise():
 
 def test_radius_of_gyration_indexed_numpy_mismatched_lengths_raise():
     """Indexed helper validates latitude/longitude lengths."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_indexed_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_indexed_numpy
 
     lats = np.array([0.0, 1.0], dtype=np.float64)
     lngs = np.array([0.0], dtype=np.float64)
@@ -588,8 +588,8 @@ def test_radius_of_gyration_indexed_numpy_mismatched_lengths_raise():
 
 def test_radius_of_gyration_indexed_numpy_range_bounds_raise():
     """Indexed helper validates that ranges address the index array."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_indexed_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_indexed_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
 
@@ -604,8 +604,8 @@ def test_radius_of_gyration_indexed_numpy_range_bounds_raise():
 
 def test_radius_of_gyration_indexed_numpy_non_monotonic_ends_raise():
     """Indexed helper validates that end boundaries are monotonic."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_indexed_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_indexed_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
 
@@ -620,8 +620,8 @@ def test_radius_of_gyration_indexed_numpy_non_monotonic_ends_raise():
 
 def test_radius_of_gyration_indexed_numpy_index_bounds_raise():
     """Indexed helper validates that each index addresses coordinates."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import radius_of_gyration_indexed_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import radius_of_gyration_indexed_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
 
@@ -636,9 +636,9 @@ def test_radius_of_gyration_indexed_numpy_index_bounds_raise():
 
 def test_radius_of_gyration_indexed_arrow_nulls_are_filtered():
     """Arrow indexed helper skips null coordinates and reports valid counts."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from skmob2._core import radius_of_gyration_indexed_arrow
+    from fkmob._core import radius_of_gyration_indexed_arrow
 
     lats = pa.array([0.0, None], type=pa.float64())
     lngs = pa.array([0.0, 1.0], type=pa.float64())
@@ -653,43 +653,43 @@ def test_radius_of_gyration_indexed_arrow_nulls_are_filtered():
 
 @pytest.mark.skmob
 def test_radius_of_gyration_matches_skmob(comparison_skmob):
-    """skmob2 RoG must agree with skmob's reference implementation within 0.02 km."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    """fkmob RoG must agree with skmob's reference implementation within 0.02 km."""
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     from skmob.measures.individual import radius_of_gyration as skmob_rog
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration as skmob2_rog
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration as fkmob_rog
 
     skmob_result = skmob_rog(comparison_skmob, show_progress=False)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_rog(skmob2_input)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_rog(fkmob_input)
 
     skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)
-    skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
+    fkmob_uid = next(c for c in ("uid", "user", "user_id") if c in fkmob_result.columns)
 
     skmob_map = dict(zip(skmob_result[skmob_uid], skmob_result["radius_of_gyration"]))
-    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result["radius_of_gyration"]))
+    fkmob_map = dict(zip(fkmob_result[fkmob_uid], fkmob_result["radius_of_gyration"]))
 
-    assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
+    assert set(skmob_map.keys()) == set(fkmob_map.keys()), "User sets differ"
     for uid in skmob_map:
-        assert abs(skmob_map[uid] - skmob2_map[uid]) < 0.02, (
-            f"RoG mismatch for uid={uid}: skmob={skmob_map[uid]:.6f}, skmob2={skmob2_map[uid]:.6f}"
+        assert abs(skmob_map[uid] - fkmob_map[uid]) < 0.02, (
+            f"RoG mismatch for uid={uid}: skmob={skmob_map[uid]:.6f}, fkmob={fkmob_map[uid]:.6f}"
         )
 
 
 def test_radius_of_gyration_matches_cached_reference(comparison_skmob_reference):
     """RoG matches the cached skmob baseline without requiring the skmob environment."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration as skmob2_rog
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration as fkmob_rog
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("radius_of_gyration")
-    skmob2_result = skmob2_rog(ref.input_df)
+    fkmob_result = fkmob_rog(ref.input_df)
 
     skmob_map = dict(zip(skmob_result["uid"], skmob_result["radius_of_gyration"]))
-    skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
-    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result["radius_of_gyration"]))
+    fkmob_uid = next(c for c in ("uid", "user", "user_id") if c in fkmob_result.columns)
+    fkmob_map = dict(zip(fkmob_result[fkmob_uid], fkmob_result["radius_of_gyration"]))
 
-    assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
+    assert set(skmob_map.keys()) == set(fkmob_map.keys()), "User sets differ"
     for uid in skmob_map:
-        assert abs(skmob_map[uid] - skmob2_map[uid]) < 0.02, (
-            f"RoG mismatch for uid={uid}: cached={skmob_map[uid]:.6f}, skmob2={skmob2_map[uid]:.6f}"
+        assert abs(skmob_map[uid] - fkmob_map[uid]) < 0.02, (
+            f"RoG mismatch for uid={uid}: cached={skmob_map[uid]:.6f}, fkmob={fkmob_map[uid]:.6f}"
         )

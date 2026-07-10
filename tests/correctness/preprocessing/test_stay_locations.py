@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2.preprocessing.stay_locations."""
+"""Correctness tests for fkmob.preprocessing.stay_locations."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skmob2.preprocessing import stay_locations
+from fkmob.preprocessing import stay_locations
 
 
 def test_stay_locations_detects_single_stop(stops_tdf):

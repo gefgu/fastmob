@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild/install skmob2._core into an existing local virtual environment.
+# Rebuild/install fkmob._core into an existing local virtual environment.
 #
 # This script runs maturin against the selected environment. If the target uv
 # virtualenv lacks pip and a usable uv executable is unavailable, it bootstraps
@@ -78,7 +78,7 @@ else
     exit 1
 fi
 
-echo "==> Updating skmob2 in $ENV_NAME with maturin develop --release ..."
+echo "==> Updating fkmob in $ENV_NAME with maturin develop --release ..."
 DEVELOP_ARGS=(develop --release)
 if [ ! -x "$ENV_DIR/bin/pip" ]; then
     if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then

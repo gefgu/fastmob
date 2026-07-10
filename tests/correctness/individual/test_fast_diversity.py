@@ -4,10 +4,10 @@ import pytest
 
 pydivsufsort = pytest.importorskip(
     "pydivsufsort",
-    reason="pydivsufsort not installed; install with: pip install skmob2[diversity]",
+    reason="pydivsufsort not installed; install with: pip install fkmob[diversity]",
 )
 
-from skmob2.measures.individual.fast_diversity import fast_diversity  # noqa: E402
+from fkmob.measures.individual.fast_diversity import fast_diversity  # noqa: E402
 
 
 def test_fast_diversity_constant_sequence_lower_than_varied():
@@ -81,8 +81,8 @@ def test_fast_diversity_raises_without_pydivsufsort(monkeypatch):
 
     # Ensure the submodule is loaded, then grab it directly from sys.modules
     # to avoid the name collision with the re-exported function in visits/__init__.py
-    importlib.import_module("skmob2.measures.individual.fast_diversity")
-    mod = sys.modules["skmob2.measures.individual.fast_diversity"]
+    importlib.import_module("fkmob.measures.individual.fast_diversity")
+    mod = sys.modules["fkmob.measures.individual.fast_diversity"]
     orig_div = mod._divsufsort
     orig_kasai = mod._kasai
     monkeypatch.setattr(mod, "_divsufsort", None)

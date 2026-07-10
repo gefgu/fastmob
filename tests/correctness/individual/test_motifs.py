@@ -50,7 +50,7 @@ def _make_multi_day_df():
 
 def test_discover_motifs_returns_two_dataframes():
     """discover_daily_motifs_from_agents returns exactly two DataFrames."""
-    from skmob2.measures.individual.motifs import discover_daily_motifs_from_agents
+    from fkmob.measures.individual.motifs import discover_daily_motifs_from_agents
 
     df = _make_multi_day_df()
     result = discover_daily_motifs_from_agents(df)
@@ -62,7 +62,7 @@ def test_discover_motifs_returns_two_dataframes():
 
 def test_discover_motifs_daily_rows_count():
     """Two days, one user → daily_motifs_df has 2 rows."""
-    from skmob2.measures.individual.motifs import discover_daily_motifs_from_agents
+    from fkmob.measures.individual.motifs import discover_daily_motifs_from_agents
 
     df = _make_multi_day_df()
     daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
@@ -71,7 +71,7 @@ def test_discover_motifs_daily_rows_count():
 
 def test_discover_motifs_has_required_columns():
     """daily_motifs_df has required columns."""
-    from skmob2.measures.individual.motifs import discover_daily_motifs_from_agents
+    from fkmob.measures.individual.motifs import discover_daily_motifs_from_agents
 
     df = _make_multi_day_df()
     daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
@@ -81,7 +81,7 @@ def test_discover_motifs_has_required_columns():
 
 def test_discover_motifs_home_work_home_classified_correctly():
     """HOME→WORK→HOME each day → simple return motif (2 nodes, 2 edges)."""
-    from skmob2.measures.individual.motifs import discover_daily_motifs_from_agents
+    from fkmob.measures.individual.motifs import discover_daily_motifs_from_agents
 
     df = _make_multi_day_df()
     daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
@@ -92,7 +92,7 @@ def test_discover_motifs_home_work_home_classified_correctly():
 
 def test_discover_motifs_distribution_sum_to_100():
     """Motif distribution percentages sum to 100."""
-    from skmob2.measures.individual.motifs import discover_daily_motifs_from_agents
+    from fkmob.measures.individual.motifs import discover_daily_motifs_from_agents
 
     df = _make_multi_day_df()
     _, motif_dist_df = discover_daily_motifs_from_agents(df)

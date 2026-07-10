@@ -22,9 +22,9 @@ if [ ! -d ".venv-skmob" ]; then
     exit 1
 fi
 
-# Rebuild skmob2._core for the skmob comparison environment so the populate
-# script can import skmob2 alongside skmob.
-echo "==> Rebuilding skmob2._core for .venv-skmob ..."
+# Rebuild fkmob._core for the skmob comparison environment so the populate
+# script can import fkmob alongside skmob.
+echo "==> Rebuilding fkmob._core for .venv-skmob ..."
 unset CONDA_PREFIX
 VIRTUAL_ENV="$PWD/.venv-skmob" \
 PATH="$PWD/.venv-skmob/bin:$PATH" \

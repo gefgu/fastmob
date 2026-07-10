@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/visits/recency_rank.py."""
+"""Correctness tests for fkmob/measures/visits/recency_rank.py."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def _to_dict(df) -> dict:
 
 def test_recency_rank_known_values(synthetic_tdf):
     """All 5 locations are distinct; the most recently visited gets rank 1."""
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     result = recency_rank(synthetic_tdf)
     mapping = _to_dict(result)
@@ -57,7 +57,7 @@ def test_recency_rank_known_values(synthetic_tdf):
 
 def test_recency_rank_repeated_location():
     """When a user visits a location multiple times, it gets a single rank."""
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     # User "a" visits (1.0, 0.0) at t=0 and t=3, and (2.0, 0.0) at t=1.
     # After dedup: (1.0, 0.0) most recent (t=3) -> rank 1, (2.0, 0.0) -> rank 2.
@@ -79,7 +79,7 @@ def test_recency_rank_repeated_location():
 
 def test_recency_rank_single_location():
     """A user who visits only one location gets that location rank 1."""
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     df = pd.DataFrame(
         {
@@ -97,7 +97,7 @@ def test_recency_rank_single_location():
 
 def test_recency_rank_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     df = pd.DataFrame(
         {
@@ -120,7 +120,7 @@ def test_recency_rank_no_uid():
 
 def test_recency_rank_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     result = recency_rank(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -133,7 +133,7 @@ def test_recency_rank_polars_known_values(synthetic_tdf_polars):
 
 def test_recency_rank_presorted_matches_default_pandas():
     """The presorted fast path matches logical time-order indexing."""
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     raw = pd.DataFrame(
         {
@@ -163,7 +163,7 @@ def test_recency_rank_presorted_matches_default_pandas():
 
 def test_recency_rank_presorted_no_uid():
     """Presorted works when the whole frame is one implicit user."""
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     df = pd.DataFrame(
         {
@@ -183,7 +183,7 @@ def test_recency_rank_presorted_no_uid():
 def test_recency_rank_presorted_polars_known_values():
     """Polars/Arrow input uses the presorted Arrow-backed fast path."""
     pl = pytest.importorskip("polars")
-    from skmob2.measures.individual.recency_rank import recency_rank
+    from fkmob.measures.individual.recency_rank import recency_rank
 
     df = pl.DataFrame(
         {
@@ -201,7 +201,7 @@ def test_recency_rank_presorted_polars_known_values():
 
 def test_recency_rank_presorted_core_validation_errors():
     """The native presorted helper validates monotonic end offsets."""
-    from skmob2._core import recency_rank_presorted_numpy
+    from fkmob._core import recency_rank_presorted_numpy
 
     arr = np.array([1.0, 2.0], dtype=np.float64)
     bad_ends = np.array([2, 1], dtype=np.uintp)
@@ -211,14 +211,14 @@ def test_recency_rank_presorted_core_validation_errors():
 
 @pytest.mark.skmob
 def test_recency_rank_matches_skmob(comparison_skmob):
-    """skmob2 result matches skmob on each comparison dataset."""
+    """fkmob result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import recency_rank as skmob_rr
-    from skmob2.measures.individual.recency_rank import recency_rank as skmob2_rr
+    from fkmob.measures.individual.recency_rank import recency_rank as fkmob_rr
 
     skmob_result = skmob_rr(comparison_skmob, show_progress=False)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_rr(skmob2_input)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_rr(fkmob_input)
 
     # Build comparable {uid: {(lat, lng): rank}} dicts.
     skmob_dict: dict = {}
@@ -228,25 +228,25 @@ def test_recency_rank_matches_skmob(comparison_skmob):
         loc = (row["lat"], row["lng"])
         skmob_dict.setdefault(uid, {})[loc] = int(row["recency_rank"])
 
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common_uids = set(skmob_dict) & set(skmob2_dict)
+    common_uids = set(skmob_dict) & set(fkmob_dict)
     assert len(common_uids) > 0
     for uid in common_uids:
-        common_locs = set(skmob_dict[uid]) & set(skmob2_dict[uid])
+        common_locs = set(skmob_dict[uid]) & set(fkmob_dict[uid])
         for loc in common_locs:
-            assert skmob_dict[uid][loc] == skmob2_dict[uid][loc], (
-                f"uid={uid}, loc={loc}: skmob={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
+            assert skmob_dict[uid][loc] == fkmob_dict[uid][loc], (
+                f"uid={uid}, loc={loc}: skmob={skmob_dict[uid][loc]}, fkmob={fkmob_dict[uid][loc]}"
             )
 
 
 def test_recency_rank_matches_cached_reference(comparison_skmob_reference):
     """recency_rank matches the cached skmob baseline without requiring the skmob environment."""
-    from skmob2.measures.individual.recency_rank import recency_rank as skmob2_rr
+    from fkmob.measures.individual.recency_rank import recency_rank as fkmob_rr
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("recency_rank")
-    skmob2_result = skmob2_rr(ref.input_df)
+    fkmob_result = fkmob_rr(ref.input_df)
 
     skmob_dict: dict = {}
     for _, row in skmob_result.iterrows():
@@ -254,13 +254,13 @@ def test_recency_rank_matches_cached_reference(comparison_skmob_reference):
         loc = (row["lat"], row["lng"])
         skmob_dict.setdefault(uid, {})[loc] = int(row["recency_rank"])
 
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common_uids = set(skmob_dict) & set(skmob2_dict)
+    common_uids = set(skmob_dict) & set(fkmob_dict)
     assert len(common_uids) > 0
     for uid in common_uids:
-        common_locs = set(skmob_dict[uid]) & set(skmob2_dict[uid])
+        common_locs = set(skmob_dict[uid]) & set(fkmob_dict[uid])
         for loc in common_locs:
-            assert skmob_dict[uid][loc] == skmob2_dict[uid][loc], (
-                f"uid={uid}, loc={loc}: cached={skmob_dict[uid][loc]}, skmob2={skmob2_dict[uid][loc]}"
+            assert skmob_dict[uid][loc] == fkmob_dict[uid][loc], (
+                f"uid={uid}, loc={loc}: cached={skmob_dict[uid][loc]}, fkmob={fkmob_dict[uid][loc]}"
             )

@@ -462,7 +462,7 @@
     }
   },
   "metadata": {
-    "library": "skmob2",
+    "library": "fkmob",
     "model_end_epr": "2020-01-08 08:00:00",
     "model_end_social": "2020-01-02 08:00:00",
     "model_start_epr": "2020-01-01 08:00:00",

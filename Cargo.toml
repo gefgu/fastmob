@@ -1,5 +1,5 @@
 [workspace]
-members = ["skmob2-core", "skmob2-py"]
+members = ["fkmob-core", "fkmob-py"]
 resolver = "2"
 
 [profile.release]

@@ -16,8 +16,8 @@ def test_collective_registry_contains_only_collective_measures():
 
 def test_output_path_uses_collective_suite_name(tmp_path: Path):
     assert (
-        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "polars")
-        == tmp_path / "skmob2_collective_speed_polars.json"
+        suite.build_output_path(tmp_path, "fkmob", "prebuilt_tdf", "polars")
+        == tmp_path / "fkmob_collective_speed_polars.json"
     )
     assert (
         suite.build_output_path(tmp_path, "skmob", "workflow_tdf")
@@ -25,6 +25,6 @@ def test_output_path_uses_collective_suite_name(tmp_path: Path):
     )
 
 
-def test_parse_args_defaults_to_both_skmob2_backends():
-    args = suite.parse_args(["--library", "skmob2"])
+def test_parse_args_defaults_to_both_fkmob_backends():
+    args = suite.parse_args(["--library", "fkmob"])
     assert tuple(suite.concrete_backends(args)) == ("pandas", "polars")

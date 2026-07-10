@@ -4,21 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-`skmob2` is a high-performance reimplementation of the [`skmob`](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library. It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/) so any eager dataframe (pandas, polars, …) is accepted as input.
+`fkmob` is a high-performance reimplementation of the [`skmob`](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library. It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/) so any eager dataframe (pandas, polars, …) is accepted as input.
 
 ## Architecture
 
 ```
-src/lib.rs           ← Rust extension compiled to skmob2/_core.*.so
-skmob2/_core         ← compiled artifact (do not edit manually)
-skmob2/measures/     ← Python measure implementations; each calls into _core
-skmob2/__init__.py   ← re-exports public API
+src/lib.rs           ← Rust extension compiled to fkmob/_core.*.so
+fkmob/_core         ← compiled artifact (do not edit manually)
+fkmob/measures/     ← Python measure implementations; each calls into _core
+fkmob/__init__.py   ← re-exports public API
 tests/correctness/   ← correctness tests (no optional deps required)
-benchmarks/    ← pytest-benchmark tests comparing skmob vs skmob2
+benchmarks/    ← pytest-benchmark tests comparing skmob vs fkmob
 ```
 
 **Data flow for a measure (e.g. `jump_lengths`):**
-1. Python wrapper (`skmob2/measures/individual.py`) receives any native dataframe.
+1. Python wrapper (`fkmob/measures/individual.py`) receives any native dataframe.
 2. Narwhals wraps it into a backend-agnostic `nw.DataFrame`.
 3. Column names are auto-detected from a priority list (see below).
 4. Data is sorted by datetime, split per user, then handed as plain Python lists to the Rust function.
@@ -39,7 +39,7 @@ maturin develop
 maturin build --release
 ```
 
-After `maturin develop` the compiled `.so` is placed directly in `skmob2/`, so the package is importable from the repo root without a pip install.
+After `maturin develop` the compiled `.so` is placed directly in `fkmob/`, so the package is importable from the repo root without a pip install.
 
 ## Formatting
 
@@ -63,7 +63,7 @@ Dev dependencies (`pytest`, `pytest-benchmark`, `skmob`, `polars`, `tqdm`) are d
 
 ## Tests
 
-Use the shell scripts under `tests/` for normal verification. They activate `.venv`, rebuild `skmob2._core` when needed, and forward any extra arguments to pytest or the underlying tool.
+Use the shell scripts under `tests/` for normal verification. They activate `.venv`, rebuild `fkmob._core` when needed, and forward any extra arguments to pytest or the underlying tool.
 
 ```bash
 # Correctness only, excluding skmob comparisons by default
@@ -91,7 +91,7 @@ The known-good local skmob comparison stack is Python 3.10 with `scikit-mobility
 If your shell has Conda active, unset `CONDA_PREFIX` before invoking `maturin`; otherwise `maturin` can refuse to choose between Conda and the virtualenv.
 
 ```bash
-# Build skmob2._core for the skmob comparison environment.
+# Build fkmob._core for the skmob comparison environment.
 # Use the normal .venv maturin binary if .venv-skmob does not have maturin installed.
 unset CONDA_PREFIX
 VIRTUAL_ENV="$PWD/.venv-skmob" \
@@ -102,7 +102,7 @@ PATH="$PWD/.venv-skmob/bin:$PATH" \
 .venv-skmob/bin/python -m pytest tests/correctness -m skmob -vv
 ```
 
-The skmob comparison tests should usually be strict, but the Brightkite tests for `filter`, `distance_straight_line`, and `jump_lengths` intentionally allow a narrow tolerance. `skmob` computes distances with `skmob.utils.gislib.getDistanceByHaversine` and `earthradius = 6371.0`, while `skmob2` uses the Rust `geo::Haversine` kernel. This can move threshold-adjacent filtering points across the speed cutoff and can create metre-scale differences on long jumps. Keep that relaxation limited to those tests unless another comparison shows the same distance-kernel-only cause.
+The skmob comparison tests should usually be strict, but the Brightkite tests for `filter`, `distance_straight_line`, and `jump_lengths` intentionally allow a narrow tolerance. `skmob` computes distances with `skmob.utils.gislib.getDistanceByHaversine` and `earthradius = 6371.0`, while `fkmob` uses the Rust `geo::Haversine` kernel. This can move threshold-adjacent filtering points across the speed cutoff and can create metre-scale differences on long jumps. Keep that relaxation limited to those tests unless another comparison shows the same distance-kernel-only cause.
 
 ## Documentation
 
@@ -123,7 +123,7 @@ API reference pages under `docs/src/reference/` should begin with a compact summ
 
 ## Benchmarks
 
-`scripts/run_benchmarks.sh` is environment-aware. It rebuilds `skmob2._core` in `.venv`, runs skmob2 pandas/Polars benchmarks there, runs `@pytest.mark.skmob` comparison benchmarks in `.venv-skmob`, and runs `@pytest.mark.movingpandas` benchmarks only from an environment where `movingpandas` imports. Keep skmob comparisons out of `.venv`; that environment uses the modern Shapely stack and cannot import scikit-mobility.
+`scripts/run_benchmarks.sh` is environment-aware. It rebuilds `fkmob._core` in `.venv`, runs fkmob pandas/Polars benchmarks there, runs `@pytest.mark.skmob` comparison benchmarks in `.venv-skmob`, and runs `@pytest.mark.movingpandas` benchmarks only from an environment where `movingpandas` imports. Keep skmob comparisons out of `.venv`; that environment uses the modern Shapely stack and cannot import scikit-mobility.
 
 ```bash
 # Benchmark table printed to stdout
@@ -142,7 +142,7 @@ bash scripts/run_benchmarks.sh -k radius_of_gyration
 pytest-benchmark compare baseline 0001
 ```
 
-Benchmarks are parametrized over five dataset sizes (1k / 10k / 100k / 1M / 4M rows) and run `skmob2`, `skmob`, and movingpandas comparisons where the matching environment is available. When using `--benchmark-json` or `--benchmark-save`, the script suffixes the output names per environment (`skmob2`, `skmob`, `movingpandas`) so repeated pytest invocations do not overwrite each other. The Brightkite check-in dataset (~4M rows) is downloaded on first run and cached to `tests/shared/data/`.
+Benchmarks are parametrized over five dataset sizes (1k / 10k / 100k / 1M / 4M rows) and run `fkmob`, `skmob`, and movingpandas comparisons where the matching environment is available. When using `--benchmark-json` or `--benchmark-save`, the script suffixes the output names per environment (`fkmob`, `skmob`, `movingpandas`) so repeated pytest invocations do not overwrite each other. The Brightkite check-in dataset (~4M rows) is downloaded on first run and cached to `tests/shared/data/`.
 
 ## Profiling
 
@@ -150,31 +150,31 @@ Start with a small row count, then scale to 4M only after the profiler path work
 
 ```bash
 # Python CPU and memory profile with Scalene.
-bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2
+bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation fkmob
 
 # Native Rust sampling profile (Firefox Profiler format) with samply.
 # Function scope: samply attaches after data prep, so only the Rust kernel is sampled.
 bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration
-samply load .profiles/samply/skmob2/radius_of_gyration.json.gz
+samply load .profiles/samply/fkmob/radius_of_gyration.json.gz
 
-# Compare skmob2 and skmob where a skmob equivalent exists.
+# Compare fkmob and skmob where a skmob equivalent exists.
 bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation both
 
 # Legacy whole-process profiling, including imports and data loading.
 bash scripts/run_samply_profiles.sh --rows 10000 --workload radius_of_gyration --scope full
 ```
 
-Profiling outputs are written to implementation-specific folders under `.profiles/scalene/` and `.profiles/samply/`. Scalene writes `<workload>.json` plus `<workload>.html` unless reduced output is requested; samply writes `<workload>.json.gz` (Firefox Profiler JSON, viewable via `samply load`). Run `maturin develop` first when invoking profiling modules directly so `skmob2._core` and native symbols are available. samply requires `kernel.perf_event_paranoid <= 1` on Linux (`sudo sysctl kernel.perf_event_paranoid=1`).
+Profiling outputs are written to implementation-specific folders under `.profiles/scalene/` and `.profiles/samply/`. Scalene writes `<workload>.json` plus `<workload>.html` unless reduced output is requested; samply writes `<workload>.json.gz` (Firefox Profiler JSON, viewable via `samply load`). Run `maturin develop` first when invoking profiling modules directly so `fkmob._core` and native symbols are available. samply requires `kernel.perf_event_paranoid <= 1` on Linux (`sudo sysctl kernel.perf_event_paranoid=1`).
 
 ### Profiling from constrained Codex/sandbox environments
 
-The wrapper scripts are the preferred path because they activate `.venv`, check tools, rebuild the Rust extension in release mode, and write manifests. If they fail before profiling because the sandbox cannot run Snap `uv`, the `.venv` has no `pip`, or `maturin develop --uv` cannot resolve `uv`, do not spend time reinstalling Python tooling. If `skmob2._core` is already importable, run the profiler modules directly with `.venv/bin/python` and `.venv/bin/scalene`.
+The wrapper scripts are the preferred path because they activate `.venv`, check tools, rebuild the Rust extension in release mode, and write manifests. If they fail before profiling because the sandbox cannot run Snap `uv`, the `.venv` has no `pip`, or `maturin develop --uv` cannot resolve `uv`, do not spend time reinstalling Python tooling. If `fkmob._core` is already importable, run the profiler modules directly with `.venv/bin/python` and `.venv/bin/scalene`.
 
 Check the two prerequisites first:
 
 ```bash
 cat /proc/sys/kernel/perf_event_paranoid
-.venv/bin/python -c 'import skmob2._core as c; print(c.__file__)'
+.venv/bin/python -c 'import fkmob._core as c; print(c.__file__)'
 ```
 
 If `perf_event_paranoid` is greater than `1`, ask the user to run:
@@ -192,11 +192,11 @@ env -u CONDA_PREFIX uv run maturin develop --release
 For a direct Scalene profile of a Brightkite workload:
 
 ```bash
-.venv/bin/scalene run --profile-only skmob2 --memory --off \
+.venv/bin/scalene run --profile-only fkmob --memory --off \
   -o /tmp/filter_4M_scalene.json \
   tests/profiling/brightkite_workloads.py --- \
   --workload filter --rows 4000000 --backend pandas \
-  --implementation skmob2 --scalene-function-profile
+  --implementation fkmob --scalene-function-profile
 
 .venv/bin/python .agents/skills/profile-python-scalene/scripts/reduce_scalene_json.py \
   /tmp/filter_4M_scalene.json --top 25
@@ -207,12 +207,12 @@ For a direct function-scope Samply profile of the same workload:
 ```bash
 .venv/bin/python scripts/profile_brightkite_samply.py \
   --samply-bin /home/gustavo/.cargo/bin/samply \
-  --rows 4000000 --workload filter --implementation skmob2 \
+  --rows 4000000 --workload filter --implementation fkmob \
   --backend pandas --scope function --rate 1000 \
   --output-dir /tmp/samply_filter_4M
 
 .venv/bin/python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py \
-  /tmp/samply_filter_4M/skmob2/filter.json.gz --top 20 \
+  /tmp/samply_filter_4M/fkmob/filter.json.gz --top 20 \
   -o /tmp/filter_4M_samply_reduced.json
 ```
 
@@ -229,13 +229,13 @@ rustflags = ["-C", "force-frame-pointers=yes", "-C", "symbol-mangling-version=v0
 
 When writing new measures, use `nw.from_native(traj, eager_only=True)` to accept any dataframe. Use `.to_native()` to return a result in the caller's original backend.
 
-**Narwhals-only enforcement:** `import pandas` and `import polars` are **forbidden** inside any file under `skmob2/`. All DataFrame operations must go through the Narwhals API. This keeps every function backend-agnostic (pandas, polars, and any future backend). Dropping this guarantee for a specific function requires **explicit written approval from the user**; it is not a judgment call.
+**Narwhals-only enforcement:** `import pandas` and `import polars` are **forbidden** inside any file under `fkmob/`. All DataFrame operations must go through the Narwhals API. This keeps every function backend-agnostic (pandas, polars, and any future backend). Dropping this guarantee for a specific function requires **explicit written approval from the user**; it is not a judgment call.
 
 Preserve `backend=nw_df.implementation` when constructing output dicts so the result backend matches the input.
 
 ## Radius of gyration performance pattern
 
-`skmob2.measures.individual.radius_of_gyration` is the current reference implementation for a high-throughput, low-memory measure. Treat it as the standard to copy when building or refactoring other measures.
+`fkmob.measures.individual.radius_of_gyration` is the current reference implementation for a high-throughput, low-memory measure. Treat it as the standard to copy when building or refactoring other measures.
 
 What makes it fast:
 
@@ -261,17 +261,17 @@ The target shape is: small Narwhals wrapper, no pandas/polars imports, no Python
 
 ## Backend dispatch and null-handling conventions
 
-Two mandatory rules apply to every file under `skmob2/` that calls a Rust kernel.
+Two mandatory rules apply to every file under `fkmob/` that calls a Rust kernel.
 
 ### Rule 1 — TrajectoryDispatcher
 
 Never write `if _is_polars_backed(df): ... else: ...` or `if use_arrow: ...` branching inline.
-Use a **module-level `TrajectoryDispatcher`** instance from `skmob2.core.dispatch` instead.
+Use a **module-level `TrajectoryDispatcher`** instance from `fkmob.core.dispatch` instead.
 The dispatcher injects `extract_data` automatically and holds all backend-specific ops.
 
 ```python
-from skmob2.core.dispatch import TrajectoryDispatcher
-from skmob2._core import my_kernel_indexed_arrow as _kia, my_kernel_indexed_numpy as _kin
+from fkmob.core.dispatch import TrajectoryDispatcher
+from fkmob._core import my_kernel_indexed_arrow as _kia, my_kernel_indexed_numpy as _kin
 from ..measures._common import _arrow_result_values
 import numpy as np
 
@@ -303,7 +303,7 @@ result = ops["unpack"](raw)
 ```
 
 Do **not** import `_is_polars_backed` in new or refactored files.
-Canonical references: `skmob2/preprocessing/_filter.py` and `skmob2/preprocessing/_compress.py`.
+Canonical references: `fkmob/preprocessing/_filter.py` and `fkmob/preprocessing/_compress.py`.
 
 ### Rule 2 — Indexed path handles nulls natively; no global drop_nulls
 
@@ -325,11 +325,11 @@ Instead:
 4. The `presorted=True` fast path retains its assumption that the caller supplies pre-cleaned data;
    `_prepare_trajectory(sort=True)` is acceptable there.
 
-`arrow_valid_rows` is already implemented in `skmob2-py/src/utils/py_helpers.rs`.
+`arrow_valid_rows` is already implemented in `fkmob-py/src/utils/py_helpers.rs`.
 
 ### Rust template for adding `valid_rows` to an indexed core function
 
-In `skmob2-core/src/…/<measure>.rs`, add a validity helper and filter per-user indices:
+In `fkmob-core/src/…/<measure>.rs`, add a validity helper and filter per-user indices:
 
 ```rust
 fn is_valid_indexed_row(
@@ -346,15 +346,15 @@ let valid: Vec<usize> = user_indices.iter().copied()
 
 Add `valid_rows: Option<&[bool]>` after `ends` in the `_indexed_impl` signature.
 
-In `skmob2-py/src/…/<measure>.rs`:
+In `fkmob-py/src/…/<measure>.rs`:
 - **NumPy binding**: keep `PyReadonlyArray1<f64>` inputs; pass `None` to core.
 - **Arrow binding**: change `as_f64_array` → `as_nullable_f64_array` for each coordinate /
   timestamp array; add `let valid_rows = arrow_valid_rows(&[&lats, &lngs, ...]);`; pass
   `valid_rows.as_deref()` to core.
 - Add `as_nullable_f64_array, arrow_valid_rows` to the `use crate::utils::` import.
 
-See `skmob2-core/src/preprocessing/compress_traj.rs` and
-`skmob2-py/src/preprocessing/compress_traj_py.rs` as the canonical Rust reference.
+See `fkmob-core/src/preprocessing/compress_traj.rs` and
+`fkmob-py/src/preprocessing/compress_traj_py.rs` as the canonical Rust reference.
 
 ## Column name conventions
 
@@ -395,8 +395,8 @@ When adding a measure, choose the output pattern based on cardinality:
 
 1. Add the Rust kernel to `src/lib.rs` and expose it via `m.add_function(...)` in the `_core` pymodule.
 2. Run `maturin develop` to rebuild.
-3. Create the Python wrapper in `skmob2/measures/individual.py` (or a new file), following the pattern of `jump_lengths`.
-4. Re-export from `skmob2/measures/__init__.py` and `skmob2/__init__.py`.
+3. Create the Python wrapper in `fkmob/measures/individual.py` (or a new file), following the pattern of `jump_lengths`.
+4. Re-export from `fkmob/measures/__init__.py` and `fkmob/__init__.py`.
 5. Add a correctness test in `tests/correctness/test_individual.py` and a benchmark in `benchmarks/bench_individual.py`.
 6. Follow **Rule 1**: instantiate a module-level `TrajectoryDispatcher`; do not use `_is_polars_backed`.
 7. Follow **Rule 2**: do not call `_prepare_trajectory(drop_nulls=True)` on the indexed path; add the explicit `Float64` cast; update the Arrow-indexed Rust binding with `as_nullable_f64_array` + `arrow_valid_rows`.

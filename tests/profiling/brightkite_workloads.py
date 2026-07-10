@@ -18,7 +18,7 @@ from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
 
 
 DEFAULT_ROWS = 4_000_000
-IMPLEMENTATIONS = ("skmob2", "skmob")
+IMPLEMENTATIONS = ("fkmob", "skmob")
 JUMP_LENGTHS_ENTRYPOINTS = ("method", "function")
 DEFAULT_JUMP_LENGTHS_ENTRYPOINT = "method"
 WorkloadFunc = Callable[[Any], Any]
@@ -159,202 +159,202 @@ def _make_workload(name: str, dataset: str, import_path: str, description: str, 
     return Workload(name, dataset, import_path, kwargs, description)
 
 
-def _skmob2_workloads() -> dict[str, Workload]:
+def _fkmob_workloads() -> dict[str, Workload]:
     workloads = {
-        "filter": _make_workload("filter", "trajectory", "skmob2.preprocessing.filter", "skmob2 filter"),
-        "compress": _make_workload("compress", "trajectory", "skmob2.preprocessing.compress", "skmob2 compress"),
+        "filter": _make_workload("filter", "trajectory", "fkmob.preprocessing.filter", "fkmob filter"),
+        "compress": _make_workload("compress", "trajectory", "fkmob.preprocessing.compress", "fkmob compress"),
         "stay_locations": _make_workload(
             "stay_locations",
             "trajectory",
-            "skmob2.preprocessing.stay_locations",
-            "skmob2 stay locations",
+            "fkmob.preprocessing.stay_locations",
+            "fkmob stay locations",
         ),
-        "cluster": _make_workload("cluster", "trajectory", "skmob2.preprocessing.cluster", "skmob2 cluster"),
+        "cluster": _make_workload("cluster", "trajectory", "fkmob.preprocessing.cluster", "fkmob cluster"),
         "jump_lengths": _make_workload(
             "jump_lengths",
             "trajectory",
-            "skmob2.measures.individual.jump_lengths.jump_lengths",
-            "skmob2 jump lengths",
+            "fkmob.measures.individual.jump_lengths.jump_lengths",
+            "fkmob jump lengths",
             merge=False,
         ),
         "radius_of_gyration": _make_workload(
             "radius_of_gyration",
             "trajectory",
-            "skmob2.measures.individual.radius_of_gyration.radius_of_gyration",
-            "skmob2 radius of gyration",
+            "fkmob.measures.individual.radius_of_gyration.radius_of_gyration",
+            "fkmob radius of gyration",
         ),
         "k_radius_of_gyration": _make_workload(
             "k_radius_of_gyration",
             "trajectory",
-            "skmob2.measures.individual.k_radius_of_gyration.k_radius_of_gyration",
-            "skmob2 k radius of gyration",
+            "fkmob.measures.individual.k_radius_of_gyration.k_radius_of_gyration",
+            "fkmob k radius of gyration",
         ),
         "number_of_visits": _make_workload(
             "number_of_visits",
             "trajectory",
-            "skmob2.measures.individual.number_of_visits.number_of_visits",
-            "skmob2 number of visits",
+            "fkmob.measures.individual.number_of_visits.number_of_visits",
+            "fkmob number of visits",
         ),
         "number_of_locations": _make_workload(
             "number_of_locations",
             "trajectory",
-            "skmob2.measures.individual.number_of_locations.number_of_locations",
-            "skmob2 number of locations",
+            "fkmob.measures.individual.number_of_locations.number_of_locations",
+            "fkmob number of locations",
         ),
         "maximum_distance": _make_workload(
             "maximum_distance",
             "trajectory",
-            "skmob2.measures.individual.maximum_distance.maximum_distance",
-            "skmob2 maximum distance",
+            "fkmob.measures.individual.maximum_distance.maximum_distance",
+            "fkmob maximum distance",
         ),
         "distance_straight_line": _make_workload(
             "distance_straight_line",
             "trajectory",
-            "skmob2.measures.individual.distance_straight_line.distance_straight_line",
-            "skmob2 distance straight line",
+            "fkmob.measures.individual.distance_straight_line.distance_straight_line",
+            "fkmob distance straight line",
         ),
         "waiting_times": _make_workload(
             "waiting_times",
             "trajectory",
-            "skmob2.measures.individual.waiting_times.waiting_times",
-            "skmob2 waiting times",
+            "fkmob.measures.individual.waiting_times.waiting_times",
+            "fkmob waiting times",
         ),
         "home_location": _make_workload(
             "home_location",
             "trajectory",
-            "skmob2.measures.individual.home_location.home_location",
-            "skmob2 home location",
+            "fkmob.measures.individual.home_location.home_location",
+            "fkmob home location",
         ),
         "max_distance_from_home": _make_workload(
             "max_distance_from_home",
             "trajectory",
-            "skmob2.measures.individual.max_distance_from_home.max_distance_from_home",
-            "skmob2 max distance from home",
+            "fkmob.measures.individual.max_distance_from_home.max_distance_from_home",
+            "fkmob max distance from home",
         ),
         "visits_per_location": _make_workload(
             "visits_per_location",
             "trajectory",
-            "skmob2.measures.collective.visits_per_location.visits_per_location",
-            "skmob2 visits per location",
+            "fkmob.measures.collective.visits_per_location.visits_per_location",
+            "fkmob visits per location",
         ),
         "homes_per_location": _make_workload(
             "homes_per_location",
             "trajectory",
-            "skmob2.measures.collective.homes_per_location.homes_per_location",
-            "skmob2 homes per location",
+            "fkmob.measures.collective.homes_per_location.homes_per_location",
+            "fkmob homes per location",
         ),
         "visits_per_time_unit": _make_workload(
             "visits_per_time_unit",
             "trajectory",
-            "skmob2.measures.collective.visits_per_time_unit.visits_per_time_unit",
-            "skmob2 visits per time unit",
+            "fkmob.measures.collective.visits_per_time_unit.visits_per_time_unit",
+            "fkmob visits per time unit",
         ),
         "mean_square_displacement": _make_workload(
             "mean_square_displacement",
             "trajectory",
-            "skmob2.measures.collective.mean_square_displacement.mean_square_displacement",
-            "skmob2 mean square displacement",
+            "fkmob.measures.collective.mean_square_displacement.mean_square_displacement",
+            "fkmob mean square displacement",
         ),
         "random_location_entropy": _make_workload(
             "random_location_entropy",
             "trajectory",
-            "skmob2.measures.collective.random_location_entropy.random_location_entropy",
-            "skmob2 random location entropy",
+            "fkmob.measures.collective.random_location_entropy.random_location_entropy",
+            "fkmob random location entropy",
         ),
         "uncorrelated_location_entropy": _make_workload(
             "uncorrelated_location_entropy",
             "trajectory",
-            "skmob2.measures.collective.uncorrelated_location_entropy.uncorrelated_location_entropy",
-            "skmob2 uncorrelated location entropy",
+            "fkmob.measures.collective.uncorrelated_location_entropy.uncorrelated_location_entropy",
+            "fkmob uncorrelated location entropy",
         ),
         "random_entropy": _make_workload(
-            "random_entropy", "trajectory", "skmob2.measures.individual.random_entropy.random_entropy", "skmob2 random entropy"
+            "random_entropy", "trajectory", "fkmob.measures.individual.random_entropy.random_entropy", "fkmob random entropy"
         ),
         "uncorrelated_entropy": _make_workload(
             "uncorrelated_entropy",
             "trajectory",
-            "skmob2.measures.individual.uncorrelated_entropy.uncorrelated_entropy",
-            "skmob2 uncorrelated entropy",
+            "fkmob.measures.individual.uncorrelated_entropy.uncorrelated_entropy",
+            "fkmob uncorrelated entropy",
         ),
         "real_entropy": _make_workload(
-            "real_entropy", "trajectory", "skmob2.measures.individual.real_entropy.real_entropy", "skmob2 real entropy"
+            "real_entropy", "trajectory", "fkmob.measures.individual.real_entropy.real_entropy", "fkmob real entropy"
         ),
         "frequency_rank": _make_workload(
             "frequency_rank",
             "trajectory",
-            "skmob2.measures.individual.frequency_rank.frequency_rank",
-            "skmob2 frequency rank",
+            "fkmob.measures.individual.frequency_rank.frequency_rank",
+            "fkmob frequency rank",
         ),
         "recency_rank": _make_workload(
-            "recency_rank", "trajectory", "skmob2.measures.individual.recency_rank.recency_rank", "skmob2 recency rank"
+            "recency_rank", "trajectory", "fkmob.measures.individual.recency_rank.recency_rank", "fkmob recency rank"
         ),
         "location_frequency": _make_workload(
             "location_frequency",
             "trajectory",
-            "skmob2.measures.individual.location_frequency.location_frequency",
-            "skmob2 location frequency",
+            "fkmob.measures.individual.location_frequency.location_frequency",
+            "fkmob location frequency",
         ),
         "individual_mobility_network": _make_workload(
             "individual_mobility_network",
             "trajectory",
-            "skmob2.measures.individual.individual_mobility_network.individual_mobility_network",
-            "skmob2 individual mobility network",
+            "fkmob.measures.individual.individual_mobility_network.individual_mobility_network",
+            "fkmob individual mobility network",
         ),
         "activity_transition_matrix": _make_workload(
             "activity_transition_matrix",
             "visits",
-            "skmob2.measures.individual.activity.activity_transition_matrix",
-            "skmob2 activity transition matrix",
+            "fkmob.measures.individual.activity.activity_transition_matrix",
+            "fkmob activity transition matrix",
         ),
-        "diversity": _make_workload("diversity", "visits", "skmob2.measures.individual.diversity.diversity", "skmob2 diversity"),
+        "diversity": _make_workload("diversity", "visits", "fkmob.measures.individual.diversity.diversity", "fkmob diversity"),
         "regularity": _make_workload(
-            "regularity", "visits", "skmob2.measures.individual.regularity.regularity", "skmob2 regularity"
+            "regularity", "visits", "fkmob.measures.individual.regularity.regularity", "fkmob regularity"
         ),
         "trajectory_entropy": _make_workload(
             "trajectory_entropy",
             "visits",
-            "skmob2.measures.individual.entropy.trajectory_entropy",
-            "skmob2 trajectory entropy",
+            "fkmob.measures.individual.entropy.trajectory_entropy",
+            "fkmob trajectory entropy",
         ),
         "trajectory_predictability": _make_workload(
             "trajectory_predictability",
             "visits",
-            "skmob2.measures.individual.entropy.trajectory_predictability",
-            "skmob2 trajectory predictability",
+            "fkmob.measures.individual.entropy.trajectory_predictability",
+            "fkmob trajectory predictability",
         ),
         "intermittance_and_degree_of_return": _make_workload(
             "intermittance_and_degree_of_return",
             "visits",
-            "skmob2.measures.individual.mobility_profiling.intermittance_and_degree_of_return",
-            "skmob2 intermittance and degree of return",
+            "fkmob.measures.individual.mobility_profiling.intermittance_and_degree_of_return",
+            "fkmob intermittance and degree of return",
         ),
         "exploration_profiling": _make_workload(
             "exploration_profiling",
             "visits",
-            "skmob2.measures.individual.mobility_profiling.exploration_profiling",
-            "skmob2 exploration profiling",
+            "fkmob.measures.individual.mobility_profiling.exploration_profiling",
+            "fkmob exploration profiling",
             random_seed=0,
         ),
         "mean_area_volume": _make_workload(
             "mean_area_volume",
             "visits",
-            "skmob2.measures.individual.mean_area_volume.mean_area_volume",
-            "skmob2 mean area volume",
+            "fkmob.measures.individual.mean_area_volume.mean_area_volume",
+            "fkmob mean area volume",
         ),
         "discover_daily_motifs_from_agents": _make_workload(
             "discover_daily_motifs_from_agents",
             "visits",
-            "skmob2.measures.individual.motifs.discover_daily_motifs_from_agents",
-            "skmob2 daily motifs",
+            "fkmob.measures.individual.motifs.discover_daily_motifs_from_agents",
+            "fkmob daily motifs",
         ),
-        "od_matrix": _make_workload("od_matrix", "od", "skmob2.measures.collective.od.od_matrix", "skmob2 OD matrix"),
+        "od_matrix": _make_workload("od_matrix", "od", "fkmob.measures.collective.od.od_matrix", "fkmob OD matrix"),
         "od_metrics_per_area": _make_workload(
             "od_metrics_per_area",
             "od_metrics",
-            "skmob2.measures.collective.od.od_metrics_per_area",
-            "skmob2 OD metrics per area",
+            "fkmob.measures.collective.od.od_metrics_per_area",
+            "fkmob OD metrics per area",
         ),
-        "stvd_emd": _make_workload("stvd_emd", "stvd", "skmob2.measures.evaluation.spatial.stvd_emd", "skmob2 STVD-EMD"),
+        "stvd_emd": _make_workload("stvd_emd", "stvd", "fkmob.measures.evaluation.spatial.stvd_emd", "fkmob STVD-EMD"),
     }
     return dict(sorted(workloads.items()))
 
@@ -408,9 +408,9 @@ def _patch_skmob_shapely_compat() -> None:
         shapely_ops.cascaded_union = shapely_ops.unary_union
 
 
-def workload_registry(implementation: str = "skmob2") -> dict[str, Workload]:
-    if implementation == "skmob2":
-        return _skmob2_workloads()
+def workload_registry(implementation: str = "fkmob") -> dict[str, Workload]:
+    if implementation == "fkmob":
+        return _fkmob_workloads()
     if implementation != "skmob":
         raise ValueError(f"Unsupported implementation: {implementation!r}")
 
@@ -425,7 +425,7 @@ def workload_registry(implementation: str = "skmob2") -> dict[str, Workload]:
     return available
 
 
-def available_workloads(implementation: str = "skmob2") -> list[str]:
+def available_workloads(implementation: str = "fkmob") -> list[str]:
     return list(workload_registry(implementation))
 
 
@@ -433,7 +433,7 @@ def build_dataset_for_workload(
     workload: Workload,
     rows: int,
     backend: str,
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     *,
     jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> Any:
@@ -454,11 +454,11 @@ def build_dataset_for_workload(
             user_id="uid",
         )
 
-    if _uses_skmob2_jump_lengths_tdf(workload, implementation):
-        import skmob2
+    if _uses_fkmob_jump_lengths_tdf(workload, implementation):
+        import fkmob
 
         _validate_jump_lengths_entrypoint(jump_lengths_entrypoint)
-        return skmob2.TrajDataFrame(traj, sort=jump_lengths_entrypoint == "method")
+        return fkmob.TrajDataFrame(traj, sort=jump_lengths_entrypoint == "method")
     if workload.dataset == "trajectory":
         return traj
     if workload.dataset == "visits":
@@ -466,7 +466,7 @@ def build_dataset_for_workload(
     if workload.dataset == "od":
         return trajectory_to_od(traj)
     if workload.dataset == "od_metrics":
-        from skmob2.measures.collective.od import od_matrix
+        from fkmob.measures.collective.od import od_matrix
 
         return od_matrix(trajectory_to_od(traj))
     if workload.dataset == "stvd":
@@ -479,7 +479,7 @@ def prepare_workload(
     *,
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> PreparedWorkload:
     workloads = workload_registry(implementation)
@@ -490,11 +490,11 @@ def prepare_workload(
             f"Available {implementation} workloads: {available}"
         )
 
-    if implementation == "skmob2":
+    if implementation == "fkmob":
         try:
-            import skmob2._core  # noqa: F401
+            import fkmob._core  # noqa: F401
         except ImportError as exc:
-            raise SystemExit("skmob2._core is not importable. Run `maturin develop` first.") from exc
+            raise SystemExit("fkmob._core is not importable. Run `maturin develop` first.") from exc
 
     workload = workloads[name]
     data = build_dataset_for_workload(
@@ -504,7 +504,7 @@ def prepare_workload(
         implementation,
         jump_lengths_entrypoint=jump_lengths_entrypoint,
     )
-    if _uses_skmob2_jump_lengths_tdf(workload, implementation):
+    if _uses_fkmob_jump_lengths_tdf(workload, implementation):
         _validate_jump_lengths_entrypoint(jump_lengths_entrypoint)
         if jump_lengths_entrypoint == "method":
             return PreparedWorkload(
@@ -541,8 +541,8 @@ def execute_prepared_workload(prepared: PreparedWorkload) -> None:
     _materialize(result)
 
 
-def _uses_skmob2_jump_lengths_tdf(workload: Workload, implementation: str) -> bool:
-    return implementation == "skmob2" and workload.name == "jump_lengths"
+def _uses_fkmob_jump_lengths_tdf(workload: Workload, implementation: str) -> bool:
+    return implementation == "fkmob" and workload.name == "jump_lengths"
 
 
 def _validate_jump_lengths_entrypoint(entrypoint: str) -> None:
@@ -556,7 +556,7 @@ def _jump_lengths_method_entrypoint(tdf: Any) -> Any:
 
 
 def _jump_lengths_function_entrypoint(tdf: Any, **kwargs: Any) -> Any:
-    from skmob2.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.jump_lengths import jump_lengths
 
     return jump_lengths(
         tdf.df,
@@ -574,7 +574,7 @@ def run_workload(
     *,
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> dict[str, Any]:
     prepared = prepare_workload(
@@ -601,7 +601,7 @@ def run_prepared_child(
     *,
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> int:
     prepared = prepare_workload(
@@ -660,7 +660,7 @@ def run_scalene_function_profile(
     *,
     rows: int = DEFAULT_ROWS,
     backend: str = "pandas",
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> dict[str, Any]:
     from scalene import scalene_profiler
@@ -693,12 +693,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workload", required=False, help="Workload name to run.")
     parser.add_argument("--rows", type=int, default=DEFAULT_ROWS)
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
-    parser.add_argument("--implementation", choices=IMPLEMENTATIONS, default="skmob2")
+    parser.add_argument("--implementation", choices=IMPLEMENTATIONS, default="fkmob")
     parser.add_argument(
         "--jump-lengths-entrypoint",
         choices=JUMP_LENGTHS_ENTRYPOINTS,
         default=DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
-        help="skmob2 jump_lengths TrajDataFrame entrypoint to profile.",
+        help="fkmob jump_lengths TrajDataFrame entrypoint to profile.",
     )
     parser.add_argument("--list", action="store_true", help="List workload names and exit.")
     parser.add_argument("--prepared-child", action="store_true", help="Prepare workload, wait on stdin, then execute.")

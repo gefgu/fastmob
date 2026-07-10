@@ -79,7 +79,7 @@ def build_profile_command(
     output_dir: Path,
     rate: int,
     samply_bin: str = "samply",
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     scope: str = "function",
     jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> ProfileCommand:
@@ -327,12 +327,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--samply-bin", default="samply")
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
     parser.add_argument("--scope", choices=SCOPES, default="function")
-    parser.add_argument("--implementation", choices=("skmob2", "skmob", "both"), default="skmob2")
+    parser.add_argument("--implementation", choices=("fkmob", "skmob", "both"), default="fkmob")
     parser.add_argument(
         "--jump-lengths-entrypoint",
         choices=JUMP_LENGTHS_ENTRYPOINTS,
         default=DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
-        help="skmob2 jump_lengths TrajDataFrame entrypoint to profile.",
+        help="fkmob jump_lengths TrajDataFrame entrypoint to profile.",
     )
     parser.add_argument(
         "--continue-on-error",

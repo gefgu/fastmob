@@ -41,8 +41,8 @@ def test_cataloged_default_individual_entries_have_benchmark_cases():
 
 def test_output_path_uses_individual_suite_name(tmp_path: Path):
     assert (
-        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas")
-        == tmp_path / "skmob2_individual_speed_pandas.json"
+        suite.build_output_path(tmp_path, "fkmob", "prebuilt_tdf", "pandas")
+        == tmp_path / "fkmob_individual_speed_pandas.json"
     )
     assert (
         suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf")
@@ -50,8 +50,8 @@ def test_output_path_uses_individual_suite_name(tmp_path: Path):
     )
 
 
-def test_parse_args_defaults_to_both_skmob2_backends():
-    args = suite.parse_args(["--library", "skmob2"])
+def test_parse_args_defaults_to_both_fkmob_backends():
+    args = suite.parse_args(["--library", "fkmob"])
     assert args.backend == "both"
     assert tuple(suite.concrete_backends(args)) == ("pandas", "polars")
 
@@ -63,24 +63,24 @@ def test_json_writer_serializes_payload(tmp_path: Path):
 
 def test_benchmark_metric_records_import_skip():
     spec = suite.BenchmarkSpec("missing", "missing.module", "missing.module", "missing", {})
-    result = suite.benchmark_metric(spec, "skmob2", object, iterations=1, sleep_seconds=0.0)
+    result = suite.benchmark_metric(spec, "fkmob", object, iterations=1, sleep_seconds=0.0)
 
     assert result["status"] == "skipped"
     assert result["times_seconds"] == []
 
 
-def test_sorted_skmob2_trajectory_benchmark_uses_presorted_keyword():
+def test_sorted_fkmob_trajectory_benchmark_uses_presorted_keyword():
     spec = suite.BenchmarkSpec("maximum_distance", "unused", "unused", "maximum_distance", {})
 
-    kwargs = suite.metric_kwargs_for_library(spec, "skmob2", lambda **_kwargs: None, input_order="sorted")
+    kwargs = suite.metric_kwargs_for_library(spec, "fkmob", lambda **_kwargs: None, input_order="sorted")
 
     assert kwargs == {"presorted": True}
 
 
-def test_sorted_skmob2_visit_benchmark_does_not_add_presorted_keyword():
+def test_sorted_fkmob_visit_benchmark_does_not_add_presorted_keyword():
     spec = suite.BenchmarkSpec("random_entropy", "unused", "unused", "random_entropy", {}, input_kind="visits")
 
-    kwargs = suite.metric_kwargs_for_library(spec, "skmob2", lambda **_kwargs: None, input_order="sorted")
+    kwargs = suite.metric_kwargs_for_library(spec, "fkmob", lambda **_kwargs: None, input_order="sorted")
 
     assert kwargs == {}
 
@@ -141,7 +141,7 @@ def test_real_entropy_opt_in_suite_uses_expensive_registry(monkeypatch, tmp_path
     args = real_entropy_speed_suite.parse_args(
         [
             "--library",
-            "skmob2",
+            "fkmob",
             "--backend",
             "pandas",
             "--sizes",

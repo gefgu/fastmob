@@ -1,10 +1,10 @@
 # Profile Rust Samply
 
-Profile skmob2 Rust-backed Python workloads with samply, reduce Firefox Profiler JSON profiles, and diagnose native/PyO3 performance bottlenecks.
+Profile fkmob Rust-backed Python workloads with samply, reduce Firefox Profiler JSON profiles, and diagnose native/PyO3 performance bottlenecks.
 
 ## Workflow
 
-Run from the repository root (`/home/gustavo/skmob2`) so `uv`, `maturin`, tests, data paths, and `skmob2._core` imports match the project.
+Run from the repository root (`/home/gustavo/fkmob`) so `uv`, `maturin`, tests, data paths, and `fkmob._core` imports match the project.
 
 Prefer the existing Brightkite runner for supported workloads:
 
@@ -23,13 +23,13 @@ Samply writes Firefox Profiler JSON, usually compressed as `.json.gz`. Do not lo
 
 ```bash
 uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py \
-  .profiles/samply/skmob2/radius_of_gyration.json.gz --top 20
+  .profiles/samply/fkmob/radius_of_gyration.json.gz --top 20
 ```
 
 Useful options:
 
 ```bash
-uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py /tmp/profile.json.gz --filter skmob2:: --top 30
+uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py /tmp/profile.json.gz --filter fkmob:: --top 30
 uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py /tmp/profile.json.gz --thread python -o /tmp/reduced.json
 ```
 
@@ -38,7 +38,7 @@ Focus on:
 - `top_leaf_frames`: where samples stop; good for tight loops or expensive calls.
 - `top_inclusive_frames`: functions anywhere in hot stacks; good for callers and shared helpers.
 - `top_stacks`: repeated call paths.
-- `rust_focused`: filtered entries tied to `skmob2`, `src/`, Rust crate paths, or PyO3.
+- `rust_focused`: filtered entries tied to `fkmob`, `src/`, Rust crate paths, or PyO3.
 - Python conversion frames such as `PyFloat_FromDouble`, `PyList_New`, `pyo3::conversion::IntoPyObject::owned_sequence_into_pyobject`. When these dominate after the Rust kernel is optimized, treat the bottleneck as actionable by adding NumPy or Arrow return paths.
 
 When reporting findings, state the sample count, whether the profile is function or full scope, and the workload size/backend. Connect hot Rust frames to files under `src/` before proposing edits.
@@ -48,9 +48,9 @@ When reporting findings, state the sample count, whether the profile is function
 For targets not in `tests.profiling.brightkite_workloads`, use the generic importable-callable wrapper:
 
 ```bash
-samply record --save-only --rate 1000 -o /tmp/skmob2-profile.json.gz -- \
+samply record --save-only --rate 1000 -o /tmp/fkmob-profile.json.gz -- \
   uv run python .agents/skills/profile-rust-samply/scripts/profile_importable_samply.py \
-  skmob2.module:function --input-kind brightkite-pandas --rows 10000 --repeat 3
+  fkmob.module:function --input-kind brightkite-pandas --rows 10000 --repeat 3
 ```
 
 Targets use `module:function` syntax. Input kinds: `brightkite-pandas`, `brightkite-polars`, `none`. Pass keyword arguments with `--kwargs-json '{"key": "value"}'`.

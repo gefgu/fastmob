@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 3,
+    "library": "fkmob",
+    "metrics": [
+      "epr_10000a",
+      "sts_epr_custom"
+    ],
+    "n_agents": [
+      10000
+    ],
+    "n_locations": null,
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "reference_dir": "/home/gustavo/fkmob/tests/shared/skmob_reference/models",
+    "sleep_seconds": 0.5,
+    "suite": "models_large_scale",
+    "timestamp_utc": "2026-06-21T15:36:22.789729+00:00"
+  },
+  "results": [
+    {
+      "label": "10k",
+      "locations": 10000,
+      "metrics": {
+        "epr_10000a": {
+          "average_seconds": 40.16776097208882,
+          "iterations_completed": 3,
+          "minimum_seconds": 40.05076336301863,
+          "status": "ok",
+          "times_seconds": [
+            40.14387677097693,
+            40.30864278227091,
+            40.05076336301863
+          ]
+        },
+        "sts_epr_10000a": {
+          "average_seconds": 8.039783646042148,
+          "iterations_completed": 3,
+          "minimum_seconds": 8.005914357025176,
+          "status": "ok",
+          "times_seconds": [
+            8.06432439526543,
+            8.005914357025176,
+            8.049112185835838
+          ]
+        }
+      },
+      "size": 10000
+    }
+  ]
+}

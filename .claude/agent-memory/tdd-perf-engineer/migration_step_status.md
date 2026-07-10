@@ -1,24 +1,24 @@
 ---
 name: TDD migration step completion status
-description: Which steps of the skmob2 TDD migration plan are done, ON HOLD, or blocked
+description: Which steps of the fkmob TDD migration plan are done, ON HOLD, or blocked
 type: project
 ---
 
-Plan file: /home/gustavo/agents_transport_netmob/docs/features/skmob2-tdd-migration-plan.md
+Plan file: /home/gustavo/agents_transport_netmob/docs/features/fkmob-tdd-migration-plan.md
 
 | Step | Feature | Status | Notes |
 |------|---------|--------|-------|
-| 1 | OD Matrix | DONE | skmob2/measures/od.py |
+| 1 | OD Matrix | DONE | fkmob/measures/od.py |
 | 2 | Visitation Law Binning | ON HOLD | Explicitly deferred by plan |
-| 3 | Power-Law Fitting | DONE | skmob2/measures/mobility_laws.py |
-| 4 | Activity Transition Matrix | DONE | skmob2/measures/activity.py |
-| 5 | Intermittance + degree-of-return | DONE | skmob2/measures/individual.py |
-| 6 | Regularity | DONE | skmob2/measures/individual.py |
-| 7 | Diversity (fast_diversity) | DONE | skmob2/measures/individual.py; requires pydivsufsort |
-| 8 | Entropy + Predictability | DONE | skmob2/measures/individual.py |
-| 9 | Motifs (no networkx) | DONE | skmob2/measures/motifs.py |
+| 3 | Power-Law Fitting | DONE | fkmob/measures/mobility_laws.py |
+| 4 | Activity Transition Matrix | DONE | fkmob/measures/activity.py |
+| 5 | Intermittance + degree-of-return | DONE | fkmob/measures/individual.py |
+| 6 | Regularity | DONE | fkmob/measures/individual.py |
+| 7 | Diversity (fast_diversity) | DONE | fkmob/measures/individual.py; requires pydivsufsort |
+| 8 | Entropy + Predictability | DONE | fkmob/measures/individual.py |
+| 9 | Motifs (no networkx) | DONE | fkmob/measures/motifs.py |
 
-**Why:** Migration plan extracted mobility measures from mobility_analysis/ into skmob2/ with TDD. All steps 1-9 are now complete.
+**Why:** Migration plan extracted mobility measures from mobility_analysis/ into fkmob/ with TDD. All steps 1-9 are now complete.
 
 **How to apply:** When asked about migration progress, all steps through 9 are done. No steps remain unless new ones are added to the plan.
 

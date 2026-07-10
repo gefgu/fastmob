@@ -1,11 +1,11 @@
-"""Correctness tests for skmob2.preprocessing.filter."""
+"""Correctness tests for fkmob.preprocessing.filter."""
 
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-from skmob2.preprocessing import filter as traj_filter
+from fkmob.preprocessing import filter as traj_filter
 
 
 def test_filter_clean_trajectory_unchanged(filter_tdf):
@@ -107,7 +107,7 @@ def test_filter_matches_skmob(comparison_skmob):
         uid_col="uid",
     )
 
-    # skmob uses its Python gislib Haversine implementation while skmob2 uses
+    # skmob uses its Python gislib Haversine implementation while fkmob uses
     # the Rust geo kernel. Points whose speed is exactly near the threshold can
     # fall on different sides, so compare the retained count with a tiny budget.
     assert abs(len(our_result) - len(skmob_result_df)) <= 5

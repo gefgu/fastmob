@@ -11,7 +11,7 @@ N_LOCATIONS="${N_LOCATIONS:-10000}"
 DAYS="${DAYS:-7}"
 RATE="${RATE:-1000}"
 RANDOM_STATE="${RANDOM_STATE:-2}"
-SCALENE_SCOPE="${SCALENE_SCOPE:-skmob2}"
+SCALENE_SCOPE="${SCALENE_SCOPE:-fkmob}"
 WORKLOAD="benchmarks/profile_density_epr_workload.py"
 
 if [ "$DAYS" = "7" ]; then
@@ -40,7 +40,7 @@ if [ ! -f "tests/shared/skmob_reference/models/input.parquet" ]; then
     exit 1
 fi
 
-echo "==> Building skmob2 release extension with Rust debug symbols and frame pointers"
+echo "==> Building fkmob release extension with Rust debug symbols and frame pointers"
 RUSTFLAGS="${RUSTFLAGS:--C force-frame-pointers=yes}" \
 CARGO_PROFILE_RELEASE_DEBUG=1 \
 env -u CONDA_PREFIX uv run maturin develop --release

@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/spatial/distance_straight_line.py."""
+"""Correctness tests for fkmob/measures/spatial/distance_straight_line.py."""
 
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ def _to_dict(df) -> dict[str, float]:
 
 def test_distance_straight_line_known_values(synthetic_tdf):
     """Known-value check against pre-computed summed Haversine results."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.distance_straight_line import distance_straight_line
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.distance_straight_line import distance_straight_line
 
     result = distance_straight_line(synthetic_tdf)
     mapping = _to_dict(result)
@@ -41,8 +41,8 @@ def test_distance_straight_line_known_values(synthetic_tdf):
 
 def test_distance_straight_line_single_user():
     """Without a uid column the whole frame is treated as one individual."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.distance_straight_line import distance_straight_line
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.distance_straight_line import distance_straight_line
 
     df = pd.DataFrame(
         {
@@ -62,8 +62,8 @@ def test_distance_straight_line_single_user():
 
 def test_distance_straight_line_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.distance_straight_line import distance_straight_line
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.distance_straight_line import distance_straight_line
 
     result = distance_straight_line(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -74,9 +74,9 @@ def test_distance_straight_line_polars_known_values(synthetic_tdf_polars):
 
 
 def test_total_distance_numpy_and_arrow_helpers_match_batch_helper():
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from skmob2._core import total_distance_arrow, total_distance_batch_km, total_distance_numpy
+    from fkmob._core import total_distance_arrow, total_distance_batch_km, total_distance_numpy
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
@@ -92,8 +92,8 @@ def test_total_distance_numpy_and_arrow_helpers_match_batch_helper():
 
 
 def test_total_distance_numpy_helper_validation_errors():
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import total_distance_numpy
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import total_distance_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
@@ -104,16 +104,16 @@ def test_total_distance_numpy_helper_validation_errors():
 
 @pytest.mark.skmob
 def test_distance_straight_line_matches_skmob(comparison_skmob):
-    """skmob2 result closely matches skmob on each comparison dataset."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    """fkmob result closely matches skmob on each comparison dataset."""
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     from skmob.measures.individual import distance_straight_line as skmob_dsl
-    from skmob2.measures.individual.distance_straight_line import (
-        distance_straight_line as skmob2_dsl,
+    from fkmob.measures.individual.distance_straight_line import (
+        distance_straight_line as fkmob_dsl,
     )
 
     skmob_result = skmob_dsl(comparison_skmob)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_dsl(skmob2_input)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_dsl(fkmob_input)
 
     skmob_dict = dict(
         zip(
@@ -121,33 +121,33 @@ def test_distance_straight_line_matches_skmob(comparison_skmob):
             skmob_result["distance_straight_line"].tolist(),
         )
     )
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
-        # skmob uses skmob.utils.gislib with earth radius 6371.0 km; skmob2
+        # skmob uses skmob.utils.gislib with earth radius 6371.0 km; fkmob
         # uses Rust geo::Haversine. The accumulated total can differ slightly.
-        assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 2e-5 + 1e-5, (
-            f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        assert abs(skmob_dict[uid] - fkmob_dict[uid]) < skmob_dict[uid] * 2e-5 + 1e-5, (
+            f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
         )
 
 
 def test_distance_straight_line_matches_cached_reference(comparison_skmob_reference):
     """distance_straight_line matches the cached skmob baseline without requiring the skmob environment."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.distance_straight_line import distance_straight_line as skmob2_dsl
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.distance_straight_line import distance_straight_line as fkmob_dsl
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("distance_straight_line")
-    skmob2_result = skmob2_dsl(ref.input_df)
+    fkmob_result = fkmob_dsl(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["distance_straight_line"].tolist()))
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert abs(skmob_dict[uid] - skmob2_dict[uid]) < skmob_dict[uid] * 2e-5 + 1e-5, (
-            f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        assert abs(skmob_dict[uid] - fkmob_dict[uid]) < skmob_dict[uid] * 2e-5 + 1e-5, (
+            f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
         )

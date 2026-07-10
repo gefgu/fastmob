@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run correctness tests with Python coverage for the skmob2 package.
+# Run correctness tests with Python coverage for the fkmob package.
 # By default excludes the skmob-comparison tests (requires skmob installed).
 # Pass -m skmob to include them, or -m "" to run everything.
 #
@@ -44,7 +44,7 @@ for arg in "$@"; do
 done
 
 python -m pytest tests/correctness/ \
-    --cov=skmob2 \
+    --cov=fkmob \
     --cov-branch \
     --cov-report=term-missing \
     "${MARKER_ARGS[@]}" \

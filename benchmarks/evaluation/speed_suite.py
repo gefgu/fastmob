@@ -2,7 +2,7 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/evaluation/speed_suite.py --library skmob2 --sizes 1000 10000
+    python benchmarks/evaluation/speed_suite.py --library fkmob --sizes 1000 10000
     python benchmarks/evaluation/speed_suite.py --library skmob --sizes 1000 10000 100000
 """
 
@@ -36,7 +36,7 @@ INPUT_SOURCE = "synthetic"
 @dataclass(frozen=True)
 class BenchmarkSpec:
     name: str
-    skmob2_module_path: str
+    fkmob_module_path: str
     skmob_module_path: str
     func_name: str
     input_kind: str = "array_pair"
@@ -46,68 +46,68 @@ class BenchmarkSpec:
 LEGACY_EVALUATION_METRICS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec(
         "common_part_of_commuters",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_commuters",
     ),
     BenchmarkSpec(
         "common_part_of_links",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_links",
     ),
     BenchmarkSpec(
         "common_part_of_commuters_distance",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_commuters_distance",
         input_kind="distance_pair",
     ),
     BenchmarkSpec(
         "r_squared",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "r_squared",
     ),
     BenchmarkSpec(
         "rmse",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "rmse",
     ),
     BenchmarkSpec(
         "nrmse",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "nrmse",
     ),
     BenchmarkSpec(
         "information_gain",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "information_gain",
     ),
     BenchmarkSpec(
         "pearson_correlation",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "pearson_correlation",
     ),
     BenchmarkSpec(
         "spearman_correlation",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "spearman_correlation",
     ),
     BenchmarkSpec(
         "kullback_leibler_divergence",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "kullback_leibler_divergence",
     ),
     BenchmarkSpec(
         "max_error",
-        "skmob2.measures.evaluation",
+        "fkmob.measures.evaluation",
         "skmob.measures.evaluation",
         "max_error",
     ),
@@ -172,8 +172,8 @@ def build_output_path(output_dir: Path, library: str, profile: str = "speed", ba
 
 
 def module_path_for_library(spec: BenchmarkSpec, library: str) -> str:
-    if library == "skmob2":
-        return spec.skmob2_module_path
+    if library == "fkmob":
+        return spec.fkmob_module_path
     if library == "skmob":
         return spec.skmob_module_path
     raise ValueError(f"unknown library: {library}")
@@ -413,7 +413,7 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone evaluation speed benchmarks.")
-    parser.add_argument("--library", choices=["skmob2", "skmob"], default="skmob2")
+    parser.add_argument("--library", choices=["fkmob", "skmob"], default="fkmob")
     parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="pandas",
                         help="Backend label for output filename; evaluation uses numpy so computation is identical.")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")

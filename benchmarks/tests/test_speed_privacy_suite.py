@@ -35,20 +35,20 @@ def test_attack_registry_contains_expected_privacy_attacks():
 
 def test_output_path_matches_library_backend_and_timing_mode(tmp_path: Path):
     assert (
-        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas")
-        == tmp_path / "skmob2_privacy_speed_pandas.json"
+        suite.build_output_path(tmp_path, "fkmob", "prebuilt_tdf", "pandas")
+        == tmp_path / "fkmob_privacy_speed_pandas.json"
     )
     assert (
-        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "polars")
-        == tmp_path / "skmob2_privacy_speed_polars.json"
+        suite.build_output_path(tmp_path, "fkmob", "prebuilt_tdf", "polars")
+        == tmp_path / "fkmob_privacy_speed_polars.json"
     )
     assert (
         suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf")
         == tmp_path / "skmob_privacy_speed_prebuilt_tdf.json"
     )
     assert (
-        suite.build_output_path(tmp_path, "skmob2", "prebuilt_tdf", "pandas", input_order="sorted")
-        == tmp_path / "skmob2_privacy_speed_sorted_pandas.json"
+        suite.build_output_path(tmp_path, "fkmob", "prebuilt_tdf", "pandas", input_order="sorted")
+        == tmp_path / "fkmob_privacy_speed_sorted_pandas.json"
     )
     assert (
         suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf", input_order="sorted")
@@ -56,8 +56,8 @@ def test_output_path_matches_library_backend_and_timing_mode(tmp_path: Path):
     )
 
 
-def test_parse_args_defaults_to_both_skmob2_backends():
-    args = suite.parse_args(["--library", "skmob2"])
+def test_parse_args_defaults_to_both_fkmob_backends():
+    args = suite.parse_args(["--library", "fkmob"])
     assert args.backend == "both"
     assert args.input_order == "raw"
     assert tuple(suite.concrete_backends(args)) == ("pandas", "polars")
@@ -66,16 +66,16 @@ def test_parse_args_defaults_to_both_skmob2_backends():
 
 
 def test_parse_args_expands_both_input_orders():
-    args = suite.parse_args(["--library", "skmob2", "--input-order", "both"])
+    args = suite.parse_args(["--library", "fkmob", "--input-order", "both"])
     assert tuple(suite.concrete_input_orders(args)) == ("raw", "sorted")
 
 
 def test_write_json_serializes_payload(tmp_path: Path):
-    output_path = suite.write_json({"metadata": {"library": "skmob2"}, "results": []}, tmp_path / "result.json")
+    output_path = suite.write_json({"metadata": {"library": "fkmob"}, "results": []}, tmp_path / "result.json")
 
     assert output_path == tmp_path / "result.json"
     assert json.loads(output_path.read_text(encoding="utf-8")) == {
-        "metadata": {"library": "skmob2"},
+        "metadata": {"library": "fkmob"},
         "results": [],
     }
 
@@ -126,7 +126,7 @@ def test_benchmark_attack_warms_up_then_records_iterations(monkeypatch):
 
     monkeypatch.setattr(suite, "import_attack", lambda _spec, _library: fake_assess)
 
-    result = suite.benchmark_attack(spec, "skmob2", lambda: object(), iterations=2, sleep_seconds=0.0)
+    result = suite.benchmark_attack(spec, "fkmob", lambda: object(), iterations=2, sleep_seconds=0.0)
 
     assert result["status"] == "ok"
     assert result["iterations_completed"] == 2
@@ -165,7 +165,7 @@ def test_skmob_workflow_tdf_builds_inside_each_timed_run(monkeypatch):
     assert calls["metric"] == 3
 
 
-def test_skmob2_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
+def test_fkmob_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
     tiny = _tiny_privacy_df()
     data_path = tmp_path / "privacy_toy.csv"
     data_path.write_text("placeholder", encoding="utf-8")
@@ -180,7 +180,7 @@ def test_skmob2_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
     args = suite.parse_args(
         [
             "--library",
-            "skmob2",
+            "fkmob",
             "--backend",
             "pandas",
             "--iterations",
@@ -195,12 +195,12 @@ def test_skmob2_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
     )
     payload = suite.run_suite(args, backend="pandas")
 
-    assert payload["metadata"]["library"] == "skmob2"
+    assert payload["metadata"]["library"] == "fkmob"
     assert payload["metadata"]["backend"] == "pandas"
     assert payload["results"][0]["metrics"]["location_kl2"]["status"] == "ok"
 
 
-def test_skmob2_sorted_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
+def test_fkmob_sorted_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
     tiny = _tiny_privacy_df()
     data_path = tmp_path / "privacy_toy.csv"
     data_path.write_text("placeholder", encoding="utf-8")
@@ -215,7 +215,7 @@ def test_skmob2_sorted_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: P
     args = suite.parse_args(
         [
             "--library",
-            "skmob2",
+            "fkmob",
             "--backend",
             "pandas",
             "--input-order",

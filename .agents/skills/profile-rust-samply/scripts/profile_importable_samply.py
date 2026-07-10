@@ -15,7 +15,7 @@ BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "locatio
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Call an importable skmob2 function under samply.")
+    parser = argparse.ArgumentParser(description="Call an importable fkmob function under samply.")
     parser.add_argument("target", help="Import target in module:function form.")
     parser.add_argument(
         "--input-kind",

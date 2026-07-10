@@ -1,6 +1,6 @@
-"""Large-scale statistical parity tests for skmob2 model generation.
+"""Large-scale statistical parity tests for fkmob model generation.
 
-Verifies that skmob2 produces self-consistent output at N=10000 tile tessellations:
+Verifies that fkmob produces self-consistent output at N=10000 tile tessellations:
 a fresh pair of runs produces Wasserstein-based metrics within the p99 of the
 same-model variability distribution captured in the pre-computed baseline.
 
@@ -106,7 +106,7 @@ def _assert_within_baseline(
             missing.append(metric_key)
             continue
         assert value <= p99, (
-            f"{spec_name} {metric_key}: skmob2-vs-skmob2 distance {value:.4f} "
+            f"{spec_name} {metric_key}: fkmob-vs-fkmob distance {value:.4f} "
             f"exceeds baseline p99={p99:.4f} (same-model variability at N={DEFAULT_SIZE})"
         )
     if missing:

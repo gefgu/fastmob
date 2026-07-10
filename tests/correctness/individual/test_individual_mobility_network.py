@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/visits/individual_mobility_network.py."""
+"""Correctness tests for fkmob/measures/visits/individual_mobility_network.py."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def _to_edge_dict(df) -> dict:
 
 def test_imn_known_values(synthetic_tdf):
     """user_a moves along 5 distinct equator points: 4 sequential transitions."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -57,7 +57,7 @@ def test_imn_known_values(synthetic_tdf):
 
 def test_imn_self_loops_excluded_by_default():
     """Consecutive visits to the same location produce no edge by default."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -84,7 +84,7 @@ def test_imn_self_loops_excluded_by_default():
 
 def test_imn_self_loops_included():
     """When self_loops=True, staying at the same location creates an edge."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -106,7 +106,7 @@ def test_imn_self_loops_included():
 
 def test_imn_repeated_transition():
     """A transition that occurs multiple times accumulates in n_trips."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -131,7 +131,7 @@ def test_imn_repeated_transition():
 
 def test_imn_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -152,7 +152,7 @@ def test_imn_no_uid():
 
 def test_imn_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same edge structure as pandas."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -165,7 +165,7 @@ def test_imn_polars_known_values(synthetic_tdf_polars):
 
 def test_imn_presorted_matches_default_pandas():
     """The presorted fast path matches the default time-ordered indexed path."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -197,7 +197,7 @@ def test_imn_presorted_matches_default_pandas():
 
 def test_imn_presorted_no_uid():
     """Presorted works when the whole frame is one implicit user."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -222,7 +222,7 @@ def test_imn_presorted_no_uid():
 def test_imn_presorted_polars_known_values():
     """Polars/Arrow input uses the presorted Arrow-backed fast path."""
     pl = pytest.importorskip("polars")
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -245,7 +245,7 @@ def test_imn_presorted_polars_known_values():
 
 def test_imn_presorted_self_loop_behavior():
     """The native presorted path preserves self_loops semantics."""
-    from skmob2.measures.individual.individual_mobility_network import (
+    from fkmob.measures.individual.individual_mobility_network import (
         individual_mobility_network,
     )
 
@@ -267,7 +267,7 @@ def test_imn_presorted_self_loop_behavior():
 
 def test_imn_indexed_numpy_helper_smoke():
     """The native indexed helper counts transitions from row-index ranges."""
-    from skmob2._core import individual_mobility_network_indexed_numpy
+    from fkmob._core import individual_mobility_network_indexed_numpy
 
     lats = np.array([1.0, 2.0, 1.0, 3.0], dtype=np.float64)
     lngs = np.zeros(4, dtype=np.float64)
@@ -287,7 +287,7 @@ def test_imn_indexed_numpy_helper_smoke():
 
 def test_imn_presorted_numpy_helper_smoke():
     """The native presorted helper counts contiguous grouped transitions."""
-    from skmob2._core import individual_mobility_network_presorted_numpy
+    from fkmob._core import individual_mobility_network_presorted_numpy
 
     lats = np.array([1.0, 2.0, 1.0, 3.0], dtype=np.float64)
     lngs = np.zeros(4, dtype=np.float64)
@@ -306,7 +306,7 @@ def test_imn_presorted_numpy_helper_smoke():
 
 def test_imn_native_helper_validation_errors():
     """Native helpers validate index and range boundaries."""
-    from skmob2._core import (
+    from fkmob._core import (
         individual_mobility_network_indexed_numpy,
         individual_mobility_network_presorted_numpy,
     )
@@ -326,16 +326,16 @@ def test_imn_native_helper_validation_errors():
 
 @pytest.mark.skmob
 def test_imn_matches_skmob(comparison_skmob):
-    """skmob2 result matches skmob on each comparison dataset."""
+    """fkmob result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import individual_mobility_network as skmob_imn
-    from skmob2.measures.individual.individual_mobility_network import (
-        individual_mobility_network as skmob2_imn,
+    from fkmob.measures.individual.individual_mobility_network import (
+        individual_mobility_network as fkmob_imn,
     )
 
     skmob_result = skmob_imn(comparison_skmob, show_progress=False)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_imn(skmob2_input)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_imn(fkmob_input)
 
     # Build comparable dicts: {uid: {(lat_o,lng_o,lat_d,lng_d): n_trips}}.
     skmob_dict: dict = {}
@@ -345,25 +345,25 @@ def test_imn_matches_skmob(comparison_skmob):
         edge = (row["lat_origin"], row["lng_origin"], row["lat_dest"], row["lng_dest"])
         skmob_dict.setdefault(uid, {})[edge] = int(row["n_trips"])
 
-    skmob2_dict = _to_edge_dict(skmob2_result)
+    fkmob_dict = _to_edge_dict(fkmob_result)
 
-    common_uids = set(skmob_dict) & set(skmob2_dict)
+    common_uids = set(skmob_dict) & set(fkmob_dict)
     assert len(common_uids) > 0
     for uid in common_uids:
-        common_edges = set(skmob_dict[uid]) & set(skmob2_dict[uid])
+        common_edges = set(skmob_dict[uid]) & set(fkmob_dict[uid])
         for edge in common_edges:
-            assert skmob_dict[uid][edge] == skmob2_dict[uid][edge], (
-                f"uid={uid}, edge={edge}: skmob={skmob_dict[uid][edge]}, skmob2={skmob2_dict[uid][edge]}"
+            assert skmob_dict[uid][edge] == fkmob_dict[uid][edge], (
+                f"uid={uid}, edge={edge}: skmob={skmob_dict[uid][edge]}, fkmob={fkmob_dict[uid][edge]}"
             )
 
 
 def test_imn_matches_cached_reference(comparison_skmob_reference):
     """individual_mobility_network matches the cached skmob baseline without requiring the skmob environment."""
-    from skmob2.measures.individual.individual_mobility_network import individual_mobility_network as skmob2_imn
+    from fkmob.measures.individual.individual_mobility_network import individual_mobility_network as fkmob_imn
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("individual_mobility_network")
-    skmob2_result = skmob2_imn(ref.input_df)
+    fkmob_result = fkmob_imn(ref.input_df)
 
     skmob_dict: dict = {}
     for _, row in skmob_result.iterrows():
@@ -371,13 +371,13 @@ def test_imn_matches_cached_reference(comparison_skmob_reference):
         edge = (row["lat_origin"], row["lng_origin"], row["lat_dest"], row["lng_dest"])
         skmob_dict.setdefault(uid, {})[edge] = int(row["n_trips"])
 
-    skmob2_dict = _to_edge_dict(skmob2_result)
+    fkmob_dict = _to_edge_dict(fkmob_result)
 
-    common_uids = set(skmob_dict) & set(skmob2_dict)
+    common_uids = set(skmob_dict) & set(fkmob_dict)
     assert len(common_uids) > 0
     for uid in common_uids:
-        common_edges = set(skmob_dict[uid]) & set(skmob2_dict[uid])
+        common_edges = set(skmob_dict[uid]) & set(fkmob_dict[uid])
         for edge in common_edges:
-            assert skmob_dict[uid][edge] == skmob2_dict[uid][edge], (
-                f"uid={uid}, edge={edge}: cached={skmob_dict[uid][edge]}, skmob2={skmob2_dict[uid][edge]}"
+            assert skmob_dict[uid][edge] == fkmob_dict[uid][edge], (
+                f"uid={uid}, edge={edge}: cached={skmob_dict[uid][edge]}, fkmob={fkmob_dict[uid][edge]}"
             )

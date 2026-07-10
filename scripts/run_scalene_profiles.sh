@@ -6,10 +6,10 @@
 #   bash scripts/run_scalene_profiles.sh --list
 #   bash scripts/run_scalene_profiles.sh --dry-run --rows 10000 --workload jump_lengths --implementation both
 #   bash scripts/run_scalene_profiles.sh --rows 10000 --workload jump_lengths --implementation both
-#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload jump_lengths --implementation skmob2 --jump-lengths-entrypoint function
-#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2
-#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation skmob2 --backend polars
-#   bash scripts/run_scalene_profiles.sh                              # jump_lengths skmob2 vs skmob on full 4M-row sweep
+#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload jump_lengths --implementation fkmob --jump-lengths-entrypoint function
+#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation fkmob
+#   bash scripts/run_scalene_profiles.sh --rows 10000 --workload radius_of_gyration --implementation fkmob --backend polars
+#   bash scripts/run_scalene_profiles.sh                              # jump_lengths fkmob vs skmob on full 4M-row sweep
 #
 # Any extra arguments are forwarded directly to scripts/profile_brightkite_scalene.py.
 

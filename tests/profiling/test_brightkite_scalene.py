@@ -23,15 +23,15 @@ def test_build_profile_command_uses_scalene_run_and_view(tmp_path):
         scalene_bin="scalene",
     )
 
-    assert profile.implementation == "skmob2"
-    assert profile.profile_dir == tmp_path / "skmob2"
-    assert profile.json_path == tmp_path / "skmob2" / "jump_lengths.json"
-    assert profile.html_path == tmp_path / "skmob2" / "jump_lengths.html"
+    assert profile.implementation == "fkmob"
+    assert profile.profile_dir == tmp_path / "fkmob"
+    assert profile.json_path == tmp_path / "fkmob" / "jump_lengths.json"
+    assert profile.html_path == tmp_path / "fkmob" / "jump_lengths.html"
     assert profile.run_command[:5] == [
         "scalene",
         "run",
         "--profile-only",
-        "skmob2",
+        "fkmob",
         "--off",
     ]
     assert profile.run_command[5:7] == [
@@ -57,11 +57,11 @@ def test_build_profile_command_uses_custom_profile_scope(tmp_path):
         backend="pandas",
         output_dir=tmp_path,
         scalene_bin="scalene",
-        profile_scope="skmob2,narwhals,pandas",
+        profile_scope="fkmob,narwhals,pandas",
     )
 
     scope_index = profile.run_command.index("--profile-only") + 1
-    assert profile.run_command[scope_index] == "skmob2,narwhals,pandas"
+    assert profile.run_command[scope_index] == "fkmob,narwhals,pandas"
 
 
 def test_build_profile_command_can_select_jump_lengths_function_entrypoint(tmp_path):
@@ -105,19 +105,19 @@ def test_build_profile_command_can_set_cpu_sampling_rate(tmp_path):
     assert profile.run_command[rate_index] == "0.001"
 
 
-def test_build_profile_command_separates_skmob2_polars_outputs(tmp_path):
+def test_build_profile_command_separates_fkmob_polars_outputs(tmp_path):
     profile = build_profile_command(
         "jump_lengths",
         rows=10_000,
         backend="polars",
         output_dir=tmp_path,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
     )
 
-    assert profile.profile_dir == tmp_path / "skmob2" / "polars"
-    assert profile.json_path == tmp_path / "skmob2" / "polars" / "jump_lengths.json"
-    assert profile.html_path == tmp_path / "skmob2" / "polars" / "jump_lengths.html"
+    assert profile.profile_dir == tmp_path / "fkmob" / "polars"
+    assert profile.json_path == tmp_path / "fkmob" / "polars" / "jump_lengths.json"
+    assert profile.html_path == tmp_path / "fkmob" / "polars" / "jump_lengths.html"
     assert "--backend" in profile.run_command
     assert "polars" in profile.run_command
 
@@ -131,7 +131,7 @@ def test_runner_dry_run_writes_manifest(tmp_path):
         dry_run=True,
         continue_on_error=True,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
         timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
         profile_scope=None,
         reduced=False,
@@ -141,15 +141,15 @@ def test_runner_dry_run_writes_manifest(tmp_path):
     assert run_profiles(args) == 0
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert manifest[0]["workload"] == "jump_lengths"
-    assert manifest[0]["implementation"] == "skmob2"
+    assert manifest[0]["implementation"] == "fkmob"
     assert manifest[0]["status"] == "dry-run"
     assert manifest[0]["timeout_seconds"] == DEFAULT_TIMEOUT_SECONDS
-    assert manifest[0]["profile_scope"] == "skmob2"
-    assert manifest[0]["json_path"].endswith("skmob2/jump_lengths.json")
-    assert manifest[0]["html_path"].endswith("skmob2/jump_lengths.html")
+    assert manifest[0]["profile_scope"] == "fkmob"
+    assert manifest[0]["json_path"].endswith("fkmob/jump_lengths.json")
+    assert manifest[0]["html_path"].endswith("fkmob/jump_lengths.html")
     assert "--scalene-function-profile" in manifest[0]["run_command"]
     assert "--jump-lengths-entrypoint method" in manifest[0]["run_command"]
-    assert "--profile-only skmob2" in manifest[0]["run_command"]
+    assert "--profile-only fkmob" in manifest[0]["run_command"]
     assert manifest[0]["jump_lengths_entrypoint"] == "method"
     assert manifest[0]["html_command"].endswith("jump_lengths.json")
 
@@ -160,7 +160,7 @@ def test_runner_dry_run_both_uses_implementation_specific_paths(tmp_path, monkey
     monkeypatch.setattr(
         runner,
         "select_workloads",
-        lambda requested, implementation="skmob2", allow_unavailable=False: ["jump_lengths"],
+        lambda requested, implementation="fkmob", allow_unavailable=False: ["jump_lengths"],
     )
     args = Namespace(
         rows=10_000,
@@ -179,9 +179,9 @@ def test_runner_dry_run_both_uses_implementation_specific_paths(tmp_path, monkey
 
     assert run_profiles(args) == 0
     manifest = json.loads((tmp_path / "manifest.json").read_text())
-    assert [row["implementation"] for row in manifest] == ["skmob2", "skmob"]
-    assert manifest[0]["json_path"].endswith("skmob2/jump_lengths.json")
-    assert manifest[0]["html_path"].endswith("skmob2/jump_lengths.html")
+    assert [row["implementation"] for row in manifest] == ["fkmob", "skmob"]
+    assert manifest[0]["json_path"].endswith("fkmob/jump_lengths.json")
+    assert manifest[0]["html_path"].endswith("fkmob/jump_lengths.html")
     assert manifest[0]["jump_lengths_entrypoint"] == "function"
     assert manifest[1]["json_path"].endswith("skmob/jump_lengths.json")
     assert manifest[1]["html_path"].endswith("skmob/jump_lengths.html")
@@ -193,7 +193,7 @@ def test_runner_defaults_to_jump_lengths_showcase(tmp_path, monkeypatch):
 
     seen = []
 
-    def fake_select_workloads(requested, implementation="skmob2", allow_unavailable=False):
+    def fake_select_workloads(requested, implementation="fkmob", allow_unavailable=False):
         seen.append((requested, implementation))
         return ["jump_lengths"]
 
@@ -214,14 +214,14 @@ def test_runner_defaults_to_jump_lengths_showcase(tmp_path, monkeypatch):
     )
 
     assert run_profiles(args) == 0
-    assert seen == [(None, "skmob2"), (None, "skmob")]
+    assert seen == [(None, "fkmob"), (None, "skmob")]
 
 
 def test_runner_timeout_marks_workload_and_continues(tmp_path, monkeypatch):
     import scripts.profile_brightkite_scalene as runner
 
     monkeypatch.setattr(runner, "_require_executable", lambda executable, package_name: None)
-    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="skmob2", allow_unavailable=False: ["slow", "fast"])
+    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="fkmob", allow_unavailable=False: ["slow", "fast"])
     monkeypatch.setattr(runner, "_render_html", lambda profile, *, timeout_seconds: (0, False, ""))
 
     results = iter([(124, True, "scalene run timed out after 30s"), (0, False, "")])
@@ -243,7 +243,7 @@ def test_runner_timeout_marks_workload_and_continues(tmp_path, monkeypatch):
         reduced_top=20,
         continue_on_error=True,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
         timeout_seconds=30.0,
         profile_scope=None,
         jump_lengths_entrypoint="method",
@@ -271,7 +271,7 @@ def test_runner_reduced_dry_run_skips_html_and_uses_temporary_json(tmp_path, cap
         reduced_top=20,
         continue_on_error=True,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
         timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
         profile_scope=None,
         jump_lengths_entrypoint="method",
@@ -296,7 +296,7 @@ def test_runner_timeout_skips_reducer_when_json_missing(tmp_path, monkeypatch):
     import scripts.profile_brightkite_scalene as runner
 
     monkeypatch.setattr(runner, "_require_executable", lambda executable, package_name: None)
-    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="skmob2", allow_unavailable=False: ["slow"])
+    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="fkmob", allow_unavailable=False: ["slow"])
     monkeypatch.setattr(
         runner,
         "_run_command",
@@ -318,7 +318,7 @@ def test_runner_timeout_skips_reducer_when_json_missing(tmp_path, monkeypatch):
         reduced_top=20,
         continue_on_error=True,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
         timeout_seconds=30.0,
         profile_scope=None,
         jump_lengths_entrypoint="method",
@@ -334,7 +334,7 @@ def test_runner_reduced_success_deletes_full_json_and_skips_html(tmp_path, monke
     import scripts.profile_brightkite_scalene as runner
 
     monkeypatch.setattr(runner, "_require_executable", lambda executable, package_name: None)
-    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="skmob2", allow_unavailable=False: ["fast"])
+    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="fkmob", allow_unavailable=False: ["fast"])
     monkeypatch.setattr(runner, "_run_command", lambda command, *, timeout_seconds, cwd=None: (0, False, ""))
 
     render_calls = []
@@ -358,7 +358,7 @@ def test_runner_reduced_success_deletes_full_json_and_skips_html(tmp_path, monke
         reduced_top=20,
         continue_on_error=True,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
         timeout_seconds=30.0,
         profile_scope=None,
     )
@@ -368,10 +368,10 @@ def test_runner_reduced_success_deletes_full_json_and_skips_html(tmp_path, monke
     assert manifest[0]["status"] == "ok"
     assert manifest[0]["json_path"] == ""
     assert manifest[0]["html_path"] == ""
-    assert manifest[0]["reduced_json_path"].endswith("skmob2/fast.reduced.json")
+    assert manifest[0]["reduced_json_path"].endswith("fkmob/fast.reduced.json")
     assert manifest[0]["cpu_only"] is True
     assert manifest[0]["cpu_sampling_rate"] == DEFAULT_REDUCED_CPU_SAMPLING_RATE
-    assert not (tmp_path / "skmob2" / ".fast.scalene.tmp.json").exists()
+    assert not (tmp_path / "fkmob" / ".fast.scalene.tmp.json").exists()
     assert render_calls == []
 
 
@@ -386,7 +386,7 @@ def test_runner_reduced_profile_memory_keeps_memory_profiling(tmp_path):
         reduced_top=20,
         continue_on_error=True,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
         timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
         profile_scope=None,
         profile_memory=True,
@@ -411,9 +411,9 @@ def test_runner_passes_custom_scope_to_manifest_and_command(tmp_path):
         dry_run=True,
         continue_on_error=True,
         scalene_bin="scalene",
-        implementation="skmob2",
+        implementation="fkmob",
         timeout_seconds=12.5,
-        profile_scope="skmob2,narwhals,pandas",
+        profile_scope="fkmob,narwhals,pandas",
         reduced=False,
         cpu_sampling_rate=None,
         jump_lengths_entrypoint="method",
@@ -422,8 +422,8 @@ def test_runner_passes_custom_scope_to_manifest_and_command(tmp_path):
     assert run_profiles(args) == 0
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert manifest[0]["timeout_seconds"] == 12.5
-    assert manifest[0]["profile_scope"] == "skmob2,narwhals,pandas"
-    assert "--profile-only skmob2,narwhals,pandas" in manifest[0]["run_command"]
+    assert manifest[0]["profile_scope"] == "fkmob,narwhals,pandas"
+    assert "--profile-only fkmob,narwhals,pandas" in manifest[0]["run_command"]
 
 
 def test_select_workloads_rejects_unknown_scalene_workload():
@@ -434,7 +434,7 @@ def test_select_workloads_rejects_unknown_scalene_workload():
 def test_select_workloads_explains_missing_skmob(monkeypatch):
     import scripts.profile_brightkite_scalene as runner
 
-    monkeypatch.setattr(runner, "workload_registry", lambda implementation="skmob2": {})
+    monkeypatch.setattr(runner, "workload_registry", lambda implementation="fkmob": {})
 
     with pytest.raises(SystemExit, match="scikit-mobility is not importable"):
         select_workloads(["jump_lengths"], implementation="skmob")

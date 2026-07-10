@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/_common.py."""
+"""Correctness tests for fkmob/measures/_common.py."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import pytest
 class TestBackendKernelDispatch:
     def test_pandas_uses_numpy_kernel_path(self):
         import narwhals as nw
-        from skmob2.measures._common import _use_arrow_kernel_path
+        from fkmob.measures._common import _use_arrow_kernel_path
 
         df = pd.DataFrame({"lat": [1.0], "lng": [2.0]})
         nw_df = nw.from_native(df, eager_only=True)
@@ -24,7 +24,7 @@ class TestBackendKernelDispatch:
     def test_polars_uses_arrow_kernel_path(self):
         pl = pytest.importorskip("polars", reason="Polars not installed")
         import narwhals as nw
-        from skmob2.measures._common import _use_arrow_kernel_path
+        from fkmob.measures._common import _use_arrow_kernel_path
 
         df = pl.DataFrame({"lat": [1.0], "lng": [2.0]})
         nw_df = nw.from_native(df, eager_only=True)
@@ -39,27 +39,27 @@ class TestBackendKernelDispatch:
 
 class TestPickExistingColumn:
     def test_returns_first_match(self):
-        from skmob2.measures._common import _pick_existing_column
+        from fkmob.measures._common import _pick_existing_column
 
         assert _pick_existing_column(["lat", "latitude"], ["lat", "latitude"]) == "lat"
 
     def test_skips_absent_candidates(self):
-        from skmob2.measures._common import _pick_existing_column
+        from fkmob.measures._common import _pick_existing_column
 
         assert _pick_existing_column(["latitude"], ["lat", "latitude"]) == "latitude"
 
     def test_returns_none_when_no_match(self):
-        from skmob2.measures._common import _pick_existing_column
+        from fkmob.measures._common import _pick_existing_column
 
         assert _pick_existing_column(["x", "y"], ["lat", "latitude"]) is None
 
     def test_empty_columns(self):
-        from skmob2.measures._common import _pick_existing_column
+        from fkmob.measures._common import _pick_existing_column
 
         assert _pick_existing_column([], ["lat"]) is None
 
     def test_empty_candidates(self):
-        from skmob2.measures._common import _pick_existing_column
+        from fkmob.measures._common import _pick_existing_column
 
         assert _pick_existing_column(["lat"], []) is None
 
@@ -77,7 +77,7 @@ class TestDetectTrajectoryColumns:
         return nw.from_native(pd.DataFrame(data), eager_only=True)
 
     def test_detects_standard_columns(self):
-        from skmob2.measures._common import _detect_trajectory_columns
+        from fkmob.measures._common import _detect_trajectory_columns
 
         nw_df = self._make_nw_df(["datetime", "lat", "lng", "uid"])
         dt, lat, lng, uid = _detect_trajectory_columns(nw_df)
@@ -87,14 +87,14 @@ class TestDetectTrajectoryColumns:
         assert uid == "uid"
 
     def test_uid_is_none_when_absent(self):
-        from skmob2.measures._common import _detect_trajectory_columns
+        from fkmob.measures._common import _detect_trajectory_columns
 
         nw_df = self._make_nw_df(["datetime", "lat", "lng"])
         dt, lat, lng, uid = _detect_trajectory_columns(nw_df)
         assert uid is None
 
     def test_explicit_override_used(self):
-        from skmob2.measures._common import _detect_trajectory_columns
+        from fkmob.measures._common import _detect_trajectory_columns
 
         nw_df = self._make_nw_df(["ts", "y", "x", "person"])
         dt, lat, lng, uid = _detect_trajectory_columns(
@@ -110,21 +110,21 @@ class TestDetectTrajectoryColumns:
         assert uid == "person"
 
     def test_raises_on_missing_required_column(self):
-        from skmob2.measures._common import _detect_trajectory_columns
+        from fkmob.measures._common import _detect_trajectory_columns
 
         nw_df = self._make_nw_df(["datetime", "lat"])  # missing lng
         with pytest.raises(ValueError, match="longitude"):
             _detect_trajectory_columns(nw_df)
 
     def test_error_message_lists_candidates(self):
-        from skmob2.measures._common import _detect_trajectory_columns
+        from fkmob.measures._common import _detect_trajectory_columns
 
         nw_df = self._make_nw_df(["datetime", "lat"])
         with pytest.raises(ValueError, match="lng"):
             _detect_trajectory_columns(nw_df)
 
     def test_detects_alternative_column_names(self):
-        from skmob2.measures._common import _detect_trajectory_columns
+        from fkmob.measures._common import _detect_trajectory_columns
 
         nw_df = self._make_nw_df(["check-in_time", "latitude", "longitude", "user"])
         dt, lat, lng, uid = _detect_trajectory_columns(nw_df)
@@ -152,7 +152,7 @@ class TestPrepareTrajectory:
 
     def _prepare(self, df_in, **kwargs):
         import narwhals as nw
-        from skmob2.measures._common import _detect_trajectory_columns, _prepare_trajectory
+        from fkmob.measures._common import _detect_trajectory_columns, _prepare_trajectory
 
         nw_df = nw.from_native(df_in, eager_only=True)
         datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(nw_df)
@@ -168,7 +168,7 @@ class TestPrepareTrajectory:
 
     def test_returns_dataframe(self):
         import narwhals as nw
-        from skmob2.measures._common import _prepare_trajectory
+        from fkmob.measures._common import _prepare_trajectory
 
         nw_df = nw.from_native(self._make_df(), eager_only=True)
         result = _prepare_trajectory(
@@ -214,7 +214,7 @@ class TestPrepareTrajectory:
         assert df.get_column("lat").to_list() == [2.0, 1.0]
 
     def test_sorted_by_uid_then_datetime(self):
-        from skmob2.measures._common import _ROW_ORDER_COL
+        from fkmob.measures._common import _ROW_ORDER_COL
 
         df_in = pd.DataFrame(
             {
@@ -234,7 +234,7 @@ class TestPrepareTrajectory:
 
     def test_sort_false_preserves_row_order_after_dropping_nulls(self):
         import narwhals as nw
-        from skmob2.measures._common import _ROW_ORDER_COL
+        from fkmob.measures._common import _ROW_ORDER_COL
 
         df_in = pd.DataFrame(
             {
@@ -258,7 +258,7 @@ class TestPrepareTrajectory:
 
     def test_detect_raises_on_missing_column_before_prepare(self):
         import narwhals as nw
-        from skmob2.measures._common import _detect_trajectory_columns
+        from fkmob.measures._common import _detect_trajectory_columns
 
         df_in = pd.DataFrame({"datetime": [], "lat": []})
         nw_df = nw.from_native(df_in, eager_only=True)
@@ -270,7 +270,7 @@ class TestBuildTimeOrderedUserRanges:
     def test_pandas_string_uids_use_numpy_rust_path(self, capsys):
         import narwhals as nw
         import numpy as np
-        from skmob2.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+        from fkmob.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
 
         df = pd.DataFrame(
             {
@@ -306,7 +306,7 @@ class TestBuildTimeOrderedUserRanges:
     def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
         import narwhals as nw
         import numpy as np
-        from skmob2.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+        from fkmob.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
 
         pl = pytest.importorskip("polars", reason="Polars not installed")
         df = pl.DataFrame(
@@ -339,8 +339,8 @@ class TestBuildTimeOrderedUserRanges:
     def test_fallback_preserves_first_seen_user_order(self, monkeypatch):
         import narwhals as nw
         import numpy as np
-        import skmob2.measures._common as common
-        from skmob2.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+        import fkmob.measures._common as common
+        from fkmob.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
 
         df = pd.DataFrame(
             {
@@ -383,7 +383,7 @@ class TestBuildIndexedUserRangesFast:
     def test_pandas_string_uids_use_first_seen_numpy_rust_path(self):
         import narwhals as nw
         import numpy as np
-        from skmob2.measures._common import _build_indexed_user_ranges_fast
+        from fkmob.measures._common import _build_indexed_user_ranges_fast
 
         df = nw.from_native(
             pd.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}),
@@ -399,7 +399,7 @@ class TestBuildIndexedUserRangesFast:
     def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
         import narwhals as nw
         import numpy as np
-        from skmob2.measures._common import _build_indexed_user_ranges_fast
+        from fkmob.measures._common import _build_indexed_user_ranges_fast
 
         pl = pytest.importorskip("polars", reason="Polars not installed")
         df = nw.from_native(
@@ -422,7 +422,7 @@ class TestBuildIndexedUserRangesFast:
 class TestBuildUserRanges:
     def test_builds_ranges_from_contiguous_uid_groups(self):
         import narwhals as nw
-        from skmob2.measures._common import _build_user_ranges
+        from fkmob.measures._common import _build_user_ranges
 
         df = nw.from_native(pd.DataFrame({"uid": ["a", "a", "b", "b", "b", "c"]}), eager_only=True)
 
@@ -433,7 +433,7 @@ class TestBuildUserRanges:
 
     def test_builds_empty_ranges_for_empty_uid_dataframe(self):
         import narwhals as nw
-        from skmob2.measures._common import _build_user_ranges
+        from fkmob.measures._common import _build_user_ranges
 
         df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
 
@@ -441,7 +441,7 @@ class TestBuildUserRanges:
 
     def test_builds_single_range_without_uid_column(self):
         import narwhals as nw
-        from skmob2.measures._common import _build_user_ranges
+        from fkmob.measures._common import _build_user_ranges
 
         df = nw.from_native(pd.DataFrame({"lat": [1.0, 2.0, 3.0]}), eager_only=True)
 
@@ -456,7 +456,7 @@ class TestBuildUserRanges:
 class TestBuildPresortedUserEnds:
     def test_builds_ends_from_pandas_contiguous_uid_groups(self):
         import narwhals as nw
-        from skmob2.measures._common import _build_presorted_user_ends
+        from fkmob.measures._common import _build_presorted_user_ends
 
         df = nw.from_native(pd.DataFrame({"uid": ["a", "a", "b", "b", "b", "c"]}), eager_only=True)
 
@@ -467,7 +467,7 @@ class TestBuildPresortedUserEnds:
 
     def test_builds_empty_ends_for_empty_uid_dataframe(self):
         import narwhals as nw
-        from skmob2.measures._common import _build_presorted_user_ends
+        from fkmob.measures._common import _build_presorted_user_ends
 
         df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
 
@@ -478,7 +478,7 @@ class TestBuildPresortedUserEnds:
 
     def test_builds_single_end_without_uid_column(self):
         import narwhals as nw
-        from skmob2.measures._common import _build_presorted_user_ends
+        from fkmob.measures._common import _build_presorted_user_ends
 
         df = nw.from_native(pd.DataFrame({"lat": [1.0, 2.0, 3.0]}), eager_only=True)
 
@@ -490,7 +490,7 @@ class TestBuildPresortedUserEnds:
     def test_builds_ends_from_polars_contiguous_uid_groups(self):
         pl = pytest.importorskip("polars", reason="Polars not installed")
         import narwhals as nw
-        from skmob2.measures._common import _build_presorted_user_ends
+        from fkmob.measures._common import _build_presorted_user_ends
 
         df = nw.from_native(pl.DataFrame({"uid": ["a", "a", "b", "b", "c"]}), eager_only=True)
 
@@ -508,31 +508,31 @@ class TestBuildPresortedUserEnds:
 class TestShannonEntropy:
     def test_equal_counts_two_items(self):
         """Two items with equal counts -> 1 bit of entropy."""
-        from skmob2.measures._common import _shannon_entropy
+        from fkmob.measures._common import _shannon_entropy
 
         assert abs(_shannon_entropy([1, 1]) - 1.0) < 1e-12
 
     def test_single_item(self):
         """One item -> 0 bits (no uncertainty)."""
-        from skmob2.measures._common import _shannon_entropy
+        from fkmob.measures._common import _shannon_entropy
 
         assert _shannon_entropy([5]) == 0.0
 
     def test_empty_list(self):
         """Empty list -> 0.0 without error."""
-        from skmob2.measures._common import _shannon_entropy
+        from fkmob.measures._common import _shannon_entropy
 
         assert _shannon_entropy([]) == 0.0
 
     def test_zero_total(self):
         """All-zero counts -> 0.0 without division error."""
-        from skmob2.measures._common import _shannon_entropy
+        from fkmob.measures._common import _shannon_entropy
 
         assert _shannon_entropy([0, 0, 0]) == 0.0
 
     def test_uniform_five_items(self):
         """Five equal-count items -> log2(5) bits."""
-        from skmob2.measures._common import _shannon_entropy
+        from fkmob.measures._common import _shannon_entropy
         import math
 
         result = _shannon_entropy([1, 1, 1, 1, 1])
@@ -540,7 +540,7 @@ class TestShannonEntropy:
 
     def test_skewed_distribution(self):
         """p=0.75, p=0.25 -> hand-computed value."""
-        from skmob2.measures._common import _shannon_entropy
+        from fkmob.measures._common import _shannon_entropy
         import math
 
         p1, p2 = 0.75, 0.25
@@ -550,7 +550,7 @@ class TestShannonEntropy:
 
     def test_zeros_ignored(self):
         """Zero-count items do not affect entropy (0*log(0) = 0)."""
-        from skmob2.measures._common import _shannon_entropy
+        from fkmob.measures._common import _shannon_entropy
 
         # [1, 1] and [1, 1, 0] should give the same entropy.
         assert abs(_shannon_entropy([1, 1]) - _shannon_entropy([1, 1, 0])) < 1e-12

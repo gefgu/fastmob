@@ -1,0 +1,133 @@
+{
+  "metadata": {
+    "backend": "polars",
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/fkmob/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "polars.DataFrame",
+    "iterations": 5,
+    "library": "fkmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "python_version": "3.11.4 (main, Jul  5 2023, 14:15:25) [GCC 11.2.0]",
+    "repeat_factor": 1,
+    "sleep_seconds": 0.5,
+    "suite": "privacy",
+    "timestamp_utc": "2026-05-24T03:09:57.828172+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 0.0005385598633438349,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.000525670126080513,
+          "status": "ok",
+          "times_seconds": [
+            0.000533882062882185,
+            0.0005393021274358034,
+            0.000525670126080513,
+            0.0005397491622716188,
+            0.0005541958380490541
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 0.0006076945457607508,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0005951249040663242,
+          "status": "ok",
+          "times_seconds": [
+            0.0006039978470653296,
+            0.0006115119904279709,
+            0.000616719014942646,
+            0.0005951249040663242,
+            0.0006111189723014832
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 0.0008424350526183844,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0007573931943625212,
+          "status": "ok",
+          "times_seconds": [
+            0.0008667849469929934,
+            0.0007573931943625212,
+            0.0008889350574463606,
+            0.0008267061784863472,
+            0.0008723558858036995
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 0.0005889345426112414,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0005803329404443502,
+          "status": "ok",
+          "times_seconds": [
+            0.0005803329404443502,
+            0.0005844659171998501,
+            0.0005803979001939297,
+            0.0005890328902751207,
+            0.000610443064942956
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 0.000650909449905157,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0006288180593401194,
+          "status": "ok",
+          "times_seconds": [
+            0.0006432449445128441,
+            0.0006373701617121696,
+            0.0006288180593401194,
+            0.0006417289841920137,
+            0.0007033850997686386
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 0.0008394474629312753,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0006950490642338991,
+          "status": "ok",
+          "times_seconds": [
+            0.000702402088791132,
+            0.0009574431460350752,
+            0.0009801960550248623,
+            0.0006950490642338991,
+            0.0008621469605714083
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 0.0012390313670039177,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00100717693567276,
+          "status": "ok",
+          "times_seconds": [
+            0.001408139942213893,
+            0.00100717693567276,
+            0.0013827269431203604,
+            0.001366419019177556,
+            0.0010306939948350191
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 0.0006072075106203556,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0006020681466907263,
+          "status": "ok",
+          "times_seconds": [
+            0.0006020681466907263,
+            0.000603614142164588,
+            0.0006112931296229362,
+            0.0006029289215803146,
+            0.0006161332130432129
+          ]
+        }
+      },
+      "rows": 23
+    }
+  ]
+}

@@ -1,11 +1,11 @@
-"""Correctness tests for skmob2.preprocessing.cluster."""
+"""Correctness tests for fkmob.preprocessing.cluster."""
 
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-from skmob2.preprocessing import cluster
+from fkmob.preprocessing import cluster
 
 
 def test_cluster_adds_cluster_column(cluster_tdf):
@@ -115,7 +115,7 @@ def test_cluster_matches_skmob(comparison_skmob):
     skmob_stops = skmob_detection.stay_locations(comparison_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     skmob_result = skmob_clustering.cluster(skmob_stops, cluster_radius_km=0.1)
 
-    from skmob2.preprocessing import stay_locations
+    from fkmob.preprocessing import stay_locations
 
     our_stops = stay_locations(
         pd.DataFrame(comparison_skmob),
@@ -135,7 +135,7 @@ def test_cluster_matches_skmob(comparison_skmob):
 
 def test_cluster_matches_cached_reference(comparison_skmob_reference):
     """Clustered stop count matches the cached skmob baseline without requiring the skmob environment."""
-    from skmob2.preprocessing import stay_locations
+    from fkmob.preprocessing import stay_locations
 
     ref = comparison_skmob_reference
     cached_count = ref.row_count("cluster")

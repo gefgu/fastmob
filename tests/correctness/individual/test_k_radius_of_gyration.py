@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/spatial/k_radius_of_gyration.py."""
+"""Correctness tests for fkmob/measures/spatial/k_radius_of_gyration.py."""
 
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ EXPECTED_K3: dict[str, float] = {
 
 def test_k_radius_of_gyration_known_values_k2_pandas(synthetic_tdf):
     """k-RoG (k=2) on synthetic fixture (pandas backend), hardcoded expected values."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration
 
     result = k_radius_of_gyration(synthetic_tdf, k=2)
     assert "k_radius_of_gyration" in result.columns
@@ -46,8 +46,8 @@ def test_k_radius_of_gyration_known_values_k2_pandas(synthetic_tdf):
 
 def test_k_radius_of_gyration_known_values_k3_pandas(synthetic_tdf):
     """k-RoG (k=3) on synthetic fixture (pandas backend), hardcoded expected values."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration
 
     result = k_radius_of_gyration(synthetic_tdf, k=3)
     assert "k_radius_of_gyration" in result.columns
@@ -69,8 +69,8 @@ def test_k_radius_of_gyration_known_values_k3_pandas(synthetic_tdf):
 
 def test_k_radius_of_gyration_no_uid_column():
     """When uid column is absent the result has a single k-RoG value."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration
 
     # loc (0,0) visited twice, (1,0) once, (2,0) once => top-2 are (0,0) and (1,0)
     df = pd.DataFrame(
@@ -94,8 +94,8 @@ def test_k_radius_of_gyration_no_uid_column():
 
 def test_k_radius_of_gyration_k_exceeds_locations():
     """When k >= number of distinct locations, result equals regular RoG for those locations."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration
 
     # Only 2 distinct locations; k=10 should yield the same as using all locations
     df = pd.DataFrame(
@@ -119,9 +119,9 @@ def test_k_radius_of_gyration_k_exceeds_locations():
 
 def test_k_radius_of_gyration_top_k_ties_use_first_datetime():
     """Equal-count top-k ties match skmob's first-visit datetime ordering."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2._core import k_radius_of_gyration_km
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob._core import k_radius_of_gyration_km
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -146,8 +146,8 @@ def test_k_radius_of_gyration_top_k_ties_use_first_datetime():
 
 def test_k_radius_of_gyration_single_location():
     """A user who visits only one location should have k-RoG = 0."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration
 
     df = pd.DataFrame(
         {
@@ -165,10 +165,10 @@ def test_k_radius_of_gyration_single_location():
 
 def test_k_radius_of_gyration_pandas_polars_agree(synthetic_tdf, synthetic_tdf_polars):
     """Polars and pandas backends must produce identical k-RoG values."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     pytest.importorskip("polars", reason="Polars not installed")
     pytest.importorskip("pyarrow", reason="pyarrow required for polars.to_pandas()")
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration
 
     res_pd = k_radius_of_gyration(synthetic_tdf, k=2)
     res_pl = k_radius_of_gyration(synthetic_tdf_polars, k=2).to_pandas()
@@ -188,30 +188,30 @@ def test_k_radius_of_gyration_pandas_polars_agree(synthetic_tdf, synthetic_tdf_p
 
 @pytest.mark.skmob
 def test_k_radius_of_gyration_matches_skmob(comparison_skmob):
-    """skmob2 k-RoG must agree with skmob's reference implementation within rtol=1e-5."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
+    """fkmob k-RoG must agree with skmob's reference implementation within rtol=1e-5."""
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
     from skmob.measures.individual import k_radius_of_gyration as skmob_krg
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration as skmob2_krg
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration as fkmob_krg
 
     k = 2
     skmob_result = skmob_krg(comparison_skmob, k=k, show_progress=False)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_krg(skmob2_input, k=k)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_krg(fkmob_input, k=k)
 
     skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)
-    skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
+    fkmob_uid = next(c for c in ("uid", "user", "user_id") if c in fkmob_result.columns)
     skmob_value_col = next(c for c in (f"{k}k_radius_of_gyration", "k_radius_of_gyration") if c in skmob_result.columns)
-    skmob2_value_col = next(
-        c for c in ("k_radius_of_gyration", f"{k}k_radius_of_gyration") if c in skmob2_result.columns
+    fkmob_value_col = next(
+        c for c in ("k_radius_of_gyration", f"{k}k_radius_of_gyration") if c in fkmob_result.columns
     )
 
     skmob_map = dict(zip(skmob_result[skmob_uid], skmob_result[skmob_value_col]))
-    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result[skmob2_value_col]))
+    fkmob_map = dict(zip(fkmob_result[fkmob_uid], fkmob_result[fkmob_value_col]))
 
-    assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
+    assert set(skmob_map.keys()) == set(fkmob_map.keys()), "User sets differ"
     for uid in skmob_map:
         np.testing.assert_allclose(
-            skmob2_map[uid],
+            fkmob_map[uid],
             skmob_map[uid],
             rtol=1e-5,
             atol=1e-12,
@@ -221,28 +221,28 @@ def test_k_radius_of_gyration_matches_skmob(comparison_skmob):
 
 def test_k_radius_of_gyration_matches_cached_reference(comparison_skmob_reference):
     """k-RoG (k=2) matches the cached skmob baseline without requiring the skmob environment."""
-    pytest.importorskip("skmob2._core", reason="Run maturin develop first")
-    from skmob2.measures.individual.k_radius_of_gyration import k_radius_of_gyration as skmob2_krg
+    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    from fkmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration as fkmob_krg
 
     k = 2
     ref = comparison_skmob_reference
     skmob_result = ref.result("k_radius_of_gyration_k2")
-    skmob2_result = skmob2_krg(ref.input_df, k=k)
+    fkmob_result = fkmob_krg(ref.input_df, k=k)
 
     skmob_uid = next(c for c in ("uid", "user", "user_id") if c in skmob_result.columns)
-    skmob2_uid = next(c for c in ("uid", "user", "user_id") if c in skmob2_result.columns)
+    fkmob_uid = next(c for c in ("uid", "user", "user_id") if c in fkmob_result.columns)
     skmob_value_col = next(c for c in (f"{k}k_radius_of_gyration", "k_radius_of_gyration") if c in skmob_result.columns)
-    skmob2_value_col = next(
-        c for c in ("k_radius_of_gyration", f"{k}k_radius_of_gyration") if c in skmob2_result.columns
+    fkmob_value_col = next(
+        c for c in ("k_radius_of_gyration", f"{k}k_radius_of_gyration") if c in fkmob_result.columns
     )
 
     skmob_map = dict(zip(skmob_result[skmob_uid], skmob_result[skmob_value_col]))
-    skmob2_map = dict(zip(skmob2_result[skmob2_uid], skmob2_result[skmob2_value_col]))
+    fkmob_map = dict(zip(fkmob_result[fkmob_uid], fkmob_result[fkmob_value_col]))
 
-    assert set(skmob_map.keys()) == set(skmob2_map.keys()), "User sets differ"
+    assert set(skmob_map.keys()) == set(fkmob_map.keys()), "User sets differ"
     for uid in skmob_map:
         np.testing.assert_allclose(
-            skmob2_map[uid],
+            fkmob_map[uid],
             skmob_map[uid],
             rtol=1e-5,
             atol=1e-12,

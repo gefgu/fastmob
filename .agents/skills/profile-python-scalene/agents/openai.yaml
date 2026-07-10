@@ -1,4 +1,4 @@
 interface:
   display_name: "Scalene Python Profiler"
-  short_description: "Profile skmob2 functions with Scalene"
-  default_prompt: "Use $profile-python-scalene to profile a skmob2 function with Scalene and summarize the hottest lines."
+  short_description: "Profile fkmob functions with Scalene"
+  default_prompt: "Use $profile-python-scalene to profile a fkmob function with Scalene and summarize the hottest lines."

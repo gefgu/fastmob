@@ -1,0 +1,907 @@
+{
+  "metadata": {
+    "backend": "pandas",
+    "dataset_path": "/home/gustavo/fkmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_type": "pandas.DataFrame",
+    "iterations": 5,
+    "library": "fkmob",
+    "movingpandas_catalog_path": "/home/gustavo/fkmob/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-6.8.0-110-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/fkmob/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "visits",
+    "timestamp_utc": "2026-05-08T01:50:13.183532+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "metrics": {
+        "frequency_rank": {
+          "average_seconds": 0.005481411202345044,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0053908120025880635,
+          "status": "ok",
+          "times_seconds": [
+            0.0053935800096951425,
+            0.005627207981888205,
+            0.0053908120025880635,
+            0.005535760021302849,
+            0.005459695996250957
+          ]
+        },
+        "homes_per_location": {
+          "average_seconds": 0.0066298475838266315,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006440274999476969,
+          "status": "ok",
+          "times_seconds": [
+            0.006592682970222086,
+            0.006766507984139025,
+            0.006542529969010502,
+            0.006807241996284574,
+            0.006440274999476969
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.006764433800708502,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006627607042901218,
+          "status": "ok",
+          "times_seconds": [
+            0.006627607042901218,
+            0.006811625964473933,
+            0.0067041279980912805,
+            0.006922875007148832,
+            0.006755932990927249
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.005453816195949912,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005268992041237652,
+          "status": "ok",
+          "times_seconds": [
+            0.005508594971615821,
+            0.005346254969481379,
+            0.005578291020356119,
+            0.005268992041237652,
+            0.0055669479770585895
+          ]
+        },
+        "mean_square_displacement": {
+          "average_seconds": 0.004024004598613828,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.003976561012677848,
+          "status": "ok",
+          "times_seconds": [
+            0.004056273028254509,
+            0.0040272040059790015,
+            0.004044849949423224,
+            0.0040151349967345595,
+            0.003976561012677848
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.003085604985244572,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0029457119526341558,
+          "status": "ok",
+          "times_seconds": [
+            0.003157883998937905,
+            0.003161124011967331,
+            0.0029457119526341558,
+            0.003214663011021912,
+            0.002948641951661557
+          ]
+        },
+        "random_location_entropy": {
+          "average_seconds": 0.007791307789739221,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0076137849828228354,
+          "status": "ok",
+          "times_seconds": [
+            0.00776040501659736,
+            0.007860494952183217,
+            0.0076137849828228354,
+            0.007906389015261084,
+            0.00781546498183161
+          ]
+        },
+        "real_entropy": {
+          "average_seconds": 0.03111811279086396,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.030919310986064374,
+          "status": "ok",
+          "times_seconds": [
+            0.031076458981260657,
+            0.03138650400796905,
+            0.030925258994102478,
+            0.031283030984923244,
+            0.030919310986064374
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.005459322594106197,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005373388004954904,
+          "status": "ok",
+          "times_seconds": [
+            0.00565362797351554,
+            0.005373388004954904,
+            0.005456559010781348,
+            0.005418384971562773,
+            0.005394653009716421
+          ]
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.003137012803927064,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0029942429973743856,
+          "status": "ok",
+          "times_seconds": [
+            0.0032076280331239104,
+            0.0029942429973743856,
+            0.0032584560103714466,
+            0.003022592980414629,
+            0.003202143998350948
+          ]
+        },
+        "uncorrelated_location_entropy": {
+          "average_seconds": 0.007729319611098617,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007592061010655016,
+          "status": "ok",
+          "times_seconds": [
+            0.007974181033205241,
+            0.007592061010655016,
+            0.007759478990919888,
+            0.007645707984920591,
+            0.007675169035792351
+          ]
+        },
+        "visits_per_location": {
+          "average_seconds": 0.00717770861228928,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004807120014447719,
+          "status": "ok",
+          "times_seconds": [
+            0.004951829032506794,
+            0.005020654003601521,
+            0.009192877041641623,
+            0.011916062969248742,
+            0.004807120014447719
+          ]
+        },
+        "visits_per_time_unit": {
+          "average_seconds": 0.004499945789575577,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004450312000699341,
+          "status": "ok",
+          "times_seconds": [
+            0.004474034998565912,
+            0.004450312000699341,
+            0.004472878994420171,
+            0.004631260992027819,
+            0.00447124196216464
+          ]
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "frequency_rank": {
+          "average_seconds": 0.008948136970866471,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008763108984567225,
+          "status": "ok",
+          "times_seconds": [
+            0.008763108984567225,
+            0.008788507955614477,
+            0.009109201957471669,
+            0.009018017968628556,
+            0.009061847988050431
+          ]
+        },
+        "homes_per_location": {
+          "average_seconds": 0.008075761795043945,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007908008992671967,
+          "status": "ok",
+          "times_seconds": [
+            0.007917235023342073,
+            0.008123806968796998,
+            0.008253841020632535,
+            0.008175916969776154,
+            0.007908008992671967
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.013188659795559943,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012749117973726243,
+          "status": "ok",
+          "times_seconds": [
+            0.013466282980516553,
+            0.013232679979410022,
+            0.012749117973726243,
+            0.013370183994993567,
+            0.013125034049153328
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.008960211009252816,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00878401001682505,
+          "status": "ok",
+          "times_seconds": [
+            0.009052292967680842,
+            0.008880092005711049,
+            0.00878401001682505,
+            0.009073432011064142,
+            0.009011228044983
+          ]
+        },
+        "mean_square_displacement": {
+          "average_seconds": 0.006011469196528197,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005616903014015406,
+          "status": "ok",
+          "times_seconds": [
+            0.007041518983896822,
+            0.005667508987244219,
+            0.0060125369927845895,
+            0.005616903014015406,
+            0.0057188780046999454
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.004431976017076522,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004324100038502365,
+          "status": "ok",
+          "times_seconds": [
+            0.004369056026916951,
+            0.004461588046979159,
+            0.004324100038502365,
+            0.004517873981967568,
+            0.004487261991016567
+          ]
+        },
+        "random_location_entropy": {
+          "average_seconds": 0.010410892614163458,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010208034014794976,
+          "status": "ok",
+          "times_seconds": [
+            0.010603421018458903,
+            0.010208034014794976,
+            0.010523812030442059,
+            0.010414830001536757,
+            0.010304366005584598
+          ]
+        },
+        "real_entropy": {
+          "average_seconds": 0.15330906459130347,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.14503313699970022,
+          "status": "ok",
+          "times_seconds": [
+            0.14503313699970022,
+            0.1470145529601723,
+            0.15336895600194111,
+            0.15564183599781245,
+            0.16548684099689126
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.008722549991216511,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00828098098281771,
+          "status": "ok",
+          "times_seconds": [
+            0.009031542984303087,
+            0.00828098098281771,
+            0.008898216998204589,
+            0.008805758960079402,
+            0.008596250030677766
+          ]
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.004418682795949281,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004168358049355447,
+          "status": "ok",
+          "times_seconds": [
+            0.004522638977505267,
+            0.0042626039939932525,
+            0.004632707976270467,
+            0.004168358049355447,
+            0.004507104982621968
+          ]
+        },
+        "uncorrelated_location_entropy": {
+          "average_seconds": 0.01116708240006119,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.011142131988890469,
+          "status": "ok",
+          "times_seconds": [
+            0.011142530012875795,
+            0.011142131988890469,
+            0.011190450983121991,
+            0.011188351025339216,
+            0.011171947990078479
+          ]
+        },
+        "visits_per_location": {
+          "average_seconds": 0.005341733188834042,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005264637991786003,
+          "status": "ok",
+          "times_seconds": [
+            0.005398241977673024,
+            0.005352279986254871,
+            0.005425521987490356,
+            0.005267984000965953,
+            0.005264637991786003
+          ]
+        },
+        "visits_per_time_unit": {
+          "average_seconds": 0.004888084798585624,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004826237971428782,
+          "status": "ok",
+          "times_seconds": [
+            0.004907952039502561,
+            0.004919248982332647,
+            0.004931873991154134,
+            0.0048551110085099936,
+            0.004826237971428782
+          ]
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "frequency_rank": {
+          "average_seconds": 0.04159989159088582,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.041461293993052095,
+          "status": "ok",
+          "times_seconds": [
+            0.041994714993052185,
+            0.04149610799504444,
+            0.04150549095356837,
+            0.041461293993052095,
+            0.041541850019712
+          ]
+        },
+        "homes_per_location": {
+          "average_seconds": 0.014621115196496249,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.014502631966024637,
+          "status": "ok",
+          "times_seconds": [
+            0.014695189020130783,
+            0.014640779001638293,
+            0.014502631966024637,
+            0.014504213992040604,
+            0.014762762002646923
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.07961868341080844,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.07784958404954523,
+          "status": "ok",
+          "times_seconds": [
+            0.07926243002293631,
+            0.08094535500276834,
+            0.07784958404954523,
+            0.08145547303138301,
+            0.07858057494740933
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.040819542610552165,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04002139397198334,
+          "status": "ok",
+          "times_seconds": [
+            0.04002139397198334,
+            0.040477880043908954,
+            0.04048723302548751,
+            0.04035022598691285,
+            0.042760980024468154
+          ]
+        },
+        "mean_square_displacement": {
+          "average_seconds": 0.011189402802847326,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010572914965450764,
+          "status": "ok",
+          "times_seconds": [
+            0.010674190009012818,
+            0.010572914965450764,
+            0.013456012005917728,
+            0.0106144740129821,
+            0.010629423020873219
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.010773965192493051,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010734960960689932,
+          "status": "ok",
+          "times_seconds": [
+            0.010797384020406753,
+            0.01078100799350068,
+            0.010784900980070233,
+            0.010734960960689932,
+            0.010771572007797658
+          ]
+        },
+        "random_location_entropy": {
+          "average_seconds": 0.03763110139407218,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.03747367300093174,
+          "status": "ok",
+          "times_seconds": [
+            0.03752506000455469,
+            0.0375217329710722,
+            0.03747367300093174,
+            0.03757899295305833,
+            0.03805604804074392
+          ]
+        },
+        "real_entropy": {
+          "average_seconds": 6.49287566379644,
+          "iterations_completed": 5,
+          "minimum_seconds": 6.414677141990978,
+          "status": "ok",
+          "times_seconds": [
+            6.491434563999064,
+            6.539158115978353,
+            6.414677141990978,
+            6.524777527025435,
+            6.4943309699883685
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.040266686398535964,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04001767298905179,
+          "status": "ok",
+          "times_seconds": [
+            0.04063483700156212,
+            0.04006296198349446,
+            0.04017484502401203,
+            0.04001767298905179,
+            0.04044311499455944
+          ]
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.013838037208188325,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013653800007887185,
+          "status": "ok",
+          "times_seconds": [
+            0.013653800007887185,
+            0.013938695017714053,
+            0.013800084008835256,
+            0.013864086009562016,
+            0.013933520996943116
+          ]
+        },
+        "uncorrelated_location_entropy": {
+          "average_seconds": 0.05837572620948776,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.049222909030504525,
+          "status": "ok",
+          "times_seconds": [
+            0.049326581007335335,
+            0.049222909030504525,
+            0.0708194890175946,
+            0.04923737799981609,
+            0.07327227399218827
+          ]
+        },
+        "visits_per_location": {
+          "average_seconds": 0.009102019597776234,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009015313989948481,
+          "status": "ok",
+          "times_seconds": [
+            0.00903168204240501,
+            0.009168035991024226,
+            0.009015313989948481,
+            0.009251725976355374,
+            0.00904333998914808
+          ]
+        },
+        "visits_per_time_unit": {
+          "average_seconds": 0.007540913601405919,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007431885984260589,
+          "status": "ok",
+          "times_seconds": [
+            0.007470782031305134,
+            0.00748453801497817,
+            0.007651247025933117,
+            0.007666114950552583,
+            0.007431885984260589
+          ]
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "frequency_rank": {
+          "average_seconds": 0.4112960864091292,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.40926822600886226,
+          "status": "ok",
+          "times_seconds": [
+            0.4102650940185413,
+            0.41070114698959514,
+            0.4137185630388558,
+            0.40926822600886226,
+            0.41252740198979154
+          ]
+        },
+        "homes_per_location": {
+          "average_seconds": 0.07965445021400228,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.07898586202645674,
+          "status": "ok",
+          "times_seconds": [
+            0.07993870403151959,
+            0.07927816099254414,
+            0.07980240799952298,
+            0.08026711601996794,
+            0.07898586202645674
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 0.7394029650138692,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.7382038310170174,
+          "status": "ok",
+          "times_seconds": [
+            0.7382038310170174,
+            0.7392795810010284,
+            0.7391763449995779,
+            0.7387030000099912,
+            0.7416520680417307
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 0.41402058958774435,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.40612628299277276,
+          "status": "ok",
+          "times_seconds": [
+            0.4124398899730295,
+            0.4070625909953378,
+            0.40612628299277276,
+            0.42644439899595454,
+            0.418029784981627
+          ]
+        },
+        "mean_square_displacement": {
+          "average_seconds": 0.05993337261024863,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.05441285599954426,
+          "status": "ok",
+          "times_seconds": [
+            0.05528754601255059,
+            0.06295651302207261,
+            0.0656399319996126,
+            0.05441285599954426,
+            0.06137001601746306
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.07353786260355263,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0729763230192475,
+          "status": "ok",
+          "times_seconds": [
+            0.07354640203993767,
+            0.07311727898195386,
+            0.0729763230192475,
+            0.07308278395794332,
+            0.07496652501868084
+          ]
+        },
+        "random_location_entropy": {
+          "average_seconds": 0.3935341733857058,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.3918840319965966,
+          "status": "ok",
+          "times_seconds": [
+            0.39727375097572803,
+            0.39195649995235726,
+            0.39230194297851995,
+            0.3918840319965966,
+            0.39425464102532715
+          ]
+        },
+        "real_entropy": {
+          "average_seconds": 55.201534924202136,
+          "iterations_completed": 5,
+          "minimum_seconds": 54.26712802704424,
+          "status": "ok",
+          "times_seconds": [
+            54.393821722012945,
+            55.172270762966946,
+            54.26712802704424,
+            56.667244529002346,
+            55.50720957998419
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 0.40372251159278677,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.40243172203190625,
+          "status": "ok",
+          "times_seconds": [
+            0.40243172203190625,
+            0.4046587069751695,
+            0.4036328489892185,
+            0.4033105139969848,
+            0.4045787659706548
+          ]
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.07464609000599012,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.07450679800240323,
+          "status": "ok",
+          "times_seconds": [
+            0.0745946989627555,
+            0.07469741901149973,
+            0.07459753204602748,
+            0.07450679800240323,
+            0.07483400200726464
+          ]
+        },
+        "uncorrelated_location_entropy": {
+          "average_seconds": 0.6159659233875573,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.5860729200066999,
+          "status": "ok",
+          "times_seconds": [
+            0.5860729200066999,
+            0.617222809989471,
+            0.622922177950386,
+            0.6268327189609408,
+            0.6267789900302887
+          ]
+        },
+        "visits_per_location": {
+          "average_seconds": 0.07113220321480185,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06975141301518306,
+          "status": "ok",
+          "times_seconds": [
+            0.07004485605284572,
+            0.07102156901964918,
+            0.07401424698764458,
+            0.0708289309986867,
+            0.06975141301518306
+          ]
+        },
+        "visits_per_time_unit": {
+          "average_seconds": 0.036306727398186925,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.036178274953272194,
+          "status": "ok",
+          "times_seconds": [
+            0.036248265998438,
+            0.0362765560275875,
+            0.03633126901695505,
+            0.036499270994681865,
+            0.036178274953272194
+          ]
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
+      "label": "4M",
+      "metrics": {
+        "frequency_rank": {
+          "average_seconds": 2.3260498257935978,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.323331204999704,
+          "status": "ok",
+          "times_seconds": [
+            2.329475355974864,
+            2.325330224004574,
+            2.323331204999704,
+            2.3280428220168687,
+            2.3240695219719782
+          ]
+        },
+        "homes_per_location": {
+          "average_seconds": 0.4707053732010536,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.42460776696680114,
+          "status": "ok",
+          "times_seconds": [
+            0.5014714939752594,
+            0.4250044940272346,
+            0.5011524240253493,
+            0.42460776696680114,
+            0.5012906870106235
+          ]
+        },
+        "individual_mobility_network": {
+          "average_seconds": 3.465515776211396,
+          "iterations_completed": 5,
+          "minimum_seconds": 3.406841713003814,
+          "status": "ok",
+          "times_seconds": [
+            3.4641127759823576,
+            3.4564050750341266,
+            3.4712010440416634,
+            3.5290182729950175,
+            3.406841713003814
+          ]
+        },
+        "location_frequency": {
+          "average_seconds": 2.3337972366018223,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.3228908060118556,
+          "status": "ok",
+          "times_seconds": [
+            2.3228908060118556,
+            2.3391146159847267,
+            2.3407443450414576,
+            2.3412901569972746,
+            2.324946258973796
+          ]
+        },
+        "mean_square_displacement": {
+          "average_seconds": 0.37442445422057063,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.34073620702838525,
+          "status": "ok",
+          "times_seconds": [
+            0.34073620702838525,
+            0.4223532740143128,
+            0.34428040601778775,
+            0.42305312398821115,
+            0.3416992600541562
+          ]
+        },
+        "random_entropy": {
+          "average_seconds": 0.42746087480336425,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.4212291690055281,
+          "status": "ok",
+          "times_seconds": [
+            0.4272245900356211,
+            0.4357250659959391,
+            0.4242205629707314,
+            0.4212291690055281,
+            0.42890498600900173
+          ]
+        },
+        "random_location_entropy": {
+          "average_seconds": 2.2633948914008215,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.257482193992473,
+          "status": "ok",
+          "times_seconds": [
+            2.257482193992473,
+            2.262251332984306,
+            2.2682426050305367,
+            2.2678678859956563,
+            2.2611304390011355
+          ]
+        },
+        "real_entropy": {
+          "average_seconds": 396.29996006039437,
+          "iterations_completed": 5,
+          "minimum_seconds": 386.9913708399981,
+          "status": "ok",
+          "times_seconds": [
+            406.83323298499454,
+            399.2627016810002,
+            387.8388123839977,
+            400.5736824119813,
+            386.9913708399981
+          ]
+        },
+        "recency_rank": {
+          "average_seconds": 2.2926394322072157,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.2892069490044378,
+          "status": "ok",
+          "times_seconds": [
+            2.296466997009702,
+            2.2920588870183565,
+            2.291306955041364,
+            2.2892069490044378,
+            2.294157372962218
+          ]
+        },
+        "uncorrelated_entropy": {
+          "average_seconds": 0.43312621479853985,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.42638124502263963,
+          "status": "ok",
+          "times_seconds": [
+            0.4375578999752179,
+            0.42872791999252513,
+            0.42638124502263963,
+            0.4296284359879792,
+            0.44333557301433757
+          ]
+        },
+        "uncorrelated_location_entropy": {
+          "average_seconds": 3.185224787797779,
+          "iterations_completed": 5,
+          "minimum_seconds": 3.14201932400465,
+          "status": "ok",
+          "times_seconds": [
+            3.14201932400465,
+            3.1974283199524507,
+            3.1988543629995547,
+            3.2239615750149824,
+            3.1638603570172563
+          ]
+        },
+        "visits_per_location": {
+          "average_seconds": 0.4114258181885816,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.3756861089495942,
+          "status": "ok",
+          "times_seconds": [
+            0.4007812740164809,
+            0.4493491349858232,
+            0.3920393669977784,
+            0.4392732059932314,
+            0.3756861089495942
+          ]
+        },
+        "visits_per_time_unit": {
+          "average_seconds": 0.2615205946029164,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.23071621201233938,
+          "status": "ok",
+          "times_seconds": [
+            0.23253749898867682,
+            0.30608796002343297,
+            0.23822834697784856,
+            0.3000329550122842,
+            0.23071621201233938
+          ]
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
-name: skmob2 codebase architecture and patterns
-description: Key patterns for Rust kernels, Python wrappers, Narwhals usage, column detection, and test structure in skmob2
+name: fkmob codebase architecture and patterns
+description: Key patterns for Rust kernels, Python wrappers, Narwhals usage, column detection, and test structure in fkmob
 type: project
 ---
 
@@ -12,7 +12,7 @@ type: project
 - Expose via `#[pyfunction]` + `m.add_function(wrap_pyfunction!(..., m)?)` in `_core` pymodule
 - `cargo check` mindset: no warnings allowed
 
-## Python wrappers (skmob2/measures/individual.py)
+## Python wrappers (fkmob/measures/individual.py)
 - Column detection via `_pick_existing_column(nw_df.columns, priority_list)`
 - Priority lists: datetime→["datetime","timestamp","time","check-in_time"], lat→["latitude","lat"], lng→["longitude","lon","lng"], uid→["user_id","uid","user"]
 - Sort df by `[uid_col, datetime_col, _ROW_ORDER_COL]` (with _ROW_ORDER_COL as tiebreaker)
@@ -21,14 +21,14 @@ type: project
 - Never import pandas/polars directly
 
 ## Test patterns (tests/correctness/test_individual.py)
-- `pytest.importorskip("skmob2._core")` guard at top of each test
+- `pytest.importorskip("fkmob._core")` guard at top of each test
 - Fixtures: `synthetic_tdf` (pandas), `synthetic_tdf_polars` — 3 users, 5 pts each in conftest.py
 - `@pytest.mark.skmob` for tests that require skmob installed
 - Expected values: compute by calling the Rust kernel directly (not reimplementing Haversine in Python) to avoid floating-point formula mismatch (~1e-5 km)
 - Haversine tolerance between geo crate and skmob's Python: up to 0.02 km for long trajectories
 
 ## Non-Rust measure pattern (pure Python measures)
-- Pure Python measures live in `skmob2/measures/<name>.py` — each feature gets its own file
+- Pure Python measures live in `fkmob/measures/<name>.py` — each feature gets its own file
 - Use `nw.from_native(visits, eager_only=True)` then convert to pandas for row-iterative loops
 - `_pick_existing_column` for all auto-detection; keep all candidate lists local in the module
 - For OD/pivot output: use narwhals for filtering/groupby, then convert to pandas for `pivot_table`

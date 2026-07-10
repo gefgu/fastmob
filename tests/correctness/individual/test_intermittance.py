@@ -1,11 +1,11 @@
-"""Correctness tests for intermittance_and_degree_of_return in skmob2.measures.individual.intermittance."""
+"""Correctness tests for intermittance_and_degree_of_return in fkmob.measures.individual.intermittance."""
 
 from __future__ import annotations
 
 import pandas as pd
 import numpy as np
 import pytest
-from skmob2.measures.individual.mobility_profiling import intermittance_and_degree_of_return
+from fkmob.measures.individual.mobility_profiling import intermittance_and_degree_of_return
 
 
 def _agent_visits():

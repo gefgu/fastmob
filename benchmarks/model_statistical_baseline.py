@@ -6,18 +6,18 @@ resulting percentile distributions as a JSON file.
 
 The resulting baseline JSON is committed to tests/shared/ and used by
 tests/correctness/models/test_statistical_model_parity.py to check whether
-skmob2 and skmob generate statistically equivalent trajectories.
+fkmob and skmob generate statistically equivalent trajectories.
 
 Usage:
-    # skmob2 baseline (run in .venv)
-    python benchmarks/model_statistical_baseline.py --library skmob2
+    # fkmob baseline (run in .venv)
+    python benchmarks/model_statistical_baseline.py --library fkmob
 
     # skmob baseline (run in .venv-skmob)
     python benchmarks/model_statistical_baseline.py --library skmob
 
     # Custom output path
     python benchmarks/model_statistical_baseline.py \\
-        --library skmob2 --n-runs 50 --output results/my_baseline.json
+        --library fkmob --n-runs 50 --output results/my_baseline.json
 """
 
 from __future__ import annotations
@@ -94,8 +94,8 @@ def reset_rng(seed: int) -> None:
 
 
 def import_model_classes(library: str) -> dict[str, Any]:
-    if library == "skmob2":
-        module = importlib.import_module("skmob2.models")
+    if library == "fkmob":
+        module = importlib.import_module("fkmob.models")
         return {
             "Gravity": module.Gravity,
             "Radiation": module.Radiation,
@@ -145,7 +145,7 @@ def load_model_inputs(reference_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def _patch_geopandas_apply_for_numpy2(gpd: Any) -> None:
-    if getattr(gpd.GeoSeries.apply, "_skmob2_numpy2_patch", False):
+    if getattr(gpd.GeoSeries.apply, "_fkmob_numpy2_patch", False):
         return
     original_apply = gpd.GeoSeries.apply
 
@@ -158,7 +158,7 @@ def _patch_geopandas_apply_for_numpy2(gpd: Any) -> None:
             series = pd.Series(list(self), index=self.index)
             return series.apply(lambda geom: func(geom, *args), **kwargs)
 
-    apply._skmob2_numpy2_patch = True
+    apply._fkmob_numpy2_patch = True
     gpd.GeoSeries.apply = apply
 
 
@@ -298,11 +298,11 @@ def _flat_numpy(values: Any) -> np.ndarray:
 
 
 def _import_comparison() -> Any:
-    return importlib.import_module("skmob2.measures.evaluation")
+    return importlib.import_module("fkmob.measures.evaluation")
 
 
 def _import_spatial() -> Any:
-    return importlib.import_module("skmob2.measures.individual")
+    return importlib.import_module("fkmob.measures.individual")
 
 
 def _trajectory_to_std(df: pd.DataFrame) -> pd.DataFrame:
@@ -487,7 +487,7 @@ def run_model_baseline(
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compute statistical baseline for model generation comparison.")
-    parser.add_argument("--library", choices=["skmob2", "skmob"], required=True)
+    parser.add_argument("--library", choices=["fkmob", "skmob"], required=True)
     parser.add_argument("--n-runs", type=int, default=100)
     parser.add_argument("--n-agents", type=int, default=2)
     parser.add_argument(
@@ -501,7 +501,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def build_tessellation(library: str, tessellation: pd.DataFrame) -> Any:
-    if library == "skmob2":
+    if library == "fkmob":
         return tessellation.copy()
     return prepare_skmob_tessellation(tessellation)
 

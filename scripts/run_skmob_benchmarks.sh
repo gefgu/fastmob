@@ -37,7 +37,7 @@ run_skmob_suite() {
 
     echo "==> Running $suite_path"
     echo "    log: $log_path"
-    MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/skmob2-matplotlib}" \
+    MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/fkmob-matplotlib}" \
     PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::FutureWarning,ignore::UserWarning}" \
         "$SKMOB_VENV/bin/python" "$suite_path" --library skmob --output-dir "$RESULTS_DIR" "$@" \
         2>&1 | tee "$log_path"

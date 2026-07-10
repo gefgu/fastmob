@@ -1,11 +1,11 @@
-"""Correctness tests for skmob2.measures.collective.visits_per_time_unit."""
+"""Correctness tests for fkmob.measures.collective.visits_per_time_unit."""
 
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-from skmob2.measures.collective.visits_per_time_unit import visits_per_time_unit
+from fkmob.measures.collective.visits_per_time_unit import visits_per_time_unit
 
 
 @pytest.fixture()

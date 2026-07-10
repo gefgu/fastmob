@@ -312,7 +312,7 @@ def run_profiled_call_isolated(
 
 
 def concrete_backends(library: str, backend: str) -> Iterable[str | None]:
-    if library != "skmob2":
+    if library != "fkmob":
         return (None,)
     if backend == "both":
         return ("pandas", "polars")

@@ -12,7 +12,7 @@ JSON output under `benchmarks/results/...`.
 ```bash
 N_AGENTS=500
 uv run python benchmarks/speed_models_large_scale.py \
-  --library skmob2 \
+  --library fkmob \
   --mode trajectory \
   --metrics sts_epr_custom \
   --sts-epr-agents "$N_AGENTS" \

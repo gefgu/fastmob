@@ -1,6 +1,6 @@
 # Key Features
 
-- **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — skmob2 works without changes.
+- **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — fkmob works without changes.
 
 - **Rust-accelerated core**: 500x median speedup due to rust parallelized and zero-copy operations.
     

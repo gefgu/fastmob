@@ -1,16 +1,16 @@
 # Scikit-Mobility 2
 
 <p align="center">
-  <img src="assets/logo.png" alt="skmob2 logo" width="280">
+  <img src="assets/logo.png" alt="fkmob logo" width="280">
 </p>
 
-**skmob2** is a high-performance reimplementation of the [skmob](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library.
+**fkmob** is a high-performance reimplementation of the [skmob](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library.
 
 It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/narwhals/) so any eager dataframe (pandas, polars, …) is accepted as input.
 
 # Key Features
 
-- **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — skmob2 works without changes.
+- **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — fkmob works without changes.
 
 - **Rust-accelerated core**:  500x median speedup due to rust parallelized and zero-copy operations.
     
@@ -26,12 +26,12 @@ It exposes the same measure API but replaces the Python/pandas internals with a 
 ## Installation
 
 ```bash
-pip install skmob2
+pip install fkmob
 ```
 
 ## Validation and Performance
 
-skmob2 is tested as both a compatibility project and a performance project. The correctness suite covers the Python package, exercises pandas and Polars inputs, and includes optional comparisons with skmob where those dependencies are installed. The benchmark suite uses standalone perf-counter scripts on representative mobility workloads, including Brightkite-derived data slices.
+fkmob is tested as both a compatibility project and a performance project. The correctness suite covers the Python package, exercises pandas and Polars inputs, and includes optional comparisons with skmob where those dependencies are installed. The benchmark suite uses standalone perf-counter scripts on representative mobility workloads, including Brightkite-derived data slices.
 
 <!-- For the reasoning behind this validation model and the commands used to reproduce it, see [Correctness, coverage, and benchmarking](explanations/correctness-coverage-and-benchmarking.md). -->
 
@@ -39,7 +39,7 @@ skmob2 is tested as both a compatibility project and a performance project. The 
 
 ```python
 import pandas as pd
-from skmob2 import jump_lengths
+from fkmob import jump_lengths
 
 df = pd.DataFrame({
     "uid": ["alice", "alice", "alice", "bob", "bob"],
@@ -64,19 +64,19 @@ print(result)
 === "pip"
 
     ```bash
-    pip install skmob2
+    pip install fkmob
     ```
 
 === "uv"
 
     ```bash
-    uv add skmob2
+    uv add fkmob
     ```
 
 === "generation extra"
 
     ```bash
-    pip install "skmob2[generation]"
+    pip install "fkmob[generation]"
     ```
 
 ## Install for Development (from source)
@@ -84,8 +84,8 @@ print(result)
 === "Initial setup"
 
     ```bash
-    git clone https://github.com/gefgu/skmob2.git
-    cd skmob2
+    git clone https://github.com/gefgu/fkmob.git
+    cd fkmob
     bash scripts/setup_env.sh
     source .venv/bin/activate
     ```
@@ -104,11 +104,11 @@ print(result)
     uv run --extra docs zensical build
     ```
 
-Development requires `uv` and a Rust toolchain. After setup the compiled Rust extension (`.so`) is placed directly in `skmob2/`, so the package is importable from the repo root without a separate pip install.
+Development requires `uv` and a Rust toolchain. After setup the compiled Rust extension (`.so`) is placed directly in `fkmob/`, so the package is importable from the repo root without a separate pip install.
 
 ## Column Name Auto-Detection
 
-skmob2 auto-detects required columns by scanning a priority list:
+fkmob auto-detects required columns by scanning a priority list:
 
 | Semantic role | Accepted column names (in order) |
 |---|---|
@@ -125,7 +125,7 @@ You can also pass column names explicitly via keyword arguments (`datetime_col`,
 
 ```python
 import pandas as pd
-from skmob2 import jump_lengths
+from fkmob import jump_lengths
 
 # Build a minimal trajectory dataframe
 df = pd.DataFrame({
@@ -144,11 +144,11 @@ print(result)
 
 ## Using Polars
 
-skmob2 is backend-agnostic. Pass a polars DataFrame and you get a polars DataFrame back:
+fkmob is backend-agnostic. Pass a polars DataFrame and you get a polars DataFrame back:
 
 ```python
 import polars as pl
-from skmob2 import jump_lengths
+from fkmob import jump_lengths
 
 df = pl.DataFrame({
     "uid": ["alice", "alice", "alice"],
@@ -167,13 +167,13 @@ result = jump_lengths(df)  # returns a polars DataFrame
 | `ai` | `scikit-learn` | `cluster` |
 | `fitting` | `scipy` | `fit_values_to_truncated_powerlaw` |
 | `diversity` | `pydivsufsort` | diversity measures (future) |
-| `generation` | `scipy`, `powerlaw`, `statsmodels`, `python-igraph`, `tqdm` | `skmob2.models` generation APIs |
+| `generation` | `scipy`, `powerlaw`, `statsmodels`, `python-igraph`, `tqdm` | `fkmob.models` generation APIs |
 | `docs` | `mkdocs`, `mkdocs-material`, `mkdocstrings[python]` | documentation build |
 
 Install an extra with:
 
 ```bash
-pip install "skmob2[fitting]"
+pip install "fkmob[fitting]"
 # or with uv:
 uv sync --extra fitting
 ```
@@ -182,7 +182,7 @@ uv sync --extra fitting
 
 ```python
 import pandas as pd
-from skmob2.models import Gravity, SpatialEPR
+from fkmob.models import Gravity, SpatialEPR
 
 tessellation = pd.DataFrame({
     "tile_id": [0, 1, 2],

@@ -11,7 +11,7 @@
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
     "profile": "speed",
     "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
-    "reference_dir": "/home/gustavo/skmob2/tests/shared/skmob_reference/models",
+    "reference_dir": "/home/gustavo/fkmob/tests/shared/skmob_reference/models",
     "sleep_seconds": 0.5,
     "suite": "models_location_large_scale",
     "timestamp_utc": "2026-05-26T15:55:23.117212+00:00"

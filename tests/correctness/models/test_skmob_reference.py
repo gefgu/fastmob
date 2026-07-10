@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from skmob2.models import Gravity, MarkovDiaryGenerator, Radiation, STS_epr
+from fkmob.models import Gravity, MarkovDiaryGenerator, Radiation, STS_epr
 from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
 
 MODEL_SEED = 2

@@ -9,8 +9,8 @@ from typing import Any, Iterable
 
 
 RUST_FOCUS_MARKERS = (
-    "skmob2",
-    "skmob2::",
+    "fkmob",
+    "fkmob::",
     "src/",
     "pyo3",
     "_core",

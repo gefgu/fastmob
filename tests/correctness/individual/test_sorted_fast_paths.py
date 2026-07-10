@@ -96,7 +96,7 @@ def _assert_frames_equivalent(left, right):
 
 @pytest.mark.parametrize("name", SPATIAL_FUNCTIONS)
 def test_sorted_spatial_fast_path_matches_default_pandas(name):
-    module = __import__(f"skmob2.measures.individual.{name}", fromlist=[name])
+    module = __import__(f"fkmob.measures.individual.{name}", fromlist=[name])
     metric = getattr(module, name)
     raw = _tiny_unsorted_df()
     sorted_input = _sorted_df(raw)
@@ -110,15 +110,15 @@ def test_sorted_spatial_fast_path_matches_default_pandas(name):
 
 @pytest.mark.parametrize("name", SPATIAL_FUNCTIONS)
 def test_spatial_metric_accepts_presorted_keyword(name):
-    module = __import__(f"skmob2.measures.individual.{name}", fromlist=[name])
+    module = __import__(f"fkmob.measures.individual.{name}", fromlist=[name])
     metric = getattr(module, name)
     assert "presorted" in inspect.signature(metric).parameters
 
 
 def test_sorted_waiting_times_and_jump_lengths_merge_match_default_single_user():
     pd = pytest.importorskip("pandas")
-    from skmob2.measures.individual.jump_lengths import jump_lengths
-    from skmob2.measures.individual.waiting_times import waiting_times
+    from fkmob.measures.individual.jump_lengths import jump_lengths
+    from fkmob.measures.individual.waiting_times import waiting_times
 
     raw = pd.DataFrame(
         {
@@ -148,7 +148,7 @@ def test_sorted_waiting_times_and_jump_lengths_merge_match_default_single_user()
 
 def test_sorted_radius_of_gyration_requires_clean_input_for_invalid_user_filtering():
     pd = pytest.importorskip("pandas")
-    from skmob2.measures.individual.radius_of_gyration import radius_of_gyration
+    from fkmob.measures.individual.radius_of_gyration import radius_of_gyration
 
     raw = pd.DataFrame(
         {
@@ -168,7 +168,7 @@ def test_sorted_radius_of_gyration_requires_clean_input_for_invalid_user_filteri
 
 def test_sorted_spatial_fast_path_polars_smoke():
     pl = pytest.importorskip("polars")
-    from skmob2.measures.individual.distance_straight_line import distance_straight_line
+    from fkmob.measures.individual.distance_straight_line import distance_straight_line
 
     raw = _tiny_unsorted_df()
     sorted_input = pl.from_pandas(_sorted_df(raw))

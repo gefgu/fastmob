@@ -1,5 +1,5 @@
 ---
-name: skmob2 performance lessons from radius_of_gyration implementation
+name: fkmob performance lessons from radius_of_gyration implementation
 description: Bottleneck analysis and optimization patterns discovered while implementing radius_of_gyration
 type: project
 ---
@@ -21,7 +21,7 @@ type: project
 - Final vs skmob: pandas 2.5x faster, polars 8.4x faster
 
 ## Python overhead dominates at small scale (1k rows)
-- At 1k rows, skmob2 pandas is roughly equal to skmob (both ~3.8ms) — Narwhals/pandas overhead dominates
+- At 1k rows, fkmob pandas is roughly equal to skmob (both ~3.8ms) — Narwhals/pandas overhead dominates
 - Polars backend is always faster (3-8x) due to less overhead in the narwhals/polars path
 - The Narwhals `sort()` on pandas is expensive (categorical factorization) — accounts for ~36% of 100k runtime
 

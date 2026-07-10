@@ -1,9 +1,9 @@
 """Statistical model parity tests.
 
-Compares skmob2 model output against the cached skmob reference using
+Compares fkmob model output against the cached skmob reference using
 Wasserstein-based comparison metrics. The acceptance threshold for each
 metric comes from a pre-computed baseline JSON that captures natural
-same-model variability: if skmob2 vs skmob is within the range of skmob
+same-model variability: if fkmob vs skmob is within the range of skmob
 vs skmob (different seeds), the implementations are statistically equivalent.
 
 Generating the baseline (one-time setup, requires .venv-skmob):
@@ -24,9 +24,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skmob2.measures.evaluation import wasserstein_distance, visits_per_user_wasserstein_distance
-from skmob2.measures.individual import jump_lengths, radius_of_gyration, waiting_times
-from skmob2.models import DensityEPR, EPR, GeoSim, Gravity, Radiation, SpatialEPR, STS_epr, MarkovDiaryGenerator
+from fkmob.measures.evaluation import wasserstein_distance, visits_per_user_wasserstein_distance
+from fkmob.measures.individual import jump_lengths, radius_of_gyration, waiting_times
+from fkmob.models import DensityEPR, EPR, GeoSim, Gravity, Radiation, SpatialEPR, STS_epr, MarkovDiaryGenerator
 
 from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
 
@@ -171,7 +171,7 @@ def _assert_within_baseline(
         if p99 is None:
             continue
         assert value <= p99, (
-            f"{model_name} {metric_key}: skmob2 vs skmob distance {value:.4f} "
+            f"{model_name} {metric_key}: fkmob vs skmob distance {value:.4f} "
             f"exceeds baseline p99={p99:.4f} (same-model variability)"
         )
 
@@ -181,7 +181,7 @@ def _assert_cpc_within_baseline(cpc: float, baseline: dict[str, Any], model_name
     if p5 is None:
         return
     assert cpc >= p5, (
-        f"{model_name} od_matrix_cpc: skmob2 vs skmob similarity {cpc:.4f} "
+        f"{model_name} od_matrix_cpc: fkmob vs skmob similarity {cpc:.4f} "
         f"below baseline p5={p5:.4f} (same-model variability)"
     )
 
@@ -218,7 +218,7 @@ def test_epr_family_statistical_parity(
     skmob_df = _normalize_trajectory(_expected_df(models_reference, name))
 
     _reset_rng()
-    skmob2_df = _normalize_trajectory(
+    fkmob_df = _normalize_trajectory(
         model_cls().generate(
             MODEL_START,
             MODEL_END,
@@ -231,7 +231,7 @@ def test_epr_family_statistical_parity(
         )
     )
 
-    actual = _compute_trajectory_metrics(skmob2_df, skmob_df)
+    actual = _compute_trajectory_metrics(fkmob_df, skmob_df)
     _assert_within_baseline(actual, skmob_baseline, name)
 
 
@@ -246,7 +246,7 @@ def test_geosim_statistical_parity(
     skmob_df = _normalize_trajectory(_expected_df(models_reference, "geosim"))
 
     _reset_rng()
-    skmob2_df = _normalize_trajectory(
+    fkmob_df = _normalize_trajectory(
         GeoSim().generate(
             MODEL_START,
             MODEL_END,
@@ -258,7 +258,7 @@ def test_geosim_statistical_parity(
         )
     )
 
-    actual = _compute_trajectory_metrics(skmob2_df, skmob_df)
+    actual = _compute_trajectory_metrics(fkmob_df, skmob_df)
     _assert_within_baseline(actual, skmob_baseline, "geosim")
 
 
@@ -274,7 +274,7 @@ def test_sts_epr_statistical_parity(
     skmob_df = _normalize_trajectory(_expected_df(models_reference, "sts_epr"))
 
     _reset_rng()
-    skmob2_df = _normalize_trajectory(
+    fkmob_df = _normalize_trajectory(
         STS_epr().generate(
             MODEL_START,
             MODEL_END,
@@ -289,7 +289,7 @@ def test_sts_epr_statistical_parity(
         )
     )
 
-    actual = _compute_trajectory_metrics(skmob2_df, skmob_df)
+    actual = _compute_trajectory_metrics(fkmob_df, skmob_df)
     _assert_within_baseline(actual, skmob_baseline, "sts_epr")
 
 
@@ -319,19 +319,19 @@ def test_flow_sample_statistical_parity(
 ):
     if name == "gravity_flows_sample":
         pytest.skip("gravity_flows_sample under revision")
-    from skmob2.measures.evaluation import od_matrix_common_part_of_commuters
+    from fkmob.measures.evaluation import od_matrix_common_part_of_commuters
 
     skmob_mat = _flow_to_od_matrix(_expected_df(models_reference, name))
 
     _reset_rng()
-    skmob2_df = model_cls().generate(
+    fkmob_df = model_cls().generate(
         model_tessellation,
         tile_id_column="tile_id",
         tot_outflows_column="tot_outflow",
         relevance_column="population",
         out_format="flows_sample",
     )
-    skmob2_mat = _flow_to_od_matrix(skmob2_df)
+    fkmob_mat = _flow_to_od_matrix(fkmob_df)
 
-    cpc = od_matrix_common_part_of_commuters(skmob2_mat, skmob_mat)
+    cpc = od_matrix_common_part_of_commuters(fkmob_mat, skmob_mat)
     _assert_cpc_within_baseline(cpc, skmob_baseline, name)

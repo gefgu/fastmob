@@ -48,7 +48,7 @@ class ProfileCommand:
 
 def select_workloads(
     requested: list[str] | None,
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     *,
     allow_unavailable: bool = False,
 ) -> list[str]:
@@ -67,7 +67,7 @@ def build_profile_command(
     backend: str,
     output_dir: Path,
     scalene_bin: str = "scalene",
-    implementation: str = "skmob2",
+    implementation: str = "fkmob",
     profile_scope: str | None = None,
     reduced: bool = False,
     cpu_only: bool = False,
@@ -75,7 +75,7 @@ def build_profile_command(
     jump_lengths_entrypoint: str = DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
 ) -> ProfileCommand:
     profile_dir = output_dir / implementation
-    if implementation == "skmob2" and backend != "pandas":
+    if implementation == "fkmob" and backend != "pandas":
         profile_dir = profile_dir / backend
     json_path = profile_dir / (f".{workload}.scalene.tmp.json" if reduced else f"{workload}.json")
     html_path = profile_dir / f"{workload}.html"
@@ -435,7 +435,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
         epilog=(
-            "By default, Scalene profiles the jump_lengths workload for both skmob2 and skmob. "
+            "By default, Scalene profiles the jump_lengths workload for both fkmob and skmob. "
             "The workload setup is prepared before Scalene profiling is enabled."
         ),
     )
@@ -445,12 +445,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--scalene-bin", default="scalene")
     parser.add_argument("--backend", choices=["pandas", "polars"], default="pandas")
-    parser.add_argument("--implementation", choices=("skmob2", "skmob", "both"), default="both")
+    parser.add_argument("--implementation", choices=("fkmob", "skmob", "both"), default="both")
     parser.add_argument(
         "--jump-lengths-entrypoint",
         choices=JUMP_LENGTHS_ENTRYPOINTS,
         default=DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
-        help="skmob2 jump_lengths TrajDataFrame entrypoint to profile.",
+        help="fkmob jump_lengths TrajDataFrame entrypoint to profile.",
     )
     parser.add_argument(
         "--timeout-seconds",

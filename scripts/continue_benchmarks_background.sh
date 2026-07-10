@@ -11,7 +11,7 @@ RESULTS_DIR="${RESULTS_DIR:-$REPO_ROOT/benchmarks/results/py312_intel_core_i7_10
 LOG_DIR="$RESULTS_DIR/logs"
 mkdir -p "$LOG_DIR"
 
-export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/skmob2-matplotlib}"
+export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/fkmob-matplotlib}"
 mkdir -p "$MPLCONFIGDIR"
 
 DRIVER_LOG="$LOG_DIR/background_continue_driver.log"
@@ -64,58 +64,58 @@ log "python: $PYTHON"
 log "results: $RESULTS_DIR"
 
 run_if_missing \
-    skmob2_preprocessing_memory_pandas \
-    "$RESULTS_DIR/skmob2_preprocessing_memory_pandas.json" \
+    fkmob_preprocessing_memory_pandas \
+    "$RESULTS_DIR/fkmob_preprocessing_memory_pandas.json" \
     "$PYTHON" -u benchmarks/preprocessing/speed_suite.py \
-        --library skmob2 --backend pandas --profile memory --output-dir "$RESULTS_DIR"
+        --library fkmob --backend pandas --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_preprocessing_memory_polars \
-    "$RESULTS_DIR/skmob2_preprocessing_memory_polars.json" \
+    fkmob_preprocessing_memory_polars \
+    "$RESULTS_DIR/fkmob_preprocessing_memory_polars.json" \
     "$PYTHON" -u benchmarks/preprocessing/speed_suite.py \
-        --library skmob2 --backend polars --profile memory --output-dir "$RESULTS_DIR"
+        --library fkmob --backend polars --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_evaluation_memory_pandas \
-    "$RESULTS_DIR/skmob2_evaluation_memory_pandas.json" \
+    fkmob_evaluation_memory_pandas \
+    "$RESULTS_DIR/fkmob_evaluation_memory_pandas.json" \
     "$PYTHON" -u benchmarks/evaluation/speed_suite.py \
         --backend pandas --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_evaluation_memory_polars \
-    "$RESULTS_DIR/skmob2_evaluation_memory_polars.json" \
+    fkmob_evaluation_memory_polars \
+    "$RESULTS_DIR/fkmob_evaluation_memory_polars.json" \
     "$PYTHON" -u benchmarks/evaluation/speed_suite.py \
         --backend polars --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_models_memory \
-    "$RESULTS_DIR/skmob2_models_memory.json" \
+    fkmob_models_memory \
+    "$RESULTS_DIR/fkmob_models_memory.json" \
     "$PYTHON" -u benchmarks/models/speed_suite.py \
-        --library skmob2 --profile memory --output-dir "$RESULTS_DIR"
+        --library fkmob --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_models_large_scale_memory \
-    "$RESULTS_DIR/skmob2_models_memory_large_scale.json" \
+    fkmob_models_large_scale_memory \
+    "$RESULTS_DIR/fkmob_models_memory_large_scale.json" \
     "$PYTHON" -u benchmarks/speed_models_large_scale.py \
-        --library skmob2 --profile memory --output-dir "$RESULTS_DIR"
+        --library fkmob --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_models_location_large_scale_memory \
-    "$RESULTS_DIR/skmob2_models_memory_location_large_scale.json" \
+    fkmob_models_location_large_scale_memory \
+    "$RESULTS_DIR/fkmob_models_memory_location_large_scale.json" \
     "$PYTHON" -u benchmarks/speed_models_large_scale.py \
-        --library skmob2 --mode location --profile memory --output-dir "$RESULTS_DIR"
+        --library fkmob --mode location --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_privacy_memory_pandas \
-    "$RESULTS_DIR/skmob2_privacy_memory_pandas.json" \
+    fkmob_privacy_memory_pandas \
+    "$RESULTS_DIR/fkmob_privacy_memory_pandas.json" \
     "$PYTHON" -u benchmarks/privacy/speed_suite.py \
-        --library skmob2 --backend pandas --profile memory --output-dir "$RESULTS_DIR"
+        --library fkmob --backend pandas --profile memory --output-dir "$RESULTS_DIR"
 
 run_if_missing \
-    skmob2_privacy_memory_polars \
-    "$RESULTS_DIR/skmob2_privacy_memory_polars.json" \
+    fkmob_privacy_memory_polars \
+    "$RESULTS_DIR/fkmob_privacy_memory_polars.json" \
     "$PYTHON" -u benchmarks/privacy/speed_suite.py \
-        --library skmob2 --backend polars --profile memory --output-dir "$RESULTS_DIR"
+        --library fkmob --backend polars --profile memory --output-dir "$RESULTS_DIR"
 
 run_always \
     plot_all_comparisons \

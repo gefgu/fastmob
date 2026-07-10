@@ -1,25 +1,25 @@
 ---
-name: skmob2 project architecture and conventions
-description: Core architectural rules, file layout, Narwhals constraint, column-detection design, and test conventions for skmob2
+name: fkmob project architecture and conventions
+description: Core architectural rules, file layout, Narwhals constraint, column-detection design, and test conventions for fkmob
 type: project
 ---
 
 ## Layout
-- `src/lib.rs` — Rust kernels compiled to `skmob2/_core.*.so` via maturin
-- `skmob2/preprocessing/` — preprocessing functions (filter, compress, stay_locations, cluster); each in its own file mirrored by `tests/correctness/preprocessing/`
+- `src/lib.rs` — Rust kernels compiled to `fkmob/_core.*.so` via maturin
+- `fkmob/preprocessing/` — preprocessing functions (filter, compress, stay_locations, cluster); each in its own file mirrored by `tests/correctness/preprocessing/`
   - `filter.py` — `filter_trajectory_batch` Rust kernel via `src/filter_traj.rs` (uses Rayon)
   - `compress.py` — `compress_trajectory_batch` Rust kernel via `src/compress_traj.rs`
   - `stay_locations.py` — `detect_stay_locations_batch` Rust kernel via `src/stay_locations_rs.rs`
   - `cluster.py` — pure Python using scikit-learn DBSCAN with Haversine metric
-- `skmob2/measures/` — measures organized into subfolders:
-  - `skmob2/measures/_common.py` — shared utilities: candidate lists, `_pick_existing_column`, `_detect_trajectory_columns`, `_prepare_trajectory`
-  - `skmob2/measures/spatial/` — `jump_lengths.py`, `radius_of_gyration.py`
-  - `skmob2/measures/visits/` — `activity.py`, `intermittance.py` (was `individual.py`), `motifs.py`
-  - `skmob2/measures/flows/` — `od.py`
-  - `skmob2/measures/fitting/` — `mobility_laws.py`
+- `fkmob/measures/` — measures organized into subfolders:
+  - `fkmob/measures/_common.py` — shared utilities: candidate lists, `_pick_existing_column`, `_detect_trajectory_columns`, `_prepare_trajectory`
+  - `fkmob/measures/spatial/` — `jump_lengths.py`, `radius_of_gyration.py`
+  - `fkmob/measures/visits/` — `activity.py`, `intermittance.py` (was `individual.py`), `motifs.py`
+  - `fkmob/measures/flows/` — `od.py`
+  - `fkmob/measures/fitting/` — `mobility_laws.py`
 - Each subfolder has an `__init__.py` that re-exports all public symbols from its files.
-- `skmob2/measures/__init__.py` — imports directly from subfolders, re-exports full public API.
-- `skmob2/__init__.py` — same public API re-exported at package level.
+- `fkmob/measures/__init__.py` — imports directly from subfolders, re-exports full public API.
+- `fkmob/__init__.py` — same public API re-exported at package level.
 - `tests/correctness/` — test files mirror the source subfolder structure:
   - `tests/correctness/spatial/`, `visits/`, `flows/`, `fitting/`
   - `tests/correctness/test_common.py` stays at root (no matching subfolder for `_common.py`)
@@ -37,7 +37,7 @@ type: project
 - `import math` added to `_common.py`.
 
 ## Column auto-detection
-All authoritative candidate lists live in `skmob2/measures/_common.py`:
+All authoritative candidate lists live in `fkmob/measures/_common.py`:
 - `DATETIME_CANDIDATES`, `LAT_CANDIDATES`, `LNG_CANDIDATES`, `UID_CANDIDATES` — trajectory measures
 - `ACTIVITY_CANDIDATES`, `TIMESTAMP_CANDIDATES`, `DAY_CANDIDATES`, `USER_ID_CANDIDATES`, `LOCATION_CANDIDATES`, `DURATION_CANDIDATES`, `PURPOSE_CANDIDATES` — visit/activity measures
 - `ORIGIN_CANDIDATES`, `DEST_CANDIDATES` — OD matrix

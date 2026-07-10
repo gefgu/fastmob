@@ -1,7 +1,7 @@
 """DensityEPR workload for external profilers.
 
 Examples:
-    uv run scalene run --memory --profile-only skmob2 \
+    uv run scalene run --memory --profile-only fkmob \
       -o .profiles/scalene/density_epr_500a_100000l_1w.json \
       benchmarks/profile_density_epr_workload.py
 
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from skmob2.models import DensityEPR
+from fkmob.models import DensityEPR
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/spatial/home_location.py."""
+"""Correctness tests for fkmob/measures/spatial/home_location.py."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def _to_dict(df, lat_col: str = "lat", lng_col: str = "lng") -> dict[str, tuple[
 
 def test_home_location_known_values(synthetic_tdf):
     """Home location for each synthetic user matches the expected (lat, lng)."""
-    from skmob2.measures.individual.home_location import home_location
+    from fkmob.measures.individual.home_location import home_location
 
     result = home_location(synthetic_tdf)
     mapping = _to_dict(result)
@@ -45,7 +45,7 @@ def test_home_location_known_values(synthetic_tdf):
 
 def test_home_location_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from skmob2.measures.individual.home_location import home_location
+    from fkmob.measures.individual.home_location import home_location
 
     df = pd.DataFrame(
         {
@@ -65,7 +65,7 @@ def test_home_location_no_uid():
 
 def test_home_location_ties_follow_skmob_pandas_order():
     """Equal-count nighttime ties match skmob's pandas groupby/sort behavior."""
-    from skmob2.measures.individual.home_location import home_location
+    from fkmob.measures.individual.home_location import home_location
 
     df = pd.DataFrame(
         {
@@ -85,7 +85,7 @@ def test_home_location_ties_follow_skmob_pandas_order():
 
 def test_home_location_fallback_to_all_hours():
     """When no nighttime records exist, the most-visited overall location is used."""
-    from skmob2.measures.individual.home_location import home_location
+    from fkmob.measures.individual.home_location import home_location
 
     # All records at noon — no nighttime data.
     df = pd.DataFrame(
@@ -111,7 +111,7 @@ def test_home_location_fallback_to_all_hours():
 
 def test_home_location_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same home locations as pandas."""
-    from skmob2.measures.individual.home_location import home_location
+    from fkmob.measures.individual.home_location import home_location
 
     result = home_location(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -125,24 +125,24 @@ def test_home_location_polars_known_values(synthetic_tdf_polars):
 
 @pytest.mark.skmob
 def test_home_location_matches_skmob(comparison_skmob):
-    """skmob2 result matches skmob on each comparison dataset."""
+    """fkmob result matches skmob on each comparison dataset."""
     from skmob.measures.individual import home_location as skmob_hl
-    from skmob2.measures.individual.home_location import home_location as skmob2_hl
+    from fkmob.measures.individual.home_location import home_location as fkmob_hl
 
     skmob_result = skmob_hl(comparison_skmob)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_hl(skmob2_input)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_hl(fkmob_input)
 
     skmob_dict = {row["uid"]: (row["lat"], row["lng"]) for row in skmob_result.to_dict(orient="records")}
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
         exp_lat, exp_lng = skmob_dict[uid]
-        got_lat, got_lng = skmob2_dict[uid]
-        assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat skmob={exp_lat}, skmob2={got_lat}"
-        assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng skmob={exp_lng}, skmob2={got_lng}"
+        got_lat, got_lng = fkmob_dict[uid]
+        assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat skmob={exp_lat}, fkmob={got_lat}"
+        assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng skmob={exp_lng}, fkmob={got_lng}"
 
 
 def _nighttime_is_ambiguous(input_df, uid) -> bool:
@@ -164,29 +164,29 @@ def test_home_location_matches_cached_reference(comparison_skmob_reference):
     """home_location matches the cached skmob baseline without requiring the skmob environment.
 
     Users whose most-visited nighttime location is tied with another location are allowed
-    to differ: skmob and skmob2 use different tie-breaking rules for equal nighttime visit
+    to differ: skmob and fkmob use different tie-breaking rules for equal nighttime visit
     counts, so disagreements on ambiguous users are not treated as failures.
     """
-    from skmob2.measures.individual.home_location import home_location as skmob2_hl
+    from fkmob.measures.individual.home_location import home_location as fkmob_hl
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("home_location")
-    skmob2_result = skmob2_hl(ref.input_df)
+    fkmob_result = fkmob_hl(ref.input_df)
 
     skmob_dict = {row["uid"]: (row["lat"], row["lng"]) for row in skmob_result.to_dict(orient="records")}
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
         exp_lat, exp_lng = skmob_dict[uid]
-        got_lat, got_lng = skmob2_dict[uid]
+        got_lat, got_lng = fkmob_dict[uid]
         if abs(got_lat - exp_lat) >= 1e-6 or abs(got_lng - exp_lng) >= 1e-6:
             # Allow difference only when the home location is tie-ambiguous.
             assert _nighttime_is_ambiguous(ref.input_df, uid), (
-                f"uid={uid}: lat cached={exp_lat}, skmob2={got_lat} "
+                f"uid={uid}: lat cached={exp_lat}, fkmob={got_lat} "
                 f"(no tie, so this is a real correctness failure)"
             )
             continue
-        assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat cached={exp_lat}, skmob2={got_lat}"
-        assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng cached={exp_lng}, skmob2={got_lng}"
+        assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat cached={exp_lat}, fkmob={got_lat}"
+        assert abs(got_lng - exp_lng) < 1e-6, f"uid={uid}: lng cached={exp_lng}, fkmob={got_lng}"

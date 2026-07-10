@@ -1,4 +1,4 @@
-"""Correctness tests for skmob2/measures/visits/uncorrelated_entropy.py."""
+"""Correctness tests for fkmob/measures/visits/uncorrelated_entropy.py."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _to_dict(df) -> dict:
 
 def test_uncorrelated_entropy_known_values(synthetic_tdf):
     """Uniform distribution over 5 distinct locations gives S = log2(5)."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy
 
     result = uncorrelated_entropy(synthetic_tdf)
     mapping = _to_dict(result)
@@ -51,7 +51,7 @@ def test_uncorrelated_entropy_known_values(synthetic_tdf):
 
 def test_uncorrelated_entropy_unequal_visits():
     """Non-uniform visit distribution produces correct Shannon entropy."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy
 
     # User "a" visits loc1 3 times and loc2 1 time: p1=0.75, p2=0.25
     # S = -(0.75*log2(0.75) + 0.25*log2(0.25))
@@ -73,7 +73,7 @@ def test_uncorrelated_entropy_unequal_visits():
 
 def test_uncorrelated_entropy_single_location():
     """A user who visits only one location has entropy 0."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy
 
     df = pd.DataFrame(
         {
@@ -90,7 +90,7 @@ def test_uncorrelated_entropy_single_location():
 
 def test_uncorrelated_entropy_normalize():
     """With normalize=True the result equals S_unc / log2(n_distinct_locs)."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy
 
     # Uniform over 5 locs: S_unc = log2(5), normalized = 1.0
     df = pd.DataFrame(
@@ -108,7 +108,7 @@ def test_uncorrelated_entropy_normalize():
 
 def test_uncorrelated_entropy_normalize_single_loc():
     """normalize=True with a single location still returns 0 (no division by 0)."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy
 
     df = pd.DataFrame(
         {
@@ -125,7 +125,7 @@ def test_uncorrelated_entropy_normalize_single_loc():
 
 def test_uncorrelated_entropy_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy
 
     # 4 visits to 2 distinct locs equally: p=0.5, S=1.0
     df = pd.DataFrame(
@@ -145,7 +145,7 @@ def test_uncorrelated_entropy_no_uid():
 
 def test_uncorrelated_entropy_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy
 
     result = uncorrelated_entropy(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -159,16 +159,16 @@ def test_uncorrelated_entropy_polars_known_values(synthetic_tdf_polars):
 
 @pytest.mark.skmob
 def test_uncorrelated_entropy_matches_skmob(comparison_skmob):
-    """skmob2 result matches skmob on each comparison dataset."""
+    """fkmob result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import uncorrelated_entropy as skmob_ue
-    from skmob2.measures.individual.uncorrelated_entropy import (
-        uncorrelated_entropy as skmob2_ue,
+    from fkmob.measures.individual.uncorrelated_entropy import (
+        uncorrelated_entropy as fkmob_ue,
     )
 
     skmob_result = skmob_ue(comparison_skmob)
-    skmob2_input = pd.DataFrame(comparison_skmob).copy()
-    skmob2_result = skmob2_ue(skmob2_input)
+    fkmob_input = pd.DataFrame(comparison_skmob).copy()
+    fkmob_result = fkmob_ue(fkmob_input)
 
     skmob_dict = dict(
         zip(
@@ -176,30 +176,30 @@ def test_uncorrelated_entropy_matches_skmob(comparison_skmob):
             skmob_result["uncorrelated_entropy"].tolist(),
         )
     )
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert math.isclose(skmob_dict[uid], skmob2_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: skmob={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        assert math.isclose(skmob_dict[uid], fkmob_dict[uid], rel_tol=1e-5), (
+            f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
         )
 
 
 def test_uncorrelated_entropy_matches_cached_reference(comparison_skmob_reference):
     """uncorrelated_entropy matches the cached skmob baseline without requiring the skmob environment."""
-    from skmob2.measures.individual.uncorrelated_entropy import uncorrelated_entropy as skmob2_ue
+    from fkmob.measures.individual.uncorrelated_entropy import uncorrelated_entropy as fkmob_ue
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("uncorrelated_entropy")
-    skmob2_result = skmob2_ue(ref.input_df)
+    fkmob_result = fkmob_ue(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["uncorrelated_entropy"].tolist()))
-    skmob2_dict = _to_dict(skmob2_result)
+    fkmob_dict = _to_dict(fkmob_result)
 
-    common = set(skmob_dict) & set(skmob2_dict)
+    common = set(skmob_dict) & set(fkmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert math.isclose(skmob_dict[uid], skmob2_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: cached={skmob_dict[uid]}, skmob2={skmob2_dict[uid]}"
+        assert math.isclose(skmob_dict[uid], fkmob_dict[uid], rel_tol=1e-5), (
+            f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
         )

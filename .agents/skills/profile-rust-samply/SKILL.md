@@ -1,13 +1,13 @@
 ---
 name: profile-rust-samply
-description: Profile skmob2 Rust-backed Python workloads with samply, reduce Firefox Profiler JSON profiles, and diagnose native/PyO3 performance bottlenecks. Use when Codex needs to run Samply against skmob2 functions, analyze .json or .json.gz Firefox Profiler output, understand hot Rust frames in src/*.rs, or report and fix Rust-core performance issues.
+description: Profile fkmob Rust-backed Python workloads with samply, reduce Firefox Profiler JSON profiles, and diagnose native/PyO3 performance bottlenecks. Use when Codex needs to run Samply against fkmob functions, analyze .json or .json.gz Firefox Profiler output, understand hot Rust frames in src/*.rs, or report and fix Rust-core performance issues.
 ---
 
 # Profile Rust Samply
 
 ## Workflow
 
-Run from the repository root (`/home/gustavo/skmob2`) so `uv`, `maturin`, tests, data paths, and `skmob2._core` imports match the project.
+Run from the repository root (`/home/gustavo/fkmob`) so `uv`, `maturin`, tests, data paths, and `fkmob._core` imports match the project.
 
 Prefer the existing Brightkite runner for supported workloads:
 
@@ -26,12 +26,12 @@ attempt to run the sudo command yourself unless the user explicitly asks; Samply
 only be launched after the user confirms the setting has been updated or the current value is
 already `1` or lower.
 
-## skmob2 Environment Fallback
+## fkmob Environment Fallback
 
 In this repository, Codex may run in a sandbox where `/snap/bin/uv` fails with snap-confine permissions and the local `.venv` has no `pip`. If `scripts/run_samply_profiles.sh` fails before recording while trying to rebuild with `maturin develop --uv`, first check whether the compiled extension is already usable:
 
 ```bash
-.venv/bin/python -c 'import skmob2._core as c; print(c.__file__)'
+.venv/bin/python -c 'import fkmob._core as c; print(c.__file__)'
 ```
 
 If that succeeds, keep the function-scope prepared-child behavior by running the Python Samply runner directly:
@@ -39,12 +39,12 @@ If that succeeds, keep the function-scope prepared-child behavior by running the
 ```bash
 .venv/bin/python scripts/profile_brightkite_samply.py \
   --samply-bin /home/gustavo/.cargo/bin/samply \
-  --rows 4000000 --workload filter --implementation skmob2 \
+  --rows 4000000 --workload filter --implementation fkmob \
   --backend pandas --scope function --rate 1000 \
   --output-dir /tmp/samply_filter_4M
 
 .venv/bin/python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py \
-  /tmp/samply_filter_4M/skmob2/filter.json.gz --top 20 \
+  /tmp/samply_filter_4M/fkmob/filter.json.gz --top 20 \
   -o /tmp/filter_4M_samply_reduced.json
 ```
 
@@ -62,13 +62,13 @@ Samply writes Firefox Profiler JSON, usually compressed as `.json.gz`. Do not lo
 
 ```bash
 uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py \
-  .profiles/samply/skmob2/radius_of_gyration.json.gz --top 20
+  .profiles/samply/fkmob/radius_of_gyration.json.gz --top 20
 ```
 
 Useful options:
 
 ```bash
-uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py /tmp/profile.json.gz --filter skmob2:: --top 30
+uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py /tmp/profile.json.gz --filter fkmob:: --top 30
 uv run python .agents/skills/profile-rust-samply/scripts/reduce_samply_json.py /tmp/profile.json.gz --thread python -o /tmp/reduced.json
 ```
 
@@ -77,7 +77,7 @@ Focus on:
 - `top_leaf_frames`: where samples stop; good for tight loops or expensive calls.
 - `top_inclusive_frames`: functions present anywhere in hot stacks; good for callers and shared helpers.
 - `top_stacks`: repeated call paths.
-- `rust_focused`: filtered entries likely tied to `skmob2`, `src/`, Rust crate paths such as `skmob2::`, PyO3, or the native extension.
+- `rust_focused`: filtered entries likely tied to `fkmob`, `src/`, Rust crate paths such as `fkmob::`, PyO3, or the native extension.
 - Python conversion/materialization frames such as `PyFloat_FromDouble`,
   `PyLong_FromUnsignedLongLong`, `PyObject_Malloc`, `PyList_New`,
   `pyo3::conversion::IntoPyObject::owned_sequence_into_pyobject`, and
@@ -94,9 +94,9 @@ When reporting findings, state the sample count, whether the profile is function
 Use the repo runner first. For targets that are not in `tests.profiling.brightkite_workloads`, use the generic importable-callable wrapper:
 
 ```bash
-samply record --save-only --rate 1000 -o /tmp/skmob2-profile.json.gz -- \
+samply record --save-only --rate 1000 -o /tmp/fkmob-profile.json.gz -- \
   uv run python .agents/skills/profile-rust-samply/scripts/profile_importable_samply.py \
-  skmob2.module:function --input-kind brightkite-pandas --rows 10000 --repeat 3
+  fkmob.module:function --input-kind brightkite-pandas --rows 10000 --repeat 3
 ```
 
 Targets use `module:function` syntax. Input kinds are `brightkite-pandas`, `brightkite-polars`, and `none`. Pass keyword arguments with `--kwargs-json '{"key": "value"}'`.

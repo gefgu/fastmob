@@ -15,8 +15,8 @@ def test_build_profile_command_function_scope_uses_pid_placeholder(tmp_path):
         rate=1000,
     )
     assert profile.scope == "function"
-    assert profile.implementation == "skmob2"
-    assert profile.output_path == tmp_path / "skmob2" / "radius_of_gyration.json.gz"
+    assert profile.implementation == "fkmob"
+    assert profile.output_path == tmp_path / "fkmob" / "radius_of_gyration.json.gz"
     assert profile.command[:7] == [
         "samply",
         "record",
@@ -89,26 +89,26 @@ def test_runner_dry_run_writes_manifest(tmp_path):
         dry_run=True,
         continue_on_error=True,
         scope="function",
-        implementation="skmob2",
+        implementation="fkmob",
         samply_bin="samply",
         jump_lengths_entrypoint="method",
     )
     assert run_profiles(args) == 0
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert manifest[0]["workload"] == "radius_of_gyration"
-    assert manifest[0]["implementation"] == "skmob2"
+    assert manifest[0]["implementation"] == "fkmob"
     assert manifest[0]["scope"] == "function"
     assert manifest[0]["profiled_phase"] == "function"
     assert manifest[0]["jump_lengths_entrypoint"] == "method"
     assert manifest[0]["status"] == "dry-run"
-    assert manifest[0]["output_path"].endswith("skmob2/radius_of_gyration.json.gz")
+    assert manifest[0]["output_path"].endswith("fkmob/radius_of_gyration.json.gz")
     assert "--prepared-child" in manifest[0]["child_command"]
 
 
 def test_runner_dry_run_both_uses_implementation_specific_paths(tmp_path, monkeypatch):
     import scripts.profile_brightkite_samply as runner
 
-    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="skmob2": ["radius_of_gyration"])
+    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="fkmob": ["radius_of_gyration"])
     args = Namespace(
         rows=10_000,
         workload=["radius_of_gyration"],
@@ -125,7 +125,7 @@ def test_runner_dry_run_both_uses_implementation_specific_paths(tmp_path, monkey
 
     assert run_profiles(args) == 0
     manifest = json.loads((tmp_path / "manifest.json").read_text())
-    assert [row["implementation"] for row in manifest] == ["skmob2", "skmob"]
+    assert [row["implementation"] for row in manifest] == ["fkmob", "skmob"]
     assert [row["jump_lengths_entrypoint"] for row in manifest] == ["function", "function"]
-    assert manifest[0]["output_path"].endswith("skmob2/radius_of_gyration.json.gz")
+    assert manifest[0]["output_path"].endswith("fkmob/radius_of_gyration.json.gz")
     assert manifest[1]["output_path"].endswith("skmob/radius_of_gyration.json.gz")

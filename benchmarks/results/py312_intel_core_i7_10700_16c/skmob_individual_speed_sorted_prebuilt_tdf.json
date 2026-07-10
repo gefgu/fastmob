@@ -5,8 +5,8 @@
     "cpu_cores": 16,
     "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
     "cpu_vendor": "intel",
-    "dataset_path": "/home/gustavo/skmob2/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
-    "input_cache_path": "/home/gustavo/skmob2/benchmarks/cache/individual_loc-brightkite_totalCheckins.txt.gz_pandas_sorted.parquet",
+    "dataset_path": "/home/gustavo/fkmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": "/home/gustavo/fkmob/benchmarks/cache/individual_loc-brightkite_totalCheckins.txt.gz_pandas_sorted.parquet",
     "input_cache_status": "reused_cleaned",
     "input_order": "sorted",
     "input_type": "skmob.TrajDataFrame",
@@ -35,7 +35,7 @@
       "regularity",
       "mean_area_volume"
     ],
-    "movingpandas_catalog_path": "/home/gustavo/skmob2/benchmarks/movingpandas_skmob_api_catalog.json",
+    "movingpandas_catalog_path": "/home/gustavo/fkmob/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
     "profile": "speed",
     "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
@@ -47,7 +47,7 @@
       1000000,
       4000000
     ],
-    "skmob_catalog_path": "/home/gustavo/skmob2/benchmarks/skmob_public_api_catalog.json",
+    "skmob_catalog_path": "/home/gustavo/fkmob/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "individual",
     "timestamp_utc": "2026-06-09T11:36:10.447390+00:00",
@@ -74,7 +74,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -186,7 +186,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -259,7 +259,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -267,7 +267,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -275,7 +275,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -329,7 +329,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -441,7 +441,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -514,7 +514,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -522,7 +522,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -530,7 +530,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -584,7 +584,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -696,7 +696,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -769,7 +769,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -777,7 +777,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -785,7 +785,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -839,7 +839,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -951,7 +951,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1024,7 +1024,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1032,7 +1032,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1040,7 +1040,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1094,7 +1094,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1206,7 +1206,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1279,7 +1279,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1287,7 +1287,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
@@ -1295,7 +1295,7 @@
           "average_seconds": null,
           "iterations_completed": 0,
           "minimum_seconds": null,
-          "reason": "skmob2-only benchmark; excluded from original skmob baseline",
+          "reason": "fkmob-only benchmark; excluded from original skmob baseline",
           "status": "skipped",
           "times_seconds": []
         },
