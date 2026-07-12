@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob/measures/spatial/max_distance_from_home.py."""
+"""Correctness tests for fastmob/measures/spatial/max_distance_from_home.py."""
 
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ def _to_dict(df) -> dict[str, float]:
 
 def test_max_distance_from_home_known_values(synthetic_tdf):
     """Known-value check for the shared 3-user synthetic fixture."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.max_distance_from_home import max_distance_from_home
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.max_distance_from_home import max_distance_from_home
 
     result = max_distance_from_home(synthetic_tdf)
     mapping = _to_dict(result)
@@ -44,8 +44,8 @@ def test_max_distance_from_home_known_values(synthetic_tdf):
 
 def test_max_distance_from_home_single_user():
     """Without a uid column the whole frame is treated as one individual."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.max_distance_from_home import max_distance_from_home
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.max_distance_from_home import max_distance_from_home
 
     # Nighttime records only; home = (0.0, 0.0); farthest = (0.0, 4.0).
     df = pd.DataFrame(
@@ -70,8 +70,8 @@ def test_max_distance_from_home_single_user():
 
 def test_max_distance_from_home_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.max_distance_from_home import max_distance_from_home
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.max_distance_from_home import max_distance_from_home
 
     result = max_distance_from_home(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -83,9 +83,9 @@ def test_max_distance_from_home_polars_known_values(synthetic_tdf_polars):
 
 def test_max_distance_from_home_polars_null_coordinates_are_ignored():
     """Arrow-backed max-distance-from-home skips null coordinate rows."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fkmob.measures.individual.max_distance_from_home import max_distance_from_home
+    from fastmob.measures.individual.max_distance_from_home import max_distance_from_home
 
     df = pl.DataFrame(
         {
@@ -108,9 +108,9 @@ def test_max_distance_from_home_polars_null_coordinates_are_ignored():
 
 def test_max_distance_from_point_indexed_arrow_null_coordinates_are_ignored():
     """Arrow helper accepts nullable coordinate arrays and skips invalid rows."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fkmob._core import max_distance_from_point_indexed_arrow
+    from fastmob._core import max_distance_from_point_indexed_arrow
 
     home_lats = pa.array([0.0], type=pa.float64())
     home_lngs = pa.array([0.0], type=pa.float64())
@@ -126,23 +126,23 @@ def test_max_distance_from_point_indexed_arrow_null_coordinates_are_ignored():
 
 @pytest.mark.skmob
 def test_max_distance_from_home_matches_skmob(comparison_skmob):
-    """fkmob result matches skmob on each comparison dataset."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    """fastmob result matches skmob on each comparison dataset."""
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     from skmob.measures.individual import max_distance_from_home as skmob_mdfh
-    from fkmob.measures.individual.max_distance_from_home import max_distance_from_home as fkmob_mdfh
+    from fastmob.measures.individual.max_distance_from_home import max_distance_from_home as fastmob_mdfh
 
     skmob_result = skmob_mdfh(comparison_skmob)
-    fkmob_input = pd.DataFrame(comparison_skmob).copy()
-    fkmob_result = fkmob_mdfh(fkmob_input)
+    fastmob_input = pd.DataFrame(comparison_skmob).copy()
+    fastmob_result = fastmob_mdfh(fastmob_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["max_distance_from_home"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert abs(skmob_dict[uid] - fkmob_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
-            f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert abs(skmob_dict[uid] - fastmob_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
+            f"uid={uid}: skmob={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
         )
 
 
@@ -152,25 +152,25 @@ def test_max_distance_from_home_matches_cached_reference(comparison_skmob_refere
     Users with an ambiguous (tied) home location are allowed to differ because a different
     home point yields a different max_distance_from_home value.
     """
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.max_distance_from_home import max_distance_from_home as fkmob_mdfh
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.max_distance_from_home import max_distance_from_home as fastmob_mdfh
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("max_distance_from_home")
-    fkmob_result = fkmob_mdfh(ref.input_df)
+    fastmob_result = fastmob_mdfh(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["max_distance_from_home"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
     # Import the ambiguity helper from the home_location test module.
     from tests.correctness.individual.test_home_location import _nighttime_is_ambiguous
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
         tol = skmob_dict[uid] * 1e-5 + 1e-5
-        if abs(skmob_dict[uid] - fkmob_dict[uid]) >= tol:
+        if abs(skmob_dict[uid] - fastmob_dict[uid]) >= tol:
             assert _nighttime_is_ambiguous(ref.input_df, uid), (
-                f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]} "
+                f"uid={uid}: cached={skmob_dict[uid]}, fastmob={fastmob_dict[uid]} "
                 f"(no tied home location, so this is a real correctness failure)"
             )

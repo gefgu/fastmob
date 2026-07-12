@@ -34,7 +34,7 @@ def profile_jobs(
 
 def select_workloads(
     requested: list[str] | None,
-    implementation: str = "fkmob",
+    implementation: str = "fastmob",
     *,
     default_workloads: list[str] | None = None,
     allow_unavailable: bool = False,

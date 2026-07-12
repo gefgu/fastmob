@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob/privacy/attacks.py."""
+"""Correctness tests for fastmob/privacy/attacks.py."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import pytest
 import narwhals as nw
 from pandas.testing import assert_frame_equal
 
-from fkmob.privacy import attacks
-from fkmob import privacy
+from fastmob.privacy import attacks
+from fastmob import privacy
 
 
 LAT_LONS = [
@@ -377,7 +377,7 @@ def test_presorted_privacy_path_matches_default_on_sorted_input(privacy_tdf, att
 
 @pytest.mark.skmob
 @pytest.mark.parametrize(
-    ("fkmob_factory", "skmob_factory"),
+    ("fastmob_factory", "skmob_factory"),
     [
         (lambda: attacks.LocationAttack(2), lambda skmob_attacks: skmob_attacks.LocationAttack(2)),
         (lambda: attacks.LocationSequenceAttack(2), lambda skmob_attacks: skmob_attacks.LocationSequenceAttack(2)),
@@ -401,13 +401,13 @@ def test_presorted_privacy_path_matches_default_on_sorted_input(privacy_tdf, att
         (lambda: attacks.HomeWorkAttack(), lambda skmob_attacks: skmob_attacks.HomeWorkAttack()),
     ],
 )
-def test_assess_risk_matches_skmob(privacy_tdf, fkmob_factory, skmob_factory):
+def test_assess_risk_matches_skmob(privacy_tdf, fastmob_factory, skmob_factory):
     skmob_attacks = pytest.importorskip("skmob.privacy.attacks")
     skmob_core = pytest.importorskip("skmob.core.trajectorydataframe")
 
     skmob_tdf = skmob_core.TrajDataFrame(privacy_tdf, user_id="uid")
     expected = _risk_map(skmob_factory(skmob_attacks).assess_risk(skmob_tdf))
-    actual = _risk_map(fkmob_factory().assess_risk(privacy_tdf))
+    actual = _risk_map(fastmob_factory().assess_risk(privacy_tdf))
 
     assert actual.keys() == expected.keys()
     for uid, risk in expected.items():

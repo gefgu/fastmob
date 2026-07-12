@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 1,
+    "library": "fastmob",
+    "memory_method": "memray_peak_heap",
+    "metrics": [
+      "gravity_flows",
+      "gravity_probabilities",
+      "radiation_flows",
+      "radiation_probabilities"
+    ],
+    "n_agents": null,
+    "n_locations": null,
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "memory",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "reference_dir": "/home/gustavo/fastmob/tests/shared/skmob_reference/models",
+    "sleep_seconds": 0.5,
+    "suite": "models_location_large_scale",
+    "timestamp_utc": "2026-06-25T21:13:43.697232+00:00"
+  },
+  "results": [
+    {
+      "benchmark_group": "location_models",
+      "label": "10000 locations",
+      "metrics": {
+        "gravity_flows": {
+          "average_peak_memory_mb": 24474.347581863403,
+          "current_memory_mb": [],
+          "iterations_completed": 1,
+          "maximum_peak_memory_mb": 24474.347581863403,
+          "minimum_peak_memory_mb": 24474.347581863403,
+          "peak_memory_mb": [
+            24474.347581863403
+          ],
+          "status": "ok"
+        },
+        "gravity_probabilities": {
+          "average_peak_memory_mb": 20257.97297668457,
+          "current_memory_mb": [],
+          "iterations_completed": 1,
+          "maximum_peak_memory_mb": 20257.97297668457,
+          "minimum_peak_memory_mb": 20257.97297668457,
+          "peak_memory_mb": [
+            20257.97297668457
+          ],
+          "status": "ok"
+        },
+        "radiation_flows": {
+          "average_peak_memory_mb": 12224.063064575195,
+          "current_memory_mb": [],
+          "iterations_completed": 1,
+          "maximum_peak_memory_mb": 12224.063064575195,
+          "minimum_peak_memory_mb": 12224.063064575195,
+          "peak_memory_mb": [
+            12224.063064575195
+          ],
+          "status": "ok"
+        },
+        "radiation_probabilities": {
+          "average_peak_memory_mb": 37921.612380981445,
+          "current_memory_mb": [],
+          "iterations_completed": 1,
+          "maximum_peak_memory_mb": 37921.612380981445,
+          "minimum_peak_memory_mb": 37921.612380981445,
+          "peak_memory_mb": [
+            37921.612380981445
+          ],
+          "status": "ok"
+        }
+      },
+      "n_agents": null,
+      "n_locations": 10000
+    }
+  ]
+}

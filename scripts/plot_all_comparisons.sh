@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate marketing comparison plots for available fkmob speed benchmarks.
+# Generate marketing comparison plots for available fastmob speed benchmarks.
 
 set -uo pipefail
 
@@ -99,7 +99,7 @@ run_comparison() {
     local part
     part="$(order_part "$input_order")"
     local original_json="$RESULTS_DIR/skmob_${suite}_speed_${part}prebuilt_tdf.json"
-    local optimized_json="$RESULTS_DIR/fkmob_${suite}_speed_${part}${backend}.json"
+    local optimized_json="$RESULTS_DIR/fastmob_${suite}_speed_${part}${backend}.json"
 
     if [ ! -f "$optimized_json" ]; then
         echo "Skipping ${suite}/${backend}/${input_order}: missing $(basename "$optimized_json")"
@@ -112,7 +112,7 @@ run_comparison() {
     if [ -f "$original_json" ]; then
         cmd+=(--original-json "$original_json")
     else
-        echo "    missing $(basename "$original_json"); generating fkmob-only plot"
+        echo "    missing $(basename "$original_json"); generating fastmob-only plot"
         cmd+=(--standalone)
     fi
     if "${cmd[@]}" "$@"; then
@@ -166,11 +166,11 @@ done
 
 echo
 echo "==> Plotting models (unified: location-only + agent-based, small + large scale)"
-model_cmd=("$PYTHON" "$PLOT_SCRIPT" --suite models --optimized-json "$RESULTS_DIR/fkmob_models_speed.json" --large-json-fkmob "$RESULTS_DIR/fkmob_models_speed_large_scale.json" --large-loc-json-fkmob "$RESULTS_DIR/fkmob_models_speed_location_large_scale.json" --output-dir "$OUTPUT_DIR")
+model_cmd=("$PYTHON" "$PLOT_SCRIPT" --suite models --optimized-json "$RESULTS_DIR/fastmob_models_speed.json" --large-json-fastmob "$RESULTS_DIR/fastmob_models_speed_large_scale.json" --large-loc-json-fastmob "$RESULTS_DIR/fastmob_models_speed_location_large_scale.json" --output-dir "$OUTPUT_DIR")
 if [ -f "$RESULTS_DIR/skmob_models_speed.json" ]; then
     model_cmd+=(--original-json "$RESULTS_DIR/skmob_models_speed.json" --large-json-skmob "$RESULTS_DIR/skmob_models_speed_large_scale.json" --large-loc-json-skmob "$RESULTS_DIR/skmob_models_speed_location_large_scale.json")
 else
-    echo "    missing skmob_models_speed.json; generating fkmob-only model plots"
+    echo "    missing skmob_models_speed.json; generating fastmob-only model plots"
     model_cmd+=(--standalone)
 fi
 if "${model_cmd[@]}" "${PLOT_ARGS[@]}"; then
@@ -186,7 +186,7 @@ run_memory_comparison() {
     local backend="$2"
     shift 2
     local original_json="$RESULTS_DIR/skmob_${suite}_memory_prebuilt_tdf.json"
-    local optimized_json="$RESULTS_DIR/fkmob_${suite}_memory_${backend}.json"
+    local optimized_json="$RESULTS_DIR/fastmob_${suite}_memory_${backend}.json"
 
     if [ ! -f "$optimized_json" ]; then
         echo "Skipping ${suite}/${backend}/memory: missing $(basename "$optimized_json")"
@@ -199,7 +199,7 @@ run_memory_comparison() {
     if [ -f "$original_json" ]; then
         cmd+=(--original-json "$original_json")
     else
-        echo "    missing $(basename "$original_json"); generating fkmob-only memory plot"
+        echo "    missing $(basename "$original_json"); generating fastmob-only memory plot"
         cmd+=(--standalone)
     fi
     if "${cmd[@]}" "$@"; then
@@ -219,11 +219,11 @@ done
 
 echo
 echo "==> Plotting models memory (unified: location-only + agent-based, small + large scale)"
-model_memory_cmd=("$PYTHON" "$PLOT_SCRIPT" --suite models --profile memory --optimized-json "$RESULTS_DIR/fkmob_models_memory.json" --large-json-fkmob "$RESULTS_DIR/fkmob_models_memory_large_scale.json" --large-loc-json-fkmob "$RESULTS_DIR/fkmob_models_memory_location_large_scale.json" --output-dir "$OUTPUT_DIR")
+model_memory_cmd=("$PYTHON" "$PLOT_SCRIPT" --suite models --profile memory --optimized-json "$RESULTS_DIR/fastmob_models_memory.json" --large-json-fastmob "$RESULTS_DIR/fastmob_models_memory_large_scale.json" --large-loc-json-fastmob "$RESULTS_DIR/fastmob_models_memory_location_large_scale.json" --output-dir "$OUTPUT_DIR")
 if [ -f "$RESULTS_DIR/skmob_models_memory.json" ]; then
     model_memory_cmd+=(--original-json "$RESULTS_DIR/skmob_models_memory.json")
 else
-    echo "    missing skmob_models_memory.json; generating fkmob-only model memory plots"
+    echo "    missing skmob_models_memory.json; generating fastmob-only model memory plots"
     model_memory_cmd+=(--standalone)
 fi
 if "${model_memory_cmd[@]}" "${PLOT_ARGS[@]}"; then

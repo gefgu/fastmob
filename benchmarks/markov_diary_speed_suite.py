@@ -54,7 +54,7 @@ def load_diary_training(reference_dir: Path) -> pd.DataFrame:
 
 
 def fit_diary(diary_training: pd.DataFrame, n_individuals: int) -> Any:
-    from fkmob.models import MarkovDiaryGenerator
+    from fastmob.models import MarkovDiaryGenerator
 
     mdg = MarkovDiaryGenerator()
     mdg.fit(diary_training.copy(), n_individuals, lid="cluster")
@@ -149,7 +149,7 @@ def build_metadata(args: argparse.Namespace) -> dict[str, Any]:
     cpu = detect_cpu_info()
     return {
         "suite": "markov_diary",
-        "library": "fkmob",
+        "library": "fastmob",
         "python_version": sys.version,
         "platform": platform.platform(),
         "cpu_model": cpu["model"],
@@ -239,7 +239,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     payload = run_suite(args)
-    output_path = Path(args.output_dir) / "fkmob_markov_diary_speed.json"
+    output_path = Path(args.output_dir) / "fastmob_markov_diary_speed.json"
     write_json(payload, output_path)
     print(f"\nWrote results to {output_path}")
     return 0

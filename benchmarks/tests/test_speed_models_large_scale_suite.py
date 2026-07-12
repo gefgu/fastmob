@@ -13,7 +13,7 @@ def test_parse_args_accepts_metrics_filter():
     args = suite.parse_args(
         [
             "--library",
-            "fkmob",
+            "fastmob",
             "--mode",
             "trajectory",
             "--metrics",
@@ -37,7 +37,7 @@ def test_parse_args_accepts_metrics_filter():
 
 
 def test_location_mode_defaults_to_location_metrics():
-    args = suite.parse_args(["--library", "fkmob", "--mode", "location"])
+    args = suite.parse_args(["--library", "fastmob", "--mode", "location"])
 
     assert args.metrics == [spec.name for spec in suite.LOCATION_MODEL_BENCHMARKS]
     assert [spec.name for spec in suite.selected_specs(args)] == [

@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob/measures/visits/real_entropy.py."""
+"""Correctness tests for fastmob/measures/visits/real_entropy.py."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def _to_dict(df) -> dict:
 
 def test_real_entropy_known_values(synthetic_tdf):
     """Five distinct locations visited once each gives real_entropy == log2(5)."""
-    from fkmob.measures.individual.real_entropy import real_entropy
+    from fastmob.measures.individual.real_entropy import real_entropy
 
     result = real_entropy(synthetic_tdf)
     mapping = _to_dict(result)
@@ -78,7 +78,7 @@ def test_real_entropy_known_values(synthetic_tdf):
 
 def test_real_entropy_repeated_location():
     """A sequence with repeated visits captures temporal correlations."""
-    from fkmob.measures.individual.real_entropy import real_entropy
+    from fastmob.measures.individual.real_entropy import real_entropy
 
     # User "a": alternates between two locations — strong temporal structure
     df = pd.DataFrame(
@@ -99,7 +99,7 @@ def test_real_entropy_repeated_location():
 
 def test_real_entropy_single_location():
     """A user with one observation has real_entropy == 0 (length-1 sequence)."""
-    from fkmob.measures.individual.real_entropy import real_entropy
+    from fastmob.measures.individual.real_entropy import real_entropy
 
     # The Kontoyiannis estimator returns 0.0 only for sequences of length <= 1.
     # Use a single observation to exercise that path.
@@ -118,7 +118,7 @@ def test_real_entropy_single_location():
 
 def test_real_entropy_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from fkmob.measures.individual.real_entropy import real_entropy
+    from fastmob.measures.individual.real_entropy import real_entropy
 
     df = pd.DataFrame(
         {
@@ -140,7 +140,7 @@ def test_real_entropy_no_uid():
 
 def test_real_entropy_multiple_users_independent():
     """Each user's entropy is computed independently from others."""
-    from fkmob.measures.individual.real_entropy import real_entropy
+    from fastmob.measures.individual.real_entropy import real_entropy
 
     df = pd.DataFrame(
         {
@@ -163,7 +163,7 @@ def test_real_entropy_multiple_users_independent():
 
 def test_real_entropy_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    from fkmob.measures.individual.real_entropy import real_entropy
+    from fastmob.measures.individual.real_entropy import real_entropy
 
     result = real_entropy(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -177,7 +177,7 @@ def test_real_entropy_polars_known_values(synthetic_tdf_polars):
 
 def test_real_entropy_output_backend_matches_input(synthetic_tdf):
     """Result backend matches the input backend (pandas in, pandas out)."""
-    from fkmob.measures.individual.real_entropy import real_entropy
+    from fastmob.measures.individual.real_entropy import real_entropy
 
     result = real_entropy(synthetic_tdf)
     assert isinstance(result, pd.DataFrame), f"Expected pandas DataFrame, got {type(result)}"
@@ -185,14 +185,14 @@ def test_real_entropy_output_backend_matches_input(synthetic_tdf):
 
 @pytest.mark.skmob
 def test_real_entropy_matches_skmob(comparison_skmob):
-    """fkmob result matches skmob on each comparison dataset."""
+    """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import real_entropy as skmob_re
-    from fkmob.measures.individual.real_entropy import real_entropy as fkmob_re
+    from fastmob.measures.individual.real_entropy import real_entropy as fastmob_re
 
     skmob_result = skmob_re(comparison_skmob)
-    fkmob_input = pd.DataFrame(comparison_skmob).copy()
-    fkmob_result = fkmob_re(fkmob_input)
+    fastmob_input = pd.DataFrame(comparison_skmob).copy()
+    fastmob_result = fastmob_re(fastmob_input)
 
     skmob_dict = dict(
         zip(
@@ -200,30 +200,30 @@ def test_real_entropy_matches_skmob(comparison_skmob):
             skmob_result["real_entropy"].tolist(),
         )
     )
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert math.isclose(skmob_dict[uid], fkmob_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert math.isclose(skmob_dict[uid], fastmob_dict[uid], rel_tol=1e-5), (
+            f"uid={uid}: skmob={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
         )
 
 
 def test_real_entropy_matches_cached_reference(comparison_skmob_reference):
     """real_entropy matches the cached skmob baseline without requiring the skmob environment."""
-    from fkmob.measures.individual.real_entropy import real_entropy as fkmob_re
+    from fastmob.measures.individual.real_entropy import real_entropy as fastmob_re
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("real_entropy")
-    fkmob_result = fkmob_re(ref.input_df)
+    fastmob_result = fastmob_re(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["real_entropy"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert math.isclose(skmob_dict[uid], fkmob_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert math.isclose(skmob_dict[uid], fastmob_dict[uid], rel_tol=1e-5), (
+            f"uid={uid}: cached={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
         )

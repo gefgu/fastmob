@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import pandas as pd
 import pytest
-from fkmob.models import (
+from fastmob.models import (
     EPR,
     DensityEPR,
     Ditras,
@@ -34,7 +34,7 @@ def _tessellation(n: int = 4) -> pd.DataFrame:
 
 
 def _distance_matrix(tessellation: pd.DataFrame) -> np.ndarray:
-    from fkmob.models.gravity import compute_distance_matrix
+    from fastmob.models.gravity import compute_distance_matrix
 
     return compute_distance_matrix(tessellation, np.arange(len(tessellation)))
 
@@ -44,7 +44,7 @@ def _native_frame(df):
 
 
 def _always_away_diary_generator() -> MarkovDiaryGenerator:
-    from fkmob import _core
+    from fastmob import _core
 
     n_states = 48
     probs = np.zeros(n_states * n_states, dtype=float)
@@ -100,8 +100,8 @@ def test_gravity_generate_matches_formula(deterrence_func_type, args, deterrence
 
 
 def test_core_gravity_kernel_matches_formula():
-    pytest.importorskip("fkmob._core")
-    from fkmob import _core
+    pytest.importorskip("fastmob._core")
+    from fastmob import _core
 
     tess = _tessellation()
     expected = _expected_gravity(tess, lambda x: powerlaw_deterrence_func(x, -2.0), "singly constrained", "flows")
@@ -123,8 +123,8 @@ def test_core_gravity_kernel_matches_formula():
 
 
 def test_core_gravity_od_row_kernel_matches_formula():
-    pytest.importorskip("fkmob._core")
-    from fkmob import _core
+    pytest.importorskip("fastmob._core")
+    from fastmob import _core
 
     tess = _tessellation()
     expected = _expected_gravity(
@@ -177,8 +177,8 @@ def test_radiation_generate_shapes(out_format):
 
 
 def test_core_radiation_kernel_matches_python_probabilities():
-    pytest.importorskip("fkmob._core")
-    from fkmob import _core
+    pytest.importorskip("fastmob._core")
+    from fastmob import _core
 
     tess = _tessellation()
     model = Radiation()
@@ -255,7 +255,7 @@ def test_markov_diary_generator_fit_and_generate():
 
 
 def test_markov_diary_generator_fit_matches_legacy_python_preparation():
-    from fkmob import _core
+    from fastmob import _core
 
     traj = pd.DataFrame(
         {
@@ -364,7 +364,7 @@ def test_sts_epr_generates_trajectory():
 
 
 def test_sts_epr_does_not_build_default_distance_matrix(monkeypatch):
-    sts_module = importlib.import_module("fkmob.models.sts_epr")
+    sts_module = importlib.import_module("fastmob.models.sts_epr")
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 01:00:00")
     mdg = MarkovDiaryGenerator()
@@ -549,12 +549,12 @@ def test_ditras_custom_gravity_changes_exploration_distribution():
 
 
 def test_cluster_imports_without_scikit_learn_until_called(monkeypatch):
-    cluster_mod = importlib.import_module("fkmob.preprocessing._cluster")
+    cluster_mod = importlib.import_module("fastmob.preprocessing._cluster")
 
     monkeypatch.setitem(sys.modules, "sklearn", None)
     monkeypatch.setitem(sys.modules, "sklearn.cluster", None)
 
-    with pytest.raises(ImportError, match=r"pip install fkmob\[ai\]"):
+    with pytest.raises(ImportError, match=r"pip install fastmob\[ai\]"):
         cluster_mod._dbscan_cls()
 
 

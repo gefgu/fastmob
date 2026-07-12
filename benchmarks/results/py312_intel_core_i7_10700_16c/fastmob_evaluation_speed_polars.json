@@ -1,0 +1,779 @@
+{
+  "metadata": {
+    "input_source": "synthetic",
+    "input_type": "numpy.ndarray",
+    "iterations": 5,
+    "library": "fastmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "seed": 20260608,
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "sleep_seconds": 0.5,
+    "suite": "evaluation",
+    "timestamp_utc": "2026-06-09T02:38:27.037285+00:00"
+  },
+  "results": [
+    {
+      "input_source": "synthetic",
+      "label": "1k",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_seconds": 0.00012310845777392388,
+          "iterations_completed": 5,
+          "minimum_seconds": 4.314631223678589e-05,
+          "status": "ok",
+          "times_seconds": [
+            4.314631223678589e-05,
+            5.573593080043793e-05,
+            4.643900319933891e-05,
+            0.00027356483042240143,
+            0.0001966562122106552
+          ]
+        },
+        "common_part_of_commuters_distance": {
+          "average_seconds": 0.0005261019803583622,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00020497338846325874,
+          "status": "ok",
+          "times_seconds": [
+            0.000604777131229639,
+            0.00020497338846325874,
+            0.0006045480258762836,
+            0.0006380882114171982,
+            0.0005781231448054314
+          ]
+        },
+        "common_part_of_links": {
+          "average_seconds": 0.0002733537927269936,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00023803580552339554,
+          "status": "ok",
+          "times_seconds": [
+            0.00030215131118893623,
+            0.00023803580552339554,
+            0.0003079371526837349,
+            0.0002449527382850647,
+            0.00027369195595383644
+          ]
+        },
+        "information_gain": {
+          "average_seconds": 0.00026189135387539865,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00024456484243273735,
+          "status": "ok",
+          "times_seconds": [
+            0.0002461369149386883,
+            0.00027213292196393013,
+            0.00027168309316039085,
+            0.00027493899688124657,
+            0.00024456484243273735
+          ]
+        },
+        "kullback_leibler_divergence": {
+          "average_seconds": 0.0016091558150947093,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001552120316773653,
+          "status": "ok",
+          "times_seconds": [
+            0.001624181866645813,
+            0.0015563452616333961,
+            0.0015692799352109432,
+            0.001552120316773653,
+            0.0017438516952097416
+          ]
+        },
+        "max_error": {
+          "average_seconds": 0.00017150482162833213,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0001582312397658825,
+          "status": "ok",
+          "times_seconds": [
+            0.0001582312397658825,
+            0.0001627318561077118,
+            0.00016422709450125694,
+            0.0001779072917997837,
+            0.00019442662596702576
+          ]
+        },
+        "nrmse": {
+          "average_seconds": 0.00024096397683024407,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00010675517842173576,
+          "status": "ok",
+          "times_seconds": [
+            0.00026970868930220604,
+            0.0002678711898624897,
+            0.00032028602436184883,
+            0.00024019880220294,
+            0.00010675517842173576
+          ]
+        },
+        "pearson_correlation": {
+          "average_seconds": 0.0019878897815942763,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0018618977628648281,
+          "status": "ok",
+          "times_seconds": [
+            0.0021026330068707466,
+            0.0019748490303754807,
+            0.002039325889199972,
+            0.0018618977628648281,
+            0.0019607432186603546
+          ]
+        },
+        "r_squared": {
+          "average_seconds": 0.0002180728130042553,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0001028883270919323,
+          "status": "ok",
+          "times_seconds": [
+            0.0003241109661757946,
+            0.0002723117358982563,
+            0.00010923109948635101,
+            0.00028182193636894226,
+            0.0001028883270919323
+          ]
+        },
+        "rmse": {
+          "average_seconds": 0.000206801388412714,
+          "iterations_completed": 5,
+          "minimum_seconds": 6.531178951263428e-05,
+          "status": "ok",
+          "times_seconds": [
+            6.531178951263428e-05,
+            0.00025845179334282875,
+            0.0002321610227227211,
+            0.00025831395760178566,
+            0.00021976837888360023
+          ]
+        },
+        "spearman_correlation": {
+          "average_seconds": 0.0028176737017929555,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.002733079716563225,
+          "status": "ok",
+          "times_seconds": [
+            0.0028683487325906754,
+            0.002923346124589443,
+            0.002737696748226881,
+            0.002733079716563225,
+            0.0028258971869945526
+          ]
+        }
+      },
+      "size": 1000,
+      "values": 1000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "10k",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_seconds": 0.0002736278809607029,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0002560163848102093,
+          "status": "ok",
+          "times_seconds": [
+            0.00029351096600294113,
+            0.00028210505843162537,
+            0.00026720017194747925,
+            0.0002560163848102093,
+            0.00026930682361125946
+          ]
+        },
+        "common_part_of_commuters_distance": {
+          "average_seconds": 0.0013203810900449752,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001315161120146513,
+          "status": "ok",
+          "times_seconds": [
+            0.0013228566385805607,
+            0.001315161120146513,
+            0.0013234377838671207,
+            0.0013228529132902622,
+            0.0013175969943404198
+          ]
+        },
+        "common_part_of_links": {
+          "average_seconds": 0.00037524690851569175,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0003516268916428089,
+          "status": "ok",
+          "times_seconds": [
+            0.0003516268916428089,
+            0.00040506990626454353,
+            0.00035847490653395653,
+            0.00039628706872463226,
+            0.00036477576941251755
+          ]
+        },
+        "information_gain": {
+          "average_seconds": 0.0007560321129858494,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.000699944794178009,
+          "status": "ok",
+          "times_seconds": [
+            0.0007839198224246502,
+            0.0008322610519826412,
+            0.0007322980090975761,
+            0.000699944794178009,
+            0.0007317368872463703
+          ]
+        },
+        "kullback_leibler_divergence": {
+          "average_seconds": 0.001865389570593834,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.000784341711550951,
+          "status": "ok",
+          "times_seconds": [
+            0.0021595172584056854,
+            0.0020883167162537575,
+            0.000784341711550951,
+            0.0020889900624752045,
+            0.0022057821042835712
+          ]
+        },
+        "max_error": {
+          "average_seconds": 0.00019791070371866226,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00018835579976439476,
+          "status": "ok",
+          "times_seconds": [
+            0.00018835579976439476,
+            0.00019831210374832153,
+            0.00019731279462575912,
+            0.00020252587273716927,
+            0.00020304694771766663
+          ]
+        },
+        "nrmse": {
+          "average_seconds": 0.0003368258476257324,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00030317576602101326,
+          "status": "ok",
+          "times_seconds": [
+            0.00030317576602101326,
+            0.00031497515738010406,
+            0.00032952288165688515,
+            0.0003263251855969429,
+            0.00041013024747371674
+          ]
+        },
+        "pearson_correlation": {
+          "average_seconds": 0.002248129900544882,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0021927128545939922,
+          "status": "ok",
+          "times_seconds": [
+            0.0021927128545939922,
+            0.002219793386757374,
+            0.002279893960803747,
+            0.002312655095010996,
+            0.0022355942055583
+          ]
+        },
+        "r_squared": {
+          "average_seconds": 0.00040349168702960017,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00039977720007300377,
+          "status": "ok",
+          "times_seconds": [
+            0.0004000500775873661,
+            0.00040331901982426643,
+            0.0004012659192085266,
+            0.00039977720007300377,
+            0.0004130462184548378
+          ]
+        },
+        "rmse": {
+          "average_seconds": 0.0002794613130390644,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00025820592418313026,
+          "status": "ok",
+          "times_seconds": [
+            0.00032358476892113686,
+            0.00026836805045604706,
+            0.0002750777639448643,
+            0.00025820592418313026,
+            0.0002720700576901436
+          ]
+        },
+        "spearman_correlation": {
+          "average_seconds": 0.007664946746081114,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006330413743853569,
+          "status": "ok",
+          "times_seconds": [
+            0.006330413743853569,
+            0.006737702991813421,
+            0.009499222040176392,
+            0.0063421162776649,
+            0.009415278676897287
+          ]
+        }
+      },
+      "size": 10000,
+      "values": 10000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "100k",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_seconds": 0.000921658705919981,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0008762078359723091,
+          "status": "ok",
+          "times_seconds": [
+            0.0008762078359723091,
+            0.0008835396729409695,
+            0.0008947020396590233,
+            0.0010246280580759048,
+            0.0009292159229516983
+          ]
+        },
+        "common_part_of_commuters_distance": {
+          "average_seconds": 0.007465173397213221,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005957173183560371,
+          "status": "ok",
+          "times_seconds": [
+            0.005957173183560371,
+            0.009207804687321186,
+            0.006422344129532576,
+            0.009139320813119411,
+            0.0065992241725325584
+          ]
+        },
+        "common_part_of_links": {
+          "average_seconds": 0.004644191358238459,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.004527296405285597,
+          "status": "ok",
+          "times_seconds": [
+            0.004645143635571003,
+            0.004650565795600414,
+            0.004527296405285597,
+            0.004751876927912235,
+            0.004646074026823044
+          ]
+        },
+        "information_gain": {
+          "average_seconds": 0.0017804120667278766,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001550843007862568,
+          "status": "ok",
+          "times_seconds": [
+            0.001847804058343172,
+            0.0015555750578641891,
+            0.0023951581679284573,
+            0.001550843007862568,
+            0.001552680041640997
+          ]
+        },
+        "kullback_leibler_divergence": {
+          "average_seconds": 0.0016398275271058082,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0015154751017689705,
+          "status": "ok",
+          "times_seconds": [
+            0.001674668863415718,
+            0.0017789867706596851,
+            0.0015719379298388958,
+            0.0015154751017689705,
+            0.0016580689698457718
+          ]
+        },
+        "max_error": {
+          "average_seconds": 0.000501762144267559,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00021318299695849419,
+          "status": "ok",
+          "times_seconds": [
+            0.0005252012051641941,
+            0.00021318299695849419,
+            0.00022913608700037003,
+            0.0008074534125626087,
+            0.0007338370196521282
+          ]
+        },
+        "nrmse": {
+          "average_seconds": 0.0006033055484294892,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0003205500543117523,
+          "status": "ok",
+          "times_seconds": [
+            0.0007858006283640862,
+            0.0011378731578588486,
+            0.0004262831062078476,
+            0.00034602079540491104,
+            0.0003205500543117523
+          ]
+        },
+        "pearson_correlation": {
+          "average_seconds": 0.0037660212256014347,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0021238592453300953,
+          "status": "ok",
+          "times_seconds": [
+            0.0021238592453300953,
+            0.002147404942661524,
+            0.01006707502529025,
+            0.0023467158898711205,
+            0.002145051024854183
+          ]
+        },
+        "r_squared": {
+          "average_seconds": 0.0013256896287202834,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0004391120746731758,
+          "status": "ok",
+          "times_seconds": [
+            0.0015026130713522434,
+            0.0015356820076704025,
+            0.0014989427290856838,
+            0.001652098260819912,
+            0.0004391120746731758
+          ]
+        },
+        "rmse": {
+          "average_seconds": 0.000556445587426424,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0002697180025279522,
+          "status": "ok",
+          "times_seconds": [
+            0.0002697180025279522,
+            0.0003973911516368389,
+            0.00040846923366189003,
+            0.0014300327748060226,
+            0.00027661677449941635
+          ]
+        },
+        "spearman_correlation": {
+          "average_seconds": 0.01901116715744138,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.01872555585578084,
+          "status": "ok",
+          "times_seconds": [
+            0.01872555585578084,
+            0.019056311808526516,
+            0.019013287033885717,
+            0.01897239312529564,
+            0.019288287963718176
+          ]
+        }
+      },
+      "size": 100000,
+      "values": 100000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "1M",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_seconds": 0.0042270665988326074,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.002270570956170559,
+          "status": "ok",
+          "times_seconds": [
+            0.002270570956170559,
+            0.002325509674847126,
+            0.0022921301424503326,
+            0.006154052913188934,
+            0.008093069307506084
+          ]
+        },
+        "common_part_of_commuters_distance": {
+          "average_seconds": 0.02532212631776929,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.015797553583979607,
+          "status": "ok",
+          "times_seconds": [
+            0.018607864156365395,
+            0.016064395662397146,
+            0.020073488354682922,
+            0.056067329831421375,
+            0.015797553583979607
+          ]
+        },
+        "common_part_of_links": {
+          "average_seconds": 0.021871662884950637,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010208759922534227,
+          "status": "ok",
+          "times_seconds": [
+            0.03763233590871096,
+            0.03933808300644159,
+            0.010890620294958353,
+            0.010208759922534227,
+            0.011288515292108059
+          ]
+        },
+        "information_gain": {
+          "average_seconds": 0.021213695872575045,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013505158014595509,
+          "status": "ok",
+          "times_seconds": [
+            0.017622395884245634,
+            0.01613899925723672,
+            0.045286851935088634,
+            0.013515074271708727,
+            0.013505158014595509
+          ]
+        },
+        "kullback_leibler_divergence": {
+          "average_seconds": 0.012301687058061362,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.011981889139860868,
+          "status": "ok",
+          "times_seconds": [
+            0.012083186767995358,
+            0.012025706004351377,
+            0.011981889139860868,
+            0.012117526959627867,
+            0.013300126418471336
+          ]
+        },
+        "max_error": {
+          "average_seconds": 0.0014823388308286666,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0014007380232214928,
+          "status": "ok",
+          "times_seconds": [
+            0.0017093350179493427,
+            0.0014272970147430897,
+            0.0014650090597569942,
+            0.001409315038472414,
+            0.0014007380232214928
+          ]
+        },
+        "nrmse": {
+          "average_seconds": 0.0031606231816112993,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.002234851010143757,
+          "status": "ok",
+          "times_seconds": [
+            0.0024323370307683945,
+            0.002234851010143757,
+            0.006302642170339823,
+            0.00230787368491292,
+            0.0025254120118916035
+          ]
+        },
+        "pearson_correlation": {
+          "average_seconds": 0.034006955567747355,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.025355164892971516,
+          "status": "ok",
+          "times_seconds": [
+            0.029068582225590944,
+            0.025355164892971516,
+            0.062497160863131285,
+            0.027646177913993597,
+            0.02546769194304943
+          ]
+        },
+        "r_squared": {
+          "average_seconds": 0.00606157910078764,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0034863101318478584,
+          "status": "ok",
+          "times_seconds": [
+            0.0040645841509103775,
+            0.015587531961500645,
+            0.0035474360920488834,
+            0.0034863101318478584,
+            0.003622033167630434
+          ]
+        },
+        "rmse": {
+          "average_seconds": 0.001947753131389618,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001859042327851057,
+          "status": "ok",
+          "times_seconds": [
+            0.002031091134995222,
+            0.002081525046378374,
+            0.001907981000840664,
+            0.001859042327851057,
+            0.0018591261468827724
+          ]
+        },
+        "spearman_correlation": {
+          "average_seconds": 0.2482832098379731,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.24681999441236258,
+          "status": "ok",
+          "times_seconds": [
+            0.24681999441236258,
+            0.249143626075238,
+            0.24844605708494782,
+            0.24827765533700585,
+            0.24872871628031135
+          ]
+        }
+      },
+      "size": 1000000,
+      "values": 1000000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "4M",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_seconds": 0.01007346473634243,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008616445120424032,
+          "status": "ok",
+          "times_seconds": [
+            0.008725429885089397,
+            0.009060471784323454,
+            0.008616445120424032,
+            0.010783379897475243,
+            0.013181596994400024
+          ]
+        },
+        "common_part_of_commuters_distance": {
+          "average_seconds": 0.08058833219110965,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06647252198308706,
+          "status": "ok",
+          "times_seconds": [
+            0.06647252198308706,
+            0.09945009183138609,
+            0.06708537507802248,
+            0.10331102600321174,
+            0.06662264605984092
+          ]
+        },
+        "common_part_of_links": {
+          "average_seconds": 0.06461210092529654,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04271501023322344,
+          "status": "ok",
+          "times_seconds": [
+            0.07867996022105217,
+            0.07963752187788486,
+            0.04271501023322344,
+            0.04280906729400158,
+            0.07921894500032067
+          ]
+        },
+        "information_gain": {
+          "average_seconds": 0.06565249310806394,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.05750420829281211,
+          "status": "ok",
+          "times_seconds": [
+            0.0973496288061142,
+            0.05750420829281211,
+            0.057683068327605724,
+            0.05786135978996754,
+            0.057864200323820114
+          ]
+        },
+        "kullback_leibler_divergence": {
+          "average_seconds": 0.047309248521924016,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04706301912665367,
+          "status": "ok",
+          "times_seconds": [
+            0.047601611353456974,
+            0.04747010115534067,
+            0.047071882989257574,
+            0.04706301912665367,
+            0.0473396279849112
+          ]
+        },
+        "max_error": {
+          "average_seconds": 0.005655075050890445,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005607803352177143,
+          "status": "ok",
+          "times_seconds": [
+            0.005628886166960001,
+            0.005607803352177143,
+            0.005634368862956762,
+            0.005747300107032061,
+            0.0056570167653262615
+          ]
+        },
+        "nrmse": {
+          "average_seconds": 0.013481689151376486,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013101191725581884,
+          "status": "ok",
+          "times_seconds": [
+            0.013465811964124441,
+            0.013172346632927656,
+            0.013627495616674423,
+            0.013101191725581884,
+            0.014041599817574024
+          ]
+        },
+        "pearson_correlation": {
+          "average_seconds": 0.13148802388459443,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.10232105012983084,
+          "status": "ok",
+          "times_seconds": [
+            0.14090533321723342,
+            0.14145593997091055,
+            0.10232105012983084,
+            0.13575650984421372,
+            0.13700128626078367
+          ]
+        },
+        "r_squared": {
+          "average_seconds": 0.03025833759456873,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.019030728843063116,
+          "status": "ok",
+          "times_seconds": [
+            0.046997256111353636,
+            0.01951665710657835,
+            0.019066530279815197,
+            0.04668051563203335,
+            0.019030728843063116
+          ]
+        },
+        "rmse": {
+          "average_seconds": 0.014651701878756284,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.01160590723156929,
+          "status": "ok",
+          "times_seconds": [
+            0.01176845608279109,
+            0.026180833112448454,
+            0.01160590723156929,
+            0.011810481082648039,
+            0.01189283188432455
+          ]
+        },
+        "spearman_correlation": {
+          "average_seconds": 1.219605422206223,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.2186414520256221,
+          "status": "ok",
+          "times_seconds": [
+            1.2186414520256221,
+            1.2187653500586748,
+            1.2207514503970742,
+            1.2199298236519098,
+            1.219939034897834
+          ]
+        }
+      },
+      "size": 4000000,
+      "values": 4000000
+    }
+  ]
+}

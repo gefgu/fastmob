@@ -1,11 +1,11 @@
-"""Large-scale statistical correctness baseline for fkmob model generation.
+"""Large-scale statistical correctness baseline for fastmob model generation.
 
 Generates N_RUNS independent runs of each model spec at N=10000 tiles, computes all
 pairwise Wasserstein-based comparison metrics between runs, and stores the resulting
 percentile distributions as a JSON file.
 
 The resulting baseline JSON is committed to tests/shared/ and used by
-tests/correctness/models/test_large_scale_parity.py to verify fkmob self-consistency
+tests/correctness/models/test_large_scale_parity.py to verify fastmob self-consistency
 at realistic tessellation scale.
 
 Each spec is saved incrementally so partial results are preserved on interruption.
@@ -94,8 +94,8 @@ def _rng_starting_locs(n_agents: int, n_locs: int, seed: int) -> list[int]:
     return rng.choice(n_locs, size=n_agents, replace=True).tolist()
 
 
-def _import_fkmob_models() -> dict[str, Any]:
-    mod = importlib.import_module("fkmob.models")
+def _import_fastmob_models() -> dict[str, Any]:
+    mod = importlib.import_module("fastmob.models")
     return {
         "EPR": mod.EPR,
         "DensityEPR": mod.DensityEPR,
@@ -117,7 +117,7 @@ def generate_one_large_run(
     Uses random starting locations sampled from the tessellation (not sequential
     indices) so all agents start at valid tile IDs even when n_agents > n_locs.
     """
-    classes = _import_fkmob_models()
+    classes = _import_fastmob_models()
     n_locs = len(tessellation)
     n_agents = spec.kwargs["n_agents"] if "n_agents" in spec.kwargs else 20
 
@@ -263,7 +263,7 @@ def _save(output_path: Path, metadata: dict[str, Any], baseline: dict[str, Any])
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Compute large-scale statistical baseline for fkmob model generation."
+        description="Compute large-scale statistical baseline for fastmob model generation."
     )
     parser.add_argument("--size", type=int, default=DEFAULT_SIZE, help="Tessellation tile count")
     parser.add_argument(
@@ -293,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
     baseline: dict[str, Any] = dict(existing.get("baseline", {}))
 
     metadata: dict[str, Any] = {
-        "library": "fkmob",
+        "library": "fastmob",
         "tessellation_size": len(tessellation),
         "spec_n_runs": LARGE_SPEC_N_RUNS,
         "model_start_epr": MODEL_START_EPR,

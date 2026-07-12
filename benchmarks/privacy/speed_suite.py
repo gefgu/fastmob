@@ -2,7 +2,7 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/privacy/speed_suite.py --library fkmob --backend both
+    python benchmarks/privacy/speed_suite.py --library fastmob --backend both
     python benchmarks/privacy/speed_suite.py --library skmob
 """
 
@@ -90,10 +90,10 @@ def build_output_path(
     profile: str = "speed",
 ) -> Path:
     order_part = "" if input_order == "raw" else f"{input_order}_"
-    if library == "fkmob":
+    if library == "fastmob":
         if backend is None or backend == "both":
-            raise ValueError("fkmob output path requires a concrete backend")
-        filename = f"fkmob_privacy_{profile}_{order_part}{backend}.json"
+            raise ValueError("fastmob output path requires a concrete backend")
+        filename = f"fastmob_privacy_{profile}_{order_part}{backend}.json"
     else:
         filename = f"skmob_privacy_{profile}_{order_part}{timing_mode}.json"
     return output_dir / filename
@@ -120,7 +120,7 @@ def nonnegative_float(value: str) -> float:
 
 
 def import_attack(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
-    module_path = "fkmob.privacy.attacks" if library == "fkmob" else "skmob.privacy.attacks"
+    module_path = "fastmob.privacy.attacks" if library == "fastmob" else "skmob.privacy.attacks"
     try:
         module = importlib.import_module(module_path)
         attack_cls = getattr(module, spec.class_name)
@@ -308,7 +308,7 @@ def benchmark_attack(
         return skipped_result(str(exc), profile)
 
     assess_kwargs = dict(spec.assess_kwargs)
-    if library == "fkmob" and input_order == "sorted":
+    if library == "fastmob" and input_order == "sorted":
         assess_kwargs["presorted"] = True
 
     try:
@@ -325,7 +325,7 @@ def benchmark_attack(
         return error_result(str(exc), profile)
 
 
-def benchmark_fkmob(
+def benchmark_fastmob(
     df: Any,
     *,
     iterations: int,
@@ -339,7 +339,7 @@ def benchmark_fkmob(
         "metrics": {
             spec.name: benchmark_attack(
                 spec,
-                "fkmob",
+                "fastmob",
                 lambda df=df: df,
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
@@ -457,10 +457,10 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
     if not data_path.exists():
         raise SystemExit(f"Dataset not found at {data_path}.")
 
-    if args.library == "fkmob":
+    if args.library == "fastmob":
         selected_backend = backend or args.backend
         if selected_backend == "both":
-            raise ValueError("run_suite requires a concrete backend when library is fkmob")
+            raise ValueError("run_suite requires a concrete backend when library is fastmob")
         if selected_backend == "pandas":
             input_type = "pandas.DataFrame"
         else:
@@ -484,7 +484,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         return {
             "metadata": metadata,
             "results": [
-                benchmark_fkmob(
+                benchmark_fastmob(
                     df,
                     iterations=args.iterations,
                     sleep_seconds=args.sleep_seconds,
@@ -531,7 +531,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
 
 
 def concrete_backends(args: argparse.Namespace) -> Iterable[str | None]:
-    if args.library != "fkmob":
+    if args.library != "fastmob":
         return (None,)
     if args.backend == "both":
         return ("pandas", "polars")
@@ -546,7 +546,7 @@ def concrete_input_orders(args: argparse.Namespace) -> Iterable[str]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone privacy attack speed benchmarks.")
-    parser.add_argument("--library", choices=["fkmob", "skmob"], required=True)
+    parser.add_argument("--library", choices=["fastmob", "skmob"], required=True)
     parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")

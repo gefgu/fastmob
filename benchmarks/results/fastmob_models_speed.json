@@ -1,0 +1,884 @@
+{
+  "metadata": {
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 5,
+    "library": "fastmob",
+    "n_agents": [
+      2,
+      10,
+      50
+    ],
+    "n_locations": [
+      12,
+      50,
+      200
+    ],
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.11.4 (main, Jul  5 2023, 14:15:25) [GCC 11.2.0]",
+    "reference_dir": "/home/gustavo/fastmob/tests/shared/skmob_reference/models",
+    "sleep_seconds": 0.5,
+    "suite": "models",
+    "timestamp_utc": "2026-05-16T23:31:26.005791+00:00"
+  },
+  "results": [
+    {
+      "benchmark_group": "location_models",
+      "label": "12 locations",
+      "metrics": {
+        "gravity_flows": {
+          "average_seconds": 0.006514967791736126,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005895735986996442,
+          "status": "ok",
+          "times_seconds": [
+            0.0069925590069033206,
+            0.005895735986996442,
+            0.006692254974041134,
+            0.006507460959255695,
+            0.006486828031484038
+          ]
+        },
+        "gravity_probabilities": {
+          "average_seconds": 0.006129464402329176,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00591437000548467,
+          "status": "ok",
+          "times_seconds": [
+            0.0064116709982044995,
+            0.006135137984529138,
+            0.006062665022909641,
+            0.0061234780005179346,
+            0.00591437000548467
+          ]
+        },
+        "radiation_flows": {
+          "average_seconds": 0.0061450642067939045,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005563708953559399,
+          "status": "ok",
+          "times_seconds": [
+            0.006418390024919063,
+            0.006305655988398939,
+            0.006281168025452644,
+            0.005563708953559399,
+            0.006156398041639477
+          ]
+        },
+        "radiation_probabilities": {
+          "average_seconds": 0.005816957610659301,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.005714179016649723,
+          "status": "ok",
+          "times_seconds": [
+            0.005947959027253091,
+            0.0057917460217140615,
+            0.005804276966955513,
+            0.005826627020724118,
+            0.005714179016649723
+          ]
+        }
+      },
+      "n_agents": null,
+      "n_locations": 12
+    },
+    {
+      "benchmark_group": "location_models",
+      "label": "50 locations",
+      "metrics": {
+        "gravity_flows": {
+          "average_seconds": 0.008004242402967066,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006595131999347359,
+          "status": "ok",
+          "times_seconds": [
+            0.006595131999347359,
+            0.006927973998244852,
+            0.006637234007939696,
+            0.010038326028734446,
+            0.009822545980568975
+          ]
+        },
+        "gravity_probabilities": {
+          "average_seconds": 0.009138926398009062,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0065317630069330335,
+          "status": "ok",
+          "times_seconds": [
+            0.009663231030572206,
+            0.009755831968504936,
+            0.009756513987667859,
+            0.0065317630069330335,
+            0.009987291996367276
+          ]
+        },
+        "radiation_flows": {
+          "average_seconds": 0.00787765479180962,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0064928699866868556,
+          "status": "ok",
+          "times_seconds": [
+            0.009826707013417035,
+            0.009641842974815518,
+            0.0064928699866868556,
+            0.0067068570060655475,
+            0.006719996978063136
+          ]
+        },
+        "radiation_probabilities": {
+          "average_seconds": 0.009360748191829771,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007200666994322091,
+          "status": "ok",
+          "times_seconds": [
+            0.012335084960795939,
+            0.007200666994322091,
+            0.010034112026914954,
+            0.009983994998037815,
+            0.007249881979078054
+          ]
+        }
+      },
+      "n_agents": null,
+      "n_locations": 50
+    },
+    {
+      "benchmark_group": "location_models",
+      "label": "200 locations",
+      "metrics": {
+        "gravity_flows": {
+          "average_seconds": 0.046691735787317154,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.02110343100503087,
+          "status": "ok",
+          "times_seconds": [
+            0.022023606987204403,
+            0.08446133398683742,
+            0.02110343100503087,
+            0.05818689399166033,
+            0.04768341296585277
+          ]
+        },
+        "gravity_probabilities": {
+          "average_seconds": 0.039472270605619995,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.020541222009342164,
+          "status": "ok",
+          "times_seconds": [
+            0.04810071300016716,
+            0.020541222009342164,
+            0.04902085504727438,
+            0.05566777195781469,
+            0.024030791013501585
+          ]
+        },
+        "radiation_flows": {
+          "average_seconds": 0.03549343519844115,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.017239468987099826,
+          "status": "ok",
+          "times_seconds": [
+            0.05044308700598776,
+            0.0440601350273937,
+            0.017239468987099826,
+            0.04455176601186395,
+            0.021172718959860504
+          ]
+        },
+        "radiation_probabilities": {
+          "average_seconds": 0.050102900224737824,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.026635832036845386,
+          "status": "ok",
+          "times_seconds": [
+            0.05612606304930523,
+            0.05606293404707685,
+            0.057402384001761675,
+            0.026635832036845386,
+            0.05428728798869997
+          ]
+        }
+      },
+      "n_agents": null,
+      "n_locations": 200
+    },
+    {
+      "benchmark_group": "diary_models",
+      "label": "diary only",
+      "metrics": {
+        "markov_diary": {
+          "average_seconds": 0.06355551681481302,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06248464505188167,
+          "status": "ok",
+          "times_seconds": [
+            0.06393942900467664,
+            0.06359481398249045,
+            0.06248464505188167,
+            0.06374479801161215,
+            0.06401389802340418
+          ]
+        }
+      },
+      "n_agents": null,
+      "n_locations": null
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "2 agents / 12 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.01346066320547834,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012964566005393863,
+          "status": "ok",
+          "times_seconds": [
+            0.012964566005393863,
+            0.013907088025007397,
+            0.0134886369924061,
+            0.013225150993093848,
+            0.013717874011490494
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.013473394804168492,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013070459011942148,
+          "status": "ok",
+          "times_seconds": [
+            0.013255634985398501,
+            0.013640813995152712,
+            0.013070459011942148,
+            0.013645327009726316,
+            0.013754739018622786
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.010157269006595016,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0077452409896068275,
+          "status": "ok",
+          "times_seconds": [
+            0.0077467020018957555,
+            0.018999749037902802,
+            0.008299892011564225,
+            0.007994760992005467,
+            0.0077452409896068275
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.019068790797609834,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012783027021214366,
+          "status": "ok",
+          "times_seconds": [
+            0.01317953399848193,
+            0.01345341996056959,
+            0.012783027021214366,
+            0.01302649499848485,
+            0.042901478009298444
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.07699102798942477,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06869331299094483,
+          "status": "ok",
+          "times_seconds": [
+            0.10914703900925815,
+            0.06869331299094483,
+            0.06870455597527325,
+            0.06942439801059663,
+            0.06898583396105096
+          ]
+        }
+      },
+      "n_agents": 2,
+      "n_locations": 12
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "10 agents / 12 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.04968289961107075,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.041361818031873554,
+          "status": "ok",
+          "times_seconds": [
+            0.04158275300869718,
+            0.041361818031873554,
+            0.04220964800333604,
+            0.04173976799938828,
+            0.0815205110120587
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.04949221380520612,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0415746970102191,
+          "status": "ok",
+          "times_seconds": [
+            0.08011385903228074,
+            0.041640456998720765,
+            0.04226400499464944,
+            0.0415746970102191,
+            0.041868050990160555
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.013455421989783644,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009651932981796563,
+          "status": "ok",
+          "times_seconds": [
+            0.009651932981796563,
+            0.009693232015706599,
+            0.009731646976433694,
+            0.009973313950467855,
+            0.028226984024513513
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.057469683000817895,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.040436281997244805,
+          "status": "ok",
+          "times_seconds": [
+            0.04269514500629157,
+            0.04114059603307396,
+            0.07937770697753876,
+            0.040436281997244805,
+            0.08369868498994038
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.117601743794512,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.1042251160251908,
+          "status": "ok",
+          "times_seconds": [
+            0.10495914198691025,
+            0.14317794097587466,
+            0.1308563249767758,
+            0.1047901950078085,
+            0.1042251160251908
+          ]
+        }
+      },
+      "n_agents": 10,
+      "n_locations": 12
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "50 agents / 12 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.012455080996733158,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010340093984268606,
+          "status": "ok",
+          "times_seconds": [
+            0.011026168998796493,
+            0.010884865012485534,
+            0.019243073009420186,
+            0.010340093984268606,
+            0.010781203978694975
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.011697800597175956,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010562425013631582,
+          "status": "ok",
+          "times_seconds": [
+            0.010562425013631582,
+            0.010652761033270508,
+            0.010743068996816874,
+            0.01574787899153307,
+            0.010782868950627744
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.05235167378559709,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.03635018598288298,
+          "status": "ok",
+          "times_seconds": [
+            0.07737683301093057,
+            0.036733365966938436,
+            0.03635018598288298,
+            0.03680983796948567,
+            0.07448814599774778
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.011821189802139998,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007450274017173797,
+          "status": "ok",
+          "times_seconds": [
+            0.010012783983256668,
+            0.015455015003681183,
+            0.016040566028095782,
+            0.007450274017173797,
+            0.010147309978492558
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.278363994974643,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.2617821989697404,
+          "status": "ok",
+          "times_seconds": [
+            0.26322830899152905,
+            0.30469226697459817,
+            0.2617821989697404,
+            0.2627960809622891,
+            0.2993211189750582
+          ]
+        }
+      },
+      "n_agents": 50,
+      "n_locations": 12
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "2 agents / 50 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.013412695587612688,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012994621996767819,
+          "status": "ok",
+          "times_seconds": [
+            0.013601562997791916,
+            0.013152906962204725,
+            0.013599416997749358,
+            0.013714968983549625,
+            0.012994621996767819
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.019430831412319095,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.012947773037012666,
+          "status": "ok",
+          "times_seconds": [
+            0.013067472027614713,
+            0.013707595993764699,
+            0.013650720997247845,
+            0.04378059500595555,
+            0.012947773037012666
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.012237444776110351,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007769670977722853,
+          "status": "ok",
+          "times_seconds": [
+            0.0188738769502379,
+            0.007965594006236643,
+            0.007772535958793014,
+            0.007769670977722853,
+            0.018805545987561345
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.018484048603568226,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.010576508997473866,
+          "status": "ok",
+          "times_seconds": [
+            0.04227929003536701,
+            0.013522995985113084,
+            0.012768802989739925,
+            0.010576508997473866,
+            0.013272645010147244
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.06775451658759266,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06542926601832733,
+          "status": "ok",
+          "times_seconds": [
+            0.06542926601832733,
+            0.06872123095672578,
+            0.0682741699856706,
+            0.06810063199372962,
+            0.06824728398350999
+          ]
+        }
+      },
+      "n_agents": 2,
+      "n_locations": 50
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "10 agents / 50 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.049810162803623825,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04192839900497347,
+          "status": "ok",
+          "times_seconds": [
+            0.08049701800337061,
+            0.04192839900497347,
+            0.041945650009438396,
+            0.04269572097109631,
+            0.04198402602924034
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.04926310358569026,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.041268824017606676,
+          "status": "ok",
+          "times_seconds": [
+            0.041268824017606676,
+            0.04188001196598634,
+            0.04205476201605052,
+            0.07943181996233761,
+            0.04168009996647015
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.009709837799891829,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009455382009036839,
+          "status": "ok",
+          "times_seconds": [
+            0.009455382009036839,
+            0.009805268957279623,
+            0.009515226993244141,
+            0.009859753015916795,
+            0.00991355802398175
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.04175282559590414,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04156515997601673,
+          "status": "ok",
+          "times_seconds": [
+            0.04173289699247107,
+            0.04188188898842782,
+            0.0418419879861176,
+            0.04156515997601673,
+            0.04174219403648749
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.11072384780272841,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.10384982899995521,
+          "status": "ok",
+          "times_seconds": [
+            0.10402264998992905,
+            0.1045932830311358,
+            0.10399165196577087,
+            0.10384982899995521,
+            0.13716182502685115
+          ]
+        }
+      },
+      "n_agents": 10,
+      "n_locations": 50
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "50 agents / 50 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.011189887404907495,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00767100602388382,
+          "status": "ok",
+          "times_seconds": [
+            0.01099714997690171,
+            0.010760852019302547,
+            0.015592806041240692,
+            0.00767100602388382,
+            0.010927622963208705
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.010585470602381974,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007535336015280336,
+          "status": "ok",
+          "times_seconds": [
+            0.016080647998023778,
+            0.010574544023256749,
+            0.007535336015280336,
+            0.00763606297550723,
+            0.01110076199984178
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.04596600459190085,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.037659529014490545,
+          "status": "ok",
+          "times_seconds": [
+            0.037938727997243404,
+            0.03852301399456337,
+            0.07695983198937029,
+            0.03874891996383667,
+            0.037659529014490545
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.009432722406927496,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007782885048072785,
+          "status": "ok",
+          "times_seconds": [
+            0.010108666028827429,
+            0.008215870009735227,
+            0.007782885048072785,
+            0.01045121398055926,
+            0.01060497696744278
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.2757860035984777,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.2673460769583471,
+          "status": "ok",
+          "times_seconds": [
+            0.2673460769583471,
+            0.2675570219871588,
+            0.2679754900163971,
+            0.3063006640295498,
+            0.26975076500093564
+          ]
+        }
+      },
+      "n_agents": 50,
+      "n_locations": 50
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "2 agents / 200 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.013545754202641546,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013241787033621222,
+          "status": "ok",
+          "times_seconds": [
+            0.01378160301828757,
+            0.013589217967819422,
+            0.013386022998020053,
+            0.013241787033621222,
+            0.013730139995459467
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.01943383979378268,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013575887016486377,
+          "status": "ok",
+          "times_seconds": [
+            0.013836036960128695,
+            0.013797388004604727,
+            0.013686382968444377,
+            0.04227350401924923,
+            0.013575887016486377
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.007913706009276211,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00771361100487411,
+          "status": "ok",
+          "times_seconds": [
+            0.00825748301576823,
+            0.00794651301112026,
+            0.007854155031964183,
+            0.00771361100487411,
+            0.0077967679826542735
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.01343584000132978,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.013144638971425593,
+          "status": "ok",
+          "times_seconds": [
+            0.013144638971425593,
+            0.013725035998504609,
+            0.01363341201795265,
+            0.013177765009459108,
+            0.013498348009306937
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.06922881659120321,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06866216502385214,
+          "status": "ok",
+          "times_seconds": [
+            0.06869199499487877,
+            0.06942988897208124,
+            0.06941005395492539,
+            0.06994998001027852,
+            0.06866216502385214
+          ]
+        }
+      },
+      "n_agents": 2,
+      "n_locations": 200
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "10 agents / 200 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.008821575983893127,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0069076549843885005,
+          "status": "ok",
+          "times_seconds": [
+            0.007038692943751812,
+            0.007621611002832651,
+            0.0069076549843885005,
+            0.014136051991954446,
+            0.008403868996538222
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.00892450420651585,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007173895020969212,
+          "status": "ok",
+          "times_seconds": [
+            0.00731816201005131,
+            0.0076415909570641816,
+            0.007173895020969212,
+            0.014617717999499291,
+            0.007871155044995248
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.021247385011520237,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.009727416967507452,
+          "status": "ok",
+          "times_seconds": [
+            0.028649167041294277,
+            0.009750611032359302,
+            0.009727416967507452,
+            0.029223015008028597,
+            0.028886715008411556
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.008768819191027432,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006909751042257994,
+          "status": "ok",
+          "times_seconds": [
+            0.007121642993297428,
+            0.006909751042257994,
+            0.010112975956872106,
+            0.009752640966325998,
+            0.009947084996383637
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.12273143681231886,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.10674350400222465,
+          "status": "ok",
+          "times_seconds": [
+            0.1079399210284464,
+            0.10674350400222465,
+            0.10747644503135234,
+            0.14688339998247102,
+            0.1446139140170999
+          ]
+        }
+      },
+      "n_agents": 10,
+      "n_locations": 200
+    },
+    {
+      "benchmark_group": "trajectory_models",
+      "label": "50 agents / 200 locations",
+      "metrics": {
+        "density_epr": {
+          "average_seconds": 0.00919168540276587,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0076838150271214545,
+          "status": "ok",
+          "times_seconds": [
+            0.010957641992717981,
+            0.008194371010176837,
+            0.008068536000791937,
+            0.0076838150271214545,
+            0.01105406298302114
+          ]
+        },
+        "epr": {
+          "average_seconds": 0.008460492175072432,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.007567398948594928,
+          "status": "ok",
+          "times_seconds": [
+            0.008294708968605846,
+            0.007649420003872365,
+            0.007762363995425403,
+            0.011028568958863616,
+            0.007567398948594928
+          ]
+        },
+        "geosim": {
+          "average_seconds": 0.054126167413778604,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.038502940034959465,
+          "status": "ok",
+          "times_seconds": [
+            0.03897140297340229,
+            0.03857207304099575,
+            0.038502940034959465,
+            0.0756766390404664,
+            0.07890778197906911
+          ]
+        },
+        "spatial_epr": {
+          "average_seconds": 0.009160319797229022,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.006213438988197595,
+          "status": "ok",
+          "times_seconds": [
+            0.016683456022292376,
+            0.007517286983784288,
+            0.007818261976353824,
+            0.007569155015517026,
+            0.006213438988197595
+          ]
+        },
+        "sts_epr": {
+          "average_seconds": 0.26984882379183545,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.2592538100434467,
+          "status": "ok",
+          "times_seconds": [
+            0.2604121359763667,
+            0.26417239796137437,
+            0.2592538100434467,
+            0.2688243240118027,
+            0.2965814509661868
+          ]
+        }
+      },
+      "n_agents": 50,
+      "n_locations": 200
+    }
+  ]
+}

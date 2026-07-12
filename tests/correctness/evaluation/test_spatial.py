@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob.measures.evaluation.spatial (OD matrix + stvd_emd)."""
+"""Correctness tests for fastmob.measures.evaluation.spatial (OD matrix + stvd_emd)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fkmob.measures.evaluation import (
+from fastmob.measures.evaluation import (
     od_matrix_common_part_of_commuters,
     trajectory_common_part_of_commuters,
     trajectory_common_part_of_commuters_multi,
@@ -15,8 +15,8 @@ from fkmob.measures.evaluation import (
 
 def _skip_if_no_core():
     pytest.importorskip(
-        "fkmob._core",
-        reason="Build the fkmob extension first (maturin develop)",
+        "fastmob._core",
+        reason="Build the fastmob extension first (maturin develop)",
     )
 
 
@@ -136,7 +136,7 @@ def test_trajectory_common_part_multi_matches_single_resolution_calls():
 
 def test_trajectory_common_part_multi_prepares_inputs_only_once(monkeypatch):
     _skip_if_no_core()
-    import fkmob.measures.evaluation.spatial as spatial_module
+    import fastmob.measures.evaluation.spatial as spatial_module
 
     left, right = _trajectory_fixture()
     calls = []
@@ -171,14 +171,14 @@ def test_trajectory_common_part_empty_or_self_loop_only_returns_zero():
 
 def test_trajectory_common_part_dataframe_method_and_public_exports():
     _skip_if_no_core()
-    import fkmob
+    import fastmob
 
     left, right = _trajectory_fixture()
-    left_tdf = fkmob.TrajDataFrame(left)
-    right_tdf = fkmob.TrajDataFrame(right)
+    left_tdf = fastmob.TrajDataFrame(left)
+    right_tdf = fastmob.TrajDataFrame(right)
 
-    assert hasattr(fkmob, "trajectory_common_part_of_commuters")
-    assert hasattr(fkmob.measures, "trajectory_common_part_of_commuters")
+    assert hasattr(fastmob, "trajectory_common_part_of_commuters")
+    assert hasattr(fastmob.measures, "trajectory_common_part_of_commuters")
     assert left_tdf.common_part_of_commuters(right_tdf, resolution=9) == pytest.approx(
         trajectory_common_part_of_commuters(left, right, resolution=9)
     )
@@ -206,7 +206,7 @@ def test_trajectory_common_part_polars_smoke():
 def test_identical_single_point_zero_distance():
     """Identical single-cell distributions must have distance 0."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df = _dist_df("POINT (0 0)", "12:00", 1.0)
     dist = stvd_emd(df, df.copy())
@@ -216,7 +216,7 @@ def test_identical_single_point_zero_distance():
 def test_spatial_displacement_100m():
     """Single-point distributions 100 m apart (same time) → positive distance."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df_a = _dist_df("POINT (0 0)", "12:00", 1.0)
     df_b = _dist_df("POINT (100 0)", "12:00", 1.0)
@@ -229,7 +229,7 @@ def test_spatial_displacement_100m():
 def test_temporal_displacement_with_alpha():
     """Same location, 10 min apart, alpha=10 → positive distance."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df_a = _dist_df("POINT (0 0)", "12:00", 1.0)
     df_b = _dist_df("POINT (0 0)", "12:10", 1.0)
@@ -240,7 +240,7 @@ def test_temporal_displacement_with_alpha():
 def test_cyclical_time_wraps_around():
     """23:55 vs 00:05 must give the same distance as 00:00 vs 00:10 (10 min)."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df_a_cyclic = _dist_df("POINT (0 0)", "23:55", 1.0)
     df_b_cyclic = _dist_df("POINT (0 0)", "00:05", 1.0)
@@ -255,7 +255,7 @@ def test_cyclical_time_wraps_around():
 def test_symmetry():
     """d(A, B) must equal d(B, A)."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df_a = pd.DataFrame(
         {
@@ -279,7 +279,7 @@ def test_symmetry():
 def test_explicit_column_names():
     """Explicit column overrides should work."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df = pd.DataFrame(
         {
@@ -295,7 +295,7 @@ def test_explicit_column_names():
 def test_returns_float():
     """Return value must be a plain Python float."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df = _dist_df("POINT (0 0)", "12:00", 1.0)
     result = stvd_emd(df, df.copy())
@@ -305,7 +305,7 @@ def test_returns_float():
 def test_invalid_num_projections_raises():
     """num_projections <= 0 must raise ValueError."""
     _skip_if_no_core()
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df = _dist_df("POINT (0 0)", "12:00", 1.0)
     with pytest.raises(ValueError, match="num_projections must be positive"):
@@ -316,7 +316,7 @@ def test_polars_parity():
     """Pandas and Polars inputs must produce the same result."""
     _skip_if_no_core()
     polars = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob.measures.evaluation import stvd_emd
 
     df_a_pd = pd.DataFrame(
         {
@@ -353,19 +353,19 @@ def test_polars_parity():
 
 
 def test_top_level_import():
-    """stvd_emd must be importable from fkmob."""
+    """stvd_emd must be importable from fastmob."""
     _skip_if_no_core()
-    import fkmob
+    import fastmob
 
-    assert hasattr(fkmob, "stvd_emd")
+    assert hasattr(fastmob, "stvd_emd")
 
 
 def test_measures_import():
-    """stvd_emd must be importable from fkmob.measures."""
+    """stvd_emd must be importable from fastmob.measures."""
     _skip_if_no_core()
-    import fkmob.measures
+    import fastmob.measures
 
-    assert hasattr(fkmob.measures, "stvd_emd")
+    assert hasattr(fastmob.measures, "stvd_emd")
 
 
 # ---------------------------------------------------------------------------
@@ -376,8 +376,8 @@ def test_measures_import():
 def test_stvd_emd_numpy_helper():
     """stvd_emd_numpy in _core must accept numpy arrays and return the same result."""
     _skip_if_no_core()
-    from fkmob._core import stvd_emd_numpy
-    from fkmob.measures.evaluation import stvd_emd
+    from fastmob._core import stvd_emd_numpy
+    from fastmob.measures.evaluation import stvd_emd
 
     df = _dist_df("POINT (0 0)", "12:00", 1.0)
     expected = stvd_emd(df, df.copy())
@@ -401,7 +401,7 @@ def test_stvd_emd_arrow_helper():
     """stvd_emd_arrow in _core must accept PyArrow float64 arrays."""
     _skip_if_no_core()
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fkmob._core import stvd_emd_arrow, stvd_emd_numpy
+    from fastmob._core import stvd_emd_arrow, stvd_emd_numpy
 
     xs = pa.array([0.0], type=pa.float64())
     ys = pa.array([0.0], type=pa.float64())
@@ -423,7 +423,7 @@ def test_stvd_emd_arrow_helper():
 def test_stvd_emd_numpy_non_contiguous_raises():
     """Non-contiguous numpy arrays must raise ValueError."""
     _skip_if_no_core()
-    from fkmob._core import stvd_emd_numpy
+    from fastmob._core import stvd_emd_numpy
 
     arr = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
     non_contig = arr[::2]

@@ -31,8 +31,8 @@ def test_default_sizes_include_four_million():
 
 def test_output_path_matches_library_profile_and_synthetic_source(tmp_path: Path):
     assert (
-        suite.build_output_path(tmp_path, "fkmob")
-        == tmp_path / "fkmob_evaluation_speed_synthetic.json"
+        suite.build_output_path(tmp_path, "fastmob")
+        == tmp_path / "fastmob_evaluation_speed_synthetic.json"
     )
     assert (
         suite.build_output_path(tmp_path, "skmob", "memory")
@@ -41,7 +41,7 @@ def test_output_path_matches_library_profile_and_synthetic_source(tmp_path: Path
 
 
 def test_parse_args_selects_library():
-    assert suite.parse_args(["--library", "fkmob"]).library == "fkmob"
+    assert suite.parse_args(["--library", "fastmob"]).library == "fastmob"
     assert suite.parse_args(["--library", "skmob"]).library == "skmob"
 
 
@@ -100,7 +100,7 @@ def test_benchmark_metric_warms_up_then_records_iterations(monkeypatch):
     monkeypatch.setattr(suite, "import_metric", fake_import)
     result = suite.benchmark_metric(
         spec,
-        "fkmob",
+        "fastmob",
         lambda: suite.make_synthetic_pair(8, seed=1),
         iterations=2,
         sleep_seconds=0.0,
@@ -112,11 +112,11 @@ def test_benchmark_metric_warms_up_then_records_iterations(monkeypatch):
     assert calls == [(8, 8), (8, 8), (8, 8)]
 
 
-def test_fkmob_tiny_synthetic_smoke():
+def test_fastmob_tiny_synthetic_smoke():
     args = suite.parse_args(
         [
             "--library",
-            "fkmob",
+            "fastmob",
             "--sizes",
             "8",
             "--iterations",
@@ -128,6 +128,6 @@ def test_fkmob_tiny_synthetic_smoke():
     payload = suite.run_suite(args)
 
     assert payload["metadata"]["suite"] == "evaluation"
-    assert payload["metadata"]["library"] == "fkmob"
+    assert payload["metadata"]["library"] == "fastmob"
     assert payload["results"][0]["input_source"] == "synthetic"
     assert payload["results"][0]["metrics"]["common_part_of_commuters"]["status"] == "ok"

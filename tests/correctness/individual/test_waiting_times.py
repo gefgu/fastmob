@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob/measures/spatial/waiting_times.py."""
+"""Correctness tests for fastmob/measures/spatial/waiting_times.py."""
 
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ def _to_dict(df) -> dict[str, Any]:
 
 def test_waiting_times_known_values(synthetic_tdf):
     """Each interval in the synthetic fixture is exactly 3600 seconds."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.waiting_times import waiting_times
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.waiting_times import waiting_times
 
     result = waiting_times(synthetic_tdf)
     mapping = _to_dict(result)
@@ -46,8 +46,8 @@ def test_waiting_times_known_values(synthetic_tdf):
 
 def test_waiting_times_single_user():
     """Without a uid column the whole frame is treated as one individual."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.waiting_times import waiting_times
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.waiting_times import waiting_times
 
     df = pd.DataFrame(
         {
@@ -68,8 +68,8 @@ def test_waiting_times_single_user():
 
 def test_waiting_times_single_point_returns_empty_list():
     """A user with only one point produces an empty waiting-times list."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.waiting_times import waiting_times
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.waiting_times import waiting_times
 
     df = pd.DataFrame(
         {
@@ -86,8 +86,8 @@ def test_waiting_times_single_point_returns_empty_list():
 
 def test_waiting_times_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.waiting_times import waiting_times
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.waiting_times import waiting_times
 
     result = waiting_times(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -103,8 +103,8 @@ def test_waiting_times_polars_known_values(synthetic_tdf_polars):
 
 def test_waiting_times_merge_returns_flat_array(synthetic_tdf):
     """merge=True returns flat backend-native waiting times."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.waiting_times import waiting_times
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.waiting_times import waiting_times
 
     result = waiting_times(synthetic_tdf, merge=True)
     values = np.asarray(result, dtype=np.float64)
@@ -116,9 +116,9 @@ def test_waiting_times_merge_returns_flat_array(synthetic_tdf):
 
 
 def test_waiting_times_numpy_and_arrow_helpers_return_offsets_and_flat_values():
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fkmob._core import (
+    from fastmob._core import (
         waiting_times_arrow,
         waiting_times_flat_numpy,
         waiting_times_indexed_numpy,
@@ -150,8 +150,8 @@ def test_waiting_times_numpy_and_arrow_helpers_return_offsets_and_flat_values():
 
 
 def test_waiting_times_helper_offsets_include_empty_groups():
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob._core import waiting_times_numpy
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob._core import waiting_times_numpy
 
     timestamps = np.array([0.0, 60.0, 120.0, 1000.0], dtype=np.float64)
     ends = np.array([1, 3, 4], dtype=np.uintp)
@@ -164,9 +164,9 @@ def test_waiting_times_helper_offsets_include_empty_groups():
 
 
 def test_waiting_times_polars_result_uses_list_dtype(synthetic_tdf_polars):
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fkmob.measures.individual.waiting_times import waiting_times
+    from fastmob.measures.individual.waiting_times import waiting_times
 
     result = waiting_times(synthetic_tdf_polars)
 
@@ -174,8 +174,8 @@ def test_waiting_times_polars_result_uses_list_dtype(synthetic_tdf_polars):
 
 
 def test_waiting_times_numpy_helper_validation_errors():
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob._core import waiting_times_numpy
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob._core import waiting_times_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="range end"):
@@ -184,45 +184,45 @@ def test_waiting_times_numpy_helper_validation_errors():
 
 @pytest.mark.skmob
 def test_waiting_times_matches_skmob(comparison_skmob):
-    """fkmob result matches skmob on each comparison dataset."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    """fastmob result matches skmob on each comparison dataset."""
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     from skmob.measures.individual import waiting_times as skmob_wt
-    from fkmob.measures.individual.waiting_times import waiting_times as fkmob_wt
+    from fastmob.measures.individual.waiting_times import waiting_times as fastmob_wt
 
     skmob_result = skmob_wt(comparison_skmob)
-    fkmob_input = pd.DataFrame(comparison_skmob).copy()
-    fkmob_result = fkmob_wt(fkmob_input)
+    fastmob_input = pd.DataFrame(comparison_skmob).copy()
+    fastmob_result = fastmob_wt(fastmob_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["waiting_times"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
         left = sorted(skmob_dict[uid])
-        right = sorted(fkmob_dict[uid])
-        assert len(left) == len(right), f"uid={uid}: skmob n={len(left)}, fkmob n={len(right)}"
+        right = sorted(fastmob_dict[uid])
+        assert len(left) == len(right), f"uid={uid}: skmob n={len(left)}, fastmob n={len(right)}"
         for a, b in zip(left, right):
-            assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, f"uid={uid}: skmob wt={a}, fkmob wt={b}"
+            assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, f"uid={uid}: skmob wt={a}, fastmob wt={b}"
 
 
 def test_waiting_times_matches_cached_reference(comparison_skmob_reference):
     """waiting_times matches the cached skmob baseline without requiring the skmob environment."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.waiting_times import waiting_times as fkmob_wt
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.waiting_times import waiting_times as fastmob_wt
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("waiting_times")
-    fkmob_result = fkmob_wt(ref.input_df)
+    fastmob_result = fastmob_wt(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["waiting_times"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
         left = sorted(skmob_dict[uid])
-        right = sorted(fkmob_dict[uid])
-        assert len(left) == len(right), f"uid={uid}: cached n={len(left)}, fkmob n={len(right)}"
+        right = sorted(fastmob_dict[uid])
+        assert len(left) == len(right), f"uid={uid}: cached n={len(left)}, fastmob n={len(right)}"
         for a, b in zip(left, right):
-            assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, f"uid={uid}: cached wt={a}, fkmob wt={b}"
+            assert abs(a - b) < max(abs(a), 1.0) * 1e-5 + 1.0, f"uid={uid}: cached wt={a}, fastmob wt={b}"

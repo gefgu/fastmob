@@ -76,7 +76,7 @@ def load_foursquare_pandas(
 
 
 def read_foursquare_file(path: Path) -> pd.DataFrame:
-    """Parse a raw Foursquare NYC file into normalized skmob/fkmob columns."""
+    """Parse a raw Foursquare NYC file into normalized skmob/fastmob columns."""
     df = pd.read_csv(
         path,
         sep="\t",

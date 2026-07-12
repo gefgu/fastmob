@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Benchmark the current fkmob MarkovDiaryGenerator.
+# Benchmark the current fastmob MarkovDiaryGenerator.
 #
 # Usage:
 #   bash scripts/run_markov_diary_benchmark.sh

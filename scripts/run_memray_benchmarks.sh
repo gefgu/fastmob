@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Re-run fkmob memory benchmarks with memray (1 iteration each) and regenerate plots.
+# Re-run fastmob memory benchmarks with memray (1 iteration each) and regenerate plots.
 # Speed benchmarks are skipped if their JSON already exists.
 # skmob baseline data is left untouched; comparison plots are generated where available.
 
@@ -13,7 +13,7 @@ source "$REPO_ROOT/.venv/bin/activate"
 PYTHON="$REPO_ROOT/.venv/bin/python"
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-echo "=== Building fkmob._core ==="
+echo "=== Building fastmob._core ==="
 unset CONDA_PREFIX 2>/dev/null || true
 maturin develop -q
 
@@ -25,19 +25,19 @@ RESULTS_DIR=$(
 mkdir -p "$RESULTS_DIR"
 echo "=== Results dir: ${RESULTS_DIR#$REPO_ROOT/} ==="
 
-# ── Phase 1: fkmob memory benchmarks (memray, 1 iteration, raw order) ───────
+# ── Phase 1: fastmob memory benchmarks (memray, 1 iteration, raw order) ───────
 # evaluation is excluded: its memory image is commented out in benchmarks.md
 # models are excluded: handled by a separate session
 SUITES=(individual collective preprocessing privacy)
 
 echo ""
-echo "=== Phase 1: fkmob memory benchmarks (memray, 1 iteration) ==="
+echo "=== Phase 1: fastmob memory benchmarks (memray, 1 iteration) ==="
 for SUITE in "${SUITES[@]}"; do
     for BACKEND in pandas polars; do
         echo ""
         echo "--- $SUITE / $BACKEND / memory ---"
         "$PYTHON" "benchmarks/$SUITE/speed_suite.py" \
-            --library fkmob \
+            --library fastmob \
             --backend "$BACKEND" \
             --profile memory \
             --input-order raw \
@@ -51,7 +51,7 @@ done
 # Passes --input-order both so sorted speed plots are regenerated alongside raw.
 # Memory plots are always raw (no sorted memory images referenced in benchmarks.md).
 # skmob comparison JSON files are used automatically when present; otherwise
-# plot_all_comparisons.sh falls back to standalone fkmob-only plots.
+# plot_all_comparisons.sh falls back to standalone fastmob-only plots.
 echo ""
 echo "=== Phase 2: Generating plots ==="
 bash "$SCRIPT_DIR/plot_all_comparisons.sh" \

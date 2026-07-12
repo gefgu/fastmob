@@ -1,4 +1,4 @@
-"""Correctness tests for exploration_profiling in fkmob.measures.individual."""
+"""Correctness tests for exploration_profiling in fastmob.measures.individual."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ VALID_PROFILES = {"routiners", "regulars", "scouters"}
 
 def _skip_if_no_core():
     pytest.importorskip(
-        "fkmob._core",
-        reason="Build the fkmob extension first (maturin develop)",
+        "fastmob._core",
+        reason="Build the fastmob extension first (maturin develop)",
     )
 
 
@@ -46,7 +46,7 @@ def _make_visits(n_each: int = 5, visits_per_user: int = 12) -> pd.DataFrame:
 def test_output_columns():
     """Result contains all expected columns including 'profile'."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits()
     result = exploration_profiling(df, cold_start_strategy="none")
@@ -57,7 +57,7 @@ def test_output_columns():
 def test_profile_values_valid():
     """'profile' column only contains the three valid labels."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits()
     result = exploration_profiling(df, cold_start_strategy="none")
@@ -67,7 +67,7 @@ def test_profile_values_valid():
 def test_three_profiles_all_present():
     """All three profile types appear when users are clearly separated."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits()
     result = exploration_profiling(df, cold_start_strategy="none")
@@ -77,7 +77,7 @@ def test_three_profiles_all_present():
 def test_routiners_higher_dor_than_scouters():
     """Routiners have a higher mean degree_of_return than scouters."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits()
     result = exploration_profiling(df, cold_start_strategy="none")
@@ -89,7 +89,7 @@ def test_routiners_higher_dor_than_scouters():
 def test_kmeans_method_row_count():
     """K-Means returns exactly one row per user."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits()
     result = exploration_profiling(df, cold_start_strategy="none", clustering_method="kmeans")
@@ -100,7 +100,7 @@ def test_kmeans_method_row_count():
 def test_gmm_method_row_count():
     """GMM returns exactly one row per user."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits()
     result = exploration_profiling(df, cold_start_strategy="none", clustering_method="gmm")
@@ -111,7 +111,7 @@ def test_gmm_method_row_count():
 def test_impute_gaps_parameter_preserves_profile_output_shape():
     """impute_gaps is accepted and still returns one profiled row per user."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits(n_each=1, visits_per_user=6)
     base = pd.Timestamp("2020-01-01 02:00")
@@ -127,7 +127,7 @@ def test_impute_gaps_parameter_preserves_profile_output_shape():
 def test_too_few_users_raises():
     """Fewer than 3 users triggers ValueError."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = pd.DataFrame(
         {
@@ -142,7 +142,7 @@ def test_too_few_users_raises():
 def test_column_autodetection_uid():
     """Works with 'uid' as the user ID column name."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits().rename(columns={"agent_id": "uid"})
     result = exploration_profiling(df, cold_start_strategy="none")
@@ -153,7 +153,7 @@ def test_column_autodetection_uid():
 def test_unknown_method_raises():
     """Passing an unknown clustering_method raises ValueError."""
     _skip_if_no_core()
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     df = _make_visits()
     with pytest.raises(ValueError, match="clustering_method"):
@@ -164,7 +164,7 @@ def test_polars_parity():
     """Pandas and Polars inputs produce identical profile assignments."""
     _skip_if_no_core()
     polars = pytest.importorskip("polars", reason="Install polars for this test")
-    from fkmob.measures.individual.mobility_profiling import exploration_profiling
+    from fastmob.measures.individual.mobility_profiling import exploration_profiling
 
     # Build polars DataFrame directly (no pyarrow required)
     df_pd = _make_visits()
@@ -195,8 +195,8 @@ def test_polars_parity():
 
 
 def test_top_level_import():
-    """exploration_profiling is accessible from the top-level fkmob namespace."""
-    import fkmob
+    """exploration_profiling is accessible from the top-level fastmob namespace."""
+    import fastmob
 
-    assert hasattr(fkmob, "exploration_profiling")
-    assert callable(fkmob.exploration_profiling)
+    assert hasattr(fastmob, "exploration_profiling")
+    assert callable(fastmob.exploration_profiling)

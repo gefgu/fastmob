@@ -1,9 +1,9 @@
 [project]
-site_name = "FastKit-Mobility"
+site_name = "fastmob"
 site_description = "High-performance mobility analysis library with a Rust-accelerated core and backend-agnostic DataFrame API."
-site_url = "https://gefgu.github.io/fkmob/"
-repo_url = "https://github.com/gefgu/fkmob"
-repo_name = "gefgu/fkmob"
+site_url = "https://gefgu.github.io/fastmob/"
+repo_url = "https://github.com/gefgu/fastmob"
+repo_name = "gefgu/fastmob"
 docs_dir = "docs/src"
 extra_css = ["stylesheets/extra.css"]
 extra_javascript = [

@@ -2,30 +2,29 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/evaluation/speed_suite.py --library fkmob --sizes 1000 10000
+    python benchmarks/evaluation/speed_suite.py --library fastmob --sizes 1000 10000
     python benchmarks/evaluation/speed_suite.py --library skmob --sizes 1000 10000 100000
 """
 
 from __future__ import annotations
 
 import argparse
+import gc
 import json
+import os
 import platform
 import sys
-import gc
-import os
 import time
 import warnings
-
-import psutil
-
-_BENCH_PROC = psutil.Process(os.getpid())
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
+import psutil
+
+_BENCH_PROC = psutil.Process(os.getpid())
 
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "results"
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
@@ -36,7 +35,7 @@ INPUT_SOURCE = "synthetic"
 @dataclass(frozen=True)
 class BenchmarkSpec:
     name: str
-    fkmob_module_path: str
+    fastmob_module_path: str
     skmob_module_path: str
     func_name: str
     input_kind: str = "array_pair"
@@ -46,68 +45,68 @@ class BenchmarkSpec:
 LEGACY_EVALUATION_METRICS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec(
         "common_part_of_commuters",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_commuters",
     ),
     BenchmarkSpec(
         "common_part_of_links",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_links",
     ),
     BenchmarkSpec(
         "common_part_of_commuters_distance",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_commuters_distance",
         input_kind="distance_pair",
     ),
     BenchmarkSpec(
         "r_squared",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "r_squared",
     ),
     BenchmarkSpec(
         "rmse",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "rmse",
     ),
     BenchmarkSpec(
         "nrmse",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "nrmse",
     ),
     BenchmarkSpec(
         "information_gain",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "information_gain",
     ),
     BenchmarkSpec(
         "pearson_correlation",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "pearson_correlation",
     ),
     BenchmarkSpec(
         "spearman_correlation",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "spearman_correlation",
     ),
     BenchmarkSpec(
         "kullback_leibler_divergence",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "kullback_leibler_divergence",
     ),
     BenchmarkSpec(
         "max_error",
-        "fkmob.measures.evaluation",
+        "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "max_error",
     ),
@@ -167,13 +166,13 @@ def nonnegative_float(value: str) -> float:
     return parsed
 
 
-def build_output_path(output_dir: Path, library: str, profile: str = "speed", backend: str = "pandas") -> Path:
+def build_output_path(output_dir: Path, library: str, profile: str = "speed", backend: str = INPUT_SOURCE) -> Path:
     return output_dir / f"{library}_evaluation_{profile}_{backend}.json"
 
 
 def module_path_for_library(spec: BenchmarkSpec, library: str) -> str:
-    if library == "fkmob":
-        return spec.fkmob_module_path
+    if library == "fastmob":
+        return spec.fastmob_module_path
     if library == "skmob":
         return spec.skmob_module_path
     raise ValueError(f"unknown library: {library}")
@@ -413,7 +412,7 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone evaluation speed benchmarks.")
-    parser.add_argument("--library", choices=["fkmob", "skmob"], default="fkmob")
+    parser.add_argument("--library", choices=["fastmob", "skmob"], default="fastmob")
     parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="pandas",
                         help="Backend label for output filename; evaluation uses numpy so computation is identical.")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")

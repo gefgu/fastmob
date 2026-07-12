@@ -1,0 +1,33 @@
+[package]
+name = "fastmob-core"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "fastmob_core"
+crate-type = ["lib"]
+
+[dependencies]
+geo = "0.32.0"
+h3o = "0.9"
+rayon = "1.12"
+wass = { version = "0.2.0", optional = true }
+ndarray = "0.16"
+ndarray015 = { package = "ndarray", version = "0.15" }
+rand = "0.8"
+rand_xoshiro = "0.6"
+moka = { version = "0.12.15", default-features = false, features = ["sync"] }
+linfa = "0.7"
+linfa-clustering = "0.7"
+linfa-nn = "0.7.1"
+numkong = { version = "7.6.0", optional = true }
+rustc-hash = "2.1.1"
+
+[features]
+# `simd` pulls in the SIMD/native C-backed crates (numkong for batched haversine,
+# wass for sliced-Wasserstein STVD-EMD). It is on by default so the Python
+# bindings keep their full measure set. Downstream Rust crates that only need the
+# pure-Rust model/utility code (e.g. citybehavex's trip-DITRAS) can depend on
+# fastmob-core with `default-features = false` to avoid the C toolchain.
+default = ["simd"]
+simd = ["dep:numkong", "dep:wass"]

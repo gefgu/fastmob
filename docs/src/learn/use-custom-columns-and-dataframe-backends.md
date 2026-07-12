@@ -1,6 +1,6 @@
 # How to use custom columns and dataframe backends
 
-This guide shows you how to run fkmob measures when your trajectory dataframe uses nonstandard column names or a dataframe backend such as Polars.
+This guide shows you how to run fastmob measures when your trajectory dataframe uses nonstandard column names or a dataframe backend such as Polars.
 
 <!-- For a beginner-friendly walkthrough with the default column names, start with [Analyze a simple trajectory](../tutorials/analyze-a-simple-trajectory.md). For complete function details, refer to the [API reference](../api/index.md). -->
 
@@ -21,7 +21,7 @@ Pass column name overrides to the measure you want to compute:
 
 ```python
 import pandas as pd
-from fkmob import jump_lengths, radius_of_gyration
+from fastmob import jump_lengths, radius_of_gyration
 
 traj = pd.DataFrame({
     "person": ["alice", "alice", "alice"],
@@ -51,15 +51,15 @@ rg = radius_of_gyration(
 )
 ```
 
-Use explicit overrides whenever your data does not use fkmob's default column names.
+Use explicit overrides whenever your data does not use fastmob's default column names.
 
 ## Use Polars input
 
-Pass a Polars dataframe directly. fkmob returns a Polars dataframe for dataframe results:
+Pass a Polars dataframe directly. fastmob returns a Polars dataframe for dataframe results:
 
 ```python
 import polars as pl
-from fkmob import jump_lengths
+from fastmob import jump_lengths
 
 traj = pl.DataFrame({
     "person": ["alice", "alice", "alice"],
@@ -98,7 +98,7 @@ jumps = jump_lengths(
 )
 ```
 
-fkmob treats the whole dataframe as one trajectory.
+fastmob treats the whole dataframe as one trajectory.
 
 ## Verify the result
 

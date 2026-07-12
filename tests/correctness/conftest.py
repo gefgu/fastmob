@@ -16,7 +16,7 @@ from ..shared.geolife import GEOLIFE_DEFAULT_ROWS, load_geolife_pandas
 # ---------------------------------------------------------------------------
 
 # Synthetic trajectory: 3 users, 5 GPS points each.
-# Values computed by running fkmob._core.jump_lengths_km on the same inputs.
+# Values computed by running fastmob._core.jump_lengths_km on the same inputs.
 EXPECTED_JUMP_LENGTHS: dict[str, list[float]] = {
     "user_a": [
         111.1950802335329,
@@ -218,7 +218,7 @@ def foursquare_skmob(pytestconfig):
 
 @pytest.fixture(scope="session", params=["brightkite", "geolife", "foursquare"])
 def comparison_skmob(request):
-    """Dataset-backed skmob.TrajDataFrame for skmob/fkmob parity tests."""
+    """Dataset-backed skmob.TrajDataFrame for skmob/fastmob parity tests."""
     if request.param == "brightkite":
         return request.getfixturevalue("brightkite_skmob")
     if request.param == "geolife":
@@ -253,7 +253,7 @@ def comparison_skmob_reference(request):
 
 
 def pytest_addoption(parser):
-    group = parser.getgroup("fkmob correctness")
+    group = parser.getgroup("fastmob correctness")
     group.addoption(
         "--geolife-mode",
         action="store",

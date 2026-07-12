@@ -1,5 +1,5 @@
 [workspace]
-members = ["fkmob-core", "fkmob-py"]
+members = ["fastmob-core", "fastmob-py"]
 resolver = "2"
 
 [profile.release]

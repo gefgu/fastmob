@@ -2,9 +2,9 @@
 
 | API | Description |
 | --- | --- |
-| [`list_datasets`](#fkmob.data.list_datasets) | List available scikit-mobility datasets. |
-| [`load_dataset`](#fkmob.data.load_dataset) | Load one of the original scikit-mobility datasets. |
-| [`get_dataset_info`](#fkmob.data.get_dataset_info) | Return metadata for a dataset. |
+| [`list_datasets`](#fastmob.data.list_datasets) | List available scikit-mobility datasets. |
+| [`load_dataset`](#fastmob.data.load_dataset) | Load one of the original scikit-mobility datasets. |
+| [`get_dataset_info`](#fastmob.data.get_dataset_info) | Return metadata for a dataset. |
 
 ## Datasets
 
@@ -18,18 +18,18 @@
 
 ## API Reference
 
-::: fkmob.data.list_datasets
+::: fastmob.data.list_datasets
     options:
       show_source: false
 
 ---
 
-::: fkmob.data.load_dataset
+::: fastmob.data.load_dataset
     options:
       show_source: false
 
 ---
 
-::: fkmob.data.get_dataset_info
+::: fastmob.data.get_dataset_info
     options:
       show_source: false

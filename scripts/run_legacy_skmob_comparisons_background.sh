@@ -12,7 +12,7 @@ LOG_DIR="$RESULTS_DIR/logs"
 DRIVER_LOG="$LOG_DIR/legacy_skmob_comparisons_driver.log"
 
 mkdir -p "$LOG_DIR"
-export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/fkmob-matplotlib}"
+export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/fastmob-matplotlib}"
 mkdir -p "$MPLCONFIGDIR"
 
 timestamp() {

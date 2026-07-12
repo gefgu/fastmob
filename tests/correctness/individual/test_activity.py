@@ -1,11 +1,11 @@
-"""Correctness tests for fkmob.measures.individual.activity."""
+"""Correctness tests for fastmob.measures.individual.activity."""
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 import pytest
-from fkmob.measures.individual.activity import (
+from fastmob.measures.individual.activity import (
     activity_transition_matrix,
     daily_activity_distribution,
     visit_purpose_distribution,

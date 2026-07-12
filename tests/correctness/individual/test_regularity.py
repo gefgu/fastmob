@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from fkmob.measures.individual.regularity import regularity
+from fastmob.measures.individual.regularity import regularity
 
 
 def _uniform_visits():

@@ -1,0 +1,444 @@
+{
+  "metadata": {
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "input_type": "cached_skmob_model_reference",
+    "iterations": 3,
+    "library": "fastmob",
+    "n_agents": null,
+    "n_locations": null,
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.11.4 (main, Jul  5 2023, 14:15:25) [GCC 11.2.0]",
+    "reference_dir": "/home/gustavo/fastmob/tests/shared/skmob_reference/models",
+    "sleep_seconds": 0.5,
+    "suite": "models_large_scale",
+    "timestamp_utc": "2026-05-23T23:41:12.555061+00:00"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "locations": 1000,
+      "metrics": {
+        "density_epr_1000a": {
+          "average_seconds": 0.6356620172038674,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.6281571530271322,
+          "status": "ok",
+          "times_seconds": [
+            0.6386163260322064,
+            0.6363087629433721,
+            0.6360188340768218,
+            0.6281571530271322,
+            0.6392090099398047
+          ]
+        },
+        "epr_100000a": {
+          "average_seconds": 82.88217404286843,
+          "iterations_completed": 2,
+          "minimum_seconds": 82.72268705791794,
+          "status": "ok",
+          "times_seconds": [
+            83.04166102781892,
+            82.72268705791794
+          ]
+        },
+        "epr_10000a": {
+          "average_seconds": 7.515683792997152,
+          "iterations_completed": 3,
+          "minimum_seconds": 7.240199026884511,
+          "status": "ok",
+          "times_seconds": [
+            7.240199026884511,
+            7.279418156016618,
+            8.027434196090326
+          ]
+        },
+        "epr_1000a": {
+          "average_seconds": 0.7533398050814867,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.7389018151443452,
+          "status": "ok",
+          "times_seconds": [
+            0.7390587870031595,
+            0.7389018151443452,
+            0.7771547520533204,
+            0.7415471540298313,
+            0.7700365171767771
+          ]
+        },
+        "epr_100a": {
+          "average_seconds": 0.09265140597708524,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.08340831799432635,
+          "status": "ok",
+          "times_seconds": [
+            0.08340831799432635,
+            0.08764303801581264,
+            0.12092486396431923,
+            0.0853614448569715,
+            0.08591936505399644
+          ]
+        },
+        "epr_50000a": {
+          "average_seconds": 40.794526843121275,
+          "iterations_completed": 1,
+          "minimum_seconds": 40.794526843121275,
+          "status": "ok",
+          "times_seconds": [
+            40.794526843121275
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.15192835377529262,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.15135047701187432,
+          "status": "ok",
+          "times_seconds": [
+            0.15307941497303545,
+            0.15202108188532293,
+            0.15135047701187432,
+            0.15145898703485727,
+            0.1517318079713732
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.048644985817372796,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04049358912743628,
+          "status": "ok",
+          "times_seconds": [
+            0.041164085967466235,
+            0.07992640999145806,
+            0.04095477098599076,
+            0.04068607301451266,
+            0.04049358912743628
+          ]
+        },
+        "spatial_epr_1000a": {
+          "average_seconds": 0.6346484832465649,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.632341112010181,
+          "status": "ok",
+          "times_seconds": [
+            0.634052389068529,
+            0.6336650080047548,
+            0.6379417499992996,
+            0.632341112010181,
+            0.6352421571500599
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 0.7969854621216654,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.7583060699980706,
+          "status": "ok",
+          "times_seconds": [
+            0.784167205914855,
+            0.8254456059075892,
+            0.8235246068798006,
+            0.7583060699980706,
+            0.793483821908012
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 0.22886331044137478,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.20543957012705505,
+          "status": "ok",
+          "times_seconds": [
+            0.20555707602761686,
+            0.24581759003922343,
+            0.24297652207314968,
+            0.24452579393982887,
+            0.20543957012705505
+          ]
+        }
+      },
+      "size": 1000
+    },
+    {
+      "label": "5k",
+      "locations": 5000,
+      "metrics": {
+        "density_epr_1000a": {
+          "average_seconds": 1.067938744230196,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.0619383240118623,
+          "status": "ok",
+          "times_seconds": [
+            1.0619383240118623,
+            1.0711739070247859,
+            1.0723773860372603,
+            1.066958649083972,
+            1.067245454993099
+          ]
+        },
+        "epr_100000a": {
+          "average_seconds": 101.01714022352826,
+          "iterations_completed": 2,
+          "minimum_seconds": 101.00489835510962,
+          "status": "ok",
+          "times_seconds": [
+            101.0293820919469,
+            101.00489835510962
+          ]
+        },
+        "epr_10000a": {
+          "average_seconds": 10.319024519296363,
+          "iterations_completed": 3,
+          "minimum_seconds": 10.235572441015393,
+          "status": "ok",
+          "times_seconds": [
+            10.30467915488407,
+            10.416821961989626,
+            10.235572441015393
+          ]
+        },
+        "epr_1000a": {
+          "average_seconds": 1.177843965543434,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.161226525902748,
+          "status": "ok",
+          "times_seconds": [
+            1.1675463109277189,
+            1.1645752859767526,
+            1.196044767042622,
+            1.161226525902748,
+            1.1998269378673285
+          ]
+        },
+        "epr_100a": {
+          "average_seconds": 0.42845568815246227,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.39550286694429815,
+          "status": "ok",
+          "times_seconds": [
+            0.3963701620232314,
+            0.397887822939083,
+            0.5567508640233427,
+            0.39550286694429815,
+            0.395766724832356
+          ]
+        },
+        "epr_50000a": {
+          "average_seconds": 50.04525238298811,
+          "iterations_completed": 1,
+          "minimum_seconds": 50.04525238298811,
+          "status": "ok",
+          "times_seconds": [
+            50.04525238298811
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.20162321417592466,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.19283730303868651,
+          "status": "ok",
+          "times_seconds": [
+            0.19283730303868651,
+            0.19307452393695712,
+            0.23629826307296753,
+            0.1928912450093776,
+            0.19301473582163453
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.052637922624126074,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.044601246947422624,
+          "status": "ok",
+          "times_seconds": [
+            0.04553217813372612,
+            0.08356851316057146,
+            0.044867205899208784,
+            0.044601246947422624,
+            0.0446204689797014
+          ]
+        },
+        "spatial_epr_1000a": {
+          "average_seconds": 1.124129140423611,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.045966188190505,
+          "status": "ok",
+          "times_seconds": [
+            1.045966188190505,
+            1.0534704900346696,
+            1.1078560219611973,
+            1.2099998749326915,
+            1.2033531269989908
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 1.0874862757045776,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.0719680860638618,
+          "status": "ok",
+          "times_seconds": [
+            1.0749639961868525,
+            1.1132058780640364,
+            1.0731370102148503,
+            1.0719680860638618,
+            1.1041564079932868
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 0.45886682593263683,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.4569427438545972,
+          "status": "ok",
+          "times_seconds": [
+            0.4606087920255959,
+            0.45938872592523694,
+            0.4569427438545972,
+            0.45876666088588536,
+            0.4586272069718689
+          ]
+        }
+      },
+      "size": 5000
+    },
+    {
+      "label": "10k",
+      "locations": 10000,
+      "metrics": {
+        "density_epr_1000a": {
+          "average_seconds": 2.576846723817289,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.197531061945483,
+          "status": "ok",
+          "times_seconds": [
+            2.197531061945483,
+            2.2492024400271475,
+            2.812414715066552,
+            2.805463070049882,
+            2.8196223319973797
+          ]
+        },
+        "epr_100000a": {
+          "average_seconds": 125.2490262798965,
+          "iterations_completed": 2,
+          "minimum_seconds": 124.75462282891385,
+          "status": "ok",
+          "times_seconds": [
+            125.74342973087914,
+            124.75462282891385
+          ]
+        },
+        "epr_10000a": {
+          "average_seconds": 13.875610197739055,
+          "iterations_completed": 3,
+          "minimum_seconds": 13.7271429290995,
+          "status": "ok",
+          "times_seconds": [
+            13.875503271119669,
+            14.024184392997995,
+            13.7271429290995
+          ]
+        },
+        "epr_1000a": {
+          "average_seconds": 2.85815841043368,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.8348120460286736,
+          "status": "ok",
+          "times_seconds": [
+            2.8440057490952313,
+            2.8758171929512173,
+            2.8348120460286736,
+            2.8906429500784725,
+            2.8455141140148044
+          ]
+        },
+        "epr_100a": {
+          "average_seconds": 1.5700835371855646,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.371504443930462,
+          "status": "ok",
+          "times_seconds": [
+            1.371504443930462,
+            1.4338511489331722,
+            1.4955988330766559,
+            1.8165470759849995,
+            1.7329161840025336
+          ]
+        },
+        "epr_50000a": {
+          "average_seconds": 63.567930603865534,
+          "iterations_completed": 1,
+          "minimum_seconds": 63.567930603865534,
+          "status": "ok",
+          "times_seconds": [
+            63.567930603865534
+          ]
+        },
+        "geosim_100a": {
+          "average_seconds": 0.2263256934005767,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.2159985350444913,
+          "status": "ok",
+          "times_seconds": [
+            0.21889423206448555,
+            0.21734150382690132,
+            0.2184692530427128,
+            0.2609249430242926,
+            0.2159985350444913
+          ]
+        },
+        "geosim_20a": {
+          "average_seconds": 0.06420460548251868,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.04829411208629608,
+          "status": "ok",
+          "times_seconds": [
+            0.08877689577639103,
+            0.04929330991581082,
+            0.08592901285737753,
+            0.04829411208629608,
+            0.0487296967767179
+          ]
+        },
+        "spatial_epr_1000a": {
+          "average_seconds": 2.682642995612696,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.67300841701217,
+          "status": "ok",
+          "times_seconds": [
+            2.69576946599409,
+            2.6846156830433756,
+            2.6779148830100894,
+            2.6819065290037543,
+            2.67300841701217
+          ]
+        },
+        "sts_epr_100a": {
+          "average_seconds": 0.8821899340953678,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.8538231290876865,
+          "status": "ok",
+          "times_seconds": [
+            0.9058234470430762,
+            0.8957868760917336,
+            0.894558449042961,
+            0.8538231290876865,
+            0.8609577692113817
+          ]
+        },
+        "sts_epr_20a": {
+          "average_seconds": 0.20806233687326312,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.20751326507888734,
+          "status": "ok",
+          "times_seconds": [
+            0.20762160001322627,
+            0.20973453018814325,
+            0.2077218871563673,
+            0.20772040192969143,
+            0.20751326507888734
+          ]
+        }
+      },
+      "size": 10000
+    }
+  ]
+}

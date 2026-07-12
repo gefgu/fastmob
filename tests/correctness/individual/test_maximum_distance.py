@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob/measures/spatial/maximum_distance.py."""
+"""Correctness tests for fastmob/measures/spatial/maximum_distance.py."""
 
 from __future__ import annotations
 
@@ -37,8 +37,8 @@ def _to_dict(df) -> dict[str, float]:
 
 def test_maximum_distance_known_values(synthetic_tdf):
     """Known-value check against pre-computed Haversine results."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.maximum_distance import maximum_distance
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.maximum_distance import maximum_distance
 
     result = maximum_distance(synthetic_tdf)
     mapping = _to_dict(result)
@@ -50,8 +50,8 @@ def test_maximum_distance_known_values(synthetic_tdf):
 
 def test_maximum_distance_single_user():
     """Without a uid column the whole frame is treated as one individual."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.maximum_distance import maximum_distance
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.maximum_distance import maximum_distance
 
     df = pd.DataFrame(
         {
@@ -71,8 +71,8 @@ def test_maximum_distance_single_user():
 
 def test_maximum_distance_single_point_returns_nan():
     """A single-point user matches skmob's undefined maximum-distance result."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.maximum_distance import maximum_distance
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.maximum_distance import maximum_distance
 
     df = pd.DataFrame(
         {
@@ -89,8 +89,8 @@ def test_maximum_distance_single_point_returns_nan():
 
 def test_maximum_distance_sorted_single_point_group_returns_nan():
     """The presorted backend emits NaN for groups with fewer than two points."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.maximum_distance import maximum_distance
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.maximum_distance import maximum_distance
 
     df = pd.DataFrame(
         {
@@ -109,8 +109,8 @@ def test_maximum_distance_sorted_single_point_group_returns_nan():
 
 def test_maximum_distance_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.maximum_distance import maximum_distance
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.maximum_distance import maximum_distance
 
     result = maximum_distance(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -122,9 +122,9 @@ def test_maximum_distance_polars_known_values(synthetic_tdf_polars):
 
 def test_maximum_distance_polars_single_point_returns_nan():
     """Arrow-backed high-level path keeps NaN semantics without Python patching."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fkmob.measures.individual.maximum_distance import maximum_distance
+    from fastmob.measures.individual.maximum_distance import maximum_distance
 
     df = pl.DataFrame(
         {
@@ -141,9 +141,9 @@ def test_maximum_distance_polars_single_point_returns_nan():
 
 
 def test_maximum_distance_numpy_and_arrow_helpers_match_batch_helper():
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fkmob._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
+    from fastmob._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
@@ -160,9 +160,9 @@ def test_maximum_distance_numpy_and_arrow_helpers_match_batch_helper():
 
 
 def test_maximum_distance_helpers_return_nan_for_short_presorted_groups():
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fkmob._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
+    from fastmob._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
 
     lats = np.array([0.0, 0.0, 1.0], dtype=np.float64)
     lngs = np.array([0.0, 0.0, 0.0], dtype=np.float64)
@@ -181,9 +181,9 @@ def test_maximum_distance_helpers_return_nan_for_short_presorted_groups():
 
 
 def test_maximum_distance_indexed_arrow_returns_nan_when_nulls_leave_one_valid_point():
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fkmob._core import maximum_distance_indexed_arrow
+    from fastmob._core import maximum_distance_indexed_arrow
 
     lats = pa.array([0.0, None, float("nan")])
     lngs = pa.array([0.0, 1.0, 2.0])
@@ -198,8 +198,8 @@ def test_maximum_distance_indexed_arrow_returns_nan_when_nulls_leave_one_valid_p
 
 
 def test_maximum_distance_numpy_helper_validation_errors():
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob._core import maximum_distance_numpy
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob._core import maximum_distance_numpy
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
@@ -212,45 +212,45 @@ def test_maximum_distance_numpy_helper_validation_errors():
 
 @pytest.mark.skmob
 def test_maximum_distance_matches_skmob(comparison_skmob):
-    """fkmob result matches skmob on each comparison dataset."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
+    """fastmob result matches skmob on each comparison dataset."""
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     from skmob.measures.individual import maximum_distance as skmob_md
-    from fkmob.measures.individual.maximum_distance import maximum_distance as fkmob_md
+    from fastmob.measures.individual.maximum_distance import maximum_distance as fastmob_md
 
     skmob_result = skmob_md(comparison_skmob)
-    fkmob_input = pd.DataFrame(comparison_skmob).copy()
-    fkmob_result = fkmob_md(fkmob_input)
+    fastmob_input = pd.DataFrame(comparison_skmob).copy()
+    fastmob_result = fastmob_md(fastmob_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["maximum_distance"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        if np.isnan(skmob_dict[uid]) and np.isnan(fkmob_dict[uid]):
+        if np.isnan(skmob_dict[uid]) and np.isnan(fastmob_dict[uid]):
             continue
-        assert abs(skmob_dict[uid] - fkmob_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
-            f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert abs(skmob_dict[uid] - fastmob_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
+            f"uid={uid}: skmob={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
         )
 
 
 def test_maximum_distance_matches_cached_reference(comparison_skmob_reference):
     """maximum_distance matches the cached skmob baseline without requiring the skmob environment."""
-    pytest.importorskip("fkmob._core", reason="Run maturin develop first")
-    from fkmob.measures.individual.maximum_distance import maximum_distance as fkmob_md
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob.measures.individual.maximum_distance import maximum_distance as fastmob_md
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("maximum_distance")
-    fkmob_result = fkmob_md(ref.input_df)
+    fastmob_result = fastmob_md(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["maximum_distance"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        if np.isnan(skmob_dict[uid]) and np.isnan(fkmob_dict[uid]):
+        if np.isnan(skmob_dict[uid]) and np.isnan(fastmob_dict[uid]):
             continue
-        assert abs(skmob_dict[uid] - fkmob_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
-            f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert abs(skmob_dict[uid] - fastmob_dict[uid]) < skmob_dict[uid] * 1e-5 + 1e-5, (
+            f"uid={uid}: cached={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
         )

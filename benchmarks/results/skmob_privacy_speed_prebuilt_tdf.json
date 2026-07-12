@@ -1,7 +1,7 @@
 {
   "metadata": {
     "backend": null,
-    "dataset_path": "/home/gustavo/fkmob/scikit-mobility/examples/privacy_toy.csv",
+    "dataset_path": "/home/gustavo/fastmob/scikit-mobility/examples/privacy_toy.csv",
     "input_type": "skmob.TrajDataFrame",
     "iterations": 5,
     "library": "skmob",

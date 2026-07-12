@@ -1,14 +1,14 @@
 {
   "catalog_version": 1,
-  "description": "Legacy scikit-mobility public APIs with direct fkmob benchmark coverage.",
+  "description": "Legacy scikit-mobility public APIs with direct fastmob benchmark coverage.",
   "source_library": "skmob",
-  "target_library": "fkmob",
+  "target_library": "fastmob",
   "entries": [
     {
       "name": "distance_straight_line",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.distance_straight_line",
+      "fastmob_module": "fastmob.measures.individual.distance_straight_line",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -16,7 +16,7 @@
       "name": "home_location",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.home_location",
+      "fastmob_module": "fastmob.measures.individual.home_location",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -24,7 +24,7 @@
       "name": "jump_lengths",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.jump_lengths",
+      "fastmob_module": "fastmob.measures.individual.jump_lengths",
       "default_kwargs": {
         "merge": false
       },
@@ -34,7 +34,7 @@
       "name": "k_radius_of_gyration",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.k_radius_of_gyration",
+      "fastmob_module": "fastmob.measures.individual.k_radius_of_gyration",
       "default_kwargs": {
         "k": 2
       },
@@ -44,7 +44,7 @@
       "name": "max_distance_from_home",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.max_distance_from_home",
+      "fastmob_module": "fastmob.measures.individual.max_distance_from_home",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -52,7 +52,7 @@
       "name": "maximum_distance",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.maximum_distance",
+      "fastmob_module": "fastmob.measures.individual.maximum_distance",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -60,7 +60,7 @@
       "name": "number_of_locations",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.number_of_locations",
+      "fastmob_module": "fastmob.measures.individual.number_of_locations",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -68,7 +68,7 @@
       "name": "number_of_visits",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.number_of_visits",
+      "fastmob_module": "fastmob.measures.individual.number_of_visits",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -76,7 +76,7 @@
       "name": "radius_of_gyration",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.radius_of_gyration",
+      "fastmob_module": "fastmob.measures.individual.radius_of_gyration",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -84,7 +84,7 @@
       "name": "waiting_times",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.waiting_times",
+      "fastmob_module": "fastmob.measures.individual.waiting_times",
       "default_kwargs": {
         "merge": false
       },
@@ -94,7 +94,7 @@
       "name": "filter",
       "suite": "preprocessing",
       "legacy_module": "skmob.preprocessing.filtering",
-      "fkmob_module": "fkmob.preprocessing",
+      "fastmob_module": "fastmob.preprocessing",
       "default_kwargs": {},
       "input_kind": "preprocessing"
     },
@@ -102,7 +102,7 @@
       "name": "compress",
       "suite": "preprocessing",
       "legacy_module": "skmob.preprocessing.compression",
-      "fkmob_module": "fkmob.preprocessing",
+      "fastmob_module": "fastmob.preprocessing",
       "default_kwargs": {},
       "input_kind": "preprocessing"
     },
@@ -110,7 +110,7 @@
       "name": "stay_locations",
       "suite": "preprocessing",
       "legacy_module": "skmob.preprocessing.detection",
-      "fkmob_module": "fkmob.preprocessing",
+      "fastmob_module": "fastmob.preprocessing",
       "default_kwargs": {},
       "input_kind": "preprocessing"
     },
@@ -118,7 +118,7 @@
       "name": "random_entropy",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.random_entropy",
+      "fastmob_module": "fastmob.measures.individual.random_entropy",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -126,7 +126,7 @@
       "name": "uncorrelated_entropy",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.uncorrelated_entropy",
+      "fastmob_module": "fastmob.measures.individual.uncorrelated_entropy",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -134,7 +134,7 @@
       "name": "real_entropy",
       "suite": "individual_real_entropy",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.real_entropy",
+      "fastmob_module": "fastmob.measures.individual.real_entropy",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -142,7 +142,7 @@
       "name": "location_frequency",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.location_frequency",
+      "fastmob_module": "fastmob.measures.individual.location_frequency",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -150,7 +150,7 @@
       "name": "individual_mobility_network",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.individual_mobility_network",
+      "fastmob_module": "fastmob.measures.individual.individual_mobility_network",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -158,7 +158,7 @@
       "name": "recency_rank",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.recency_rank",
+      "fastmob_module": "fastmob.measures.individual.recency_rank",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -166,7 +166,7 @@
       "name": "frequency_rank",
       "suite": "individual",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.frequency_rank",
+      "fastmob_module": "fastmob.measures.individual.frequency_rank",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
@@ -174,7 +174,7 @@
       "name": "random_location_entropy",
       "suite": "collective",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.random_location_entropy",
+      "fastmob_module": "fastmob.measures.collective.random_location_entropy",
       "default_kwargs": {},
       "input_kind": "collective"
     },
@@ -182,7 +182,7 @@
       "name": "uncorrelated_location_entropy",
       "suite": "collective",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.uncorrelated_location_entropy",
+      "fastmob_module": "fastmob.measures.collective.uncorrelated_location_entropy",
       "default_kwargs": {},
       "input_kind": "collective"
     },
@@ -190,7 +190,7 @@
       "name": "mean_square_displacement",
       "suite": "collective",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.mean_square_displacement",
+      "fastmob_module": "fastmob.measures.collective.mean_square_displacement",
       "default_kwargs": {},
       "input_kind": "collective"
     },
@@ -198,7 +198,7 @@
       "name": "visits_per_location",
       "suite": "collective",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.visits_per_location",
+      "fastmob_module": "fastmob.measures.collective.visits_per_location",
       "default_kwargs": {},
       "input_kind": "collective"
     },
@@ -206,7 +206,7 @@
       "name": "homes_per_location",
       "suite": "collective",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.homes_per_location",
+      "fastmob_module": "fastmob.measures.collective.homes_per_location",
       "default_kwargs": {},
       "input_kind": "collective"
     },
@@ -214,7 +214,7 @@
       "name": "visits_per_time_unit",
       "suite": "collective",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.visits_per_time_unit",
+      "fastmob_module": "fastmob.measures.collective.visits_per_time_unit",
       "default_kwargs": {},
       "input_kind": "collective"
     },
@@ -222,9 +222,9 @@
       "name": "location_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "LocationAttack",
-      "fkmob_class": "LocationAttack",
+      "fastmob_class": "LocationAttack",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -234,9 +234,9 @@
       "name": "location_sequence_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "LocationSequenceAttack",
-      "fkmob_class": "LocationSequenceAttack",
+      "fastmob_class": "LocationSequenceAttack",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -246,9 +246,9 @@
       "name": "location_time_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "LocationTimeAttack",
-      "fkmob_class": "LocationTimeAttack",
+      "fastmob_class": "LocationTimeAttack",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -258,9 +258,9 @@
       "name": "unique_location_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "UniqueLocationAttack",
-      "fkmob_class": "UniqueLocationAttack",
+      "fastmob_class": "UniqueLocationAttack",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -270,9 +270,9 @@
       "name": "location_frequency_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "LocationFrequencyAttack",
-      "fkmob_class": "LocationFrequencyAttack",
+      "fastmob_class": "LocationFrequencyAttack",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -282,9 +282,9 @@
       "name": "location_probability_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "LocationProbabilityAttack",
-      "fkmob_class": "LocationProbabilityAttack",
+      "fastmob_class": "LocationProbabilityAttack",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -294,9 +294,9 @@
       "name": "location_proportion_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "LocationProportionAttack",
-      "fkmob_class": "LocationProportionAttack",
+      "fastmob_class": "LocationProportionAttack",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -306,9 +306,9 @@
       "name": "home_work",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fkmob_module": "fkmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy.attacks",
       "legacy_class": "HomeWorkAttack",
-      "fkmob_class": "HomeWorkAttack",
+      "fastmob_class": "HomeWorkAttack",
       "default_kwargs": {},
       "input_kind": "privacy_toy"
     },
@@ -316,9 +316,9 @@
       "name": "gravity_flows",
       "suite": "models",
       "legacy_module": "skmob.models.gravity",
-      "fkmob_module": "fkmob.models.gravity",
+      "fastmob_module": "fastmob.models.gravity",
       "legacy_class": "Gravity",
-      "fkmob_class": "Gravity",
+      "fastmob_class": "Gravity",
       "default_kwargs": {
         "out_format": "flows"
       },
@@ -328,9 +328,9 @@
       "name": "gravity_probabilities",
       "suite": "models",
       "legacy_module": "skmob.models.gravity",
-      "fkmob_module": "fkmob.models.gravity",
+      "fastmob_module": "fastmob.models.gravity",
       "legacy_class": "Gravity",
-      "fkmob_class": "Gravity",
+      "fastmob_class": "Gravity",
       "default_kwargs": {
         "out_format": "probabilities"
       },
@@ -340,9 +340,9 @@
       "name": "radiation_flows",
       "suite": "models",
       "legacy_module": "skmob.models.radiation",
-      "fkmob_module": "fkmob.models.radiation",
+      "fastmob_module": "fastmob.models.radiation",
       "legacy_class": "Radiation",
-      "fkmob_class": "Radiation",
+      "fastmob_class": "Radiation",
       "default_kwargs": {
         "out_format": "flows"
       },
@@ -352,9 +352,9 @@
       "name": "radiation_probabilities",
       "suite": "models",
       "legacy_module": "skmob.models.radiation",
-      "fkmob_module": "fkmob.models.radiation",
+      "fastmob_module": "fastmob.models.radiation",
       "legacy_class": "Radiation",
-      "fkmob_class": "Radiation",
+      "fastmob_class": "Radiation",
       "default_kwargs": {
         "out_format": "probabilities"
       },
@@ -364,9 +364,9 @@
       "name": "markov_diary",
       "suite": "models",
       "legacy_module": "skmob.models.markov_diary_generator",
-      "fkmob_module": "fkmob.models.markov_diary_generator",
+      "fastmob_module": "fastmob.models.markov_diary_generator",
       "legacy_class": "MarkovDiaryGenerator",
-      "fkmob_class": "MarkovDiaryGenerator",
+      "fastmob_class": "MarkovDiaryGenerator",
       "default_kwargs": {
         "diary_length": 24
       },
@@ -376,9 +376,9 @@
       "name": "epr",
       "suite": "models",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "EPR",
-      "fkmob_class": "EPR",
+      "fastmob_class": "EPR",
       "default_kwargs": {
         "model": "EPR",
         "n_agents": 2,
@@ -390,9 +390,9 @@
       "name": "density_epr",
       "suite": "models",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "DensityEPR",
-      "fkmob_class": "DensityEPR",
+      "fastmob_class": "DensityEPR",
       "default_kwargs": {
         "model": "DensityEPR",
         "n_agents": 2,
@@ -404,9 +404,9 @@
       "name": "spatial_epr",
       "suite": "models",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "SpatialEPR",
-      "fkmob_class": "SpatialEPR",
+      "fastmob_class": "SpatialEPR",
       "default_kwargs": {
         "model": "SpatialEPR",
         "n_agents": 2
@@ -417,9 +417,9 @@
       "name": "geosim",
       "suite": "models",
       "legacy_module": "skmob.models.geosim",
-      "fkmob_module": "fkmob.models.geosim",
+      "fastmob_module": "fastmob.models.geosim",
       "legacy_class": "GeoSim",
-      "fkmob_class": "GeoSim",
+      "fastmob_class": "GeoSim",
       "default_kwargs": {
         "n_agents": 3
       },
@@ -429,9 +429,9 @@
       "name": "sts_epr",
       "suite": "models",
       "legacy_module": "skmob.models.sts_epr",
-      "fkmob_module": "fkmob.models.sts_epr",
+      "fastmob_module": "fastmob.models.sts_epr",
       "legacy_class": "STS_epr",
-      "fkmob_class": "STS_epr",
+      "fastmob_class": "STS_epr",
       "default_kwargs": {
         "n_agents": 3,
         "relevance_column": "population"
@@ -442,9 +442,9 @@
       "name": "epr_100a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "EPR",
-      "fkmob_class": "EPR",
+      "fastmob_class": "EPR",
       "default_kwargs": {
         "model": "EPR",
         "n_agents": 100,
@@ -456,9 +456,9 @@
       "name": "epr_1000a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "EPR",
-      "fkmob_class": "EPR",
+      "fastmob_class": "EPR",
       "default_kwargs": {
         "model": "EPR",
         "n_agents": 1000,
@@ -470,9 +470,9 @@
       "name": "epr_10000a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "EPR",
-      "fkmob_class": "EPR",
+      "fastmob_class": "EPR",
       "default_kwargs": {
         "model": "EPR",
         "n_agents": 10000,
@@ -484,9 +484,9 @@
       "name": "density_epr_1000a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "DensityEPR",
-      "fkmob_class": "DensityEPR",
+      "fastmob_class": "DensityEPR",
       "default_kwargs": {
         "model": "DensityEPR",
         "n_agents": 1000,
@@ -498,9 +498,9 @@
       "name": "spatial_epr_1000a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.epr",
-      "fkmob_module": "fkmob.models.epr",
+      "fastmob_module": "fastmob.models.epr",
       "legacy_class": "SpatialEPR",
-      "fkmob_class": "SpatialEPR",
+      "fastmob_class": "SpatialEPR",
       "default_kwargs": {
         "model": "SpatialEPR",
         "n_agents": 1000
@@ -511,9 +511,9 @@
       "name": "geosim_20a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.geosim",
-      "fkmob_module": "fkmob.models.geosim",
+      "fastmob_module": "fastmob.models.geosim",
       "legacy_class": "GeoSim",
-      "fkmob_class": "GeoSim",
+      "fastmob_class": "GeoSim",
       "default_kwargs": {
         "n_agents": 20
       },
@@ -523,9 +523,9 @@
       "name": "geosim_100a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.geosim",
-      "fkmob_module": "fkmob.models.geosim",
+      "fastmob_module": "fastmob.models.geosim",
       "legacy_class": "GeoSim",
-      "fkmob_class": "GeoSim",
+      "fastmob_class": "GeoSim",
       "default_kwargs": {
         "n_agents": 100
       },
@@ -535,9 +535,9 @@
       "name": "sts_epr_20a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.sts_epr",
-      "fkmob_module": "fkmob.models.sts_epr",
+      "fastmob_module": "fastmob.models.sts_epr",
       "legacy_class": "STS_epr",
-      "fkmob_class": "STS_epr",
+      "fastmob_class": "STS_epr",
       "default_kwargs": {
         "n_agents": 20,
         "relevance_column": "population"
@@ -548,9 +548,9 @@
       "name": "sts_epr_100a",
       "suite": "models_large_scale",
       "legacy_module": "skmob.models.sts_epr",
-      "fkmob_module": "fkmob.models.sts_epr",
+      "fastmob_module": "fastmob.models.sts_epr",
       "legacy_class": "STS_epr",
-      "fkmob_class": "STS_epr",
+      "fastmob_class": "STS_epr",
       "default_kwargs": {
         "n_agents": 100,
         "relevance_column": "population"
@@ -561,63 +561,63 @@
       "name": "cluster",
       "suite": "preprocessing",
       "legacy_module": "skmob.preprocessing.clustering",
-      "fkmob_module": "fkmob.preprocessing",
+      "fastmob_module": "fastmob.preprocessing",
       "default_kwargs": {},
       "input_kind": "preprocessing"
     },
     {
       "name": "diversity",
-      "suite": "individual_fkmob_only",
+      "suite": "individual_fastmob_only",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.diversity",
+      "fastmob_module": "fastmob.measures.individual.diversity",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
     {
       "name": "trajectory_entropy",
-      "suite": "individual_fkmob_only",
+      "suite": "individual_fastmob_only",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.entropy",
+      "fastmob_module": "fastmob.measures.individual.entropy",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
     {
       "name": "trajectory_predictability",
-      "suite": "individual_fkmob_only",
+      "suite": "individual_fastmob_only",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.entropy",
+      "fastmob_module": "fastmob.measures.individual.entropy",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
     {
       "name": "regularity",
-      "suite": "individual_fkmob_only",
+      "suite": "individual_fastmob_only",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.regularity",
+      "fastmob_module": "fastmob.measures.individual.regularity",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
     {
       "name": "mean_area_volume",
-      "suite": "individual_fkmob_only",
+      "suite": "individual_fastmob_only",
       "legacy_module": "skmob.measures.individual",
-      "fkmob_module": "fkmob.measures.individual.mean_area_volume",
+      "fastmob_module": "fastmob.measures.individual.mean_area_volume",
       "default_kwargs": {},
       "input_kind": "trajectory"
     },
     {
       "name": "od_matrix",
-      "suite": "collective_fkmob_only",
+      "suite": "collective_fastmob_only",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.od",
+      "fastmob_module": "fastmob.measures.collective.od",
       "default_kwargs": {},
       "input_kind": "collective"
     },
     {
       "name": "od_metrics_per_area",
-      "suite": "collective_fkmob_only",
+      "suite": "collective_fastmob_only",
       "legacy_module": "skmob.measures.collective",
-      "fkmob_module": "fkmob.measures.collective.od",
+      "fastmob_module": "fastmob.measures.collective.od",
       "default_kwargs": {},
       "input_kind": "collective"
     },
@@ -625,7 +625,7 @@
       "name": "common_part_of_commuters",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -633,7 +633,7 @@
       "name": "common_part_of_links",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -641,7 +641,7 @@
       "name": "common_part_of_commuters_distance",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "distance_pair"
     },
@@ -649,7 +649,7 @@
       "name": "r_squared",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -657,7 +657,7 @@
       "name": "rmse",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -665,7 +665,7 @@
       "name": "nrmse",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -673,7 +673,7 @@
       "name": "information_gain",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -681,7 +681,7 @@
       "name": "pearson_correlation",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -689,7 +689,7 @@
       "name": "spearman_correlation",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -697,7 +697,7 @@
       "name": "kullback_leibler_divergence",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     },
@@ -705,7 +705,7 @@
       "name": "max_error",
       "suite": "evaluation",
       "legacy_module": "skmob.measures.evaluation",
-      "fkmob_module": "fkmob.measures.evaluation",
+      "fastmob_module": "fastmob.measures.evaluation",
       "default_kwargs": {},
       "input_kind": "array_pair"
     }

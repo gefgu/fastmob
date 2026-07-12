@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from fkmob.privacy import attacks
+from fastmob.privacy import attacks
 from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
 
 

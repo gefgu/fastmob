@@ -97,7 +97,7 @@ def iter_geolife_plt_files(root: Path) -> Iterable[Path]:
 
 
 def read_geolife_plt(path: Path, data_root: Path) -> pd.DataFrame:
-    """Parse a GeoLife .plt file and normalize columns for skmob/fkmob tests."""
+    """Parse a GeoLife .plt file and normalize columns for skmob/fastmob tests."""
     df = pd.read_csv(
         path,
         skiprows=6,

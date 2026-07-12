@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 def pytest_addoption(parser):
-    group = parser.getgroup("fkmob profiling")
+    group = parser.getgroup("fastmob profiling")
     group.addoption(
         "--profile-workload",
         action="store",
@@ -25,7 +25,7 @@ def pytest_addoption(parser):
     group.addoption(
         "--profile-implementation",
         action="store",
-        default="fkmob",
-        choices=("fkmob", "skmob"),
+        default="fastmob",
+        choices=("fastmob", "skmob"),
         help="Implementation to use for profiling workloads.",
     )

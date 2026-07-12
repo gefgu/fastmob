@@ -2,29 +2,29 @@
 
 | API | Description |
 | --- | --- |
-| [`filter`](#fkmob.preprocessing.filter) | Trajectory filtering. |
-| [`compress`](#fkmob.preprocessing.compress) | Trajectory compression. |
-| [`stay_locations`](#fkmob.preprocessing.stay_locations) | Stops detection. |
-| [`cluster`](#fkmob.preprocessing.cluster) | Cluster stop locations. |
+| [`filter`](#fastmob.preprocessing.filter) | Trajectory filtering. |
+| [`compress`](#fastmob.preprocessing.compress) | Trajectory compression. |
+| [`stay_locations`](#fastmob.preprocessing.stay_locations) | Stops detection. |
+| [`cluster`](#fastmob.preprocessing.cluster) | Cluster stop locations. |
 
-::: fkmob.preprocessing.filter
+::: fastmob.preprocessing.filter
     options:
       show_source: false
 
 ---
 
-::: fkmob.preprocessing.compress
+::: fastmob.preprocessing.compress
     options:
       show_source: false
 
 ---
 
-::: fkmob.preprocessing.stay_locations
+::: fastmob.preprocessing.stay_locations
     options:
       show_source: false
 
 ---
 
-::: fkmob.preprocessing.cluster
+::: fastmob.preprocessing.cluster
     options:
       show_source: false

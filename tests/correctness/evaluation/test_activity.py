@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob.measures.evaluation.activity."""
+"""Correctness tests for fastmob.measures.evaluation.activity."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from fkmob.measures.evaluation import (
+from fastmob.measures.evaluation import (
     activity_distribution_jensen_shannon_divergence,
     activity_transition_matrix_jensen_shannon_divergence,
     time_bin_matrix_jensen_shannon_divergence,

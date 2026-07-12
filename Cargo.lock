@@ -334,13 +334,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
-name = "find-msvc-tools"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
-
-[[package]]
-name = "fkmob-core"
+name = "fastmob-core"
 version = "0.1.0"
 dependencies = [
  "geo",
@@ -360,15 +354,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "fkmob-py"
+name = "fastmob-py"
 version = "0.1.0"
 dependencies = [
  "arrow-array",
- "fkmob-core",
+ "fastmob-core",
  "numpy",
  "pyo3",
  "pyo3-arrow",
 ]
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "float_eq"

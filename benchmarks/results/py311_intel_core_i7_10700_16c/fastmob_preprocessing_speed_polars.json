@@ -1,0 +1,239 @@
+{
+  "metadata": {
+    "backend": "polars",
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "polars.DataFrame",
+    "iterations": 5,
+    "library": "fastmob",
+    "movingpandas_catalog_path": "/home/gustavo/fastmob/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.11.4 (main, Jul  5 2023, 14:15:25) [GCC 11.2.0]",
+    "retries": 0,
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/fastmob/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "preprocessing",
+    "timestamp_utc": "2026-06-02T20:38:15.127645+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "metrics": {
+        "compress": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "the name '' passed to `LazyFrame.with_columns` is duplicate\n\nIt's possible that multiple expressions are returning the same default column name. If this is the case, try renaming the columns with `.alias(\"new_name\")` to avoid duplicate column names.",
+          "status": "error",
+          "times_seconds": []
+        },
+        "filter": {
+          "average_seconds": 0.002699830196797848,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0024667030666023493,
+          "status": "ok",
+          "times_seconds": [
+            0.002526127966120839,
+            0.0027055609971284866,
+            0.002801646012812853,
+            0.002999112941324711,
+            0.0024667030666023493
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.002298731915652752,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.002154738875105977,
+          "status": "ok",
+          "times_seconds": [
+            0.0023381018545478582,
+            0.002532691927626729,
+            0.002249206881970167,
+            0.002154738875105977,
+            0.002218920039013028
+          ]
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "compress": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "the name '' passed to `LazyFrame.with_columns` is duplicate\n\nIt's possible that multiple expressions are returning the same default column name. If this is the case, try renaming the columns with `.alias(\"new_name\")` to avoid duplicate column names.",
+          "status": "error",
+          "times_seconds": []
+        },
+        "filter": {
+          "average_seconds": 0.0037805548403412105,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0035311980172991753,
+          "status": "ok",
+          "times_seconds": [
+            0.0035452900920063257,
+            0.0038578149396926165,
+            0.0035311980172991753,
+            0.004027222981676459,
+            0.003941248171031475
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.005182829173281789,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0049041700549423695,
+          "status": "ok",
+          "times_seconds": [
+            0.0052918498404324055,
+            0.005173844983801246,
+            0.0049041700549423695,
+            0.005092079984024167,
+            0.0054522010032087564
+          ]
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "compress": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "the name '' passed to `LazyFrame.with_columns` is duplicate\n\nIt's possible that multiple expressions are returning the same default column name. If this is the case, try renaming the columns with `.alias(\"new_name\")` to avoid duplicate column names.",
+          "status": "error",
+          "times_seconds": []
+        },
+        "filter": {
+          "average_seconds": 0.009233285579830408,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.008549190824851394,
+          "status": "ok",
+          "times_seconds": [
+            0.009023807942867279,
+            0.008549190824851394,
+            0.009291714057326317,
+            0.009228189010173082,
+            0.010073526063933969
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.03294530576094985,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.02093426790088415,
+          "status": "ok",
+          "times_seconds": [
+            0.021467918995767832,
+            0.05594942905008793,
+            0.04517724295146763,
+            0.021197669906541705,
+            0.02093426790088415
+          ]
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "compress": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "the name '' passed to `LazyFrame.with_columns` is duplicate\n\nIt's possible that multiple expressions are returning the same default column name. If this is the case, try renaming the columns with `.alias(\"new_name\")` to avoid duplicate column names.",
+          "status": "error",
+          "times_seconds": []
+        },
+        "filter": {
+          "average_seconds": 0.06663007545284927,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.06353489006869495,
+          "status": "ok",
+          "times_seconds": [
+            0.06756740505807102,
+            0.06623483099974692,
+            0.06437915493734181,
+            0.06353489006869495,
+            0.07143409620039165
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.17023391206748784,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.1684016000945121,
+          "status": "ok",
+          "times_seconds": [
+            0.16942324815317988,
+            0.16911038616672158,
+            0.1684016000945121,
+            0.16923011397011578,
+            0.17500421195290983
+          ]
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
+      "label": "4M",
+      "metrics": {
+        "compress": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "the name '' passed to `LazyFrame.with_columns` is duplicate\n\nIt's possible that multiple expressions are returning the same default column name. If this is the case, try renaming the columns with `.alias(\"new_name\")` to avoid duplicate column names.",
+          "status": "error",
+          "times_seconds": []
+        },
+        "filter": {
+          "average_seconds": 0.24517911830917,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.24110388103872538,
+          "status": "ok",
+          "times_seconds": [
+            0.2491445818450302,
+            0.24110388103872538,
+            0.24583221483044326,
+            0.2483819799963385,
+            0.24143293383531272
+          ]
+        },
+        "stay_locations": {
+          "average_seconds": 0.7161268637981266,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.7140422468073666,
+          "status": "ok",
+          "times_seconds": [
+            0.7144349501468241,
+            0.7140422468073666,
+            0.7189893859904259,
+            0.7167311781086028,
+            0.7164365579374135
+          ]
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}

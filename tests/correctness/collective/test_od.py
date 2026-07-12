@@ -1,9 +1,9 @@
-"""Correctness tests for fkmob.measures.collective.od."""
+"""Correctness tests for fastmob.measures.collective.od."""
 
 from __future__ import annotations
 
 import pandas as pd
-from fkmob.measures.collective.od import od_matrix, od_metrics_per_area
+from fastmob.measures.collective.od import od_matrix, od_metrics_per_area
 
 
 def _lookup(od, origin, dest, origin_col="origin_area", dest_col="destination_area"):

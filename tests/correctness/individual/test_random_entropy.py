@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob/measures/visits/random_entropy.py."""
+"""Correctness tests for fastmob/measures/visits/random_entropy.py."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def _to_dict(df) -> dict:
 
 def test_random_entropy_known_values(synthetic_tdf):
     """Each user in the synthetic fixture has 5 distinct locations -> log2(5)."""
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     result = random_entropy(synthetic_tdf)
     mapping = _to_dict(result)
@@ -49,7 +49,7 @@ def test_random_entropy_known_values(synthetic_tdf):
 
 def test_random_entropy_repeated_locations():
     """When a user revisits locations, n is the distinct count, not total visits."""
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     # User "a" visits 2 distinct locations 4 times total -> log2(2) = 1.0
     df = pd.DataFrame(
@@ -67,7 +67,7 @@ def test_random_entropy_repeated_locations():
 
 def test_random_entropy_single_location():
     """A user who visits only one location has entropy 0."""
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     df = pd.DataFrame(
         {
@@ -84,7 +84,7 @@ def test_random_entropy_single_location():
 
 def test_random_entropy_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     df = pd.DataFrame(
         {
@@ -103,7 +103,7 @@ def test_random_entropy_no_uid():
 
 def test_random_entropy_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     result = random_entropy(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -117,23 +117,23 @@ def test_random_entropy_polars_known_values(synthetic_tdf_polars):
 
 @pytest.mark.skmob
 def test_random_entropy_matches_skmob(comparison_skmob):
-    """fkmob result matches skmob on each comparison dataset."""
+    """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import random_entropy as skmob_re
-    from fkmob.measures.individual.random_entropy import random_entropy as fkmob_re
+    from fastmob.measures.individual.random_entropy import random_entropy as fastmob_re
 
     skmob_result = skmob_re(comparison_skmob)
-    fkmob_input = pd.DataFrame(comparison_skmob).copy()
-    fkmob_result = fkmob_re(fkmob_input)
+    fastmob_input = pd.DataFrame(comparison_skmob).copy()
+    fastmob_result = fastmob_re(fastmob_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["random_entropy"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert math.isclose(skmob_dict[uid], fkmob_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert math.isclose(skmob_dict[uid], fastmob_dict[uid], rel_tol=1e-5), (
+            f"uid={uid}: skmob={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
         )
 
 
@@ -141,7 +141,7 @@ def test_random_entropy_null_coordinates_ignored():
     """NaN/None coordinates are ignored; valid locations still counted."""
     import math
 
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     df = pd.DataFrame(
         {
@@ -159,7 +159,7 @@ def test_random_entropy_null_coordinates_ignored():
 
 def test_random_entropy_all_invalid_user_dropped_with_uid():
     """Users where all coordinates are invalid are omitted from the result."""
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     df = pd.DataFrame(
         {
@@ -177,7 +177,7 @@ def test_random_entropy_all_invalid_user_dropped_with_uid():
 
 def test_random_entropy_all_invalid_no_uid_returns_empty():
     """All-invalid input with no uid column returns an empty result."""
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     df = pd.DataFrame(
         {
@@ -199,7 +199,7 @@ def test_random_entropy_polars_null_coordinates_ignored():
     import pytest
 
     polars = pytest.importorskip("polars")
-    from fkmob.measures.individual.random_entropy import random_entropy
+    from fastmob.measures.individual.random_entropy import random_entropy
 
     df = polars.DataFrame(
         {
@@ -223,18 +223,18 @@ def test_random_entropy_polars_null_coordinates_ignored():
 
 def test_random_entropy_matches_cached_reference(comparison_skmob_reference):
     """random_entropy matches the cached skmob baseline without requiring the skmob environment."""
-    from fkmob.measures.individual.random_entropy import random_entropy as fkmob_re
+    from fastmob.measures.individual.random_entropy import random_entropy as fastmob_re
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("random_entropy")
-    fkmob_result = fkmob_re(ref.input_df)
+    fastmob_result = fastmob_re(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["random_entropy"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert math.isclose(skmob_dict[uid], fkmob_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert math.isclose(skmob_dict[uid], fastmob_dict[uid], rel_tol=1e-5), (
+            f"uid={uid}: cached={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
         )

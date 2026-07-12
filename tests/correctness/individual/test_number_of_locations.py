@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob/measures/spatial/number_of_locations.py."""
+"""Correctness tests for fastmob/measures/spatial/number_of_locations.py."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def _to_dict(df) -> dict[str, int]:
 
 def test_number_of_locations_known_values(synthetic_tdf):
     """Each user in the synthetic fixture visits 5 distinct locations."""
-    from fkmob.measures.individual.number_of_locations import number_of_locations
+    from fastmob.measures.individual.number_of_locations import number_of_locations
 
     result = number_of_locations(synthetic_tdf)
     mapping = _to_dict(result)
@@ -53,7 +53,7 @@ def test_number_of_locations_known_values(synthetic_tdf):
 
 def test_number_of_locations_deduplicates_repeated():
     """Repeated (lat, lng) pairs are counted only once per user."""
-    from fkmob.measures.individual.number_of_locations import number_of_locations
+    from fastmob.measures.individual.number_of_locations import number_of_locations
 
     df = pd.DataFrame(
         {
@@ -71,7 +71,7 @@ def test_number_of_locations_deduplicates_repeated():
 
 def test_number_of_locations_no_uid():
     """Without a uid column the whole frame is treated as one individual."""
-    from fkmob.measures.individual.number_of_locations import number_of_locations
+    from fastmob.measures.individual.number_of_locations import number_of_locations
 
     df = pd.DataFrame(
         {
@@ -91,7 +91,7 @@ def test_number_of_locations_no_uid():
 
 def test_number_of_locations_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
-    from fkmob.measures.individual.number_of_locations import number_of_locations
+    from fastmob.measures.individual.number_of_locations import number_of_locations
 
     result = number_of_locations(synthetic_tdf_polars)
     mapping = _to_dict(result)
@@ -103,38 +103,38 @@ def test_number_of_locations_polars_known_values(synthetic_tdf_polars):
 
 @pytest.mark.skmob
 def test_number_of_locations_matches_skmob(comparison_skmob):
-    """fkmob result matches skmob on each comparison dataset."""
+    """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
     from skmob.measures.individual import number_of_locations as skmob_nol
-    from fkmob.measures.individual.number_of_locations import (
-        number_of_locations as fkmob_nol,
+    from fastmob.measures.individual.number_of_locations import (
+        number_of_locations as fastmob_nol,
     )
 
     skmob_result = skmob_nol(comparison_skmob)
-    fkmob_input = pd.DataFrame(comparison_skmob).copy()
-    fkmob_result = fkmob_nol(fkmob_input)
+    fastmob_input = pd.DataFrame(comparison_skmob).copy()
+    fastmob_result = fastmob_nol(fastmob_input)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["number_of_locations"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert skmob_dict[uid] == fkmob_dict[uid], f"uid={uid}: skmob={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert skmob_dict[uid] == fastmob_dict[uid], f"uid={uid}: skmob={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
 
 
 def test_number_of_locations_matches_cached_reference(comparison_skmob_reference):
     """number_of_locations matches the cached skmob baseline without requiring the skmob environment."""
-    from fkmob.measures.individual.number_of_locations import number_of_locations as fkmob_nol
+    from fastmob.measures.individual.number_of_locations import number_of_locations as fastmob_nol
 
     ref = comparison_skmob_reference
     skmob_result = ref.result("number_of_locations")
-    fkmob_result = fkmob_nol(ref.input_df)
+    fastmob_result = fastmob_nol(ref.input_df)
 
     skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["number_of_locations"].tolist()))
-    fkmob_dict = _to_dict(fkmob_result)
+    fastmob_dict = _to_dict(fastmob_result)
 
-    common = set(skmob_dict) & set(fkmob_dict)
+    common = set(skmob_dict) & set(fastmob_dict)
     assert len(common) > 0
     for uid in common:
-        assert skmob_dict[uid] == fkmob_dict[uid], f"uid={uid}: cached={skmob_dict[uid]}, fkmob={fkmob_dict[uid]}"
+        assert skmob_dict[uid] == fastmob_dict[uid], f"uid={uid}: cached={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"

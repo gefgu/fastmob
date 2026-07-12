@@ -6,7 +6,7 @@ from benchmarks import markov_diary_speed_suite as suite
 
 
 def test_parse_args_defaults_to_500_agents():
-    args = suite.parse_args(["--output-dir", "/tmp/fkmob-markov-diary-test"])
+    args = suite.parse_args(["--output-dir", "/tmp/fastmob-markov-diary-test"])
 
     assert args.n_agents == [500]
     assert args.diary_length == 24
@@ -28,7 +28,7 @@ def test_parse_args_accepts_multiple_agent_counts_and_fit_metric():
             "fit",
             "generate_public",
             "--output-dir",
-            "/tmp/fkmob-markov-diary-test",
+            "/tmp/fastmob-markov-diary-test",
         ]
     )
 

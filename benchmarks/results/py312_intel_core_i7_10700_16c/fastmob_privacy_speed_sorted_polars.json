@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "backend": "polars",
+    "cpu_cores": 16,
+    "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/home/gustavo/fastmob/scikit-mobility/examples/privacy_toy.csv",
+    "input_cache_path": "/home/gustavo/fastmob/benchmarks/cache/privacy_privacy_toy.csv_polars_repeat10_sorted.parquet",
+    "input_cache_status": "reused",
+    "input_order": "sorted",
+    "input_type": "polars.DataFrame",
+    "iterations": 5,
+    "library": "fastmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "repeat_dataset": 10,
+    "sleep_seconds": 0.5,
+    "suite": "privacy",
+    "timestamp_utc": "2026-06-27T12:01:26.532521+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 0.013259057980030775,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.011268877889961004,
+          "status": "ok",
+          "times_seconds": [
+            0.01525539206340909,
+            0.011268877889961004,
+            0.015422170981764793,
+            0.012522867880761623,
+            0.011825981084257364
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 0.02112680347636342,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.019853636156767607,
+          "status": "ok",
+          "times_seconds": [
+            0.022744552232325077,
+            0.020315205678343773,
+            0.022361270152032375,
+            0.02035935316234827,
+            0.019853636156767607
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 0.04700143728405237,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.034573440439999104,
+          "status": "ok",
+          "times_seconds": [
+            0.03529118373990059,
+            0.034573440439999104,
+            0.04926371015608311,
+            0.07749769417569041,
+            0.03838115790858865
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 0.0272597991861403,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.01813633507117629,
+          "status": "ok",
+          "times_seconds": [
+            0.02275606943294406,
+            0.0550509006716311,
+            0.02045619674026966,
+            0.019899494014680386,
+            0.01813633507117629
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 0.030572598893195392,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.021807616110891104,
+          "status": "ok",
+          "times_seconds": [
+            0.02537568286061287,
+            0.05807862291112542,
+            0.022412201389670372,
+            0.021807616110891104,
+            0.025188871193677187
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 0.008569739013910293,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.003299559000879526,
+          "status": "ok",
+          "times_seconds": [
+            0.003299559000879526,
+            0.009476145263761282,
+            0.011625545099377632,
+            0.014939643442630768,
+            0.00350780226290226
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 0.04797358745709061,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.03780917776748538,
+          "status": "ok",
+          "times_seconds": [
+            0.08118310710415244,
+            0.03780917776748538,
+            0.03920308127999306,
+            0.0423114700242877,
+            0.0393611011095345
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 0.029472426883876322,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.026876348070800304,
+          "status": "ok",
+          "times_seconds": [
+            0.02833929006010294,
+            0.032153164967894554,
+            0.03035861114040017,
+            0.026876348070800304,
+            0.02963472018018365
+          ]
+        }
+      },
+      "rows": 230
+    }
+  ]
+}

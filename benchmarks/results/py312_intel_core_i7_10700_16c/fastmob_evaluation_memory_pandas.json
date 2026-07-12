@@ -1,0 +1,780 @@
+{
+  "metadata": {
+    "input_source": "synthetic",
+    "input_type": "numpy.ndarray",
+    "iterations": 3,
+    "library": "fastmob",
+    "memory_method": "rss_delta_psutil",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "profile": "memory",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "seed": 20260608,
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "sleep_seconds": 0.5,
+    "suite": "evaluation",
+    "timestamp_utc": "2026-06-10T17:59:59.682088+00:00"
+  },
+  "results": [
+    {
+      "input_source": "synthetic",
+      "label": "1k",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_commuters_distance": {
+          "average_peak_memory_mb": 0.06380208333333333,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.19140625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.19140625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_links": {
+          "average_peak_memory_mb": 0.0013020833333333333,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.00390625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.00390625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "information_gain": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "kullback_leibler_divergence": {
+          "average_peak_memory_mb": 0.040364583333333336,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.12109375,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.12109375,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "max_error": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "nrmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "pearson_correlation": {
+          "average_peak_memory_mb": 0.07421875,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.22265625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.22265625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "r_squared": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "rmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "spearman_correlation": {
+          "average_peak_memory_mb": 0.10677083333333333,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.3203125,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.3203125,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 1000,
+      "values": 1000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "10k",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_commuters_distance": {
+          "average_peak_memory_mb": 0.0013020833333333333,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.00390625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.00390625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_links": {
+          "average_peak_memory_mb": 0.05078125,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.15234375,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.15234375,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "information_gain": {
+          "average_peak_memory_mb": 0.0026041666666666665,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0078125,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0078125,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "kullback_leibler_divergence": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "max_error": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "nrmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "pearson_correlation": {
+          "average_peak_memory_mb": 0.024739583333333332,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.07421875,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.07421875,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "r_squared": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "rmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "spearman_correlation": {
+          "average_peak_memory_mb": 0.23046875,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.6875,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.6875,
+            0.0,
+            0.00390625
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 10000,
+      "values": 10000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "100k",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_peak_memory_mb": 0.25390625,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.76171875,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.76171875,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_commuters_distance": {
+          "average_peak_memory_mb": 0.21484375,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.64453125,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.64453125,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_links": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "information_gain": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "kullback_leibler_divergence": {
+          "average_peak_memory_mb": 0.7213541666666666,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 2.1640625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            2.1640625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "max_error": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "nrmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "pearson_correlation": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "r_squared": {
+          "average_peak_memory_mb": 0.020833333333333332,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "rmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "spearman_correlation": {
+          "average_peak_memory_mb": 0.55078125,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 1.65234375,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            1.65234375,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 100000,
+      "values": 100000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "1M",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_peak_memory_mb": 2.54296875,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 7.62890625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            7.62890625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_commuters_distance": {
+          "average_peak_memory_mb": 0.29296875,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.87890625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.87890625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_links": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "information_gain": {
+          "average_peak_memory_mb": 0.041666666666666664,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.125,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.125,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "kullback_leibler_divergence": {
+          "average_peak_memory_mb": 7.588541666666667,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 22.765625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            22.765625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "max_error": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "nrmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "pearson_correlation": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "r_squared": {
+          "average_peak_memory_mb": 2.2096354166666665,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 6.62890625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            6.62890625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "rmse": {
+          "average_peak_memory_mb": 0.0013020833333333333,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.00390625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.00390625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "spearman_correlation": {
+          "average_peak_memory_mb": 5.088541666666667,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 15.265625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            15.265625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 1000000,
+      "values": 1000000
+    },
+    {
+      "input_source": "synthetic",
+      "label": "4M",
+      "metrics": {
+        "common_part_of_commuters": {
+          "average_peak_memory_mb": 10.171875,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 30.515625,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            30.515625,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_commuters_distance": {
+          "average_peak_memory_mb": 0.2916666666666667,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.875,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.875,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "common_part_of_links": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "information_gain": {
+          "average_peak_memory_mb": 0.041666666666666664,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.125,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.125,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "kullback_leibler_divergence": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "max_error": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "nrmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "pearson_correlation": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "r_squared": {
+          "average_peak_memory_mb": 9.83984375,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 29.51953125,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            29.51953125,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "rmse": {
+          "average_peak_memory_mb": 0.0,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 0.0,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        },
+        "spearman_correlation": {
+          "average_peak_memory_mb": 43.233072916666664,
+          "current_memory_mb": [],
+          "iterations_completed": 3,
+          "maximum_peak_memory_mb": 129.69921875,
+          "minimum_peak_memory_mb": 0.0,
+          "peak_memory_mb": [
+            129.69921875,
+            0.0,
+            0.0
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 4000000,
+      "values": 4000000
+    }
+  ]
+}

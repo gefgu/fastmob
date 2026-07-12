@@ -4,7 +4,7 @@
     "cpu_cores": 16,
     "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
     "cpu_vendor": "intel",
-    "dataset_path": "/home/gustavo/fkmob/scikit-mobility/examples/privacy_toy.csv",
+    "dataset_path": "/home/gustavo/fastmob/scikit-mobility/examples/privacy_toy.csv",
     "input_cache_path": null,
     "input_cache_status": "not_applicable",
     "input_order": "raw",

@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob.measures.collective.random_location_entropy."""
+"""Correctness tests for fastmob.measures.collective.random_location_entropy."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import math
 import pandas as pd
 import pytest
 
-from fkmob.measures.collective.random_location_entropy import random_location_entropy
+from fastmob.measures.collective.random_location_entropy import random_location_entropy
 
 
 @pytest.fixture()

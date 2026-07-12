@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from fkmob.measures.individual.mean_area_volume import mean_area_volume
+from fastmob.measures.individual.mean_area_volume import mean_area_volume
 
 
 def _df(**kwargs):

@@ -1,11 +1,11 @@
-"""Correctness tests for fkmob.measures.evaluation.metrics."""
+"""Correctness tests for fastmob.measures.evaluation.metrics."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from fkmob.measures.evaluation import (
+from fastmob.measures.evaluation import (
     histogram_jensen_shannon_divergence,
     jensen_shannon_divergence,
     wasserstein_distance,

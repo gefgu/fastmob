@@ -1095,7 +1095,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fkmob"
+name = "fastmob"
 source = { editable = "." }
 dependencies = [
     { name = "narwhals", version = "1.42.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },

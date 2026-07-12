@@ -7,7 +7,7 @@ import math
 import pandas as pd
 import pytest
 
-from fkmob.preprocessing import cdr_to_trips_df, cdr_to_visitation_df
+from fastmob.preprocessing import cdr_to_trips_df, cdr_to_visitation_df
 
 
 def _cdr_fixture() -> pd.DataFrame:

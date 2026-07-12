@@ -2,7 +2,7 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/models/speed_suite.py --library fkmob
+    python benchmarks/models/speed_suite.py --library fastmob
     python benchmarks/models/speed_suite.py --library skmob --n-agents 2 10 50 --n-locations 12 50 200
 """
 
@@ -168,7 +168,7 @@ def social_graph(n_agents: int) -> list[list[int]]:
 
 
 def prepare_library_inputs(library: str, tessellation: Any, diary_training: Any) -> tuple[Any, Any]:
-    if library == "fkmob":
+    if library == "fastmob":
         return tessellation.copy(), diary_training.copy()
 
     try:
@@ -187,7 +187,7 @@ def prepare_library_inputs(library: str, tessellation: Any, diary_training: Any)
 
 
 def patch_geopandas_apply_for_numpy2(gpd: Any) -> None:
-    if getattr(gpd.GeoSeries.apply, "_fkmob_numpy2_patch", False):
+    if getattr(gpd.GeoSeries.apply, "_fastmob_numpy2_patch", False):
         return
     original_apply = gpd.GeoSeries.apply
 
@@ -202,7 +202,7 @@ def patch_geopandas_apply_for_numpy2(gpd: Any) -> None:
             series = pd.Series(list(self), index=self.index)
             return series.apply(lambda geom: func(geom, *args), **kwargs)
 
-    apply._fkmob_numpy2_patch = True
+    apply._fastmob_numpy2_patch = True
     gpd.GeoSeries.apply = apply
 
 
@@ -224,8 +224,8 @@ def reset_rng(seed: int = MODEL_SEED) -> None:
 
 
 def import_model_classes(library: str) -> dict[str, Any]:
-    if library == "fkmob":
-        module = importlib.import_module("fkmob.models")
+    if library == "fastmob":
+        module = importlib.import_module("fastmob.models")
         return {
             "Gravity": module.Gravity,
             "Radiation": module.Radiation,
@@ -727,7 +727,7 @@ def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone generation model benchmarks.")
-    parser.add_argument("--library", choices=["fkmob", "skmob"], required=True)
+    parser.add_argument("--library", choices=["fastmob", "skmob"], required=True)
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)

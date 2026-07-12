@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob.measures.evaluation.evaluation."""
+"""Correctness tests for fastmob.measures.evaluation.evaluation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pytest
 
-from fkmob.measures.evaluation.evaluation import (
+from fastmob.measures.evaluation.evaluation import (
     common_part_of_commuters,
     common_part_of_commuters_distance,
     common_part_of_links,

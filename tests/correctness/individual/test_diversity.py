@@ -5,10 +5,10 @@ import pytest
 
 pydivsufsort = pytest.importorskip(
     "pydivsufsort",
-    reason="pydivsufsort not installed; install with: pip install fkmob[diversity]",
+    reason="pydivsufsort not installed; install with: pip install fastmob[diversity]",
 )
 
-from fkmob.measures.individual.diversity import diversity  # noqa: E402
+from fastmob.measures.individual.diversity import diversity  # noqa: E402
 
 
 def _diversity_visits():

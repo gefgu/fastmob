@@ -1,6 +1,6 @@
-# Mobility Analysis Tool
+# fastmob
 
-A Python toolkit for analyzing human mobility data with backend-agnostic dataframe support and Rust-accelerated compute kernels.
+High-performance mobility analysis with backend-agnostic dataframe support and Rust-accelerated compute kernels.
 
 ## Key Features
 
@@ -16,7 +16,7 @@ A Python toolkit for analyzing human mobility data with backend-agnostic datafra
 ## Installation
 
 ```bash
-pip install fkmob
+pip install fastmob
 ```
 
 For development from source:
@@ -30,7 +30,7 @@ env -u CONDA_PREFIX uv run maturin develop
 
 ```python
 import pandas as pd
-from fkmob import jump_lengths
+from fastmob import jump_lengths
 
 df = pd.DataFrame(
     {

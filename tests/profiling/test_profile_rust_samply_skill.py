@@ -20,7 +20,7 @@ def load_script(name: str):
 
 
 def tiny_firefox_profile() -> dict:
-    strings = ["python", "root", "fkmob::radius_of_gyration", "src/radius_of_gyration.rs:rog_for_slice"]
+    strings = ["python", "root", "fastmob::radius_of_gyration", "src/radius_of_gyration.rs:rog_for_slice"]
     return {
         "meta": {"profileName": "tiny"},
         "threads": [
@@ -64,7 +64,7 @@ def test_reduce_samply_json_handles_schema_names_and_rust_focus(tmp_path):
     assert "src/radius_of_gyration.rs:rog_for_slice" in rust_inclusive_names
     assert thread["top_stacks"][0]["stack"] == [
         "root",
-        "fkmob::radius_of_gyration",
+        "fastmob::radius_of_gyration",
         "src/radius_of_gyration.rs:rog_for_slice",
     ]
 

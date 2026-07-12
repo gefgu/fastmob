@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 
 DEFAULT_INPUT_CACHE_DIR = Path(__file__).resolve().parent / "cache"
-_ROW_ORDER_COL = "__fkmob_benchmark_row_order__"
+_ROW_ORDER_COL = "__fastmob_benchmark_row_order__"
 
 
 @dataclass(frozen=True)

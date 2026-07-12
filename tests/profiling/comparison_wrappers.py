@@ -20,28 +20,28 @@ def _split(df: Any) -> tuple[Any, Any]:
 
 
 def column_distribution_wasserstein(df: Any) -> Any:
-    from fkmob.comparison import column_distribution_wasserstein_distance
+    from fastmob.comparison import column_distribution_wasserstein_distance
 
     df1, df2 = _split(df)
     return column_distribution_wasserstein_distance(df1, df2, "latitude")
 
 
 def column_distribution_jsd(df: Any) -> Any:
-    from fkmob.comparison import column_distribution_jensen_shannon_divergence
+    from fastmob.comparison import column_distribution_jensen_shannon_divergence
 
     df1, df2 = _split(df)
     return column_distribution_jensen_shannon_divergence(df1, df2, "latitude")
 
 
 def visits_per_user_wasserstein(df: Any) -> Any:
-    from fkmob.comparison import visits_per_user_wasserstein_distance
+    from fastmob.comparison import visits_per_user_wasserstein_distance
 
     df1, df2 = _split(df)
     return visits_per_user_wasserstein_distance(df1, df2)
 
 
 def visits_per_user_jsd(df: Any) -> Any:
-    from fkmob.comparison import visits_per_user_jensen_shannon_divergence
+    from fastmob.comparison import visits_per_user_jensen_shannon_divergence
 
     df1, df2 = _split(df)
     return visits_per_user_jensen_shannon_divergence(df1, df2)
@@ -50,7 +50,7 @@ def visits_per_user_jsd(df: Any) -> Any:
 def wasserstein_arrays(df: Any) -> Any:
     """Profile the flat Rust kernel on two latitude arrays."""
 
-    from fkmob.comparison import wasserstein_distance
+    from fastmob.comparison import wasserstein_distance
 
     arr = df["latitude"].to_numpy() if hasattr(df["latitude"], "to_numpy") else df["latitude"].values
     mid = len(arr) // 2

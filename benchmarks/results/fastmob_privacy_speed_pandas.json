@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "backend": "pandas",
+    "dataset_path": "/home/gustavo/fastmob/scikit-mobility/examples/privacy_toy.csv",
+    "input_type": "pandas.DataFrame",
+    "iterations": 5,
+    "library": "fastmob",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
+    "python_version": "3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ]",
+    "repeat_factor": 1,
+    "sleep_seconds": 0.0,
+    "suite": "privacy",
+    "timestamp_utc": "2026-05-12T18:53:53.950392+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "metrics": {
+        "home_work": {
+          "average_seconds": 0.0014227879990357905,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001413307007169351,
+          "status": "ok",
+          "times_seconds": [
+            0.0014177739940350875,
+            0.001413307007169351,
+            0.0014265869976952672,
+            0.0014320549962576479,
+            0.0014242170000215992
+          ]
+        },
+        "location_frequency_kl2": {
+          "average_seconds": 0.001487454999005422,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0014818470081081614,
+          "status": "ok",
+          "times_seconds": [
+            0.0014818470081081614,
+            0.0014884580014040694,
+            0.0014920209941919893,
+            0.0014902249968145043,
+            0.0014847239945083857
+          ]
+        },
+        "location_kl2": {
+          "average_seconds": 0.0012526531994808466,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0012335130013525486,
+          "status": "ok",
+          "times_seconds": [
+            0.0012924140028189868,
+            0.0012509990046964958,
+            0.001237996999407187,
+            0.0012335130013525486,
+            0.0012483429891290143
+          ]
+        },
+        "location_probability_kl2": {
+          "average_seconds": 0.0014101413980824873,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.00139955899794586,
+          "status": "ok",
+          "times_seconds": [
+            0.0014329740079119802,
+            0.0014074039936531335,
+            0.00139955899794586,
+            0.0014034039922989905,
+            0.0014073659986024722
+          ]
+        },
+        "location_proportion_kl2": {
+          "average_seconds": 0.0015047316031996162,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0014996270037954673,
+          "status": "ok",
+          "times_seconds": [
+            0.0015084509941516444,
+            0.0015009530034149066,
+            0.0015089350054040551,
+            0.0014996270037954673,
+            0.001505692009232007
+          ]
+        },
+        "location_sequence_kl2": {
+          "average_seconds": 0.0011891609989106654,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0011847610003314912,
+          "status": "ok",
+          "times_seconds": [
+            0.0011847610003314912,
+            0.001188125999760814,
+            0.001186511988635175,
+            0.0011865859996760264,
+            0.001199820006149821
+          ]
+        },
+        "location_time_kl2": {
+          "average_seconds": 0.002087105400278233,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.0020637900015572086,
+          "status": "ok",
+          "times_seconds": [
+            0.00211375200888142,
+            0.0020881140080746263,
+            0.0020753439894178882,
+            0.0020637900015572086,
+            0.002094526993460022
+          ]
+        },
+        "unique_location_kl2": {
+          "average_seconds": 0.001494739795452915,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.001486283988924697,
+          "status": "ok",
+          "times_seconds": [
+            0.0015010240022093058,
+            0.0014966620074119419,
+            0.0014958059909986332,
+            0.0014939229877199978,
+            0.001486283988924697
+          ]
+        }
+      },
+      "rows": 23
+    }
+  ]
+}

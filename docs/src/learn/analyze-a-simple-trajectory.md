@@ -2,15 +2,15 @@
 
 In this tutorial, we will create a small trajectory dataset, compute two mobility measures, and inspect the results.
 
-We will use pandas so the example is easy to read. fkmob can also work with other eager dataframe backends; when you are ready to adapt this example to your own column names or backend, see TODO.
+We will use pandas so the example is easy to read. fastmob can also work with other eager dataframe backends; when you are ready to adapt this example to your own column names or backend, see TODO.
 <!-- [Use custom columns and dataframe backends](../how-to-guides/use-custom-columns-and-dataframe-backends.md). -->
 
 ## Before we start
 
-Make sure fkmob and pandas are installed in your Python environment:
+Make sure fastmob and pandas are installed in your Python environment:
 
 ```bash
-pip install fkmob pandas
+pip install fastmob pandas
 ```
 
 Start a Python session or create a file named `simple_trajectory.py`.
@@ -58,7 +58,7 @@ Notice that each row is one point in a user's trajectory.
 Now compute the distance between each user's consecutive points:
 
 ```python
-from fkmob import jump_lengths
+from fastmob import jump_lengths
 
 jumps = jump_lengths(df)
 print(jumps)
@@ -72,14 +72,14 @@ The output should look something like:
 1    bob    [6.286..., 5.236...]
 ```
 
-Notice that fkmob returns one row per user. The `jump_lengths` value is a list because each user has more than one movement between points.
+Notice that fastmob returns one row per user. The `jump_lengths` value is a list because each user has more than one movement between points.
 
 ## Step 3: Compute radius of gyration
 
 Next, compute how widely each user moves around their center of mass:
 
 ```python
-from fkmob import radius_of_gyration
+from fastmob import radius_of_gyration
 
 rg = radius_of_gyration(df)
 print(rg)
@@ -101,7 +101,7 @@ Let's put the pieces together:
 
 ```python
 import pandas as pd
-from fkmob import jump_lengths, radius_of_gyration
+from fastmob import jump_lengths, radius_of_gyration
 
 df = pd.DataFrame({
     "uid": ["alice", "alice", "alice", "bob", "bob", "bob"],
@@ -125,5 +125,5 @@ You should see two small result dataframes, both grouped by user.
 
 ## What we have made
 
-You have created a minimal trajectory dataset and used fkmob to compute two user-level mobility measures. The same pattern works for larger trajectory dataframes: build a dataframe with time, latitude, longitude, and user columns, then pass it to the measure you want to compute.
+You have created a minimal trajectory dataset and used fastmob to compute two user-level mobility measures. The same pattern works for larger trajectory dataframes: build a dataframe with time, latitude, longitude, and user columns, then pass it to the measure you want to compute.
 

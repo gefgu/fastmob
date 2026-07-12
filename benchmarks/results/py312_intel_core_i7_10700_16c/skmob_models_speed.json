@@ -33,7 +33,7 @@
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
     "profile": "speed",
     "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
-    "reference_dir": "/home/gustavo/fkmob/tests/shared/skmob_reference/models",
+    "reference_dir": "/home/gustavo/fastmob/tests/shared/skmob_reference/models",
     "sleep_seconds": 0.5,
     "suite": "models",
     "timestamp_utc": "2026-06-10T19:01:13.328461+00:00"

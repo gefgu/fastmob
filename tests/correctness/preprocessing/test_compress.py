@@ -1,4 +1,4 @@
-"""Correctness tests for fkmob.preprocessing.compress."""
+"""Correctness tests for fastmob.preprocessing.compress."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fkmob.preprocessing import compress
+from fastmob.preprocessing import compress
 
 
 def test_compress_dense_cluster_becomes_one_point(compress_tdf):

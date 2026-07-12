@@ -4,8 +4,8 @@
     "cpu_cores": 16,
     "cpu_model": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
     "cpu_vendor": "intel",
-    "dataset_path": "/home/gustavo/fkmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
-    "input_cache_path": "/home/gustavo/fkmob/benchmarks/cache/collective_loc-brightkite_totalCheckins.txt.gz_pandas_sorted.parquet",
+    "dataset_path": "/home/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": "/home/gustavo/fastmob/benchmarks/cache/collective_loc-brightkite_totalCheckins.txt.gz_pandas_sorted.parquet",
     "input_cache_status": "reused",
     "input_order": "sorted",
     "input_type": "skmob.TrajDataFrame",
@@ -21,7 +21,7 @@
       "od_matrix",
       "od_metrics_per_area"
     ],
-    "movingpandas_catalog_path": "/home/gustavo/fkmob/benchmarks/movingpandas_skmob_api_catalog.json",
+    "movingpandas_catalog_path": "/home/gustavo/fastmob/benchmarks/movingpandas_skmob_api_catalog.json",
     "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.35",
     "profile": "speed",
     "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
@@ -33,7 +33,7 @@
       1000000,
       4000000
     ],
-    "skmob_catalog_path": "/home/gustavo/fkmob/benchmarks/skmob_public_api_catalog.json",
+    "skmob_catalog_path": "/home/gustavo/fastmob/benchmarks/skmob_public_api_catalog.json",
     "sleep_seconds": 0.5,
     "suite": "collective",
     "timestamp_utc": "2026-06-09T15:52:07.966554+00:00",

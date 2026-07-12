@@ -2,64 +2,64 @@
 
 | API | Description |
 | --- | --- |
-| [`Attack`](#fkmob.privacy.Attack) | Abstract base class for privacy attacks. |
-| [`LocationAttack`](#fkmob.privacy.LocationAttack) | Assess risk from a set of visited locations. |
-| [`LocationSequenceAttack`](#fkmob.privacy.LocationSequenceAttack) | Assess risk from a chronologically ordered sequence of locations. |
-| [`LocationTimeAttack`](#fkmob.privacy.LocationTimeAttack) | Assess risk from locations observed at a selected time precision. |
-| [`UniqueLocationAttack`](#fkmob.privacy.UniqueLocationAttack) | Assess risk from the set of unique locations visited by each user. |
-| [`LocationFrequencyAttack`](#fkmob.privacy.LocationFrequencyAttack) | Assess risk from locations and visit frequencies. |
-| [`LocationProbabilityAttack`](#fkmob.privacy.LocationProbabilityAttack) | Assess risk from locations and visit probabilities. |
-| [`LocationProportionAttack`](#fkmob.privacy.LocationProportionAttack) | Assess risk from locations and relative visit-frequency proportions. |
-| [`HomeWorkAttack`](#fkmob.privacy.HomeWorkAttack) | Assess risk from each user's two most frequent locations. |
+| [`Attack`](#fastmob.privacy.Attack) | Abstract base class for privacy attacks. |
+| [`LocationAttack`](#fastmob.privacy.LocationAttack) | Assess risk from a set of visited locations. |
+| [`LocationSequenceAttack`](#fastmob.privacy.LocationSequenceAttack) | Assess risk from a chronologically ordered sequence of locations. |
+| [`LocationTimeAttack`](#fastmob.privacy.LocationTimeAttack) | Assess risk from locations observed at a selected time precision. |
+| [`UniqueLocationAttack`](#fastmob.privacy.UniqueLocationAttack) | Assess risk from the set of unique locations visited by each user. |
+| [`LocationFrequencyAttack`](#fastmob.privacy.LocationFrequencyAttack) | Assess risk from locations and visit frequencies. |
+| [`LocationProbabilityAttack`](#fastmob.privacy.LocationProbabilityAttack) | Assess risk from locations and visit probabilities. |
+| [`LocationProportionAttack`](#fastmob.privacy.LocationProportionAttack) | Assess risk from locations and relative visit-frequency proportions. |
+| [`HomeWorkAttack`](#fastmob.privacy.HomeWorkAttack) | Assess risk from each user's two most frequent locations. |
 
-::: fkmob.privacy.Attack
+::: fastmob.privacy.Attack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.LocationAttack
+::: fastmob.privacy.LocationAttack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.LocationSequenceAttack
+::: fastmob.privacy.LocationSequenceAttack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.LocationTimeAttack
+::: fastmob.privacy.LocationTimeAttack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.UniqueLocationAttack
+::: fastmob.privacy.UniqueLocationAttack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.LocationFrequencyAttack
+::: fastmob.privacy.LocationFrequencyAttack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.LocationProbabilityAttack
+::: fastmob.privacy.LocationProbabilityAttack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.LocationProportionAttack
+::: fastmob.privacy.LocationProportionAttack
     options:
       show_source: false
 
 ---
 
-::: fkmob.privacy.HomeWorkAttack
+::: fastmob.privacy.HomeWorkAttack
     options:
       show_source: false

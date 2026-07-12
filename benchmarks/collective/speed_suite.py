@@ -2,7 +2,7 @@
 
 Run from the repository root, for example:
 
-    python benchmarks/collective/speed_suite.py --library fkmob --backend both
+    python benchmarks/collective/speed_suite.py --library fastmob --backend both
     python benchmarks/collective/speed_suite.py --library skmob
 """
 
@@ -67,7 +67,7 @@ BRIGHTKITE_TRAJECTORY_KWARGS = {
 @dataclass(frozen=True)
 class BenchmarkSpec:
     name: str
-    fkmob_module_path: str
+    fastmob_module_path: str
     skmob_module_path: str
     func_name: str
     kwargs: dict[str, Any]
@@ -77,7 +77,7 @@ class BenchmarkSpec:
 COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec(
         "random_location_entropy",
-        "fkmob.measures.collective.random_location_entropy",
+        "fastmob.measures.collective.random_location_entropy",
         "skmob.measures.collective",
         "random_location_entropy",
         {},
@@ -85,7 +85,7 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "uncorrelated_location_entropy",
-        "fkmob.measures.collective.uncorrelated_location_entropy",
+        "fastmob.measures.collective.uncorrelated_location_entropy",
         "skmob.measures.collective",
         "uncorrelated_location_entropy",
         {},
@@ -93,7 +93,7 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "mean_square_displacement",
-        "fkmob.measures.collective.mean_square_displacement",
+        "fastmob.measures.collective.mean_square_displacement",
         "skmob.measures.collective",
         "mean_square_displacement",
         {},
@@ -101,7 +101,7 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "visits_per_location",
-        "fkmob.measures.collective.visits_per_location",
+        "fastmob.measures.collective.visits_per_location",
         "skmob.measures.collective",
         "visits_per_location",
         {},
@@ -109,7 +109,7 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "homes_per_location",
-        "fkmob.measures.collective.homes_per_location",
+        "fastmob.measures.collective.homes_per_location",
         "skmob.measures.collective",
         "homes_per_location",
         {},
@@ -117,7 +117,7 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "visits_per_time_unit",
-        "fkmob.measures.collective.visits_per_time_unit",
+        "fastmob.measures.collective.visits_per_time_unit",
         "skmob.measures.collective",
         "visits_per_time_unit",
         {},
@@ -125,7 +125,7 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "od_matrix",
-        "fkmob.measures.collective.od",
+        "fastmob.measures.collective.od",
         "skmob.measures.collective",
         "od_matrix",
         {},
@@ -133,7 +133,7 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
     BenchmarkSpec(
         "od_metrics_per_area",
-        "fkmob.measures.collective.od",
+        "fastmob.measures.collective.od",
         "skmob.measures.collective",
         "od_metrics_per_area",
         {},
@@ -155,10 +155,10 @@ def build_output_path(
     input_order: str = "raw",
 ) -> Path:
     order_part = "" if input_order == "raw" else f"{input_order}_"
-    if library == "fkmob":
+    if library == "fastmob":
         if backend is None or backend == "both":
-            raise ValueError("fkmob output path requires a concrete backend")
-        filename = f"fkmob_collective_{profile}_{order_part}{backend}.json"
+            raise ValueError("fastmob output path requires a concrete backend")
+        filename = f"fastmob_collective_{profile}_{order_part}{backend}.json"
     elif library == "skmob":
         filename = f"skmob_collective_{profile}_{order_part}{timing_mode}.json"
     else:
@@ -173,7 +173,7 @@ def build_output_path(
 def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
     try:
         module_path = (
-            spec.fkmob_module_path if library == "fkmob" else spec.skmob_module_path
+            spec.fastmob_module_path if library == "fastmob" else spec.skmob_module_path
         )
         module = importlib.import_module(module_path)
     except Exception as exc:
@@ -189,7 +189,7 @@ def metric_kwargs_for_library(
     spec: BenchmarkSpec, library: str, func: Callable[..., Any]
 ) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
-    if library == "fkmob" and spec.name == "homes_per_location":
+    if library == "fastmob" and spec.name == "homes_per_location":
         kwargs.update(BRIGHTKITE_TRAJECTORY_KWARGS)
         return kwargs
 
@@ -311,7 +311,7 @@ def benchmark_specs(
     }
 
 
-def make_fkmob_metric_input(df: Any, spec: BenchmarkSpec) -> Any:
+def make_fastmob_metric_input(df: Any, spec: BenchmarkSpec) -> Any:
     if spec.name == "od_metrics_per_area":
         return make_od_input(df, precomputed=True)
     if spec.name == "od_matrix":
@@ -319,7 +319,7 @@ def make_fkmob_metric_input(df: Any, spec: BenchmarkSpec) -> Any:
     return df
 
 
-def benchmark_fkmob_size(
+def benchmark_fastmob_size(
     df: Any,
     size: int,
     *,
@@ -338,8 +338,8 @@ def benchmark_fkmob_size(
         "rows": len(size_df),
         "metrics": benchmark_specs(
             specs,
-            "fkmob",
-            lambda spec: make_fkmob_metric_input(size_df, spec),
+            "fastmob",
+            lambda spec: make_fastmob_metric_input(size_df, spec),
             profile=profile,
             iterations=iterations,
             sleep_seconds=sleep_seconds,
@@ -537,11 +537,11 @@ def run_suite(
         )
     specs = selected_specs(args)
 
-    if args.library == "fkmob":
+    if args.library == "fastmob":
         selected_backend = backend or args.backend
         if selected_backend == "both":
             raise ValueError(
-                "run_suite requires a concrete backend when library is fkmob"
+                "run_suite requires a concrete backend when library is fastmob"
             )
         if selected_backend == "pandas":
             input_type = "pandas.DataFrame"
@@ -557,7 +557,7 @@ def run_suite(
             input_cache_dir=Path(args.input_cache_dir),
         )
         results = [
-            benchmark_fkmob_size(
+            benchmark_fastmob_size(
                 df,
                 size,
                 specs=specs,
@@ -646,7 +646,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Run standalone collective speed benchmarks."
     )
     parser.add_argument(
-        "--library", choices=["fkmob", "skmob", "movingpandas"], required=True
+        "--library", choices=["fastmob", "skmob", "movingpandas"], required=True
     )
     parser.add_argument(
         "--backend", choices=["pandas", "polars", "both"], default="both"

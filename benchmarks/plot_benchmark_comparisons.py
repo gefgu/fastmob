@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-os.environ.setdefault("MPLCONFIGDIR", "/tmp/fkmob-matplotlib")
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/fastmob-matplotlib")
 
 import matplotlib
 
@@ -138,7 +138,7 @@ def common_labels(
         print(
             f"Skipping {size}: size label not found in both files. "
             f"Original labels: {sorted(original, key=parse_size_key)}; "
-            f"fkmob labels: {sorted(optimized, key=parse_size_key)}."
+            f"fastmob labels: {sorted(optimized, key=parse_size_key)}."
         )
     return [size for size in requested if size in available]
 
@@ -181,7 +181,7 @@ def common_model_locations(
     for count in missing:
         print(
             f"Skipping {count} locations: location count not found in both model files. "
-            f"Original locations: {original_locations}; fkmob locations: {optimized_locations}."
+            f"Original locations: {original_locations}; fastmob locations: {optimized_locations}."
         )
     return [count for count in requested if count in available]
 
@@ -292,11 +292,11 @@ def missing_metric_reasons(
             reasons.append((metric, "missing from original skmob JSON"))
             continue
         if optimized_metric is None:
-            reasons.append((metric, "missing from fkmob JSON"))
+            reasons.append((metric, "missing from fastmob JSON"))
             continue
 
         original_reason = invalid_metric_reason(original_metric, "original skmob")
-        optimized_reason = invalid_metric_reason(optimized_metric, "fkmob")
+        optimized_reason = invalid_metric_reason(optimized_metric, "fastmob")
         if original_reason:
             reasons.append((metric, original_reason))
         if optimized_reason:
@@ -335,7 +335,7 @@ def display_metric_name(metric: str) -> str:
 
 
 def comparison_title(suite: str, backend: str | None) -> str:
-    return "fkmob vs skmob"
+    return "fastmob vs skmob"
 
 
 def comparison_subtitle(
@@ -370,7 +370,7 @@ def comparison_context(original_payload: dict[str, Any], optimized_payload: dict
     original_metadata = original_payload.get("metadata", {})
     optimized_metadata = optimized_payload.get("metadata", {})
     original_input = original_metadata.get("input_type") or "original input"
-    optimized_input = optimized_metadata.get("input_type") or "fkmob input"
+    optimized_input = optimized_metadata.get("input_type") or "fastmob input"
     timing_mode = str(original_metadata.get("timing_mode") or "")
     if timing_mode == "prebuilt_tdf":
         baseline_note = "Original skmob uses a prebuilt TrajDataFrame baseline"
@@ -384,8 +384,8 @@ def comparison_context(original_payload: dict[str, Any], optimized_payload: dict
 def output_name(suite: str, backend: str | None, size_label: str) -> str:
     safe_size = re.sub(r"[^A-Za-z0-9_.-]+", "_", size_label)
     if not backend:
-        return f"fkmob_vs_skmob_{suite}_{safe_size}.png"
-    return f"fkmob_vs_skmob_{suite}_{backend}_{safe_size}.png"
+        return f"fastmob_vs_skmob_{suite}_{safe_size}.png"
+    return f"fastmob_vs_skmob_{suite}_{backend}_{safe_size}.png"
 
 
 def _resolve_output_dir(base: Path, *payloads: dict[str, Any]) -> Path:
@@ -462,7 +462,7 @@ def draw_plot(
         color=PRIMARY,
         edgecolor=PRIMARY,
         linewidth=0.6,
-        label=f"fkmob {backend}" if backend else "fkmob",
+        label=f"fastmob {backend}" if backend else "fastmob",
     )
 
     ax.set_xlim(0, x_max)
@@ -671,7 +671,7 @@ def draw_standalone_plot(
         color=PRIMARY,
         edgecolor=PRIMARY,
         linewidth=0.6,
-        label="fkmob",
+        label="fastmob",
     )
 
     ax.set_xlim(0, x_max)
@@ -715,7 +715,7 @@ def draw_standalone_plot(
     fig.text(
         header_left,
         0.955,
-        "fkmob scaling",
+        "fastmob scaling",
         color=ON_DARK,
         fontsize=TITLE_FONT_SIZE,
         fontweight="bold",
@@ -830,10 +830,10 @@ def missing_memory_metric_reasons(
             reasons.append((metric, "missing from original skmob JSON"))
             continue
         if opt is None:
-            reasons.append((metric, "missing from fkmob JSON"))
+            reasons.append((metric, "missing from fastmob JSON"))
             continue
         r1 = invalid_memory_metric_reason(orig, "original skmob")
-        r2 = invalid_memory_metric_reason(opt, "fkmob")
+        r2 = invalid_memory_metric_reason(opt, "fastmob")
         if r1:
             reasons.append((metric, r1))
         if r2:
@@ -877,7 +877,7 @@ def standalone_metric_rows(
     rows = []
     for metric in metric_names:
         metric_result = optimized_metrics.get(metric)
-        if metric_result is None or invalid_metric_reason(metric_result, "fkmob"):
+        if metric_result is None or invalid_metric_reason(metric_result, "fastmob"):
             continue
         rows.append({"metric": metric, "optimized": float(metric_result["average_seconds"])})
     rows.sort(key=lambda row: row["optimized"], reverse=(sort_mode != "speedup"))
@@ -894,7 +894,7 @@ def standalone_memory_metric_rows(
     rows = []
     for metric in metric_names:
         metric_result = optimized_metrics.get(metric)
-        if metric_result is None or invalid_memory_metric_reason(metric_result, "fkmob"):
+        if metric_result is None or invalid_memory_metric_reason(metric_result, "fastmob"):
             continue
         rows.append({"metric": metric, "optimized": float(metric_result["maximum_peak_memory_mb"])})
     rows.sort(key=lambda row: row["optimized"], reverse=(sort_mode != "speedup"))
@@ -953,7 +953,7 @@ def draw_memory_plot(
         color=PRIMARY,
         edgecolor=PRIMARY,
         linewidth=0.6,
-        label=f"fkmob {backend}" if backend else "fkmob",
+        label=f"fastmob {backend}" if backend else "fastmob",
     )
 
     ax.set_xlim(0, x_max)
@@ -1165,7 +1165,7 @@ def draw_memory_standalone_plot(
         color=PRIMARY,
         edgecolor=PRIMARY,
         linewidth=0.6,
-        label="fkmob",
+        label="fastmob",
     )
 
     ax.set_xlim(0, x_max)
@@ -1209,7 +1209,7 @@ def draw_memory_standalone_plot(
     fig.text(
         header_left,
         0.955,
-        "fkmob memory",
+        "fastmob memory",
         color=ON_DARK,
         fontsize=TITLE_FONT_SIZE,
         fontweight="bold",
@@ -1588,9 +1588,9 @@ def generate_model_memory_plots(args: argparse.Namespace) -> int:
         return load_json(rp)
 
     orig_large = None if args.standalone else _maybe_load("large_json_skmob")
-    opt_large = _maybe_load("large_json_fkmob")
+    opt_large = _maybe_load("large_json_fastmob")
     orig_loc_large = None if args.standalone else _maybe_load("large_loc_json_skmob")
-    opt_loc_large = _maybe_load("large_loc_json_fkmob")
+    opt_loc_large = _maybe_load("large_loc_json_fastmob")
 
     orig_loc = _merge_location_model_data(original_payload, orig_loc_large)
     opt_loc = _merge_location_model_data(optimized_payload, opt_loc_large)
@@ -1623,14 +1623,14 @@ def generate_model_memory_plots(args: argparse.Namespace) -> int:
         generated += 1
         print(f"Saved {output_path}")
 
-    fkmob_only_loc_counts = sorted(set(opt_loc) - set(orig_loc))
-    for n_locs in fkmob_only_loc_counts:
+    fastmob_only_loc_counts = sorted(set(opt_loc) - set(orig_loc))
+    for n_locs in fastmob_only_loc_counts:
         standalone_rows = _memory_location_only_standalone_rows(opt_loc, n_locs)
         if not standalone_rows:
             continue
         loc_label = format_size_label(n_locs)
         size_label = f"Location-only / {loc_label} locations"
-        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations_fkmob_memory.png"
+        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations_fastmob_memory.png"
         output_path = args.output_dir / out_name
         draw_memory_standalone_plot(
             standalone_rows,
@@ -1665,16 +1665,16 @@ def generate_model_memory_plots(args: argparse.Namespace) -> int:
         generated += 1
         print(f"Saved {output_path}")
 
-    fkmob_only_agents = sorted(
+    fastmob_only_agents = sorted(
         {ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj}
     )
-    for n_agents in fkmob_only_agents:
+    for n_agents in fastmob_only_agents:
         standalone_rows = _memory_agent_based_standalone_rows(opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
         if not standalone_rows:
             continue
         agent_label = format_size_label(n_agents)
         size_label = f"Agent-based / {agent_label} agents"
-        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents_fkmob_memory.png"
+        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents_fastmob_memory.png"
         output_path = args.output_dir / out_name
         draw_memory_standalone_plot(
             standalone_rows,
@@ -1713,11 +1713,11 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
         for label in labels:
             rows = standalone_memory_metric_rows(optimized_results[label], args.sort, expected_metrics)
             if not rows:
-                print(f"No valid fkmob memory metrics found for {label}; skipping.")
+                print(f"No valid fastmob memory metrics found for {label}; skipping.")
                 continue
             safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
             backend_part = f"_{args.backend}" if args.backend else ""
-            output_path = out_dir / f"fkmob_{args.suite}{backend_part}_{safe_label}_memory.png"
+            output_path = out_dir / f"fastmob_{args.suite}{backend_part}_{safe_label}_memory.png"
             draw_memory_standalone_plot(
                 rows,
                 optimized_payload=optimized_payload,
@@ -1756,7 +1756,7 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
         print(
             "No overlapping size labels found. "
             f"Original labels: {sorted(original_results, key=parse_size_key)}; "
-            f"fkmob labels: {sorted(optimized_results, key=parse_size_key)}."
+            f"fastmob labels: {sorted(optimized_results, key=parse_size_key)}."
         )
         if args.sizes:
             return 0
@@ -1780,9 +1780,9 @@ def generate_memory_plots(args: argparse.Namespace) -> int:
             continue
         safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
         if not args.backend:
-            out_name = f"fkmob_vs_skmob_{args.suite}_{safe_label}_memory.png"
+            out_name = f"fastmob_vs_skmob_{args.suite}_{safe_label}_memory.png"
         else:
-            out_name = f"fkmob_vs_skmob_{args.suite}_{args.backend}_{safe_label}_memory.png"
+            out_name = f"fastmob_vs_skmob_{args.suite}_{args.backend}_{safe_label}_memory.png"
         output_path = out_dir / out_name
         draw_memory_plot(
             rows,
@@ -1831,9 +1831,9 @@ def generate_model_plots(args: argparse.Namespace) -> int:
         return load_json(rp)
 
     orig_large = None if args.standalone else _maybe_load("large_json_skmob")
-    opt_large = _maybe_load("large_json_fkmob")
+    opt_large = _maybe_load("large_json_fastmob")
     orig_loc_large = None if args.standalone else _maybe_load("large_loc_json_skmob")
-    opt_loc_large = _maybe_load("large_loc_json_fkmob")
+    opt_loc_large = _maybe_load("large_loc_json_fastmob")
 
     orig_loc = _merge_location_model_data(original_payload, orig_loc_large)
     opt_loc = _merge_location_model_data(optimized_payload, opt_loc_large)
@@ -1868,15 +1868,15 @@ def generate_model_plots(args: argparse.Namespace) -> int:
         generated += 1
         print(f"Saved {output_path}")
 
-    # Standalone fkmob-only charts for location counts not available in skmob
-    fkmob_only_loc_counts = sorted(set(opt_loc) - set(orig_loc))
-    for n_locs in fkmob_only_loc_counts:
+    # Standalone fastmob-only charts for location counts not available in skmob
+    fastmob_only_loc_counts = sorted(set(opt_loc) - set(orig_loc))
+    for n_locs in fastmob_only_loc_counts:
         standalone_rows = _location_only_standalone_rows(opt_loc, n_locs)
         if not standalone_rows:
             continue
         loc_label = format_size_label(n_locs)
         size_label = f"Location-only / {loc_label} locations"
-        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations_fkmob.png"
+        out_name = f"model_location_only_{_loc_safe(n_locs)}_locations_fastmob.png"
         output_path = args.output_dir / out_name
         draw_standalone_plot(
             standalone_rows,
@@ -1913,17 +1913,17 @@ def generate_model_plots(args: argparse.Namespace) -> int:
         generated += 1
         print(f"Saved {output_path}")
 
-    # Standalone fkmob-only charts for agent counts not available in skmob
-    fkmob_only_agents = sorted(
+    # Standalone fastmob-only charts for agent counts not available in skmob
+    fastmob_only_agents = sorted(
         {ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj}
     )
-    for n_agents in fkmob_only_agents:
+    for n_agents in fastmob_only_agents:
         standalone_rows = _agent_based_standalone_rows(opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
         if not standalone_rows:
             continue
         agent_label = format_size_label(n_agents)
         size_label = f"Agent-based / {agent_label} agents"
-        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents_fkmob.png"
+        out_name = f"model_agent_based_{re.sub(r'[^A-Za-z0-9_.-]+', '_', agent_label)}_agents_fastmob.png"
         output_path = args.output_dir / out_name
         draw_standalone_plot(
             standalone_rows,
@@ -1965,11 +1965,11 @@ def generate_plots(args: argparse.Namespace) -> int:
         for label in labels:
             rows = standalone_metric_rows(optimized_results[label], args.sort, expected_metrics)
             if not rows:
-                print(f"No valid fkmob speed metrics found for {label}; skipping.")
+                print(f"No valid fastmob speed metrics found for {label}; skipping.")
                 continue
             safe_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", label)
             backend_part = f"_{args.backend}" if args.backend else ""
-            output_path = out_dir / f"fkmob_{args.suite}{backend_part}_{safe_label}.png"
+            output_path = out_dir / f"fastmob_{args.suite}{backend_part}_{safe_label}.png"
             draw_standalone_plot(
                 rows,
                 optimized_payload=optimized_payload,
@@ -2008,7 +2008,7 @@ def generate_plots(args: argparse.Namespace) -> int:
         print(
             "No overlapping size labels found. "
             f"Original labels: {sorted(original_results, key=parse_size_key)}; "
-            f"fkmob labels: {sorted(optimized_results, key=parse_size_key)}."
+            f"fastmob labels: {sorted(optimized_results, key=parse_size_key)}."
         )
         if args.sizes:
             return 0
@@ -2058,9 +2058,9 @@ def generate_plots(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--original-json", type=Path, help="Original skmob benchmark JSON.")
-    parser.add_argument("--optimized-json", required=True, type=Path, help="fkmob benchmark JSON.")
+    parser.add_argument("--optimized-json", required=True, type=Path, help="fastmob benchmark JSON.")
     parser.add_argument("--suite", required=True, help="Benchmark suite name, for example individual or privacy.")
-    parser.add_argument("--backend", choices=("pandas", "polars"), help="fkmob backend.")
+    parser.add_argument("--backend", choices=("pandas", "polars"), help="fastmob backend.")
     parser.add_argument(
         "--catalog",
         type=Path,
@@ -2081,11 +2081,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Metric ordering for the plot.",
     )
     parser.add_argument(
-        "--large-json-fkmob",
+        "--large-json-fastmob",
         type=Path,
         default=None,
-        dest="large_json_fkmob",
-        help="Large-scale trajectory benchmark JSON for fkmob (models suite only).",
+        dest="large_json_fastmob",
+        help="Large-scale trajectory benchmark JSON for fastmob (models suite only).",
     )
     parser.add_argument(
         "--large-json-skmob",
@@ -2095,11 +2095,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Large-scale trajectory benchmark JSON for original skmob (models suite only).",
     )
     parser.add_argument(
-        "--large-loc-json-fkmob",
+        "--large-loc-json-fastmob",
         type=Path,
         default=None,
-        dest="large_loc_json_fkmob",
-        help="Large-scale location-only benchmark JSON for fkmob (models suite only).",
+        dest="large_loc_json_fastmob",
+        help="Large-scale location-only benchmark JSON for fastmob (models suite only).",
     )
     parser.add_argument(
         "--large-loc-json-skmob",
@@ -2117,7 +2117,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--standalone",
         action="store_true",
-        help="Generate fkmob-only plots without requiring an original skmob JSON.",
+        help="Generate fastmob-only plots without requiring an original skmob JSON.",
     )
     parser.add_argument(
         "--skip-invalid",

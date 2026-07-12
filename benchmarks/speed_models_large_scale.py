@@ -3,14 +3,14 @@
 Targets realistic user scenarios: 1 000 – 10 000 tile tessellations, up to 50 000 agents.
 For skmob comparison (which cannot handle these scales), run at smaller sizes:
 
-    # fkmob at full scale
-    python benchmarks/speed_models_large_scale.py --library fkmob --sizes 1000 5000 10000
+    # fastmob at full scale
+    python benchmarks/speed_models_large_scale.py --library fastmob --sizes 1000 5000 10000
 
     # skmob comparison baseline (smaller sizes only)
     python benchmarks/speed_models_large_scale.py --library skmob --sizes 100 200 500
 
 Output files:
-    benchmarks/results/fkmob_models_large_scale_speed.json
+    benchmarks/results/fastmob_models_large_scale_speed.json
     benchmarks/results/skmob_models_large_scale_speed.json
 """
 
@@ -246,7 +246,7 @@ def benchmark_large_size(
                 profile=profile,
                 iterations=(
                     _FKMOB_SPEC_ITERATIONS.get(spec.name, iterations)
-                    if library == "fkmob"
+                    if library == "fastmob"
                     else iterations
                 ),
                 sleep_seconds=sleep_seconds,
@@ -258,7 +258,7 @@ def benchmark_large_size(
 
 _SKMOB_SKIP_THRESHOLD_S = 1800.0  # 30 minutes
 
-# Per-spec iteration overrides for fkmob (reference: timings at N=10000).
+# Per-spec iteration overrides for fastmob (reference: timings at N=10000).
 # Fast specs (<5 s): 5 iters.  Medium (5–20 s): 3 iters.  Slow (>20 s): 1 iter.
 _FKMOB_SPEC_ITERATIONS: dict[str, int] = {
     "geosim_20a":          5,
@@ -418,7 +418,7 @@ def selected_specs(args: argparse.Namespace) -> tuple[Any, ...]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run large-scale generation model benchmarks.")
-    parser.add_argument("--library", choices=["fkmob", "skmob"], required=True)
+    parser.add_argument("--library", choices=["fastmob", "skmob"], required=True)
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--mode", choices=["trajectory", "location"], default="trajectory",
                         help="trajectory: EPR/GeoSim/STS_epr; location: gravity/radiation only")
