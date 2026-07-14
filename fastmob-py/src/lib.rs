@@ -7,7 +7,9 @@ mod utils;
 use pyo3::prelude::*;
 
 use measures::collective::{square_displacement, visitation_law};
-use measures::evaluation::{stvd_emd, trajectory_cpc, wasserstein};
+#[cfg(feature = "simd")]
+use measures::evaluation::stvd_emd;
+use measures::evaluation::{trajectory_cpc, wasserstein};
 use measures::individual::{
     activity, entropy, home_location, individual_mobility_network, k_radius_of_gyration,
     location_frequency, max_distance_from_point, maximum_distance, motifs, radius_of_gyration,
@@ -429,8 +431,11 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         stay_locations_py::detect_stay_locations_batch_indexed_arrow,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;
+    #[cfg(feature = "simd")]
+    {
+        m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;
+        m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;
+    }
     m.add_function(wrap_pyfunction!(
         trajectory_cpc::trajectory_common_part_of_commuters_numpy,
         m

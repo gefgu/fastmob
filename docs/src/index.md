@@ -56,7 +56,7 @@ print(result)
 
 ## Requirements
 
-- Python >= 3.8
+- Python >= 3.9
 - Rust toolchain (for building from source)
 
 ## Install from PyPI

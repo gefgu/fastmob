@@ -7,8 +7,12 @@ from typing import Any, Literal, Sequence
 import narwhals as nw
 import numpy as np
 
-from fastmob._core import stvd_emd_arrow as _stvd_emd_arrow
-from fastmob._core import stvd_emd_numpy as _stvd_emd_numpy
+try:
+    from fastmob._core import stvd_emd_arrow as _stvd_emd_arrow
+    from fastmob._core import stvd_emd_numpy as _stvd_emd_numpy
+except ImportError:  # Built without the optional SIMD/wass backend.
+    _stvd_emd_arrow = None
+    _stvd_emd_numpy = None
 from fastmob._core import (
     trajectory_common_part_of_commuters_arrow as _trajectory_cpc_arrow,
 )
@@ -358,6 +362,11 @@ def _route_and_call(
     *,
     use_arrow: bool,
 ) -> float:
+    if _stvd_emd_arrow is None or _stvd_emd_numpy is None:
+        raise ImportError(
+            "stvd_emd requires fastmob to be built with the optional SIMD feature"
+        )
+
     if use_arrow:
         args = [x.to_arrow() for x in (*arrays_a, *arrays_b)]
         return _stvd_emd_arrow(*args, alpha, cyclical_period, num_projections)
