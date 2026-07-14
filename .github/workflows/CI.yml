@@ -15,20 +15,6 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: "1"
-  # numkong 7.x can fail in manylinux images when compiling newer x86
-  # intrinsic families such as Ice Lake and Genoa. Release wheels should be
-  # portable, so force-disable those runtime-dispatch targets in CI.
-  NK_TARGET_HASWELL: "0"
-  NK_TARGET_SKYLAKE: "0"
-  NK_TARGET_ICELAKE: "0"
-  NK_TARGET_GENOA: "0"
-  NK_TARGET_SAPPHIRE: "0"
-  NK_TARGET_SAPPHIREAMX: "0"
-  NK_TARGET_GRANITEAMX: "0"
-  NK_TARGET_DIAMOND: "0"
-  NK_TARGET_TURIN: "0"
-  NK_TARGET_ALDER: "0"
-  NK_TARGET_SIERRA: "0"
 
 jobs:
   test:
@@ -67,7 +53,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --find-interpreter --no-default-features --features stvd-emd
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           manylinux: auto
 
@@ -93,7 +79,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --find-interpreter --no-default-features --features stvd-emd
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           manylinux: musllinux_1_2
 

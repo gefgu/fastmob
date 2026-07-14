@@ -7,7 +7,7 @@ mod utils;
 use pyo3::prelude::*;
 
 use measures::collective::{square_displacement, visitation_law};
-#[cfg(feature = "simd")]
+#[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
 use measures::individual::{
@@ -431,7 +431,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         stay_locations_py::detect_stay_locations_batch_indexed_arrow,
         m
     )?)?;
-    #[cfg(feature = "simd")]
+    #[cfg(feature = "stvd-emd")]
     {
         m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;
         m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;

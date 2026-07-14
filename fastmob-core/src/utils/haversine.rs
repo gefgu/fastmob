@@ -1,12 +1,12 @@
 use geo::{Distance, Haversine, Point};
-#[cfg(feature = "simd")]
+#[cfg(feature = "numkong")]
 use numkong::Haversine as NumKongHaversine;
 
-#[cfg(feature = "simd")]
+#[cfg(feature = "numkong")]
 const GEO_HAVERSINE_RADIUS_M: f64 = 6_371_008.8;
-#[cfg(feature = "simd")]
+#[cfg(feature = "numkong")]
 const NUMKONG_HAVERSINE_RADIUS_M: f64 = 6_335_439.0;
-#[cfg(feature = "simd")]
+#[cfg(feature = "numkong")]
 const NUMKONG_TO_GEO_KM: f64 = GEO_HAVERSINE_RADIUS_M / NUMKONG_HAVERSINE_RADIUS_M / 1000.0;
 
 pub fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
@@ -41,7 +41,7 @@ pub fn adjacent_haversine_distances_into_km(
         return;
     }
 
-    #[cfg(feature = "simd")]
+    #[cfg(feature = "numkong")]
     {
         let latitudes_rad: Vec<f64> = latitudes[start..end]
             .iter()
@@ -69,7 +69,7 @@ pub fn adjacent_haversine_distances_into_km(
     // Pure-Rust fallback (no numkong): compute each adjacent distance with the
     // geo-backed single-pair haversine. Results are in the same geo radius as the
     // scaled SIMD path above.
-    #[cfg(not(feature = "simd"))]
+    #[cfg(not(feature = "numkong"))]
     for (idx, distance) in distances.iter_mut().enumerate() {
         *distance = haversine_km(
             latitudes[start + idx],

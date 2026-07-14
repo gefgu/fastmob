@@ -16,4 +16,6 @@ arrow-array = "58.1.0"
 
 [features]
 default = ["simd"]
-simd = ["fastmob-core/simd"]
+simd = ["numkong", "stvd-emd"]
+numkong = ["fastmob-core/numkong"]
+stvd-emd = ["fastmob-core/stvd-emd"]

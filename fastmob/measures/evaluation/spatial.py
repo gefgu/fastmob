@@ -364,7 +364,7 @@ def _route_and_call(
 ) -> float:
     if _stvd_emd_arrow is None or _stvd_emd_numpy is None:
         raise ImportError(
-            "stvd_emd requires fastmob to be built with the optional SIMD feature"
+            "stvd_emd requires fastmob to be built with the optional stvd-emd feature"
         )
 
     if use_arrow:

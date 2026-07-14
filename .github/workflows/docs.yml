@@ -12,17 +12,6 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: "1"
-  NK_TARGET_HASWELL: "0"
-  NK_TARGET_SKYLAKE: "0"
-  NK_TARGET_ICELAKE: "0"
-  NK_TARGET_GENOA: "0"
-  NK_TARGET_SAPPHIRE: "0"
-  NK_TARGET_SAPPHIREAMX: "0"
-  NK_TARGET_GRANITEAMX: "0"
-  NK_TARGET_DIAMOND: "0"
-  NK_TARGET_TURIN: "0"
-  NK_TARGET_ALDER: "0"
-  NK_TARGET_SIERRA: "0"
 
 jobs:
   build:
@@ -43,7 +32,7 @@ jobs:
         run: uv sync --extra docs
 
       - name: Build Rust extension
-        run: uv run maturin develop
+        run: uv run maturin develop --no-default-features --features stvd-emd
 
       - name: Build docs
         run: uv run zensical build
