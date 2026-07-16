@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "benchmark": "fitting.daily_location_lognormal_fit",
+    "cpu_info": {
+      "cores": 32,
+      "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+      "vendor_slug": "amd"
+    },
+    "data_path": "/home/gustavo/citybehavex/data/yjmob_wgs84_simple.parquet",
+    "dataset": "yjmob100k",
+    "h3_resolution": 9
+  },
+  "results": [
+    {
+      "average_seconds": 0.01851207300205715,
+      "minimum_seconds": 0.01680109500011895,
+      "mu": 2.114563019190288,
+      "n_distinct_daily_counts": 37,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "rows_per_second": 73093509.67846474,
+      "sigma": 0.5938484571440112,
+      "size_label": "1228051"
+    },
+    {
+      "average_seconds": 0.3015515159931965,
+      "minimum_seconds": 0.2896234679938061,
+      "mu": 2.095921828764061,
+      "n_distinct_daily_counts": 43,
+      "n_rows": 11904593,
+      "n_users": 10000,
+      "rows_per_second": 41103689.15358265,
+      "sigma": 0.5871945754985834,
+      "size_label": "11904593"
+    },
+    {
+      "average_seconds": 2.951600704000157,
+      "minimum_seconds": 2.9109094379964517,
+      "mu": 2.029264989884713,
+      "n_distinct_daily_counts": 44,
+      "n_rows": 111535175,
+      "n_users": 100000,
+      "rows_per_second": 38316264.16958148,
+      "sigma": 0.5829333733240606,
+      "size_label": "111535175"
+    }
+  ]
+}

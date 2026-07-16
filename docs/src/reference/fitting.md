@@ -8,6 +8,7 @@
 | [`bin_visitation_law_data`](#fastmob.measures.fitting.mobility_laws.bin_visitation_law_data) | Aggregate visitation-law rows into binned `(rf, rho)` values. |
 | [`fit_visitation_law`](#fastmob.measures.fitting.mobility_laws.fit_visitation_law) | Fit the universal visitation law to binned `(rf, rho)` values. |
 | [`visitation_law_curve`](#fastmob.measures.fitting.mobility_laws.visitation_law_curve) | Build a smooth curve for `rho(r, f) = mu * (r*f)^(-eta)`. |
+| [`daily_location_lognormal_fit`](#fastmob.measures.fitting.mobility_laws.daily_location_lognormal_fit) | Fit a lognormal distribution to daily distinct-location counts. |
 
 ::: fastmob.measures.fitting.mobility_laws.log_truncated_powerlaw
     options:
@@ -40,5 +41,11 @@
 ---
 
 ::: fastmob.measures.fitting.mobility_laws.visitation_law_curve
+    options:
+      show_source: false
+
+---
+
+::: fastmob.measures.fitting.mobility_laws.daily_location_lognormal_fit
     options:
       show_source: false

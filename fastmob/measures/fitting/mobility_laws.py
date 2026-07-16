@@ -513,6 +513,82 @@ def fit_visitation_law(
     return eta, mu, r2
 
 
+def daily_location_lognormal_fit(
+    visits: Any,
+    *,
+    user_id_col: str | None = None,
+    location_id_col: str | None = None,
+    timestamp_col: str | None = None,
+) -> tuple[np.ndarray, np.ndarray, float, float]:
+    """Fit a lognormal distribution to daily distinct-location counts.
+
+    For each user and calendar day, counts the number of distinct locations
+    visited, then fits ``mu``/``sigma`` of the lognormal distribution to the
+    (natural) log of those per-user-per-day counts.
+
+    Parameters
+    ----------
+    visits:
+        Visits/stays dataframe; any Narwhals-compatible eager backend.
+    user_id_col, location_id_col, timestamp_col:
+        Explicit column name overrides; auto-detected when None.
+
+    Returns
+    -------
+    x_points, y_points, mu, sigma:
+        ``x_points`` are the distinct daily-location-count values observed
+        (sorted ascending), ``y_points`` their empirical frequencies (summing
+        to 1), and ``mu``/``sigma`` the fitted lognormal parameters (fit on
+        the log of every individual count, not on the binned points).
+
+    Raises
+    ------
+    ValueError
+        If fewer than two daily location counts are available, or if the
+        fitted log-variance is degenerate (<= 0).
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from fastmob.measures.fitting.mobility_laws import daily_location_lognormal_fit
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u2"],
+    ...         "location_id": ["home", "work", "home"],
+    ...         "timestamp": pd.to_datetime(["2020-01-01", "2020-01-01", "2020-01-01"]),
+    ...     }
+    ... )
+    >>> x_points, y_points, mu, sigma = daily_location_lognormal_fit(visits)
+    >>> x_points
+    array([1., 2.])
+    """
+    df = nw.from_native(visits, eager_only=True)
+    user_id_col = _detect_required_column(df, user_id_col, USER_ID_CANDIDATES, "user_id")
+    location_id_col = _detect_required_column(df, location_id_col, LOCATION_CANDIDATES, "location")
+    timestamp_col = _detect_required_column(df, timestamp_col, TIMESTAMP_CANDIDATES, "timestamp")
+
+    daily = (
+        df.with_columns(nw.col(timestamp_col).dt.truncate("1d").alias("__day__"))
+        .group_by([user_id_col, "__day__"])
+        .agg(nw.col(location_id_col).n_unique().alias("__count__"))
+    )
+
+    values = daily.get_column("__count__").to_numpy().astype(float)
+    values = values[np.isfinite(values) & (values > 0)]
+    if values.size < 2:
+        raise ValueError("At least two daily location counts are required to fit.")
+
+    log_values = np.log(values)
+    mu = float(log_values.mean())
+    sigma = float(log_values.std())
+    if not np.isfinite(sigma) or sigma <= 1e-12:
+        raise ValueError("Daily location counts must have positive log variance.")
+
+    x_points, counts = np.unique(values, return_counts=True)
+    y_points = counts / counts.sum()
+    return x_points, y_points, mu, sigma
+
+
 def log_truncated_powerlaw(
     x: np.ndarray,
     c: float,

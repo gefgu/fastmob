@@ -43,6 +43,7 @@ from .evaluation import (
 from .fitting.mobility_laws import (
     bin_visitation_law_data,
     compute_visitation_law_data,
+    daily_location_lognormal_fit,
     fit_values_to_truncated_powerlaw,
     fit_visitation_law,
     log_truncated_powerlaw,
@@ -124,6 +125,7 @@ __all__ = [
     "bin_visitation_law_data",
     "fit_visitation_law",
     "visitation_law_curve",
+    "daily_location_lognormal_fit",
     "stvd_emd",
     "common_part_of_commuters",
     "common_part_of_links",
