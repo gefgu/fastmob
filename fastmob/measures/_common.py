@@ -285,6 +285,18 @@ def _time_ordered_user_indices_arrow(
     return time_ordered_user_indices_arrow(uids, timestamps, num_groups)
 
 
+def _presorted_user_starts_ends_numpy(uids: Any) -> tuple[Any, Any]:
+    from fastmob._core import presorted_user_starts_ends_numpy  # noqa: PLC0415
+
+    return presorted_user_starts_ends_numpy(uids)
+
+
+def _presorted_user_starts_ends_arrow(uids: Any) -> tuple[Any, Any]:
+    from fastmob._core import presorted_user_starts_ends_arrow  # noqa: PLC0415
+
+    return presorted_user_starts_ends_arrow(uids)
+
+
 _INDEXED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
     arrow_ops={"group_indices": _indexed_group_indices_arrow},
     numpy_ops={"group_indices": _indexed_group_indices_numpy},
@@ -293,6 +305,11 @@ _INDEXED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
 _TIME_ORDERED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
     arrow_ops={"time_ordered_indices": _time_ordered_user_indices_arrow},
     numpy_ops={"time_ordered_indices": _time_ordered_user_indices_numpy},
+)
+
+_PRESORTED_USER_ENDS_DISPATCHER = TrajectoryDispatcher(
+    arrow_ops={"starts_ends": _presorted_user_starts_ends_arrow},
+    numpy_ops={"starts_ends": _presorted_user_starts_ends_numpy},
 )
 
 
@@ -720,11 +737,22 @@ def _build_presorted_user_ends(
     if uid_col is None:
         return None, np.array([n], dtype=np.uintp)
 
+    if n == 0:
+        return [], np.array([], dtype=np.uintp)
+
+    try:
+        ops = _PRESORTED_USER_ENDS_DISPATCHER.get_ops(df)
+        uid_series = df.get_column(uid_col)
+        starts, ends = ops["starts_ends"](ops["extract_data"](uid_series))
+        starts = np.asarray(starts, dtype=np.uintp)
+        ends = np.asarray(ends, dtype=np.uintp)
+        uid_values = uid_series.to_numpy()[starts].tolist()
+        return uid_values, ends
+    except (AttributeError, TypeError, ValueError, NotImplementedError):
+        pass
+
     if _is_pandas_backed(df):
         native = df.to_native()
-        if n == 0:
-            return [], np.array([], dtype=np.uintp)
-
         uid_series = native[uid_col]
         boundaries = (
             uid_series.ne(uid_series.shift(1))
@@ -738,9 +766,6 @@ def _build_presorted_user_ends(
         ends[-1] = n
         uid_values = uid_series.iloc[starts_array].tolist()
         return uid_values, ends
-
-    if n == 0:
-        return [], np.array([], dtype=np.uintp)
 
     starts_df = (
         df.select([uid_col])

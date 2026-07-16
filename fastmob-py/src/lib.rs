@@ -88,6 +88,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        time_ordering::presorted_user_starts_ends_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        time_ordering::presorted_user_starts_ends_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         radius_of_gyration::radius_of_gyration_km,
         m
     )?)?;
