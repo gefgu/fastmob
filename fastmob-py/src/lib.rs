@@ -6,7 +6,7 @@ mod utils;
 
 use pyo3::prelude::*;
 
-use measures::collective::{square_displacement, visitation_law};
+use measures::collective::{co_presence_network, square_displacement, visitation_law};
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
@@ -362,6 +362,15 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         square_displacement::mean_square_displacement_indexed_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        co_presence_network::build_co_presence_edges_py,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(co_presence_network::graph_metrics_py, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        co_presence_network::random_baseline_overlap_threshold_py,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

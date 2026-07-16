@@ -28,6 +28,7 @@ nav = [
       { "Overview" = "reference/measures/index.md" },
       { "Individual" = "reference/measures/individual.md" },
       { "Collective" = "reference/measures/collective.md" },
+      { "Contact Network" = "reference/measures/contact-network.md" },
       { "Evaluation" = "reference/measures/evaluation.md" },
     ] },
     { "Models" = "reference/models.md" },
