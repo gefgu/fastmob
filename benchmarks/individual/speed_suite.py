@@ -263,7 +263,7 @@ EXPENSIVE_INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
     ),
 )
 
-FKMOB_ONLY_INDIVIDUAL_METRICS = {
+FASTMOB_ONLY_INDIVIDUAL_METRICS = {
     "diversity",
     "trajectory_entropy",
     "trajectory_predictability",
@@ -492,7 +492,7 @@ def benchmark_metric(
     case_timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
     print(f"  {spec.name}")
-    if library == "skmob" and spec.name in FKMOB_ONLY_INDIVIDUAL_METRICS:
+    if library == "skmob" and spec.name in FASTMOB_ONLY_INDIVIDUAL_METRICS:
         reason = "fastmob-only benchmark; excluded from original skmob baseline"
         print(f"    skipped: {reason}")
         return skipped_result(reason, profile)

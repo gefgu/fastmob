@@ -245,7 +245,7 @@ def benchmark_large_size(
                 size,
                 profile=profile,
                 iterations=(
-                    _FKMOB_SPEC_ITERATIONS.get(spec.name, iterations)
+                    _FASTMOB_SPEC_ITERATIONS.get(spec.name, iterations)
                     if library == "fastmob"
                     else iterations
                 ),
@@ -260,7 +260,7 @@ _SKMOB_SKIP_THRESHOLD_S = 1800.0  # 30 minutes
 
 # Per-spec iteration overrides for fastmob (reference: timings at N=10000).
 # Fast specs (<5 s): 5 iters.  Medium (5–20 s): 3 iters.  Slow (>20 s): 1 iter.
-_FKMOB_SPEC_ITERATIONS: dict[str, int] = {
+_FASTMOB_SPEC_ITERATIONS: dict[str, int] = {
     "geosim_20a":          5,
     "geosim_100a":         5,
     "sts_epr_20a":         5,

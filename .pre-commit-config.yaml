@@ -4,7 +4,7 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
-        files: ^(fkmob|scripts|tests)/.*\.py$
+        files: ^(fastmob|scripts|tests)/.*\.py$
   - repo: local
     hooks:
       - id: cargo-clippy

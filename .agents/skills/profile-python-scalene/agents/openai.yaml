@@ -1,4 +1,0 @@
-interface:
-  display_name: "Scalene Python Profiler"
-  short_description: "Profile fkmob functions with Scalene"
-  default_prompt: "Use $profile-python-scalene to profile a fkmob function with Scalene and summarize the hottest lines."

@@ -12,7 +12,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-VENV="${FKMOB_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
+VENV="${FASTMOB_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
 if [ ! -x "$VENV/bin/python" ]; then
     VENV="$REPO_ROOT/.venv"
 fi
