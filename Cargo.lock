@@ -359,6 +359,7 @@ version = "0.1.0"
 dependencies = [
  "arrow-array",
  "fastmob-core",
+ "h3o",
  "numpy",
  "pyo3",
  "pyo3-arrow",

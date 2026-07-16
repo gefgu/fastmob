@@ -16,7 +16,7 @@ use measures::individual::{
     recency_rank, spatial_counts, time_ordering, total_distance, uncorrelated_entropy,
     waiting_times,
 };
-use preprocessing::{cdr, clustering, compress_traj_py, filter_traj_py, stay_locations_py};
+use preprocessing::{cdr, clustering, compress_traj_py, filter_traj_py, h3_py, stay_locations_py};
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -415,6 +415,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_visitation_stays, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_trip_indices, m)?)?;
+    m.add_function(wrap_pyfunction!(h3_py::latlng_to_h3_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(h3_py::latlng_to_h3_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(entropy::trajectory_entropy_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
         entropy::trajectory_predictability_batch,

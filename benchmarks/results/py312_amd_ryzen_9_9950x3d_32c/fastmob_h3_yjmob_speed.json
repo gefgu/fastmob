@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "benchmark": "preprocessing.latlng_to_h3",
+    "cpu_info": {
+      "cores": 32,
+      "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+      "vendor_slug": "amd"
+    },
+    "data_path": "/home/gustavo/citybehavex/data/yjmob_wgs84_simple.parquet",
+    "dataset": "yjmob100k",
+    "h3_resolution": 9
+  },
+  "results": [
+    {
+      "average_seconds": 0.015620890502759721,
+      "backend": "pandas",
+      "minimum_seconds": 0.012750091002089903,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "rows_per_second": 96317038.03515652,
+      "sample_output_rows": 1228051,
+      "size_label": "1228051"
+    },
+    {
+      "average_seconds": 0.016832610497658607,
+      "backend": "polars",
+      "minimum_seconds": 0.014815984992310405,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "rows_per_second": 82886895.51436281,
+      "sample_output_rows": 1228051,
+      "size_label": "1228051"
+    },
+    {
+      "average_seconds": 0.12351682300504763,
+      "backend": "pandas",
+      "minimum_seconds": 0.12339536400395446,
+      "n_rows": 11904593,
+      "n_users": 10000,
+      "rows_per_second": 96475204.68936332,
+      "sample_output_rows": 11904593,
+      "size_label": "11904593"
+    },
+    {
+      "average_seconds": 0.13538016800157493,
+      "backend": "polars",
+      "minimum_seconds": 0.13252118599484675,
+      "n_rows": 11904593,
+      "n_users": 10000,
+      "rows_per_second": 89831621.34138253,
+      "sample_output_rows": 11904593,
+      "size_label": "11904593"
+    },
+    {
+      "average_seconds": 1.1457188740023412,
+      "backend": "pandas",
+      "minimum_seconds": 1.1399166509945644,
+      "n_rows": 111535175,
+      "n_users": 100000,
+      "rows_per_second": 97845026.56636064,
+      "sample_output_rows": 111535175,
+      "size_label": "111535175"
+    },
+    {
+      "average_seconds": 1.329061060998356,
+      "backend": "polars",
+      "minimum_seconds": 1.319372079000459,
+      "n_rows": 111535175,
+      "n_users": 100000,
+      "rows_per_second": 84536558.54571195,
+      "sample_output_rows": 111535175,
+      "size_label": "111535175"
+    }
+  ]
+}
