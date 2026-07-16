@@ -16,6 +16,7 @@ from .mobility_profiling import exploration_profiling, intermittance_and_degree_
 from .motifs import discover_daily_motifs_from_agents
 from .number_of_locations import number_of_locations
 from .number_of_visits import number_of_visits
+from .profile_classification import compute_profiles
 from .radius_of_gyration import radius_of_gyration
 from .random_entropy import random_entropy
 from .real_entropy import real_entropy
@@ -47,6 +48,7 @@ __all__ = [
     "discover_daily_motifs_from_agents",
     "number_of_locations",
     "number_of_visits",
+    "compute_profiles",
     "radius_of_gyration",
     "random_entropy",
     "real_entropy",

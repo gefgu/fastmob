@@ -51,6 +51,7 @@ from .fitting.mobility_laws import (
 )
 from .individual import (
     activity_transition_matrix,
+    compute_profiles,
     daily_activity_distribution,
     discover_daily_motifs_from_agents,
     distance_straight_line,
@@ -104,6 +105,7 @@ __all__ = [
     "visit_purpose_distribution",
     "intermittance_and_degree_of_return",
     "exploration_profiling",
+    "compute_profiles",
     "regularity",
     "fast_diversity",
     "diversity",
