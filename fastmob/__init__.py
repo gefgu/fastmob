@@ -76,7 +76,7 @@ from .measures import (
     waiting_times,
     wasserstein_distance,
 )
-from .preprocessing import cluster, compress, filter, stay_locations
+from .preprocessing import cluster, compress, filter, latlng_to_h3, stay_locations, trajectory_to_od
 from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
 
 __all__ = [
@@ -84,6 +84,8 @@ __all__ = [
     "compress",
     "stay_locations",
     "cluster",
+    "latlng_to_h3",
+    "trajectory_to_od",
     "TrajDataFrame",
     "FlowDataFrame",
     "cdr_to_visitation_df",

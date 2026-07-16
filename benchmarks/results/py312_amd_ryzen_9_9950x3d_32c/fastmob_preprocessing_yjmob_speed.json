@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "benchmarks": [
+      "od"
+    ],
+    "cpu_info": {
+      "cores": 32,
+      "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+      "vendor_slug": "amd"
+    },
+    "data_path": "/home/gustavo/citybehavex/data/yjmob_wgs84_simple.parquet",
+    "dataset": "yjmob100k",
+    "h3_resolution": 9
+  },
+  "results": [
+    {
+      "average_seconds": 0.14432371700240765,
+      "backend": "pandas",
+      "benchmark": "trajectory_to_od",
+      "distinct_od_pairs": 467917,
+      "minimum_seconds": 0.13065376800659578,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "rows_per_second": 9399277.332269548,
+      "size_label": "1228051"
+    },
+    {
+      "average_seconds": 0.08012028599478072,
+      "backend": "polars",
+      "benchmark": "trajectory_to_od",
+      "distinct_od_pairs": 467917,
+      "minimum_seconds": 0.07890296599362046,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "rows_per_second": 15564066.376152344,
+      "size_label": "1228051"
+    },
+    {
+      "average_seconds": 2.0282380185017246,
+      "backend": "pandas",
+      "benchmark": "trajectory_to_od",
+      "distinct_od_pairs": 2930282,
+      "minimum_seconds": 2.003909149992978,
+      "n_rows": 11904593,
+      "n_users": 10000,
+      "rows_per_second": 5940684.985665001,
+      "size_label": "11904593"
+    },
+    {
+      "average_seconds": 0.9409792924998328,
+      "backend": "polars",
+      "benchmark": "trajectory_to_od",
+      "distinct_od_pairs": 2930282,
+      "minimum_seconds": 0.9376826029911172,
+      "n_rows": 11904593,
+      "n_users": 10000,
+      "rows_per_second": 12695759.697391735,
+      "size_label": "11904593"
+    },
+    {
+      "average_seconds": 25.44860993850307,
+      "backend": "pandas",
+      "benchmark": "trajectory_to_od",
+      "distinct_od_pairs": 11605226,
+      "minimum_seconds": 25.43203471999732,
+      "n_rows": 111535175,
+      "n_users": 100000,
+      "rows_per_second": 4385617.439893608,
+      "size_label": "111535175"
+    },
+    {
+      "average_seconds": 9.895299257499573,
+      "backend": "polars",
+      "benchmark": "trajectory_to_od",
+      "distinct_od_pairs": 11605226,
+      "minimum_seconds": 9.563341553002829,
+      "n_rows": 111535175,
+      "n_users": 100000,
+      "rows_per_second": 11662782.760799615,
+      "size_label": "111535175"
+    }
+  ]
+}
