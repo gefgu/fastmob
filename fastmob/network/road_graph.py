@@ -18,7 +18,7 @@ class RoadNetwork:
         self._handle = handle
 
     @classmethod
-    def build(cls, edges_df: pd.DataFrame, nodes_df: pd.DataFrame) -> "RoadNetwork":
+    def build(cls, edges_df, nodes_df) -> "RoadNetwork":
         """Prepare a contraction hierarchy from a road/rail graph's edges.
 
         Parameters
@@ -26,20 +26,23 @@ class RoadNetwork:
         edges_df:
             Columns ``from_node``, ``to_node``, ``weight_ds``, ``length_m``
             (as returned by :func:`fastmob.network.builder.fetch_road_network`
-            / `fetch_rail_network`).
+            / `fetch_rail_network`); pandas or Polars.
         nodes_df:
             Columns ``node_idx``, ``lat``, ``lng`` -- used later for snapping
-            via :func:`fastmob.network.snap.snap_locations_to_graph`.
+            via :func:`fastmob.network.snap.snap_locations_to_graph` (pandas-typed,
+            so normalized to pandas here regardless of input backend); pandas
+            or Polars.
         """
         from fastmob._core import RoadNetworkHandle
 
         handle = RoadNetworkHandle(
-            edges_df["from_node"].to_numpy().astype(np.int64),
-            edges_df["to_node"].to_numpy().astype(np.int64),
-            edges_df["weight_ds"].to_numpy().astype(np.int64),
-            edges_df["length_m"].to_numpy().astype(np.float64),
+            np.asarray(edges_df["from_node"]).astype(np.int64),
+            np.asarray(edges_df["to_node"]).astype(np.int64),
+            np.asarray(edges_df["weight_ds"]).astype(np.int64),
+            np.asarray(edges_df["length_m"]).astype(np.float64),
         )
-        return cls(nodes_df, handle)
+        nodes_pd = nodes_df if isinstance(nodes_df, pd.DataFrame) else nodes_df.to_pandas()
+        return cls(nodes_pd, handle)
 
     def batch_distances(self, from_nodes: np.ndarray, to_nodes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Batch physical-distance (metres) query for `(from_node, to_node)` pairs.

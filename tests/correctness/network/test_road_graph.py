@@ -103,6 +103,33 @@ def test_radius_of_gyration_km_empty_input_returns_empty(network):
     assert list(result.columns) == ["uid", "radius_of_gyration"]
 
 
+def test_radius_of_gyration_km_works_without_a_datetime_column(network):
+    # radius_of_gyration doesn't need a temporal ordering (unlike jump_lengths) --
+    # a frame with only uid/lat/lng must not be rejected for lacking one.
+    df = pd.DataFrame({"uid": [1, 1], "lat": [0.0, 0.0018], "lng": [0.0, 0.0]})
+    result = radius_of_gyration_km(df, network=network)
+    assert len(result) == 1
+    assert result["radius_of_gyration"].iloc[0] > 0.0
+
+
+def test_road_network_build_accepts_polars_nodes_and_edges():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    nodes = pl.DataFrame({"node_idx": [0, 1], "lat": [0.0, 0.0009], "lng": [0.0, 0.0]})
+    edges = pl.DataFrame({"from_node": [0, 1], "to_node": [1, 0], "length_m": [100.0, 100.0], "weight_ds": [10, 10]})
+    polars_network = RoadNetwork.build(edges, nodes)
+
+    df = pd.DataFrame(
+        {
+            "uid": ["u1", "u1"],
+            "datetime": pd.to_datetime(["2020-01-01 00:00", "2020-01-01 01:00"]),
+            "lat": [0.0, 0.0009],
+            "lng": [0.0, 0.0],
+        }
+    )
+    result = jump_lengths_km(df, network=polars_network)
+    assert result == pytest.approx([0.1])
+
+
 def test_road_network_batch_distances_disconnected_reports_not_connected():
     nodes = pd.DataFrame({"node_idx": [0, 1, 2, 3], "lat": [0.0, 0.1, 10.0, 10.1], "lng": [0.0, 0.0, 0.0, 0.0]})
     edges = pd.DataFrame(

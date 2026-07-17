@@ -16,7 +16,14 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from .._common import _detect_trajectory_columns, _prepare_trajectory
+from .._common import (
+    LAT_CANDIDATES,
+    LNG_CANDIDATES,
+    UID_CANDIDATES,
+    _detect_trajectory_columns,
+    _pick_existing_column,
+    _prepare_trajectory,
+)
 from ...network._util import haversine_m_batch
 from ...network.road_graph import RoadNetwork
 from ...network.snap import snap_locations_to_graph
@@ -144,9 +151,18 @@ def radius_of_gyration_km(
         backend as input.
     """
     df = nw.from_native(traj, eager_only=True)
-    _datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
-        df, datetime_col=None, lat_col=lat_col, lng_col=lng_col, uid_col=uid_col
-    )
+    if lat_col is None:
+        lat_col = _pick_existing_column(df.columns, LAT_CANDIDATES)
+    if lng_col is None:
+        lng_col = _pick_existing_column(df.columns, LNG_CANDIDATES)
+    if uid_col is None:
+        uid_col = _pick_existing_column(df.columns, UID_CANDIDATES)
+    missing = [name for name, col in [("latitude", lat_col), ("longitude", lng_col)] if col is None]
+    if missing:
+        raise ValueError(
+            f"Could not detect required column(s): {missing}. Available columns: {df.columns}. "
+            "Pass the column name(s) explicitly."
+        )
     if uid_col is None:
         raise ValueError(
             f"Could not detect a user-id column. Available columns: {df.columns}. Pass uid_col explicitly."
