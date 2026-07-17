@@ -1,18 +1,25 @@
 """Big-scale fitting benchmarks against the real YJMob100K dataset.
 
-Times `daily_location_lognormal_fit`'s per-user-per-day aggregation step (the
-only part of the fit with real data-scale cost -- the lognormal parameters
-themselves are computed from the aggregated per-day counts, a small array
-regardless of input size). Locations are derived via
-`fastmob.preprocessing.latlng_to_h3` (item 1) since YJMob100K ships raw
-pings, not pre-tessellated location IDs.
+Two benchmarks, both against real YJMob100K-derived data:
+
+- `daily_lognormal`: times `daily_location_lognormal_fit`'s per-user-per-day
+  aggregation step (the only part of the fit with real data-scale cost --
+  the lognormal parameters themselves are computed from the aggregated
+  per-day counts, a small array regardless of input size). Locations are
+  derived via `fastmob.preprocessing.latlng_to_h3` (item 1) since YJMob100K
+  ships raw pings, not pre-tessellated location IDs.
+- `truncated_powerlaw`: times `fit_values_to_truncated_powerlaw`'s
+  `method="scipy"` vs `method="grid"` (item 5) on the histogram derived from
+  YJMob100K's full jump-length distribution. Both methods consume the same
+  small aggregated histogram regardless of how many raw rows built it, so
+  the interesting number here is fit time, not data-loading time.
 
 Requires FASTMOB_YJMOB_DATA_PATH; skips cleanly (exit 0) when unset. See
 `benchmarks/shared/yjmob.py`.
 
 Usage:
     export FASTMOB_YJMOB_DATA_PATH=/path/to/yjmob_wgs84_simple.parquet
-    python benchmarks/fitting_yjmob_large_scale.py --n-users 1000 10000 100000
+    python benchmarks/fitting_yjmob_large_scale.py --benchmark daily_lognormal truncated_powerlaw
 """
 
 from __future__ import annotations
@@ -54,6 +61,7 @@ def benchmark_daily_lognormal(data_path: Path, n_users: int, iterations: int) ->
     stats = summarize_times(times)
     rows_per_second = n_rows / stats["minimum_seconds"] if stats["minimum_seconds"] else None
     return {
+        "benchmark": "daily_lognormal",
         "n_users": n_users,
         "n_rows": n_rows,
         "size_label": size_label(n_rows),
@@ -65,10 +73,41 @@ def benchmark_daily_lognormal(data_path: Path, n_users: int, iterations: int) ->
     }
 
 
+def benchmark_truncated_powerlaw(data_path: Path, n_users: int, iterations: int) -> dict:
+    from fastmob.measures.fitting import fit_values_to_truncated_powerlaw
+    from fastmob.measures.individual import jump_lengths
+
+    df = load_yjmob(data_path, n_users=None if n_users >= 100_000 else n_users).to_pandas()
+    jumps = jump_lengths(df, merge=True, uid_col="uid", datetime_col="timestamp", lat_col="lat", lng_col="lon")
+    jumps = jumps[jumps > 0]
+    n_rows = len(df)
+
+    result = {"benchmark": "truncated_powerlaw", "n_users": n_users, "n_rows": n_rows, "size_label": size_label(n_rows)}
+    for method in ("scipy", "grid"):
+        times: list[float] = []
+        popt = None
+        for _ in range(iterations):
+            start = time.perf_counter()
+            popt, _x_data, _y_data = fit_values_to_truncated_powerlaw(jumps, bins=100, method=method)
+            times.append(time.perf_counter() - start)
+        stats = summarize_times(times)
+        result[f"{method}_minimum_seconds"] = stats["minimum_seconds"]
+        result[f"{method}_average_seconds"] = stats["average_seconds"]
+        result[f"{method}_popt"] = [float(v) for v in popt]
+    return result
+
+
+BENCHMARKS = {
+    "daily_lognormal": benchmark_daily_lognormal,
+    "truncated_powerlaw": benchmark_truncated_powerlaw,
+}
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-path", type=Path, default=None)
     parser.add_argument("--n-users", type=int, nargs="+", default=DEFAULT_N_USERS)
+    parser.add_argument("--benchmark", choices=list(BENCHMARKS) + ["all"], nargs="+", default=["all"])
     parser.add_argument("--iterations", type=int, default=3)
     parser.add_argument("--output", type=Path, default=None)
     return parser.parse_args(argv)
@@ -82,14 +121,17 @@ def main(argv: list[str] | None = None) -> int:
         print(skip_reason())
         return 0
 
+    benchmark_names = list(BENCHMARKS) if "all" in args.benchmark else args.benchmark
     results = []
-    for n_users in sorted(args.n_users):
-        print(f"Benchmarking daily_location_lognormal_fit: n_users={n_users}...")
-        results.append(benchmark_daily_lognormal(data_path, n_users, args.iterations))
+    for name in benchmark_names:
+        func = BENCHMARKS[name]
+        for n_users in sorted(args.n_users):
+            print(f"Benchmarking {name}: n_users={n_users}...")
+            results.append(func(data_path, n_users, args.iterations))
 
     payload = {
         "metadata": {
-            "benchmark": "fitting.daily_location_lognormal_fit",
+            "benchmarks": benchmark_names,
             "dataset": "yjmob100k",
             "h3_resolution": H3_RESOLUTION,
             "data_path": str(data_path),
@@ -98,14 +140,20 @@ def main(argv: list[str] | None = None) -> int:
         "results": results,
     }
 
-    output_path = args.output or (get_default_output_dir() / "fastmob_daily_lognormal_yjmob_speed.json")
+    output_path = args.output or (get_default_output_dir() / "fastmob_fitting_yjmob_speed.json")
     write_json(payload, output_path)
     print(f"Wrote {output_path}")
     for r in results:
-        print(
-            f"  n_users={r['n_users']:>7} rows={r['n_rows']:>10} "
-            f"min_seconds={r['minimum_seconds']:.4f} mu={r['mu']:.4f} sigma={r['sigma']:.4f}"
-        )
+        if r["benchmark"] == "daily_lognormal":
+            print(
+                f"  [daily_lognormal] n_users={r['n_users']:>7} rows={r['n_rows']:>10} "
+                f"min_seconds={r['minimum_seconds']:.4f} mu={r['mu']:.4f} sigma={r['sigma']:.4f}"
+            )
+        else:
+            print(
+                f"  [truncated_powerlaw] n_users={r['n_users']:>7} rows={r['n_rows']:>10} "
+                f"scipy={r['scipy_minimum_seconds']:.4f}s grid={r['grid_minimum_seconds']:.4f}s"
+            )
     return 0
 
 
