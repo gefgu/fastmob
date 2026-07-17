@@ -1,5 +1,6 @@
 """Network-constrained distance: road/rail graph construction and routing."""
 
+from ._util import haversine_m_batch
 from .builder import build_rail_graph, build_road_graph, fetch_rail_network, fetch_road_network
 from .road_graph import RoadNetwork
 from .snap import snap_locations_to_graph
@@ -18,6 +19,7 @@ __all__ = [
     "fetch_rail_network",
     "build_rail_graph",
     "snap_locations_to_graph",
+    "haversine_m_batch",
     "DEFAULT_SPEED_KMH_BY_CLASS",
     "DRIVABLE_CLASSES",
     "CAR_SPEED_FACTOR",

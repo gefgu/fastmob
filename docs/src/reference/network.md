@@ -12,6 +12,7 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 | [`fetch_rail_network`](#fastmob.network.fetch_rail_network) | Fetch and build a bidirectional rail graph from Overture segments. |
 | [`build_rail_graph`](#fastmob.network.build_rail_graph) | Load a cached rail graph from disk, or fetch and cache it. |
 | [`snap_locations_to_graph`](#fastmob.network.snap_locations_to_graph) | Snap each row to its nearest road/rail graph node. |
+| [`haversine_m_batch`](#fastmob.network.haversine_m_batch) | Vectorized Haversine distance (metres) between two arrays of points. |
 
 Requires the `network` extra (`pip install fastmob[network]`) for
 `fetch_road_network`/`fetch_rail_network` (needs `duckdb`) and the `ai`
@@ -71,6 +72,12 @@ rg_km = radius_of_gyration_km(traj, network=network)
 ---
 
 ::: fastmob.network.snap_locations_to_graph
+    options:
+      show_source: false
+
+---
+
+::: fastmob.network.haversine_m_batch
     options:
       show_source: false
 
