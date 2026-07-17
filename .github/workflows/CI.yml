@@ -152,7 +152,7 @@ jobs:
           enable-cache: true
 
       - name: Build sdist
-        run: uv run maturin sdist --out dist
+        run: uv run --with maturin maturin sdist --out dist
 
       - name: Upload sdist
         uses: actions/upload-artifact@v4
