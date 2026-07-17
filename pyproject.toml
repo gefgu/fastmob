@@ -51,6 +51,9 @@ diversity = ["pydivsufsort"]
 generation = ["scipy", "powerlaw", "statsmodels", "python-igraph", "tqdm"]
 data = ["geopandas", "shapely", "pyproj", "requests"]
 tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
+# Road/rail network fetch+snap also needs `ai` (scikit-learn, for
+# snap_locations_to_graph's NearestNeighbors) -- install both extras.
+network = ["duckdb", "requests"]
 visualization = ["folium", "matplotlib", "geojson"]
 dev = [
     "pre-commit",

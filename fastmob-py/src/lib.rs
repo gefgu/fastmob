@@ -1,5 +1,6 @@
 mod measures;
 mod models;
+mod network;
 mod preprocessing;
 mod privacy;
 mod utils;
@@ -16,6 +17,7 @@ use measures::individual::{
     recency_rank, spatial_counts, time_ordering, total_distance, uncorrelated_entropy,
     waiting_times,
 };
+use network::road_graph_py;
 use preprocessing::{cdr, clustering, compress_traj_py, filter_traj_py, h3_py, stay_locations_py};
 
 #[pymodule]
@@ -383,6 +385,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
     m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
+    m.add_class::<road_graph_py::RoadNetworkHandle>()?;
+    m.add_function(wrap_pyfunction!(road_graph_py::subsample_waypoints_numpy, m)?)?;
     m.add_class::<preprocessing::filter_traj_py::PyFilterConfig>()?;
     m.add_function(wrap_pyfunction!(filter_traj_py::filter_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(
