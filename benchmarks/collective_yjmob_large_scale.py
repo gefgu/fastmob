@@ -57,7 +57,7 @@ def benchmark_contact_network(data_path: Path, n_users: int) -> dict:
     df = latlng_to_h3(df, resolution=H3_RESOLUTION, output_col="location_id")
 
     build_start = time.perf_counter()
-    graph, persistence, time_steps = co_presence_graph_from_visits(
+    graph, persistence, time_steps, _skip_info = co_presence_graph_from_visits(
         df, user_id_col="uid", datetime_col="timestamp", location_id_col="location_id", max_group_size=200
     )
     build_seconds = time.perf_counter() - build_start

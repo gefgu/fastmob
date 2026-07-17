@@ -52,10 +52,11 @@ def _edges_by_uid(graph: NetworkGraph, uid_by_node: dict[int, int]) -> dict[tupl
 
 def test_co_presence_graph_matches_rust_reference_pandas():
     df = pd.DataFrame(_visits_rows())
-    graph, persistence, time_steps = co_presence_graph_from_visits(df)
+    graph, persistence, time_steps, skip_info = co_presence_graph_from_visits(df)
     assert graph.node_count == 5
     assert time_steps == 2
     assert graph.edge_count == 4
+    assert skip_info == {"skipped_groups": 0, "skipped_rows": 0}
 
     # node index i corresponds to the i-th smallest uid (1,2,3,4,5) -> node i == uid i+1
     persistence_by_uid_pair = {}
@@ -71,8 +72,8 @@ def test_co_presence_graph_matches_rust_reference_pandas():
 def test_co_presence_graph_polars_matches_pandas():
     pl = pytest.importorskip("polars", reason="Polars not installed")
     df = pd.DataFrame(_visits_rows())
-    pandas_graph, pandas_persistence, pandas_steps = co_presence_graph_from_visits(df)
-    polars_graph, polars_persistence, polars_steps = co_presence_graph_from_visits(pl.from_pandas(df))
+    pandas_graph, pandas_persistence, pandas_steps, _pandas_skip = co_presence_graph_from_visits(df)
+    polars_graph, polars_persistence, polars_steps, _polars_skip = co_presence_graph_from_visits(pl.from_pandas(df))
 
     assert polars_steps == pandas_steps
     assert polars_graph.node_count == pandas_graph.node_count
@@ -83,26 +84,28 @@ def test_co_presence_graph_polars_matches_pandas():
 def test_co_presence_graph_explicit_day_col():
     df = pd.DataFrame(_visits_rows())
     df["day"] = df["datetime"].dt.normalize()
-    graph, persistence, time_steps = co_presence_graph_from_visits(df, day_col="day", datetime_col=None)
+    graph, persistence, time_steps, _skip_info = co_presence_graph_from_visits(df, day_col="day", datetime_col=None)
     assert time_steps == 2
     assert graph.edge_count == 4
 
 
 def test_co_presence_graph_oversized_group_skipped():
     df = pd.DataFrame(_visits_rows())
-    graph, persistence, time_steps = co_presence_graph_from_visits(df, max_group_size=2)
+    graph, persistence, time_steps, skip_info = co_presence_graph_from_visits(df, max_group_size=2)
     # The 3-user group at venue A on day 0 (size 3 > max_group_size=2) is
     # skipped entirely; only the (1,2) pair from day 1 and (4,5) from venue B
     # survive.
     assert graph.edge_count == 2
+    assert skip_info == {"skipped_groups": 1, "skipped_rows": 3}
 
 
 def test_co_presence_graph_empty_input():
     df = pd.DataFrame({"uid": [], "datetime": pd.to_datetime([]), "location_id": []})
-    graph, persistence, time_steps = co_presence_graph_from_visits(df)
+    graph, persistence, time_steps, skip_info = co_presence_graph_from_visits(df)
     assert graph.node_count == 0
     assert graph.edge_count == 0
     assert time_steps == 0
+    assert skip_info == {"skipped_groups": 0, "skipped_rows": 0}
 
 
 def test_co_presence_graph_missing_columns_raises():

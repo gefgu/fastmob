@@ -113,7 +113,7 @@ def co_presence_graph_from_visits(
     location_id_col: str | None = None,
     day_col: str | None = None,
     max_group_size: int = 200,
-) -> tuple[NetworkGraph, np.ndarray, int]:
+) -> tuple[NetworkGraph, np.ndarray, int, dict[str, int]]:
     """Build a co-presence graph directly from raw mobility data.
 
     Two users are "co-present" on a given day if they were observed at the
@@ -142,12 +142,15 @@ def co_presence_graph_from_visits(
 
     Returns
     -------
-    graph, persistence, time_steps:
+    graph, persistence, time_steps, skip_info:
         ``graph`` is a :class:`NetworkGraph` over ``node_count`` = number of
         distinct users; node indices are dense integers in sort order of the
         user ID column (not the original labels -- track your own mapping
         if you need it back). ``persistence[i]`` is edge ``i``'s fraction of
-        ``time_steps`` (distinct days) the pair co-occurred on.
+        ``time_steps`` (distinct days) the pair co-occurred on. ``skip_info``
+        is ``{"skipped_groups": int, "skipped_rows": int}``: how many
+        (day, location) groups (and total user-presences within them)
+        exceeded ``max_group_size`` and were skipped entirely.
 
     Raises
     ------
@@ -165,7 +168,7 @@ def co_presence_graph_from_visits(
     ...         "location_id": ["venue1", "venue1", "venue1", "venue1", "venue1"],
     ...     }
     ... )
-    >>> graph, persistence, time_steps = co_presence_graph_from_visits(visits)
+    >>> graph, persistence, time_steps, skip_info = co_presence_graph_from_visits(visits)
     >>> graph.edge_count
     3
     >>> time_steps
@@ -201,7 +204,7 @@ def co_presence_graph_from_visits(
 
     work = df.select([user_id_col, day_col, location_id_col]).drop_nulls()
     if len(work) == 0:
-        return _empty_graph(0), np.asarray([], dtype=float), 0
+        return _empty_graph(0), np.asarray([], dtype=float), 0, {"skipped_groups": 0, "skipped_rows": 0}
 
     # Vectorized per-backend factorization (pandas: pd.factorize, polars:
     # replace_strict, pyarrow: dictionary_encode) -- not a per-row Python
@@ -219,7 +222,7 @@ def co_presence_graph_from_visits(
 
     from fastmob._core import build_co_presence_edges
 
-    edge_from, edge_to, persistence, _skipped_groups, _skipped_rows = build_co_presence_edges(
+    edge_from, edge_to, persistence, skipped_groups, skipped_rows = build_co_presence_edges(
         coded.get_column("__day_code__").to_numpy().astype(np.int64),
         coded.get_column("__location_code__").to_numpy().astype(np.int64),
         coded.get_column("__uid_code__").to_numpy().astype(np.int64),
@@ -227,7 +230,8 @@ def co_presence_graph_from_visits(
         time_steps,
     )
     graph = NetworkGraph(node_count=node_count, edge_from=edge_from, edge_to=edge_to)
-    return graph, persistence, time_steps
+    skip_info = {"skipped_groups": int(skipped_groups), "skipped_rows": int(skipped_rows)}
+    return graph, persistence, time_steps, skip_info
 
 
 def clustering_coefficients(graph: NetworkGraph) -> np.ndarray:
