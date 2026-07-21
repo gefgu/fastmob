@@ -41,8 +41,8 @@ nav = [
 ]
 
 [project.theme]
-logo = "assets/logo.png"
-favicon = "assets/icon.png"
+logo = "assets/logo.svg"
+favicon = "assets/icon.svg"
 variant = "modern"
 features = [
   "content.code.copy",
