@@ -1,4 +1,4 @@
 # About
 
 
-About **Scikit-Mobility 2**, its design, inspiration, and more.
+About **Fastkit-Mobility**, its design, inspiration, and more.
