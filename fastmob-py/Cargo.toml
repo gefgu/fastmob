@@ -1,7 +1,10 @@
 [package]
 name = "fastmob-py"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
+description = "PyO3 extension for fastmob mobility analysis."
+license = "BSD-3-Clause"
+repository = "https://github.com/gefgu/fastmob"
 
 [lib]
 name = "fastmob"

@@ -1,7 +1,10 @@
 [package]
 name = "fastmob-core"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
+description = "Rust compute kernels for fastmob mobility analysis."
+license = "BSD-3-Clause"
+repository = "https://github.com/gefgu/fastmob"
 
 [lib]
 name = "fastmob_core"
