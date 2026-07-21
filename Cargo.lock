@@ -335,7 +335,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "fastmob-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "geo",
  "h3o",
@@ -355,7 +355,7 @@ dependencies = [
 
 [[package]]
 name = "fastmob-py"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "arrow-array",
  "fastmob-core",
