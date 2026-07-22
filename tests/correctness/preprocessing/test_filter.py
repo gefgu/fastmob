@@ -89,6 +89,85 @@ def test_filter_zero_dt_removes_duplicate_timestamps():
     assert len(result) == 2
 
 
+def _contains_approx(values, target: float) -> bool:
+    return any(v == pytest.approx(target) for v in values)
+
+
+def test_filter_hampel_flags_teleport_and_its_return_hop(hampel_tdf):
+    """The teleport at index 4 and the return-hop at index 5 are the only
+    two speed values in the series far outside their rolling window's
+    median; every other point's own speed is unaffected and stays."""
+    result = traj_filter(hampel_tdf, method="hampel")
+    lats = result["lat"].to_list()
+    assert len(result) == 7
+    assert not _contains_approx(lats, 60.0)
+    assert not _contains_approx(lats, 48.8560 + 5 * 0.0005)
+    # The point right before the teleport is unaffected and survives.
+    assert _contains_approx(lats, 48.8560 + 3 * 0.0005)
+
+
+def test_filter_greedy_drops_both_points_touching_the_teleport(greedy_tdf):
+    """Greedy tests fixed original-adjacent pairs, so both the point
+    arriving at the teleport and the point leaving it fail the speed test,
+    even though the point leaving it is otherwise a perfectly normal hop."""
+    result = traj_filter(greedy_tdf, method="greedy", max_speed_kmh=100.0)
+    lats = result["lat"].to_list()
+    assert len(result) == 3
+    assert not _contains_approx(lats, 0.0)
+    assert not _contains_approx(lats, 48.8566 + 3 * 0.005)
+
+
+def test_filter_smart_greedy_only_drops_the_true_outlier(greedy_tdf):
+    """SmartGreedy tracks multiple candidate chains, so it recognizes
+    {0, 1, 3, 4} as a single mutually-consistent chain (skipping over the
+    teleport at index 2) and drops only the true outlier point."""
+    result = traj_filter(greedy_tdf, method="smart_greedy", max_speed_kmh=100.0)
+    lats = result["lat"].to_list()
+    assert len(result) == 4
+    assert not _contains_approx(lats, 0.0)
+    assert _contains_approx(lats, 48.8566 + 3 * 0.005)
+
+
+def test_filter_zheng_keeps_the_hop_right_after_the_teleport(zheng_tdf):
+    """With min_seg_size=1 (default), only the isolated 1-point segment at
+    the teleport is dropped; the run of 3 clean points starting right after
+    it is kept in full, unlike Greedy's fixed-adjacent-pair test."""
+    result = traj_filter(zheng_tdf, method="zheng", max_speed_kmh=100.0)
+    lats = result["lat"].to_list()
+    assert len(result) == 7
+    assert not _contains_approx(lats, 5.0)
+    assert _contains_approx(lats, 0.004)
+
+
+def test_filter_zheng_min_seg_size_drops_short_runs(zheng_tdf):
+    """Raising min_seg_size above both surviving runs' lengths (4 and 3)
+    drops every point: no run is long enough to survive."""
+    result = traj_filter(zheng_tdf, method="zheng", max_speed_kmh=100.0, min_seg_size=10)
+    assert len(result) == 0
+
+
+def test_filter_outlier_methods_return_same_backend_type(greedy_tdf):
+    """Every new outlier method returns the same backend type as the input."""
+    for method in ("hampel", "greedy", "smart_greedy", "zheng"):
+        result = traj_filter(greedy_tdf, method=method)
+        assert isinstance(result, type(greedy_tdf))
+
+
+def test_filter_outlier_methods_polars_backend(greedy_tdf_polars):
+    """Polars input produces a Polars output for every new outlier method."""
+    import polars as pl
+
+    for method in ("hampel", "greedy", "smart_greedy", "zheng"):
+        result = traj_filter(greedy_tdf_polars, method=method)
+        assert isinstance(result, pl.DataFrame)
+
+
+def test_filter_unknown_method_raises(filter_tdf):
+    """An unrecognized ``method`` raises ValueError listing valid choices."""
+    with pytest.raises(ValueError, match="unknown filter method"):
+        traj_filter(filter_tdf, method="not_a_real_method")
+
+
 @pytest.mark.skmob
 def test_filter_matches_skmob(comparison_skmob):
     """Results must closely match skmob despite tiny Haversine threshold drift."""

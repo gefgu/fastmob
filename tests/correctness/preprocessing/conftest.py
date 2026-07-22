@@ -52,6 +52,110 @@ def filter_tdf_polars():
 
 
 # ---------------------------------------------------------------------------
+# outlier-detection fixtures (filter(method=...) for hampel/greedy/smart_greedy/zheng)
+# ---------------------------------------------------------------------------
+# hampel_case: 9 points, 1h spacing, slow ~55 m/h drift, except a single huge
+#   teleport at index 4 (to lat=60.0). With the default window_size=5
+#   (half_window=2) and n_sigma=3.0, the two speed values touching the
+#   teleport (indices 4 and 5: the jump out to lat=60 and the jump back) are
+#   each the sole extreme value in their 5-point window, so both are flagged;
+#   every other index's own speed is unaffected and stays within threshold.
+# greedy_case: 5 points, 1h spacing, slow drift, except index 2 teleported to
+#   null island (lat=0, lng=0). Greedy tests fixed original-adjacent pairs
+#   with max_speed_kmh=100.0, so *both* index 2 (arriving at null island) and
+#   index 3 (leaving null island) fail the speed test and are dropped, even
+#   though index 3 itself is a perfectly normal point.
+# smart_greedy_case: same points as greedy_case. SmartGreedy tracks multiple
+#   candidate chains instead of fixed adjacent pairs, so it finds that
+#   {0, 1, 3, 4} is a single mutually-consistent chain (index 1 -> index 3 is
+#   a normal 2-hour hop) and only drops the true outlier, index 2.
+# zheng_case: 8 points, 1h spacing: a clean run of 4, a single teleport, then
+#   a clean run of 3. With min_seg_size=1 (default), the isolated 1-point
+#   "segment" at the teleport is dropped but both surrounding runs are kept
+#   in full — including the point right after the teleport, which Greedy's
+#   fixed-adjacent-pair test would have dropped (see greedy_case above).
+
+
+def _hampel_rows():
+    rows = []
+    for i in range(9):
+        lat = 60.0 if i == 4 else 48.8560 + i * 0.0005
+        rows.append(
+            {
+                "uid": "hampel_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(hours=i),
+                "lat": lat,
+                "lng": 2.3520,
+            }
+        )
+    return rows
+
+
+def _greedy_rows():
+    rows = []
+    for i in range(5):
+        lat = 0.0 if i == 2 else (48.8566 + i * 0.005)
+        lng = 0.0 if i == 2 else 2.3522
+        rows.append(
+            {
+                "uid": "greedy_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(hours=i),
+                "lat": lat,
+                "lng": lng,
+            }
+        )
+    return rows
+
+
+def _zheng_rows():
+    rows = []
+    lats = [0.0, 0.001, 0.002, 0.003, 5.0, 0.004, 0.005, 0.006]
+    for i, lat in enumerate(lats):
+        rows.append(
+            {
+                "uid": "zheng_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(hours=i),
+                "lat": lat,
+                "lng": 0.0,
+            }
+        )
+    return rows
+
+
+@pytest.fixture(scope="session")
+def hampel_tdf() -> pd.DataFrame:
+    return pd.DataFrame(_hampel_rows())
+
+
+@pytest.fixture(scope="session")
+def hampel_tdf_polars():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    return pl.from_dicts(_hampel_rows())
+
+
+@pytest.fixture(scope="session")
+def greedy_tdf() -> pd.DataFrame:
+    return pd.DataFrame(_greedy_rows())
+
+
+@pytest.fixture(scope="session")
+def greedy_tdf_polars():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    return pl.from_dicts(_greedy_rows())
+
+
+@pytest.fixture(scope="session")
+def zheng_tdf() -> pd.DataFrame:
+    return pd.DataFrame(_zheng_rows())
+
+
+@pytest.fixture(scope="session")
+def zheng_tdf_polars():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    return pl.from_dicts(_zheng_rows())
+
+
+# ---------------------------------------------------------------------------
 # compress fixtures
 # ---------------------------------------------------------------------------
 # user_dense: 10 points. First 5 clustered within 0.05 km of (48.86, 2.35),
