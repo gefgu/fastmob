@@ -1,6 +1,7 @@
 pub mod activity;
 pub mod entropy;
 pub mod home_location;
+pub mod indexed_user_indices;
 pub mod individual_mobility_network;
 pub mod jump_lengths;
 pub mod jump_lengths_arrow;

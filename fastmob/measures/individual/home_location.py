@@ -4,12 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    home_location_arrow,
-    home_location_indexed_arrow,
-    home_location_indexed_numpy,
-    home_location_numpy,
-)
+from fastmob._core import home_location_indexed, home_location_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -22,23 +17,12 @@ from .._common import (
 )
 
 
-def _format_arrow_pair(values: tuple[Any, Any]) -> tuple[Any, Any]:
+def _format_pair(values: tuple[Any, Any]) -> tuple[Any, Any]:
     first, second = values
     return _arrow_result_values(first), _arrow_result_values(second)
 
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "presorted": home_location_arrow,
-        "indexed": home_location_indexed_arrow,
-        "format_pair": _format_arrow_pair,
-    },
-    numpy_ops={
-        "presorted": home_location_numpy,
-        "indexed": home_location_indexed_numpy,
-        "format_pair": lambda values: values,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def home_location(
@@ -153,14 +137,14 @@ def home_location(
     )
 
     df, hours = _extract_hours(df, datetime_col)
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
     hours_data = ops["extract_data"](hours)
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        home_lats, home_lngs = ops["format_pair"](
-            ops["presorted"](
+        home_lats, home_lngs = _format_pair(
+            home_location_presorted(
                 lats_data,
                 lngs_data,
                 hours_data,
@@ -175,8 +159,8 @@ def home_location(
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    home_lats, home_lngs = ops["format_pair"](
-        ops["indexed"](
+    home_lats, home_lngs = _format_pair(
+        home_location_indexed(
             lats_data,
             lngs_data,
             hours_data,

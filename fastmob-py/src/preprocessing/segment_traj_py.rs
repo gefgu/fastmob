@@ -216,7 +216,16 @@ pub fn segment_trajectory_indexed_numpy<'py>(
     let bucket_slice = bucket_ids.as_ref().map(|b| b.as_slice()).transpose()?;
 
     let segment_ids = py.detach(|| {
-        segment_trajectory_indexed_impl(lats, lngs, times, indices, ends, None, bucket_slice, &config.0)
+        segment_trajectory_indexed_impl(
+            lats,
+            lngs,
+            times,
+            indices,
+            ends,
+            None,
+            bucket_slice,
+            &config.0,
+        )
     });
 
     Ok(PyArray1::from_vec(py, segment_ids))

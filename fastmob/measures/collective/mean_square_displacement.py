@@ -5,10 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    mean_square_displacement_indexed_arrow,
-    mean_square_displacement_indexed_numpy,
-)
+from fastmob._core import mean_square_displacement_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -17,10 +14,7 @@ from .._common import (
     _extract_timestamps_s,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={"kernel": mean_square_displacement_indexed_arrow},
-    numpy_ops={"kernel": mean_square_displacement_indexed_numpy},
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def mean_square_displacement(
@@ -130,7 +124,7 @@ def mean_square_displacement(
     if len(df) == 0:
         return 0.0
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     timestamps = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps)
     _uid_values, indices, ends = _build_time_ordered_user_ranges(
@@ -139,4 +133,4 @@ def mean_square_displacement(
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
-    return ops["kernel"](lats_data, lngs_data, timestamps_data, indices, ends, delta_s)
+    return mean_square_displacement_indexed(lats_data, lngs_data, timestamps_data, indices, ends, delta_s)

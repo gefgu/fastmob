@@ -111,7 +111,10 @@ mod tests {
 
         let ids = speed_segment_ids(&lats, &lngs, &times, 5.0, f64::INFINITY, 300.0);
         assert_eq!(ids[0], 0);
-        assert_eq!(ids[1], 0, "the fast hop into the parked spot is still moving");
+        assert_eq!(
+            ids[1], 0,
+            "the fast hop into the parked spot is still moving"
+        );
         assert_eq!(ids[2], 1, "the parked run gets its own bracketing segment");
         assert_eq!(ids[3], 1);
         assert!(ids[4] > ids[1], "moving resumes in a fresh segment");

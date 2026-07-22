@@ -7,16 +7,8 @@ import narwhals as nw
 import numpy as np
 
 from fastmob._core import (
-    detect_stay_locations_batch_arrow as _stay_arrow,
-)
-from fastmob._core import (
-    detect_stay_locations_batch_indexed_arrow as _stay_indexed_arrow,
-)
-from fastmob._core import (
-    detect_stay_locations_batch_indexed_numpy as _stay_indexed_numpy,
-)
-from fastmob._core import (
-    detect_stay_locations_batch_numpy as _stay_numpy,
+    detect_stay_locations_batch,
+    detect_stay_locations_batch_indexed,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -29,7 +21,7 @@ from ..measures._common import (
 )
 
 
-def _unwrap_stay_arrow(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
+def _unwrap_stay(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
     return (
         _arrow_result_values(_l),
         _arrow_result_values(_g),
@@ -39,18 +31,7 @@ def _unwrap_stay_arrow(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
     )
 
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "sorted": _stay_arrow,
-        "indexed": _stay_indexed_arrow,
-        "unwrap": _unwrap_stay_arrow,
-    },
-    numpy_ops={
-        "sorted": _stay_numpy,
-        "indexed": _stay_indexed_numpy,
-        "unwrap": lambda _l, _g, _e, _lv, _r: (_l, _g, _e, _lv, _r),
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def stay_locations(
@@ -156,7 +137,7 @@ def stay_locations(
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](lats)
     lngs_data = ops["extract_data"](lngs)
     timestamps_data = ops["extract_data"](timestamps_s)
@@ -165,11 +146,11 @@ def stay_locations(
 
     if presorted:
         uid_values, ranges = _build_user_ranges(df, uid_col)
-        _result = ops["sorted"](
+        _result = detect_stay_locations_batch(
             lats_data, lngs_data, timestamps_data, ranges,
             spatial_radius_km, minutes_for_a_stop, no_data_for_minutes, effective_min_speed,
         )
-        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = ops["unwrap"](*_result)
+        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _unwrap_stay(*_result)
     else:
         uid_values, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -177,11 +158,11 @@ def stay_locations(
             datetime_col=datetime_col,
             timestamps_data=timestamps_data,
         )
-        _result = ops["indexed"](
+        _result = detect_stay_locations_batch_indexed(
             lats_data, lngs_data, timestamps_data, sorted_indices, ends,
             spatial_radius_km, minutes_for_a_stop, no_data_for_minutes, effective_min_speed,
         )
-        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = ops["unwrap"](*_result)
+        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _unwrap_stay(*_result)
 
     if len(out_lats) == 0:
         out_dict: dict[str, list] = {lat_col: [], lng_col: [], datetime_col: []}

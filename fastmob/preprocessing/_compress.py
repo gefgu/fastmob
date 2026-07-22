@@ -6,16 +6,8 @@ import narwhals as nw
 import numpy as np
 
 from fastmob._core import (
-    compress_trajectory_representatives_arrow as _compress_arrow,
-)
-from fastmob._core import (
-    compress_trajectory_representatives_indexed_arrow as _compress_indexed_arrow,
-)
-from fastmob._core import (
-    compress_trajectory_representatives_indexed_numpy as _compress_indexed_numpy,
-)
-from fastmob._core import (
-    compress_trajectory_representatives_numpy as _compress_numpy,
+    compress_trajectory_representatives,
+    compress_trajectory_representatives_indexed,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -27,22 +19,15 @@ from ..measures._common import (
     _extract_timestamps_s,
 )
 
-COMPRESS_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "compress_sorted": _compress_arrow,
-        "compress_indexed": _compress_indexed_arrow,
-        "unpack_result": lambda r: (
-            np.asarray(_arrow_result_values(r[0]), dtype=np.intp),
-            np.asarray(_arrow_result_values(r[1]), dtype=np.float64),
-            np.asarray(_arrow_result_values(r[2]), dtype=np.float64),
-        ),
-    },
-    numpy_ops={
-        "compress_sorted": _compress_numpy,
-        "compress_indexed": _compress_indexed_numpy,
-        "unpack_result": lambda r: r,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+
+
+def _unpack_result(result: tuple[Any, Any, Any]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return (
+        np.asarray(_arrow_result_values(result[0]), dtype=np.intp),
+        np.asarray(_arrow_result_values(result[1]), dtype=np.float64),
+        np.asarray(_arrow_result_values(result[2]), dtype=np.float64),
+    )
 
 
 def compress(
@@ -133,7 +118,7 @@ def compress(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = COMPRESS_DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
@@ -142,7 +127,7 @@ def compress(
 
     if presorted:
         _, ranges = _build_user_ranges(df, uid_col)
-        result_raw = ops["compress_sorted"](lats_data, lngs_data, ranges, spatial_radius_km)
+        result_raw = compress_trajectory_representatives(lats_data, lngs_data, ranges, spatial_radius_km)
     else:
         _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -150,9 +135,9 @@ def compress(
             datetime_col=datetime_col,
             timestamps_data=timestamps_data,
         )
-        result_raw = ops["compress_indexed"](lats_data, lngs_data, sorted_indices, ends, spatial_radius_km)
+        result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, sorted_indices, ends, spatial_radius_km)
 
-    representative_indices, median_lats, median_lngs = ops["unpack_result"](result_raw)
+    representative_indices, median_lats, median_lngs = _unpack_result(result_raw)
 
     result = df[representative_indices].with_columns(
         nw.new_series(lat_col, median_lats, backend=df.implementation),

@@ -204,7 +204,11 @@ pub fn bearing_deg(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
 /// @usedBy `fastmob-core/src/preprocessing/segment/angle_change.rs`.
 pub fn angular_difference(degrees1: f64, degrees2: f64) -> f64 {
     let diff = (degrees1 - degrees2).abs();
-    if diff > 180.0 { (diff - 360.0).abs() } else { diff }
+    if diff > 180.0 {
+        (diff - 360.0).abs()
+    } else {
+        diff
+    }
 }
 
 #[cfg(test)]
@@ -220,7 +224,10 @@ mod bearing_tests {
     #[test]
     fn bearing_due_east_is_ninety() {
         let bearing = bearing_deg(0.0, 0.0, 0.0, 1.0);
-        assert!((bearing - 90.0).abs() < 1e-6, "expected ~90 deg, got {bearing}");
+        assert!(
+            (bearing - 90.0).abs() < 1e-6,
+            "expected ~90 deg, got {bearing}"
+        );
     }
 
     #[test]

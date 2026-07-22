@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    types::Float64Type, Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt32Array,
-    UInt64Array,
+    Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt32Array, UInt64Array,
+    types::Float64Type,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

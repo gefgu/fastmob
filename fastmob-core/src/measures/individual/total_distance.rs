@@ -23,7 +23,7 @@ pub fn total_distance_impl(
     Ok(results)
 }
 
-pub fn total_distance_from_ends_impl(
+pub fn total_distance_presorted_impl(
     latitudes: &[f64],
     longitudes: &[f64],
     ends: &[usize],

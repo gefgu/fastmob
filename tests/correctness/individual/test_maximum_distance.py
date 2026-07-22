@@ -140,19 +140,24 @@ def test_maximum_distance_polars_single_point_returns_nan():
     assert np.isnan(mapping["a"])
 
 
-def test_maximum_distance_numpy_and_arrow_helpers_match_batch_helper():
+def test_maximum_distance_presorted_helper_accepts_numpy_and_arrow():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fastmob._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
+    from fastmob._core import jump_lengths_km, maximum_distance_presorted
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
-    ranges = [(0, 3), (3, 5)]
     ends = np.array([3, 5], dtype=np.uintp)
+    expected = np.array(
+        [
+            max(jump_lengths_km(lats[:3].tolist(), lngs[:3].tolist())),
+            max(jump_lengths_km(lats[3:].tolist(), lngs[3:].tolist())),
+        ],
+        dtype=np.float64,
+    )
 
-    expected = maximum_distance_batch_km(lats.tolist(), lngs.tolist(), ranges)
-    result_numpy = maximum_distance_numpy(lats, lngs, ends)
-    result_arrow = maximum_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
+    result_numpy = maximum_distance_presorted(lats, lngs, ends)
+    result_arrow = maximum_distance_presorted(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
 
     np.testing.assert_allclose(result_numpy, expected, rtol=0.0, atol=1e-12)
     np.testing.assert_allclose(_arrow_to_numpy(result_arrow), expected, rtol=0.0, atol=1e-12)
@@ -162,16 +167,18 @@ def test_maximum_distance_numpy_and_arrow_helpers_match_batch_helper():
 def test_maximum_distance_helpers_return_nan_for_short_presorted_groups():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fastmob._core import maximum_distance_arrow, maximum_distance_batch_km, maximum_distance_numpy
+    from fastmob._core import jump_lengths_km, maximum_distance_presorted
 
     lats = np.array([0.0, 0.0, 1.0], dtype=np.float64)
     lngs = np.array([0.0, 0.0, 0.0], dtype=np.float64)
-    ranges = [(0, 1), (1, 3)]
     ends = np.array([1, 3], dtype=np.uintp)
+    expected = np.array(
+        [np.nan, max(jump_lengths_km(lats[1:].tolist(), lngs[1:].tolist()))],
+        dtype=np.float64,
+    )
 
-    expected = maximum_distance_batch_km(lats.tolist(), lngs.tolist(), ranges)
-    result_numpy = maximum_distance_numpy(lats, lngs, ends)
-    result_arrow = maximum_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
+    result_numpy = maximum_distance_presorted(lats, lngs, ends)
+    result_arrow = maximum_distance_presorted(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
 
     assert np.isnan(expected[0])
     assert np.isnan(result_numpy[0])
@@ -183,31 +190,31 @@ def test_maximum_distance_helpers_return_nan_for_short_presorted_groups():
 def test_maximum_distance_indexed_arrow_returns_nan_when_nulls_leave_one_valid_point():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import maximum_distance_indexed_arrow
+    from fastmob._core import maximum_distance_indexed
 
     lats = pa.array([0.0, None, float("nan")])
     lngs = pa.array([0.0, 1.0, 2.0])
     indices = np.array([0, 1, 2], dtype=np.uintp)
     ends = np.array([3], dtype=np.uintp)
 
-    result = maximum_distance_indexed_arrow(lats, lngs, indices, ends)
+    result = maximum_distance_indexed(lats, lngs, indices, ends)
 
     values = _arrow_to_numpy(result)
     assert values.shape == (1,)
     assert np.isnan(values[0])
 
 
-def test_maximum_distance_numpy_helper_validation_errors():
+def test_maximum_distance_presorted_helper_validation_errors():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from fastmob._core import maximum_distance_numpy
+    from fastmob._core import maximum_distance_presorted
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
-        maximum_distance_numpy(arr, arr[:1], np.array([1], dtype=np.uintp))
+        maximum_distance_presorted(arr, arr[:1], np.array([1], dtype=np.uintp))
     with pytest.raises(ValueError, match="range end"):
-        maximum_distance_numpy(arr, arr, np.array([3], dtype=np.uintp))
+        maximum_distance_presorted(arr, arr, np.array([3], dtype=np.uintp))
     with pytest.raises(ValueError, match="monotonically non-decreasing"):
-        maximum_distance_numpy(arr, arr, np.array([2, 1], dtype=np.uintp))
+        maximum_distance_presorted(arr, arr, np.array([2, 1], dtype=np.uintp))
 
 
 @pytest.mark.skmob

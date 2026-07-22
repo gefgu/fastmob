@@ -296,9 +296,9 @@ def test_visitation_law_invalid_inputs_raise():
         bin_visitation_law_data(vl_df, distance_bin_width_km=0)
 
 
-def test_visitation_distance_core_helpers_match():
+def test_visitation_distance_core_helper_accepts_numpy_and_arrow():
     pl = pytest.importorskip("polars")
-    from fastmob._core import visitation_distances_arrow, visitation_distances_km, visitation_distances_numpy
+    from fastmob._core import visitation_distances, visitation_distances_km
 
     home_lats = np.array([0.0, 10.0], dtype=np.float64)
     home_lngs = np.array([0.0, 0.0], dtype=np.float64)
@@ -306,8 +306,8 @@ def test_visitation_distance_core_helpers_match():
     loc_lngs = np.array([1.0, 2.0], dtype=np.float64)
 
     expected = visitation_distances_km(home_lats.tolist(), home_lngs.tolist(), loc_lats.tolist(), loc_lngs.tolist())
-    result_numpy = visitation_distances_numpy(home_lats, home_lngs, loc_lats, loc_lngs)
-    result_arrow = visitation_distances_arrow(
+    result_numpy = visitation_distances(home_lats, home_lngs, loc_lats, loc_lngs)
+    result_arrow = visitation_distances(
         pl.Series(home_lats).to_arrow(),
         pl.Series(home_lngs).to_arrow(),
         pl.Series(loc_lats).to_arrow(),
@@ -319,8 +319,8 @@ def test_visitation_distance_core_helpers_match():
 
 
 def test_visitation_distance_core_helper_validation_errors():
-    from fastmob._core import visitation_distances_numpy
+    from fastmob._core import visitation_distances
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
-        visitation_distances_numpy(arr, arr, arr[:1], arr)
+        visitation_distances(arr, arr, arr[:1], arr)

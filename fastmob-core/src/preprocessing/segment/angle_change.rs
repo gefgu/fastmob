@@ -84,7 +84,10 @@ mod tests {
 
     #[test]
     fn empty_and_single_point_inputs() {
-        assert_eq!(angle_change_segment_ids(&[], &[], &[], 45.0, 0.0), Vec::<u32>::new());
+        assert_eq!(
+            angle_change_segment_ids(&[], &[], &[], 45.0, 0.0),
+            Vec::<u32>::new()
+        );
         assert_eq!(
             angle_change_segment_ids(&[0.0], &[0.0], &[0.0], 45.0, 0.0),
             vec![0]
@@ -108,7 +111,11 @@ mod tests {
         let lngs = vec![2.0, 2.0, 2.02];
         let times = times_seq(3);
         let ids = angle_change_segment_ids(&lats, &lngs, &times, 45.0, 0.0);
-        assert_eq!(ids, vec![0, 0, 1], "the turn is registered at the point it lands on");
+        assert_eq!(
+            ids,
+            vec![0, 0, 1],
+            "the turn is registered at the point it lands on"
+        );
     }
 
     #[test]

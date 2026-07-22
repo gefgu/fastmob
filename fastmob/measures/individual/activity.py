@@ -9,12 +9,9 @@ import narwhals as nw
 import numpy as np
 import pandas as pd
 from fastmob._core import (
-    activity_counts_arrow,
-    activity_counts_numpy,
-    activity_transition_counts_arrow,
-    activity_transition_counts_numpy,
-    daily_activity_percentages_arrow,
-    daily_activity_percentages_numpy,
+    activity_counts,
+    activity_transition_counts,
+    daily_activity_percentages,
 )
 
 from .._common import (
@@ -114,9 +111,9 @@ def _kernel_result(values: Any) -> np.ndarray:
 
 def _activity_counts(df: nw.DataFrame, codes: nw.Series, n_activities: int) -> np.ndarray:
     if _use_arrow_kernel_path(df):
-        return _kernel_result(activity_counts_arrow(codes.to_arrow(), n_activities)).astype(np.uint64, copy=False)
+        return _kernel_result(activity_counts(codes.to_arrow(), n_activities)).astype(np.uint64, copy=False)
     data = np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64)
-    return np.asarray(activity_counts_numpy(data, n_activities), dtype=np.uint64)
+    return np.asarray(activity_counts(data, n_activities), dtype=np.uint64)
 
 
 def visit_purpose_distribution(
@@ -231,13 +228,13 @@ def daily_activity_distribution(
         end_series = nw.new_series("end_minutes", end_minutes, dtype=nw.Int64, backend=df.implementation)
         valid_series = nw.new_series("valid_rows", valid_rows, dtype=nw.Boolean, backend=df.implementation)
         flat = _kernel_result(
-            daily_activity_percentages_arrow(
+            daily_activity_percentages(
                 codes.to_arrow(), start_series.to_arrow(), end_series.to_arrow(), valid_series.to_arrow(),
                 len(categories), bin_size_minutes,
             )
         )
     else:
-        flat = daily_activity_percentages_numpy(
+        flat = daily_activity_percentages(
             np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64),
             np.ascontiguousarray(start_minutes), np.ascontiguousarray(end_minutes),
             np.ascontiguousarray(valid_rows), len(categories), bin_size_minutes,
@@ -370,10 +367,10 @@ def activity_transition_matrix(
     _, indices, ends = _build_indexed_user_ranges_fast(df, user_id_col)
     if _use_arrow_kernel_path(df):
         flat_counts = _kernel_result(
-            activity_transition_counts_arrow(codes.to_arrow(), indices, ends, n_activities)
+            activity_transition_counts(codes.to_arrow(), indices, ends, n_activities)
         )
     else:
-        flat_counts = activity_transition_counts_numpy(
+        flat_counts = activity_transition_counts(
             np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64), indices, ends, n_activities
         )
     transition_matrix = np.asarray(flat_counts, dtype=float).reshape(n_activities, n_activities)

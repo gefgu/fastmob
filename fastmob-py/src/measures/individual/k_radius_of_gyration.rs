@@ -2,13 +2,12 @@ use fastmob_core::measures::individual::k_radius_of_gyration::{
     k_radius_of_gyration_from_ends_impl, k_radius_of_gyration_indexed_impl,
     k_radius_of_gyration_km as core_k_rog_km,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 
-use crate::utils::{
-    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+use crate::adapters::trajectory::{
+    PyF64Result, run_indexed_timed_coordinate_f64, run_presorted_timed_coordinate_f64,
 };
 
 #[pyfunction]
@@ -22,95 +21,60 @@ pub fn k_radius_of_gyration_km(
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-pub fn k_radius_of_gyration_numpy<'py>(
+pub fn k_radius_of_gyration_presorted<'py>(
     py: Python<'py>,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
-    timestamps: PyReadonlyArray1<'py, f64>,
+    latitudes: &Bound<'py, PyAny>,
+    longitudes: &Bound<'py, PyAny>,
+    timestamps: &Bound<'py, PyAny>,
     ends: PyReadonlyArray1<'py, usize>,
     k: usize,
-) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    Ok(k_radius_of_gyration_from_ends_impl(
-        latitudes.as_slice()?,
-        longitudes.as_slice()?,
-        timestamps.as_slice()?,
-        ends.as_slice()?,
-        k,
+) -> PyResult<PyF64Result> {
+    run_presorted_timed_coordinate_f64(
+        py,
+        latitudes,
+        longitudes,
+        timestamps,
+        ends,
+        |coords, ends| {
+            k_radius_of_gyration_from_ends_impl(
+                coords.latitudes,
+                coords.longitudes,
+                coords.times,
+                ends,
+                k,
+            )
+        },
     )
-    .map_err(PyValueError::new_err)?
-    .into_pyarray(py))
 }
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-pub fn k_radius_of_gyration_indexed_numpy<'py>(
+pub fn k_radius_of_gyration_indexed<'py>(
     py: Python<'py>,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
-    timestamps: PyReadonlyArray1<'py, f64>,
+    latitudes: &Bound<'py, PyAny>,
+    longitudes: &Bound<'py, PyAny>,
+    timestamps: &Bound<'py, PyAny>,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     k: usize,
-) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    Ok(k_radius_of_gyration_indexed_impl(
-        latitudes.as_slice()?,
-        longitudes.as_slice()?,
-        timestamps.as_slice()?,
-        indices.as_slice()?,
-        ends.as_slice()?,
-        k,
-        None,
+) -> PyResult<PyF64Result> {
+    run_indexed_timed_coordinate_f64(
+        py,
+        latitudes,
+        longitudes,
+        timestamps,
+        indices,
+        ends,
+        |view| {
+            k_radius_of_gyration_indexed_impl(
+                view.coordinates.latitudes,
+                view.coordinates.longitudes,
+                view.coordinates.times,
+                view.indices,
+                view.ends,
+                k,
+                view.valid_rows,
+            )
+        },
     )
-    .map_err(PyValueError::new_err)?
-    .into_pyarray(py))
-}
-
-#[pyfunction]
-pub fn k_radius_of_gyration_arrow(
-    latitudes: PyArray,
-    longitudes: PyArray,
-    timestamps: PyArray,
-    ends: PyReadonlyArray1<usize>,
-    k: usize,
-) -> PyResult<PyArray> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let timestamps = as_f64_array(timestamps, "timestamps")?;
-    Ok(f64_results_into_arrow(
-        k_radius_of_gyration_from_ends_impl(
-            arrow_values(&latitudes),
-            arrow_values(&longitudes),
-            arrow_values(&timestamps),
-            ends.as_slice()?,
-            k,
-        )
-        .map_err(PyValueError::new_err)?,
-    ))
-}
-
-#[pyfunction]
-pub fn k_radius_of_gyration_indexed_arrow(
-    latitudes: PyArray,
-    longitudes: PyArray,
-    timestamps: PyArray,
-    indices: PyReadonlyArray1<usize>,
-    ends: PyReadonlyArray1<usize>,
-    k: usize,
-) -> PyResult<PyArray> {
-    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let timestamps = as_nullable_f64_array(timestamps, "timestamps")?;
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &timestamps]);
-    Ok(f64_results_into_arrow(
-        k_radius_of_gyration_indexed_impl(
-            arrow_values(&latitudes),
-            arrow_values(&longitudes),
-            arrow_values(&timestamps),
-            indices.as_slice()?,
-            ends.as_slice()?,
-            k,
-            valid_rows.as_deref(),
-        )
-        .map_err(PyValueError::new_err)?,
-    ))
 }

@@ -4,12 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    number_of_locations_arrow,
-    number_of_locations_indexed_arrow,
-    number_of_locations_indexed_numpy,
-    number_of_locations_numpy,
-)
+from fastmob._core import number_of_locations_indexed, number_of_locations_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -20,18 +15,7 @@ from .._common import (
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "presorted": number_of_locations_arrow,
-        "indexed": number_of_locations_indexed_arrow,
-        "format_values": _arrow_result_values,
-    },
-    numpy_ops={
-        "presorted": number_of_locations_numpy,
-        "indexed": number_of_locations_indexed_numpy,
-        "format_values": lambda values: values,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def number_of_locations(
@@ -124,19 +108,19 @@ def number_of_locations(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        n_locs = ops["format_values"](ops["presorted"](lats_data, lngs_data, ends))
+        n_locs = _arrow_result_values(number_of_locations_presorted(lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"number_of_locations": n_locs}, df)
         return _to_native({uid_col: uid_values, "number_of_locations": n_locs}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    n_locs = ops["format_values"](ops["indexed"](lats_data, lngs_data, indices, ends))
+    n_locs = _arrow_result_values(number_of_locations_indexed(lats_data, lngs_data, indices, ends))
 
     if uid_col is None:
         result = _to_native({"number_of_locations": n_locs}, df)

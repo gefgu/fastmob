@@ -73,33 +73,131 @@ def test_distance_straight_line_polars_known_values(synthetic_tdf_polars):
         assert abs(mapping[uid] - expected) < 1e-6, f"uid={uid!r}: got {mapping[uid]}, expected {expected} (Polars)"
 
 
-def test_total_distance_numpy_and_arrow_helpers_match_batch_helper():
+def _core_result_array(values):
+    if hasattr(values, "to_pyarrow"):
+        values = values.to_pyarrow()
+    return np.asarray(values)
+
+
+def test_total_distance_presorted_numpy_and_arrow_match_batch_helper():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    pl = pytest.importorskip("polars", reason="Install polars to run this test")
-    from fastmob._core import total_distance_arrow, total_distance_batch_km, total_distance_numpy
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from fastmob._core import total_distance_presorted
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
-    ranges = [(0, 3), (3, 5)]
     ends = np.array([3, 5], dtype=np.uintp)
 
-    expected = total_distance_batch_km(lats.tolist(), lngs.tolist(), ranges)
-    result_numpy = total_distance_numpy(lats, lngs, ends)
-    result_arrow = total_distance_arrow(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
+    expected = [222.3901604670658, 109.50573519924356]
+    result_numpy = total_distance_presorted(lats, lngs, ends)
+    result_arrow = total_distance_presorted(
+        pa.array(lats, type=pa.float64()),
+        pa.array(lngs, type=pa.float64()),
+        ends,
+    )
 
-    np.testing.assert_allclose(result_numpy, expected, rtol=0.0, atol=1e-12)
-    np.testing.assert_allclose(result_arrow, expected, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(_core_result_array(result_numpy), expected, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(_core_result_array(result_arrow), expected, rtol=0.0, atol=1e-12)
 
 
-def test_total_distance_numpy_helper_validation_errors():
+def test_total_distance_indexed_backends_match_presorted():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from fastmob._core import total_distance_numpy
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from fastmob._core import total_distance_indexed, total_distance_presorted
+
+    lats = np.array([10.0, 0.0, 11.0, 20.0, 1.0, 21.0], dtype=np.float64)
+    lngs = np.array([30.0, 0.0, 31.0, 40.0, 1.0, 41.0], dtype=np.float64)
+    indices = np.array([1, 4, 0, 2, 3, 5], dtype=np.uintp)
+    ends = np.array([2, 4, 6], dtype=np.uintp)
+
+    expected_lats = np.array([0.0, 1.0, 10.0, 11.0, 20.0, 21.0], dtype=np.float64)
+    expected_lngs = np.array([0.0, 1.0, 30.0, 31.0, 40.0, 41.0], dtype=np.float64)
+    expected = _core_result_array(total_distance_presorted(expected_lats, expected_lngs, ends))
+
+    result_numpy = total_distance_indexed(lats, lngs, indices, ends)
+    result_arrow = total_distance_indexed(
+        pa.array(lats, type=pa.float64()),
+        pa.array(lngs, type=pa.float64()),
+        indices,
+        ends,
+    )
+
+    np.testing.assert_allclose(_core_result_array(result_numpy), expected, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(_core_result_array(result_arrow), expected, rtol=0.0, atol=1e-12)
+
+
+def test_total_distance_presorted_validation_errors():
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob._core import total_distance_presorted
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
-        total_distance_numpy(arr, arr[:1], np.array([1], dtype=np.uintp))
+        total_distance_presorted(arr, arr[:1], np.array([1], dtype=np.uintp))
     with pytest.raises(ValueError, match="range end"):
-        total_distance_numpy(arr, arr, np.array([3], dtype=np.uintp))
+        total_distance_presorted(arr, arr, np.array([3], dtype=np.uintp))
+
+
+def test_total_distance_indexed_validation_errors():
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    from fastmob._core import total_distance_indexed
+
+    arr = np.array([0.0, 1.0], dtype=np.float64)
+    with pytest.raises(ValueError, match="same length"):
+        total_distance_indexed(
+            arr,
+            arr[:1],
+            np.array([0], dtype=np.uintp),
+            np.array([1], dtype=np.uintp),
+        )
+    with pytest.raises(ValueError, match="index array bounds"):
+        total_distance_indexed(
+            arr,
+            arr,
+            np.array([0], dtype=np.uintp),
+            np.array([2], dtype=np.uintp),
+        )
+    with pytest.raises(ValueError, match="monotonically"):
+        total_distance_indexed(
+            arr,
+            arr,
+            np.array([0, 1], dtype=np.uintp),
+            np.array([2, 1], dtype=np.uintp),
+        )
+    with pytest.raises(ValueError, match="coordinate array bounds"):
+        total_distance_indexed(
+            arr,
+            arr,
+            np.array([0, 2], dtype=np.uintp),
+            np.array([2], dtype=np.uintp),
+        )
+
+
+def test_total_distance_indexed_filters_arrow_nulls():
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from fastmob._core import total_distance_indexed
+
+    lats = pa.array([0.0, None, 0.0], type=pa.float64())
+    lngs = pa.array([0.0, 1.0, 2.0], type=pa.float64())
+    indices = np.array([0, 1, 2], dtype=np.uintp)
+    ends = np.array([3], dtype=np.uintp)
+
+    result = total_distance_indexed(lats, lngs, indices, ends)
+
+    np.testing.assert_allclose(_core_result_array(result), [222.3901604670658], rtol=0.0, atol=1e-12)
+
+
+def test_total_distance_presorted_rejects_mixed_backends():
+    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
+    from fastmob._core import total_distance_presorted
+
+    lats = np.array([0.0, 1.0], dtype=np.float64)
+    lngs = pa.array([0.0, 1.0], type=pa.float64())
+    ends = np.array([2], dtype=np.uintp)
+
+    with pytest.raises(TypeError, match="NumPy arrays or both be Arrow arrays"):
+        total_distance_presorted(lats, lngs, ends)
 
 
 @pytest.mark.skmob

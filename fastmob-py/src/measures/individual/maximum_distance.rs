@@ -1,93 +1,40 @@
 use fastmob_core::measures::individual::maximum_distance::{
-    maximum_distance_impl, maximum_distance_indexed_impl, maximum_distance_ranges_impl,
+    maximum_distance_impl, maximum_distance_indexed_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
+use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 
-use crate::utils::{
-    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
+use crate::adapters::trajectory::{
+    PyF64Result, run_indexed_coordinate_f64, run_presorted_coordinate_f64,
 };
 
 #[pyfunction]
-pub fn maximum_distance_batch_km(
-    latitudes: Vec<f64>,
-    longitudes: Vec<f64>,
-    ranges: Vec<(usize, usize)>,
-) -> PyResult<Vec<f64>> {
-    maximum_distance_ranges_impl(&latitudes, &longitudes, &ranges).map_err(PyValueError::new_err)
-}
-
-#[pyfunction]
-pub fn maximum_distance_numpy(
-    latitudes: PyReadonlyArray1<f64>,
-    longitudes: PyReadonlyArray1<f64>,
-    ends: PyReadonlyArray1<usize>,
-) -> PyResult<Vec<f64>> {
-    maximum_distance_impl(
-        latitudes.as_slice()?,
-        longitudes.as_slice()?,
-        ends.as_slice()?,
-    )
-    .map_err(PyValueError::new_err)
-}
-
-#[pyfunction]
-pub fn maximum_distance_indexed_numpy<'py>(
+pub fn maximum_distance_presorted<'py>(
     py: Python<'py>,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
+    latitudes: &Bound<'py, PyAny>,
+    longitudes: &Bound<'py, PyAny>,
+    ends: PyReadonlyArray1<'py, usize>,
+) -> PyResult<PyF64Result> {
+    run_presorted_coordinate_f64(py, latitudes, longitudes, ends, |coords, ends| {
+        maximum_distance_impl(coords.latitudes, coords.longitudes, ends)
+    })
+}
+
+#[pyfunction]
+pub fn maximum_distance_indexed<'py>(
+    py: Python<'py>,
+    latitudes: &Bound<'py, PyAny>,
+    longitudes: &Bound<'py, PyAny>,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
-) -> PyResult<Bound<'py, PyArray1<f64>>> {
-    Ok(maximum_distance_indexed_impl(
-        latitudes.as_slice()?,
-        longitudes.as_slice()?,
-        indices.as_slice()?,
-        ends.as_slice()?,
-        None,
-    )
-    .map_err(PyValueError::new_err)?
-    .into_pyarray(py))
-}
-
-#[pyfunction]
-pub fn maximum_distance_arrow(
-    latitudes: PyArray,
-    longitudes: PyArray,
-    ends: PyReadonlyArray1<usize>,
-) -> PyResult<PyArray> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
-    Ok(f64_results_into_arrow(
-        maximum_distance_impl(
-            arrow_values(&latitudes),
-            arrow_values(&longitudes),
-            ends.as_slice()?,
-        )
-        .map_err(PyValueError::new_err)?,
-    ))
-}
-
-#[pyfunction]
-pub fn maximum_distance_indexed_arrow(
-    latitudes: PyArray,
-    longitudes: PyArray,
-    indices: PyReadonlyArray1<usize>,
-    ends: PyReadonlyArray1<usize>,
-) -> PyResult<PyArray> {
-    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
-    Ok(f64_results_into_arrow(
+) -> PyResult<PyF64Result> {
+    run_indexed_coordinate_f64(py, latitudes, longitudes, indices, ends, |view| {
         maximum_distance_indexed_impl(
-            arrow_values(&latitudes),
-            arrow_values(&longitudes),
-            indices.as_slice()?,
-            ends.as_slice()?,
-            valid_rows.as_deref(),
+            view.coordinates.latitudes,
+            view.coordinates.longitudes,
+            view.indices,
+            view.ends,
+            view.valid_rows,
         )
-        .map_err(PyValueError::new_err)?,
-    ))
+    })
 }

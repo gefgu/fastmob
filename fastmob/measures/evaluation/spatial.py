@@ -8,17 +8,10 @@ import narwhals as nw
 import numpy as np
 
 try:
-    from fastmob._core import stvd_emd_arrow as _stvd_emd_arrow
-    from fastmob._core import stvd_emd_numpy as _stvd_emd_numpy
+    from fastmob._core import stvd_emd as _stvd_emd
 except ImportError:  # Built without the optional SIMD/wass backend.
-    _stvd_emd_arrow = None
-    _stvd_emd_numpy = None
-from fastmob._core import (
-    trajectory_common_part_of_commuters_arrow as _trajectory_cpc_arrow,
-)
-from fastmob._core import (
-    trajectory_common_part_of_commuters_numpy as _trajectory_cpc_numpy,
-)
+    _stvd_emd = None
+from fastmob._core import trajectory_common_part_of_commuters as _trajectory_cpc
 from fastmob.measures._common import (
     DURATION_CANDIDATES,
     _as_index_array,
@@ -170,29 +163,15 @@ def trajectory_common_part_of_commuters(
         uid_col=uid_col_b,
     )
 
-    if use_arrow_a and use_arrow_b:
-        return float(
-            _trajectory_cpc_arrow(
-                df_a.get_column(lat_a).to_arrow(),
-                df_a.get_column(lng_a).to_arrow(),
-                indices_a,
-                ends_a,
-                df_b.get_column(lat_b).to_arrow(),
-                df_b.get_column(lng_b).to_arrow(),
-                indices_b,
-                ends_b,
-                int(resolution),
-            )
-        )
-
+    use_arrow = use_arrow_a and use_arrow_b
     return float(
-        _trajectory_cpc_numpy(
-            df_a.get_column(lat_a).to_numpy(),
-            df_a.get_column(lng_a).to_numpy(),
+        _trajectory_cpc(
+            df_a.get_column(lat_a).to_arrow() if use_arrow else df_a.get_column(lat_a).to_numpy(),
+            df_a.get_column(lng_a).to_arrow() if use_arrow else df_a.get_column(lng_a).to_numpy(),
             indices_a,
             ends_a,
-            df_b.get_column(lat_b).to_numpy(),
-            df_b.get_column(lng_b).to_numpy(),
+            df_b.get_column(lat_b).to_arrow() if use_arrow else df_b.get_column(lat_b).to_numpy(),
+            df_b.get_column(lng_b).to_arrow() if use_arrow else df_b.get_column(lng_b).to_numpy(),
             indices_b,
             ends_b,
             int(resolution),
@@ -250,19 +229,17 @@ def trajectory_common_part_of_commuters_multi(
         lngs_a = df_a.get_column(lng_a).to_arrow()
         lats_b = df_b.get_column(lat_b).to_arrow()
         lngs_b = df_b.get_column(lng_b).to_arrow()
-        kernel = _trajectory_cpc_arrow
     else:
         lats_a = df_a.get_column(lat_a).to_numpy()
         lngs_a = df_a.get_column(lng_a).to_numpy()
         lats_b = df_b.get_column(lat_b).to_numpy()
         lngs_b = df_b.get_column(lng_b).to_numpy()
-        kernel = _trajectory_cpc_numpy
 
     return [
         (
             int(resolution),
             float(
-                kernel(
+                _trajectory_cpc(
                     lats_a, lngs_a, indices_a, ends_a,
                     lats_b, lngs_b, indices_b, ends_b,
                     int(resolution),
@@ -362,17 +339,17 @@ def _route_and_call(
     *,
     use_arrow: bool,
 ) -> float:
-    if _stvd_emd_arrow is None or _stvd_emd_numpy is None:
+    if _stvd_emd is None:
         raise ImportError(
             "stvd_emd requires fastmob to be built with the optional stvd-emd feature"
         )
 
     if use_arrow:
         args = [x.to_arrow() for x in (*arrays_a, *arrays_b)]
-        return _stvd_emd_arrow(*args, alpha, cyclical_period, num_projections)
+        return _stvd_emd(*args, alpha, cyclical_period, num_projections)
 
     args = [x.to_numpy() for x in (*arrays_a, *arrays_b)]
-    return _stvd_emd_numpy(*args, alpha, cyclical_period, num_projections)
+    return _stvd_emd(*args, alpha, cyclical_period, num_projections)
 
 
 def stvd_emd(

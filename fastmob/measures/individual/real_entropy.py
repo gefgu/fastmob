@@ -6,10 +6,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    real_entropy_indexed_arrow,
-    real_entropy_indexed_numpy,
-)
+from fastmob._core import real_entropy_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -20,16 +17,7 @@ from .._common import (
     _with_datetime_column,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "real_entropy_indexed": real_entropy_indexed_arrow,
-        "format_result": lambda values: _arrow_result_values(values).to_pylist(),
-    },
-    numpy_ops={
-        "real_entropy_indexed": real_entropy_indexed_numpy,
-        "format_result": lambda values: values.tolist(),
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def real_entropy(
@@ -129,20 +117,24 @@ def real_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     timestamps = _extract_timestamps_ms(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps)
     uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_data
     )
 
-    raw = ops["real_entropy_indexed"](
+    raw = real_entropy_indexed(
         ops["extract_data"](df.get_column(lat_col)),
         ops["extract_data"](df.get_column(lng_col)),
         indices,
         ends,
     )
-    entropies = ops["format_result"](raw)
+    entropies = _arrow_result_values(raw)
+    if hasattr(entropies, "to_pylist"):
+        entropies = entropies.to_pylist()
+    else:
+        entropies = entropies.tolist()
 
     result_dict: dict[str, Any] = {"real_entropy": entropies}
     if uid_col is not None:

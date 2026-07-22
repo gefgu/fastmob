@@ -3,14 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import numpy as np
-
-from fastmob._core import (
-    k_radius_of_gyration_arrow,
-    k_radius_of_gyration_indexed_arrow,
-    k_radius_of_gyration_indexed_numpy,
-    k_radius_of_gyration_numpy,
-)
+from fastmob._core import k_radius_of_gyration_indexed, k_radius_of_gyration_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -22,18 +15,7 @@ from .._common import (
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "sorted": k_radius_of_gyration_arrow,
-        "indexed": k_radius_of_gyration_indexed_arrow,
-        "format_values": _arrow_result_values,
-    },
-    numpy_ops={
-        "sorted": k_radius_of_gyration_numpy,
-        "indexed": k_radius_of_gyration_indexed_numpy,
-        "format_values": lambda values: np.asarray(values, dtype=np.float64),
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def k_radius_of_gyration(
@@ -145,7 +127,7 @@ def k_radius_of_gyration(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
 
     lats = ops["extract_data"](df.get_column(lat_col))
     lngs = ops["extract_data"](df.get_column(lng_col))
@@ -154,14 +136,18 @@ def k_radius_of_gyration(
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        krg_values = ops["format_values"](ops["sorted"](lats, lngs, timestamps_data, ends, k))
+        krg_values = _arrow_result_values(
+            k_radius_of_gyration_presorted(lats, lngs, timestamps_data, ends, k)
+        )
         if uid_col is None:
             return _to_native({"k_radius_of_gyration": krg_values}, df)
         return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    krg_values = ops["format_values"](ops["indexed"](lats, lngs, timestamps_data, indices, ends, k))
+    krg_values = _arrow_result_values(
+        k_radius_of_gyration_indexed(lats, lngs, timestamps_data, indices, ends, k)
+    )
 
     if uid_col is None:
         return _to_native({"k_radius_of_gyration": krg_values}, df)

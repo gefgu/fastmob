@@ -1,3 +1,4 @@
+mod adapters;
 mod measures;
 mod models;
 mod preprocessing;
@@ -11,10 +12,10 @@ use measures::collective::{square_displacement, visitation_law};
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
 use measures::individual::{
-    activity, entropy, home_location, individual_mobility_network, k_radius_of_gyration,
-    location_frequency, max_distance_from_point, maximum_distance, motifs, radius_of_gyration,
-    recency_rank, spatial_counts, time_ordering, total_distance, uncorrelated_entropy,
-    waiting_times,
+    activity, entropy, home_location, indexed_user_indices, individual_mobility_network,
+    k_radius_of_gyration, location_frequency, max_distance_from_point, maximum_distance, motifs,
+    radius_of_gyration, recency_rank, spatial_counts, time_ordering, total_distance,
+    uncorrelated_entropy, waiting_times,
 };
 use preprocessing::{
     cdr, clustering, compress_traj_py, filter_traj_py, outliers_traj_py, segment_traj_py,
@@ -23,328 +24,135 @@ use preprocessing::{
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(activity::activity_counts_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(activity::activity_counts_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(
-        activity::activity_transition_counts_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        activity::activity_transition_counts_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        activity::daily_activity_percentages_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        activity::daily_activity_percentages_arrow,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(activity::activity_counts, m)?)?;
+    m.add_function(wrap_pyfunction!(activity::activity_transition_counts, m)?)?;
+    m.add_function(wrap_pyfunction!(activity::daily_activity_percentages, m)?)?;
     m.add_function(wrap_pyfunction!(utils::haversine_py::haversine_km, m)?)?;
     m.add_function(wrap_pyfunction!(
         visitation_law::visitation_distances_km,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        visitation_law::visitation_distances_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        visitation_law::visitation_distances_arrow,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(visitation_law::visitation_distances, m)?)?;
     m.add_function(wrap_pyfunction!(
         measures::individual::jump_lengths::jump_lengths_km,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::individual::jump_lengths_numpy::jump_lengths_presorted_numpy,
+        measures::individual::jump_lengths::jump_lengths_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::individual::jump_lengths_arrow::jump_lengths_presorted_arrow,
+        measures::individual::jump_lengths::jump_lengths_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::individual::jump_lengths_numpy::jump_lengths_indexed_numpy,
+        measures::individual::jump_lengths::jump_lengths_non_ordered,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::individual::jump_lengths_arrow::jump_lengths_indexed_arrow,
+        time_ordering::time_ordered_user_indices,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::individual::jump_lengths_numpy::jump_lengths_non_ordered_numpy,
+        radius_of_gyration::radius_of_gyration_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::individual::jump_lengths_arrow::jump_lengths_non_ordered_arrow,
+        indexed_user_indices::indexed_user_indices,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        time_ordering::time_ordered_user_indices_numpy,
+        radius_of_gyration::radius_of_gyration_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        time_ordering::time_ordered_user_indices_arrow,
+        maximum_distance::maximum_distance_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_km,
+        maximum_distance::maximum_distance_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_batch_km,
+        total_distance::total_distance_presorted,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_numpy_with_counts,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_arrow_with_counts,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_user_indices_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_user_indices_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        maximum_distance::maximum_distance_batch_km,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        maximum_distance::maximum_distance_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        maximum_distance::maximum_distance_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        maximum_distance::maximum_distance_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        maximum_distance::maximum_distance_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        total_distance::total_distance_batch_km,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(total_distance::total_distance_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(total_distance::total_distance_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(
-        total_distance::total_distance_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        total_distance::total_distance_indexed_arrow,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(total_distance::total_distance_indexed, m)?)?;
     m.add_function(wrap_pyfunction!(
         k_radius_of_gyration::k_radius_of_gyration_km,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        k_radius_of_gyration::k_radius_of_gyration_numpy,
+        k_radius_of_gyration::k_radius_of_gyration_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        k_radius_of_gyration::k_radius_of_gyration_arrow,
+        k_radius_of_gyration::k_radius_of_gyration_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        k_radius_of_gyration::k_radius_of_gyration_indexed_numpy,
+        spatial_counts::number_of_visits_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        k_radius_of_gyration::k_radius_of_gyration_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(spatial_counts::number_of_visits_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(spatial_counts::number_of_visits_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(
-        spatial_counts::number_of_visits_indexed_numpy,
+        spatial_counts::number_of_visits_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        spatial_counts::number_of_visits_indexed_arrow,
+        spatial_counts::number_of_locations_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        spatial_counts::number_of_locations_numpy,
+        spatial_counts::number_of_locations_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        spatial_counts::number_of_locations_arrow,
+        location_frequency::location_frequency_values_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        spatial_counts::number_of_locations_indexed_numpy,
+        location_frequency::location_frequency_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        spatial_counts::number_of_locations_indexed_arrow,
+        location_frequency::frequency_rank_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        location_frequency::location_frequency_indexed_numpy,
+        location_frequency::frequency_rank_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        location_frequency::location_frequency_indexed_arrow,
+        recency_rank::recency_rank_values_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(recency_rank::recency_rank_presorted, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        individual_mobility_network::individual_mobility_network_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        location_frequency::location_frequency_values_indexed_numpy,
+        individual_mobility_network::individual_mobility_network_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        location_frequency::location_frequency_values_indexed_arrow,
+        max_distance_from_point::max_distance_from_point_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        location_frequency::location_frequency_presorted_numpy,
+        max_distance_from_point::max_distance_from_point_indexed,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(home_location::home_location_presorted, m)?)?;
+    m.add_function(wrap_pyfunction!(home_location::home_location_indexed, m)?)?;
+    m.add_function(wrap_pyfunction!(waiting_times::waiting_times_presorted, m)?)?;
     m.add_function(wrap_pyfunction!(
-        location_frequency::location_frequency_presorted_arrow,
+        waiting_times::waiting_times_presorted_flat,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(waiting_times::waiting_times_indexed, m)?)?;
     m.add_function(wrap_pyfunction!(
-        location_frequency::frequency_rank_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        location_frequency::frequency_rank_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        location_frequency::frequency_rank_presorted_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        location_frequency::frequency_rank_presorted_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        recency_rank::recency_rank_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        recency_rank::recency_rank_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        recency_rank::recency_rank_values_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        recency_rank::recency_rank_values_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        recency_rank::recency_rank_presorted_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        recency_rank::recency_rank_presorted_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        individual_mobility_network::individual_mobility_network_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        individual_mobility_network::individual_mobility_network_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        individual_mobility_network::individual_mobility_network_presorted_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        individual_mobility_network::individual_mobility_network_presorted_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        max_distance_from_point::max_distance_from_point_batch_km,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        max_distance_from_point::max_distance_from_point_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        max_distance_from_point::max_distance_from_point_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        max_distance_from_point::max_distance_from_point_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        max_distance_from_point::max_distance_from_point_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(home_location::home_location_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(home_location::home_location_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(
-        home_location::home_location_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        home_location::home_location_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(waiting_times::waiting_times_seconds, m)?)?;
-    m.add_function(wrap_pyfunction!(waiting_times::waiting_times_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(waiting_times::waiting_times_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(
-        waiting_times::waiting_times_flat_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        waiting_times::waiting_times_flat_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        waiting_times::waiting_times_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        waiting_times::waiting_times_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        waiting_times::waiting_times_indexed_flat_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        waiting_times::waiting_times_indexed_flat_arrow,
+        waiting_times::waiting_times_indexed_flat,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -352,19 +160,11 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        square_displacement::mean_square_displacement_indexed_numpy,
+        square_displacement::mean_square_displacement_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        square_displacement::mean_square_displacement_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        uncorrelated_entropy::uncorrelated_entropy_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        uncorrelated_entropy::uncorrelated_entropy_indexed_arrow,
+        uncorrelated_entropy::uncorrelated_entropy_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
@@ -372,19 +172,11 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<preprocessing::filter_traj_py::PyFilterConfig>()?;
     m.add_function(wrap_pyfunction!(filter_traj_py::filter_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(
-        filter_traj_py::filter_trajectory_numpy,
+        filter_traj_py::filter_trajectory_sorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        filter_traj_py::filter_trajectory_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        filter_traj_py::filter_trajectory_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        filter_traj_py::filter_trajectory_indexed_arrow,
+        filter_traj_py::filter_trajectory_indexed,
         m
     )?)?;
     m.add_class::<preprocessing::outliers_traj_py::PyOutlierConfig>()?;
@@ -409,19 +201,11 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        compress_traj_py::compress_trajectory_representatives_numpy,
+        compress_traj_py::compress_trajectory_representatives,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        compress_traj_py::compress_trajectory_representatives_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        compress_traj_py::compress_trajectory_representatives_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        compress_traj_py::compress_trajectory_representatives_indexed_arrow,
+        compress_traj_py::compress_trajectory_representatives_indexed,
         m
     )?)?;
     m.add_class::<preprocessing::simplify_traj_py::PySimplifyConfig>()?;
@@ -467,39 +251,24 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed, m)?)?;
     m.add_function(wrap_pyfunction!(
-        stay_locations_py::detect_stay_locations_batch_numpy,
+        stay_locations_py::detect_stay_locations_batch,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        stay_locations_py::detect_stay_locations_batch_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        stay_locations_py::detect_stay_locations_batch_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        stay_locations_py::detect_stay_locations_batch_indexed_arrow,
+        stay_locations_py::detect_stay_locations_batch_indexed,
         m
     )?)?;
     #[cfg(feature = "stvd-emd")]
     {
-        m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_numpy, m)?)?;
-        m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd_arrow, m)?)?;
+        m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd, m)?)?;
     }
     m.add_function(wrap_pyfunction!(
-        trajectory_cpc::trajectory_common_part_of_commuters_numpy,
+        trajectory_cpc::trajectory_common_part_of_commuters,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        trajectory_cpc::trajectory_common_part_of_commuters_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(wasserstein::wasserstein_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(wasserstein::wasserstein_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(wasserstein::wasserstein, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     m.add_function(wrap_pyfunction!(models::od::model_gravity_matrix_numpy, m)?)?;
@@ -561,21 +330,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         models::ditras::model_ditras_simulate_agents,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        privacy::privacy_assess_risk_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        privacy::privacy_assess_risk_presorted_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        privacy::privacy_assess_risk_indexed_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        privacy::privacy_assess_risk_presorted_arrow,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(privacy::privacy_assess_risk_indexed, m)?)?;
+    m.add_function(wrap_pyfunction!(privacy::privacy_assess_risk_presorted, m)?)?;
     Ok(())
 }

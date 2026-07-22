@@ -7,7 +7,7 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from fastmob._core import visitation_distances_arrow, visitation_distances_numpy
+from fastmob._core import visitation_distances
 
 from .._common import (
     LAT_CANDIDATES,
@@ -95,13 +95,13 @@ def _route_visitation_distances(df: nw.DataFrame) -> list[float]:
     loc_lats = df.get_column("loc_lat")
     loc_lngs = df.get_column("loc_lng")
     if use_arrow:
-        return visitation_distances_arrow(
+        return visitation_distances(
             home_lats.to_arrow(),
             home_lngs.to_arrow(),
             loc_lats.to_arrow(),
             loc_lngs.to_arrow(),
         )
-    return visitation_distances_numpy(
+    return visitation_distances(
         home_lats.to_numpy(),
         home_lngs.to_numpy(),
         loc_lats.to_numpy(),

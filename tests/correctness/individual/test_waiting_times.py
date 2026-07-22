@@ -25,6 +25,15 @@ def _to_dict(df) -> dict[str, Any]:
     return {row[uid_col]: row["waiting_times"] for row in nw_df.rows(named=True)}
 
 
+def _values_to_numpy(values) -> np.ndarray:
+    if hasattr(values, "to_numpy"):
+        try:
+            return values.to_numpy(zero_copy_only=False)
+        except TypeError:
+            return values.to_numpy()
+    return np.asarray(values)
+
+
 def test_waiting_times_known_values(synthetic_tdf):
     """Each interval in the synthetic fixture is exactly 3600 seconds."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
@@ -115,15 +124,13 @@ def test_waiting_times_merge_returns_flat_array(synthetic_tdf):
         assert abs(wt - EXPECTED_WAITING_TIME_S) < 1.0
 
 
-def test_waiting_times_numpy_and_arrow_helpers_return_offsets_and_flat_values():
+def test_waiting_times_helpers_return_offsets_and_flat_values():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
     from fastmob._core import (
-        waiting_times_arrow,
-        waiting_times_flat_numpy,
-        waiting_times_indexed_numpy,
-        waiting_times_numpy,
-        waiting_times_seconds,
+        waiting_times_indexed,
+        waiting_times_presorted,
+        waiting_times_presorted_flat,
     )
 
     timestamps = np.array([0.0, 60.0, 90.0, 1000.0, 1060.0], dtype=np.float64)
@@ -134,33 +141,32 @@ def test_waiting_times_numpy_and_arrow_helpers_return_offsets_and_flat_values():
     expected_values = np.array([60.0, 30.0, 60.0], dtype=np.float64)
 
     for starts, value_ends, values in (
-        waiting_times_seconds(timestamps.tolist(), ends.tolist()),
-        waiting_times_numpy(timestamps, ends),
-        waiting_times_arrow(pl.Series(timestamps).to_arrow(), ends),
-        waiting_times_indexed_numpy(timestamps, np.arange(len(timestamps), dtype=np.uintp), ends),
+        waiting_times_presorted(timestamps, ends),
+        waiting_times_presorted(pl.Series(timestamps).to_arrow(), ends),
+        waiting_times_indexed(timestamps, np.arange(len(timestamps), dtype=np.uintp), ends),
     ):
         np.testing.assert_array_equal(starts, expected_starts)
         np.testing.assert_array_equal(value_ends, expected_ends)
-        np.testing.assert_allclose(np.asarray(values), expected_values)
+        np.testing.assert_allclose(_values_to_numpy(values), expected_values)
 
     np.testing.assert_allclose(
-        waiting_times_flat_numpy(timestamps, ends),
+        _values_to_numpy(waiting_times_presorted_flat(timestamps, ends)),
         expected_values,
     )
 
 
 def test_waiting_times_helper_offsets_include_empty_groups():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from fastmob._core import waiting_times_numpy
+    from fastmob._core import waiting_times_presorted
 
     timestamps = np.array([0.0, 60.0, 120.0, 1000.0], dtype=np.float64)
     ends = np.array([1, 3, 4], dtype=np.uintp)
 
-    starts, value_ends, values = waiting_times_numpy(timestamps, ends)
+    starts, value_ends, values = waiting_times_presorted(timestamps, ends)
 
     np.testing.assert_array_equal(starts, np.array([0, 0, 1], dtype=np.uintp))
     np.testing.assert_array_equal(value_ends, np.array([0, 1, 1], dtype=np.uintp))
-    np.testing.assert_allclose(values, np.array([60.0], dtype=np.float64))
+    np.testing.assert_allclose(_values_to_numpy(values), np.array([60.0], dtype=np.float64))
 
 
 def test_waiting_times_polars_result_uses_list_dtype(synthetic_tdf_polars):
@@ -173,13 +179,13 @@ def test_waiting_times_polars_result_uses_list_dtype(synthetic_tdf_polars):
     assert result.schema["waiting_times"] == pl.List(pl.Float64)
 
 
-def test_waiting_times_numpy_helper_validation_errors():
+def test_waiting_times_helper_validation_errors():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from fastmob._core import waiting_times_numpy
+    from fastmob._core import waiting_times_presorted
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="range end"):
-        waiting_times_numpy(arr, np.array([3], dtype=np.uintp))
+        waiting_times_presorted(arr, np.array([3], dtype=np.uintp))
 
 
 @pytest.mark.skmob

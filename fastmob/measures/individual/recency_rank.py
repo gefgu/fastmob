@@ -4,12 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    recency_rank_presorted_arrow,
-    recency_rank_presorted_numpy,
-    recency_rank_values_indexed_arrow,
-    recency_rank_values_indexed_numpy,
-)
+from fastmob._core import recency_rank_presorted, recency_rank_values_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -23,23 +18,16 @@ from .._common import (
     _with_datetime_column,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "indexed": recency_rank_values_indexed_arrow,
-        "presorted": recency_rank_presorted_arrow,
-        "unpack": lambda raw: (
-            _arrow_result_values(raw[0]),
-            _arrow_result_values(raw[1]),
-            _arrow_result_values(raw[2]),
-            raw[3],
-        ),
-    },
-    numpy_ops={
-        "indexed": recency_rank_values_indexed_numpy,
-        "presorted": recency_rank_presorted_numpy,
-        "unpack": lambda raw: raw,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+
+
+def _unpack_rank(raw: tuple[Any, Any, Any, Any]) -> tuple[Any, Any, Any, Any]:
+    return (
+        _arrow_result_values(raw[0]),
+        _arrow_result_values(raw[1]),
+        _arrow_result_values(raw[2]),
+        raw[3],
+    )
 
 
 def recency_rank(
@@ -138,21 +126,21 @@ def recency_rank(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        raw = ops["presorted"](lats_data, lngs_data, ends)
+        raw = recency_rank_presorted(lats_data, lngs_data, ends)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
         timestamps_data = ops["extract_data"](timestamps)
         uid_values, indices, ends = _build_time_ordered_user_ranges(
             df, uid_col, datetime_col, timestamps_data
         )
-        raw = ops["indexed"](lats_data, lngs_data, indices, ends)
-    out_lats, out_lngs, ranks, user_indices = ops["unpack"](raw)
+        raw = recency_rank_values_indexed(lats_data, lngs_data, indices, ends)
+    out_lats, out_lngs, ranks, user_indices = _unpack_rank(raw)
 
     if uid_col is None:
         return _to_native({lat_col: out_lats, lng_col: out_lngs, "recency_rank": ranks}, df)

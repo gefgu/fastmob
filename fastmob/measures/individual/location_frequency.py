@@ -4,12 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    location_frequency_presorted_arrow,
-    location_frequency_presorted_numpy,
-    location_frequency_values_indexed_arrow,
-    location_frequency_values_indexed_numpy,
-)
+from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -21,26 +16,19 @@ from .._common import (
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "indexed": location_frequency_values_indexed_arrow,
-        "presorted": location_frequency_presorted_arrow,
-        "unpack": lambda raw: (
-            _arrow_result_values(raw[0]),
-            _arrow_result_values(raw[1]),
-            _arrow_result_values(raw[2]),
-            raw[3],
-            raw[4],
-            raw[5],
-            _arrow_result_values(raw[6]),
-        ),
-    },
-    numpy_ops={
-        "indexed": location_frequency_values_indexed_numpy,
-        "presorted": location_frequency_presorted_numpy,
-        "unpack": lambda raw: raw,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+
+
+def _unpack_location_frequency(raw: tuple[Any, ...]) -> tuple[Any, ...]:
+    return (
+        _arrow_result_values(raw[0]),
+        _arrow_result_values(raw[1]),
+        _arrow_result_values(raw[2]),
+        raw[3],
+        raw[4],
+        raw[5],
+        _arrow_result_values(raw[6]),
+    )
 
 
 def location_frequency(
@@ -165,17 +153,17 @@ def location_frequency(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        raw = ops["presorted"](lats_data, lngs_data, ends, normalize)
+        raw = location_frequency_presorted(lats_data, lngs_data, ends, normalize)
     else:
         uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
-        raw = ops["indexed"](lats_data, lngs_data, indices, ends, normalize)
-    out_lats, out_lngs, freqs, user_indices, _out_starts, _out_ends, rank_means = ops["unpack"](raw)
+        raw = location_frequency_values_indexed(lats_data, lngs_data, indices, ends, normalize)
+    out_lats, out_lngs, freqs, user_indices, _out_starts, _out_ends, rank_means = _unpack_location_frequency(raw)
 
     if as_ranks:
         if hasattr(rank_means, "to_pylist"):
