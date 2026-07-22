@@ -171,3 +171,62 @@ pub fn point_to_segment_distance_km(point: (f64, f64), a: (f64, f64), b: (f64, f
     let ddy = py - proj_y;
     (ddx * ddx + ddy * ddy).sqrt()
 }
+
+/// Initial compass bearing (degrees, `[0, 360)`, `0` = north, clockwise) from
+/// `(lat1, lng1)` to `(lat2, lng2)`.
+///
+/// Ported from MovingPandas' `calculate_initial_compass_bearing`
+/// (`θ = atan2(sin(Δlong).cos(lat2), cos(lat1).sin(lat2) −
+/// sin(lat1).cos(lat2).cos(Δlong))`, normalized to `[0, 360)`), so
+/// `fastmob.preprocessing.segment(method="angle_change")` stays directly
+/// comparable to MovingPandas' `AngleChangeSplitter` reference behavior.
+///
+/// @usedBy `fastmob-core/src/preprocessing/segment/angle_change.rs`.
+pub fn bearing_deg(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
+    let lat1_rad = lat1.to_radians();
+    let lat2_rad = lat2.to_radians();
+    let delta_lng_rad = (lng2 - lng1).to_radians();
+
+    let x = delta_lng_rad.sin() * lat2_rad.cos();
+    let y = lat1_rad.cos() * lat2_rad.sin() - lat1_rad.sin() * lat2_rad.cos() * delta_lng_rad.cos();
+    let initial_bearing_deg = x.atan2(y).to_degrees();
+
+    (initial_bearing_deg + 360.0) % 360.0
+}
+
+/// Smaller angle (degrees, `[0, 180]`) between two compass bearings, handling
+/// wraparound across the `0/360` boundary.
+///
+/// Ported from MovingPandas' `angular_difference`
+/// (`geometry_utils.py`): `diff = |a - b|`, then `|diff - 360|` if
+/// `diff > 180`.
+///
+/// @usedBy `fastmob-core/src/preprocessing/segment/angle_change.rs`.
+pub fn angular_difference(degrees1: f64, degrees2: f64) -> f64 {
+    let diff = (degrees1 - degrees2).abs();
+    if diff > 180.0 { (diff - 360.0).abs() } else { diff }
+}
+
+#[cfg(test)]
+mod bearing_tests {
+    use super::*;
+
+    #[test]
+    fn bearing_due_north_is_zero() {
+        let bearing = bearing_deg(48.0, 2.0, 49.0, 2.0);
+        assert!(bearing.abs() < 1e-6, "expected ~0 deg, got {bearing}");
+    }
+
+    #[test]
+    fn bearing_due_east_is_ninety() {
+        let bearing = bearing_deg(0.0, 0.0, 0.0, 1.0);
+        assert!((bearing - 90.0).abs() < 1e-6, "expected ~90 deg, got {bearing}");
+    }
+
+    #[test]
+    fn angular_difference_handles_wraparound() {
+        assert!((angular_difference(350.0, 10.0) - 20.0).abs() < 1e-9);
+        assert!((angular_difference(10.0, 350.0) - 20.0).abs() < 1e-9);
+        assert!((angular_difference(0.0, 180.0) - 180.0).abs() < 1e-9);
+    }
+}

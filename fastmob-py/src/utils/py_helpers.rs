@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    types::Float64Type, Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt64Array,
+    types::Float64Type, Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt32Array,
+    UInt64Array,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -14,6 +15,15 @@ pub fn f64_results_into_arrow(results: Vec<f64>) -> PyArray {
 
 pub fn u64_results_into_arrow(results: Vec<u64>) -> PyArray {
     let array: ArrayRef = Arc::new(UInt64Array::from(results));
+    PyArray::from_array_ref(array)
+}
+
+/// Mirrors [`u64_results_into_arrow`] for `u32` outputs.
+///
+/// @usedBy `fastmob-py/src/preprocessing/segment_traj_py.rs::segment_trajectory_arrow`
+/// (segment ids restart at `0` per user, so `u32` is comfortably wide enough).
+pub fn u32_results_into_arrow(results: Vec<u32>) -> PyArray {
+    let array: ArrayRef = Arc::new(UInt32Array::from(results));
     PyArray::from_array_ref(array)
 }
 
