@@ -121,19 +121,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        total_distance::total_distance_batch_km,
+        total_distance::total_distance_presorted,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(total_distance::total_distance_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(total_distance::total_distance_arrow, m)?)?;
-    m.add_function(wrap_pyfunction!(
-        total_distance::total_distance_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        total_distance::total_distance_indexed_arrow,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(total_distance::total_distance_indexed, m)?)?;
     m.add_function(wrap_pyfunction!(
         k_radius_of_gyration::k_radius_of_gyration_km,
         m

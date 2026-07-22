@@ -4,12 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    total_distance_arrow,
-    total_distance_indexed_arrow,
-    total_distance_indexed_numpy,
-    total_distance_numpy,
-)
+from fastmob._core import total_distance_indexed, total_distance_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -21,18 +16,7 @@ from .._common import (
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "presorted": total_distance_arrow,
-        "indexed": total_distance_indexed_arrow,
-        "format_values": _arrow_result_values,
-    },
-    numpy_ops={
-        "presorted": total_distance_numpy,
-        "indexed": total_distance_indexed_numpy,
-        "format_values": lambda values: values,
-    },
-)
+_DSL_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def distance_straight_line(
@@ -139,12 +123,12 @@ def distance_straight_line(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _DSL_EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        distances = ops["format_values"](ops["presorted"](lats_data, lngs_data, ends))
+        distances = _arrow_result_values(total_distance_presorted(lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"distance_straight_line": distances}, df)
         return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)
@@ -154,7 +138,7 @@ def distance_straight_line(
     uid_values, indices, ends = _build_time_ordered_user_ranges(
         df, uid_col, datetime_col, timestamps_data
     )
-    distances = ops["format_values"](ops["indexed"](lats_data, lngs_data, indices, ends))
+    distances = _arrow_result_values(total_distance_indexed(lats_data, lngs_data, indices, ends))
 
     if uid_col is None:
         return _to_native({"distance_straight_line": distances}, df)
