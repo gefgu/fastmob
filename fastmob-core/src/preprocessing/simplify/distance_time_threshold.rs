@@ -4,7 +4,9 @@
 //! `MinDistanceGeneralizer`, `MinTimeDeltaGeneralizer`, and
 //! `MaxDistanceGeneralizer`.
 
-use crate::utils::haversine::{haversine_km, point_to_segment_distance_km, project_local_planar_km};
+use crate::utils::haversine::{
+    haversine_km, point_to_segment_distance_km, project_local_planar_km,
+};
 
 /// Return the 0-based local indices retained by MinDistance simplification:
 /// the first point, then every subsequent point whose haversine distance

@@ -52,10 +52,7 @@ fn backward_wedge_path(coords: &[(f64, f64)], tolerance: f64) -> Vec<usize> {
     let reversed: Vec<(f64, f64)> = coords.iter().rev().copied().collect();
     let reversed_path = forward_wedge_path(&reversed, tolerance);
 
-    let mut path: Vec<usize> = reversed_path
-        .into_iter()
-        .map(|idx| n - 1 - idx)
-        .collect();
+    let mut path: Vec<usize> = reversed_path.into_iter().map(|idx| n - 1 - idx).collect();
     path.reverse();
     path
 }

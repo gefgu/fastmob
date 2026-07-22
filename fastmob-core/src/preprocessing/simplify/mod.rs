@@ -94,7 +94,12 @@ impl SimplifyConfig {
 /// Trajectories with 2 or fewer points always keep every point: every
 /// shipped algorithm keeps both endpoints unconditionally, so there is
 /// nothing to simplify.
-fn simplify_user_slice(lats: &[f64], lngs: &[f64], times: &[f64], config: &SimplifyConfig) -> Vec<bool> {
+fn simplify_user_slice(
+    lats: &[f64],
+    lngs: &[f64],
+    times: &[f64],
+    config: &SimplifyConfig,
+) -> Vec<bool> {
     let n = lats.len();
     if n <= 2 {
         return vec![true; n];

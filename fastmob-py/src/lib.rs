@@ -16,7 +16,9 @@ use measures::individual::{
     recency_rank, spatial_counts, time_ordering, total_distance, uncorrelated_entropy,
     waiting_times,
 };
-use preprocessing::{cdr, clustering, compress_traj_py, filter_traj_py, stay_locations_py};
+use preprocessing::{
+    cdr, clustering, compress_traj_py, filter_traj_py, simplify_traj_py, stay_locations_py,
+};
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -402,6 +404,23 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         compress_traj_py::compress_trajectory_representatives_indexed_arrow,
+        m
+    )?)?;
+    m.add_class::<preprocessing::simplify_traj_py::PySimplifyConfig>()?;
+    m.add_function(wrap_pyfunction!(
+        simplify_traj_py::simplify_trajectory_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        simplify_traj_py::simplify_trajectory_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        simplify_traj_py::simplify_trajectory_indexed_numpy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        simplify_traj_py::simplify_trajectory_indexed_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;
