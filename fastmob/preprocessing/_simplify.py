@@ -3,19 +3,12 @@ from __future__ import annotations
 from typing import Any, Callable
 
 import narwhals as nw
+import numpy as np
 
-from fastmob._core import SimplifyConfig
 from fastmob._core import (
-    simplify_trajectory_arrow as _simplify_trajectory_arrow,
-)
-from fastmob._core import (
-    simplify_trajectory_indexed_arrow as _simplify_trajectory_indexed_arrow,
-)
-from fastmob._core import (
-    simplify_trajectory_indexed_numpy as _simplify_trajectory_indexed_numpy,
-)
-from fastmob._core import (
-    simplify_trajectory_numpy as _simplify_trajectory_numpy,
+    SimplifyConfig,
+    simplify_trajectory_indexed,
+    simplify_trajectory_sorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -27,24 +20,11 @@ from ..measures._common import (
     _extract_timestamps_s,
 )
 
-# Instantiate the dispatcher for this specific module (Rule 1: never inline
-# backend branching, always route through a module-level TrajectoryDispatcher).
-SIMPLIFY_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "simplify_sorted": _simplify_trajectory_arrow,
-        "simplify_indexed": _simplify_trajectory_indexed_arrow,
-        "format_mask": _arrow_result_values,
-        "apply_mask": lambda df, mask: df.filter(
-            nw.new_series("__keep__", mask, backend=df.implementation)
-        ).to_native(),
-    },
-    numpy_ops={
-        "simplify_sorted": _simplify_trajectory_numpy,
-        "simplify_indexed": _simplify_trajectory_indexed_numpy,
-        "format_mask": lambda mask: mask,  # No-op for NumPy
-        "apply_mask": lambda df, mask: df.to_native()[mask],
-    },
-)
+# Bare extractor used only for `.get_ops(df)["extract_data"]` (Rule 1: never
+# inline backend branching). Which logical Rust function to call is no longer
+# a per-backend dict lookup post dispatch-guideline migration; only column
+# extraction still differs by backend.
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _prepare_douglas_peucker(epsilon_km: float = 0.001, **_: Any) -> tuple[str, dict]:
@@ -225,7 +205,7 @@ def simplify(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = SIMPLIFY_DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
@@ -236,7 +216,7 @@ def simplify(
 
     if is_sorted:
         _, ranges = _build_user_ranges(df, uid_col)
-        raw_mask = ops["simplify_sorted"](lats_data, lngs_data, times_data, ranges, config)
+        raw_mask = simplify_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
     else:
         _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -244,10 +224,14 @@ def simplify(
             datetime_col=datetime_col,
             timestamps_data=times_data,
         )
-        raw_mask = ops["simplify_indexed"](lats_data, lngs_data, times_data, sorted_indices, ends, config)
+        raw_mask = simplify_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    keep_mask = ops["format_mask"](raw_mask)
-    result = ops["apply_mask"](df, keep_mask)
+    keep_mask = _arrow_result_values(raw_mask)
+
+    if hasattr(keep_mask, "__arrow_c_array__"):
+        result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
+    else:
+        result = df.to_native()[np.asarray(keep_mask, dtype=bool)]
 
     return result
 

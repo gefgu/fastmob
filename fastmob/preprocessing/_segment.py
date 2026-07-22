@@ -6,18 +6,10 @@ from typing import Any, Callable
 import narwhals as nw
 import numpy as np
 
-from fastmob._core import SegmentConfig
 from fastmob._core import (
-    segment_trajectory_arrow as _segment_trajectory_arrow,
-)
-from fastmob._core import (
-    segment_trajectory_indexed_arrow as _segment_trajectory_indexed_arrow,
-)
-from fastmob._core import (
-    segment_trajectory_indexed_numpy as _segment_trajectory_indexed_numpy,
-)
-from fastmob._core import (
-    segment_trajectory_numpy as _segment_trajectory_numpy,
+    SegmentConfig,
+    segment_trajectory_indexed,
+    segment_trajectory_sorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -42,35 +34,20 @@ _TEMPORAL_TRUNCATE_UNITS: dict[str, str] = {
 def _assign_segment_column(df: nw.DataFrame, segment_ids: Any) -> Any:
     """Add a ``segment_id`` column to ``df`` and return the native (backend) dataframe.
 
-    @usedBy `SEGMENT_DISPATCHER`'s ``"assign_column"`` op (both the Arrow and
-    NumPy routes share this single implementation: Narwhals' ``new_series``
-    accepts both plain NumPy arrays and PyArrow arrays, so there is no
-    backend-specific branching needed here — unlike `simplify`/`filter`'s
-    ``"apply_mask"`` op, which does differ by backend because it filters
-    rows rather than adding a column).
+    @usedBy `segment()`. Both the Arrow and NumPy routes share this single
+    implementation: Narwhals' ``new_series`` accepts both plain NumPy arrays
+    and PyArrow arrays, so there is no backend-specific branching needed
+    here — unlike `simplify`/`filter`'s row-filtering logic, which does
+    differ by backend because it filters rows rather than adding a column.
     """
     return df.with_columns(nw.new_series("segment_id", segment_ids, backend=df.implementation)).to_native()
 
 
-# Instantiate the dispatcher for this specific module (Rule 1: never inline
-# backend branching, always route through a module-level TrajectoryDispatcher).
-# Distinct from "apply_mask" (simplify/filter/outliers): segmentation adds a
-# column rather than filtering rows, so this dispatcher exposes
-# "assign_column" instead.
-SEGMENT_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "segment_sorted": _segment_trajectory_arrow,
-        "segment_indexed": _segment_trajectory_indexed_arrow,
-        "format_ids": lambda r: np.asarray(_arrow_result_values(r), dtype=np.uint32),
-        "assign_column": _assign_segment_column,
-    },
-    numpy_ops={
-        "segment_sorted": _segment_trajectory_numpy,
-        "segment_indexed": _segment_trajectory_indexed_numpy,
-        "format_ids": lambda r: r,  # No-op for NumPy
-        "assign_column": _assign_segment_column,
-    },
-)
+# Bare extractor used only for `.get_ops(df)["extract_data"]` (Rule 1: never
+# inline backend branching). Which logical Rust function to call is no longer
+# a per-backend dict lookup post dispatch-guideline migration; only column
+# extraction still differs by backend.
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _prepare_angle_change(min_angle: float = 45.0, min_speed_kmh: float = 0.0, **_: Any) -> tuple[str, dict]:
@@ -331,7 +308,7 @@ def segment(
 
     bucket_ids = _build_bucket_ids(df, datetime_col, params)
 
-    ops = SEGMENT_DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
@@ -342,7 +319,7 @@ def segment(
 
     if is_sorted:
         _, ranges = _build_user_ranges(df, uid_col)
-        raw_ids = ops["segment_sorted"](lats_data, lngs_data, times_data, ranges, config, bucket_ids)
+        raw_ids = segment_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config, bucket_ids)
     else:
         _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -350,10 +327,14 @@ def segment(
             datetime_col=datetime_col,
             timestamps_data=times_data,
         )
-        raw_ids = ops["segment_indexed"](lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
+        raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
 
-    segment_ids = ops["format_ids"](raw_ids)
-    result = ops["assign_column"](df, segment_ids)
+    if hasattr(raw_ids, "__arrow_c_array__"):
+        segment_ids = np.asarray(_arrow_result_values(raw_ids), dtype=np.uint32)
+    else:
+        segment_ids = raw_ids
+
+    result = _assign_segment_column(df, segment_ids)
 
     return result
 

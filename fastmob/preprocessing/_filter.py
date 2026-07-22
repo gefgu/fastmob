@@ -10,10 +10,8 @@ from fastmob._core import (
     OutlierConfig,
     filter_trajectory_indexed,
     filter_trajectory_sorted,
-    outlier_trajectory_arrow as _outlier_trajectory_arrow,
-    outlier_trajectory_indexed_arrow as _outlier_trajectory_indexed_arrow,
-    outlier_trajectory_indexed_numpy as _outlier_trajectory_indexed_numpy,
-    outlier_trajectory_numpy as _outlier_trajectory_numpy,
+    outlier_trajectory_indexed,
+    outlier_trajectory_sorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -26,27 +24,6 @@ from ..measures._common import (
 )
 
 _EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
-
-# Separate module-level dispatcher for the four new outlier-detection
-# methods (Rule 1: never inline backend branching). Distinct from
-# FILTER_DISPATCHER because it calls the new `outlier_trajectory_*`
-# pyfunctions rather than the pre-existing `filter_trajectory_*` ones.
-OUTLIER_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "outlier_sorted": _outlier_trajectory_arrow,
-        "outlier_indexed": _outlier_trajectory_indexed_arrow,
-        "format_mask": _arrow_result_values,
-        "apply_mask": lambda df, mask: df.filter(
-            nw.new_series("__keep__", mask, backend=df.implementation)
-        ).to_native(),
-    },
-    numpy_ops={
-        "outlier_sorted": _outlier_trajectory_numpy,
-        "outlier_indexed": _outlier_trajectory_indexed_numpy,
-        "format_mask": lambda mask: mask,  # No-op for NumPy
-        "apply_mask": lambda df, mask: df.to_native()[mask],
-    },
-)
 
 
 def _filter_speed(
@@ -299,7 +276,7 @@ def filter(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = OUTLIER_DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
@@ -310,7 +287,7 @@ def filter(
 
     if is_sorted:
         _, ranges = _build_user_ranges(df, uid_col)
-        raw_mask = ops["outlier_sorted"](lats_data, lngs_data, times_data, ranges, config)
+        raw_mask = outlier_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
     else:
         _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -318,10 +295,14 @@ def filter(
             datetime_col=datetime_col,
             timestamps_data=times_data,
         )
-        raw_mask = ops["outlier_indexed"](lats_data, lngs_data, times_data, sorted_indices, ends, config)
+        raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    keep_mask = ops["format_mask"](raw_mask)
-    result = ops["apply_mask"](df, keep_mask)
+    keep_mask = _arrow_result_values(raw_mask)
+
+    if hasattr(keep_mask, "__arrow_c_array__"):
+        result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
+    else:
+        result = df.to_native()[np.asarray(keep_mask, dtype=bool)]
 
     return result
 
