@@ -186,6 +186,65 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
         {"method": "zheng", "max_speed_kmh": 100.0, "min_seg_size": 1},
         input_kind="preprocessing",
     ),
+    # Segmentation methods: no skmob analogue exists for any of these
+    # (skmob_module_path deliberately points at a nonexistent submodule, a
+    # clean import failure -> SkippedMetric), but all 6 have a real
+    # MovingPandas splitter analogue wired through movingpandas_api +
+    # movingpandas_callable_for_spec below.
+    BenchmarkSpec(
+        "segment_angle_change",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_segment_analogue",
+        "segment",
+        {"method": "angle_change", "min_angle": 45.0, "min_speed_kmh": 0.0},
+        input_kind="preprocessing",
+        movingpandas_api="AngleChangeSplitter.split",
+    ),
+    BenchmarkSpec(
+        "segment_observation_gap",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_segment_analogue",
+        "segment",
+        {"method": "observation_gap", "gap_s": 3600.0},
+        input_kind="preprocessing",
+        movingpandas_api="ObservationGapSplitter.split",
+    ),
+    BenchmarkSpec(
+        "segment_speed",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_segment_analogue",
+        "segment",
+        {"method": "speed", "speed_kmh": 0.0, "duration_s": 300.0},
+        input_kind="preprocessing",
+        movingpandas_api="SpeedSplitter.split",
+    ),
+    BenchmarkSpec(
+        "segment_stop",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_segment_analogue",
+        "segment",
+        {"method": "stop", "stop_radius_km": 0.2, "minutes_for_a_stop": 20.0},
+        input_kind="preprocessing",
+        movingpandas_api="StopSplitter.split",
+    ),
+    BenchmarkSpec(
+        "segment_value_change",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_segment_analogue",
+        "segment",
+        {"method": "value_change", "col_name": "location id"},
+        input_kind="preprocessing",
+        movingpandas_api="ValueChangeSplitter.split",
+    ),
+    BenchmarkSpec(
+        "segment_temporal",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_segment_analogue",
+        "segment",
+        {"method": "temporal", "mode": "day"},
+        input_kind="preprocessing",
+        movingpandas_api="TemporalSplitter.split",
+    ),
 )
 
 
@@ -457,6 +516,35 @@ def movingpandas_callable_for_spec(spec: BenchmarkSpec) -> tuple[Callable[[Any],
             lambda tc, **kwargs: generalizer_cls(tc).generalize(**kwargs),
             {"tolerance": tolerance},
         )
+    if spec.name in {
+        "segment_angle_change",
+        "segment_observation_gap",
+        "segment_speed",
+        "segment_stop",
+        "segment_value_change",
+        "segment_temporal",
+    }:
+        try:
+            import movingpandas as mpd
+        except Exception as exc:
+            raise SkippedMetric(f"movingpandas import failed: {exc}") from exc
+        splitter_cls = {
+            "segment_angle_change": mpd.AngleChangeSplitter,
+            "segment_observation_gap": mpd.ObservationGapSplitter,
+            "segment_speed": mpd.SpeedSplitter,
+            "segment_stop": mpd.StopSplitter,
+            "segment_value_change": mpd.ValueChangeSplitter,
+            "segment_temporal": mpd.TemporalSplitter,
+        }[spec.name]
+        split_kwargs = {
+            "segment_angle_change": {"min_angle": 45.0, "min_speed": 0.0},
+            "segment_observation_gap": {"gap": timedelta(hours=1)},
+            "segment_speed": {"speed": 0.0, "duration": timedelta(minutes=5)},
+            "segment_stop": {"max_diameter": 400.0, "min_duration": timedelta(minutes=20)},
+            "segment_value_change": {"col_name": "location id"},
+            "segment_temporal": {"mode": "day"},
+        }[spec.name]
+        return lambda tc, **kwargs: splitter_cls(tc).split(**kwargs), split_kwargs
     raise SkippedMetric("no benchmarkable MovingPandas analogue")
 
 
