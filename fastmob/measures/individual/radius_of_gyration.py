@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from itertools import compress
 from typing import Any
 
@@ -7,10 +8,8 @@ import narwhals as nw
 import numpy as np
 
 from fastmob._core import (
-    radius_of_gyration_arrow_with_counts,
-    radius_of_gyration_indexed_arrow,
-    radius_of_gyration_indexed_numpy,
-    radius_of_gyration_numpy_with_counts,
+    radius_of_gyration_indexed,
+    radius_of_gyration_presorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -19,39 +18,12 @@ from .._common import (
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
+    _filter_result_values,
     _result_scalar,
     _to_native,
 )
 
-
-def _filter_arrow_values(values: Any, keep: np.ndarray) -> Any:
-    import pyarrow as pa
-    import pyarrow.compute as pc
-
-    arrow_values = _arrow_result_values(values)
-    if hasattr(arrow_values, "__arrow_c_array__"):
-        arrow_values = pa.array(arrow_values)
-    return pc.filter(arrow_values, pa.array(keep))
-
-
-def _filter_numpy_values(values: Any, keep: np.ndarray) -> np.ndarray:
-    return np.asarray(values, dtype=np.float64)[keep]
-
-
-ROG_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "rog_sorted": radius_of_gyration_arrow_with_counts,
-        "rog_indexed": radius_of_gyration_indexed_arrow,
-        "format_values": _arrow_result_values,
-        "filter_values": _filter_arrow_values,
-    },
-    numpy_ops={
-        "rog_sorted": radius_of_gyration_numpy_with_counts,
-        "rog_indexed": radius_of_gyration_indexed_numpy,
-        "format_values": lambda values: np.asarray(values, dtype=np.float64),
-        "filter_values": _filter_numpy_values,
-    },
-)
+ROG_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def radius_of_gyration(
@@ -147,46 +119,52 @@ def radius_of_gyration(
     """
     df = nw.from_native(traj, eager_only=True)
 
-    ops = ROG_DISPATCHER.get_ops(df)
-
-    _, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+    df, _, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        cast_float_coordinates=True,
     )
-    schema = df.schema
-    if schema[lat_col] != nw.Float64 or schema[lng_col] != nw.Float64:
-        df = df.with_columns(
-            nw.col(lat_col).cast(nw.Float64),
-            nw.col(lng_col).cast(nw.Float64),
-        )
 
+    ops = ROG_EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        raw_values, raw_counts = ops["rog_sorted"](lats_data, lngs_data, ends)
+        raw_values, raw_validity = radius_of_gyration_presorted(lats_data, lngs_data, ends)
     else:
         uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
-        raw_values, raw_counts = ops["rog_indexed"](lats_data, lngs_data, indices, ends)
+        raw_values, raw_validity = radius_of_gyration_indexed(
+            lats_data,
+            lngs_data,
+            indices,
+            ends,
+        )
 
-    rog_values = ops["format_values"](raw_values)
-    valid_counts = np.asarray(raw_counts, dtype=np.uintp)
-    keep = valid_counts > 0
+    rog_values = _arrow_result_values(raw_values)
+    keep = np.asarray(raw_validity, dtype=bool)
+    filtered_count = keep.size - int(keep.sum())
+    if filtered_count:
+        noun = "user" if filtered_count == 1 else "users"
+        warnings.warn(
+            f"radius_of_gyration filtered out {filtered_count} {noun} with no valid coordinate rows",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     if uid_col is None:
         if not keep.any():
             return _to_native({"radius_of_gyration": [0.0]}, df)
-        filtered_values = ops["filter_values"](rog_values, keep)
+        filtered_values = _filter_result_values(rog_values, keep, dtype=np.float64)
         return _to_native(
             {"radius_of_gyration": [_result_scalar(filtered_values)]},
             df,
         )
 
     filtered_uid_values = list(compress(uid_values, keep))
-    filtered_rog_values = ops["filter_values"](rog_values, keep)
+    filtered_rog_values = _filter_result_values(rog_values, keep, dtype=np.float64)
     return _to_native(
         {uid_col: filtered_uid_values, "radius_of_gyration": filtered_rog_values},
         df,

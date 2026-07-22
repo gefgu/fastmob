@@ -1,3 +1,4 @@
+mod adapters;
 mod measures;
 mod models;
 mod preprocessing;
@@ -11,10 +12,10 @@ use measures::collective::{square_displacement, visitation_law};
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
 use measures::individual::{
-    activity, entropy, home_location, individual_mobility_network, k_radius_of_gyration,
-    location_frequency, max_distance_from_point, maximum_distance, motifs, radius_of_gyration,
-    recency_rank, spatial_counts, time_ordering, total_distance, uncorrelated_entropy,
-    waiting_times,
+    activity, entropy, home_location, indexed_user_indices, individual_mobility_network,
+    k_radius_of_gyration, location_frequency, max_distance_from_point, maximum_distance, motifs,
+    radius_of_gyration, recency_rank, spatial_counts, time_ordering, total_distance,
+    uncorrelated_entropy, waiting_times,
 };
 use preprocessing::{cdr, clustering, compress_traj_py, filter_traj_py, stay_locations_py};
 
@@ -88,43 +89,15 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_km,
+        radius_of_gyration::radius_of_gyration_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_batch_km,
+        indexed_user_indices::indexed_user_indices,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_numpy_with_counts,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_arrow_with_counts,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_user_indices_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_user_indices_arrow,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_indexed_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        radius_of_gyration::radius_of_gyration_indexed_arrow,
+        radius_of_gyration::radius_of_gyration_indexed,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

@@ -234,6 +234,17 @@ def _arrow_result_values(values: Any) -> Any:
     return values
 
 
+def _filter_result_values(values: Any, keep: Any, *, dtype: Any = None) -> Any:
+    """Filter NumPy or Arrow-like result values with a boolean keep mask."""
+    values = _arrow_result_values(values)
+    if hasattr(values, "__arrow_c_array__"):
+        import pyarrow as pa  # noqa: PLC0415
+        import pyarrow.compute as pc  # noqa: PLC0415
+
+        return pc.filter(pa.array(values), pa.array(keep))
+    return np.asarray(values, dtype=dtype)[keep]
+
+
 def _result_scalar(values: Any) -> float:
     """Extract a single Python float from a length-1 NumPy/Arrow result."""
     if hasattr(values, "to_numpy"):
@@ -253,16 +264,10 @@ def _take_uid_values(uid_values: list | None, user_indices: Any) -> Any:
     return np.asarray(uid_values, dtype=object).take(np.asarray(user_indices, dtype=np.uintp))
 
 
-def _indexed_group_indices_numpy(uids: Any, num_groups: int) -> Any:
-    from fastmob._core import radius_of_gyration_user_indices_numpy  # noqa: PLC0415
+def _indexed_group_indices(uids: Any, num_groups: int) -> Any:
+    from fastmob._core import indexed_user_indices  # noqa: PLC0415
 
-    return radius_of_gyration_user_indices_numpy(uids, num_groups)
-
-
-def _indexed_group_indices_arrow(uids: Any, num_groups: int) -> Any:
-    from fastmob._core import radius_of_gyration_user_indices_arrow  # noqa: PLC0415
-
-    return radius_of_gyration_user_indices_arrow(uids, num_groups)
+    return indexed_user_indices(uids, num_groups)
 
 
 def _time_ordered_user_indices_numpy(
@@ -284,11 +289,6 @@ def _time_ordered_user_indices_arrow(
         return time_ordered_user_indices_arrow(None, timestamps)
     return time_ordered_user_indices_arrow(uids, timestamps, num_groups)
 
-
-_INDEXED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={"group_indices": _indexed_group_indices_arrow},
-    numpy_ops={"group_indices": _indexed_group_indices_numpy},
-)
 
 _TIME_ORDERED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
     arrow_ops={"time_ordered_indices": _time_ordered_user_indices_arrow},
@@ -500,8 +500,7 @@ def _build_indexed_user_ranges_fast(
     uid_col: str | None,
 ) -> tuple[list | None, Any, np.ndarray]:
     """Build grouped row indexes using Rust for supported UID dtypes."""
-    ops = _INDEXED_USER_RANGES_DISPATCHER.get_ops(df)
-    use_arrow = _INDEXED_USER_RANGES_DISPATCHER.get_backend_key(df) == "arrow"
+    use_arrow = _is_polars_backed(df) or _is_pyarrow_backed(df)
 
     if uid_col is None:
         indices = np.arange(len(df), dtype=np.uintp)
@@ -511,7 +510,8 @@ def _build_indexed_user_ranges_fast(
     uids = df.get_column(uid_col)
     uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=False)
     try:
-        indices, ends = ops["group_indices"](ops["extract_data"](uid_codes), num_groups)
+        uid_code_data = uid_codes.to_arrow() if use_arrow else uid_codes.to_numpy()
+        indices, ends = _indexed_group_indices(uid_code_data, num_groups)
         uid_values = _uid_values_from_index_ranges(
             uids, indices, ends, use_arrow=use_arrow
         )
@@ -531,7 +531,9 @@ def _detect_trajectory_columns(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-) -> tuple[str, str, str, str | None]:
+    *,
+    cast_float_coordinates: bool = False,
+) -> Any:
     """Auto-detect trajectory column names from a Narwhals DataFrame.
 
     Accepts explicit overrides for any column; auto-detects the rest from the
@@ -550,12 +552,17 @@ def _detect_trajectory_columns(
     uid_col:
         Explicit user-ID column name; auto-detected when None. When no
         user-ID column is found the whole frame is treated as one user.
+    cast_float_coordinates:
+        When True, cast latitude and longitude columns to Float64 and return
+        the possibly updated DataFrame before the column names.
 
     Returns
     -------
-    tuple[str, str, str, str | None]
-        ``(datetime_col, lat_col, lng_col, uid_col)`` where ``uid_col`` may
-        be None if no user-ID column exists.
+    tuple
+        By default, ``(datetime_col, lat_col, lng_col, uid_col)`` where
+        ``uid_col`` may be None if no user-ID column exists. With
+        ``cast_float_coordinates=True``, returns
+        ``(nw_df, datetime_col, lat_col, lng_col, uid_col)``.
 
     Raises
     ------
@@ -601,6 +608,15 @@ def _detect_trajectory_columns(
             f"Available columns: {columns}. "
             f"Pass the column name(s) explicitly."
         )
+
+    if cast_float_coordinates:
+        schema = nw_df.schema
+        if schema[lat_col] != nw.Float64 or schema[lng_col] != nw.Float64:
+            nw_df = nw_df.with_columns(
+                nw.col(lat_col).cast(nw.Float64),
+                nw.col(lng_col).cast(nw.Float64),
+            )
+        return nw_df, datetime_col, lat_col, lng_col, uid_col
 
     return datetime_col, lat_col, lng_col, uid_col
 

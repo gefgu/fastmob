@@ -169,6 +169,59 @@ pub fn ends_from_ranges(ranges: &[(usize, usize)]) -> Vec<usize> {
     ranges.iter().map(|&(_, end)| end).collect()
 }
 
+pub type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
+
+pub fn split_user_index_ranges((indices, ranges): UserIndexRanges) -> (Vec<usize>, Vec<usize>) {
+    (indices, ends_from_ranges(&ranges))
+}
+
+pub fn user_indices_for_u64_codes(
+    codes: &[u64],
+    num_groups: usize,
+) -> Result<UserIndexRanges, String> {
+    if codes.is_empty() {
+        return Ok((Vec::new(), Vec::new()));
+    }
+    if num_groups == 0 {
+        return Err(
+            "num_groups must be greater than zero when uid codes are not empty".to_string(),
+        );
+    }
+
+    let mut offsets = vec![0usize; num_groups];
+    for &code in codes {
+        let group_id =
+            usize::try_from(code).map_err(|_| "uid code must fit into usize".to_string())?;
+        let count = offsets
+            .get_mut(group_id)
+            .ok_or_else(|| "uid code must be less than num_groups".to_string())?;
+        *count += 1;
+    }
+
+    let mut ranges = Vec::with_capacity(num_groups);
+    let mut current_offset = 0usize;
+    for count in offsets.iter_mut() {
+        if *count == 0 {
+            continue;
+        }
+        let start = current_offset;
+        let end = current_offset + *count;
+        ranges.push((start, end));
+        *count = start;
+        current_offset = end;
+    }
+
+    let mut indices = vec![0usize; codes.len()];
+    for (row_idx, &code) in codes.iter().enumerate() {
+        let group_id = code as usize;
+        let pos = offsets[group_id];
+        indices[pos] = row_idx;
+        offsets[group_id] += 1;
+    }
+
+    Ok((indices, ranges))
+}
+
 /// Splits a `Vec<(usize, usize)>` of ranges into two parallel `Vec<usize>` of starts and ends.
 pub fn split_ranges(ranges: Vec<(usize, usize)>) -> (Vec<usize>, Vec<usize>) {
     ranges.into_iter().unzip()

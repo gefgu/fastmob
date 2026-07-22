@@ -20,7 +20,7 @@ def load_script(name: str):
 
 
 def tiny_firefox_profile() -> dict:
-    strings = ["python", "root", "fastmob::radius_of_gyration", "src/radius_of_gyration.rs:rog_for_slice"]
+    strings = ["python", "root", "fastmob::radius_of_gyration", "src/radius_of_gyration.rs:rog_for_presorted_slices"]
     return {
         "meta": {"profileName": "tiny"},
         "threads": [
@@ -57,15 +57,15 @@ def test_reduce_samply_json_handles_schema_names_and_rust_focus(tmp_path):
     assert thread["unknown_stack_samples"] == 1
     assert thread["weight_field"] == "weight"
     assert thread["top_leaf_frames"][0] == {
-        "name": "src/radius_of_gyration.rs:rog_for_slice",
+        "name": "src/radius_of_gyration.rs:rog_for_presorted_slices",
         "weight": 5.0,
     }
     rust_inclusive_names = {entry["name"] for entry in thread["rust_focused"]["top_inclusive_frames"]}
-    assert "src/radius_of_gyration.rs:rog_for_slice" in rust_inclusive_names
+    assert "src/radius_of_gyration.rs:rog_for_presorted_slices" in rust_inclusive_names
     assert thread["top_stacks"][0]["stack"] == [
         "root",
         "fastmob::radius_of_gyration",
-        "src/radius_of_gyration.rs:rog_for_slice",
+        "src/radius_of_gyration.rs:rog_for_presorted_slices",
     ]
 
 
