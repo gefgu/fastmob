@@ -5,6 +5,7 @@ Run from the repository root, for example:
     python benchmarks/preprocessing/speed_suite.py --library fastmob --backend both
     python benchmarks/preprocessing/speed_suite.py --library skmob
     python benchmarks/preprocessing/speed_suite.py --library movingpandas
+    python benchmarks/preprocessing/speed_suite.py --library ptrail
 """
 
 from __future__ import annotations
@@ -61,6 +62,7 @@ class BenchmarkSpec:
     kwargs: dict[str, Any]
     input_kind: str = "trajectory"
     movingpandas_api: str | None = None
+    ptrail_api: str | None = None
 
 
 PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
@@ -143,6 +145,47 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
         input_kind="preprocessing",
         movingpandas_api="MaxDistanceGeneralizer.generalize",
     ),
+    # Outlier-detection methods: no skmob or MovingPandas analogue exists for
+    # any of these, so skmob_module_path deliberately points at a submodule
+    # that does not exist (a clean import failure -> SkippedMetric, matching
+    # this file's established "no live comparison library" convention) and
+    # none of these spec names appear in movingpandas_callable_for_spec's
+    # dispatch (falls through to its own "no benchmarkable analogue" skip).
+    # outlier_hampel is the one exception: it has a real PTRAIL analogue,
+    # wired through ptrail_api + ptrail_callable_for_spec below.
+    BenchmarkSpec(
+        "outlier_hampel",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_hampel_analogue",
+        "filter",
+        {"method": "hampel"},
+        input_kind="preprocessing",
+        ptrail_api="Filters.hampel_outlier_detection",
+    ),
+    BenchmarkSpec(
+        "outlier_greedy",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_greedy_analogue",
+        "filter",
+        {"method": "greedy", "max_speed_kmh": 100.0},
+        input_kind="preprocessing",
+    ),
+    BenchmarkSpec(
+        "outlier_smart_greedy",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_smart_greedy_analogue",
+        "filter",
+        {"method": "smart_greedy", "max_speed_kmh": 100.0},
+        input_kind="preprocessing",
+    ),
+    BenchmarkSpec(
+        "outlier_zheng",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.no_zheng_analogue",
+        "filter",
+        {"method": "zheng", "max_speed_kmh": 100.0, "min_seg_size": 1},
+        input_kind="preprocessing",
+    ),
 )
 
 
@@ -167,9 +210,9 @@ def build_output_path(
         filename = f"skmob_preprocessing_{profile}_{order_part}{timing_mode}.json"
     else:
         filename = (
-            f"movingpandas_preprocessing_{profile}_{input_order}.json"
+            f"{library}_preprocessing_{profile}_{input_order}.json"
             if input_order != "raw"
-            else f"movingpandas_preprocessing_{profile}.json"
+            else f"{library}_preprocessing_{profile}.json"
         )
     return output_dir / filename
 
@@ -294,6 +337,35 @@ def load_brightkite_movingpandas(data_path: Path, size: int, *, repeat_factor: i
     return mpd.TrajectoryCollection(gdf, traj_id_col="user")
 
 
+def load_brightkite_ptrail(data_path: Path, size: int, *, repeat_factor: int = 1) -> Any:
+    """Build a PTRAILDataFrame with a precomputed ``Speed`` kinematic column.
+
+    @usedBy `benchmark_ptrail_size`. The ``Speed`` column is computed once
+    here (not inside the timed call) to match how a real caller would use
+    PTRAIL: `Filters.hampel_outlier_detection` operates on an
+    already-annotated column, not on raw lat/lng.
+    """
+    try:
+        from ptrail.core.TrajectoryDF import PTRAILDataFrame
+        from ptrail.features.kinematic_features import KinematicFeatures
+    except Exception as exc:
+        raise SkippedMetric(f"ptrail input setup failed: {exc}") from exc
+
+    df = load_brightkite_pandas(data_path)
+    df = repeat_brightkite_pandas(df, repeat_factor).head(size).copy()
+    df = df.dropna(subset=["user", "check-in_time", "latitude", "longitude"])
+    if df["check-in_time"].dt.tz is not None:
+        df["check-in_time"] = df["check-in_time"].dt.tz_localize(None)
+    tdf = PTRAILDataFrame(
+        df,
+        latitude="latitude",
+        longitude="longitude",
+        datetime="check-in_time",
+        traj_id="user",
+    )
+    return KinematicFeatures.create_speed_column(tdf)
+
+
 def make_skmob_tdf(skmob_module: Any, df: Any) -> Any:
     return skmob_module.TrajDataFrame(
         df.copy(),
@@ -388,6 +460,22 @@ def movingpandas_callable_for_spec(spec: BenchmarkSpec) -> tuple[Callable[[Any],
     raise SkippedMetric("no benchmarkable MovingPandas analogue")
 
 
+def ptrail_callable_for_spec(spec: BenchmarkSpec) -> tuple[Callable[[Any], Any], dict[str, Any]]:
+    """Return (callable, kwargs) for one spec's real PTRAIL analogue.
+
+    @usedBy `benchmark_ptrail_size`. Only ``outlier_hampel`` has a real
+    PTRAIL analogue (``Filters.hampel_outlier_detection``); every other
+    spec cleanly skips.
+    """
+    if spec.name == "outlier_hampel":
+        try:
+            from ptrail.preprocessing.filters import Filters
+        except Exception as exc:
+            raise SkippedMetric(f"ptrail import failed: {exc}") from exc
+        return lambda tdf, **kwargs: Filters.hampel_outlier_detection(tdf, **kwargs), {"column_name": "Speed"}
+    raise SkippedMetric("no benchmarkable PTRAIL analogue")
+
+
 def benchmark_metric(
     spec: BenchmarkSpec,
     library: str,
@@ -403,6 +491,8 @@ def benchmark_metric(
     try:
         if library == "movingpandas":
             func, kwargs = movingpandas_callable_for_spec(spec)
+        elif library == "ptrail":
+            func, kwargs = ptrail_callable_for_spec(spec)
         else:
             func = import_metric(spec, library)
             kwargs = metric_kwargs_for_library(spec, library, func, input_order=input_order)
@@ -573,6 +663,51 @@ def benchmark_movingpandas_size(
     }
 
 
+def benchmark_ptrail_size(
+    data_path: Path,
+    size: int,
+    *,
+    specs: tuple[BenchmarkSpec, ...],
+    repeat_factor: int = 1,
+    iterations: int,
+    sleep_seconds: float,
+    profile: str = "speed",
+    retries: int = 0,
+    input_order: str = "raw",
+) -> dict[str, Any]:
+    print(f"\nSize {size_label(size)}")
+    try:
+        tdf = load_brightkite_ptrail(data_path, size, repeat_factor=repeat_factor)
+    except SkippedMetric as exc:
+        return {
+            "size": size,
+            "label": size_label(size),
+            "rows": 0,
+            "metrics": {spec.name: skipped_result(str(exc), profile) for spec in specs},
+        }
+
+    rows = len(tdf)
+    print(f"  PTRAIL rows: {rows}")
+    return {
+        "size": size,
+        "label": size_label(size),
+        "rows": rows,
+        "metrics": {
+            spec.name: benchmark_metric(
+                spec,
+                "ptrail",
+                lambda tdf=tdf: tdf,
+                profile=profile,
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+                retries=retries,
+                input_order=input_order,
+            )
+            for spec in specs
+        },
+    }
+
+
 def build_metadata(
     args: argparse.Namespace,
     *,
@@ -709,6 +844,28 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         )
         return {"metadata": metadata, "results": results}
 
+    if args.library == "ptrail":
+        results = [
+            benchmark_ptrail_size(
+                data_path,
+                size,
+                specs=specs,
+                repeat_factor=args.repeat_dataset,
+                profile=args.profile,
+                iterations=args.iterations,
+                sleep_seconds=args.sleep_seconds,
+                retries=args.retries,
+            )
+            for size in args.sizes
+        ]
+        metadata = build_metadata(
+            args,
+            input_type="ptrail.PTRAILDataFrame",
+            timing_mode="measure_only",
+            backend=None,
+        )
+        return {"metadata": metadata, "results": results}
+
     print(f"Loading {args.input_order} Brightkite into pandas from {data_path}...")
     raw_df, input_cache_path, input_cache_status = load_brightkite_for_order(
         data_path=data_path,
@@ -763,7 +920,7 @@ def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone preprocessing speed benchmarks.")
-    parser.add_argument("--library", choices=["fastmob", "skmob", "movingpandas"], required=True)
+    parser.add_argument("--library", choices=["fastmob", "skmob", "movingpandas", "ptrail"], required=True)
     parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--timing-mode", choices=["prebuilt_tdf", "workflow_tdf"], default="prebuilt_tdf")

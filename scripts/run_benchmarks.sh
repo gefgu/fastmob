@@ -15,6 +15,7 @@ cd "$REPO_ROOT"
 MAIN_VENV="${FKMOB_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
 SKMOB_VENV="$REPO_ROOT/.venv-skmob"
 MOVINGPANDAS_VENV="${MOVINGPANDAS_VENV:-$MAIN_VENV}"
+PTRAIL_VENV="${PTRAIL_VENV:-$REPO_ROOT/.venv-ptrail}"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 PROFILES=("speed" "memory")
 SKMOB_TIMING_MODES=("prebuilt_tdf" "workflow_tdf")
@@ -245,6 +246,24 @@ if [ -x "$MOVINGPANDAS_VENV/bin/python" ] && can_import "$MOVINGPANDAS_VENV" mov
 else
     echo "WARNING: movingpandas is not importable in ${MOVINGPANDAS_VENV#$REPO_ROOT/}; skipping MovingPandas benchmarks."
     echo "         Install it with: source .venv/bin/activate && uv pip install -e '.[dev-movingpandas]'"
+fi
+
+if [ -x "$PTRAIL_VENV/bin/python" ] && can_import "$PTRAIL_VENV" ptrail; then
+    label="${PTRAIL_VENV#$REPO_ROOT/}"
+    echo
+    echo "==> Running PTRAIL benchmark suites in ${label} ..."
+    for profile in "${PROFILES[@]}"; do
+        run_job "ptrail_preprocessing_${profile}" \
+            "$PTRAIL_VENV" \
+            benchmarks/preprocessing/speed_suite.py \
+            "$@" \
+            --library ptrail \
+            --profile "$profile" \
+            --output-dir "$OUTPUT_DIR"
+    done
+else
+    echo "WARNING: ptrail is not importable in ${PTRAIL_VENV#$REPO_ROOT/}; skipping PTRAIL benchmarks."
+    echo "         Create it with: bash scripts/setup_env.sh --venv .venv-ptrail --ptrail"
 fi
 
 echo
