@@ -2,12 +2,24 @@
 //! `AngleChangeSplitter` (`trajectory_splitter.py`).
 //!
 //! MovingPandas tracks a running "comparison direction" (`comp_dir`,
-//! initialized to the first point's own direction, which is always `0.0`
-//! since there is no incoming heading into the first point) and bumps the
-//! segment group whenever a point's incoming heading deviates from
+//! initialized to the first point's own `direction` column value) and bumps
+//! the segment group whenever a point's incoming heading deviates from
 //! `comp_dir` by at least `min_angle` degrees *and* the point's incoming
 //! speed is at least `min_speed`; `comp_dir` is then reset to that point's
 //! heading. This module reproduces that exact state machine, row-for-row.
+//!
+//! `direction[0]` itself has no incoming heading to compute (there is no
+//! point before the first one), but MovingPandas' `add_direction()` does not
+//! leave it at that undefined value: it explicitly overwrites row 0's
+//! direction with row 1's own computed direction (`Trajectory.add_direction`
+//! — "set the direction in the first row to the direction of the second
+//! row"), i.e. `direction[0] == direction[1] == bearing_deg(0, 1)`. This
+//! module mirrors that exactly, rather than the more "obvious" but wrong
+//! `0.0` initial value, so the very first transition's `comp_dir` comparison
+//! matches the real library bearing-for-bearing (verified against a real
+//! MovingPandas run — an earlier `0.0`-initialized version of this kernel
+//! disagreed with the cached MovingPandas reference precisely at each user's
+//! first transition).
 
 use crate::utils::haversine::{angular_difference, bearing_deg, haversine_km};
 
@@ -16,9 +28,10 @@ use crate::utils::haversine::{angular_difference, bearing_deg, haversine_km};
 /// Point `0` always starts segment `0` (there is no incoming heading to
 /// evaluate). For `i >= 1`, the incoming heading `bearing_deg(i-1, i)` and
 /// incoming speed (`haversine_km(i-1, i) / dt * 3600`, `0.0` for non-positive
-/// `dt`) are compared against the running `comp_dir` reference bearing;
-/// deviations of at least `min_angle_deg` while at least `min_speed_kmh`
-/// bump the segment id and become the new reference bearing.
+/// `dt`) are compared against the running `comp_dir` reference bearing,
+/// which starts at `bearing_deg(0, 1)` (see this module's docs); deviations
+/// of at least `min_angle_deg` while at least `min_speed_kmh` bump the
+/// segment id and become the new reference bearing.
 ///
 /// @usedBy `fastmob-core/src/preprocessing/segment/mod.rs::segment_user_slice`
 /// (method = `angle_change`).
@@ -35,9 +48,11 @@ pub fn angle_change_segment_ids(
         return out;
     }
 
-    // Matches MovingPandas: direction[0] is undefined (no previous point),
-    // treated as 0.0, and used as the initial comparison bearing.
-    let mut comp_dir = 0.0f64;
+    let mut comp_dir = if n >= 2 {
+        bearing_deg(lats[0], lngs[0], lats[1], lngs[1])
+    } else {
+        0.0
+    };
     let mut group = 0u32;
 
     for i in 1..n {

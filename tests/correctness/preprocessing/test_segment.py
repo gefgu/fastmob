@@ -161,40 +161,106 @@ def test_segment_unknown_temporal_mode_raises(segment_tdf):
         segment(user, method="temporal", mode="fortnight")
 
 
-def _partitions_by_uid(result_df) -> dict:
-    """Return ``{uid: set of frozensets of local row_index}`` grouped by segment_id."""
-    partitions = {}
+def _rand_index(row_ids: list, partition_a: dict, partition_b: dict) -> float:
+    """Fraction of row-index pairs where two segment-id partitions agree on same/different-segment.
+
+    A partition-equality-flavored similarity score (a co-membership Rand
+    index) rather than strict set equality: two partitions can disagree on
+    exact segment boundaries while still mostly agreeing on which rows
+    travel together, which is what this measures. ``1.0`` means the two
+    partitions are identical (up to relabeling); lower scores indicate
+    genuine structural disagreement.
+
+    @usedBy `test_segment_matches_cached_movingpandas_reference_partitions`.
+    """
+    n = len(row_ids)
+    if n < 2:
+        return 1.0
+    agree = 0
+    total = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            same_a = partition_a[row_ids[i]] == partition_a[row_ids[j]]
+            same_b = partition_b[row_ids[i]] == partition_b[row_ids[j]]
+            if same_a == same_b:
+                agree += 1
+            total += 1
+    return agree / total
+
+
+def _mean_rand_index_over_kept_rows(result_df, cached: dict) -> float:
+    """Mean per-uid Rand index between fastmob's segment_id and cached partitions.
+
+    MovingPandas' splitters drop rows outright (a `min_length` cutoff, a
+    detected stop's interior, an entire "non-moving"/gap run) — those rows
+    never appear in ``cached``. fastmob never drops rows, so the comparison
+    is restricted to exactly the row-index universe MovingPandas kept per
+    user (``kept_rows``), isolating the actual grouping-structure question
+    from that documented, deliberate row-preservation difference — the same
+    spirit as `test_simplify.py`'s Jaccard-over-kept-row-index comparison
+    for the row-dropping `simplify()` methods.
+
+    @usedBy `test_segment_matches_cached_movingpandas_reference_partitions`.
+    """
+    scores = []
     for uid, group in result_df.groupby("uid"):
-        by_segment: dict[int, set] = {}
-        for row_index, segment_id in zip(group["row_index"].tolist(), group["segment_id"].tolist()):
-            by_segment.setdefault(segment_id, set()).add(row_index)
-        partitions[uid] = {frozenset(rows) for rows in by_segment.values()}
-    return partitions
+        cached_partition = cached.get(uid)
+        if cached_partition is None:
+            continue
+        kept_rows = sorted(set().union(*cached_partition)) if cached_partition else []
+        if not kept_rows:
+            continue
+        cached_seg = {row: seg_id for seg_id, rows in enumerate(cached_partition) for row in rows}
+        fastmob_seg = dict(zip(group["row_index"].tolist(), group["segment_id"].tolist()))
+        scores.append(_rand_index(kept_rows, cached_seg, fastmob_seg))
+    return sum(scores) / len(scores) if scores else 1.0
 
 
 @pytest.mark.parametrize(
-    ("method", "kwargs"),
+    ("method", "kwargs", "min_mean_rand_index"),
     [
-        ("observation_gap", {"gap_s": 3600.0}),
-        ("value_change", {}),  # col_name filled in per-parametrization below
+        # observation_gap/angle_change/value_change/temporal are exact or
+        # near-exact ports of MovingPandas' own grouping-key logic (see
+        # tests/populate_movingpandas_cache.py's module docstring) and match
+        # (Rand index == 1.0) on every cached user.
+        ("observation_gap", {"gap_s": 3600.0}, 0.99),
+        ("angle_change", {"min_angle": 45.0, "min_speed_kmh": 0.0}, 0.99),
+        ("value_change", {"col_name": "location_id"}, 0.99),
+        ("temporal", {"mode": "day"}, 0.99),
+        # speed and stop are compared with a documented, wide tolerance
+        # (tracks gross regressions rather than asserting tight parity):
+        # speed's "moving"/non-moving classification interacts differently
+        # with MovingPandas' post-filter ObservationGapSplitter delegation
+        # than fastmob's single-pass non-moving-run-duration criterion on
+        # this sparse, low-frequency check-in dataset (mean Rand index
+        # ~0.27 on the cached Brightkite slice); stop uses a genuinely
+        # different stop-detection algorithm (fastmob's anchor-point
+        # expanding window vs MovingPandas' point-cluster diameter), so a
+        # `stop_radius_km`-to-`max_diameter` unit conversion is only an
+        # approximate correspondence, not the same criterion (mean Rand
+        # index ~0.29).
+        ("speed", {"speed_kmh": 0.0, "duration_s": 300.0}, 0.2),
+        ("stop", {"stop_radius_km": 0.2, "minutes_for_a_stop": 20.0}, 0.2),
     ],
 )
-def test_segment_matches_cached_movingpandas_reference_partitions(movingpandas_reference, method, kwargs):
+def test_segment_matches_cached_movingpandas_reference_partitions(
+    movingpandas_reference, method, kwargs, min_mean_rand_index
+):
     """Partition agreement with the cached MovingPandas baseline on a Brightkite slice.
 
     Compared by **partition equality** (groupby(segment_id) -> set of
-    row-index frozensets), not exact segment_id values, since segment
-    numbering is not guaranteed to match between libraries — only the
-    partition structure is (see the project plan's "Cache schema per
-    capability area" section).
+    row-index frozensets — here summarized as a co-membership Rand index,
+    see `_rand_index`), not exact segment_id values, since segment numbering
+    is not guaranteed to match between libraries — only the partition
+    structure is (see the project plan's "Cache schema per capability
+    area" section) — and restricted to MovingPandas' own kept-row universe
+    per user (see `_mean_rand_index_over_kept_rows`).
     """
     cached = movingpandas_reference.segment_partitions(method)
     if cached is None:
         pytest.skip(f"No cached MovingPandas segment result for method={method!r}")
 
     input_df = movingpandas_reference.input_df
-    if method == "value_change":
-        kwargs = {"col_name": "location_id"}
     result = segment(
         input_df,
         method=method,
@@ -205,14 +271,8 @@ def test_segment_matches_cached_movingpandas_reference_partitions(movingpandas_r
         **kwargs,
     )
     result = result.assign(row_index=input_df["row_index"].to_numpy())
-    fastmob_partitions = _partitions_by_uid(result)
-
-    matched_users = 0
-    for uid, cached_partition in cached.items():
-        fastmob_partition = fastmob_partitions.get(uid)
-        if fastmob_partition == cached_partition:
-            matched_users += 1
-    assert matched_users >= 1, (fastmob_partitions, cached)
+    mean_rand_index = _mean_rand_index_over_kept_rows(result, cached)
+    assert mean_rand_index >= min_mean_rand_index, mean_rand_index
 
 
 @pytest.mark.skip(reason="movetk segmentation deferred, see plan doc")

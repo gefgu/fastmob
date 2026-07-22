@@ -10,7 +10,8 @@ Or directly (after activating the movingpandas env):
 Covers the 5 simplification methods MovingPandas has a direct equivalent
 for: DouglasPeucker, TopDownTimeRatio, MinDistance, MinTimeDelta, and
 MaxDistance (Chan-Chin and Imai-Iri are validated separately via the MoveTK
-C++ driver oracle; see the project plan).
+C++ driver oracle; see the project plan), plus all 6 segmentation methods
+(AngleChange, ObservationGap, Speed, Stop, ValueChange, Temporal).
 
 MinDistance/MinTimeDelta measure distance/time directly on the unprojected
 lat/lng trajectory (MovingPandas converts to metres internally for
@@ -20,6 +21,27 @@ trajectory is reprojected to its own estimated local UTM CRS first — the
 closest MovingPandas-native equivalent of fastmob's own local
 equirectangular planar-km projection — so that `tolerance` (in metres)
 lines up with fastmob's `epsilon_km * 1000`.
+
+Segmentation methodology note: ObservationGap/Speed/Stop are run through
+MovingPandas' real, public `.split()` API directly — none of their splitters
+duplicate a boundary row across two adjacent output sub-trajectories, so
+each row unambiguously belongs to exactly one sub-trajectory and the mapping
+to `segment_id` is exact. AngleChange/ValueChange/Temporal, however, *do*
+duplicate a boundary row for LineString-connectivity reasons (each
+`_split_traj` copies one endpoint from an adjacent group into the current
+group after the group-key assignment is already decided — see
+`trajectory_splitter.py`'s `AngleChangeSplitter`/`ValueChangeSplitter`/
+`TemporalSplitter`), so a row can appear in two different sub-trajectories
+of the same `.split()` result. That is purely a presentation nicety (it
+keeps the rendered line unbroken at the seam) and is not part of the actual
+segmentation *decision*, so for those 3 methods this script ports the same
+public grouping key (`add_direction`/`add_speed` + `angular_difference` for
+AngleChange, `pandas.Grouper` for Temporal, a value-change cumulative sum
+for ValueChange — the exact logic `trajectory_splitter.py` itself uses)
+computed directly against MovingPandas' own real per-row heading/speed/stop
+features, but read *before* that duplication step runs, giving an
+unambiguous one-row-one-segment mapping directly comparable to fastmob's
+own convention.
 """
 
 from __future__ import annotations
@@ -35,12 +57,18 @@ sys.path.insert(0, str(REPO_ROOT))
 
 import pandas as pd
 import movingpandas as mpd
+from movingpandas.geometry_utils import angular_difference
 from movingpandas.trajectory_generalizer import (
     DouglasPeuckerGeneralizer,
     MaxDistanceGeneralizer,
     MinDistanceGeneralizer,
     MinTimeDeltaGeneralizer,
     TopDownTimeRatioGeneralizer,
+)
+from movingpandas.trajectory_splitter import (
+    ObservationGapSplitter,
+    SpeedSplitter,
+    StopSplitter,
 )
 
 from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
@@ -52,6 +80,26 @@ MAX_POINTS_PER_USER = 60
 EPSILON_KM = 0.05
 MIN_DISTANCE_KM = 0.2
 MIN_TIME_DELTA_S = 600.0
+
+# Segmentation method parameters, chosen to match
+# tests/correctness/preprocessing/test_segment.py's fixtures/defaults where
+# there is a natural fastmob equivalent.
+SEGMENT_GAP_S = 3600.0
+# 0.0 (matching MovingPandas' own SpeedSplitter default) rather than
+# test_segment.py's hand-crafted speed_kmh=5.0 fixture value: on this sparse
+# check-in dataset (consecutive points are rarely a continuous GPS trace),
+# any stricter floor filters out almost every point, leaving no multi-point
+# "moving" runs at all for `ObservationGapSplitter`'s `len(df) > 1` cutoff
+# (see this module's docstring's segmentation methodology note).
+SEGMENT_SPEED_KMH = 0.0
+SEGMENT_MAX_SPEED_KMH = float("inf")
+SEGMENT_DURATION_S = 300.0
+SEGMENT_STOP_RADIUS_KM = 0.2
+SEGMENT_MINUTES_FOR_A_STOP = 20.0
+SEGMENT_MIN_ANGLE_DEG = 45.0
+SEGMENT_ANGLE_MIN_SPEED_KMH = 0.0
+SEGMENT_VALUE_CHANGE_COL = "location_id"
+SEGMENT_TEMPORAL_MODE = "day"
 
 
 def _load_brightkite_slice() -> pd.DataFrame:
@@ -76,6 +124,7 @@ def _load_brightkite_slice() -> pd.DataFrame:
     df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
     if df["datetime"].dt.tz is not None:
         df["datetime"] = df["datetime"].dt.tz_localize(None)
+    df["location_id"] = df["location_id"].astype("string")
     df = df.dropna(subset=["uid", "datetime", "lat", "lng"])
     df = df.sort_values(["uid", "datetime"], kind="mergesort")
     df = df.drop_duplicates(["uid", "datetime"], keep="first")
@@ -88,7 +137,10 @@ def _load_brightkite_slice() -> pd.DataFrame:
     df = df.groupby("uid", group_keys=False).head(MAX_POINTS_PER_USER)
     df = df.sort_values(["uid", "datetime"], kind="mergesort").reset_index(drop=True)
     df["row_index"] = df.groupby("uid").cumcount()
-    return df[["uid", "datetime", "lat", "lng", "row_index"]]
+    # location_id is kept only for the segment(method="value_change") oracle
+    # (a categorical column to watch for consecutive-value changes); every
+    # other method/generalizer ignores it.
+    return df[["uid", "datetime", "lat", "lng", "location_id", "row_index"]]
 
 
 def _build_trajectory(user_df: pd.DataFrame, uid: object) -> mpd.Trajectory:
@@ -135,11 +187,168 @@ METHODS = {
 }
 
 
+def _segments_from_collection(collection) -> list[tuple[int, int]]:
+    """Return ``[(row_index, segment_id), ...]`` from a `TrajectoryCollection`.
+
+    ``segment_id`` is simply the sub-trajectory's position in
+    ``collection.trajectories`` (`.split()`'s own output order). Only safe
+    to use directly for splitters that never duplicate a boundary row across
+    two sub-trajectories (see this module's docstring) — `ObservationGap`,
+    `Speed`, and `Stop`.
+
+    @usedBy `_run_observation_gap`, `_run_speed`, `_run_stop`.
+    """
+    rows = []
+    for seg_id, sub_traj in enumerate(collection.trajectories):
+        for idx in sub_traj.df["row_index"].tolist():
+            rows.append((int(idx), seg_id))
+    return rows
+
+
+def _run_observation_gap(user_df: pd.DataFrame, uid: object) -> list[tuple[int, int]]:
+    """Run the real `ObservationGapSplitter` (no boundary-row duplication).
+
+    @usedBy `SEGMENT_METHODS["observation_gap"]`.
+    """
+    traj = _build_trajectory(user_df, uid)
+    result = ObservationGapSplitter(traj).split(gap=timedelta(seconds=SEGMENT_GAP_S))
+    return _segments_from_collection(result)
+
+
+def _run_speed(user_df: pd.DataFrame, uid: object) -> list[tuple[int, int]]:
+    """Run the real `SpeedSplitter` (no boundary-row duplication).
+
+    MovingPandas measures speed in metres/second for a geographic (lat/lon)
+    CRS, so `SEGMENT_SPEED_KMH`/`SEGMENT_MAX_SPEED_KMH` are converted from
+    km/h to m/s to match fastmob's own `speed_kmh`/`max_speed_kmh`.
+
+    @usedBy `SEGMENT_METHODS["speed"]`.
+    """
+    traj = _build_trajectory(user_df, uid)
+    speed_ms = SEGMENT_SPEED_KMH * 1000.0 / 3600.0
+    max_speed_ms = float("inf") if SEGMENT_MAX_SPEED_KMH == float("inf") else SEGMENT_MAX_SPEED_KMH * 1000.0 / 3600.0
+    result = SpeedSplitter(traj).split(
+        speed=speed_ms, duration=timedelta(seconds=SEGMENT_DURATION_S), max_speed=max_speed_ms
+    )
+    return _segments_from_collection(result)
+
+
+def _run_stop(user_df: pd.DataFrame, uid: object) -> list[tuple[int, int]]:
+    """Run the real `StopSplitter` (no boundary-row duplication).
+
+    MovingPandas' `TrajectoryStopDetector` uses a cluster-diameter criterion
+    (``max_diameter``), a different (if related) stop-detection algorithm
+    from fastmob's own anchor-point expanding-window criterion
+    (`stay_locations`/`segment(method="stop")`'s `stop_radius_km`). This
+    picks the closest natural conversion (``max_diameter = 2 *
+    stop_radius_km * 1000`` metres) rather than claiming algorithmic
+    equivalence; see `test_segment.py`'s cached parity test for the
+    resulting (documented, wide) tolerance.
+
+    @usedBy `SEGMENT_METHODS["stop"]`.
+    """
+    traj = _build_trajectory(user_df, uid)
+    result = StopSplitter(traj).split(
+        max_diameter=SEGMENT_STOP_RADIUS_KM * 1000.0 * 2.0,
+        min_duration=timedelta(minutes=SEGMENT_MINUTES_FOR_A_STOP),
+    )
+    return _segments_from_collection(result)
+
+
+def _run_angle_change(user_df: pd.DataFrame, uid: object) -> list[tuple[int, int]]:
+    """Port `AngleChangeSplitter`'s exact pre-duplication grouping key.
+
+    Uses MovingPandas' own `add_direction`/`add_speed` (the real per-row
+    heading/speed features) and `angular_difference`, replaying the same
+    `comp_dir`/`dir_group` state machine `AngleChangeSplitter._split_traj`
+    itself runs — before its own post-hoc step that copies each group's
+    trailing point into the next group's start for line-connectivity
+    (see this module's docstring for why that duplication makes the
+    row-to-segment mapping ambiguous if read from `.split()`'s own output
+    instead).
+
+    @usedBy `SEGMENT_METHODS["angle_change"]`.
+    """
+    traj = _build_trajectory(user_df, uid)
+    traj.add_direction(overwrite=True)
+    traj.add_speed(overwrite=True)
+    direction_col = traj.get_direction_col()
+    speed_col = traj.get_speed_col()
+
+    min_speed_ms = SEGMENT_ANGLE_MIN_SPEED_KMH * 1000.0 / 3600.0
+    directions = traj.df[direction_col].tolist()
+    speeds = traj.df[speed_col].tolist()
+    row_indices = traj.df["row_index"].tolist()
+
+    comp_dir = directions[0] if directions else 0.0
+    dir_group = 0
+    rows = []
+    for row_index, direction, speed in zip(row_indices, directions, speeds):
+        if speed >= min_speed_ms and angular_difference(comp_dir, direction) >= SEGMENT_MIN_ANGLE_DEG:
+            comp_dir = direction
+            dir_group += 1
+        rows.append((int(row_index), dir_group))
+    return rows
+
+
+def _run_value_change(user_df: pd.DataFrame, uid: object) -> list[tuple[int, int]]:
+    """Port `ValueChangeSplitter`'s exact pre-duplication grouping key.
+
+    Replays the same ``shift() != value`` cumulative-sum group key
+    `ValueChangeSplitter._split_traj` computes on `SEGMENT_VALUE_CHANGE_COL`,
+    before its own post-hoc trailing-row-duplication step (see this module's
+    docstring). Cast to plain ``object`` first so real Brightkite rows with
+    a missing (nullable-NA) location_id compare with regular Python ``None``
+    semantics instead of pandas' NA-propagating boolean comparison (`NA !=
+    NA` is itself `NA`, which cannot cast to `int`).
+
+    @usedBy `SEGMENT_METHODS["value_change"]`.
+    """
+    ordered = user_df.sort_values("row_index")
+    values = ordered[SEGMENT_VALUE_CHANGE_COL].astype(object)
+    changed = (values.shift() != values).astype(int).cumsum()
+    return list(zip(ordered["row_index"].astype(int).tolist(), changed.tolist()))
+
+
+def _run_temporal(user_df: pd.DataFrame, uid: object) -> list[tuple[int, int]]:
+    """Port `TemporalSplitter`'s exact pre-duplication grouping key.
+
+    Replays the same ``pandas.Grouper(freq=...)`` bucketing
+    `TemporalSplitter._split_traj` computes, skipping empty buckets exactly
+    as the real splitter does, before its own post-hoc trailing-row-
+    duplication step (see this module's docstring).
+
+    @usedBy `SEGMENT_METHODS["temporal"]`.
+    """
+    modes = {"hour": "h", "day": "D", "month": "ME", "year": "YE"}
+    freq = modes[SEGMENT_TEMPORAL_MODE]
+    frame = user_df.set_index("datetime")
+    rows = []
+    group_id = -1
+    for _, values in frame.groupby(pd.Grouper(freq=freq)):
+        if len(values) == 0:
+            continue
+        group_id += 1
+        rows.extend((int(idx), group_id) for idx in values["row_index"].tolist())
+    return rows
+
+
+SEGMENT_METHODS = {
+    "observation_gap": _run_observation_gap,
+    "speed": _run_speed,
+    "stop": _run_stop,
+    "angle_change": _run_angle_change,
+    "value_change": _run_value_change,
+    "temporal": _run_temporal,
+}
+
+
 def main() -> None:
     """Populate `tests/shared/movingpandas_reference/brightkite/`.
 
-    @usedBy `scripts/populate_movingpandas_cache.sh`. Writes `input.parquet`
-    and one `simplify_<method>.parquet` per entry in `METHODS` to the
+    @usedBy `scripts/populate_movingpandas_cache.sh`. Writes `input.parquet`,
+    one `simplify_<method>.parquet` per entry in `METHODS`, and one
+    `segment_<method>.parquet` per entry in `SEGMENT_METHODS` to the
     dataset's cache directory.
     """
     parser = argparse.ArgumentParser(description="Populate MovingPandas reference cache")
@@ -169,6 +378,26 @@ def main() -> None:
         result_df.to_parquet(path, index=False)
         n_users = result_df["uid"].nunique() if len(result_df) else 0
         print(f"    {path.name} ({len(result_df)} kept rows across {n_users} users)")
+
+    for method, run_fn in SEGMENT_METHODS.items():
+        print(f"==> segment: {method}")
+        rows = []
+        for uid, user_df in df.groupby("uid", sort=False):
+            try:
+                segment_pairs = run_fn(user_df.reset_index(drop=True), uid)
+            except Exception as exc:
+                print(f"    SKIP user={uid} ({type(exc).__name__}: {exc})")
+                continue
+            rows.extend(
+                {"uid": uid, "row_index": row_index, "segment_id": segment_id}
+                for row_index, segment_id in segment_pairs
+            )
+        result_df = pd.DataFrame(rows, columns=["uid", "row_index", "segment_id"])
+        path = out_dir / f"segment_{method}.parquet"
+        result_df.to_parquet(path, index=False)
+        n_users = result_df["uid"].nunique() if len(result_df) else 0
+        n_segments = result_df.groupby("uid")["segment_id"].nunique().sum() if len(result_df) else 0
+        print(f"    {path.name} ({len(result_df)} rows, {n_segments} segments across {n_users} users)")
 
     print(f"\nDone. Commit {out_dir} to git to track the snapshot.")
 
