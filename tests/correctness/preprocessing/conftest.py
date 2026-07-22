@@ -459,3 +459,131 @@ def cluster_tdf() -> pd.DataFrame:
 def cluster_tdf_polars():
     pl = pytest.importorskip("polars", reason="Polars not installed")
     return pl.from_dicts(_cluster_rows())
+
+
+# ---------------------------------------------------------------------------
+# segment fixtures
+# ---------------------------------------------------------------------------
+# gap_case: 5 points, a 2-hour gap between points 2 and 3 (well above a
+#   10-minute gap_s threshold) → 2 segments.
+# value_case: 5 points, a "poi" column with values [a, a, b, b, c] → 3
+#   segments on every value change.
+# angle_case: 3 points; 0->1 heads due north, 1->2 heads due east (a 90 deg
+#   turn) → the turn point starts a new segment at the default min_angle=45.
+# speed_case: 6 points; a fast hop, then 2 points "parked" at the same spot
+#   for 300s (at or above a 300s duration_s threshold, with speed_kmh=5.0
+#   raising the "moving" floor above their ~0 km/h parked speed), then 2 more
+#   points moving again → 3 segments.
+# short_parked_case: 4 points; a single parked point below the 300s duration
+#   threshold → no split at all (folded into the surrounding segment), the
+#   fastmob row-preservation analogue of MovingPandas' SpeedSplitter/
+#   ObservationGapSplitter dropping short "non-moving"/gap rows outright.
+# stop_case: 7 points; 2 points moving away from an anchor, then 4 points
+#   held within a 0.2 km radius for a 40-minute stop (above the default
+#   20-minute threshold), then 1 further point moving away → the stop's own
+#   rows get their own segment, bracketed by the moving segments before and
+#   after it.
+
+
+def _segment_rows():
+    rows = []
+    for i, (lat, lng, seconds) in enumerate(
+        [
+            (48.0, 2.0, 0),
+            (48.01, 2.0, 60),
+            (48.02, 2.0, 120),
+            (48.03, 2.0, 7320),  # +2h gap from the previous point
+            (48.04, 2.0, 7380),
+        ]
+    ):
+        rows.append(
+            {
+                "uid": "gap_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(seconds=seconds),
+                "lat": lat,
+                "lng": lng,
+                "poi": None,
+            }
+        )
+    for i, poi in enumerate(["a", "a", "b", "b", "c"]):
+        rows.append(
+            {
+                "uid": "value_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(minutes=i),
+                "lat": 48.0 + i * 0.001,
+                "lng": 2.0,
+                "poi": poi,
+            }
+        )
+    for lat, lng, seconds in [(48.0, 2.0, 0), (48.01, 2.0, 60), (48.01, 2.02, 120)]:
+        rows.append(
+            {
+                "uid": "angle_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(seconds=seconds),
+                "lat": lat,
+                "lng": lng,
+                "poi": None,
+            }
+        )
+    for lat, lng, seconds in [
+        (48.0, 2.0, 0),
+        (48.02, 2.0, 60),
+        (48.02, 2.0, 180),
+        (48.02, 2.0, 480),
+        (48.03, 2.0, 540),
+        (48.04, 2.0, 600),
+    ]:
+        rows.append(
+            {
+                "uid": "speed_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(seconds=seconds),
+                "lat": lat,
+                "lng": lng,
+                "poi": None,
+            }
+        )
+    for lat, lng, seconds in [
+        (48.0, 2.0, 0),
+        (48.01, 2.0, 60),
+        (48.01, 2.0, 120),
+        (48.02, 2.0, 180),
+    ]:
+        rows.append(
+            {
+                "uid": "short_parked_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(seconds=seconds),
+                "lat": lat,
+                "lng": lng,
+                "poi": None,
+            }
+        )
+    for lat, lng, seconds in [
+        (48.85, 2.0, 0),
+        (48.86, 2.1, 600),
+        (48.90, 2.5, 1200),
+        (48.9001, 2.5001, 1800),
+        (48.9002, 2.5002, 3000),
+        (49.0, 3.0, 3600),
+        (49.5, 3.5, 4200),
+    ]:
+        rows.append(
+            {
+                "uid": "stop_case",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00") + pd.Timedelta(seconds=seconds),
+                "lat": lat,
+                "lng": lng,
+                "poi": None,
+            }
+        )
+    return rows
+
+
+@pytest.fixture(scope="session")
+def segment_tdf() -> pd.DataFrame:
+    return pd.DataFrame(_segment_rows())
+
+
+@pytest.fixture(scope="session")
+def segment_tdf_polars():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    return pl.from_dicts(_segment_rows())

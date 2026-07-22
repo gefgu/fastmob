@@ -16,6 +16,15 @@ Cache schema (see the project plan's "Cache schema per capability area"):
     simplify_<method>.parquet
         Columns ``uid`` and ``row_index``: one row per (user, kept local
         row index) pair that MovingPandas' corresponding generalizer kept.
+    segment_<method>.parquet
+        Columns ``uid``, ``row_index``, and ``segment_id``: one row per
+        (user, local row index) pair, giving the segment_id MovingPandas'
+        corresponding splitter assigned that row (rows MovingPandas dropped
+        outright — e.g. inside a detected stop, or a short/discarded
+        sub-trajectory — are simply absent). Compared by partition equality
+        (see ``segment_partitions`` below), not exact segment_id values,
+        since segment numbering is not guaranteed to match between
+        libraries.
 """
 
 from __future__ import annotations
@@ -47,3 +56,23 @@ class MovingPandasReferenceDataset:
             return None
         df = pd.read_parquet(path)
         return {uid: set(group["row_index"].tolist()) for uid, group in df.groupby("uid", sort=False)}
+
+    def segment_partitions(self, method: str) -> dict[object, set[frozenset]] | None:
+        """Cached ``{uid: {frozenset(row indices) per segment}}`` for one segment method, or None if absent.
+
+        Row indices MovingPandas dropped outright (never present in any of
+        its output sub-trajectories) simply never appear in any frozenset;
+        callers comparing against fastmob's own row-preserving partitions
+        should expect this and compare on the overlap, not exact equality.
+        """
+        path = self._dir / f"segment_{method}.parquet"
+        if not path.exists():
+            return None
+        df = pd.read_parquet(path)
+        partitions: dict[object, set[frozenset]] = {}
+        for uid, group in df.groupby("uid", sort=False):
+            by_segment: dict[object, set[int]] = {}
+            for row_index, segment_id in zip(group["row_index"].tolist(), group["segment_id"].tolist()):
+                by_segment.setdefault(segment_id, set()).add(row_index)
+            partitions[uid] = {frozenset(rows) for rows in by_segment.values()}
+        return partitions
