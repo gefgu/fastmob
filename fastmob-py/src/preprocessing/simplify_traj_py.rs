@@ -4,8 +4,8 @@ use fastmob_core::preprocessing::simplify::{
     SimplifyConfig as CoreSimplifyConfig, SimplifyMethod, simplify_trajectory_impl,
     simplify_trajectory_indexed_impl,
 };
-use numpy::{PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
+use numpy::{IntoPyArray, PyReadonlyArray1};
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
@@ -63,106 +63,121 @@ impl PySimplifyConfig {
     }
 }
 
-#[pyfunction]
-pub fn simplify_trajectory_numpy<'py>(
-    py: Python<'py>,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
-    timestamps_s: PyReadonlyArray1<'py, f64>,
-    ranges: Vec<(usize, usize)>,
-    config: PySimplifyConfig,
-) -> PyResult<Bound<'py, PyArray1<bool>>> {
-    let lats = latitudes.as_slice()?;
-    let lngs = longitudes.as_slice()?;
-    let times = timestamps_s.as_slice()?;
+fn is_arrow_array(obj: &Bound<'_, PyAny>) -> PyResult<bool> {
+    obj.hasattr("__arrow_c_array__")
+}
 
-    let keep_mask = py.detach(|| simplify_trajectory_impl(lats, lngs, times, &ranges, &config.0));
+fn numpy_bool_output(py: Python<'_>, values: Vec<bool>) -> Py<PyAny> {
+    values.into_pyarray(py).into_any().unbind()
+}
 
-    Ok(PyArray1::from_vec(py, keep_mask))
+fn arrow_bool_output(py: Python<'_>, values: Vec<bool>) -> PyResult<Py<PyAny>> {
+    Ok(Py::new(py, bool_results_into_arrow(values))?.into_any())
 }
 
 #[pyfunction]
-pub fn simplify_trajectory_arrow(
-    py: Python<'_>,
-    latitudes: ArrowPyArray,
-    longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+pub fn simplify_trajectory_sorted<'py>(
+    py: Python<'py>,
+    latitudes: &Bound<'py, PyAny>,
+    longitudes: &Bound<'py, PyAny>,
+    timestamps_s: &Bound<'py, PyAny>,
     ranges: Vec<(usize, usize)>,
     config: PySimplifyConfig,
-) -> PyResult<ArrowPyArray> {
-    let latitudes = as_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_f64_array(longitudes, "longitudes")?;
-    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+) -> PyResult<Py<PyAny>> {
+    if let (Ok(latitudes), Ok(longitudes), Ok(timestamps_s)) = (
+        latitudes.extract::<PyReadonlyArray1<f64>>(),
+        longitudes.extract::<PyReadonlyArray1<f64>>(),
+        timestamps_s.extract::<PyReadonlyArray1<f64>>(),
+    ) {
+        let lats = latitudes.as_slice()?;
+        let lngs = longitudes.as_slice()?;
+        let times = timestamps_s.as_slice()?;
+        let keep_mask =
+            py.detach(|| simplify_trajectory_impl(lats, lngs, times, &ranges, &config.0));
+        return Ok(numpy_bool_output(py, keep_mask));
+    }
 
-    let lats = arrow_values(&latitudes);
-    let lngs = arrow_values(&longitudes);
-    let times = arrow_values(&timestamps_s);
+    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(timestamps_s)? {
+        let latitudes = as_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
+        let longitudes = as_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
+        let timestamps_s = as_f64_array(timestamps_s.extract::<ArrowPyArray>()?, "timestamps_s")?;
+        let keep_mask = py.detach(|| {
+            simplify_trajectory_impl(
+                arrow_values(&latitudes),
+                arrow_values(&longitudes),
+                arrow_values(&timestamps_s),
+                &ranges,
+                &config.0,
+            )
+        });
+        return arrow_bool_output(py, keep_mask);
+    }
 
-    let keep_mask = py.detach(|| simplify_trajectory_impl(lats, lngs, times, &ranges, &config.0));
-
-    Ok(bool_results_into_arrow(keep_mask))
+    Err(PyTypeError::new_err(
+        "latitudes, longitudes, and timestamps_s must all be NumPy arrays or all be Arrow arrays",
+    ))
 }
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-pub fn simplify_trajectory_indexed_numpy<'py>(
+pub fn simplify_trajectory_indexed<'py>(
     py: Python<'py>,
-    latitudes: PyReadonlyArray1<'py, f64>,
-    longitudes: PyReadonlyArray1<'py, f64>,
-    timestamps_s: PyReadonlyArray1<'py, f64>,
+    latitudes: &Bound<'py, PyAny>,
+    longitudes: &Bound<'py, PyAny>,
+    timestamps_s: &Bound<'py, PyAny>,
     sorted_indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     config: PySimplifyConfig,
-) -> PyResult<Bound<'py, PyArray1<bool>>> {
-    let lats = latitudes.as_slice()?;
-    let lngs = longitudes.as_slice()?;
-    let times = timestamps_s.as_slice()?;
-    let indices = sorted_indices.as_slice()?;
+) -> PyResult<Py<PyAny>> {
+    let sorted_indices = sorted_indices.as_slice()?;
     let ends = ends.as_slice()?;
-    validate_indexed_ends(lats.len(), indices, ends)?;
 
-    let keep_mask = py.detach(|| {
-        simplify_trajectory_indexed_impl(lats, lngs, times, indices, ends, None, &config.0)
-    });
+    if let (Ok(latitudes), Ok(longitudes), Ok(timestamps_s)) = (
+        latitudes.extract::<PyReadonlyArray1<f64>>(),
+        longitudes.extract::<PyReadonlyArray1<f64>>(),
+        timestamps_s.extract::<PyReadonlyArray1<f64>>(),
+    ) {
+        let lats = latitudes.as_slice()?;
+        let lngs = longitudes.as_slice()?;
+        let times = timestamps_s.as_slice()?;
+        validate_indexed_ends(lats.len(), sorted_indices, ends)?;
+        let keep_mask = py.detach(|| {
+            simplify_trajectory_indexed_impl(
+                lats,
+                lngs,
+                times,
+                sorted_indices,
+                ends,
+                None,
+                &config.0,
+            )
+        });
+        return Ok(numpy_bool_output(py, keep_mask));
+    }
 
-    Ok(PyArray1::from_vec(py, keep_mask))
-}
+    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(timestamps_s)? {
+        let latitudes = as_nullable_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
+        let longitudes =
+            as_nullable_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
+        let timestamps_s =
+            as_nullable_f64_array(timestamps_s.extract::<ArrowPyArray>()?, "timestamps_s")?;
+        validate_indexed_ends(latitudes.len(), sorted_indices, ends)?;
+        let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &timestamps_s]);
+        let keep_mask = py.detach(|| {
+            simplify_trajectory_indexed_impl(
+                arrow_values(&latitudes),
+                arrow_values(&longitudes),
+                arrow_values(&timestamps_s),
+                sorted_indices,
+                ends,
+                valid_rows.as_deref(),
+                &config.0,
+            )
+        });
+        return arrow_bool_output(py, keep_mask);
+    }
 
-#[pyfunction]
-#[allow(clippy::too_many_arguments)]
-pub fn simplify_trajectory_indexed_arrow(
-    py: Python<'_>,
-    latitudes: ArrowPyArray,
-    longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
-    sorted_indices: PyReadonlyArray1<usize>,
-    ends: PyReadonlyArray1<usize>,
-    config: PySimplifyConfig,
-) -> PyResult<ArrowPyArray> {
-    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
-    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    let timestamps_s = as_nullable_f64_array(timestamps_s, "timestamps_s")?;
-
-    let lats = arrow_values(&latitudes);
-    let lngs = arrow_values(&longitudes);
-    let times = arrow_values(&timestamps_s);
-    let indices = sorted_indices.as_slice()?;
-    let ends = ends.as_slice()?;
-    validate_indexed_ends(lats.len(), indices, ends)?;
-
-    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &timestamps_s]);
-
-    let keep_mask = py.detach(|| {
-        simplify_trajectory_indexed_impl(
-            lats,
-            lngs,
-            times,
-            indices,
-            ends,
-            valid_rows.as_deref(),
-            &config.0,
-        )
-    });
-
-    Ok(bool_results_into_arrow(keep_mask))
+    Err(PyTypeError::new_err(
+        "latitudes, longitudes, and timestamps_s must all be NumPy arrays or all be Arrow arrays",
+    ))
 }
