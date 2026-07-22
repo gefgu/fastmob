@@ -217,6 +217,50 @@ def test_simplify_matches_cached_movingpandas_reference(movingpandas_reference, 
     assert mean_score >= min_mean_jaccard, scores
 
 
+@pytest.mark.parametrize("method", ["chan_chin", "imai_iri"])
+def test_simplify_matches_cached_movetk_reference(movetk_reference, method):
+    """Row-subset agreement with the cached MoveTK baseline on the same Brightkite slice.
+
+    The cache was populated by building and running MoveTK's real
+    ``ChanChin``/``ImaiIri`` classes (see
+    ``tests/shared/movetk_cache.py``'s module docstring) on the same
+    coordinates fastmob's own ``chan_chin``/``imai_iri`` project to
+    (removing projection differences as a variable).
+
+    This is a wide, documented tolerance rather than a strict match: MoveTK's
+    ``Wedge`` is a tangent-line-to-a-circle construction with its own
+    "degenerate" branch for points already within epsilon of the anchor,
+    while fastmob's corridor primitive uses a simpler arc/angle feasibility
+    test that treats such points as imposing no constraint at all. On this
+    Brightkite slice, that difference makes fastmob noticeably more
+    conservative (it keeps a superset of MoveTK's kept points on every
+    user), so this test tracks gross regressions rather than asserting tight
+    numeric parity. Closing that gap is a documented follow-up, not required
+    for this phase.
+    """
+    from tests.shared.movingpandas_cache import MovingPandasReferenceDataset
+
+    cached = movetk_reference.kept_row_index(method)
+    if cached is None:
+        pytest.skip(f"No cached MoveTK result for method={method!r}")
+
+    input_df = MovingPandasReferenceDataset("brightkite").input_df
+    result = simplify(
+        input_df,
+        method=method,
+        uid_col="uid",
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        epsilon_km=0.05,
+    )
+    # JSON object keys are always strings; input_df's uid column is int64.
+    cached_by_uid = {int(uid): set(v) for uid, v in cached.items()}
+    scores = _per_user_jaccard(result, cached_by_uid)
+    mean_score = sum(scores.values()) / len(scores)
+    assert mean_score >= 0.5, scores
+
+
 @pytest.mark.skip(reason="agarwal simplification deferred, see plan doc")
 def test_agarwal_simplification_placeholder():
     """Placeholder for the deferred Agarwal simplification algorithm.

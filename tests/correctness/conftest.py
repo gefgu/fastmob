@@ -263,6 +263,23 @@ def movingpandas_reference():
     return MovingPandasReferenceDataset(dataset)
 
 
+@pytest.fixture(scope="session")
+def movetk_reference():
+    """Cached MoveTK simplification baseline; auto-skips when the cache is absent.
+
+    Populated by hand from the C++ driver programs in
+    ``../fastmob_benchmarks/benchmarks/simplify/movetk_cpp/`` (see that
+    directory's ``build.sh``); fastmob's test suite never invokes MoveTK
+    itself at test time, only the committed JSON cache.
+    """
+    from tests.shared.movetk_cache import MovetkReferenceDataset, _REFERENCE_DIR
+
+    dataset = "brightkite"
+    if not (_REFERENCE_DIR / dataset / "simplify_chan_chin.json").exists():
+        pytest.skip(f"No MoveTK reference cache for '{dataset}'.")
+    return MovetkReferenceDataset(dataset)
+
+
 # ---------------------------------------------------------------------------
 # Marker registration
 # ---------------------------------------------------------------------------
