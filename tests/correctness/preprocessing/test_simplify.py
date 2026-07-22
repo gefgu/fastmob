@@ -162,6 +162,61 @@ def test_simplify_unknown_method_raises(simplify_tdf):
         simplify(simplify_tdf, method="not_a_real_method")
 
 
+def _per_user_jaccard(result_df, cached_kept_by_uid: dict) -> dict:
+    """Return per-uid Jaccard similarity between fastmob's and the cached kept-row-index sets."""
+    scores = {}
+    for uid, group in result_df.groupby("uid"):
+        fastmob_set = set(group["row_index"].tolist())
+        cached_set = cached_kept_by_uid.get(uid, set())
+        union = fastmob_set | cached_set
+        scores[uid] = len(fastmob_set & cached_set) / len(union) if union else 1.0
+    return scores
+
+
+@pytest.mark.parametrize(
+    ("method", "kwargs", "min_mean_jaccard"),
+    [
+        ("min_distance", {"min_distance_km": 0.2}, 1.0),
+        ("min_time_delta", {"min_time_delta_s": 600.0}, 1.0),
+        ("max_distance", {"epsilon_km": 0.05}, 1.0),
+        ("top_down_time_ratio", {"epsilon_km": 0.05}, 0.95),
+        ("douglas_peucker", {"epsilon_km": 0.05}, 0.6),
+    ],
+)
+def test_simplify_matches_cached_movingpandas_reference(movingpandas_reference, method, kwargs, min_mean_jaccard):
+    """Row-subset agreement with the cached MovingPandas baseline on a Brightkite slice.
+
+    ``min_distance``/``min_time_delta``/``max_distance`` are direct ports of
+    MovingPandas' reference algorithms and match exactly (Jaccard == 1.0 per
+    user in the cached run). ``top_down_time_ratio`` is a faithful iterative
+    port and matches almost exactly. ``douglas_peucker`` is compared with a
+    wider, documented tolerance: MovingPandas runs GEOS' Douglas-Peucker on
+    each user's estimated-UTM-projected coordinates, while fastmob runs
+    geo-rust's Douglas-Peucker on its own local equirectangular planar-km
+    projection — two independent RDP implementations on two different (but
+    both locally accurate) projections, whose farthest-point tie-breaks can
+    diverge through the recursive splitting even though both stay within
+    epsilon of the original trajectory.
+    """
+    input_df = movingpandas_reference.input_df
+    cached = movingpandas_reference.kept_row_index(method)
+    if cached is None:
+        pytest.skip(f"No cached MovingPandas result for method={method!r}")
+
+    result = simplify(
+        input_df,
+        method=method,
+        uid_col="uid",
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        **kwargs,
+    )
+    scores = _per_user_jaccard(result, cached)
+    mean_score = sum(scores.values()) / len(scores)
+    assert mean_score >= min_mean_jaccard, scores
+
+
 @pytest.mark.skip(reason="agarwal simplification deferred, see plan doc")
 def test_agarwal_simplification_placeholder():
     """Placeholder for the deferred Agarwal simplification algorithm.

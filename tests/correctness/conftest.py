@@ -240,11 +240,27 @@ def comparison_skmob_reference(request):
 
     dataset = request.param
     if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
-        pytest.skip(
-            f"No skmob reference cache for '{dataset}'. "
-            "Run 'bash scripts/populate_skmob_cache.sh' first."
-        )
+        pytest.skip(f"No skmob reference cache for '{dataset}'. Run 'bash scripts/populate_skmob_cache.sh' first.")
     return SkmobReferenceDataset(dataset)
+
+
+@pytest.fixture(scope="session")
+def movingpandas_reference():
+    """Cached MovingPandas simplification baseline; auto-skips when the cache is absent.
+
+    Run ``bash scripts/populate_movingpandas_cache.sh`` (inside
+    .venv-movingpandas) once to populate the cache, then commit
+    tests/shared/movingpandas_reference/ to git. After that, these tests run
+    in the normal .venv without movingpandas installed.
+    """
+    from tests.shared.movingpandas_cache import MovingPandasReferenceDataset, _REFERENCE_DIR
+
+    dataset = "brightkite"
+    if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
+        pytest.skip(
+            f"No MovingPandas reference cache for '{dataset}'. Run 'bash scripts/populate_movingpandas_cache.sh' first."
+        )
+    return MovingPandasReferenceDataset(dataset)
 
 
 # ---------------------------------------------------------------------------
@@ -292,4 +308,8 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "slow: tests that require long runtimes (skip with -m 'not slow')",
+    )
+    config.addinivalue_line(
+        "markers",
+        "movingpandas: tests that require the movingpandas package to be installed",
     )
