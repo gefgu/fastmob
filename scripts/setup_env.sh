@@ -7,6 +7,7 @@
 #   bash scripts/setup_env.sh --python 3.12 --venv .venv-py312
 #   bash scripts/setup_env.sh --skmob            # also install scikit-mobility (optional)
 #   bash scripts/setup_env.sh --movingpandas     # also install movingpandas + geopandas (optional)
+#   bash scripts/setup_env.sh --ptrail           # also install ptrail (optional)
 #
 # After completion, activate the environment with:
 #   source .venv/bin/activate
@@ -18,6 +19,7 @@ cd "$REPO_ROOT"
 
 INSTALL_SKMOB=false
 INSTALL_MOVINGPANDAS=false
+INSTALL_PTRAIL=false
 PYTHON_SPEC=""
 VENV_DIR=".venv"
 while [ "$#" -gt 0 ]; do
@@ -28,6 +30,10 @@ while [ "$#" -gt 0 ]; do
             ;;
         --movingpandas)
             INSTALL_MOVINGPANDAS=true
+            shift
+            ;;
+        --ptrail)
+            INSTALL_PTRAIL=true
             shift
             ;;
         --python)
@@ -90,6 +96,18 @@ else
     echo ""
     echo "NOTE: movingpandas not installed. movingpandas-comparison benchmarks will be skipped."
     echo "      To install it, re-run with: bash scripts/setup_env.sh --movingpandas"
+fi
+
+if $INSTALL_PTRAIL; then
+    echo "==> Installing ptrail (PTRAIL comparison tests) ..."
+    uv pip install -e ".[dev-ptrail]" || {
+        echo "WARNING: ptrail failed to install."
+        echo "         ptrail-comparison tests will be skipped automatically."
+    }
+else
+    echo ""
+    echo "NOTE: ptrail not installed. ptrail-comparison tests will be skipped."
+    echo "      To install it, re-run with: bash scripts/setup_env.sh --ptrail"
 fi
 
 echo ""

@@ -264,6 +264,23 @@ def movingpandas_reference():
 
 
 @pytest.fixture(scope="session")
+def ptrail_reference():
+    """Cached PTRAIL Hampel outlier-detection baseline; auto-skips when the cache is absent.
+
+    Run ``bash scripts/populate_ptrail_cache.sh`` (inside .venv-ptrail) once
+    to populate the cache, then commit tests/shared/ptrail_reference/ to
+    git. After that, these tests run in the normal .venv without ptrail
+    installed.
+    """
+    from tests.shared.ptrail_cache import PtrailReferenceDataset, _REFERENCE_DIR
+
+    dataset = "brightkite"
+    if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
+        pytest.skip(f"No PTRAIL reference cache for '{dataset}'. Run 'bash scripts/populate_ptrail_cache.sh' first.")
+    return PtrailReferenceDataset(dataset)
+
+
+@pytest.fixture(scope="session")
 def movetk_reference():
     """Cached MoveTK simplification baseline; auto-skips when the cache is absent.
 
@@ -329,4 +346,8 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "movingpandas: tests that require the movingpandas package to be installed",
+    )
+    config.addinivalue_line(
+        "markers",
+        "ptrail: tests that require the ptrail package to be installed",
     )

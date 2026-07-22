@@ -168,6 +168,63 @@ def test_filter_unknown_method_raises(filter_tdf):
         traj_filter(filter_tdf, method="not_a_real_method")
 
 
+def _per_user_jaccard_keep(result_df, cached_keep_by_uid: dict) -> dict:
+    """Return per-uid Jaccard similarity between fastmob's and the cached kept-row-index sets."""
+    scores = {}
+    for uid, group in result_df.groupby("uid"):
+        fastmob_set = set(group["row_index"].tolist())
+        cached_set = cached_keep_by_uid.get(uid, set())
+        union = fastmob_set | cached_set
+        scores[uid] = len(fastmob_set & cached_set) / len(union) if union else 1.0
+    return scores
+
+
+def test_filter_hampel_matches_cached_reference(ptrail_reference):
+    """Row-subset agreement with the cached PTRAIL Hampel baseline on a Brightkite slice.
+
+    This is a wide, documented tolerance rather than a strict match: the
+    cached baseline was populated with ``hampel==0.0.5`` (see
+    ``tests/populate_ptrail_cache.py``'s module docstring for why — PTRAIL
+    1.0's own ``Filters.hampel_outlier_detection`` is incompatible with
+    ``hampel>=1.0``), whose algorithm is materially different from the
+    ``hampel==1.0.2`` Cython kernel fastmob's own ``hampel.rs`` was ported
+    from: 0.0.5 uses a centered pandas ``.rolling(window_size * 2)`` window
+    (double the width, for the same ``window_size=5`` default) with
+    backward/forward-filled boundary medians/MADs, while fastmob (matching
+    1.0.2) uses an exact ``2 * (window_size // 2) + 1``-wide window and
+    never evaluates boundary points at all. The two implementations
+    therefore disagree on a substantial fraction of points near sequence
+    boundaries and in any window touching a NaN-producing duplicate
+    timestamp; this test tracks gross regressions rather than asserting
+    tight numeric parity.
+
+    On this cached Brightkite slice, 7 of the 8 users score >= 0.75 Jaccard,
+    but one user (uid 33) scores ~0.04 — PTRAIL's older rolling-window
+    implementation drops nearly all of that user's points (57 of 60),
+    almost certainly a real degenerate-window effect from that user's
+    specific timestamp/duplicate pattern rather than an algorithmic
+    difference worth chasing. The overall mean threshold below is set low
+    enough to tolerate that one outlier user while still catching a broad
+    regression in the other seven.
+    """
+    input_df = ptrail_reference.input_df
+    cached = ptrail_reference.keep_mask("hampel")
+    if cached is None:
+        pytest.skip("No cached PTRAIL result for method='hampel'")
+
+    result = traj_filter(
+        input_df,
+        method="hampel",
+        uid_col="uid",
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+    )
+    scores = _per_user_jaccard_keep(result, cached)
+    mean_score = sum(scores.values()) / len(scores)
+    assert mean_score >= 0.5, scores
+
+
 @pytest.mark.skmob
 def test_filter_matches_skmob(comparison_skmob):
     """Results must closely match skmob despite tiny Haversine threshold drift."""

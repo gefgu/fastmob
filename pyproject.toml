@@ -81,6 +81,17 @@ dev-movingpandas = [
     "movingpandas",
     "geopandas",
 ]
+dev-ptrail = [
+    "ptrail",
+    "ipython<8",
+    # PTRAIL 1.0's Filters.hampel_outlier_detection uses the `hampel` package's
+    # return value directly as a list of outlier indices, which only works
+    # with hampel<1.0 (hampel>=1.0 returns a Result namedtuple instead and
+    # crashes that call with an IndexError). Pin to a version PTRAIL's own
+    # "hampel>=0.0.5" requirement already allows.
+    "hampel==0.0.5",
+    "pyarrow",
+]
 docs = [
     "zensical>=0.0.41; python_version >= '3.10'",
     "mkdocstrings[python]>=0.25",
