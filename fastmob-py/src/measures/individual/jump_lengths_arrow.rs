@@ -9,12 +9,10 @@ use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array, f64_re
 
 use super::jump_lengths::PyNonOrderedJumpLengthsArrow;
 use super::time_ordering::{
-    ordered_index_ranges_into_start_end_numpy, time_ordered_indices_from_arrow_uids,
+    ordered_index_ranges_into_start_end_arrays, time_ordered_indices_from_c_array_uids,
 };
 
-#[pyfunction]
-#[pyo3(signature = (uids, timestamps, latitudes, longitudes, num_groups = None))]
-pub fn jump_lengths_non_ordered_arrow<'py>(
+pub(crate) fn jump_lengths_non_ordered_from_arrow<'py>(
     py: Python<'py>,
     uids: &Bound<'py, PyAny>,
     timestamps: PyArray,
@@ -33,7 +31,7 @@ pub fn jump_lengths_non_ordered_arrow<'py>(
         .map_err(PyValueError::new_err)?;
 
     let (indices, ranges) =
-        time_ordered_indices_from_arrow_uids(py, uids, timestamps_vals, num_groups)?;
+        time_ordered_indices_from_c_array_uids(py, uids, timestamps_vals, num_groups)?;
     let (indices, ranges, values) = time_ordered_flat_values_impl(
         latitudes_vals,
         longitudes_vals,
@@ -43,6 +41,6 @@ pub fn jump_lengths_non_ordered_arrow<'py>(
         valid_rows.as_deref(),
     )
     .map_err(PyValueError::new_err)?;
-    let (indices, starts, ends) = ordered_index_ranges_into_start_end_numpy(py, (indices, ranges));
+    let (indices, starts, ends) = ordered_index_ranges_into_start_end_arrays(py, (indices, ranges));
     Ok((indices, starts, ends, f64_results_into_arrow(values)))
 }

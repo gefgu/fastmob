@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from fastmob._core import wasserstein_numpy as _wasserstein_numpy
+from fastmob._core import wasserstein as _wasserstein
 
 
 def _simsimd_jensenshannon(p: np.ndarray, q: np.ndarray) -> float:
@@ -173,4 +173,4 @@ def wasserstein_distance(values1: Any, values2: Any) -> float:
     v2 = _finite_array(values2)
     if v1.size == 0 or v2.size == 0:
         return float("nan")
-    return float(_wasserstein_numpy(np.ascontiguousarray(v1, dtype=np.float64), np.ascontiguousarray(v2, dtype=np.float64)))
+    return float(_wasserstein(np.ascontiguousarray(v1, dtype=np.float64), np.ascontiguousarray(v2, dtype=np.float64)))

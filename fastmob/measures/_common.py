@@ -286,29 +286,29 @@ def _indexed_group_indices(uids: Any, num_groups: int) -> Any:
     return indexed_user_indices(uids, num_groups)
 
 
-def _time_ordered_user_indices_numpy(
+def _time_ordered_user_indices_from_ndarray(
     uids: Any, timestamps: Any, num_groups: int | None = None
 ) -> Any:
-    from fastmob._core import time_ordered_user_indices_numpy  # noqa: PLC0415
+    from fastmob._core import time_ordered_user_indices  # noqa: PLC0415
 
     if uids is None:
-        return time_ordered_user_indices_numpy(None, timestamps)
-    return time_ordered_user_indices_numpy(uids, timestamps, num_groups)
+        return time_ordered_user_indices(None, timestamps)
+    return time_ordered_user_indices(uids, timestamps, num_groups)
 
 
-def _time_ordered_user_indices_arrow(
+def _time_ordered_user_indices_from_c_array(
     uids: Any, timestamps: Any, num_groups: int | None = None
 ) -> Any:
-    from fastmob._core import time_ordered_user_indices_arrow  # noqa: PLC0415
+    from fastmob._core import time_ordered_user_indices  # noqa: PLC0415
 
     if uids is None:
-        return time_ordered_user_indices_arrow(None, timestamps)
-    return time_ordered_user_indices_arrow(uids, timestamps, num_groups)
+        return time_ordered_user_indices(None, timestamps)
+    return time_ordered_user_indices(uids, timestamps, num_groups)
 
 
 _TIME_ORDERED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={"time_ordered_indices": _time_ordered_user_indices_arrow},
-    numpy_ops={"time_ordered_indices": _time_ordered_user_indices_numpy},
+    arrow_ops={"time_ordered_indices": _time_ordered_user_indices_from_c_array},
+    numpy_ops={"time_ordered_indices": _time_ordered_user_indices_from_ndarray},
 )
 
 

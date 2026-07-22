@@ -3,22 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+import numpy as np
 
-from fastmob._core import FilterConfig
 from fastmob._core import (
-    filter_trajectory_arrow as _filter_trajectory_arrow,
+    FilterConfig,
+    filter_trajectory_indexed,
+    filter_trajectory_sorted,
 )
-from fastmob._core import (
-    filter_trajectory_indexed_arrow as _filter_trajectory_indexed_arrow,
-)
-from fastmob._core import (
-    filter_trajectory_indexed_numpy as _filter_trajectory_indexed_numpy,
-)
-from fastmob._core import (
-    filter_trajectory_numpy as _filter_trajectory_numpy,
-)
-
-# Import the new dispatcher from wherever you saved it
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from ..measures._common import (
@@ -29,23 +20,7 @@ from ..measures._common import (
     _extract_timestamps_s,
 )
 
-# Instantiate the dispatcher for this specific module
-FILTER_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "filter_sorted": _filter_trajectory_arrow,
-        "filter_indexed": _filter_trajectory_indexed_arrow,
-        "format_mask": _arrow_result_values,
-        "apply_mask": lambda df, mask: df.filter(
-            nw.new_series("__keep__", mask, backend=df.implementation)
-        ).to_native(),
-    },
-    numpy_ops={
-        "filter_sorted": _filter_trajectory_numpy,
-        "filter_indexed": _filter_trajectory_indexed_numpy,
-        "format_mask": lambda mask: mask,  # No-op for NumPy
-        "apply_mask": lambda df, mask: df.to_native()[mask],
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def filter(
@@ -130,8 +105,7 @@ def filter(
     """
     df = nw.from_native(traj, eager_only=True)
 
-    # 1. Fetch backend context from the dispatcher
-    ops = FILTER_DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
 
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -158,8 +132,7 @@ def filter(
     # 3. Build ranges and select the appropriate core function from the dictionary
     if is_sorted:
         _, ranges = _build_user_ranges(df, uid_col)
-        filter_func = ops["filter_sorted"]
-        args = (lats_data, lngs_data, times_data, ranges, config)
+        raw_mask = filter_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
     else:
         _, sorted_indices, ends = _build_time_ordered_user_ranges(
             df,
@@ -167,15 +140,14 @@ def filter(
             datetime_col=datetime_col,
             timestamps_data=times_data,
         )
-        filter_func = ops["filter_indexed"]
-        args = (lats_data, lngs_data, times_data, sorted_indices, ends, config)
+        raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    # 4. Execute the math and format the resulting mask dynamically
-    raw_mask = filter_func(*args)
-    keep_mask = ops["format_mask"](raw_mask)
+    keep_mask = _arrow_result_values(raw_mask)
 
-    # 5. Apply the mask using the backend-specific method
-    result = ops["apply_mask"](df, keep_mask)
+    if hasattr(keep_mask, "__arrow_c_array__"):
+        result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
+    else:
+        result = df.to_native()[np.asarray(keep_mask, dtype=bool)]
 
     return result
 

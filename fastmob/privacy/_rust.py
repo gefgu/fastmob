@@ -6,10 +6,8 @@ import narwhals as nw
 import numpy as np
 
 from fastmob._core import (
-    privacy_assess_risk_indexed_arrow,
-    privacy_assess_risk_indexed_numpy,
-    privacy_assess_risk_presorted_arrow,
-    privacy_assess_risk_presorted_numpy,
+    privacy_assess_risk_indexed,
+    privacy_assess_risk_presorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.measures._common import (
@@ -33,16 +31,7 @@ HOME_WORK = 7
 
 _NO_ROW = np.iinfo(np.uintp).max
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "indexed": privacy_assess_risk_indexed_arrow,
-        "presorted": privacy_assess_risk_presorted_arrow,
-    },
-    numpy_ops={
-        "indexed": privacy_assess_risk_indexed_numpy,
-        "presorted": privacy_assess_risk_presorted_numpy,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _target_user_indices(df: nw.DataFrame, uid_values: list[Any] | None, targets: Any) -> np.ndarray:
@@ -141,7 +130,7 @@ def assess_risk_rust(
     if df.schema[LATITUDE] != nw.Float64 or df.schema[LONGITUDE] != nw.Float64:
         df = df.with_columns(nw.col(LATITUDE).cast(nw.Float64), nw.col(LONGITUDE).cast(nw.Float64))
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats = ops["extract_data"](df.get_column(LATITUDE))
     lngs = ops["extract_data"](df.get_column(LONGITUDE))
     time_keys = _time_keys(df, time_precision)
@@ -149,7 +138,7 @@ def assess_risk_rust(
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, UID)
         target_indices = _target_user_indices(df, uid_values, targets)
-        result = ops["presorted"](
+        result = privacy_assess_risk_presorted(
             lats,
             lngs,
             time_keys,
@@ -172,7 +161,7 @@ def assess_risk_rust(
         else:
             uid_values, indices, ends = _build_indexed_user_ranges_fast(df, UID)
         target_indices = _target_user_indices(df, uid_values, targets)
-        result = ops["indexed"](
+        result = privacy_assess_risk_indexed(
             lats,
             lngs,
             time_keys,

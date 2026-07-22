@@ -17,7 +17,7 @@ type OrderedStartEndNumpyResult<'py> = (
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
 );
-pub fn ordered_index_ranges_into_numpy<'py>(
+pub fn ordered_index_ranges_into_arrays<'py>(
     py: Python<'py>,
     ordered: OrderedIndexRanges,
 ) -> OrderedNumpyResult<'py> {
@@ -25,7 +25,7 @@ pub fn ordered_index_ranges_into_numpy<'py>(
     (indices.into_pyarray(py), ends.into_pyarray(py))
 }
 
-pub fn ordered_index_ranges_into_start_end_numpy<'py>(
+pub fn ordered_index_ranges_into_start_end_arrays<'py>(
     py: Python<'py>,
     (indices, ranges): OrderedIndexRanges,
 ) -> OrderedStartEndNumpyResult<'py> {
@@ -37,7 +37,7 @@ pub fn ordered_index_ranges_into_start_end_numpy<'py>(
     )
 }
 
-pub fn time_ordered_indices_from_numpy_uids(
+pub fn time_ordered_indices_from_ndarray_uids(
     py: Python<'_>,
     uids: &Bound<'_, PyAny>,
     timestamps: &[f64],
@@ -62,7 +62,7 @@ pub fn time_ordered_indices_from_numpy_uids(
     ))
 }
 
-pub fn time_ordered_indices_from_arrow_uids(
+pub fn time_ordered_indices_from_c_array_uids(
     py: Python<'_>,
     uids: &Bound<'_, PyAny>,
     timestamps: &[f64],
@@ -98,30 +98,36 @@ pub fn time_ordered_indices_from_arrow_uids(
     ))
 }
 
-#[pyfunction]
-#[pyo3(signature = (uids, timestamps, num_groups = None))]
-pub fn time_ordered_user_indices_numpy<'py>(
-    py: Python<'py>,
-    uids: &Bound<'py, PyAny>,
-    timestamps: PyReadonlyArray1<'py, f64>,
-    num_groups: Option<usize>,
-) -> PyResult<OrderedNumpyResult<'py>> {
-    let ordered_indices =
-        time_ordered_indices_from_numpy_uids(py, uids, timestamps.as_slice()?, num_groups)?;
-    Ok(ordered_index_ranges_into_numpy(py, ordered_indices))
+fn is_arrow_array(obj: &Bound<'_, PyAny>) -> PyResult<bool> {
+    obj.hasattr("__arrow_c_array__")
 }
 
 #[pyfunction]
 #[pyo3(signature = (uids, timestamps, num_groups = None))]
-pub fn time_ordered_user_indices_arrow<'py>(
+pub fn time_ordered_user_indices<'py>(
     py: Python<'py>,
     uids: &Bound<'py, PyAny>,
-    timestamps: PyArray,
+    timestamps: &Bound<'py, PyAny>,
     num_groups: Option<usize>,
 ) -> PyResult<OrderedNumpyResult<'py>> {
-    let timestamps = as_nullable_f64_array(timestamps, "timestamps")?;
-    let timestamp_values = arrow_values(&timestamps);
-    let time_ordered_indices =
-        time_ordered_indices_from_arrow_uids(py, uids, timestamp_values, num_groups)?;
-    Ok(ordered_index_ranges_into_numpy(py, time_ordered_indices))
+    if let Ok(timestamps) = timestamps.extract::<PyReadonlyArray1<f64>>() {
+        let ordered_indices =
+            time_ordered_indices_from_ndarray_uids(py, uids, timestamps.as_slice()?, num_groups)?;
+        return Ok(ordered_index_ranges_into_arrays(py, ordered_indices));
+    }
+
+    if is_arrow_array(timestamps)? {
+        let timestamps = as_nullable_f64_array(timestamps.extract::<PyArray>()?, "timestamps")?;
+        let ordered_indices = time_ordered_indices_from_c_array_uids(
+            py,
+            uids,
+            arrow_values(&timestamps),
+            num_groups,
+        )?;
+        return Ok(ordered_index_ranges_into_arrays(py, ordered_indices));
+    }
+
+    Err(PyValueError::new_err(
+        "timestamps must be a NumPy array or an Arrow array",
+    ))
 }

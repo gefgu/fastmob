@@ -29,6 +29,12 @@ type PyJumpLengths<'py> = (
     Bound<'py, PyArray1<usize>>,
     Py<PyAny>,
 );
+type PyNonOrderedJumpLengthsLogical<'py> = (
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<usize>>,
+    Py<PyAny>,
+);
 
 #[pyfunction]
 pub fn jump_lengths_km(latitudes: Vec<f64>, longitudes: Vec<f64>) -> PyResult<Vec<f64>> {
@@ -138,5 +144,45 @@ pub fn jump_lengths_indexed<'py>(
 
     Err(PyTypeError::new_err(
         "latitudes and longitudes must both be NumPy arrays or both be Arrow arrays",
+    ))
+}
+
+#[pyfunction]
+#[pyo3(signature = (uids, timestamps, latitudes, longitudes, num_groups = None))]
+pub fn jump_lengths_non_ordered<'py>(
+    py: Python<'py>,
+    uids: &Bound<'py, PyAny>,
+    timestamps: &Bound<'py, PyAny>,
+    latitudes: &Bound<'py, PyAny>,
+    longitudes: &Bound<'py, PyAny>,
+    num_groups: Option<usize>,
+) -> PyResult<PyNonOrderedJumpLengthsLogical<'py>> {
+    if let (Ok(timestamps), Ok(latitudes), Ok(longitudes)) = (
+        timestamps.extract::<PyReadonlyArray1<f64>>(),
+        latitudes.extract::<PyReadonlyArray1<f64>>(),
+        longitudes.extract::<PyReadonlyArray1<f64>>(),
+    ) {
+        let (indices, starts, ends, values) =
+            super::jump_lengths_numpy::jump_lengths_non_ordered_from_numpy(
+                py, uids, timestamps, latitudes, longitudes, num_groups,
+            )?;
+        return Ok((indices, starts, ends, values.into_any().unbind()));
+    }
+
+    if is_arrow_array(timestamps)? && is_arrow_array(latitudes)? && is_arrow_array(longitudes)? {
+        let (indices, starts, ends, values) =
+            super::jump_lengths_arrow::jump_lengths_non_ordered_from_arrow(
+                py,
+                uids,
+                timestamps.extract::<PyArray>()?,
+                latitudes.extract::<PyArray>()?,
+                longitudes.extract::<PyArray>()?,
+                num_groups,
+            )?;
+        return Ok((indices, starts, ends, Py::new(py, values)?.into_any()));
+    }
+
+    Err(PyTypeError::new_err(
+        "timestamps, latitudes, and longitudes must all be NumPy arrays or all be Arrow arrays",
     ))
 }

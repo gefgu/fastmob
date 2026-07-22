@@ -373,10 +373,10 @@ def test_measures_import():
 # ---------------------------------------------------------------------------
 
 
-def test_stvd_emd_numpy_helper():
-    """stvd_emd_numpy in _core must accept numpy arrays and return the same result."""
+def test_stvd_emd_helper_accepts_numpy():
+    """stvd_emd in _core must accept numpy arrays and return the same result."""
     _skip_if_no_core()
-    from fastmob._core import stvd_emd_numpy
+    from fastmob._core import stvd_emd as stvd_emd_core
     from fastmob.measures.evaluation import stvd_emd
 
     df = _dist_df("POINT (0 0)", "12:00", 1.0)
@@ -387,7 +387,7 @@ def test_stvd_emd_numpy_helper():
     ts = np.array([720.0], dtype=np.float64)
     ws = np.array([1.0], dtype=np.float64)
 
-    result = stvd_emd_numpy(xs, ys, ts, ws, xs, ys, ts, ws, 10.0, 1440.0, 50)
+    result = stvd_emd_core(xs, ys, ts, ws, xs, ys, ts, ws, 10.0, 1440.0, 50)
     assert isinstance(result, float)
     assert result == pytest.approx(expected, abs=1e-10)
 
@@ -397,39 +397,39 @@ def test_stvd_emd_numpy_helper():
 # ---------------------------------------------------------------------------
 
 
-def test_stvd_emd_arrow_helper():
-    """stvd_emd_arrow in _core must accept PyArrow float64 arrays."""
+def test_stvd_emd_helper_accepts_arrow():
+    """stvd_emd in _core must accept PyArrow float64 arrays."""
     _skip_if_no_core()
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import stvd_emd_arrow, stvd_emd_numpy
+    from fastmob._core import stvd_emd as stvd_emd_core
 
     xs = pa.array([0.0], type=pa.float64())
     ys = pa.array([0.0], type=pa.float64())
     ts = pa.array([720.0], type=pa.float64())
     ws = pa.array([1.0], type=pa.float64())
 
-    result_arrow = stvd_emd_arrow(xs, ys, ts, ws, xs, ys, ts, ws, 10.0, 1440.0, 50)
+    result_arrow = stvd_emd_core(xs, ys, ts, ws, xs, ys, ts, ws, 10.0, 1440.0, 50)
     assert isinstance(result_arrow, float)
 
     xs_np = np.array([0.0], dtype=np.float64)
     ys_np = np.array([0.0], dtype=np.float64)
     ts_np = np.array([720.0], dtype=np.float64)
     ws_np = np.array([1.0], dtype=np.float64)
-    result_numpy = stvd_emd_numpy(xs_np, ys_np, ts_np, ws_np, xs_np, ys_np, ts_np, ws_np, 10.0, 1440.0, 50)
+    result_numpy = stvd_emd_core(xs_np, ys_np, ts_np, ws_np, xs_np, ys_np, ts_np, ws_np, 10.0, 1440.0, 50)
 
     assert result_arrow == pytest.approx(result_numpy, abs=1e-10)
 
 
-def test_stvd_emd_numpy_non_contiguous_raises():
+def test_stvd_emd_helper_non_contiguous_numpy_raises():
     """Non-contiguous numpy arrays must raise ValueError."""
     _skip_if_no_core()
-    from fastmob._core import stvd_emd_numpy
+    from fastmob._core import stvd_emd as stvd_emd_core
 
     arr = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
     non_contig = arr[::2]
 
     with pytest.raises((ValueError, BufferError, TypeError)):
-        stvd_emd_numpy(
+        stvd_emd_core(
             non_contig,
             non_contig,
             non_contig,
