@@ -1,10 +1,10 @@
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
 use fastmob_core::models::epr::{
     model_truncated_power_law_samples as core_model_truncated_power_law_samples,
     simulate_epr_agents_from_cached_od_impl,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 
 #[pyfunction]
 pub fn model_truncated_power_law_samples(

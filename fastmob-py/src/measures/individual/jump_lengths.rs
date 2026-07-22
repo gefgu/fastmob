@@ -1,8 +1,8 @@
+use fastmob_core::measures::individual::jump_lengths::jump_lengths_km as core_jump_lengths_km;
 use numpy::PyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::individual::jump_lengths::jump_lengths_km as core_jump_lengths_km;
 
 pub type PyPresortedJumpLengths<'py> = (
     Bound<'py, PyArray1<usize>>,

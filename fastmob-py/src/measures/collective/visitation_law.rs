@@ -1,8 +1,8 @@
+use fastmob_core::measures::collective::visitation_law::visitation_distances_km as core_visitation_distances_km;
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::collective::visitation_law::visitation_distances_km as core_visitation_distances_km;
 
 use crate::utils::{arrow_values, as_f64_array};
 

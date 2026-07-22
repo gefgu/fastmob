@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt64Array, types::Float64Type,
+    types::Float64Type, Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt64Array,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

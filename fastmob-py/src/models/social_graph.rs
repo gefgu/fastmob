@@ -1,6 +1,6 @@
+use fastmob_core::models::social_graph::{edges_to_csr, random_geometric_graph};
 use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
-use fastmob_core::models::social_graph::{edges_to_csr, random_geometric_graph};
 
 #[pyfunction]
 pub fn model_social_graph_edges_to_csr(

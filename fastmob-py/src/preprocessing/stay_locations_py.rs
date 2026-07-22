@@ -1,9 +1,9 @@
-use numpy::{PyArray1, PyReadonlyArray1};
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray as ArrowPyArray;
 use fastmob_core::preprocessing::stay_locations::{
     detect_stay_locations_batch_impl, detect_stay_locations_batch_indexed_impl,
 };
+use numpy::{PyArray1, PyReadonlyArray1};
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,

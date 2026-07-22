@@ -1,10 +1,10 @@
+use fastmob_core::measures::individual::recency_rank::{
+    recency_rank_indexed_impl, recency_rank_indexed_values_impl, recency_rank_presorted_impl,
+};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::individual::recency_rank::{
-    recency_rank_indexed_impl, recency_rank_indexed_values_impl, recency_rank_presorted_impl,
-};
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_nullable_f64_array, f64_results_into_arrow,

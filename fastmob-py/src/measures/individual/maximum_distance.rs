@@ -1,10 +1,10 @@
+use fastmob_core::measures::individual::maximum_distance::{
+    maximum_distance_impl, maximum_distance_indexed_impl, maximum_distance_ranges_impl,
+};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::individual::maximum_distance::{
-    maximum_distance_impl, maximum_distance_indexed_impl, maximum_distance_ranges_impl,
-};
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,

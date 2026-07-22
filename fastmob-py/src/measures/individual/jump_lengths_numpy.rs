@@ -1,10 +1,10 @@
-use numpy::{IntoPyArray, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
 use fastmob_core::measures::individual::jump_lengths::{
     jump_lengths_indexed_impl, jump_lengths_presorted_impl, time_ordered_flat_values_impl,
     validate_time_ordered_inputs,
 };
+use numpy::{IntoPyArray, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 
 use super::jump_lengths::{PyNonOrderedJumpLengths, PyPresortedJumpLengths};
 use super::time_ordering::{

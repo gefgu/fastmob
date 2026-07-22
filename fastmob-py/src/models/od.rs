@@ -1,7 +1,7 @@
+use fastmob_core::models::od::{gravity_matrix_impl, gravity_od_row_impl};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use fastmob_core::models::od::{gravity_matrix_impl, gravity_od_row_impl};
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]

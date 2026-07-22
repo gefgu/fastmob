@@ -1,11 +1,11 @@
-use numpy::{IntoPyArray, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 use fastmob_core::measures::individual::jump_lengths::{
     jump_lengths_indexed_impl, jump_lengths_presorted_impl, time_ordered_flat_values_impl,
     validate_time_ordered_inputs,
 };
+use numpy::{IntoPyArray, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray;
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,

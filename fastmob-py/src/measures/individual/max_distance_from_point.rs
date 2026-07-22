@@ -1,11 +1,11 @@
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 use fastmob_core::measures::individual::max_distance_from_point::{
     max_distance_from_point_from_ends_impl, max_distance_from_point_impl,
     max_distance_from_point_indexed_impl,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray;
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,

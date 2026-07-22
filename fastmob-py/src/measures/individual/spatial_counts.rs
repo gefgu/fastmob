@@ -1,11 +1,11 @@
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 use fastmob_core::measures::individual::spatial_counts::{
     number_of_locations_from_ends_impl, number_of_locations_indexed_impl,
     number_of_visits_from_ends_impl, number_of_visits_indexed_impl,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray;
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, u64_results_into_arrow,

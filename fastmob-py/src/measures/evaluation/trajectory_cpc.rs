@@ -1,8 +1,8 @@
+use fastmob_core::measures::evaluation::trajectory_cpc::trajectory_common_part_of_commuters_impl;
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::evaluation::trajectory_cpc::trajectory_common_part_of_commuters_impl;
 
 use crate::utils::{arrow_values, as_f64_array};
 

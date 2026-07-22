@@ -1,8 +1,4 @@
 use arrow_array::Array;
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 use fastmob_core::measures::individual::location_frequency::{
     frequency_rank_indexed_impl, frequency_rank_indexed_with_row_validity_impl,
     frequency_rank_presorted_impl, frequency_rank_presorted_with_row_validity_impl,
@@ -11,6 +7,10 @@ use fastmob_core::measures::individual::location_frequency::{
     location_frequency_indexed_with_row_validity_impl, location_frequency_presorted_values_impl,
     location_frequency_presorted_values_with_row_validity_impl,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray;
 
 use crate::utils::{
     arrow_values, as_nullable_f64_array, f64_results_into_arrow, u64_results_into_arrow,

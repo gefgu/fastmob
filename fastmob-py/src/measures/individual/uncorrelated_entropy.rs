@@ -1,8 +1,8 @@
+use fastmob_core::measures::individual::uncorrelated_entropy::uncorrelated_entropy_indexed_impl;
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::individual::uncorrelated_entropy::uncorrelated_entropy_indexed_impl;
 
 use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array, f64_results_into_arrow};
 

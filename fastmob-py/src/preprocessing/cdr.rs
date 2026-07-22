@@ -1,8 +1,8 @@
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
 use fastmob_core::preprocessing::cdr::{
     cdr_approx_travel_minutes_impl, cdr_trip_indices_impl, cdr_visitation_stays_impl,
 };
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 
 type VisitationBatchResult = (Vec<usize>, Vec<usize>, Vec<f64>, Vec<bool>);
 type TripBatchResult = (Vec<usize>, Vec<usize>);

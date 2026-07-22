@@ -1,14 +1,14 @@
 use arrow_array::{Array, UInt64Array};
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray as ArrowPyArray;
 use fastmob_core::measures::individual::radius_of_gyration::{
     UserIndexRanges, radius_of_gyration_batch_impl, radius_of_gyration_from_ends_impl,
     radius_of_gyration_from_ends_with_counts_impl, radius_of_gyration_indexed_impl,
     radius_of_gyration_indexed_with_valid_rows_impl, split_user_index_ranges,
     user_indices_for_u64_codes,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
