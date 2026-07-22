@@ -4,12 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    maximum_distance_arrow,
-    maximum_distance_indexed_arrow,
-    maximum_distance_indexed_numpy,
-    maximum_distance_numpy,
-)
+from fastmob._core import maximum_distance_indexed, maximum_distance_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -21,18 +16,7 @@ from .._common import (
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "indexed": maximum_distance_indexed_arrow,
-        "presorted": maximum_distance_arrow,
-        "result_values": _arrow_result_values,
-    },
-    numpy_ops={
-        "indexed": maximum_distance_indexed_numpy,
-        "presorted": maximum_distance_numpy,
-        "result_values": lambda v: v,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def maximum_distance(
@@ -141,14 +125,14 @@ def maximum_distance(
             nw.col(lng_col).cast(nw.Float64),
         )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        max_distances = ops["result_values"](
-            ops["presorted"](lats_data, lngs_data, ends)
+        max_distances = _arrow_result_values(
+            maximum_distance_presorted(lats_data, lngs_data, ends)
         )
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
@@ -156,8 +140,8 @@ def maximum_distance(
         uid_values, indices, ends = _build_time_ordered_user_ranges(
             df, uid_col, datetime_col, timestamps_data
         )
-        max_distances = ops["result_values"](
-            ops["indexed"](lats_data, lngs_data, indices, ends)
+        max_distances = _arrow_result_values(
+            maximum_distance_indexed(lats_data, lngs_data, indices, ends)
         )
 
     if uid_col is None:

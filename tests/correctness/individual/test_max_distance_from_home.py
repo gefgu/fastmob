@@ -110,7 +110,7 @@ def test_max_distance_from_point_indexed_arrow_null_coordinates_are_ignored():
     """Arrow helper accepts nullable coordinate arrays and skips invalid rows."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import max_distance_from_point_indexed_arrow
+    from fastmob._core import max_distance_from_point_indexed
 
     home_lats = pa.array([0.0], type=pa.float64())
     home_lngs = pa.array([0.0], type=pa.float64())
@@ -119,7 +119,7 @@ def test_max_distance_from_point_indexed_arrow_null_coordinates_are_ignored():
     indices = np.array([0, 1, 2], dtype=np.uintp)
     ends = np.array([3], dtype=np.uintp)
 
-    result = max_distance_from_point_indexed_arrow(home_lats, home_lngs, lats, lngs, indices, ends)
+    result = max_distance_from_point_indexed(home_lats, home_lngs, lats, lngs, indices, ends)
 
     np.testing.assert_allclose(np.asarray(result), [222.3901604670658], rtol=0.0, atol=1e-6)
 

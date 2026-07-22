@@ -5,14 +5,10 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import (
-    waiting_times_arrow,
-    waiting_times_flat_arrow,
-    waiting_times_flat_numpy,
-    waiting_times_indexed_arrow,
-    waiting_times_indexed_flat_arrow,
-    waiting_times_indexed_flat_numpy,
-    waiting_times_indexed_numpy,
-    waiting_times_numpy,
+    waiting_times_indexed,
+    waiting_times_indexed_flat,
+    waiting_times_presorted,
+    waiting_times_presorted_flat,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -27,24 +23,7 @@ from .._common import (
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "indexed": waiting_times_indexed_arrow,
-        "indexed_flat": waiting_times_indexed_flat_arrow,
-        "presorted": waiting_times_arrow,
-        "presorted_flat": waiting_times_flat_arrow,
-        "flat_values": _arrow_flat_result_values,
-        "group": _grouped_arrow_values,
-    },
-    numpy_ops={
-        "indexed": waiting_times_indexed_numpy,
-        "indexed_flat": waiting_times_indexed_flat_numpy,
-        "presorted": waiting_times_numpy,
-        "presorted_flat": waiting_times_flat_numpy,
-        "flat_values": lambda v: v,
-        "group": _grouped_numpy_values,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def waiting_times(
@@ -152,18 +131,18 @@ def waiting_times(
         uid_col=uid_col,
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps_s)
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         if merge:
-            return ops["flat_values"](ops["presorted_flat"](timestamps_data, ends))
-        value_starts, value_ends, flat_values = ops["presorted"](timestamps_data, ends)
-        flat_values = ops["flat_values"](flat_values)
-        wt_values = ops["group"](
+            return _arrow_flat_result_values(waiting_times_presorted_flat(timestamps_data, ends))
+        value_starts, value_ends, flat_values = waiting_times_presorted(timestamps_data, ends)
+        flat_values = _arrow_flat_result_values(flat_values)
+        wt_values = _grouped_arrow_values(
             value_starts, value_ends, flat_values, value_offsets=True
-        )
+        ) if hasattr(flat_values, "__arrow_c_array__") else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
         if uid_col is None:
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
@@ -172,11 +151,11 @@ def waiting_times(
         df, uid_col, datetime_col, timestamps_data
     )
     if merge:
-        return ops["flat_values"](ops["indexed_flat"](timestamps_data, indices, ends))
+        return _arrow_flat_result_values(waiting_times_indexed_flat(timestamps_data, indices, ends))
 
-    value_starts, value_ends, flat_values = ops["indexed"](timestamps_data, indices, ends)
-    flat_values = ops["flat_values"](flat_values)
-    wt_values = ops["group"](value_starts, value_ends, flat_values, value_offsets=True)
+    value_starts, value_ends, flat_values = waiting_times_indexed(timestamps_data, indices, ends)
+    flat_values = _arrow_flat_result_values(flat_values)
+    wt_values = _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True) if hasattr(flat_values, "__arrow_c_array__") else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
     if uid_col is None:
         return _to_native({"waiting_times": wt_values}, df)
     return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)

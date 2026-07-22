@@ -1,11 +1,11 @@
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
 use fastmob_core::models::markov_diary::{
     markov_diary_batch_generate_impl, markov_diary_build_cdf_impl,
     markov_diary_fit_from_arrays_impl, markov_diary_generate_impl, markov_diary_normalize_impl,
     markov_diary_update_chain_impl,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 
 const SECONDS_PER_DAY: i64 = 86_400;
 

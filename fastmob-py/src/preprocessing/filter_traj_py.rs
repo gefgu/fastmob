@@ -1,9 +1,9 @@
-use numpy::{PyArray1, PyReadonlyArray1};
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray as ArrowPyArray;
 use fastmob_core::preprocessing::filter_traj::{
     FilterConfig as CoreFilterConfig, filter_trajectory_impl, filter_trajectory_indexed_impl,
 };
+use numpy::{PyArray1, PyReadonlyArray1};
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
     arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, bool_results_into_arrow,

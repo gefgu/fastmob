@@ -206,26 +206,26 @@ def test_frequency_rank_presorted_polars_known_values():
 
 def test_frequency_rank_presorted_core_validation_errors():
     """The native presorted helper validates monotonic end offsets."""
-    from fastmob._core import frequency_rank_presorted_numpy
+    from fastmob._core import frequency_rank_presorted
 
     arr = np.array([1.0, 2.0], dtype=np.float64)
     bad_ends = np.array([2, 1], dtype=np.uintp)
     with pytest.raises(ValueError, match="monotonically"):
-        frequency_rank_presorted_numpy(arr, arr, bad_ends)
+        frequency_rank_presorted(arr, arr, bad_ends)
 
 
 def test_frequency_rank_indexed_arrow_nulls_are_filtered():
     """Arrow frequency ranks skip null coordinates consistently with loc frequency."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import frequency_rank_indexed_arrow
+    from fastmob._core import frequency_rank_indexed
 
     lats = pa.array([1.0, None, 1.0, 2.0, 2.0], type=pa.float64())
     lngs = pa.array([0.0, 0.0, None, 0.0, 0.0], type=pa.float64())
     indices = np.array([0, 1, 2, 3, 4], dtype=np.uintp)
     ends = np.array([5], dtype=np.uintp)
 
-    out_lats, out_lngs, ranks, _ = frequency_rank_indexed_arrow(lats, lngs, indices, ends)
+    out_lats, out_lngs, ranks, _ = frequency_rank_indexed(lats, lngs, indices, ends)
 
     rows = dict(zip(zip(_arrow_list(out_lats), _arrow_list(out_lngs)), _arrow_list(ranks)))
     assert rows == {(2.0, 0.0): 1, (1.0, 0.0): 2}

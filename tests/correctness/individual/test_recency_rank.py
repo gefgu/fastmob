@@ -201,12 +201,12 @@ def test_recency_rank_presorted_polars_known_values():
 
 def test_recency_rank_presorted_core_validation_errors():
     """The native presorted helper validates monotonic end offsets."""
-    from fastmob._core import recency_rank_presorted_numpy
+    from fastmob._core import recency_rank_presorted
 
     arr = np.array([1.0, 2.0], dtype=np.float64)
     bad_ends = np.array([2, 1], dtype=np.uintp)
     with pytest.raises(ValueError, match="monotonically"):
-        recency_rank_presorted_numpy(arr, arr, bad_ends)
+        recency_rank_presorted(arr, arr, bad_ends)
 
 
 @pytest.mark.skmob

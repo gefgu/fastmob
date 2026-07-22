@@ -27,6 +27,12 @@ def _to_edge_dict(df) -> dict:
     return result
 
 
+def _array_list(values) -> list:
+    if hasattr(values, "to_pylist"):
+        return values.to_pylist()
+    return values.tolist()
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -265,39 +271,39 @@ def test_imn_presorted_self_loop_behavior():
     assert with_loops["a"][(1.0, 0.0, 1.0, 0.0)] == 1
 
 
-def test_imn_indexed_numpy_helper_smoke():
+def test_imn_indexed_helper_smoke():
     """The native indexed helper counts transitions from row-index ranges."""
-    from fastmob._core import individual_mobility_network_indexed_numpy
+    from fastmob._core import individual_mobility_network_indexed
 
     lats = np.array([1.0, 2.0, 1.0, 3.0], dtype=np.float64)
     lngs = np.zeros(4, dtype=np.float64)
     indices = np.array([0, 1, 2, 3], dtype=np.uintp)
     ends = np.array([3, 4], dtype=np.uintp)
 
-    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_indexed_numpy(
+    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_indexed(
         lats, lngs, indices, ends, False
     )
 
-    assert list(zip(lat_o.tolist(), lng_o.tolist(), lat_d.tolist(), lng_d.tolist(), n_trips.tolist())) == [
+    assert list(zip(_array_list(lat_o), _array_list(lng_o), _array_list(lat_d), _array_list(lng_d), _array_list(n_trips))) == [
         (1.0, 0.0, 2.0, 0.0, 1),
         (2.0, 0.0, 1.0, 0.0, 1),
     ]
     assert user_indices.tolist() == [0, 0]
 
 
-def test_imn_presorted_numpy_helper_smoke():
+def test_imn_presorted_helper_smoke():
     """The native presorted helper counts contiguous grouped transitions."""
-    from fastmob._core import individual_mobility_network_presorted_numpy
+    from fastmob._core import individual_mobility_network_presorted
 
     lats = np.array([1.0, 2.0, 1.0, 3.0], dtype=np.float64)
     lngs = np.zeros(4, dtype=np.float64)
     ends = np.array([3, 4], dtype=np.uintp)
 
-    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_presorted_numpy(
+    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_presorted(
         lats, lngs, ends, False
     )
 
-    assert list(zip(lat_o.tolist(), lng_o.tolist(), lat_d.tolist(), lng_d.tolist(), n_trips.tolist())) == [
+    assert list(zip(_array_list(lat_o), _array_list(lng_o), _array_list(lat_d), _array_list(lng_d), _array_list(n_trips))) == [
         (1.0, 0.0, 2.0, 0.0, 1),
         (2.0, 0.0, 1.0, 0.0, 1),
     ]
@@ -307,15 +313,15 @@ def test_imn_presorted_numpy_helper_smoke():
 def test_imn_native_helper_validation_errors():
     """Native helpers validate index and range boundaries."""
     from fastmob._core import (
-        individual_mobility_network_indexed_numpy,
-        individual_mobility_network_presorted_numpy,
+        individual_mobility_network_indexed,
+        individual_mobility_network_presorted,
     )
 
     arr = np.array([1.0, 2.0], dtype=np.float64)
     with pytest.raises(ValueError, match="monotonically"):
-        individual_mobility_network_presorted_numpy(arr, arr, np.array([2, 1], dtype=np.uintp), False)
+        individual_mobility_network_presorted(arr, arr, np.array([2, 1], dtype=np.uintp), False)
     with pytest.raises(ValueError, match="index must be within"):
-        individual_mobility_network_indexed_numpy(
+        individual_mobility_network_indexed(
             arr,
             arr,
             np.array([0, 2], dtype=np.uintp),

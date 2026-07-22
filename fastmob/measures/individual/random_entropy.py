@@ -5,10 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    number_of_locations_indexed_arrow,
-    number_of_locations_indexed_numpy,
-)
+from fastmob._core import number_of_locations_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
@@ -17,16 +14,7 @@ from .._common import (
     _detect_trajectory_columns,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "number_of_locations_indexed": number_of_locations_indexed_arrow,
-        "format_counts": lambda values: _arrow_result_values(values).to_pylist(),
-    },
-    numpy_ops={
-        "number_of_locations_indexed": number_of_locations_indexed_numpy,
-        "format_counts": lambda values: values.tolist(),
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def random_entropy(
@@ -124,17 +112,16 @@ def random_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    n_locs_raw = ops["number_of_locations_indexed"](
+    n_locs = _arrow_result_values(number_of_locations_indexed(
         ops["extract_data"](df.get_column(lat_col)),
         ops["extract_data"](df.get_column(lng_col)),
         indices,
         ends,
-    )
-    n_locs = ops["format_counts"](n_locs_raw)
+    ))
 
     result_dict: dict[str, Any] = {"__n_locations__": n_locs}
     if uid_col is not None:

@@ -1,13 +1,13 @@
 use arrow_array::{Array, UInt64Array};
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 use fastmob_core::measures::individual::time_ordering::{
     OrderedIndexRanges, split_ordered_index_ranges, time_ordered_indices_for_u64_codes,
     time_ordered_indices_single_user,
 };
 use fastmob_core::utils::{split_ranges, validate_uid_len};
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray;
 
 use crate::utils::{arrow_values, as_nullable_f64_array};
 

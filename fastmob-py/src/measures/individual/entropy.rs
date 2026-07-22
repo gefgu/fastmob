@@ -1,13 +1,13 @@
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
 use fastmob_core::measures::individual::entropy::{
     real_entropy_batch as core_real_entropy_batch,
     real_entropy_indexed_impl as core_real_entropy_indexed_impl,
     trajectory_entropy_batch as core_trajectory_entropy_batch,
     trajectory_predictability_batch as core_trajectory_predictability_batch,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3_arrow::PyArray;
 
 use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array, f64_results_into_arrow};
 

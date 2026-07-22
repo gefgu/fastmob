@@ -1,11 +1,11 @@
 use arrow_array::{Array, BooleanArray, Int64Array, UInt64Array};
+use fastmob_core::measures::individual::activity::{
+    activity_counts, activity_transition_counts, daily_activity_percentages,
+};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::individual::activity::{
-    activity_counts, activity_transition_counts, daily_activity_percentages,
-};
 
 use crate::utils::{f64_results_into_arrow, u64_results_into_arrow};
 

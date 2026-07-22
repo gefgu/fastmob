@@ -254,7 +254,23 @@ def _result_scalar(values: Any) -> float:
 
 def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
     """Build a backend-matching result dataframe from a column dict."""
-    return nw.from_dict(values_dict, backend=df.implementation).to_native()
+    columns = {}
+    for name, values in values_dict.items():
+        try:
+            is_list_array = str(values.type).startswith("list<")
+        except Exception:
+            is_list_array = False
+        if (
+            hasattr(values, "__arrow_c_array__")
+            and hasattr(values, "to_numpy")
+            and not is_list_array
+        ):
+            try:
+                values = values.to_numpy(zero_copy_only=False)
+            except TypeError:
+                values = values.to_numpy()
+        columns[name] = values
+    return nw.from_dict(columns, backend=df.implementation).to_native()
 
 
 def _take_uid_values(uid_values: list | None, user_indices: Any) -> Any:

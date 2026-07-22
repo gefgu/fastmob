@@ -1,7 +1,7 @@
+use fastmob_core::models::radiation::model_radiation_probabilities_impl;
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use fastmob_core::models::radiation::model_radiation_probabilities_impl;
 
 #[pyfunction]
 pub fn model_radiation_probabilities(

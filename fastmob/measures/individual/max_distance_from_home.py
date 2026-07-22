@@ -5,14 +5,10 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import (
-    home_location_arrow,
-    home_location_indexed_arrow,
-    home_location_indexed_numpy,
-    home_location_numpy,
-    max_distance_from_point_arrow,
-    max_distance_from_point_indexed_arrow,
-    max_distance_from_point_indexed_numpy,
-    max_distance_from_point_numpy,
+    home_location_indexed,
+    home_location_presorted,
+    max_distance_from_point_indexed,
+    max_distance_from_point_presorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -25,22 +21,7 @@ from .._common import (
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "home": home_location_arrow,
-        "home_indexed": home_location_indexed_arrow,
-        "max_dist": max_distance_from_point_arrow,
-        "max_dist_indexed": max_distance_from_point_indexed_arrow,
-        "format_values": _arrow_result_values,
-    },
-    numpy_ops={
-        "home": home_location_numpy,
-        "home_indexed": home_location_indexed_numpy,
-        "max_dist": max_distance_from_point_numpy,
-        "max_dist_indexed": max_distance_from_point_indexed_numpy,
-        "format_values": lambda values: values,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def max_distance_from_home(
@@ -157,22 +138,22 @@ def max_distance_from_home(
     df, hours = _extract_hours(df, datetime_col)
     lats = df.get_column(lat_col)
     lngs = df.get_column(lng_col)
-    ops = _DISPATCHER.get_ops(df)
+    ops = _EXTRACTOR.get_ops(df)
     lats_data = ops["extract_data"](lats)
     lngs_data = ops["extract_data"](lngs)
     hours_data = ops["extract_data"](hours)
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        home_lats, home_lngs = ops["home"](lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night))
-        max_distances = ops["format_values"](ops["max_dist"](home_lats, home_lngs, lats_data, lngs_data, ends))
+        home_lats, home_lngs = home_location_presorted(lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night))
+        max_distances = _arrow_result_values(max_distance_from_point_presorted(home_lats, home_lngs, lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    home_lats, home_lngs = ops["home_indexed"](lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night))
-    max_distances = ops["format_values"](ops["max_dist_indexed"](home_lats, home_lngs, lats_data, lngs_data, indices, ends))
+    home_lats, home_lngs = home_location_indexed(lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night))
+    max_distances = _arrow_result_values(max_distance_from_point_indexed(home_lats, home_lngs, lats_data, lngs_data, indices, ends))
 
     if uid_col is None:
         return _to_native({"max_distance_from_home": max_distances}, df)

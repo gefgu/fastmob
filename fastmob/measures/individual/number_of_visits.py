@@ -4,34 +4,17 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import (
-    number_of_visits_arrow,
-    number_of_visits_indexed_arrow,
-    number_of_visits_indexed_numpy,
-    number_of_visits_numpy,
-)
+from fastmob._core import number_of_visits_indexed, number_of_visits_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 
 from .._common import (
-    _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
     _to_native,
 )
 
-_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={
-        "presorted": number_of_visits_arrow,
-        "indexed": number_of_visits_indexed_arrow,
-        "format_values": _arrow_result_values,
-    },
-    numpy_ops={
-        "presorted": number_of_visits_numpy,
-        "indexed": number_of_visits_indexed_numpy,
-        "format_values": lambda values: values,
-    },
-)
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def number_of_visits(
@@ -119,10 +102,9 @@ def number_of_visits(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _DISPATCHER.get_ops(df)
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        counts = ops["format_values"](ops["presorted"](len(df), ends))
+        counts = number_of_visits_presorted(len(df), ends)
         if uid_col is None:
             return _to_native({"number_of_visits": counts}, df)
         return _to_native({uid_col: uid_values, "number_of_visits": counts}, df)
@@ -131,7 +113,7 @@ def number_of_visits(
         ~df.get_column(lat_col).is_null() & ~df.get_column(lng_col).is_null()
     ).to_numpy()
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
-    counts = ops["format_values"](ops["indexed"](len(df), indices, ends, valid_mask))
+    counts = number_of_visits_indexed(len(df), indices, ends, valid_mask)
 
     if uid_col is None:
         return _to_native({"number_of_visits": counts}, df)

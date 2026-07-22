@@ -1,6 +1,6 @@
+use fastmob_core::preprocessing::clustering::{cluster_gmm_impl, cluster_kmeans_impl};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use fastmob_core::preprocessing::clustering::{cluster_gmm_impl, cluster_kmeans_impl};
 
 /// Cluster scalar values into `n_clusters` groups via K-Means.
 /// Returns a label per input value in `0..n_clusters`.

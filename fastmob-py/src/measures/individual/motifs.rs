@@ -1,9 +1,9 @@
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::*;
 use fastmob_core::measures::individual::motifs::{
     canonical_adjacency_form as core_canonical_adjacency_form,
     compute_daily_motifs as core_compute_daily_motifs,
 };
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 
 #[pyfunction]
 pub fn canonical_adjacency_form(n_nodes: u32, edges: Vec<(u32, u32)>) -> PyResult<i64> {

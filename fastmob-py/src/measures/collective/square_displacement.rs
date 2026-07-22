@@ -1,10 +1,10 @@
+use fastmob_core::measures::collective::square_displacement::{
+    mean_square_displacement_indexed_impl, square_displacement_km2 as core_square_displacement_km2,
+};
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use fastmob_core::measures::collective::square_displacement::{
-    mean_square_displacement_indexed_impl, square_displacement_km2 as core_square_displacement_km2,
-};
 
 use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array};
 

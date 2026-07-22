@@ -27,6 +27,8 @@ def _normalize_result(df) -> dict:
 
 
 def _arrow_to_numpy(values) -> np.ndarray:
+    if isinstance(values, np.ndarray):
+        return values
     try:
         return values.to_numpy(zero_copy_only=False)
     except TypeError:
@@ -407,41 +409,42 @@ def test_jump_lengths_polars_vs_pandas_fastmob():
         assert np.allclose(left, right, rtol=1e-10, atol=1e-10), f"Polars and pandas should be identical for uid={uid}"
 
 
-def test_jump_lengths_presorted_numpy_helper_groups_by_ranges():
+def test_jump_lengths_presorted_helper_groups_by_ranges():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_km, jump_lengths_presorted_numpy
+    from fastmob._core import jump_lengths_km, jump_lengths_presorted
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
     ranges = [(0, 3), (3, 5)]
     ends = np.array([3, 5], dtype=np.uintp)
 
-    value_starts, value_ends, values = jump_lengths_presorted_numpy(lats, lngs, ends)
+    value_starts, value_ends, values = jump_lengths_presorted(lats, lngs, ends)
+    values = _arrow_to_numpy(values)
     grouped = _grouped_from_offsets(value_starts, value_ends, values)
     expected = [jump_lengths_km(lats[start:end].tolist(), lngs[start:end].tolist()) for start, end in ranges]
 
     assert len(grouped) == 2
     for actual, expected_values in zip(grouped, expected):
         np.testing.assert_allclose(actual, expected_values, rtol=0.0, atol=1e-12)
-    assert isinstance(values, np.ndarray)
     assert values.dtype == np.float64
     np.testing.assert_allclose(values, expected[0] + expected[1], rtol=0.0, atol=1e-12)
 
 
-def test_jump_lengths_presorted_arrow_helper_matches_numpy_helper():
+def test_jump_lengths_presorted_helper_accepts_arrow():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
     pl = pytest.importorskip("polars", reason="Install polars to run this test")
     pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import jump_lengths_presorted_arrow, jump_lengths_presorted_numpy
+    from fastmob._core import jump_lengths_presorted
 
     lats = np.array([0.0, 0.0, 0.0, 10.0, 10.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0, 0.0, 1.0], dtype=np.float64)
     ends = np.array([3, 5], dtype=np.uintp)
 
-    arrow_starts, arrow_ends, arrow_values = jump_lengths_presorted_arrow(
+    arrow_starts, arrow_ends, arrow_values = jump_lengths_presorted(
         pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends
     )
-    numpy_starts, numpy_ends, numpy_values = jump_lengths_presorted_numpy(lats, lngs, ends)
+    numpy_starts, numpy_ends, numpy_values = jump_lengths_presorted(lats, lngs, ends)
+    numpy_values = _arrow_to_numpy(numpy_values)
     result_arrow = _grouped_from_offsets(arrow_starts, arrow_ends, _arrow_to_numpy(arrow_values))
     result_numpy = _grouped_from_offsets(numpy_starts, numpy_ends, numpy_values)
 
@@ -538,16 +541,17 @@ def test_jump_lengths_non_ordered_arrow_helper_flat_values_accepts_uint64_uid_co
     np.testing.assert_allclose(_arrow_to_numpy(values), expected, rtol=0.0, atol=1e-12)
 
 
-def test_jump_lengths_indexed_numpy_helper_groups_by_offsets():
+def test_jump_lengths_indexed_helper_groups_by_offsets():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_indexed_numpy, jump_lengths_km
+    from fastmob._core import jump_lengths_indexed, jump_lengths_km
 
     lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
     lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
     indices = np.array([3, 4, 1, 2, 5, 0], dtype=np.uintp)
     ends = np.array([3, 6], dtype=np.uintp)
 
-    starts, value_ends, values = jump_lengths_indexed_numpy(lats, lngs, indices, ends)
+    starts, value_ends, values = jump_lengths_indexed(lats, lngs, indices, ends)
+    values = _arrow_to_numpy(values)
 
     assert starts.tolist() == [0, 2]
     assert value_ends.tolist() == [2, 4]
@@ -560,53 +564,53 @@ def test_jump_lengths_indexed_numpy_helper_groups_by_offsets():
         np.testing.assert_allclose(actual, expected_values, rtol=0.0, atol=1e-12)
 
 
-def test_jump_lengths_indexed_arrow_helper_matches_numpy_helper():
+def test_jump_lengths_indexed_helper_accepts_arrow():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import jump_lengths_indexed_arrow, jump_lengths_indexed_numpy
+    from fastmob._core import jump_lengths_indexed
 
     lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
     lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
     indices = np.array([3, 4, 1, 2, 5, 0], dtype=np.uintp)
     ends = np.array([3, 6], dtype=np.uintp)
 
-    arrow_starts, arrow_ends, arrow_values = jump_lengths_indexed_arrow(
+    arrow_starts, arrow_ends, arrow_values = jump_lengths_indexed(
         pa.array(lats), pa.array(lngs), indices, ends
     )
-    numpy_starts, numpy_ends, numpy_values = jump_lengths_indexed_numpy(lats, lngs, indices, ends)
+    numpy_starts, numpy_ends, numpy_values = jump_lengths_indexed(lats, lngs, indices, ends)
 
     np.testing.assert_array_equal(arrow_starts, numpy_starts)
     np.testing.assert_array_equal(arrow_ends, numpy_ends)
-    np.testing.assert_allclose(_arrow_to_numpy(arrow_values), numpy_values, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(_arrow_to_numpy(arrow_values), _arrow_to_numpy(numpy_values), rtol=0.0, atol=1e-12)
 
 
-def test_jump_lengths_indexed_numpy_helper_handles_empty_and_single_point_groups():
+def test_jump_lengths_indexed_helper_handles_empty_and_single_point_groups():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_indexed_numpy
+    from fastmob._core import jump_lengths_indexed
 
     lats = np.array([0.0, 1.0, 2.0], dtype=np.float64)
     lngs = np.array([0.0, 1.0, 2.0], dtype=np.float64)
     indices = np.array([0, 1, 2], dtype=np.uintp)
     ends = np.array([0, 1, 3], dtype=np.uintp)
 
-    starts, value_ends, values = jump_lengths_indexed_numpy(lats, lngs, indices, ends)
+    starts, value_ends, values = jump_lengths_indexed(lats, lngs, indices, ends)
 
     assert starts.tolist() == [0, 0, 0]
     assert value_ends.tolist() == [0, 0, 1]
     assert len(values) == 1
 
 
-def test_jump_lengths_indexed_arrow_helper_filters_null_and_non_finite_coords():
+def test_jump_lengths_indexed_helper_filters_null_and_non_finite_coords():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import jump_lengths_indexed_arrow, jump_lengths_km
+    from fastmob._core import jump_lengths_indexed, jump_lengths_km
 
     lats = pa.array([0.0, None, 0.0, float("nan"), 0.0])
     lngs = pa.array([0.0, 5.0, 1.0, 7.0, 3.0])
     indices = np.array([0, 1, 2, 3, 4], dtype=np.uintp)
     ends = np.array([5], dtype=np.uintp)
 
-    starts, value_ends, values = jump_lengths_indexed_arrow(lats, lngs, indices, ends)
+    starts, value_ends, values = jump_lengths_indexed(lats, lngs, indices, ends)
 
     assert starts.tolist() == [0]
     assert value_ends.tolist() == [2]
@@ -618,35 +622,35 @@ def test_jump_lengths_indexed_arrow_helper_filters_null_and_non_finite_coords():
     )
 
 
-def test_jump_lengths_presorted_numpy_helper_validation_errors():
+def test_jump_lengths_presorted_helper_validation_errors():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_presorted_numpy
+    from fastmob._core import jump_lengths_presorted
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     ends = np.array([1], dtype=np.uintp)
     with pytest.raises(ValueError, match="same length"):
-        jump_lengths_presorted_numpy(arr, arr[:1], ends)
+        jump_lengths_presorted(arr, arr[:1], ends)
     with pytest.raises(ValueError, match="range end"):
-        jump_lengths_presorted_numpy(arr, arr, np.array([3], dtype=np.uintp))
+        jump_lengths_presorted(arr, arr, np.array([3], dtype=np.uintp))
     with pytest.raises(ValueError, match="monotonically"):
-        jump_lengths_presorted_numpy(arr, arr, np.array([2, 1], dtype=np.uintp))
+        jump_lengths_presorted(arr, arr, np.array([2, 1], dtype=np.uintp))
 
 
-def test_jump_lengths_indexed_numpy_helper_validation_errors():
+def test_jump_lengths_indexed_helper_validation_errors():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_indexed_numpy
+    from fastmob._core import jump_lengths_indexed
 
     arr = np.array([0.0, 1.0], dtype=np.float64)
     indices = np.array([0, 1], dtype=np.uintp)
     ends = np.array([2], dtype=np.uintp)
     with pytest.raises(ValueError, match="same length"):
-        jump_lengths_indexed_numpy(arr, arr[:1], indices, ends)
+        jump_lengths_indexed(arr, arr[:1], indices, ends)
     with pytest.raises(ValueError, match="monotonically"):
-        jump_lengths_indexed_numpy(arr, arr, indices, np.array([2, 1], dtype=np.uintp))
+        jump_lengths_indexed(arr, arr, indices, np.array([2, 1], dtype=np.uintp))
     with pytest.raises(ValueError, match="index must be within"):
-        jump_lengths_indexed_numpy(arr, arr, np.array([0, 2], dtype=np.uintp), ends)
+        jump_lengths_indexed(arr, arr, np.array([0, 2], dtype=np.uintp), ends)
     with pytest.raises(ValueError, match="range end"):
-        jump_lengths_indexed_numpy(arr, arr, indices, np.array([3], dtype=np.uintp))
+        jump_lengths_indexed(arr, arr, indices, np.array([3], dtype=np.uintp))
 
 
 def test_jump_lengths_non_ordered_numpy_helper_validation_errors():
