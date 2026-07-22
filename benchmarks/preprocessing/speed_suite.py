@@ -46,6 +46,7 @@ _BENCHMARK_DIR = Path(__file__).resolve().parents[1]
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
 from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
+
 MOVINGPANDAS_CATALOG_PATH = Path(__file__).resolve().parents[1] / "movingpandas_skmob_api_catalog.json"
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
 BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
@@ -97,6 +98,51 @@ PREPROCESSING_METRICS: tuple[BenchmarkSpec, ...] = (
         {},
         input_kind="preprocessing",
     ),
+    BenchmarkSpec(
+        "simplify_douglas_peucker",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.compression",
+        "simplify",
+        {"method": "douglas_peucker", "epsilon_km": 0.05},
+        input_kind="preprocessing",
+        movingpandas_api="DouglasPeuckerGeneralizer.generalize",
+    ),
+    BenchmarkSpec(
+        "simplify_top_down_time_ratio",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.compression",
+        "simplify",
+        {"method": "top_down_time_ratio", "epsilon_km": 0.05},
+        input_kind="preprocessing",
+        movingpandas_api="TopDownTimeRatioGeneralizer.generalize",
+    ),
+    BenchmarkSpec(
+        "simplify_min_distance",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.compression",
+        "simplify",
+        {"method": "min_distance", "min_distance_km": 0.2},
+        input_kind="preprocessing",
+        movingpandas_api="MinDistanceGeneralizer.generalize",
+    ),
+    BenchmarkSpec(
+        "simplify_min_time_delta",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.compression",
+        "simplify",
+        {"method": "min_time_delta", "min_time_delta_s": 600.0},
+        input_kind="preprocessing",
+        movingpandas_api="MinTimeDeltaGeneralizer.generalize",
+    ),
+    BenchmarkSpec(
+        "simplify_max_distance",
+        "fastmob.preprocessing",
+        "skmob.preprocessing.compression",
+        "simplify",
+        {"method": "max_distance", "epsilon_km": 0.05},
+        input_kind="preprocessing",
+        movingpandas_api="MaxDistanceGeneralizer.generalize",
+    ),
 )
 
 
@@ -120,7 +166,11 @@ def build_output_path(
     elif library == "skmob":
         filename = f"skmob_preprocessing_{profile}_{order_part}{timing_mode}.json"
     else:
-        filename = f"movingpandas_preprocessing_{profile}_{input_order}.json" if input_order != "raw" else f"movingpandas_preprocessing_{profile}.json"
+        filename = (
+            f"movingpandas_preprocessing_{profile}_{input_order}.json"
+            if input_order != "raw"
+            else f"movingpandas_preprocessing_{profile}.json"
+        )
     return output_dir / filename
 
 
@@ -297,6 +347,43 @@ def movingpandas_callable_for_spec(spec: BenchmarkSpec) -> tuple[Callable[[Any],
         return (
             lambda tc, **kwargs: mpd.TrajectoryStopDetector(tc).get_stop_points(**kwargs),
             {"max_diameter": 200, "min_duration": timedelta(minutes=20)},
+        )
+    if spec.name in {
+        "simplify_douglas_peucker",
+        "simplify_top_down_time_ratio",
+        "simplify_min_distance",
+        "simplify_min_time_delta",
+        "simplify_max_distance",
+    }:
+        try:
+            import movingpandas as mpd
+        except Exception as exc:
+            raise SkippedMetric(f"movingpandas import failed: {exc}") from exc
+        # This benchmark's TrajectoryCollection stays in unprojected EPSG:4326
+        # (see load_brightkite_movingpandas), so DouglasPeucker/TopDownTimeRatio/
+        # MaxDistance -- which measure raw shapely distance in the trajectory's
+        # native CRS units -- take a tolerance in *degrees*, not metres.
+        # MinDistance/MinTimeDelta convert lat/lng distance to metres/timedelta
+        # internally regardless of CRS, so they keep metre/timedelta tolerances.
+        # Only relative timing is compared here, not output row counts, so an
+        # approximate degrees<->metres correspondence is sufficient.
+        generalizer_cls = {
+            "simplify_douglas_peucker": mpd.DouglasPeuckerGeneralizer,
+            "simplify_top_down_time_ratio": mpd.TopDownTimeRatioGeneralizer,
+            "simplify_min_distance": mpd.MinDistanceGeneralizer,
+            "simplify_min_time_delta": mpd.MinTimeDeltaGeneralizer,
+            "simplify_max_distance": mpd.MaxDistanceGeneralizer,
+        }[spec.name]
+        tolerance = {
+            "simplify_douglas_peucker": 0.0005,
+            "simplify_top_down_time_ratio": 0.0005,
+            "simplify_min_distance": 200.0,
+            "simplify_min_time_delta": timedelta(minutes=10),
+            "simplify_max_distance": 0.0005,
+        }[spec.name]
+        return (
+            lambda tc, **kwargs: generalizer_cls(tc).generalize(**kwargs),
+            {"tolerance": tolerance},
         )
     raise SkippedMetric("no benchmarkable MovingPandas analogue")
 
@@ -543,9 +630,11 @@ def load_brightkite_for_order(
         suite="preprocessing",
         backend=backend,
         data_path=data_path,
-        load_raw=lambda: repeat_brightkite_polars(load_brightkite_polars(data_path), repeat_factor)
-        if backend == "polars"
-        else repeat_brightkite_pandas(load_brightkite_pandas(data_path), repeat_factor),
+        load_raw=lambda: (
+            repeat_brightkite_polars(load_brightkite_polars(data_path), repeat_factor)
+            if backend == "polars"
+            else repeat_brightkite_pandas(load_brightkite_pandas(data_path), repeat_factor)
+        ),
         uid_col="user",
         datetime_col="check-in_time",
         repeat_factor=repeat_factor if repeat_factor > 1 else None,
@@ -682,7 +771,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--input-cache-dir", type=Path, default=DEFAULT_INPUT_CACHE_DIR)
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
-    parser.add_argument("--retries", type=nonnegative_int, default=0, help="Retry a metric this many times after failure.")
+    parser.add_argument(
+        "--retries", type=nonnegative_int, default=0, help="Retry a metric this many times after failure."
+    )
     parser.add_argument(
         "--repeat-dataset",
         type=positive_int,
