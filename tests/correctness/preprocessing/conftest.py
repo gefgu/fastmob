@@ -109,6 +109,154 @@ def compress_tdf_polars():
 
 
 # ---------------------------------------------------------------------------
+# simplify fixtures
+# ---------------------------------------------------------------------------
+# near_collinear: 3 points almost on a straight line (~0.7 m lateral offset);
+#   used by douglas_peucker/max_distance/chan_chin/imai_iri "drop redundant
+#   middle point" tests.
+# time_ratio: 3 points spatially collinear (middle point exactly halfway
+#   between the endpoints), but the middle timestamp arrives after only 1%
+#   of the elapsed time between the endpoints. Douglas-Peucker only looks at
+#   space, so it drops the middle point; top_down_time_ratio also checks the
+#   time-interpolated position, so it keeps it.
+# min_dist: 3 points where the middle point is ~5.5 m from the first
+#   (below a 20 m threshold) and the last point is ~33 m from the first
+#   (above it).
+# min_td: 3 points where the middle point arrives 10s after the first
+#   (below a 60s threshold) and the last point arrives 120s after the first
+#   (above it).
+# corner: 3 points forming a 90-degree turn; every algorithm must keep the
+#   corner vertex or the deviation would be ~1 km, far above any reasonable
+#   epsilon.
+
+
+def _simplify_rows():
+    rows = []
+    rows.extend(
+        [
+            {
+                "uid": "near_collinear",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00"),
+                "lat": 48.8560,
+                "lng": 2.3520,
+            },
+            {
+                "uid": "near_collinear",
+                "datetime": pd.Timestamp("2020-01-01 00:01:00"),
+                "lat": 48.8565,
+                "lng": 2.3520 + 0.00001,
+            },
+            {
+                "uid": "near_collinear",
+                "datetime": pd.Timestamp("2020-01-01 00:02:00"),
+                "lat": 48.8570,
+                "lng": 2.3520,
+            },
+        ]
+    )
+    rows.extend(
+        [
+            {
+                "uid": "time_ratio",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00"),
+                "lat": 48.8560,
+                "lng": 2.3520,
+            },
+            {
+                "uid": "time_ratio",
+                "datetime": pd.Timestamp("2020-01-01 00:00:01"),
+                "lat": 48.8565,
+                "lng": 2.3520,
+            },
+            {
+                "uid": "time_ratio",
+                "datetime": pd.Timestamp("2020-01-01 00:01:40"),
+                "lat": 48.8570,
+                "lng": 2.3520,
+            },
+        ]
+    )
+    rows.extend(
+        [
+            {
+                "uid": "min_dist",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00"),
+                "lat": 48.8560,
+                "lng": 2.3520,
+            },
+            {
+                "uid": "min_dist",
+                "datetime": pd.Timestamp("2020-01-01 00:01:00"),
+                "lat": 48.8560 + 0.00005,
+                "lng": 2.3520,
+            },
+            {
+                "uid": "min_dist",
+                "datetime": pd.Timestamp("2020-01-01 00:02:00"),
+                "lat": 48.8560 + 0.0003,
+                "lng": 2.3520,
+            },
+        ]
+    )
+    rows.extend(
+        [
+            {
+                "uid": "min_td",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00"),
+                "lat": 48.8560,
+                "lng": 2.3520,
+            },
+            {
+                "uid": "min_td",
+                "datetime": pd.Timestamp("2020-01-01 00:00:10"),
+                "lat": 48.8561,
+                "lng": 2.3520,
+            },
+            {
+                "uid": "min_td",
+                "datetime": pd.Timestamp("2020-01-01 00:02:00"),
+                "lat": 48.8562,
+                "lng": 2.3520,
+            },
+        ]
+    )
+    rows.extend(
+        [
+            {
+                "uid": "corner",
+                "datetime": pd.Timestamp("2020-01-01 00:00:00"),
+                "lat": 48.85,
+                "lng": 2.35,
+            },
+            {
+                "uid": "corner",
+                "datetime": pd.Timestamp("2020-01-01 00:01:00"),
+                "lat": 48.86,
+                "lng": 2.35,
+            },
+            {
+                "uid": "corner",
+                "datetime": pd.Timestamp("2020-01-01 00:02:00"),
+                "lat": 48.86,
+                "lng": 2.45,
+            },
+        ]
+    )
+    return rows
+
+
+@pytest.fixture(scope="session")
+def simplify_tdf() -> pd.DataFrame:
+    return pd.DataFrame(_simplify_rows())
+
+
+@pytest.fixture(scope="session")
+def simplify_tdf_polars():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    return pl.from_dicts(_simplify_rows())
+
+
+# ---------------------------------------------------------------------------
 # stay_locations fixtures
 # ---------------------------------------------------------------------------
 # user_stationary: 10 points within 0.1 km of (48.856, 2.352), over 60 min
