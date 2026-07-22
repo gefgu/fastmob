@@ -225,6 +225,74 @@ def test_filter_hampel_matches_cached_reference(ptrail_reference):
     assert mean_score >= 0.5, scores
 
 
+@pytest.mark.parametrize(
+    ("method", "kwargs", "min_mean_jaccard"),
+    [
+        # SmartGreedy matches the real MoveTK SmartGreedyOutlierDetector
+        # exactly (Jaccard == 1.0 for every user in the cached run): both
+        # track the same set of candidate mutually-consistent chains and
+        # pick the longest one.
+        ("smart_greedy", {"max_speed_kmh": 100.0}, 0.99),
+        # Greedy is compared with an intentionally near-zero tolerance and
+        # documented, not chased: the cached run was produced by MoveTK's
+        # real, unmodified GreedyOutlierDetector.h, which has a genuine
+        # member-initialization-order bug (verified with an isolated
+        # reproduction outside fastmob entirely) -- its constructor is
+        # `OutlierDetection(NT threshold) : m_threshold(threshold),
+        # m_predicate(m_threshold) {}`, but `m_predicate` is *declared*
+        # before `m_threshold` in the class, and C++ always initializes
+        # members in declaration order regardless of initializer-list
+        # order. So `m_predicate` is built from `m_threshold` *before*
+        # `m_threshold` itself has been assigned the constructor's
+        # argument, silently ignoring whatever threshold is passed in.
+        # Empirically, passing 0.0000001 km/h and 1,000,000 km/h to the
+        # real MoveTK binary produces byte-identical output either way,
+        # confirming the threshold argument never reaches the predicate.
+        # fastmob's own greedy.rs has no such bug and behaves as
+        # documented, so a wide, real divergence from this cache is
+        # expected here, not a regression to fix.
+        ("greedy", {"max_speed_kmh": 100.0}, 0.0),
+        # Zheng is compared with the same near-zero, documented tolerance:
+        # the cached run reflects MoveTK's real (also buggy, see
+        # fastmob-core/src/preprocessing/outliers/zheng.rs's doc comment)
+        # ZhengOutlierDetector.h, whose forward scan never advances its
+        # `prev` iterator past the range's first element -- fastmob's own
+        # zheng.rs deliberately follows the class's documented
+        # adjacent-pair intent instead, so the two rarely agree.
+        ("zheng", {"max_speed_kmh": 100.0, "min_seg_size": 1}, 0.0),
+    ],
+)
+def test_filter_matches_cached_movetk_reference(movetk_reference, method, kwargs, min_mean_jaccard):
+    """Row-subset agreement with the cached MoveTK outlier-detection baseline on a Brightkite slice.
+
+    See each parametrized case's inline comment above for why the
+    tolerance is set where it is; this test's job is to catch a
+    regression in fastmob's own kernels, not to assert byte-for-byte
+    parity with MoveTK where MoveTK's own behavior is known to be broken.
+    """
+    from tests.shared.movingpandas_cache import MovingPandasReferenceDataset
+
+    cached = movetk_reference.keep_mask(method)
+    if cached is None:
+        pytest.skip(f"No cached MoveTK result for method={method!r}")
+
+    input_df = MovingPandasReferenceDataset("brightkite").input_df
+    result = traj_filter(
+        input_df,
+        method=method,
+        uid_col="uid",
+        datetime_col="datetime",
+        lat_col="lat",
+        lng_col="lng",
+        **kwargs,
+    )
+    # JSON object keys are always strings; input_df's uid column is int64.
+    cached_by_uid = {int(uid): set(v) for uid, v in cached.items()}
+    scores = _per_user_jaccard_keep(result, cached_by_uid)
+    mean_score = sum(scores.values()) / len(scores)
+    assert mean_score >= min_mean_jaccard, scores
+
+
 @pytest.mark.skmob
 def test_filter_matches_skmob(comparison_skmob):
     """Results must closely match skmob despite tiny Haversine threshold drift."""
