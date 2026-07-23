@@ -1,0 +1,712 @@
+{
+  "metadata": {
+    "backend": null,
+    "cpu_cores": 40,
+    "cpu_model": "Intel(R) Xeon(R) Silver 4316 CPU @ 2.30GHz",
+    "cpu_vendor": "intel",
+    "dataset_path": "/mnt/raid5/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "ptrail.PTRAILDataFrame",
+    "iterations": 5,
+    "library": "ptrail",
+    "metrics": [
+      "outlier_hampel",
+      "outlier_greedy",
+      "outlier_smart_greedy",
+      "outlier_zheng",
+      "simplify_douglas_peucker",
+      "simplify_top_down_time_ratio",
+      "simplify_min_distance",
+      "simplify_min_time_delta",
+      "simplify_max_distance",
+      "segment_angle_change",
+      "segment_observation_gap",
+      "segment_speed",
+      "segment_stop",
+      "segment_value_change",
+      "segment_temporal"
+    ],
+    "movingpandas_catalog_path": "/mnt/raid5/gustavo/fastmob/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-5.15.0-181-generic-x86_64-with-glibc2.35",
+    "profile": "speed",
+    "python_version": "3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]",
+    "repeat_dataset": 1,
+    "retries": 0,
+    "sizes": [
+      1000,
+      10000,
+      100000,
+      1000000,
+      4000000
+    ],
+    "skmob_catalog_path": "/mnt/raid5/gustavo/fastmob/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "preprocessing",
+    "timestamp_utc": "2026-07-23T17:36:37.736861+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "label": "1k",
+      "metrics": {
+        "outlier_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_hampel": {
+          "average_seconds": 0.40637260703369976,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.3713536139111966,
+          "status": "ok",
+          "times_seconds": [
+            0.41455622110515833,
+            0.4174126849975437,
+            0.42146668303757906,
+            0.3713536139111966,
+            0.4070738321170211
+          ]
+        },
+        "outlier_smart_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_zheng": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_angle_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_observation_gap": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_speed": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_stop": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_temporal": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_value_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_douglas_peucker": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_max_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_time_delta": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_top_down_time_ratio": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        }
+      },
+      "rows": 1000,
+      "size": 1000
+    },
+    {
+      "label": "10k",
+      "metrics": {
+        "outlier_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_hampel": {
+          "average_seconds": 0.7672807794529944,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.7438164458144456,
+          "status": "ok",
+          "times_seconds": [
+            0.7829228350892663,
+            0.7847511020954698,
+            0.7630720240995288,
+            0.7438164458144456,
+            0.7618414901662618
+          ]
+        },
+        "outlier_smart_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_zheng": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_angle_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_observation_gap": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_speed": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_stop": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_temporal": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_value_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_douglas_peucker": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_max_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_time_delta": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_top_down_time_ratio": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        }
+      },
+      "rows": 10000,
+      "size": 10000
+    },
+    {
+      "label": "100k",
+      "metrics": {
+        "outlier_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_hampel": {
+          "average_seconds": 1.5978678723797202,
+          "iterations_completed": 5,
+          "minimum_seconds": 1.5420577230397612,
+          "status": "ok",
+          "times_seconds": [
+            1.704704293049872,
+            1.5420577230397612,
+            1.5883677978999913,
+            1.5825169638264924,
+            1.5716925840824842
+          ]
+        },
+        "outlier_smart_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_zheng": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_angle_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_observation_gap": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_speed": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_stop": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_temporal": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_value_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_douglas_peucker": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_max_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_time_delta": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_top_down_time_ratio": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        }
+      },
+      "rows": 100000,
+      "size": 100000
+    },
+    {
+      "label": "1M",
+      "metrics": {
+        "outlier_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_hampel": {
+          "average_seconds": 11.707454705238343,
+          "iterations_completed": 5,
+          "minimum_seconds": 11.462954798946157,
+          "status": "ok",
+          "times_seconds": [
+            11.462954798946157,
+            11.671885064104572,
+            11.525040852138773,
+            11.976662717061117,
+            11.900730093941092
+          ]
+        },
+        "outlier_smart_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_zheng": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_angle_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_observation_gap": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_speed": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_stop": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_temporal": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_value_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_douglas_peucker": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_max_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_time_delta": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_top_down_time_ratio": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        }
+      },
+      "rows": 1000000,
+      "size": 1000000
+    },
+    {
+      "label": "4M",
+      "metrics": {
+        "outlier_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_hampel": {
+          "average_seconds": 86.96794318538159,
+          "iterations_completed": 5,
+          "minimum_seconds": 81.79757351707667,
+          "status": "ok",
+          "times_seconds": [
+            81.79757351707667,
+            87.96931797079742,
+            96.52215939108282,
+            85.42436263198033,
+            83.12630241597071
+          ]
+        },
+        "outlier_smart_greedy": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "outlier_zheng": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_angle_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_observation_gap": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_speed": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_stop": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_temporal": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "segment_value_change": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_douglas_peucker": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_max_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_distance": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_min_time_delta": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        },
+        "simplify_top_down_time_ratio": {
+          "average_seconds": null,
+          "iterations_completed": 0,
+          "minimum_seconds": null,
+          "reason": "no benchmarkable PTRAIL analogue",
+          "status": "skipped",
+          "times_seconds": []
+        }
+      },
+      "rows": 3999994,
+      "size": 4000000
+    }
+  ]
+}
