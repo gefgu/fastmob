@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "benchmarks": [
+      "daily_lognormal",
+      "truncated_powerlaw"
+    ],
+    "cpu_info": {
+      "cores": 32,
+      "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+      "vendor_slug": "amd"
+    },
+    "data_path": "/home/gustavo/citybehavex/data/yjmob_wgs84_simple.parquet",
+    "dataset": "yjmob100k",
+    "h3_resolution": 9
+  },
+  "results": [
+    {
+      "average_seconds": 0.01911360299709486,
+      "benchmark": "daily_lognormal",
+      "minimum_seconds": 0.017745988996466622,
+      "mu": 2.1145630191902884,
+      "n_distinct_daily_counts": 37,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "rows_per_second": 69201609.4591581,
+      "sigma": 0.5938484571440112,
+      "size_label": "1228051"
+    },
+    {
+      "average_seconds": 0.24100847750378307,
+      "benchmark": "daily_lognormal",
+      "minimum_seconds": 0.22795844099891838,
+      "mu": 2.095921828764061,
+      "n_distinct_daily_counts": 43,
+      "n_rows": 11904593,
+      "n_users": 10000,
+      "rows_per_second": 52222646.14477024,
+      "sigma": 0.5871945754985834,
+      "size_label": "11904593"
+    },
+    {
+      "average_seconds": 2.652252854000835,
+      "benchmark": "daily_lognormal",
+      "minimum_seconds": 2.607538451004075,
+      "mu": 2.029264989884713,
+      "n_distinct_daily_counts": 44,
+      "n_rows": 111535175,
+      "n_users": 100000,
+      "rows_per_second": 42774124.752427556,
+      "sigma": 0.5829333733240607,
+      "size_label": "111535175"
+    },
+    {
+      "benchmark": "truncated_powerlaw",
+      "grid_average_seconds": 0.022311459491902497,
+      "grid_minimum_seconds": 0.022256009993725456,
+      "grid_popt": [
+        0.6178340123196872,
+        0.0033333333333333335,
+        1.4205128205128204,
+        16.351750768322642
+      ],
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "scipy_average_seconds": 0.008316558509250171,
+      "scipy_minimum_seconds": 0.0082903940055985,
+      "scipy_popt": [
+        0.5725808345283551,
+        1.0000000000000006e-05,
+        1.3636167417834044,
+        15.687622930175005
+      ],
+      "size_label": "1228051"
+    },
+    {
+      "benchmark": "truncated_powerlaw",
+      "grid_average_seconds": 0.06888654300564667,
+      "grid_minimum_seconds": 0.06882946500263643,
+      "grid_popt": [
+        0.4410952030138715,
+        0.0033333333333333335,
+        1.0984615384615386,
+        12.193670411551066
+      ],
+      "n_rows": 11904593,
+      "n_users": 10000,
+      "scipy_average_seconds": 0.05319149899878539,
+      "scipy_minimum_seconds": 0.053124703001230955,
+      "scipy_popt": [
+        0.4608571059809087,
+        1.0000000000099956e-05,
+        1.1002889284601456,
+        11.968544468618473
+      ],
+      "size_label": "11904593"
+    },
+    {
+      "benchmark": "truncated_powerlaw",
+      "grid_average_seconds": 0.5192487049935153,
+      "grid_minimum_seconds": 0.5186312229925534,
+      "grid_popt": [
+        0.4950111191736222,
+        0.0033333333333333335,
+        1.1907692307692308,
+        12.627712599125477
+      ],
+      "n_rows": 111535175,
+      "n_users": 100000,
+      "scipy_average_seconds": 0.5024526759953005,
+      "scipy_minimum_seconds": 0.5019218829984311,
+      "scipy_popt": [
+        0.45220734402788154,
+        1.0000000000144527e-05,
+        1.1191061125270716,
+        12.1684063841216
+      ],
+      "size_label": "111535175"
+    }
+  ]
+}

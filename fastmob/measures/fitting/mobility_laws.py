@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+import math
+from typing import Any, Literal
 
 import narwhals as nw
 import numpy as np
@@ -513,6 +514,82 @@ def fit_visitation_law(
     return eta, mu, r2
 
 
+def daily_location_lognormal_fit(
+    visits: Any,
+    *,
+    user_id_col: str | None = None,
+    location_id_col: str | None = None,
+    timestamp_col: str | None = None,
+) -> tuple[np.ndarray, np.ndarray, float, float]:
+    """Fit a lognormal distribution to daily distinct-location counts.
+
+    For each user and calendar day, counts the number of distinct locations
+    visited, then fits ``mu``/``sigma`` of the lognormal distribution to the
+    (natural) log of those per-user-per-day counts.
+
+    Parameters
+    ----------
+    visits:
+        Visits/stays dataframe; any Narwhals-compatible eager backend.
+    user_id_col, location_id_col, timestamp_col:
+        Explicit column name overrides; auto-detected when None.
+
+    Returns
+    -------
+    x_points, y_points, mu, sigma:
+        ``x_points`` are the distinct daily-location-count values observed
+        (sorted ascending), ``y_points`` their empirical frequencies (summing
+        to 1), and ``mu``/``sigma`` the fitted lognormal parameters (fit on
+        the log of every individual count, not on the binned points).
+
+    Raises
+    ------
+    ValueError
+        If fewer than two daily location counts are available, or if the
+        fitted log-variance is degenerate (<= 0).
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from fastmob.measures.fitting.mobility_laws import daily_location_lognormal_fit
+    >>> visits = pd.DataFrame(
+    ...     {
+    ...         "user_id": ["u1", "u1", "u2"],
+    ...         "location_id": ["home", "work", "home"],
+    ...         "timestamp": pd.to_datetime(["2020-01-01", "2020-01-01", "2020-01-01"]),
+    ...     }
+    ... )
+    >>> x_points, y_points, mu, sigma = daily_location_lognormal_fit(visits)
+    >>> x_points
+    array([1., 2.])
+    """
+    df = nw.from_native(visits, eager_only=True)
+    user_id_col = _detect_required_column(df, user_id_col, USER_ID_CANDIDATES, "user_id")
+    location_id_col = _detect_required_column(df, location_id_col, LOCATION_CANDIDATES, "location")
+    timestamp_col = _detect_required_column(df, timestamp_col, TIMESTAMP_CANDIDATES, "timestamp")
+
+    daily = (
+        df.with_columns(nw.col(timestamp_col).dt.truncate("1d").alias("__day__"))
+        .group_by([user_id_col, "__day__"])
+        .agg(nw.col(location_id_col).n_unique().alias("__count__"))
+    )
+
+    values = daily.get_column("__count__").to_numpy().astype(float)
+    values = values[np.isfinite(values) & (values > 0)]
+    if values.size < 2:
+        raise ValueError("At least two daily location counts are required to fit.")
+
+    log_values = np.log(values)
+    mu = float(log_values.mean())
+    sigma = float(log_values.std())
+    if not np.isfinite(sigma) or sigma <= 1e-12:
+        raise ValueError("Daily location counts must have positive log variance.")
+
+    x_points, counts = np.unique(values, return_counts=True)
+    y_points = counts / counts.sum()
+    return x_points, y_points, mu, sigma
+
+
 def log_truncated_powerlaw(
     x: np.ndarray,
     c: float,
@@ -560,15 +637,85 @@ def log_truncated_powerlaw(
     return np.log(c) - beta * np.log(x + r0) - (x / kappa)
 
 
+def _geom_grid(lo: float, hi: float, n: int) -> np.ndarray:
+    log_lo, log_hi = math.log(lo), math.log(hi)
+    if n <= 1:
+        return np.array([math.exp(log_lo)])
+    return np.exp(log_lo + (log_hi - log_lo) * np.arange(n) / (n - 1))
+
+
+def _lin_grid(lo: float, hi: float, n: int) -> np.ndarray:
+    if n <= 1:
+        return np.array([lo])
+    return lo + (hi - lo) * np.arange(n) / (n - 1)
+
+
+def _grid_fit_candidates(
+    x_data: np.ndarray, log_y_data: np.ndarray, r0_values: np.ndarray, beta_values: np.ndarray, kappa_values: np.ndarray
+) -> tuple[float, float, float, float, float]:
+    """Evaluate every `(r0, beta, kappa)` candidate on a grid, solving the
+    optimal `c` in closed form (log-space OLS intercept) for each -- returns
+    the best `(sse, c, r0, beta, kappa)`.
+    """
+    best: tuple[float, float, float, float, float] = (math.inf, 1.0, 1.0, 1.75, 400.0)
+    for r0 in r0_values:
+        log_x_r0 = np.log(x_data + r0)
+        for beta in beta_values:
+            for kappa in kappa_values:
+                shape_log = -beta * log_x_r0 - x_data / kappa
+                log_c = float(np.mean(log_y_data - shape_log))
+                sse = float(np.sum((log_y_data - (log_c + shape_log)) ** 2))
+                if sse < best[0]:
+                    best = (sse, math.exp(log_c), float(r0), float(beta), float(kappa))
+    return best
+
+
+def _fit_truncated_powerlaw_grid(
+    x_data: np.ndarray, y_data: np.ndarray
+) -> np.ndarray:
+    """Dependency-free coarse-to-fine grid search fit, ported from
+    citybehavex-web's Rust `truncated_powerlaw_dataset` (written there
+    specifically to avoid a scipy dependency in a Python-free web backend).
+
+    This is an *approximation*, not a bit-identical match to scipy's
+    Trust-Region-Reflective solver -- "close enough for rendered reference
+    curves" per the original Rust source's own framing, not a claim of
+    numerical equivalence.
+    """
+    log_y_data = np.log(y_data)
+    max_x = float(x_data.max())
+
+    _sse0, _c0, r00, beta0, kappa0 = _grid_fit_candidates(
+        x_data,
+        log_y_data,
+        _geom_grid(0.01, max(max_x, 1.0), 10),
+        _lin_grid(0.2, 4.0, 16),
+        _geom_grid(1.0, max(max_x * 20.0, 10.0), 14),
+    )
+    r0_lo, r0_hi = max(r00 / 3.0, 0.001), max(r00 * 3.0, max(r00 / 3.0, 0.001) * 1.01)
+    beta_lo, beta_hi = max(beta0 - 0.6, 0.01), beta0 + 0.6
+    kappa_lo, kappa_hi = max(kappa0 / 3.0, 0.1), max(kappa0 * 3.0, max(kappa0 / 3.0, 0.1) * 1.01)
+
+    _sse, c, r0, beta, kappa = _grid_fit_candidates(
+        x_data,
+        log_y_data,
+        _geom_grid(r0_lo, r0_hi, 12),
+        _lin_grid(beta_lo, beta_hi, 14),
+        _geom_grid(kappa_lo, kappa_hi, 12),
+    )
+    return np.array([c, r0, beta, kappa])
+
+
 def fit_values_to_truncated_powerlaw(
     values: "list[float] | np.ndarray",
     bins: int = 100,
+    *,
+    method: Literal["scipy", "grid"] = "scipy",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Fit a truncated power-law to a 1-D array of positive values.
 
     Builds a log-spaced histogram of ``values``, then fits
-    :func:`log_truncated_powerlaw` to the log-density using nonlinear
-    least-squares (scipy.optimize.curve_fit).
+    :func:`log_truncated_powerlaw` to the log-density.
 
     Parameters
     ----------
@@ -576,6 +723,14 @@ def fit_values_to_truncated_powerlaw(
         1-D array of positive float values (e.g. jump lengths in km).
     bins:
         Number of log-spaced histogram bins. Default 100.
+    method:
+        ``"scipy"`` (default): nonlinear least-squares via
+        ``scipy.optimize.curve_fit`` (Trust-Region-Reflective). ``"grid"``:
+        a dependency-free coarse-to-fine grid search, ported from
+        citybehavex-web's Rust implementation (written there to avoid a
+        scipy dependency in a Python-free web backend) -- an
+        *approximation*, not bit-identical to the scipy fit; use it only
+        when scipy is unavailable or a rougher fit is acceptable.
 
     Returns
     -------
@@ -589,7 +744,7 @@ def fit_values_to_truncated_powerlaw(
     Raises
     ------
     ImportError
-        When scipy is not installed.
+        When ``method="scipy"`` and scipy is not installed.
 
     Examples
     --------
@@ -604,9 +759,6 @@ def fit_values_to_truncated_powerlaw(
     >>> print(np.round(y_data[:3], 3))
     [0.325 0.121 0.04 ]
     """
-    if _scipy_curve_fit is None:
-        raise ImportError("scipy is required for power-law fitting: pip install fastmob[fitting]")
-
     values_array = np.asarray(values, dtype=float)
     values_array = values_array[values_array > 0]
 
@@ -618,6 +770,15 @@ def fit_values_to_truncated_powerlaw(
     valid = hist > 0
     x_data = bin_centers[valid]
     y_data = hist[valid]
+
+    if method == "grid":
+        popt = _fit_truncated_powerlaw_grid(x_data, y_data)
+        return popt, x_data, y_data
+
+    if method != "scipy":
+        raise ValueError(f"Unknown method {method!r}; expected 'scipy' or 'grid'.")
+    if _scipy_curve_fit is None:
+        raise ImportError("scipy is required for power-law fitting: pip install fastmob[fitting]")
 
     log_y_data = np.log(y_data)
 

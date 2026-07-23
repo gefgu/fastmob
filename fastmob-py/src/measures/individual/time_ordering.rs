@@ -1,7 +1,7 @@
 use arrow_array::{Array, UInt64Array};
 use fastmob_core::measures::individual::time_ordering::{
-    OrderedIndexRanges, split_ordered_index_ranges, time_ordered_indices_for_u64_codes,
-    time_ordered_indices_single_user,
+    presorted_ranges_for_u64_codes, split_ordered_index_ranges, time_ordered_indices_for_u64_codes,
+    time_ordered_indices_single_user, OrderedIndexRanges,
 };
 use fastmob_core::utils::{split_ranges, validate_uid_len};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
@@ -12,6 +12,7 @@ use pyo3_arrow::PyArray;
 use crate::utils::{arrow_values, as_nullable_f64_array};
 
 type OrderedNumpyResult<'py> = (Bound<'py, PyArray1<usize>>, Bound<'py, PyArray1<usize>>);
+type StartEndNumpyResult<'py> = (Bound<'py, PyArray1<usize>>, Bound<'py, PyArray1<usize>>);
 type OrderedStartEndNumpyResult<'py> = (
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
@@ -35,6 +36,13 @@ pub fn ordered_index_ranges_into_start_end_arrays<'py>(
         starts.into_pyarray(py),
         ends.into_pyarray(py),
     )
+}
+
+fn presorted_ranges_into_numpy<'py>(
+    py: Python<'py>,
+    (starts, ends): (Vec<usize>, Vec<usize>),
+) -> StartEndNumpyResult<'py> {
+    (starts.into_pyarray(py), ends.into_pyarray(py))
 }
 
 pub fn time_ordered_indices_from_ndarray_uids(
@@ -100,6 +108,42 @@ pub fn time_ordered_indices_from_c_array_uids(
 
 fn is_arrow_array(obj: &Bound<'_, PyAny>) -> PyResult<bool> {
     obj.hasattr("__arrow_c_array__")
+}
+
+#[pyfunction]
+pub fn presorted_user_starts_ends_numpy<'py>(
+    py: Python<'py>,
+    uids: PyReadonlyArray1<'py, u64>,
+) -> PyResult<StartEndNumpyResult<'py>> {
+    let slice = uids.as_slice()?;
+    let ranges = py.detach(|| presorted_ranges_for_u64_codes(slice));
+    Ok(presorted_ranges_into_numpy(py, ranges))
+}
+
+#[pyfunction]
+pub fn presorted_user_starts_ends_arrow<'py>(
+    py: Python<'py>,
+    uids: PyArray,
+) -> PyResult<StartEndNumpyResult<'py>> {
+    let (array_ref, _field) = uids.into_inner();
+    let array = array_ref.as_any();
+
+    if let Some(array) = array.downcast_ref::<UInt64Array>() {
+        if array.null_count() > 0 {
+            return Err(PyValueError::new_err(
+                "uint64 uids for presorted ranges must not contain nulls",
+            ));
+        }
+        let start = array.offset();
+        let end = start + array.len();
+        let values = &array.values()[start..end];
+        let ranges = py.detach(|| presorted_ranges_for_u64_codes(values));
+        return Ok(presorted_ranges_into_numpy(py, ranges));
+    }
+
+    Err(PyValueError::new_err(
+        "expected uint64 Arrow uids for presorted ranges",
+    ))
 }
 
 #[pyfunction]

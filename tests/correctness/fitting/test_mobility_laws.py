@@ -120,6 +120,76 @@ def test_fit_truncated_powerlaw_no_print(capsys):
 
 
 # ---------------------------------------------------------------------------
+# Tests for fit_values_to_truncated_powerlaw(method="grid")
+# ---------------------------------------------------------------------------
+
+
+def test_fit_truncated_powerlaw_grid_recovers_beta_within_documented_tolerance():
+    """The grid method is a documented approximation, not bit-identical to
+    scipy -- assert a looser tolerance than the scipy fixture's ±0.05."""
+    from fastmob.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
+
+    TRUE_BETA = 1.75
+    TRUE_KAPPA = 400.0
+    TRUE_R0 = 1.5
+    N = 50_000
+
+    samples = _sample_truncated_powerlaw(N, beta=TRUE_BETA, r0=TRUE_R0, kappa=TRUE_KAPPA, seed=42)
+    popt, _x_data, _y_data = fit_values_to_truncated_powerlaw(samples, bins=100, method="grid")
+    _c_fit, _r0_fit, beta_fit, _kappa_fit = popt
+
+    assert abs(beta_fit - TRUE_BETA) < 0.3, f"Recovered beta={beta_fit:.4f}, expected {TRUE_BETA} ± 0.3"
+
+
+def test_fit_truncated_powerlaw_grid_close_to_scipy_fit():
+    pytest.importorskip("scipy", reason="scipy not installed")
+    from fastmob.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
+
+    samples = _sample_truncated_powerlaw(20_000, seed=7)
+    popt_scipy, x_scipy, y_scipy = fit_values_to_truncated_powerlaw(samples, bins=60, method="scipy")
+    popt_grid, x_grid, y_grid = fit_values_to_truncated_powerlaw(samples, bins=60, method="grid")
+
+    # Same histogram (bins/data are method-independent) -- only the fit differs.
+    np.testing.assert_allclose(x_scipy, x_grid)
+    np.testing.assert_allclose(y_scipy, y_grid)
+
+    _c_s, _r0_s, beta_s, _kappa_s = popt_scipy
+    _c_g, _r0_g, beta_g, _kappa_g = popt_grid
+    assert abs(beta_s - beta_g) < 0.3
+
+
+def test_fit_truncated_powerlaw_grid_does_not_import_scipy(monkeypatch):
+    """method='grid' must work even when scipy is entirely unavailable."""
+    import fastmob.measures.fitting.mobility_laws as mod
+
+    monkeypatch.setattr(mod, "_scipy_curve_fit", None)
+    samples = _sample_truncated_powerlaw(2_000, seed=3)
+    popt, x_data, y_data = mod.fit_values_to_truncated_powerlaw(samples, bins=30, method="grid")
+    assert len(popt) == 4
+    assert len(x_data) == len(y_data) > 0
+
+
+def test_fit_truncated_powerlaw_returns_correct_shapes_grid():
+    from fastmob.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
+
+    samples = _sample_truncated_powerlaw(5_000, seed=0)
+    popt, x_data, y_data = fit_values_to_truncated_powerlaw(samples, bins=50, method="grid")
+
+    assert len(popt) == 4
+    assert len(x_data) == len(y_data)
+    assert len(x_data) > 0
+    assert np.all(x_data > 0)
+    assert np.all(y_data > 0)
+
+
+def test_fit_truncated_powerlaw_unknown_method_raises():
+    from fastmob.measures.fitting.mobility_laws import fit_values_to_truncated_powerlaw
+
+    with pytest.raises(ValueError, match="Unknown method"):
+        fit_values_to_truncated_powerlaw([1.0, 2.0, 3.0], method="bogus")
+
+
+# ---------------------------------------------------------------------------
 # Tests for universal visitation law utilities
 # ---------------------------------------------------------------------------
 

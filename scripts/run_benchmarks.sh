@@ -12,7 +12,7 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-MAIN_VENV="${FKMOB_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
+MAIN_VENV="${FASTMOB_BENCH_VENV:-$REPO_ROOT/.venv-py312}"
 SKMOB_VENV="$REPO_ROOT/.venv-skmob"
 MOVINGPANDAS_VENV="${MOVINGPANDAS_VENV:-$MAIN_VENV}"
 PTRAIL_VENV="${PTRAIL_VENV:-$REPO_ROOT/.venv-ptrail}"

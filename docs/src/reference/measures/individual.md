@@ -29,6 +29,7 @@
 | [`discover_daily_motifs_from_agents`](#fastmob.measures.individual.discover_daily_motifs_from_agents) | Discover daily mobility motifs for all agents in a dataset. |
 <!-- | [`intermittance_and_degree_of_return`](#fastmob.measures.individual.intermittance_and_degree_of_return) | Compute intermittancy and degree of return per user using vectorized operations. | -->
 <!-- | [`exploration_profiling`](#fastmob.measures.individual.exploration_profiling) | Compute intermittency and degree of return, then cluster users into mobility profiles. | -->
+<!-- | [`compute_profiles`](#fastmob.measures.individual.compute_profiles) | Compute per-user mobility-profile metrics and assign Routiner/Regular/Scouter labels. | -->
 <!-- | [`fast_diversity`](#fastmob.measures.individual.fast_diversity) | Compute the diversity of a sequence using suffix arrays. | -->
 <!-- | [`mean_area_volume`](#fastmob.measures.individual.mean_area_volume) | Mean user volume per area and 10-minute time bin, averaged across days of the week. | -->
 
@@ -186,6 +187,13 @@
 ---
 
 ::: fastmob.measures.individual.exploration_profiling
+    options:
+      show_source: false
+      show_root_toc_entry: false
+      show_root_heading: false
+---
+
+::: fastmob.measures.individual.compute_profiles
     options:
       show_source: false
       show_root_toc_entry: false

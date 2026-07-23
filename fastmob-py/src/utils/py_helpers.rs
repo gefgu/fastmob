@@ -27,6 +27,18 @@ pub fn u32_results_into_arrow(results: Vec<u32>) -> PyArray {
     PyArray::from_array_ref(array)
 }
 
+/// Same as [`u64_results_into_arrow`], but maps `sentinel` values to a real
+/// Arrow null slot instead of a valid-looking sentinel integer -- for kernels
+/// (e.g. H3 cell conversion) that use a reserved value to mean "invalid".
+pub fn u64_results_into_arrow_nullable(results: Vec<u64>, sentinel: u64) -> PyArray {
+    let array: ArrayRef = Arc::new(UInt64Array::from_iter(
+        results
+            .into_iter()
+            .map(|v| if v == sentinel { None } else { Some(v) }),
+    ));
+    PyArray::from_array_ref(array)
+}
+
 pub fn bool_results_into_arrow(results: Vec<bool>) -> PyArray {
     let array: ArrayRef = Arc::new(BooleanArray::from(results));
     PyArray::from_array_ref(array)

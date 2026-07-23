@@ -1,0 +1,35 @@
+{
+  "metadata": {
+    "bbox": [
+      137.0,
+      35.1,
+      137.05,
+      35.15
+    ],
+    "benchmark": "network.jump_lengths_km+radius_of_gyration_km",
+    "cpu_info": {
+      "cores": 32,
+      "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+      "vendor_slug": "amd"
+    },
+    "dataset": "yjmob100k",
+    "note": "Bbox is a ~5km x 5km sub-region of YJMob100K's full ~100km x 100km extent, not the full dataset area -- see module docstring.",
+    "overture_release": "2026-05-20.0"
+  },
+  "results": {
+    "ch_prep_seconds": 0.04060637099610176,
+    "graph_edges": 17436,
+    "graph_nodes": 6415,
+    "mean_network_jump_km": 1.449853615991166,
+    "mean_network_radius_of_gyration_km": 1.2468064423490024,
+    "mean_straight_line_jump_km": 1.0216096332603244,
+    "mean_straight_line_radius_of_gyration_km": 0.8678660240343179,
+    "n_rows": 1043041,
+    "n_users": 34463,
+    "network_jump_lengths_seconds": 0.8522367319965269,
+    "network_radius_of_gyration_seconds": 0.9563576060027117,
+    "road_fetch_or_load_seconds": 0.009771112003363669,
+    "straight_line_jump_lengths_seconds": 0.028225829999428242,
+    "straight_line_radius_of_gyration_seconds": 0.013241818989627063
+  }
+}

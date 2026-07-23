@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "benchmark": "collective.co_presence_graph_from_visits+infer_social_ties",
+    "cpu_info": {
+      "cores": 32,
+      "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+      "vendor_slug": "amd"
+    },
+    "data_path": "/home/gustavo/citybehavex/data/yjmob_wgs84_simple.parquet",
+    "dataset": "yjmob100k",
+    "h3_resolution": 9,
+    "note": "YJMob100K's day-granularity co-presence graph is extremely dense (avg degree grows roughly quadratically with user count) -- see module docstring. n_users is capped well below the dataset's full 100k scale because graph_metrics' cost scales with this density, not with row count."
+  },
+  "results": [
+    {
+      "build_seconds": 0.15915052499622107,
+      "graph_edge_count": 119635,
+      "graph_node_count": 1000,
+      "infer_seconds": 0.030422048002947122,
+      "inferred_edge_count": 589,
+      "inferred_mean_degree": 1.178,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "size_label": "1228051",
+      "time_steps": 75
+    },
+    {
+      "build_seconds": 0.7267538010055432,
+      "graph_edge_count": 1891877,
+      "graph_node_count": 4000,
+      "infer_seconds": 1.0422887349996017,
+      "inferred_edge_count": 10951,
+      "inferred_mean_degree": 5.4755,
+      "n_rows": 4841963,
+      "n_users": 4000,
+      "size_label": "4841963",
+      "time_steps": 75
+    },
+    {
+      "build_seconds": 1.6309067760012113,
+      "graph_edge_count": 7195899,
+      "graph_node_count": 8000,
+      "infer_seconds": 7.291178818006301,
+      "inferred_edge_count": 42216,
+      "inferred_mean_degree": 10.554,
+      "n_rows": 9539323,
+      "n_users": 8000,
+      "size_label": "9539323",
+      "time_steps": 75
+    }
+  ]
+}

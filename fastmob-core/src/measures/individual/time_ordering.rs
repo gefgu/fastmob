@@ -11,6 +11,28 @@ pub fn split_ordered_index_ranges(
     (indices, ends_from_ranges(&ranges))
 }
 
+pub fn presorted_ranges_for_u64_codes(codes: &[u64]) -> (Vec<usize>, Vec<usize>) {
+    let n = codes.len();
+    if n == 0 {
+        return (Vec::new(), Vec::new());
+    }
+
+    let mut boundaries: Vec<usize> = codes
+        .par_windows(2)
+        .enumerate()
+        .filter_map(|(idx, window)| (window[0] != window[1]).then_some(idx + 1))
+        .collect();
+    boundaries.sort_unstable();
+
+    let mut starts = Vec::with_capacity(boundaries.len() + 1);
+    starts.push(0);
+    starts.extend_from_slice(&boundaries);
+
+    let mut ends = boundaries;
+    ends.push(n);
+    (starts, ends)
+}
+
 pub fn time_ordered_indices_single_user(timestamps: &[f64]) -> OrderedIndexRanges {
     let mut indices: Vec<usize> = (0..timestamps.len()).collect();
     indices.par_sort_by(|&left, &right| {

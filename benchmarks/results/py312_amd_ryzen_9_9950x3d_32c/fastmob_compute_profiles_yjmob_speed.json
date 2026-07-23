@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "benchmark": "individual.compute_profiles",
+    "cpu_info": {
+      "cores": 32,
+      "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+      "vendor_slug": "amd"
+    },
+    "data_path": "/home/gustavo/citybehavex/data/yjmob_wgs84_simple.parquet",
+    "dataset": "yjmob100k",
+    "h3_resolution": 9
+  },
+  "results": [
+    {
+      "average_seconds": 31.19984485799796,
+      "minimum_seconds": 31.19984485799796,
+      "n_rows": 1228051,
+      "n_users": 1000,
+      "n_users_profiled": 1000,
+      "size_label": "1228051"
+    },
+    {
+      "average_seconds": 163.68761865400302,
+      "minimum_seconds": 163.68761865400302,
+      "n_rows": 6018300,
+      "n_users": 5000,
+      "n_users_profiled": 5000,
+      "size_label": "6018300"
+    }
+  ]
+}

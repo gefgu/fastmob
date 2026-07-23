@@ -465,6 +465,20 @@ class TestBuildPresortedUserEnds:
         assert uid_values == ["a", "b", "c"]
         assert ends.tolist() == [2, 5, 6]
 
+    def test_builds_ends_from_pandas_uint64_uid_groups(self):
+        import narwhals as nw
+        from fastmob.measures._common import _build_presorted_user_ends
+
+        df = nw.from_native(
+            pd.DataFrame({"uid": pd.Series([1, 1, 3, 3, 9], dtype="uint64")}),
+            eager_only=True,
+        )
+
+        uid_values, ends = _build_presorted_user_ends(df, "uid")
+
+        assert uid_values == [1, 3, 9]
+        assert ends.tolist() == [2, 4, 5]
+
     def test_builds_empty_ends_for_empty_uid_dataframe(self):
         import narwhals as nw
         from fastmob.measures._common import _build_presorted_user_ends
@@ -497,6 +511,21 @@ class TestBuildPresortedUserEnds:
         uid_values, ends = _build_presorted_user_ends(df, "uid")
 
         assert uid_values == ["a", "b", "c"]
+        assert ends.tolist() == [2, 4, 5]
+
+    def test_builds_ends_from_polars_uint64_uid_groups(self):
+        pl = pytest.importorskip("polars", reason="Polars not installed")
+        import narwhals as nw
+        from fastmob.measures._common import _build_presorted_user_ends
+
+        df = nw.from_native(
+            pl.DataFrame({"uid": [1, 1, 3, 3, 9]}, schema={"uid": pl.UInt64}),
+            eager_only=True,
+        )
+
+        uid_values, ends = _build_presorted_user_ends(df, "uid")
+
+        assert uid_values == [1, 3, 9]
         assert ends.tolist() == [2, 4, 5]
 
 

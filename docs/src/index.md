@@ -1,7 +1,7 @@
 # fastmob
 
 <p align="center">
-  <img src="assets/logo.png" alt="fastmob logo" width="280">
+  <img src="assets/logo.svg" alt="fastmob logo" width="280">
 </p>
 
 **fastmob** is a high-performance reimplementation of the [skmob](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library.
@@ -18,7 +18,7 @@ It exposes the same measure API but replaces the Python/pandas internals with a 
     
 - **Measured validation**: correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
 
-- **Zero-Copy**: Scikit-Mobility 2 process the data where it lives. Instead of copying, it directly access your dataframe in the memory, saving memory and making the processing faster.
+- **Zero-Copy**: Fastkit-Mobility process the data where it lives. Instead of copying, it directly access your dataframe in the memory, saving memory and making the processing faster.
 
 - **Lightweight**: Python wheels ship compact, release-ready binaries.
 
