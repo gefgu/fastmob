@@ -19,6 +19,14 @@ Cache schema (see the project plan's "Cache schema per capability area"):
         kept — i.e. did *not* flag as an outlier on the ``Speed`` kinematic
         feature column (see ``tests/populate_ptrail_cache.py``'s module
         docstring for the version-compatibility note this depends on).
+    interpolate_<method>.parquet
+        Columns ``uid``, ``datetime``, ``lat``, ``lon``: every row PTRAIL's
+        real per-user interpolation helper (``Helpers.linear_help`` /
+        ``cubic_help`` / ``kinematic_help``, called directly — see
+        ``tests/populate_ptrail_cache.py``) produced for that user, sorted
+        chronologically (original points plus any inserted point). One file
+        per entry in ``INTERPOLATE_METHODS`` (``"linear"``, ``"cubic"``,
+        ``"kinematic"``).
 """
 
 from __future__ import annotations
@@ -50,3 +58,18 @@ class PtrailReferenceDataset:
             return None
         df = pd.read_parquet(path)
         return {uid: set(group["row_index"].tolist()) for uid, group in df.groupby("uid", sort=False)}
+
+    def interpolated_positions(self, method: str) -> dict[object, pd.DataFrame] | None:
+        """Cached ``{uid: DataFrame(datetime, lat, lon)}`` for one interpolation
+        method (``"linear"``, ``"cubic"``, or ``"kinematic"``), sorted
+        chronologically per user (original points plus any point PTRAIL
+        inserted), or None if the cache file is absent.
+        """
+        path = self._dir / f"interpolate_{method}.parquet"
+        if not path.exists():
+            return None
+        df = pd.read_parquet(path)
+        return {
+            uid: group[["datetime", "lat", "lon"]].reset_index(drop=True)
+            for uid, group in df.groupby("uid", sort=False)
+        }

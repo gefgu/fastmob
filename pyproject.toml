@@ -78,6 +78,7 @@ dev = [
     "h3",
     "requests",
     "psutil",
+    "similaritymeasures",
 ]
 dev-skmob = [
     "fiona",

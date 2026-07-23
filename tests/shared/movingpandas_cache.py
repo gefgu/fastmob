@@ -25,6 +25,15 @@ Cache schema (see the project plan's "Cache schema per capability area"):
         (see ``segment_partitions`` below), not exact segment_id values,
         since segment numbering is not guaranteed to match between
         libraries.
+    interpolate_at_<method>.parquet
+        Columns ``uid``, ``query_time``, ``lat``, ``lon``, ``valid``: one
+        row per (user, deterministic query timestamp) pair from
+        MovingPandas' real ``Trajectory.get_position_at``. Query timestamps
+        are the midpoint between every consecutive pair of a user's points
+        (always in-range) plus one timestamp before the user's first point
+        (always out-of-range, ``valid=False``). One file per entry in
+        ``INTERPOLATE_AT_METHODS`` (``"linear"`` -> MovingPandas'
+        ``method="interpolated"``, ``"nearest"`` -> ``method="nearest"``).
 """
 
 from __future__ import annotations
@@ -76,3 +85,14 @@ class MovingPandasReferenceDataset:
                 by_segment.setdefault(segment_id, set()).add(row_index)
             partitions[uid] = {frozenset(rows) for rows in by_segment.values()}
         return partitions
+
+    def position_at(self, method: str) -> pd.DataFrame | None:
+        """Cached ``(uid, query_time, lat, lon, valid)`` rows for one
+        `interpolate_at` method (``"linear"`` or ``"nearest"``) from
+        MovingPandas' real `Trajectory.get_position_at`, or None if the
+        cache file is absent.
+        """
+        path = self._dir / f"interpolate_at_{method}.parquet"
+        if not path.exists():
+            return None
+        return pd.read_parquet(path)

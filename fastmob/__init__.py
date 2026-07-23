@@ -1,4 +1,4 @@
-from . import data, io, privacy, utils
+from . import data, io, privacy, trajectory, utils
 from .core import FlowDataFrame, TrajDataFrame
 from .measures import (
     activity_distribution_jensen_shannon_divergence,
@@ -116,6 +116,7 @@ __all__ = [
     "privacy",
     "data",
     "io",
+    "trajectory",
     "jump_lengths",
     "radius_of_gyration",
     "k_radius_of_gyration",

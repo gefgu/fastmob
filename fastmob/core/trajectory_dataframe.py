@@ -117,7 +117,13 @@ class TrajDataFrame(BaseDataFrame):
         self.parameters = {} if parameters is None else parameters
         self._info = None
 
-        if latitude != LATITUDE or longitude != LONGITUDE or datetime != DATETIME or user_id != UID or trajectory_id != TID:
+        if (
+            latitude != LATITUDE
+            or longitude != LONGITUDE
+            or datetime != DATETIME
+            or user_id != UID
+            or trajectory_id != TID
+        ):
             df = self._rename_columns(
                 df,
                 {
@@ -272,6 +278,140 @@ class TrajDataFrame(BaseDataFrame):
             other,
             resolution=resolution,
         )
+
+    def interpolate(self, method: str = "linear", sampling_rate_s: float = 3600.0, **method_kwargs) -> "TrajDataFrame":
+        """Fill gaps in the trajectory using a named interpolation algorithm.
+
+        Parameters
+        ----------
+        method : str, optional
+            One of ``"linear"``, ``"cubic_spline"``, ``"kinematic"``, or
+            ``"random_walk"``. Default ``"linear"``.
+        sampling_rate_s : float, optional
+            Maximum time gap, in seconds, allowed between consecutive points
+            before an interpolated point is inserted. Default ``3600.0``.
+        **method_kwargs
+            Method-specific parameters; see
+            :func:`fastmob.trajectory.interpolate`.
+
+        Returns
+        -------
+        TrajDataFrame
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fastmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1, 1],
+        ...     "lat": [0.0, 1.0, 2.0],
+        ...     "lng": [0.0, 0.0, 0.0],
+        ...     "datetime": pd.to_datetime(
+        ...         ["2020-01-01 00:00", "2020-01-01 02:00", "2020-01-01 03:00"]
+        ...     ),
+        ... })
+        >>> tdf = fastmob.TrajDataFrame(df)
+        >>> tdf.interpolate(sampling_rate_s=3600.0)  # doctest: +SKIP
+        """
+        from fastmob.trajectory import interpolate as _interpolate
+
+        result = _interpolate(
+            self.df,
+            method=method,
+            sampling_rate_s=sampling_rate_s,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            presorted=self.sorted,
+            **method_kwargs,
+        )
+        return TrajDataFrame(
+            result,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+
+    def interpolate_at(self, at, method: str = "linear"):
+        """Query the interpolated position of each user at one or more timestamps.
+
+        Parameters
+        ----------
+        at :
+            A single timestamp-like, or a sequence of timestamp-likes.
+        method : str, optional
+            ``"linear"`` (default) or ``"nearest"``.
+
+        Returns
+        -------
+        DataFrame
+            One row per ``(uid, query_time)`` pair with ``lat``, ``lng``,
+            and a ``valid`` column.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fastmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1, 1],
+        ...     "lat": [0.0, 1.0, 2.0],
+        ...     "lng": [0.0, 0.0, 0.0],
+        ...     "datetime": pd.to_datetime(
+        ...         ["2020-01-01 00:00", "2020-01-01 01:00", "2020-01-01 02:00"]
+        ...     ),
+        ... })
+        >>> tdf = fastmob.TrajDataFrame(df)
+        >>> tdf.interpolate_at("2020-01-01 00:30")  # doctest: +SKIP
+        """
+        from fastmob.trajectory import interpolate_at as _interpolate_at
+
+        return _interpolate_at(
+            self.df,
+            at,
+            method=method,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            presorted=self.sorted,
+        )
+
+    def trajectory_distance(self, other, method: str = "dtw", **method_kwargs) -> float:
+        """Compute a similarity/distance metric against another trajectory's point-sequence.
+
+        Parameters
+        ----------
+        other :
+            Another trajectory (any Narwhals-compatible eager backend, or a
+            ``TrajDataFrame``). Must represent a single user's point-sequence.
+        method : str, optional
+            One of ``"dtw"``, ``"frechet"``, ``"hausdorff"``, or ``"lcss"``.
+            Default ``"dtw"``.
+        **method_kwargs
+            Method-specific parameters; see
+            :func:`fastmob.trajectory.trajectory_distance`.
+
+        Returns
+        -------
+        float
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fastmob
+        >>> df = pd.DataFrame({
+        ...     "lat": [0.0, 1.0, 2.0], "lng": [0.0, 0.0, 0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+        ... })
+        >>> tdf = fastmob.TrajDataFrame(df)
+        >>> tdf.trajectory_distance(df, method="dtw")
+        0.0
+        """
+        from fastmob.trajectory import trajectory_distance as _trajectory_distance
+
+        return _trajectory_distance(self, other, method=method, **method_kwargs)
 
     # ------------------------------------------------------------------
     # Preprocessing methods
@@ -670,14 +810,12 @@ class TrajDataFrame(BaseDataFrame):
         Timestamp('2008-10-23 13:53:05')
         """
         nw_df = nw.from_native(self.df, eager_only=True)
-        self.df = (
-            nw_df.with_columns(
-                nw.col(self.datetime_col)
-                .dt.replace_time_zone(from_timezone)
-                .dt.convert_time_zone(to_timezone)
-                .dt.replace_time_zone(None)
-            ).to_native()
-        )
+        self.df = nw_df.with_columns(
+            nw.col(self.datetime_col)
+            .dt.replace_time_zone(from_timezone)
+            .dt.convert_time_zone(to_timezone)
+            .dt.replace_time_zone(None)
+        ).to_native()
 
     # ------------------------------------------------------------------
     # Visualization methods  (require fastmob[visualization])

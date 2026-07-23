@@ -24,6 +24,7 @@ nav = [
     { "Overview" = "reference/index.md" },
     { "Data Structures" = "reference/data-structures.md" },
     { "Preprocessing" = "reference/preprocessing.md" },
+    { "Trajectory" = "reference/trajectory.md" },
     { "Network" = "reference/network.md" },
     { "Measures" = "reference/measures/index.md", children = [
       { "Overview" = "reference/measures/index.md" },

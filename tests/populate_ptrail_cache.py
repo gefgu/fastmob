@@ -55,6 +55,8 @@ import pandas as pd
 from ptrail.core.TrajectoryDF import PTRAILDataFrame
 from ptrail.features.kinematic_features import KinematicFeatures
 from ptrail.preprocessing.filters import Filters
+from ptrail.preprocessing.helpers import Helpers
+from ptrail.utilities import constants as const
 
 from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
 from tests.shared.ptrail_cache import _REFERENCE_DIR
@@ -63,6 +65,11 @@ DATASET_NAME = "brightkite"
 MAX_USERS = 8
 MAX_POINTS_PER_USER = 60
 MIN_POINTS_PER_USER = 20
+
+# Smaller than Brightkite check-ins' typical multi-hour cadence, so most
+# consecutive gaps exceed it and get exactly one PTRAIL-inserted point.
+INTERPOLATE_SAMPLING_RATE_S = 1800.0
+INTERPOLATE_METHODS = ("linear", "cubic", "kinematic")
 
 
 def _load_brightkite_slice() -> pd.DataFrame:
@@ -123,11 +130,51 @@ def _run_hampel_for_user(user_df: pd.DataFrame) -> list[int]:
     return result.reset_index()["row_index"].tolist()
 
 
+def _run_interpolate_for_user(user_df: pd.DataFrame, uid: object, ip_type: str) -> pd.DataFrame:
+    """Run PTRAIL's real per-user interpolation helper directly (bypassing the
+    multiprocessing-based `Interpolation.interpolate_position` wrapper, same
+    convention `_run_hampel_for_user` above already uses) and return a
+    chronologically-sorted `(datetime, lat, lon)` frame -- original points
+    plus any point PTRAIL inserted.
+
+    The installed ptrail==0.7.1 Beta's `Helpers.linear_help`/`cubic_help`/
+    `kinematic_help` expect the DateTime-indexing step their own
+    `_linear_ip`/`_cubic_ip`/`_kinematic_ip` wrappers normally perform before
+    splitting by trajectory ID (`dataframe.reset_index()[[...]].set_index(
+    DateTime)`) to have already happened -- calling the helper directly on a
+    plain-columns frame (as this ptrail version's own docstrings describe)
+    raises ``ValueError: cannot set a row with mismatched columns`` from
+    inside `.loc[new_timestamp] = [...]`, since the DateTime column is still
+    present as a regular column, changing the target row's column count.
+    Pre-indexing here (mirroring what `_linear_ip` etc. do internally, one
+    version-generation earlier) avoids that.
+
+    @usedBy `main()`.
+    """
+    frame = pd.DataFrame(
+        {
+            const.DateTime: user_df["datetime"].to_numpy(),
+            const.TRAJECTORY_ID: uid,
+            const.LAT: user_df["lat"].to_numpy(),
+            const.LONG: user_df["lng"].to_numpy(),
+        }
+    ).set_index(const.DateTime)
+    helper_fn = {
+        "linear": Helpers.linear_help,
+        "cubic": Helpers.cubic_help,
+        "kinematic": Helpers.kinematic_help,
+    }[ip_type]
+    result = helper_fn(frame, uid, INTERPOLATE_SAMPLING_RATE_S, "")
+    result = result.reset_index().sort_values(const.DateTime, kind="mergesort").reset_index(drop=True)
+    return result[[const.DateTime, const.LAT, const.LONG]]
+
+
 def main() -> None:
     """Populate `tests/shared/ptrail_reference/brightkite/`.
 
-    @usedBy `scripts/populate_ptrail_cache.sh`. Writes `input.parquet` and
-    `outlier_hampel.parquet` to the dataset's cache directory.
+    @usedBy `scripts/populate_ptrail_cache.sh`. Writes `input.parquet`,
+    `outlier_hampel.parquet`, and one `interpolate_<method>.parquet` per
+    entry in `INTERPOLATE_METHODS` to the dataset's cache directory.
     """
     parser = argparse.ArgumentParser(description="Populate PTRAIL reference cache")
     parser.parse_args()
@@ -155,6 +202,30 @@ def main() -> None:
     result_df.to_parquet(path, index=False)
     n_users = result_df["uid"].nunique() if len(result_df) else 0
     print(f"    {path.name} ({len(result_df)} kept rows across {n_users} users)")
+
+    for method in INTERPOLATE_METHODS:
+        print(f"==> interpolate: {method}")
+        rows = []
+        for uid, user_df in df.groupby("uid", sort=False):
+            try:
+                result = _run_interpolate_for_user(user_df.reset_index(drop=True), uid, method)
+            except Exception as exc:
+                print(f"    SKIP user={uid} method={method} ({type(exc).__name__}: {exc})")
+                continue
+            for row in result.itertuples(index=False):
+                rows.append(
+                    {
+                        "uid": uid,
+                        "datetime": getattr(row, const.DateTime),
+                        "lat": getattr(row, const.LAT),
+                        "lon": getattr(row, const.LONG),
+                    }
+                )
+        result_df = pd.DataFrame(rows, columns=["uid", "datetime", "lat", "lon"])
+        path = out_dir / f"interpolate_{method}.parquet"
+        result_df.to_parquet(path, index=False)
+        n_users = result_df["uid"].nunique() if len(result_df) else 0
+        print(f"    {path.name} ({len(result_df)} rows across {n_users} users)")
 
     print(f"\nDone. Commit {out_dir} to git to track the snapshot.")
 

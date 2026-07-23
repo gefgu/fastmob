@@ -4,6 +4,7 @@ mod models;
 mod network;
 mod preprocessing;
 mod privacy;
+mod trajectory;
 mod utils;
 
 use pyo3::prelude::*;
@@ -239,6 +240,25 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         segment_traj_py::segment_trajectory_indexed,
         m
     )?)?;
+    m.add_class::<trajectory::interpolate_py::PyInterpolationConfig>()?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::interpolate_py::interpolate_trajectory_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::interpolate_py::interpolate_trajectory_presorted,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::interpolate_at_py::interpolate_at_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::interpolate_at_py::interpolate_at_presorted,
+        m
+    )?)?;
+    m.add_class::<trajectory::distance_py::PyDistanceConfig>()?;
+    m.add_function(wrap_pyfunction!(trajectory::distance_py::trajectory_distance, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_visitation_stays, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_trip_indices, m)?)?;

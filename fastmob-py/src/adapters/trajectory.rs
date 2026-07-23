@@ -972,3 +972,83 @@ where
 
     Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
 }
+
+/// Runs a two-independent-whole-sequence -> scalar operation (the shape
+/// shared identically by all 4 `trajectory_distance` methods: DTW, discrete
+/// Fréchet, Hausdorff, LCSS). No grouping/indices/ends at all -- each side is
+/// exactly one trajectory's full coordinate sequence, already sorted and
+/// null-cleaned in Python (see `fastmob/trajectory/_distance.py`'s module
+/// docstring for why that Python-side cleaning replaces the usual
+/// `valid_rows`/`Option<&[bool]>` nullable-Arrow path here).
+pub fn run_two_sequence_f64<'py, F>(
+    py: Python<'py>,
+    latitudes_a: &Bound<'py, PyAny>,
+    longitudes_a: &Bound<'py, PyAny>,
+    latitudes_b: &Bound<'py, PyAny>,
+    longitudes_b: &Bound<'py, PyAny>,
+    operation: F,
+) -> PyResult<f64>
+where
+    F: FnOnce(CoordinateView<'_>, CoordinateView<'_>) -> Result<f64, String> + Send,
+{
+    if let (Ok(lat_a), Ok(lng_a), Ok(lat_b), Ok(lng_b)) = (
+        latitudes_a.extract::<PyReadonlyArray1<f64>>(),
+        longitudes_a.extract::<PyReadonlyArray1<f64>>(),
+        latitudes_b.extract::<PyReadonlyArray1<f64>>(),
+        longitudes_b.extract::<PyReadonlyArray1<f64>>(),
+    ) {
+        let lats_a = lat_a.as_slice()?;
+        let lngs_a = lng_a.as_slice()?;
+        let lats_b = lat_b.as_slice()?;
+        let lngs_b = lng_b.as_slice()?;
+        validate_coordinate_lengths(lats_a.len(), lngs_a.len())?;
+        validate_coordinate_lengths(lats_b.len(), lngs_b.len())?;
+        return py
+            .detach(|| {
+                operation(
+                    CoordinateView {
+                        latitudes: lats_a,
+                        longitudes: lngs_a,
+                    },
+                    CoordinateView {
+                        latitudes: lats_b,
+                        longitudes: lngs_b,
+                    },
+                )
+            })
+            .map_err(PyValueError::new_err);
+    }
+
+    if is_arrow_array(latitudes_a)?
+        && is_arrow_array(longitudes_a)?
+        && is_arrow_array(latitudes_b)?
+        && is_arrow_array(longitudes_b)?
+    {
+        let latitudes_a = as_f64_array(latitudes_a.extract::<ArrowPyArray>()?, "latitudes_a")?;
+        let longitudes_a = as_f64_array(longitudes_a.extract::<ArrowPyArray>()?, "longitudes_a")?;
+        let latitudes_b = as_f64_array(latitudes_b.extract::<ArrowPyArray>()?, "latitudes_b")?;
+        let longitudes_b = as_f64_array(longitudes_b.extract::<ArrowPyArray>()?, "longitudes_b")?;
+        validate_coordinate_lengths(latitudes_a.len(), longitudes_a.len())?;
+        validate_coordinate_lengths(latitudes_b.len(), longitudes_b.len())?;
+        let lats_a = arrow_values(&latitudes_a);
+        let lngs_a = arrow_values(&longitudes_a);
+        let lats_b = arrow_values(&latitudes_b);
+        let lngs_b = arrow_values(&longitudes_b);
+        return py
+            .detach(|| {
+                operation(
+                    CoordinateView {
+                        latitudes: lats_a,
+                        longitudes: lngs_a,
+                    },
+                    CoordinateView {
+                        latitudes: lats_b,
+                        longitudes: lngs_b,
+                    },
+                )
+            })
+            .map_err(PyValueError::new_err);
+    }
+
+    Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
+}

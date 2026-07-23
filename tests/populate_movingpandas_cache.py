@@ -143,6 +143,11 @@ def _load_brightkite_slice() -> pd.DataFrame:
     return df[["uid", "datetime", "lat", "lng", "location_id", "row_index"]]
 
 
+# fastmob method name -> MovingPandas' own `method=` value for
+# `Trajectory.get_position_at`.
+INTERPOLATE_AT_METHODS = {"linear": "interpolated", "nearest": "nearest"}
+
+
 def _build_trajectory(user_df: pd.DataFrame, uid: object) -> mpd.Trajectory:
     """Build a MovingPandas Trajectory for one user's chronologically-sorted slice.
 
@@ -150,6 +155,55 @@ def _build_trajectory(user_df: pd.DataFrame, uid: object) -> mpd.Trajectory:
     """
     frame = user_df[["datetime", "lat", "lng", "row_index"]].copy()
     return mpd.Trajectory(frame, traj_id=uid, t="datetime", x="lng", y="lat", crs="epsg:4326")
+
+
+def _query_times_for_user(user_df: pd.DataFrame) -> list[pd.Timestamp]:
+    """Deterministic query timestamps for one user: two points (25% and 75%
+    of the way) between every consecutive pair of points (always in this
+    user's time range) plus one timestamp strictly before the first point
+    (always out of range, to exercise the invalid/out-of-bounds path).
+
+    Deliberately avoids the exact 50% midpoint: at that point `method=
+    "nearest"` has a genuine tie between the two surrounding points, and
+    fastmob's and MovingPandas' tie-breaking conventions are not guaranteed
+    to agree (nor does either commit to one) -- 25%/75% keeps every query
+    unambiguously closer to one specific neighbor.
+
+    @usedBy `main()`.
+    """
+    times = user_df["datetime"].tolist()
+    queries = []
+    for t0, t1 in zip(times, times[1:]):
+        span = t1 - t0
+        queries.append(t0 + span * 0.25)
+        queries.append(t0 + span * 0.75)
+    queries.append(times[0] - pd.Timedelta(hours=1))
+    return queries
+
+
+def _run_interpolate_at_for_user(user_df: pd.DataFrame, uid: object, mpd_method: str) -> list[dict]:
+    """Query MovingPandas' real `Trajectory.get_position_at` at each of this
+    user's deterministic query timestamps.
+
+    @usedBy `main()`.
+    """
+    traj = _build_trajectory(user_df, uid)
+    rows = []
+    for query_time in _query_times_for_user(user_df):
+        try:
+            point = traj.get_position_at(query_time, method=mpd_method)
+            rows.append({"uid": uid, "query_time": query_time, "lat": point.y, "lon": point.x, "valid": True})
+        except ValueError:
+            rows.append(
+                {
+                    "uid": uid,
+                    "query_time": query_time,
+                    "lat": float("nan"),
+                    "lon": float("nan"),
+                    "valid": False,
+                }
+            )
+    return rows
 
 
 def _run_projected(user_df: pd.DataFrame, uid: object, generalizer_cls, tolerance_km: float) -> list[int]:
@@ -347,9 +401,10 @@ def main() -> None:
     """Populate `tests/shared/movingpandas_reference/brightkite/`.
 
     @usedBy `scripts/populate_movingpandas_cache.sh`. Writes `input.parquet`,
-    one `simplify_<method>.parquet` per entry in `METHODS`, and one
-    `segment_<method>.parquet` per entry in `SEGMENT_METHODS` to the
-    dataset's cache directory.
+    one `simplify_<method>.parquet` per entry in `METHODS`, one
+    `segment_<method>.parquet` per entry in `SEGMENT_METHODS`, and one
+    `interpolate_at_<method>.parquet` per entry in `INTERPOLATE_AT_METHODS`
+    to the dataset's cache directory.
     """
     parser = argparse.ArgumentParser(description="Populate MovingPandas reference cache")
     parser.parse_args()
@@ -398,6 +453,21 @@ def main() -> None:
         n_users = result_df["uid"].nunique() if len(result_df) else 0
         n_segments = result_df.groupby("uid")["segment_id"].nunique().sum() if len(result_df) else 0
         print(f"    {path.name} ({len(result_df)} rows, {n_segments} segments across {n_users} users)")
+
+    for method, mpd_method in INTERPOLATE_AT_METHODS.items():
+        print(f"==> interpolate_at: {method}")
+        rows = []
+        for uid, user_df in df.groupby("uid", sort=False):
+            try:
+                rows.extend(_run_interpolate_at_for_user(user_df.reset_index(drop=True), uid, mpd_method))
+            except Exception as exc:
+                print(f"    SKIP user={uid} method={method} ({type(exc).__name__}: {exc})")
+                continue
+        result_df = pd.DataFrame(rows, columns=["uid", "query_time", "lat", "lon", "valid"])
+        path = out_dir / f"interpolate_at_{method}.parquet"
+        result_df.to_parquet(path, index=False)
+        n_users = result_df["uid"].nunique() if len(result_df) else 0
+        print(f"    {path.name} ({len(result_df)} rows across {n_users} users)")
 
     print(f"\nDone. Commit {out_dir} to git to track the snapshot.")
 
