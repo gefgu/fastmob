@@ -163,6 +163,14 @@ def _build_bucket_ids(df: nw.DataFrame, datetime_col: str, params: dict) -> np.n
     id: equal truncated timestamps only need to compare equal, not be
     contiguous integers.
 
+    ``fill_null(0)`` before the final ``Int64`` cast is required for a null
+    datetime value: pandas' non-nullable numpy int64 cast raises on NaN/NaT
+    (unlike Polars/Arrow's nullable Int64), so every backend needs a
+    concrete placeholder here. The placeholder never affects grouping — a
+    row with a null datetime already has a non-finite value in `times_data`
+    and is excluded by `is_valid_segment_row` on the Rust side regardless of
+    its bucket id.
+
     @usedBy `segment()`.
     """
     if "__bucket_col__" in params:
@@ -177,6 +185,7 @@ def _build_bucket_ids(df: nw.DataFrame, datetime_col: str, params: dict) -> np.n
             nw.col(datetime_col)
             .dt.truncate(unit)
             .dt.timestamp("ms")
+            .fill_null(0)
             .cast(nw.Int64)
             .alias("__fastmob_temporal_bucket__")
         ).get_column("__fastmob_temporal_bucket__")

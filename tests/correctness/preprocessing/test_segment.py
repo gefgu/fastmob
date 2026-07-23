@@ -63,6 +63,27 @@ def test_temporal_hour_mode_matches_value_change_on_truncated_hour(segment_tdf):
     assert result["segment_id"].tolist() == [0, 0, 0, 0, 0]
 
 
+def test_temporal_with_a_null_datetime_row_does_not_raise():
+    """A null datetime anywhere in the trajectory must not crash the
+    bucket-id builder on pandas: casting a NaT-derived NaN straight to
+    Int64 raises there (unlike Polars' nullable Int64), discovered via a
+    real Brightkite benchmark run where the raw dataset's few unparseable
+    timestamps (`errors="coerce"` -> NaT) slipped into a large slice.
+    """
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"] * 4,
+            "datetime": pd.to_datetime(
+                ["2020-01-01 00:00:00", "2020-01-01 00:30:00", None, "2020-01-01 02:00:00"], errors="coerce"
+            ),
+            "lat": [10.0, 10.0, 10.0, 10.0],
+            "lng": [10.0, 10.0, 10.0, 10.0],
+        }
+    )
+    result = segment(df, method="temporal", mode="hour")
+    assert len(result) == len(df)
+
+
 def test_angle_change_a_ninety_degree_turn_starts_a_new_segment(segment_tdf):
     """0->1 heads due north, 1->2 heads due east: a 90 deg change, well
     above the default min_angle=45, starts a new segment at the turn point."""
