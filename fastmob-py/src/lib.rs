@@ -358,6 +358,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         models::markov_diary::markov_diary_generate,
         m
     )?)?;
+    m.add_class::<models::next_location_py::PyNextLocationModels>()?;
     m.add_function(wrap_pyfunction!(
         models::geosim::model_geosim_simulate_agents,
         m

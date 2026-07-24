@@ -10,22 +10,24 @@ from .gravity import (
     powerlaw_deterrence_func,
 )
 from .markov_diary_generator import MarkovDiaryGenerator
+from .next_location import NextLocationPredictor
 from .radiation import Radiation
 from .sts_epr import STS_epr
 
 __all__ = [
-    "Gravity",
-    "Radiation",
     "EPR",
     "DensityEPR",
-    "SpatialEPR",
     "Ditras",
-    "MarkovDiaryGenerator",
     "GeoSim",
+    "Gravity",
+    "MarkovDiaryGenerator",
+    "NextLocationPredictor",
+    "Radiation",
     "STS_epr",
+    "SpatialEPR",
     "ci",
     "compute_distance_matrix",
+    "compute_od_matrix",
     "exponential_deterrence_func",
     "powerlaw_deterrence_func",
-    "compute_od_matrix",
 ]

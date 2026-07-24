@@ -3,6 +3,7 @@ pub mod ditras;
 pub mod epr;
 pub mod geosim;
 pub mod markov_diary;
+pub mod next_location;
 pub mod od;
 pub mod radiation;
 pub mod shared;
