@@ -403,6 +403,24 @@ When adding a measure, choose the output pattern based on cardinality:
 
 See the "Backend dispatch and null-handling conventions" section above for templates.
 
+## Trajectory hierarchy and mobility-analysis feature modules
+
+On top of the flat `TrajDataFrame`/`FlowDataFrame` model, `fastmob/core/` also has a trackintel-style typed hierarchy, built by composing already-Rust-backed operations rather than new kernels for most levels:
+
+- `positionfixes_dataframe.py` — `Positionfixes`, a semantic alias for `TrajDataFrame` (the raw-GPS-fix level). `.generate_staypoints()`/`.generate_triplegs()` start the hierarchy.
+- `staypoints_dataframe.py` — `Staypoints` (wraps `preprocessing.stay_locations`); `.generate_locations()`, `.create_activity_flag()`.
+- `triplegs_dataframe.py` — `Triplegs` (movement segments, derived from `preprocessing.segment(method="stop")` minus the stop-windows matched against `Staypoints`); `.predict_transport_mode()`, `.calculate_modal_split()`, `.generate_trips()`. See this file's module docstring for why a tripleg's `started_at`/`finished_at`/`length_km` must be recovered from the *bracketing* stop segments rather than the moving segment's own rows — `segment(method="stop")` attributes a stop's entry/leaving transition rows to the stop's own segment, not the moving one before/after it.
+- `trips_dataframe.py` / `tours_dataframe.py` — `Trips` (consecutive triplegs merged at non-activity staypoints) and `Tours` (consecutive trips returning to the same `Location`). Both build their per-user timeline scan in NumPy after extracting columns via Narwhals (`.to_numpy()`/`nw.from_dict(..., backend=...)` at the boundary), since Narwhals has no "collect to list per group" aggregation and this operates on tables far smaller than raw positionfixes — not a performance-critical path, so **do not** treat this as license to import pandas/polars elsewhere; the Narwhals-only rule above still applies everywhere else.
+- `locations_dataframe.py` — `Locations` (DBSCAN-clustered recurring stops via `preprocessing.cluster`); `.identify()` for home/work/other labeling.
+
+Related feature modules, each with its own correctness tests under the matching `tests/correctness/` subtree:
+
+- `fastmob/trajectory/_smooth.py` — `smooth()`, a Kalman constant-velocity filter/RTS smoother (same named-method dispatch shape as `_interpolate.py`, but replaces existing points' positions at the same cardinality instead of inserting new ones).
+- `fastmob/trajectory/_shape_cluster.py` — `cluster_trajectory_shapes()`/`cluster_trajectory_shapes_from_segments()`, DBSCAN over a rotation/translation-invariant distance-geometry signature (`fastmob-core/src/trajectory/shape_signature.rs`); a different notion of "clustering" than `preprocessing.cluster`'s stop-point clustering.
+- `fastmob/preprocessing/_transport_mode.py` / `_activity.py` — `predict_transport_mode`, `calculate_modal_split`, `create_activity_flag`, `identify_locations`. Plain Narwhals, no new Rust kernel, since they classify/aggregate the small per-tripleg/per-staypoint/per-location tables the hierarchy above already produces.
+- `fastmob/models/next_location.py` — `NextLocationPredictor`, an order-k Markov chain (with backoff) fit over a location-id sequence, backed by a stateful PyO3 handle (`fastmob._core.NextLocationModels`, prepare-once/query-many). Deliberately separate from `markov_diary_generator.py`'s `MarkovDiaryGenerator` (a fixed-48-state hour/home-away diary *generator*, not a next-location *predictor*).
+
+None of these features have a wired-up comparison-library `.venv-*`/cached-reference setup yet (trackintel/tracktable/humobi/movingpandas-Kalman comparisons were all deliberately deferred) — correctness tests use hand-built synthetic fixtures with known ground truth plus real-dataset (Brightkite/GeoLife) structural-invariant checks instead.
 
 # Project Structure
 
