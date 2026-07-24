@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 from fastmob.preprocessing import stay_locations
 
 
@@ -101,6 +100,23 @@ def test_stay_locations_single_point_user_zero_stops():
     assert len(result) == 0
 
 
+def test_stay_locations_no_uid_column_detects_stop():
+    """Regression test: a dataframe with no user-ID column (the whole frame
+    treated as one user) must not crash while building the output -- the
+    uid-label lookup is only relevant, and only run, when uid_col is not
+    None."""
+    df = pd.DataFrame(
+        {
+            "datetime": pd.date_range("2020-01-01", periods=7, freq="5min"),
+            "lat": [0.0] * 7,
+            "lng": [0.0] * 7,
+        }
+    )
+    result = stay_locations(df, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
+    assert len(result) == 1
+    assert "uid" not in result.columns
+
+
 def test_stay_locations_output_schema(stops_tdf):
     """Output must contain uid, lat, lng, datetime columns."""
     stationary = stops_tdf[stops_tdf["uid"] == "user_stationary"].copy()
@@ -153,8 +169,8 @@ def test_stay_locations_no_data_gap_resets_stop():
 @pytest.mark.skmob
 def test_stay_locations_matches_skmob(comparison_skmob):
     """Stop count must match skmob on each comparison dataset."""
-    from skmob.preprocessing import detection as skmob_detection
     import pandas as pd
+    from skmob.preprocessing import detection as skmob_detection
 
     skmob_result = skmob_detection.stay_locations(comparison_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     our_result = stay_locations(

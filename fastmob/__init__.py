@@ -1,5 +1,5 @@
 from . import data, io, privacy, trajectory, utils
-from .core import FlowDataFrame, TrajDataFrame
+from .core import FlowDataFrame, Locations, Positionfixes, Staypoints, TrajDataFrame, Triplegs
 from .measures import (
     activity_distribution_jensen_shannon_divergence,
     activity_transition_matrix,
@@ -110,6 +110,10 @@ __all__ = [
     "trajectory_to_od",
     "TrajDataFrame",
     "FlowDataFrame",
+    "Positionfixes",
+    "Staypoints",
+    "Triplegs",
+    "Locations",
     "cdr_to_visitation_df",
     "cdr_to_trips_df",
     "utils",

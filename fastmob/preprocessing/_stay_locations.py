@@ -172,8 +172,6 @@ def stay_locations(
             out_dict["leaving_datetime"] = []
         return nw.from_dict(out_dict, backend=df.implementation).to_native()
 
-    stop_uids = [uid_values[idx] for idx in user_range_indices]
-
     entry_datetimes = _seconds_to_naive_utc(entry_times_s)
 
     out_dict = {
@@ -182,7 +180,7 @@ def stay_locations(
         datetime_col: entry_datetimes,
     }
     if uid_col is not None:
-        out_dict[uid_col] = stop_uids
+        out_dict[uid_col] = [uid_values[idx] for idx in user_range_indices]
 
     if leaving_time:
         leaving_datetimes = _seconds_to_naive_utc(leaving_times_s)

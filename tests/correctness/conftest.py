@@ -157,6 +157,32 @@ def brightkite_skmob():
 
 
 @pytest.fixture(scope="session")
+def brightkite_sample_df() -> pd.DataFrame:
+    """A small raw (non-skmob) Brightkite slice for structural-invariant checks.
+
+    Used where no independent ground truth exists (real GPS noise for
+    `smooth()`, real stop/tripleg boundaries for the Positionfixes hierarchy)
+    -- only shape/order/other-column invariants are checked against it, not
+    exact numeric values.
+    """
+    import urllib.request
+
+    _BRIGHTKITE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not _BRIGHTKITE_PATH.exists():
+        urllib.request.urlretrieve(_BRIGHTKITE_URL, _BRIGHTKITE_PATH)
+
+    df = pd.read_csv(
+        _BRIGHTKITE_PATH,
+        sep="\t",
+        header=0,
+        nrows=3000,
+        names=["user", "check-in_time", "latitude", "longitude", "location id"],
+    )
+    df["check-in_time"] = pd.to_datetime(df["check-in_time"], errors="coerce")
+    return df.dropna(subset=["user", "check-in_time", "latitude", "longitude"]).reset_index(drop=True)
+
+
+@pytest.fixture(scope="session")
 def geolife_pd(pytestconfig):
     """Load GeoLife data as a normalized pandas DataFrame."""
     mode = pytestconfig.getoption("--geolife-mode")
