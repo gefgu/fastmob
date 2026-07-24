@@ -64,6 +64,30 @@ class Triplegs(BaseDataFrame):
             if missing:
                 raise ValueError(f"Triplegs is missing required columns: {missing}")
 
+    def predict_transport_mode(self, method: str = "simple-coarse", categories: dict | None = None) -> Triplegs:
+        """Classify each tripleg's transport mode from its average speed.
+
+        See :func:`fastmob.preprocessing.predict_transport_mode`.
+        """
+        from ..preprocessing import predict_transport_mode
+
+        return predict_transport_mode(self, method=method, categories=categories)
+
+    def calculate_modal_split(
+        self,
+        freq: str | None = None,
+        metric: str = "count",
+        per_user: bool = False,
+        normalize: bool = False,
+    ) -> Any:
+        """Aggregate this ``mode``-labeled table into a modal-split table.
+
+        See :func:`fastmob.preprocessing.calculate_modal_split`.
+        """
+        from ..preprocessing import calculate_modal_split
+
+        return calculate_modal_split(self, freq=freq, metric=metric, per_user=per_user, normalize=normalize)
+
     @staticmethod
     def from_positionfixes(
         positionfixes: Any,

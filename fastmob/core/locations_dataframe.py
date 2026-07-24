@@ -51,3 +51,12 @@ class Locations(BaseDataFrame):
             missing = [col for col in required if col not in nw_df.columns]
             if missing:
                 raise ValueError(f"Locations is missing required columns: {missing}")
+
+    def identify(self, staypoints: Any, method: str = "freq", **kwargs: Any) -> Locations:
+        """Label each location as ``"home"``, ``"work"``, or ``"other"``.
+
+        See :func:`fastmob.preprocessing.identify_locations`.
+        """
+        from ..preprocessing import identify_locations
+
+        return identify_locations(self, staypoints, method=method, **kwargs)

@@ -83,6 +83,15 @@ class Staypoints(BaseDataFrame):
                 f"Staypoints requires finished_at >= started_at for every row ({len(bad_rows)} violating row(s))"
             )
 
+    def create_activity_flag(self, method: str = "time_threshold", time_threshold_min: float = 15.0) -> Staypoints:
+        """Flag each staypoint as a genuine "activity" by dwell time.
+
+        See :func:`fastmob.preprocessing.create_activity_flag`.
+        """
+        from ..preprocessing import create_activity_flag
+
+        return create_activity_flag(self, method=method, time_threshold_min=time_threshold_min)
+
     def generate_locations(
         self,
         epsilon_km: float = 0.1,
