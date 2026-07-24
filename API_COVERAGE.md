@@ -1,6 +1,6 @@
 # fastmob: API Coverage
 
-Auto-generated from the installed package via introspection (function signatures + parsed docstrings). Only public, library-defined functions/classes are listed (inherited pandas/GeoDataFrame/etc. methods are excluded unless overridden).
+Auto-generated from the installed package via introspection (function signatures + parsed docstrings). Only public, library-defined functions/classes are listed (inherited pandas/GeoDataFrame/etc. methods are excluded unless overridden). Structurally identical duplicates -- the same method name+signature repeated across sibling classes (boilerplate overrides, or a compiled template instantiated once per dimensionality/domain), or the same helper function copy-pasted into multiple modules -- are shown once, with the other locations named in a note, rather than repeated in full.
 
 
 ## Module `fastmob`
@@ -107,6 +107,182 @@ Auto-generated from the installed package via introspection (function signatures
 | `visits_per_user_wasserstein_distance(df1: 'Any', df2: 'Any', *, hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, user_id_col1: 'str | None' = None, user_id_col2: 'str | None' = None, trip_start_col: 'str | None' = None, day_col1: 'str | None' = None, day_col2: 'str | None' = None, purpose_col: 'str | None' = None, skip_day_period_creation: 'bool' = False) -> 'tuple[float, list[tuple[Any, float]]]'` | df1, df2, hue, user_id_col1, user_id_col2, trip_start_col, day_col1, day_col2, purpose_col, skip_day_period_creation |  | Compare grouped visits-per-user distributions with Rust-backed Wasserstein distance. |
 | `waiting_times(traj: 'Any', merge: 'bool' = False, *, datetime_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, uid_col: 'str | None' = None, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …).  Must have datetime, latitude, and longitude columns. A user-ID column is opti…<br>**merge** (*bool, optional*): When ``True``, return flat waiting times across all users using a backend-appropriate array object. When ``False`` (default), return a DataFrame with one row p…<br>**datetime_col** (*str or None, optional*): Explicit datetime column name.  Auto-detected when None.<br>**lat_col** (*str or None, optional*): Explicit latitude column name.  Auto-detected when None.<br>**lng_col** (*str or None, optional*): Explicit longitude column name.  Auto-detected when None.<br>**uid_col** (*str or None, optional*): Explicit user-ID column name.  Auto-detected when None.<br>**presorted** (*bool, optional*): When True, trust that rows are already grouped by user and ordered by datetime within each user, then use the contiguous fast path. | pandas.DataFrame or polars.DataFrame or array-like When ``merge=False``: one row per user with columns ``[uid_col, "waiting_times"]``; each cell is an array-li… | Return the waiting times (seconds) between consecutive GPS fixes for each user. A waiting time (or inter-time) :math:`\Delta t` is the elapsed time between two consecutive trajectory points of indivi… |
 | `wasserstein_distance(values1: 'Any', values2: 'Any') -> 'float'` | values1, values2 |  | Return Rust-backed 1D Wasserstein distance between empirical samples. |
+
+## Module `fastmob.data`
+
+### `fastmob.data` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `get_dataset_info(name)` | **name** (*str*): The name of the dataset to query (e.g., ``foursquare_nyc``). | *dict*: A dictionary containing the dataset metadata. Examples -------- >>> from fastmob.data import get_dataset_info >>> get_dataset_info("foursquare_nyc") {'name': '… | Get dataset info. Return the metadata stored in the JSON file associated with the dataset. |
+| `list_datasets(details=False, data_types=None)` | **details** (*bool, optional*): Whether to return full metadata for each dataset instead of the name only. The default is ``False``.<br>**data_types** (*str or list of str, optional*): Specify which dataset types to show. Accepted values: ``"trajectory"``, ``"flow"``, ``"shape"``, ``"auxiliar"``. The default is ``None`` (all types). | list of str or dict A list of dataset names, or a dict mapping name to metadata when ``details=True``. Examples -------- >>> from fastmob.data import list_data… | List datasets. List all the names of the datasets available in the data module of scikit-mobility. |
+| `load_dataset(name, drop_columns=False, auth=None, show_progress=False)` | **name** (*str*): The name of the dataset to load (e.g., ``foursquare_nyc``).<br>**drop_columns** (*bool, optional*): Whether to keep additional columns when returning a TrajDataFrame. The default is ``False``.<br>**auth** (*tuple of str, optional*): Pair of strings ``(user, password)`` used when the dataset requires authentication. The default is ``None``.<br>**show_progress** (*bool, optional*): If ``True``, show a progress bar during download. The default is ``False``. | TrajDataFrame or FlowDataFrame or GeoDataFrame or DataFrame An object containing the downloaded dataset. Examples -------- >>> from fastmob.data import load_da… | Load dataset. Load one of the datasets that are present in the repository of scikit-mobility. |
+
+## Module `fastmob.integration`
+
+### `fastmob.integration` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `join_with_events(traj: 'Any', events_df: 'Any', *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None, event_lat_col: 'str' = 'lat', event_lng_col: 'str' = 'lng', event_datetime_col: 'str' = 'datetime', event_id_col: 'str' = 'event_id', event_type_col: 'str' = 'event_type', time_window_s: 'float' = 900.0) -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**events_df**: Events; any Narwhals-compatible eager backend, with `event_lat_col`/`event_lng_col`/`event_datetime_col` columns and, unless overridden, `event_id_col`/`event_…<br>**time_window_s**: Symmetric time window (seconds) around each trajectory point's timestamp to search for a matching event. | *DataFrame*: `traj`'s columns plus ``event_id``, ``event_type``, ``dist_event``, in the same backend as `traj`. | Join each trajectory point with the nearest event within a time window. Mirrors PyMove's ``join_with_events``: among events whose timestamp falls within ``[t - time_window_s, t + time_window_s]`` of … |
+| `join_with_pois(traj: 'Any', pois_df: 'Any', *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, poi_lat_col: 'str' = 'lat', poi_lng_col: 'str' = 'lng', poi_id_col: 'str' = 'id', poi_name_col: 'str' = 'name_poi') -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**pois_df**: Points of interest; any Narwhals-compatible eager backend, with `poi_lat_col`/`poi_lng_col` columns and, unless overridden, `poi_id_col`/`poi_name_col` columns… | *DataFrame*: `traj`'s columns plus ``id_poi``, ``dist_poi``, ``name_poi``, in the same backend as `traj`. A `pois_df` with zero rows produces ``None``/``inf``/``None`` for … | Join each trajectory point with its single nearest point of interest. Mirrors PyMove's ``join_with_pois``: an unconditional single-nearest lookup with no distance cutoff (contrast with :func:`fastmob… |
+| `join_with_pois_by_category(traj: 'Any', pois_df: 'Any', *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, poi_lat_col: 'str' = 'lat', poi_lng_col: 'str' = 'lng', poi_id_col: 'str' = 'id', category_col: 'str' = 'type_poi') -> 'Any'` | traj, pois_df, lat_col, lng_col, poi_lat_col, poi_lng_col, poi_id_col, category_col | *DataFrame*: `traj`'s columns plus one ``id_<category>``/``dist_<category>`` column pair per distinct category value present in `pois_df`, in the same backend as `traj`. | Join each trajectory point with its nearest POI in each category. Mirrors PyMove's ``join_with_pois_by_category``: for every distinct value in ``pois_df[category_col]``, adds an ``id_<category>``/ ``… |
+
+## Module `fastmob.integration.poi`
+
+### `fastmob.integration.poi` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `nearest_candidate(query_lat: 'np.ndarray', query_lng: 'np.ndarray', ref_lat: 'np.ndarray', ref_lng: 'np.ndarray') -> 'tuple[np.ndarray, np.ndarray]'` | query_lat, query_lng, ref_lat, ref_lng | *(indices, distances_m)*: ``indices`` is each query point's nearest reference row index (into `ref_lat`/`ref_lng`), ``-1`` if `ref_lat` is empty; ``distances_m`` is its exact Haversine … | Find each query point's nearest reference point by exact Haversine distance. Builds a longitude-scaled (by ``cos(mean reference latitude)``) KD-tree for an approximate nearest-neighbor candidate, the… |
+
+## Module `fastmob.io`
+
+### `fastmob.io` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `load_geolife_trajectories(path, user_ids=None, **kwargs)` | **path** (*str*): local path of the directory 'Geolife Trajectories 1.3/'<br>**user_ids** (*list, optional*): list of user IDs to load. If empty or None, all users are loaded.<br>****kwargs** (*dict*): Additional keyword arguments passed to the `TrajDataFrame` constructor. | *TrajDataFrame*: a TrajDataFrame containing all trajectories | Load Microsoft GeoLife `.plt` trajectory files into a `TrajDataFrame`. |
+| `read(filename, **kwargs)` | **filename** (*str*): path and name of the file to read.<br>****kwargs** (*dict*): Additional keyword arguments passed to `pandas.read_csv` or `pandas.read_parquet`. | *TrajDataFrame*: object loaded from file. | Read a trajectory table from disk and return a `TrajDataFrame`. CSV and delimited text files are read with `pandas.read_csv`; parquet files are read with `pandas.read_parquet`. |
+| `write(tdf, filename, **kwargs)` | **tdf** (*TrajDataFrame or pandas.DataFrame*): TrajDataFrame object that will be saved.<br>**filename** (*str*): path and name of the output file.<br>****kwargs** (*dict*): Additional keyword arguments passed to `DataFrame.to_csv` or `DataFrame.to_parquet`. | None | Write a trajectory dataframe to disk. CSV and delimited text files are written with `DataFrame.to_csv`; parquet files are written with `DataFrame.to_parquet`. |
+
+## Module `fastmob.measures._common`
+
+### `fastmob.measures._common` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `is_arrow_backed(nw_df: 'nw.DataFrame') -> 'bool'` | nw_df |  | Return True when a Narwhals DataFrame is backed by an Arrow object. |
+
+## Module `fastmob.measures.evaluation`
+
+### `fastmob.measures.evaluation` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `dwell_time_wasserstein_distance(df1: 'Any', df2: 'Any', duration_col: 'str | None' = None, *, hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, day_col1: 'str | None' = None, day_col2: 'str | None' = None, purpose_col: 'str | None' = None) -> 'tuple[float, list[tuple[Any, float]]]'` | df1, df2, duration_col, hue, day_col1, day_col2, purpose_col |  | Compare dwell-time distributions in hours. |
+
+## Module `fastmob.measures.evaluation._legacy`
+
+### `fastmob.measures.evaluation._legacy` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `compare_distributions_with_js_divergence(df1: 'Any', df2: 'Any', column_to_compare: 'str', bin_size: 'float' = 1.0, hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None, skip_day_period_creation: 'bool' = False)` | df1, df2, column_to_compare, bin_size, hue, trip_start_column, day_column1, day_column2, purpose_column, skip_day_period_creation |  |  |
+| `compare_distributions_with_wasserstein(df1: 'Any', df2: 'Any', column_to_compare: 'str', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None, skip_day_period_creation: 'bool' = False)` | df1, df2, column_to_compare, hue, trip_start_column, day_column1, day_column2, purpose_column, skip_day_period_creation |  |  |
+| `compare_diversity_with_wasserstein(df1: 'Any', df2: 'Any', metric_column: 'str' = 'diversity') -> 'float'` | df1, df2, metric_column |  |  |
+| `compare_dwell_time_with_wasserstein(visitation_df1: 'Any', visitation_df2: 'Any', duration_column: 'str' = 'duration_minutes', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | visitation_df1, visitation_df2, duration_column, hue, day_column1, day_column2, purpose_column |  |  |
+| `compare_motif_distributions_with_jsd(agent_visitation_df: 'Any', sample_visitation_df: 'Any', user_id_col_agent: 'str | None' = 'agent_id', user_id_col_sample: 'str | None' = 'user_id', location_id_col: 'str | None' = 'area') -> 'float'` | agent_visitation_df, sample_visitation_df, user_id_col_agent, user_id_col_sample, location_id_col |  |  |
+| `compare_radius_of_gyration_with_wasserstein(rg_df1: 'Any', rg_df2: 'Any', radius_column: 'str' = 'radius_of_gyration_km', grouping_column: 'str | None' = None)` | rg_df1, rg_df2, radius_column, grouping_column |  |  |
+| `compare_trip_duration_with_wasserstein(trips_df1: 'Any', trips_df2: 'Any', duration_column: 'str' = 'Duration', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | trips_df1, trips_df2, duration_column, hue, trip_start_column, day_column1, day_column2, purpose_column |  |  |
+| `compare_trip_length_with_wasserstein(trips_df1: 'Any', trips_df2: 'Any', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | trips_df1, trips_df2, hue, trip_start_column, day_column1, day_column2, purpose_column |  |  |
+| `compare_visits_per_user_with_js_divergence(df1: 'Any', df2: 'Any', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, user_id_column1: 'str | None' = None, user_id_column2: 'str | None' = None, bin_size: 'float' = 1.0, skip_day_period_creation: 'bool' = False, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | df1, df2, hue, user_id_column1, user_id_column2, bin_size, skip_day_period_creation, trip_start_column, day_column1, day_column2, purpose_column |  |  |
+| `compare_visits_per_user_with_wasserstein(df1: 'Any', df2: 'Any', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, user_id_column1: 'str | None' = None, user_id_column2: 'str | None' = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None, skip_day_period_creation: 'bool' = False)` | df1, df2, hue, user_id_column1, user_id_column2, trip_start_column, day_column1, day_column2, purpose_column, skip_day_period_creation |  |  |
+
+## Module `fastmob.measures.individual`
+
+### `fastmob.measures.individual` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `jump_lengths_km(traj: 'Any', *, network: 'RoadNetwork', uid_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None, snap_max_distance_m: 'float' = 750.0) -> 'np.ndarray'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**network**: A prepared :class:`fastmob.network.RoadNetwork`. uid_col, lat_col, lng_col, datetime_col: Explicit column name overrides; auto-detected when None.<br>**snap_max_distance_m**: Maximum distance (metres) to snap a stop to the network; farther stops fall back to Haversine entirely for any jump touching them. | *numpy.ndarray*: One value per consecutive same-user pair (length: `len(traj) - n_users`). | Road-network jump lengths (km): distance between consecutive stops for the same user, sorted by datetime -- mirrors :func:`~fastmob.measures.individual.jump_lengths.jump_lengths`'s sort key and its i… |
+| `radius_of_gyration_km(traj: 'Any', *, network: 'RoadNetwork', uid_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, snap_max_distance_m: 'float' = 750.0) -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**network**: A prepared :class:`fastmob.network.RoadNetwork`. uid_col, lat_col, lng_col: Explicit column name overrides; auto-detected when None.<br>**snap_max_distance_m**: Maximum distance (metres) to snap a stop to the network. | *DataFrame*: ``[uid_col, "radius_of_gyration"]``, one row per user, in the same backend as input. | Road-network radius of gyration (km) per user: RMS network distance from each of a user's stops to the arithmetic-mean centroid of their stops -- mirrors the unweighted-centroid formula ``r_g(u) = sq… |
+
+## Module `fastmob.measures.individual.motifs`
+
+### `fastmob.measures.individual.motifs` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `compute_daily_motifs_distribution(daily_motifs_df: 'Any', motif_id_col: 'str' = 'motif_id') -> 'Any'` | **daily_motifs_df**: DataFrame containing at least a column with motif IDs (e.g. output from ``discover_daily_motifs_from_agents``).<br>**motif_id_col**: Column name for the motif ID.  Default ``"motif_id"``. | *DataFrame*: One row per distinct motif with columns ``["motif_id", "count", "percentage"]``. | Compute the distribution of motifs from a daily motifs DataFrame. |
+
+## Module `fastmob.measures.individual.network_distance`
+
+### `fastmob.measures.individual.network_distance` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `haversine_m_batch(lat1: 'np.ndarray', lng1: 'np.ndarray', lat2: 'np.ndarray', lng2: 'np.ndarray') -> 'np.ndarray'` | lat1, lng1, lat2, lng2 |  | Vectorized Haversine distance (metres) between two arrays of points. Kept distinct from :func:`fastmob.models._common.haversine_km` (a scalar, kilometre function used by the gravity/radiation models)… |
+| `snap_locations_to_graph(tessellation_df: 'pd.DataFrame', nodes_df: 'pd.DataFrame', max_distance_m: 'float', lat_col: 'str' = 'lat', lng_col: 'str' = 'lng') -> 'np.ndarray'` | **tessellation_df**: Rows with lat/lng columns to snap.<br>**nodes_df**: Graph nodes with columns ``node_idx``, ``lat``, ``lng`` (as returned by :func:`fastmob.network.builder.fetch_road_network` / `fetch_rail_network`).<br>**max_distance_m**: Maximum snap distance; farther rows are reported unsnapped. lat_col, lng_col: Column names on ``tessellation_df``. | *numpy.ndarray*: int64 array aligned 1:1 with ``tessellation_df`` rows; ``-1`` when the nearest node is farther than ``max_distance_m`` (unsnapped). | Snap each tessellation row to its nearest road/rail graph node. |
+
+## Module `fastmob.models`
+
+### `fastmob.models` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `ci(i, number_locs)` | **i** (*int*): Index of the origin location.<br>**number_locs** (*int*): Total number of locations in the tessellation. | *list of float*: A list of length ``number_locs`` that is ``1.0`` at position ``i`` and ``0.0`` elsewhere. | Return a one-hot normalisation indicator for the singly constrained Poisson fit. The singly constrained multinomial fit is implemented as a Poisson regression. Each origin location requires one extra… |
+| `compute_distance_matrix(spatial_tessellation: 'Any', origins)` | **spatial_tessellation** (*DataFrame or GeoDataFrame*): The spatial tessellation. Must include either a ``geometry`` column or explicit ``lat`` / ``lng`` columns so that tile centroids can be derived.<br>**origins** (*list or array-like of int*): Indices of the origin locations for which to populate the distance matrix. | *numpy.ndarray*: Symmetric ``(n, n)`` matrix of Haversine distances in kilometres, where ``n`` is the number of tiles in ``spatial_tessellation``. | Compute pairwise Haversine distances for tessellation locations. |
+| `compute_od_matrix(gravity_singly, spatial_tessellation, tile_id_column='tile_id', relevance_column='relevance')` | **gravity_singly** (*Gravity*): A :class:`Gravity` instance with ``gravity_type="singly constrained"``.<br>**spatial_tessellation** (*DataFrame or GeoDataFrame*): The spatial tessellation describing the division of the territory into locations.<br>**tile_id_column** (*str, optional*): Name of the column containing the location identifier. The default is ``"tile_id"``.<br>**relevance_column** (*str, optional*): Name of the column containing the location relevance. The default is ``"relevance"``. | *numpy.ndarray*: A ``(n_locs, n_locs)`` array of trip probabilities. Each row sums to 1. | Compute an OD probability matrix from a singly constrained gravity model. Returns a 2-D numpy array ``M`` where element ``M[i, j]`` is the probability :math:`p_{ij}` of moving from location ``i`` to … |
+| `exponential_deterrence_func(x, R)` | **x** (*float or numpy.ndarray*): Distance values.<br>**R** (*float*): Decay rate (positive). Larger values penalise longer distances more strongly. | *float or numpy.ndarray*: Deterrence values in the range ``(0, 1]``. | Compute the exponential deterrence :math:`e^{-xR}`. |
+| `powerlaw_deterrence_func(x, exponent)` | **x** (*float or numpy.ndarray*): Distance values (in kilometres).<br>**exponent** (*float*): Power-law exponent. Typically a negative number (e.g. ``-2.0``) so that the function decreases with distance. | *float or numpy.ndarray*: Deterrence values. | Compute the power-law deterrence :math:`x^{\text{exponent}}`. |
+
+## Module `fastmob.models._common`
+
+### `fastmob.models._common` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `flow_dataframe(rows: 'list[list[Any]]', columns: 'tuple[str, str, str]' = ('origin', 'destination', 'flow'), *, tessellation: 'Any | None' = None, tile_id: 'str' = 'tile_id') -> 'FlowDataFrame'` | rows, columns, tessellation, tile_id |  |  |
+| `geometry_centroid_lat_lng(geom: 'Any') -> 'tuple[float, float]'` | geom |  |  |
+| `haversine_km(origin: 'tuple[float, float]', destination: 'tuple[float, float]') -> 'float'` | origin, destination |  |  |
+| `require_optional(module_name: 'str', extra: 'str' = 'generation')` | module_name, extra |  |  |
+| `tessellation_lat_lngs(spatial_tessellation: 'Any') -> 'np.ndarray'` | spatial_tessellation |  |  |
+| `to_pandas_frame(df: 'Any') -> 'pd.DataFrame'` | df |  | Return a pandas DataFrame copy for pandas, GeoPandas, or Narwhals inputs. |
+| `trajectory_dataframe(rows: 'Any', parameters: 'dict | None' = None) -> 'TrajDataFrame'` | rows, parameters |  |  |
+
+## Module `fastmob.network`
+
+### `fastmob.network` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `build_rail_graph(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str', nodes_output: 'str', edges_output: 'str', classes: 'list[str] | None' = None, speed_kmh_by_class: 'dict[str, float] | None' = None, default_speed_kmh: 'float' = 35.0) -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release, nodes_output, edges_output, classes, speed_kmh_by_class, default_speed_kmh |  | Load a cached rail graph from disk, or fetch and cache it. |
+| `build_road_graph(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str', nodes_output: 'str', edges_output: 'str') -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release, nodes_output, edges_output |  | Load a cached road graph from disk, or fetch and cache it. |
+| `fetch_rail_network(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str', classes: 'list[str] | None' = None, speed_kmh_by_class: 'dict[str, float] | None' = None, default_speed_kmh: 'float' = 35.0) -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release, classes, speed_kmh_by_class, default_speed_kmh |  | Fetch and build a simple bidirectional rail graph from Overture segments. |
+| `fetch_road_network(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str') -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release | *nodes_df, edges_df*: ``nodes_df``: ``node_idx`` (dense, 0-based), ``connector_id``, ``lat``, ``lng``. ``edges_df``: ``from_node``, ``to_node``, ``length_m``, ``speed_kmh``, ``weigh… | Fetch and build a car-routable graph from Overture road segments. |
+| `od_desire_lines(road_network, from_nodes: 'np.ndarray', to_nodes: 'np.ndarray', flows: 'np.ndarray') -> 'tuple[pd.DataFrame, float]'` | **road_network** (*:class:`fastmob.network.road_graph.RoadNetwork`*): A prepared network (see ``RoadNetwork.build``); ``from_nodes``/ ``to_nodes`` are node ids from that network's ``nodes_df`` (e.g. via :func:`fastmob.network.sna…<br>**flows** (*np.ndarray*): Flow volume (e.g. trip count) per OD pair. | *(edges_df, dropped_flow)*: ``edges_df`` has columns ``edge_from``, ``edge_to``, ``from_lat``, ``from_lng``, ``to_lat``, ``to_lng``, ``total_flow``, sorted by descending ``total_flow``, o… | Aggregate OD-pair flows onto the road/rail graph's edges (desire lines). The Overture-native analogue of stplanr's ``overline``/``overline2``: for each ``(from_node, to_node, flow)`` triple, walks th… |
+
+## Module `fastmob.privacy._rust`
+
+### `fastmob.privacy._rust` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `assess_risk_rust(traj: 'Any', *, attack_kind: 'int', knowledge_length: 'int', tolerance: 'float' = 0.0, targets: 'Any' = None, force_instances: 'bool' = False, presorted: 'bool' = False, time_precision: 'str | None' = None, include_datetime: 'bool' = False) -> 'Any'` | traj, attack_kind, knowledge_length, tolerance, targets, force_instances, presorted, time_precision, include_datetime |  |  |
+
+## Module `fastmob.tessellation._utils`
+
+### `fastmob.tessellation._utils` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `bbox_from_name(query: 'str', which_osm_result: 'int' = 0, crs=None)` | query, which_osm_result, crs |  | Create a GeoDataFrame from an OpenStreetMap place-name query. |
+| `bbox_from_points(points: 'Any', crs=None)` | points, crs |  | Build a GeoDataFrame bounding box around a point collection or bounds. |
+| `get_geom_centroid(geom, return_lat_lng: 'bool' = False) -> 'list[float]'` | geom, return_lat_lng |  | Compute the centroid coordinates of a shapely geometry. |
+| `nearest(origin, tessellation, col: 'str')` | origin, tessellation, col |  | Return values from ``col`` in the nearest tessellation point for each origin point. |
+
+## Module `fastmob.trajectory`
+
+### `fastmob.trajectory` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `cluster_trajectory_shapes(trajectories: 'Sequence[Any]', depth: 'int' = 4, epsilon: 'float' = 0.05, min_cluster_size: 'int' = 2, *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None) -> 'np.ndarray'` | **trajectories** (*Sequence*): Each element is a single trajectory: any Narwhals-compatible eager dataframe (or `TrajDataFrame`) representing one user's/one trip's point sequence. Must have …<br>**depth** (*int, optional*): Number of distance-geometry levels (signature length is ``depth * (depth + 1) // 2``). Higher values capture finer shape detail at the cost of a higher-dimensi…<br>**epsilon** (*float, optional*): DBSCAN neighborhood radius over the normalized signature space (values are in ``[0, 1]``, so a typical ``epsilon`` is a small fraction like ``0.05``). Default …<br>**min_cluster_size** (*int, optional*): DBSCAN minimum points per cluster; must be ``>= 2``. Default ``2``. lat_col, lng_col, datetime_col : str, optional Explicit column name overrides; auto-detecte… | *numpy.ndarray*: One cluster label per input trajectory, in input order. ``-1`` marks DBSCAN noise (an outlier shape), matching `fastmob.preprocessing.cluster`'s convention. Ex… | Cluster a list of independent trajectories by their overall shape. |
+| `cluster_trajectory_shapes_from_segments(traj: 'Any', segment_col: 'str' = 'segment_id', uid_col: 'str | None' = None, depth: 'int' = 4, epsilon: 'float' = 0.05, min_cluster_size: 'int' = 2, *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None) -> 'Any'` | **traj** (*DataFrame-like*): A dataframe already carrying a segment/group id column (e.g. the output of `fastmob.preprocessing.segment`).<br>**segment_col** (*str, optional*): Column identifying which rows belong to the same trajectory. Default ``"segment_id"``.<br>**uid_col** (*str, optional*): When given, groups by ``(uid_col, segment_col)`` instead of ``segment_col`` alone (segment ids commonly restart per user). **kwargs Forwarded to :func:`cluster… | *DataFrame*: The distinct ``(uid_col?, segment_col)`` keys with an added ``shape_cluster`` column, in the same backend as input. | Cluster trajectory shapes directly from a `segment()`-output (or `Triplegs.points`) frame, splitting into per-segment trajectories internally. |
+| `interpolate(traj: 'Any', method: 'str' = 'linear', sampling_rate_s: 'float' = 3600.0, *, datetime_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, uid_col: 'str | None' = None, presorted: 'bool' = False, **method_kwargs: 'Any') -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**method**: Name of the interpolation algorithm to run. One of ``"linear"``, ``"cubic_spline"``, ``"kinematic"``, or ``"random_walk"``.<br>**sampling_rate_s**: Maximum time gap, in seconds, allowed between consecutive points before an interpolated point is inserted. Default ``3600.0``. datetime_col, lat_col, lng_col, …<br>**presorted**: Whether the trajectory is already sorted by user and time. Setting this to True can speed up processing but may lead to incorrect results if the data is not pr…<br>****method_kwargs**: Method-specific parameters, forwarded to the matching ``INTERPOLATE_METHODS[method]`` preparer. - ``linear``, ``cubic_spline``: no extra parameters. - ``kinema… | *DataFrame*: The expanded trajectory (original points, plus any inserted points) in the same backend as input, sorted chronologically per user. Examples -------- >>> import… | Fill gaps in a trajectory by inserting interpolated points. For every gap between two chronologically consecutive points of the same user whose time delta exceeds ``sampling_rate_s``, exactly one new… |
+| `interpolate_at(traj: 'Any', at: 'Any', method: 'str' = 'linear', *, datetime_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, uid_col: 'str | None' = None, presorted: 'bool' = False) -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**at**: A single timestamp-like, or a sequence of timestamp-likes. Every user is queried at every timestamp in `at`.<br>**method**: ``"linear"`` (default) interpolates position between the two surrounding points; ``"nearest"`` returns the closer of the two. datetime_col, lat_col, lng_col, u…<br>**presorted**: Whether the trajectory is already sorted by user and time. | *DataFrame*: One row per ``(uid, query_time)`` pair (or one row per query timestamp when no user column is present), with columns ``uid`` (when present), ``query_time``, `l… | Query each user's interpolated position at one or more timestamps. Unlike :func:`fastmob.trajectory.interpolate`, this never changes a user's own point count -- it answers "where was this user at tim… |
+| `smooth(traj: 'Any', method: 'str' = 'kalman_cv', *, datetime_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, uid_col: 'str | None' = None, presorted: 'bool' = False, **method_kwargs: 'Any') -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**method**: Name of the smoothing algorithm to run. Only ``"kalman_cv"`` is shipped currently. datetime_col, lat_col, lng_col, uid_col: Explicit column name overrides; aut…<br>**presorted**: Whether the trajectory is already sorted by user and time. Setting this to True can speed up processing but may lead to incorrect results if the data is not pr…<br>****method_kwargs**: Method-specific parameters, forwarded to the matching ``SMOOTH_METHODS[method]`` preparer. - ``kalman_cv``: ``process_noise_std_km`` (default ``0.05``) -- acce… | *DataFrame*: The trajectory with smoothed ``lat``/``lng`` values, same row count and order as input, in the same backend as input. Rows with a null latitude/longitude/datet… | Smooth a trajectory's positions using a named algorithm. Every row's ``(lat, lng)`` is replaced with a denoised estimate at its original timestamp; row count and row order are unchanged (unlike :func… |
+| `trajectory_distance(traj_a: 'Any', traj_b: 'Any', method: 'str' = 'dtw', *, datetime_col_a: 'str | None' = None, lat_col_a: 'str | None' = None, lng_col_a: 'str | None' = None, uid_col_a: 'str | None' = None, datetime_col_b: 'str | None' = None, lat_col_b: 'str | None' = None, lng_col_b: 'str | None' = None, uid_col_b: 'str | None' = None, **method_kwargs: 'Any') -> 'float'` | **method**: ``"dtw"``, ``"frechet"``, or ``"hausdorff"`` return a distance in km (``0`` = identical shape); ``"lcss"`` returns a similarity in ``[0, 1]`` (``1`` = identica…<br>****method_kwargs**: Method-specific parameters, forwarded to the matching ``DISTANCE_METHODS[method]`` preparer. - ``lcss``: ``epsilon_km`` (default ``0.1``) -- two points are con… | *float*: Raises ------ ValueError If either side's user-ID column contains more than one distinct user. Examples -------- >>> import pandas as pd >>> import fastmob >>>… | Compute a similarity/distance metric between two trajectories. Compares exactly two whole point-sequences -- each side must be a single user's trajectory (or have no user column at all), not a multi-… |
+
+## Module `fastmob.utils.utils`
+
+### `fastmob.utils.utils` — functions
+
+| Function | Input | Output | Description |
+|---|---|---|---|
+| `get_geom_centroid(geom, return_lat_lng: 'bool' = False) -> 'list'` | **geom** (*shapely geometry*): A Polygon, MultiPolygon, or Point whose centroid is computed.<br>**return_lat_lng** (*bool, optional*): If ``True`` the returned list is ``[lat, lng]``; otherwise ``[lng, lat]``. The default is ``False``. | *list*: Two-element list with the centroid coordinates. | Return the centroid of a Polygon, MultiPolygon, or Point as [lng, lat]. |
+| `nearest(origin, tessellation, col: 'str')` | **origin** (*geopandas.GeoDataFrame*): GeoDataFrame whose geometry column contains the query points.<br>**tessellation** (*geopandas.GeoDataFrame*): GeoDataFrame with Point geometry to search.<br>**col** (*str*): Column in *tessellation* whose value to return for each nearest match. | *pandas.Series*: Series aligned with *tessellation*, containing the *col* value for the nearest tessellation point for each row in *origin*. | Return the tessellation column value of the nearest Point for each origin row. Uses squared Euclidean distance on raw coordinates — suitable for finding the closest point within a localised region (n… |
 
 ## Module `fastmob.core.base`
 
@@ -238,11 +414,13 @@ One row per tripleg (a movement segment between two staypoints). ``.df`` is the 
 
 | Method | Input | Output | Description |
 |---|---|---|---|
-| `__init__(self, df: 'Any', uid_col: 'str | None' = None, validate: 'bool' = True)` | df, uid_col, validate |  | Initialize self.  See help(type(self)) for accurate signature. |
 | `calculate_modal_split(self, freq: 'str | None' = None, metric: 'str' = 'count', per_user: 'bool' = False, normalize: 'bool' = False) -> 'Any'` | freq, metric, per_user, normalize |  | Aggregate this ``mode``-labeled table into a modal-split table. See :func:`fastmob.preprocessing.calculate_modal_split`. |
 | `from_positionfixes(positionfixes: 'Any', staypoints: 'Any', gap_threshold_min: 'float' = 15.0, **stop_kwargs: 'Any') -> 'Triplegs'` | positionfixes, staypoints, gap_threshold_min, stop_kwargs |  | Derive triplegs from positionfixes + already-generated staypoints. See :meth:`fastmob.core.positionfixes_dataframe.Positionfixes.generate_triplegs`. |
 | `generate_trips(self, staypoints: 'Any', gap_threshold_min: 'float' = 15.0) -> 'Any'` | staypoints, gap_threshold_min |  | Group consecutive triplegs into trips. See :meth:`fastmob.core.trips_dataframe.Trips.from_triplegs`. |
 | `predict_transport_mode(self, method: 'str' = 'simple-coarse', categories: 'dict | None' = None) -> 'Triplegs'` | method, categories |  | Classify each tripleg's transport mode from its average speed. See :func:`fastmob.preprocessing.predict_transport_mode`. |
+
+*Also has (same name/signature as on `fastmob.core.tours_dataframe.Tours`): `__init__`.*
+
 
 ## Module `fastmob.core.trips_dataframe`
 
@@ -253,19 +431,11 @@ One row per trip. ``.df`` columns: ``trip_id``, ``started_at``, ``finished_at``,
 
 | Method | Input | Output | Description |
 |---|---|---|---|
-| `__init__(self, df: 'Any', uid_col: 'str | None' = None, validate: 'bool' = True)` | df, uid_col, validate |  | Initialize self.  See help(type(self)) for accurate signature. |
 | `from_triplegs(triplegs: 'Any', staypoints: 'Any', gap_threshold_min: 'float' = 15.0) -> 'Trips'` | triplegs, staypoints, gap_threshold_min |  | Derive trips from triplegs + activity-flagged staypoints. See :meth:`fastmob.core.triplegs_dataframe.Triplegs.generate_trips`. |
 | `generate_tours(self, staypoints_with_location: 'Any') -> 'Any'` | staypoints_with_location |  | Group consecutive trips into tours (round trips back to the same location). See :meth:`fastmob.core.tours_dataframe.Tours.from_trips`. |
 
-## Module `fastmob.data`
+*Also has (same name/signature as on `fastmob.core.tours_dataframe.Tours`): `__init__`.*
 
-### `fastmob.data` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `get_dataset_info(name)` | **name** (*str*): The name of the dataset to query (e.g., ``foursquare_nyc``). | *dict*: A dictionary containing the dataset metadata. Examples -------- >>> from fastmob.data import get_dataset_info >>> get_dataset_info("foursquare_nyc") {'name': '… | Get dataset info. Return the metadata stored in the JSON file associated with the dataset. |
-| `list_datasets(details=False, data_types=None)` | **details** (*bool, optional*): Whether to return full metadata for each dataset instead of the name only. The default is ``False``.<br>**data_types** (*str or list of str, optional*): Specify which dataset types to show. Accepted values: ``"trajectory"``, ``"flow"``, ``"shape"``, ``"auxiliar"``. The default is ``None`` (all types). | list of str or dict A list of dataset names, or a dict mapping name to metadata when ``details=True``. Examples -------- >>> from fastmob.data import list_data… | List datasets. List all the names of the datasets available in the data module of scikit-mobility. |
-| `load_dataset(name, drop_columns=False, auth=None, show_progress=False)` | **name** (*str*): The name of the dataset to load (e.g., ``foursquare_nyc``).<br>**drop_columns** (*bool, optional*): Whether to keep additional columns when returning a TrajDataFrame. The default is ``False``.<br>**auth** (*tuple of str, optional*): Pair of strings ``(user, password)`` used when the dataset requires authentication. The default is ``None``.<br>**show_progress** (*bool, optional*): If ``True``, show a progress bar during download. The default is ``False``. | TrajDataFrame or FlowDataFrame or GeoDataFrame or DataFrame An object containing the downloaded dataset. Examples -------- >>> from fastmob.data import load_da… | Load dataset. Load one of the datasets that are present in the repository of scikit-mobility. |
 
 ## Module `fastmob.data.datasets.flow_foursquare_nyc.flow_foursquare_nyc`
 
@@ -331,44 +501,10 @@ Base class for dataset-specific builders.
 
 | Method | Input | Output | Description |
 |---|---|---|---|
-| `__init__(self)` | *(none)* |  | Initialize self.  See help(type(self)) for accurate signature. |
 | `prepare(self, full_path_files)` | full_path_files |  |  |
 
-## Module `fastmob.integration`
+*Also has (same name/signature as on `fastmob.core.base.BaseDataFrame`): `__init__`.*
 
-### `fastmob.integration` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `join_with_events(traj: 'Any', events_df: 'Any', *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None, event_lat_col: 'str' = 'lat', event_lng_col: 'str' = 'lng', event_datetime_col: 'str' = 'datetime', event_id_col: 'str' = 'event_id', event_type_col: 'str' = 'event_type', time_window_s: 'float' = 900.0) -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**events_df**: Events; any Narwhals-compatible eager backend, with `event_lat_col`/`event_lng_col`/`event_datetime_col` columns and, unless overridden, `event_id_col`/`event_…<br>**time_window_s**: Symmetric time window (seconds) around each trajectory point's timestamp to search for a matching event. | *DataFrame*: `traj`'s columns plus ``event_id``, ``event_type``, ``dist_event``, in the same backend as `traj`. | Join each trajectory point with the nearest event within a time window. Mirrors PyMove's ``join_with_events``: among events whose timestamp falls within ``[t - time_window_s, t + time_window_s]`` of … |
-| `join_with_pois(traj: 'Any', pois_df: 'Any', *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, poi_lat_col: 'str' = 'lat', poi_lng_col: 'str' = 'lng', poi_id_col: 'str' = 'id', poi_name_col: 'str' = 'name_poi') -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**pois_df**: Points of interest; any Narwhals-compatible eager backend, with `poi_lat_col`/`poi_lng_col` columns and, unless overridden, `poi_id_col`/`poi_name_col` columns… | *DataFrame*: `traj`'s columns plus ``id_poi``, ``dist_poi``, ``name_poi``, in the same backend as `traj`. A `pois_df` with zero rows produces ``None``/``inf``/``None`` for … | Join each trajectory point with its single nearest point of interest. Mirrors PyMove's ``join_with_pois``: an unconditional single-nearest lookup with no distance cutoff (contrast with :func:`fastmob… |
-| `join_with_pois_by_category(traj: 'Any', pois_df: 'Any', *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, poi_lat_col: 'str' = 'lat', poi_lng_col: 'str' = 'lng', poi_id_col: 'str' = 'id', category_col: 'str' = 'type_poi') -> 'Any'` | traj, pois_df, lat_col, lng_col, poi_lat_col, poi_lng_col, poi_id_col, category_col | *DataFrame*: `traj`'s columns plus one ``id_<category>``/``dist_<category>`` column pair per distinct category value present in `pois_df`, in the same backend as `traj`. | Join each trajectory point with its nearest POI in each category. Mirrors PyMove's ``join_with_pois_by_category``: for every distinct value in ``pois_df[category_col]``, adds an ``id_<category>``/ ``… |
-
-## Module `fastmob.integration.poi`
-
-### `fastmob.integration.poi` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `nearest_candidate(query_lat: 'np.ndarray', query_lng: 'np.ndarray', ref_lat: 'np.ndarray', ref_lng: 'np.ndarray') -> 'tuple[np.ndarray, np.ndarray]'` | query_lat, query_lng, ref_lat, ref_lng | *(indices, distances_m)*: ``indices`` is each query point's nearest reference row index (into `ref_lat`/`ref_lng`), ``-1`` if `ref_lat` is empty; ``distances_m`` is its exact Haversine … | Find each query point's nearest reference point by exact Haversine distance. Builds a longitude-scaled (by ``cos(mean reference latitude)``) KD-tree for an approximate nearest-neighbor candidate, the… |
-
-## Module `fastmob.io`
-
-### `fastmob.io` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `load_geolife_trajectories(path, user_ids=None, **kwargs)` | **path** (*str*): local path of the directory 'Geolife Trajectories 1.3/'<br>**user_ids** (*list, optional*): list of user IDs to load. If empty or None, all users are loaded.<br>****kwargs** (*dict*): Additional keyword arguments passed to the `TrajDataFrame` constructor. | *TrajDataFrame*: a TrajDataFrame containing all trajectories | Load Microsoft GeoLife `.plt` trajectory files into a `TrajDataFrame`. |
-| `read(filename, **kwargs)` | **filename** (*str*): path and name of the file to read.<br>****kwargs** (*dict*): Additional keyword arguments passed to `pandas.read_csv` or `pandas.read_parquet`. | *TrajDataFrame*: object loaded from file. | Read a trajectory table from disk and return a `TrajDataFrame`. CSV and delimited text files are read with `pandas.read_csv`; parquet files are read with `pandas.read_parquet`. |
-| `write(tdf, filename, **kwargs)` | **tdf** (*TrajDataFrame or pandas.DataFrame*): TrajDataFrame object that will be saved.<br>**filename** (*str*): path and name of the output file.<br>****kwargs** (*dict*): Additional keyword arguments passed to `DataFrame.to_csv` or `DataFrame.to_parquet`. | None | Write a trajectory dataframe to disk. CSV and delimited text files are written with `DataFrame.to_csv`; parquet files are written with `DataFrame.to_parquet`. |
-
-## Module `fastmob.measures._common`
-
-### `fastmob.measures._common` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `is_arrow_backed(nw_df: 'nw.DataFrame') -> 'bool'` | nw_df |  | Return True when a Narwhals DataFrame is backed by an Arrow object. |
 
 ## Module `fastmob.measures.collective.contact_network`
 
@@ -381,83 +517,6 @@ Undirected graph as a plain edge list (``u < v``, sorted, deduped), not per-node
 |---|---|---|---|
 | `__init__(self, node_count: 'int', edge_from: 'np.ndarray', edge_to: 'np.ndarray') -> None` | node_count, edge_from, edge_to |  | Initialize self.  See help(type(self)) for accurate signature. |
 | `degrees(self) -> 'np.ndarray'` | *(none)* |  |  |
-
-## Module `fastmob.measures.evaluation`
-
-### `fastmob.measures.evaluation` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `dwell_time_wasserstein_distance(df1: 'Any', df2: 'Any', duration_col: 'str | None' = None, *, hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, day_col1: 'str | None' = None, day_col2: 'str | None' = None, purpose_col: 'str | None' = None) -> 'tuple[float, list[tuple[Any, float]]]'` | df1, df2, duration_col, hue, day_col1, day_col2, purpose_col |  | Compare dwell-time distributions in hours. |
-
-## Module `fastmob.measures.evaluation._legacy`
-
-### `fastmob.measures.evaluation._legacy` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `compare_distributions_with_js_divergence(df1: 'Any', df2: 'Any', column_to_compare: 'str', bin_size: 'float' = 1.0, hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None, skip_day_period_creation: 'bool' = False)` | df1, df2, column_to_compare, bin_size, hue, trip_start_column, day_column1, day_column2, purpose_column, skip_day_period_creation |  |  |
-| `compare_distributions_with_wasserstein(df1: 'Any', df2: 'Any', column_to_compare: 'str', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None, skip_day_period_creation: 'bool' = False)` | df1, df2, column_to_compare, hue, trip_start_column, day_column1, day_column2, purpose_column, skip_day_period_creation |  |  |
-| `compare_diversity_with_wasserstein(df1: 'Any', df2: 'Any', metric_column: 'str' = 'diversity') -> 'float'` | df1, df2, metric_column |  |  |
-| `compare_dwell_time_with_wasserstein(visitation_df1: 'Any', visitation_df2: 'Any', duration_column: 'str' = 'duration_minutes', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | visitation_df1, visitation_df2, duration_column, hue, day_column1, day_column2, purpose_column |  |  |
-| `compare_motif_distributions_with_jsd(agent_visitation_df: 'Any', sample_visitation_df: 'Any', user_id_col_agent: 'str | None' = 'agent_id', user_id_col_sample: 'str | None' = 'user_id', location_id_col: 'str | None' = 'area') -> 'float'` | agent_visitation_df, sample_visitation_df, user_id_col_agent, user_id_col_sample, location_id_col |  |  |
-| `compare_radius_of_gyration_with_wasserstein(rg_df1: 'Any', rg_df2: 'Any', radius_column: 'str' = 'radius_of_gyration_km', grouping_column: 'str | None' = None)` | rg_df1, rg_df2, radius_column, grouping_column |  |  |
-| `compare_trip_duration_with_wasserstein(trips_df1: 'Any', trips_df2: 'Any', duration_column: 'str' = 'Duration', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | trips_df1, trips_df2, duration_column, hue, trip_start_column, day_column1, day_column2, purpose_column |  |  |
-| `compare_trip_length_with_wasserstein(trips_df1: 'Any', trips_df2: 'Any', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | trips_df1, trips_df2, hue, trip_start_column, day_column1, day_column2, purpose_column |  |  |
-| `compare_visits_per_user_with_js_divergence(df1: 'Any', df2: 'Any', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, user_id_column1: 'str | None' = None, user_id_column2: 'str | None' = None, bin_size: 'float' = 1.0, skip_day_period_creation: 'bool' = False, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None)` | df1, df2, hue, user_id_column1, user_id_column2, bin_size, skip_day_period_creation, trip_start_column, day_column1, day_column2, purpose_column |  |  |
-| `compare_visits_per_user_with_wasserstein(df1: 'Any', df2: 'Any', hue: "Literal[None, 'day_of_week', 'day_period', 'purpose']" = None, user_id_column1: 'str | None' = None, user_id_column2: 'str | None' = None, trip_start_column: 'str | None' = None, day_column1: 'str | None' = None, day_column2: 'str | None' = None, purpose_column: 'str | None' = None, skip_day_period_creation: 'bool' = False)` | df1, df2, hue, user_id_column1, user_id_column2, trip_start_column, day_column1, day_column2, purpose_column, skip_day_period_creation |  |  |
-
-## Module `fastmob.measures.individual`
-
-### `fastmob.measures.individual` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `jump_lengths_km(traj: 'Any', *, network: 'RoadNetwork', uid_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None, snap_max_distance_m: 'float' = 750.0) -> 'np.ndarray'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**network**: A prepared :class:`fastmob.network.RoadNetwork`. uid_col, lat_col, lng_col, datetime_col: Explicit column name overrides; auto-detected when None.<br>**snap_max_distance_m**: Maximum distance (metres) to snap a stop to the network; farther stops fall back to Haversine entirely for any jump touching them. | *numpy.ndarray*: One value per consecutive same-user pair (length: `len(traj) - n_users`). | Road-network jump lengths (km): distance between consecutive stops for the same user, sorted by datetime -- mirrors :func:`~fastmob.measures.individual.jump_lengths.jump_lengths`'s sort key and its i… |
-| `radius_of_gyration_km(traj: 'Any', *, network: 'RoadNetwork', uid_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, snap_max_distance_m: 'float' = 750.0) -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**network**: A prepared :class:`fastmob.network.RoadNetwork`. uid_col, lat_col, lng_col: Explicit column name overrides; auto-detected when None.<br>**snap_max_distance_m**: Maximum distance (metres) to snap a stop to the network. | *DataFrame*: ``[uid_col, "radius_of_gyration"]``, one row per user, in the same backend as input. | Road-network radius of gyration (km) per user: RMS network distance from each of a user's stops to the arithmetic-mean centroid of their stops -- mirrors the unweighted-centroid formula ``r_g(u) = sq… |
-
-## Module `fastmob.measures.individual.motifs`
-
-### `fastmob.measures.individual.motifs` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `compute_daily_motifs_distribution(daily_motifs_df: 'Any', motif_id_col: 'str' = 'motif_id') -> 'Any'` | **daily_motifs_df**: DataFrame containing at least a column with motif IDs (e.g. output from ``discover_daily_motifs_from_agents``).<br>**motif_id_col**: Column name for the motif ID.  Default ``"motif_id"``. | *DataFrame*: One row per distinct motif with columns ``["motif_id", "count", "percentage"]``. | Compute the distribution of motifs from a daily motifs DataFrame. |
-
-## Module `fastmob.measures.individual.network_distance`
-
-### `fastmob.measures.individual.network_distance` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `haversine_m_batch(lat1: 'np.ndarray', lng1: 'np.ndarray', lat2: 'np.ndarray', lng2: 'np.ndarray') -> 'np.ndarray'` | lat1, lng1, lat2, lng2 |  | Vectorized Haversine distance (metres) between two arrays of points. Kept distinct from :func:`fastmob.models._common.haversine_km` (a scalar, kilometre function used by the gravity/radiation models)… |
-| `snap_locations_to_graph(tessellation_df: 'pd.DataFrame', nodes_df: 'pd.DataFrame', max_distance_m: 'float', lat_col: 'str' = 'lat', lng_col: 'str' = 'lng') -> 'np.ndarray'` | **tessellation_df**: Rows with lat/lng columns to snap.<br>**nodes_df**: Graph nodes with columns ``node_idx``, ``lat``, ``lng`` (as returned by :func:`fastmob.network.builder.fetch_road_network` / `fetch_rail_network`).<br>**max_distance_m**: Maximum snap distance; farther rows are reported unsnapped. lat_col, lng_col: Column names on ``tessellation_df``. | *numpy.ndarray*: int64 array aligned 1:1 with ``tessellation_df`` rows; ``-1`` when the nearest node is farther than ``max_distance_m`` (unsnapped). | Snap each tessellation row to its nearest road/rail graph node. |
-
-## Module `fastmob.models`
-
-### `fastmob.models` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `ci(i, number_locs)` | **i** (*int*): Index of the origin location.<br>**number_locs** (*int*): Total number of locations in the tessellation. | *list of float*: A list of length ``number_locs`` that is ``1.0`` at position ``i`` and ``0.0`` elsewhere. | Return a one-hot normalisation indicator for the singly constrained Poisson fit. The singly constrained multinomial fit is implemented as a Poisson regression. Each origin location requires one extra… |
-| `compute_distance_matrix(spatial_tessellation: 'Any', origins)` | **spatial_tessellation** (*DataFrame or GeoDataFrame*): The spatial tessellation. Must include either a ``geometry`` column or explicit ``lat`` / ``lng`` columns so that tile centroids can be derived.<br>**origins** (*list or array-like of int*): Indices of the origin locations for which to populate the distance matrix. | *numpy.ndarray*: Symmetric ``(n, n)`` matrix of Haversine distances in kilometres, where ``n`` is the number of tiles in ``spatial_tessellation``. | Compute pairwise Haversine distances for tessellation locations. |
-| `compute_od_matrix(gravity_singly, spatial_tessellation, tile_id_column='tile_id', relevance_column='relevance')` | **gravity_singly** (*Gravity*): A :class:`Gravity` instance with ``gravity_type="singly constrained"``.<br>**spatial_tessellation** (*DataFrame or GeoDataFrame*): The spatial tessellation describing the division of the territory into locations.<br>**tile_id_column** (*str, optional*): Name of the column containing the location identifier. The default is ``"tile_id"``.<br>**relevance_column** (*str, optional*): Name of the column containing the location relevance. The default is ``"relevance"``. | *numpy.ndarray*: A ``(n_locs, n_locs)`` array of trip probabilities. Each row sums to 1. | Compute an OD probability matrix from a singly constrained gravity model. Returns a 2-D numpy array ``M`` where element ``M[i, j]`` is the probability :math:`p_{ij}` of moving from location ``i`` to … |
-| `exponential_deterrence_func(x, R)` | **x** (*float or numpy.ndarray*): Distance values.<br>**R** (*float*): Decay rate (positive). Larger values penalise longer distances more strongly. | *float or numpy.ndarray*: Deterrence values in the range ``(0, 1]``. | Compute the exponential deterrence :math:`e^{-xR}`. |
-| `powerlaw_deterrence_func(x, exponent)` | **x** (*float or numpy.ndarray*): Distance values (in kilometres).<br>**exponent** (*float*): Power-law exponent. Typically a negative number (e.g. ``-2.0``) so that the function decreases with distance. | *float or numpy.ndarray*: Deterrence values. | Compute the power-law deterrence :math:`x^{\text{exponent}}`. |
-
-## Module `fastmob.models._common`
-
-### `fastmob.models._common` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `flow_dataframe(rows: 'list[list[Any]]', columns: 'tuple[str, str, str]' = ('origin', 'destination', 'flow'), *, tessellation: 'Any | None' = None, tile_id: 'str' = 'tile_id') -> 'FlowDataFrame'` | rows, columns, tessellation, tile_id |  |  |
-| `geometry_centroid_lat_lng(geom: 'Any') -> 'tuple[float, float]'` | geom |  |  |
-| `haversine_km(origin: 'tuple[float, float]', destination: 'tuple[float, float]') -> 'float'` | origin, destination |  |  |
-| `require_optional(module_name: 'str', extra: 'str' = 'generation')` | module_name, extra |  |  |
-| `tessellation_lat_lngs(spatial_tessellation: 'Any') -> 'np.ndarray'` | spatial_tessellation |  |  |
-| `to_pandas_frame(df: 'Any') -> 'pd.DataFrame'` | df |  | Return a pandas DataFrame copy for pandas, GeoPandas, or Narwhals inputs. |
-| `trajectory_dataframe(rows: 'Any', parameters: 'dict | None' = None) -> 'TrajDataFrame'` | rows, parameters |  |  |
 
 ## Module `fastmob.models.epr`
 
@@ -478,7 +537,9 @@ DITRAS (DIary-based TRAjectory Simulator) modelling framework. DITRAS simulates 
 | Method | Input | Output | Description |
 |---|---|---|---|
 | `__init__(self, diary_generator, name='Ditras model', rho=0.3, gamma=0.21)` | diary_generator, name, rho, gamma |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `generate(self, start_date, end_date, spatial_tessellation, gravity_singly=None, n_agents=1, starting_locations=None, relevance_column='relevance', random_state=None, log_file=None, show_progress=False)` | **start_date** (*pandas.Timestamp or datetime*): Start time of the simulation.<br>**end_date** (*pandas.Timestamp or datetime*): End time of the simulation.<br>**spatial_tessellation** (*DataFrame or GeoDataFrame*): Division of the territory into locations. Must include either a ``geometry`` column or explicit ``lat`` / ``lng`` columns.<br>**gravity_singly** (*Gravity or None, optional*): A singly constrained :class:`Gravity` model for the exploration phase. If ``None``, a default ``Gravity(gravity_type="singly constrained")`` is used. The defau…<br>**n_agents** (*int, optional*): Number of agents to simulate. The default is ``1``.<br>**starting_locations** (*list of int or None, optional*): One tessellation index per agent as the starting (home) location. If ``None``, chosen uniformly at random. The default is ``None``.<br>**relevance_column** (*str, optional*): Column in ``spatial_tessellation`` used as location relevance for the gravity exploration phase. The default is ``"relevance"``.<br>**random_state** (*int or None, optional*): Random seed for reproducibility. The default is ``None``.<br>**log_file** (*str or None, optional*): Unused (retained for API compatibility). The default is ``None``.<br>**show_progress** (*bool, optional*): Unused (retained for API compatibility). The default is ``False``. | *DataFrame*: Synthetic trajectories with columns ``uid``, ``datetime``, ``lat``, and ``lng``. | Simulate agents from ``start_date`` to ``end_date``. |
+
+*Also has (same name/signature as on `fastmob.models.epr.DensityEPR`): `generate`.*
+
 
 ### `fastmob.models.epr.EPR`
 
@@ -487,7 +548,9 @@ Exploration and Preferential Return (EPR) trajectory generator. The EPR model ge
 | Method | Input | Output | Description |
 |---|---|---|---|
 | `__init__(self, name='EPR model', rho=0.6, gamma=0.21, beta=0.8, tau=17, min_wait_time_minutes=20)` | name, rho, gamma, beta, tau, min_wait_time_minutes |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `generate(self, start_date, end_date, spatial_tessellation, gravity_singly=None, n_agents=1, starting_locations=None, relevance_column='relevance', random_state=None, log_file=None, show_progress=False)` | **start_date** (*pandas.Timestamp or datetime*): Start time of the simulation.<br>**end_date** (*pandas.Timestamp or datetime*): End time of the simulation.<br>**spatial_tessellation** (*DataFrame or GeoDataFrame*): Division of the territory into locations. Must include either a ``geometry`` column or explicit ``lat`` / ``lng`` columns.<br>**gravity_singly** (*Gravity or None, optional*): A singly constrained :class:`Gravity` model used to derive origin–destination trip probabilities. If ``None``, a default ``Gravity(gravity_type="singly constra…<br>**n_agents** (*int, optional*): Number of agents to simulate. The default is ``1``.<br>**starting_locations** (*list of int or None, optional*): One starting tessellation index per agent. Length must equal ``n_agents``. If ``None``, starting locations are chosen uniformly at random. The default is ``Non…<br>**relevance_column** (*str, optional*): Name of the column in ``spatial_tessellation`` used as location relevance for the gravity model. The default is ``"relevance"``.<br>**random_state** (*int or None, optional*): Seed for the random number generator, enabling reproducible results. The default is ``None`` (non-deterministic).<br>**log_file** (*str or None, optional*): Unused in fastmob (retained for API compatibility). The default is ``None``.<br>**show_progress** (*bool, optional*): Unused in fastmob (retained for API compatibility). The default is ``False``. | *DataFrame*: Synthetic trajectories with columns ``uid``, ``datetime``, ``lat``, and ``lng``. One row per recorded position. Raises ------ IndexError If ``starting_location… | Simulate agents from ``start_date`` to ``end_date``. |
+
+*Also has (same name/signature as on `fastmob.models.epr.DensityEPR`): `generate`.*
+
 
 ### `fastmob.models.epr.SpatialEPR` (extends `EPR`)
 
@@ -558,10 +621,9 @@ Order-k Markov next-location predictor with optional backoff.
 
 Radiation model. The radiation model for human migration. The model assumes that a traveller's destination choice follows two steps: each opportunity at every location is assigned a random fitness drawn from a distribution :math:`P(z)`, and the traveller accepts the closest opportunity whose fitnes…
 
-| Method | Input | Output | Description |
-|---|---|---|---|
-| `__init__(self, name='Radiation model')` | name |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `generate(self, spatial_tessellation, tile_id_column='tile_id', tot_outflows_column='tot_outflow', relevance_column='relevance', out_format='flows')` | **spatial_tessellation** (*DataFrame or GeoDataFrame*): The spatial tessellation on which to run the model. Must include a tile identifier column and a relevance column; the total-outflow column is required when ``o…<br>**tile_id_column** (*str, optional*): Name of the column containing the location identifier. The default is ``"tile_id"``.<br>**tot_outflows_column** (*str, optional*): Name of the column containing the total outflow per location. Required when ``out_format`` is ``"flows"`` or ``"flows_sample"``. The default is ``"tot_outflow"…<br>**relevance_column** (*str, optional*): Name of the column containing the location relevance (e.g. population). The default is ``"relevance"``.<br>**out_format** (*str, optional*): Format of the output. Accepted values: - ``"flows"`` — expected (average) flows between each pair of locations. - ``"flows_sample"`` — randomly sampled integer… | *DataFrame*: A dataframe with columns ``origin``, ``destination``, and ``flow`` (or ``probability``). A ``to_matrix()`` method converts this to a 2-D numpy array indexed by… | Generate synthetic flows with the Radiation model. |
+
+*Also has (same name/signature as on `fastmob.core.base.BaseDataFrame`, `fastmob.models.gravity.Gravity`): `__init__`, `generate`.*
+
 
 ## Module `fastmob.models.sts_epr`
 
@@ -574,18 +636,6 @@ STS-EPR (Spatial, Temporal, and Social EPR) trajectory generator. STS-EPR extend
 |---|---|---|---|
 | `__init__(self, name='STS-EPR', rho=0.6, gamma=0.21, alpha=0.2)` | name, rho, gamma, alpha |  | Initialize self.  See help(type(self)) for accurate signature. |
 | `generate(self, start_date, end_date, spatial_tessellation, diary_generator, social_graph='random', n_agents=500, rsl=False, distance_matrix=None, relevance_column=None, min_relevance=0.1, dt_update_mobSim=168, indipendency_window=0.5, random_state=None, log_file=None, verbose=0, show_progress=False)` | **start_date** (*pandas.Timestamp or datetime*): Start time of the simulation.<br>**end_date** (*pandas.Timestamp or datetime*): End time of the simulation.<br>**spatial_tessellation** (*DataFrame or GeoDataFrame*): Division of the territory into locations. Must include either a ``geometry`` column or explicit ``lat`` / ``lng`` columns, and a relevance column. Must contain…<br>**diary_generator** (*MarkovDiaryGenerator*): A fitted :class:`MarkovDiaryGenerator` that supplies the temporal mobility diary for each agent.<br>**social_graph** (*``"random"`` or list of (uid, uid) tuples, optional*): Social network for the agents. - ``"random"`` — a random geometric graph is generated automatically. - A list of ``(uid_a, uid_b)`` edge tuples — the number of…<br>**n_agents** (*int, optional*): Number of agents when ``social_graph="random"``. The default is ``500``.<br>**rsl** (*bool, optional*): If ``True``, the starting location for each agent is sampled with probability proportional to the location's relevance. If ``False``, it is chosen uniformly at…<br>**distance_matrix** (*numpy.ndarray or None, optional*): Pre-computed ``(n_locs, n_locs)`` distance matrix in kilometres. If ``None``, the Rust simulator uses cached gravity OD rows instead of a full matrix. The defa…<br>**relevance_column** (*str or None, optional*): Name of the column in ``spatial_tessellation`` used as location relevance. The default is ``None`` (falls back to ``"relevance"``).<br>**min_relevance** (*float, optional*): Value substituted for any zero-relevance location to avoid division by zero. The default is ``0.1``.<br>**dt_update_mobSim** (*float, optional*): Interval in hours between social-graph mobility-similarity updates. The default is ``168`` (one week).<br>**indipendency_window** (*float, optional*): Time window in hours before an agent's move can influence others. The default is ``0.5``.<br>**random_state** (*int or None, optional*): Random seed for reproducibility. The default is ``None``.<br>**log_file** (*str or None, optional*): Unused (retained for API compatibility). The default is ``None``.<br>**verbose** (*int, optional*): Unused (retained for API compatibility). The default is ``0``.<br>**show_progress** (*bool, optional*): Unused (retained for API compatibility). The default is ``False``. | *DataFrame*: Synthetic trajectories with columns ``uid``, ``datetime``, ``lat``, and ``lng``. Raises ------ TypeError If ``diary_generator`` is not a :class:`MarkovDiaryGen… | Simulate a socially connected population from ``start_date`` to ``end_date``. |
-
-## Module `fastmob.network`
-
-### `fastmob.network` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `build_rail_graph(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str', nodes_output: 'str', edges_output: 'str', classes: 'list[str] | None' = None, speed_kmh_by_class: 'dict[str, float] | None' = None, default_speed_kmh: 'float' = 35.0) -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release, nodes_output, edges_output, classes, speed_kmh_by_class, default_speed_kmh |  | Load a cached rail graph from disk, or fetch and cache it. |
-| `build_road_graph(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str', nodes_output: 'str', edges_output: 'str') -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release, nodes_output, edges_output |  | Load a cached road graph from disk, or fetch and cache it. |
-| `fetch_rail_network(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str', classes: 'list[str] | None' = None, speed_kmh_by_class: 'dict[str, float] | None' = None, default_speed_kmh: 'float' = 35.0) -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release, classes, speed_kmh_by_class, default_speed_kmh |  | Fetch and build a simple bidirectional rail graph from Overture segments. |
-| `fetch_road_network(min_lon: 'float', min_lat: 'float', max_lon: 'float', max_lat: 'float', overture_release: 'str') -> 'tuple[pd.DataFrame, pd.DataFrame]'` | min_lon, min_lat, max_lon, max_lat, overture_release | *nodes_df, edges_df*: ``nodes_df``: ``node_idx`` (dense, 0-based), ``connector_id``, ``lat``, ``lng``. ``edges_df``: ``from_node``, ``to_node``, ``length_m``, ``speed_kmh``, ``weigh… | Fetch and build a car-routable graph from Overture road segments. |
-| `od_desire_lines(road_network, from_nodes: 'np.ndarray', to_nodes: 'np.ndarray', flows: 'np.ndarray') -> 'tuple[pd.DataFrame, float]'` | **road_network** (*:class:`fastmob.network.road_graph.RoadNetwork`*): A prepared network (see ``RoadNetwork.build``); ``from_nodes``/ ``to_nodes`` are node ids from that network's ``nodes_df`` (e.g. via :func:`fastmob.network.sna…<br>**flows** (*np.ndarray*): Flow volume (e.g. trip count) per OD pair. | *(edges_df, dropped_flow)*: ``edges_df`` has columns ``edge_from``, ``edge_to``, ``from_lat``, ``from_lng``, ``to_lat``, ``to_lng``, ``total_flow``, sorted by descending ``total_flow``, o… | Aggregate OD-pair flows onto the road/rail graph's edges (desire lines). The Overture-native analogue of stplanr's ``overline``/``overline2``: for each ``(from_node, to_node, flow)`` triple, walks th… |
 
 ## Module `fastmob.network.road_graph`
 
@@ -601,14 +651,6 @@ A road (or rail) network prepared once (contraction hierarchy) and reused for ma
 | `batch_routes(self, from_nodes: 'np.ndarray', to_nodes: 'np.ndarray', max_waypoints: 'int' = 50) -> 'pd.DataFrame'` | from_nodes, to_nodes, max_waypoints |  | Batch route-geometry query for `(from_node, to_node)` pairs. Returns a flat pandas DataFrame with one row per waypoint: columns ``query_id`` (0-based index into `from_nodes`/`to_nodes`), ``lat``, ``l… |
 | `build(cls, edges_df, nodes_df) -> 'RoadNetwork'` | **edges_df**: Columns ``from_node``, ``to_node``, ``weight_ds``, ``length_m`` (as returned by :func:`fastmob.network.builder.fetch_road_network` / `fetch_rail_network`); pan…<br>**nodes_df**: Columns ``node_idx``, ``lat``, ``lng`` -- used later for snapping via :func:`fastmob.network.snap.snap_locations_to_graph` (pandas-typed, so normalized to pand… |  | Prepare a contraction hierarchy from a road/rail graph's edges. |
 
-## Module `fastmob.privacy._rust`
-
-### `fastmob.privacy._rust` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `assess_risk_rust(traj: 'Any', *, attack_kind: 'int', knowledge_length: 'int', tolerance: 'float' = 0.0, targets: 'Any' = None, force_instances: 'bool' = False, presorted: 'bool' = False, time_precision: 'str | None' = None, include_datetime: 'bool' = False) -> 'Any'` | traj, attack_kind, knowledge_length, tolerance, targets, force_instances, presorted, time_precision, include_datetime |  |  |
-
 ## Module `fastmob.privacy.base`
 
 
@@ -616,9 +658,9 @@ A road (or rail) network prepared once (contraction hierarchy) and reused for ma
 
 Abstract base class for privacy risk attacks. Implements the background-knowledge attack framework from [TIST2018]_ [MOB2018]_. For each target user, all combinations of ``knowledge_length`` observations are generated as background-knowledge instances. Each instance is matched against every candida…
 
-| Method | Input | Output | Description |
-|---|---|---|---|
-| `__init__(self, knowledge_length: 'int')` | knowledge_length |  | Initialize self.  See help(type(self)) for accurate signature. |
+
+*Also has (same name/signature as on `fastmob.core.base.BaseDataFrame`): `__init__`.*
+
 
 ## Module `fastmob.privacy.frequency`
 
@@ -629,8 +671,13 @@ Home-Work Attack: assess risk from the two most-visited locations. A special cas
 
 | Method | Input | Output | Description |
 |---|---|---|---|
-| `__init__(self, knowledge_length: 'int' = 1)` | knowledge_length |  | Initialize self.  See help(type(self)) for accurate signature. |
 | `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, and ``lng`` columns (auto-detected by name).<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
+
+*Also has (same name/signature as on `fastmob.core.base.BaseDataFrame`): `__init__`.*
+
+
+*Structurally identical to the class above (same method names/signatures) and not shown separately -- 3 more variants: `fastmob.privacy.location.LocationAttack`, `fastmob.privacy.frequency.UniqueLocationAttack`, `fastmob.privacy.location.LocationSequenceAttack`.*
+
 
 ### `fastmob.privacy.frequency.LocationFrequencyAttack` (extends `Attack`)
 
@@ -639,53 +686,28 @@ Location Frequency Attack: assess risk from locations and visit counts. The atta
 | Method | Input | Output | Description |
 |---|---|---|---|
 | `__init__(self, knowledge_length: 'int', tolerance: 'float' = 0.0)` | knowledge_length, tolerance |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, and ``lng`` columns (auto-detected by name).<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
+
+*Also has (same name/signature as on `fastmob.privacy.frequency.HomeWorkAttack`): `assess_risk`.*
+
 
 ### `fastmob.privacy.frequency.LocationProbabilityAttack` (extends `LocationFrequencyAttack`)
 
 Location Probability Attack: assess risk from locations and visit probabilities. The attacker knows up to ``knowledge_length`` distinct locations and the probability (relative frequency) of visiting each one [TIST2018]_ [MOB2018]_. Matching compares known probabilities against the candidate's proba…
 
-| Method | Input | Output | Description |
-|---|---|---|---|
-| `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, and ``lng`` columns (auto-detected by name).<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
+
+*Also has (same name/signature as on `fastmob.privacy.frequency.HomeWorkAttack`): `assess_risk`.*
+
 
 ### `fastmob.privacy.frequency.LocationProportionAttack` (extends `LocationFrequencyAttack`)
 
 Location Proportion Attack: assess risk from locations and frequency proportions. The attacker knows up to ``knowledge_length`` distinct locations and the relative proportions between their visit frequencies [TIST2018]_ [MOB2018]_. Matching normalises both the instance and candidate frequencies by …
 
-| Method | Input | Output | Description |
-|---|---|---|---|
-| `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, and ``lng`` columns (auto-detected by name).<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
 
-### `fastmob.privacy.frequency.UniqueLocationAttack` (extends `Attack`)
+*Also has (same name/signature as on `fastmob.privacy.frequency.HomeWorkAttack`): `assess_risk`.*
 
-Unique Location Attack: assess risk from the set of distinct locations. The attacker knows up to ``knowledge_length`` distinct (lat, lng) locations visited by a target user [TIST2018]_ [MOB2018]_. Matching is set-based: an instance matches a candidate if every instance location appears in the candi…
-
-| Method | Input | Output | Description |
-|---|---|---|---|
-| `__init__(self, knowledge_length: 'int')` | knowledge_length |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, and ``lng`` columns (auto-detected by name).<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
 
 ## Module `fastmob.privacy.location`
 
-
-### `fastmob.privacy.location.LocationAttack` (extends `Attack`)
-
-Location Attack: assess re-identification risk from visited locations. The attacker knows the coordinates of up to ``knowledge_length`` location observations for a target user [TIST2018]_ [MOB2018]_.  Matching is multiset-based: the instance locations must appear in the candidate trajectory with at…
-
-| Method | Input | Output | Description |
-|---|---|---|---|
-| `__init__(self, knowledge_length: 'int')` | knowledge_length |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, ``lng``, and ``datetime`` columns (auto-detected b…<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
-
-### `fastmob.privacy.location.LocationSequenceAttack` (extends `Attack`)
-
-Location Sequence Attack: assess risk from an ordered location sequence. The attacker knows the coordinates of up to ``knowledge_length`` locations and their relative temporal order [TIST2018]_ [MOB2018]_.  Matching requires the known locations to appear as an ordered subsequence of the candidate t…
-
-| Method | Input | Output | Description |
-|---|---|---|---|
-| `__init__(self, knowledge_length: 'int')` | knowledge_length |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, ``lng``, and ``datetime`` columns (auto-detected b…<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
 
 ### `fastmob.privacy.location.LocationTimeAttack` (extends `LocationAttack`)
 
@@ -694,18 +716,9 @@ Location Time Attack: assess risk from locations and timestamps. The attacker kn
 | Method | Input | Output | Description |
 |---|---|---|---|
 | `__init__(self, knowledge_length: 'int', time_precision: 'str' = 'Hour')` | knowledge_length, time_precision |  | Initialize self.  See help(type(self)) for accurate signature. |
-| `assess_risk(self, traj: 'Any', targets: 'Any' = None, force_instances: 'bool' = False, show_progress: 'bool' = False, *, presorted: 'bool' = False) -> 'Any'` | **traj** (*DataFrame-like*): Trajectory dataframe; any Narwhals-compatible eager backend (pandas, polars, …). Must have ``uid``, ``lat``, ``lng``, and ``datetime`` columns (auto-detected b…<br>**targets** (*DataFrame-like or list of int, optional*): Subset of user IDs to assess. When None (default), risk is computed for every user in ``traj``.<br>**force_instances** (*bool, optional*): When True, return one row per background-knowledge instance element with its re-identification probability instead of the per-user maximum. Default: False.<br>**show_progress** (*bool, optional*): Accepted for API compatibility with skmob; has no effect in fastmob. Default: False. | *pandas.DataFrame or polars.DataFrame*: When ``force_instances=False``: one row per user with columns ``["uid", "risk"]``. When ``force_instances=True``: one row per instance element with columns ``[… | Assess privacy risk for each user in the trajectory. |
 
-## Module `fastmob.tessellation._utils`
+*Also has (same name/signature as on `fastmob.privacy.frequency.HomeWorkAttack`): `assess_risk`.*
 
-### `fastmob.tessellation._utils` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `bbox_from_name(query: 'str', which_osm_result: 'int' = 0, crs=None)` | query, which_osm_result, crs |  | Create a GeoDataFrame from an OpenStreetMap place-name query. |
-| `bbox_from_points(points: 'Any', crs=None)` | points, crs |  | Build a GeoDataFrame bounding box around a point collection or bounds. |
-| `get_geom_centroid(geom, return_lat_lng: 'bool' = False) -> 'list[float]'` | geom, return_lat_lng |  | Compute the centroid coordinates of a shapely geometry. |
-| `nearest(origin, tessellation, col: 'str')` | origin, tessellation, col |  | Return values from ``col`` in the nearest tessellation point for each origin point. |
 
 ## Module `fastmob.tessellation.tilers`
 
@@ -731,37 +744,17 @@ Registry for tessellation tiler implementations.
 
 | Method | Input | Output | Description |
 |---|---|---|---|
-| `__init__(self)` | *(none)* |  | Initialize self.  See help(type(self)) for accurate signature. |
 | `create(self, key: 'str', **kwargs)` | key, kwargs |  |  |
 | `get(self, service_id: 'str', **kwargs)` | service_id, kwargs |  |  |
 | `register_tiler(self, key: 'str', tiler_instance)` | key, tiler_instance |  |  |
+
+*Also has (same name/signature as on `fastmob.core.base.BaseDataFrame`): `__init__`.*
+
 
 ### `fastmob.tessellation.tilers.VoronoiTessellationTiler` (extends `TessellationTiler`)
 
 Build a point tessellation from input points.
 
 
-## Module `fastmob.trajectory`
-
-### `fastmob.trajectory` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `cluster_trajectory_shapes(trajectories: 'Sequence[Any]', depth: 'int' = 4, epsilon: 'float' = 0.05, min_cluster_size: 'int' = 2, *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None) -> 'np.ndarray'` | **trajectories** (*Sequence*): Each element is a single trajectory: any Narwhals-compatible eager dataframe (or `TrajDataFrame`) representing one user's/one trip's point sequence. Must have …<br>**depth** (*int, optional*): Number of distance-geometry levels (signature length is ``depth * (depth + 1) // 2``). Higher values capture finer shape detail at the cost of a higher-dimensi…<br>**epsilon** (*float, optional*): DBSCAN neighborhood radius over the normalized signature space (values are in ``[0, 1]``, so a typical ``epsilon`` is a small fraction like ``0.05``). Default …<br>**min_cluster_size** (*int, optional*): DBSCAN minimum points per cluster; must be ``>= 2``. Default ``2``. lat_col, lng_col, datetime_col : str, optional Explicit column name overrides; auto-detecte… | *numpy.ndarray*: One cluster label per input trajectory, in input order. ``-1`` marks DBSCAN noise (an outlier shape), matching `fastmob.preprocessing.cluster`'s convention. Ex… | Cluster a list of independent trajectories by their overall shape. |
-| `cluster_trajectory_shapes_from_segments(traj: 'Any', segment_col: 'str' = 'segment_id', uid_col: 'str | None' = None, depth: 'int' = 4, epsilon: 'float' = 0.05, min_cluster_size: 'int' = 2, *, lat_col: 'str | None' = None, lng_col: 'str | None' = None, datetime_col: 'str | None' = None) -> 'Any'` | **traj** (*DataFrame-like*): A dataframe already carrying a segment/group id column (e.g. the output of `fastmob.preprocessing.segment`).<br>**segment_col** (*str, optional*): Column identifying which rows belong to the same trajectory. Default ``"segment_id"``.<br>**uid_col** (*str, optional*): When given, groups by ``(uid_col, segment_col)`` instead of ``segment_col`` alone (segment ids commonly restart per user). **kwargs Forwarded to :func:`cluster… | *DataFrame*: The distinct ``(uid_col?, segment_col)`` keys with an added ``shape_cluster`` column, in the same backend as input. | Cluster trajectory shapes directly from a `segment()`-output (or `Triplegs.points`) frame, splitting into per-segment trajectories internally. |
-| `interpolate(traj: 'Any', method: 'str' = 'linear', sampling_rate_s: 'float' = 3600.0, *, datetime_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, uid_col: 'str | None' = None, presorted: 'bool' = False, **method_kwargs: 'Any') -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**method**: Name of the interpolation algorithm to run. One of ``"linear"``, ``"cubic_spline"``, ``"kinematic"``, or ``"random_walk"``.<br>**sampling_rate_s**: Maximum time gap, in seconds, allowed between consecutive points before an interpolated point is inserted. Default ``3600.0``. datetime_col, lat_col, lng_col, …<br>**presorted**: Whether the trajectory is already sorted by user and time. Setting this to True can speed up processing but may lead to incorrect results if the data is not pr…<br>****method_kwargs**: Method-specific parameters, forwarded to the matching ``INTERPOLATE_METHODS[method]`` preparer. - ``linear``, ``cubic_spline``: no extra parameters. - ``kinema… | *DataFrame*: The expanded trajectory (original points, plus any inserted points) in the same backend as input, sorted chronologically per user. Examples -------- >>> import… | Fill gaps in a trajectory by inserting interpolated points. For every gap between two chronologically consecutive points of the same user whose time delta exceeds ``sampling_rate_s``, exactly one new… |
-| `interpolate_at(traj: 'Any', at: 'Any', method: 'str' = 'linear', *, datetime_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, uid_col: 'str | None' = None, presorted: 'bool' = False) -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**at**: A single timestamp-like, or a sequence of timestamp-likes. Every user is queried at every timestamp in `at`.<br>**method**: ``"linear"`` (default) interpolates position between the two surrounding points; ``"nearest"`` returns the closer of the two. datetime_col, lat_col, lng_col, u…<br>**presorted**: Whether the trajectory is already sorted by user and time. | *DataFrame*: One row per ``(uid, query_time)`` pair (or one row per query timestamp when no user column is present), with columns ``uid`` (when present), ``query_time``, `l… | Query each user's interpolated position at one or more timestamps. Unlike :func:`fastmob.trajectory.interpolate`, this never changes a user's own point count -- it answers "where was this user at tim… |
-| `smooth(traj: 'Any', method: 'str' = 'kalman_cv', *, datetime_col: 'str | None' = None, lat_col: 'str | None' = None, lng_col: 'str | None' = None, uid_col: 'str | None' = None, presorted: 'bool' = False, **method_kwargs: 'Any') -> 'Any'` | **traj**: Trajectory dataframe; any Narwhals-compatible eager backend.<br>**method**: Name of the smoothing algorithm to run. Only ``"kalman_cv"`` is shipped currently. datetime_col, lat_col, lng_col, uid_col: Explicit column name overrides; aut…<br>**presorted**: Whether the trajectory is already sorted by user and time. Setting this to True can speed up processing but may lead to incorrect results if the data is not pr…<br>****method_kwargs**: Method-specific parameters, forwarded to the matching ``SMOOTH_METHODS[method]`` preparer. - ``kalman_cv``: ``process_noise_std_km`` (default ``0.05``) -- acce… | *DataFrame*: The trajectory with smoothed ``lat``/``lng`` values, same row count and order as input, in the same backend as input. Rows with a null latitude/longitude/datet… | Smooth a trajectory's positions using a named algorithm. Every row's ``(lat, lng)`` is replaced with a denoised estimate at its original timestamp; row count and row order are unchanged (unlike :func… |
-| `trajectory_distance(traj_a: 'Any', traj_b: 'Any', method: 'str' = 'dtw', *, datetime_col_a: 'str | None' = None, lat_col_a: 'str | None' = None, lng_col_a: 'str | None' = None, uid_col_a: 'str | None' = None, datetime_col_b: 'str | None' = None, lat_col_b: 'str | None' = None, lng_col_b: 'str | None' = None, uid_col_b: 'str | None' = None, **method_kwargs: 'Any') -> 'float'` | **method**: ``"dtw"``, ``"frechet"``, or ``"hausdorff"`` return a distance in km (``0`` = identical shape); ``"lcss"`` returns a similarity in ``[0, 1]`` (``1`` = identica…<br>****method_kwargs**: Method-specific parameters, forwarded to the matching ``DISTANCE_METHODS[method]`` preparer. - ``lcss``: ``epsilon_km`` (default ``0.1``) -- two points are con… | *float*: Raises ------ ValueError If either side's user-ID column contains more than one distinct user. Examples -------- >>> import pandas as pd >>> import fastmob >>>… | Compute a similarity/distance metric between two trajectories. Compares exactly two whole point-sequences -- each side must be a single user's trajectory (or have no user column at all), not a multi-… |
-
-## Module `fastmob.utils.utils`
-
-### `fastmob.utils.utils` — functions
-
-| Function | Input | Output | Description |
-|---|---|---|---|
-| `get_geom_centroid(geom, return_lat_lng: 'bool' = False) -> 'list'` | **geom** (*shapely geometry*): A Polygon, MultiPolygon, or Point whose centroid is computed.<br>**return_lat_lng** (*bool, optional*): If ``True`` the returned list is ``[lat, lng]``; otherwise ``[lng, lat]``. The default is ``False``. | *list*: Two-element list with the centroid coordinates. | Return the centroid of a Polygon, MultiPolygon, or Point as [lng, lat]. |
-| `nearest(origin, tessellation, col: 'str')` | **origin** (*geopandas.GeoDataFrame*): GeoDataFrame whose geometry column contains the query points.<br>**tessellation** (*geopandas.GeoDataFrame*): GeoDataFrame with Point geometry to search.<br>**col** (*str*): Column in *tessellation* whose value to return for each nearest match. | *pandas.Series*: Series aligned with *tessellation*, containing the *col* value for the nearest tessellation point for each row in *origin*. | Return the tessellation column value of the nearest Point for each origin row. Uses squared Euclidean distance on raw coordinates — suitable for finding the closest point within a localised region (n… |
-
 ---
-*Coverage: 155 functions, 42 classes, 106 methods documented.*
+*Coverage: 155 functions, 39 classes, 86 methods documented (0 duplicate function definitions, 3 structurally-identical duplicate classes, and 14 duplicate method definitions collapsed into the entries above).*
