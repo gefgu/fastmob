@@ -7,13 +7,19 @@ is needed for this level:
    positionfixes into alternating stop-window and moving runs
    (``segment_id``), using the *same* stop-detection parameters
    `Positionfixes.generate_staypoints` used.
-2. Each stop-window run is matched against the corresponding `Staypoints`
-   row by an exact ``(uid, started_at)`` join (both come from the same
-   underlying stop-detection algorithm and parameters, so their computed
-   entry times line up exactly) and discarded; the remaining "moving" runs
-   are the triplegs.
+2. Each stop-window segment is identified by an exact ``(uid, started_at)``
+   match against the corresponding `Staypoints` row (both come from the
+   same underlying stop-detection algorithm and parameters, so their
+   computed entry times line up exactly); the remaining "moving" segments
+   are the triplegs. `segment(method="stop")` attributes a stop's own
+   entry/leaving transition rows to the *stop's* segment, not the moving
+   segment before/after it -- so each tripleg's true door-to-door span is
+   recovered by borrowing the bracketing stop segments' own
+   finished_at/started_at, and its length includes the boundary hop that
+   would otherwise be misattributed to the (discarded) stop segment. See
+   `_tripleg_lengths`'s docstring for the exact redirection rule.
 3. Each tripleg's length is the sum of consecutive-point Haversine distances
-   between its own rows, computed by reusing
+   along its full door-to-door span, computed by reusing
    `fastmob.measures.individual.jump_lengths`'s existing batched Rust
    kernel (a single ``merge=True`` flat-array call), not a new kernel.
 
@@ -88,6 +94,15 @@ class Triplegs(BaseDataFrame):
 
         return calculate_modal_split(self, freq=freq, metric=metric, per_user=per_user, normalize=normalize)
 
+    def generate_trips(self, staypoints: Any, gap_threshold_min: float = 15.0) -> Any:
+        """Group consecutive triplegs into trips.
+
+        See :meth:`fastmob.core.trips_dataframe.Trips.from_triplegs`.
+        """
+        from .trips_dataframe import Trips
+
+        return Trips.from_triplegs(self, staypoints, gap_threshold_min=gap_threshold_min)
+
     @staticmethod
     def from_positionfixes(
         positionfixes: Any,
@@ -139,8 +154,35 @@ class Triplegs(BaseDataFrame):
             nw.col(datetime_col).max().alias("finished_at"),
             nw.len().alias("n_rows"),
         )
+        # group_by doesn't guarantee output row order; re-sort chronologically
+        # per user before the shift/over below (segment_id increases with
+        # time per user, since seg_nw was itself sorted by (uid, datetime)).
+        sort_by_segment = [uid_col, "segment_id"] if uid_col else ["segment_id"]
+        summary = summary.sort(sort_by_segment)
 
-        # Discard stop-window segments: an exact (uid, started_at) match
+        # `segment(method="stop")` attributes each stop's entry/leaving
+        # transition rows to the STOP's own segment, not the moving segment
+        # before/after it (see this module's docstring) -- so a moving
+        # segment's own min/max datetime is truncated, sometimes to a single
+        # degenerate point (0 duration despite a real, nonzero length).
+        # Recover each tripleg's true door-to-door span by borrowing the
+        # bracketing stop segments' own finished_at/started_at instead.
+        if uid_col:
+            prev_finished = nw.col("finished_at").shift(1).over(uid_col)
+            next_started = nw.col("started_at").shift(-1).over(uid_col)
+        else:
+            prev_finished = nw.col("finished_at").shift(1)
+            next_started = nw.col("started_at").shift(-1)
+        summary = summary.with_columns(
+            prev_finished.alias("__prev_finished_at__"),
+            next_started.alias("__next_started_at__"),
+        )
+        summary = summary.with_columns(
+            nw.col("__prev_finished_at__").fill_null(nw.col("started_at")).alias("__bracketed_started_at__"),
+            nw.col("__next_started_at__").fill_null(nw.col("finished_at")).alias("__bracketed_finished_at__"),
+        )
+
+        # Identify stop-window segments: an exact (uid, started_at) match
         # against the staypoints this same positionfixes/parameters produced.
         # Join on millisecond-timestamp integers rather than the raw datetime
         # columns -- different backends can carry different datetime
@@ -151,13 +193,26 @@ class Triplegs(BaseDataFrame):
         stop_keys_cols = ([uid_col] if uid_col else []) + [staypoints.started_at_col]
         stop_keys = (
             stay_nw.select(stop_keys_cols)
-            .with_columns(nw.col(staypoints.started_at_col).dt.timestamp("ms").alias("__started_at_ms__"))
-            .select(([uid_col] if uid_col else []) + ["__started_at_ms__"])
+            .with_columns(
+                nw.col(staypoints.started_at_col).dt.timestamp("ms").alias("__started_at_ms__"),
+                nw.lit(True).alias("__is_stop__"),
+            )
+            .select(([uid_col] if uid_col else []) + ["__started_at_ms__", "__is_stop__"])
         )
-        anti_join_cols = ([uid_col] if uid_col else []) + ["__started_at_ms__"]
-        triplegs_summary = summary.join(stop_keys, on=anti_join_cols, how="anti").drop("__started_at_ms__")
+        join_cols_ms = ([uid_col] if uid_col else []) + ["__started_at_ms__"]
+        summary = summary.join(stop_keys, on=join_cols_ms, how="left").with_columns(
+            nw.col("__is_stop__").fill_null(value=False).cast(nw.Boolean)
+        )
 
-        length_by_group = _tripleg_lengths(seg_nw, uid_col, datetime_col, lat_col, lng_col)
+        length_by_group = _tripleg_lengths(seg_nw, summary, uid_col, datetime_col, lat_col, lng_col, group_cols)
+
+        triplegs_summary = summary.filter(~nw.col("__is_stop__")).drop("__started_at_ms__", "__is_stop__")
+        triplegs_summary = (
+            triplegs_summary.drop("started_at", "finished_at")
+            .rename({"__bracketed_started_at__": "started_at", "__bracketed_finished_at__": "finished_at"})
+            .drop("__prev_finished_at__", "__next_started_at__")
+        )
+
         triplegs_summary = triplegs_summary.join(length_by_group, on=group_cols, how="left")
         triplegs_summary = triplegs_summary.with_columns(nw.col("length_km").fill_null(0.0))
 
@@ -179,36 +234,62 @@ class Triplegs(BaseDataFrame):
 
 def _tripleg_lengths(
     seg_nw: nw.DataFrame,
+    summary_with_is_stop: nw.DataFrame,
     uid_col: str | None,
     datetime_col: str,
     lat_col: str,
     lng_col: str,
+    group_cols: list[str],
 ) -> nw.DataFrame:
-    """Sum of consecutive-point Haversine distances per ``(uid, segment_id)`` group.
+    """Sum of consecutive-point Haversine distances per moving ``(uid, segment_id)`` group.
 
     Reuses `jump_lengths`'s existing batched, presorted Rust kernel: a single
     ``merge=True`` call over the whole (already uid/time-sorted) frame
     returns one flat array of per-user consecutive distances (length
     ``n_u - 1`` per user); this is reconstructed here into a full per-row
     "distance from previous row" NumPy array (first row of each user gets
-    0.0), which then group-sums correctly per ``segment_id`` -- no per-row
-    Python loop, no new Rust kernel.
+    0.0).
+
+    `segment(method="stop")` attributes a stop's own entry-transition row to
+    the STOP's segment, not the moving segment before it (see this module's
+    docstring) -- so the hop leading into a stop would otherwise be
+    misattributed to the (discarded) stop segment and silently dropped from
+    the tripleg's length. Each such hop is redirected here to the
+    *preceding* segment (the moving one) before grouping.
     """
     from ..measures.individual import jump_lengths
 
     n = len(seg_nw)
+    empty_cols = ([uid_col] if uid_col else []) + ["segment_id", "length_km"]
     if n == 0:
-        empty_cols = ([uid_col] if uid_col else []) + ["segment_id", "length_km"]
         return nw.from_dict({col: [] for col in empty_cols}, backend=seg_nw.implementation)
 
+    is_stop_lookup = summary_with_is_stop.select([*group_cols, "__is_stop__"])
+    seg_with_flag = seg_nw.join(is_stop_lookup, on=group_cols, how="left").with_columns(
+        nw.col("__is_stop__").fill_null(value=False).cast(nw.Boolean)
+    )
+
     if uid_col:
-        uid_values = seg_nw.get_column(uid_col).to_numpy()
-        first_mask = np.empty(n, dtype=bool)
-        first_mask[0] = True
-        first_mask[1:] = uid_values[1:] != uid_values[:-1]
+        uid_values = seg_with_flag.get_column(uid_col).to_numpy()
+        first_of_user = np.empty(n, dtype=bool)
+        first_of_user[0] = True
+        first_of_user[1:] = uid_values[1:] != uid_values[:-1]
     else:
-        first_mask = np.zeros(n, dtype=bool)
-        first_mask[0] = True
+        uid_values = np.zeros(n, dtype=np.int64)
+        first_of_user = np.zeros(n, dtype=bool)
+        first_of_user[0] = True
+
+    seg_ids = seg_with_flag.get_column("segment_id").to_numpy()
+    is_stop_row = seg_with_flag.get_column("__is_stop__").to_numpy()
+
+    first_of_segment = np.empty(n, dtype=bool)
+    first_of_segment[0] = True
+    first_of_segment[1:] = (seg_ids[1:] != seg_ids[:-1]) | first_of_user[1:]
+
+    redirect_mask = first_of_segment & is_stop_row & ~first_of_user
+    attribution_segment_id = seg_ids.copy()
+    redirect_idx = np.flatnonzero(redirect_mask)
+    attribution_segment_id[redirect_idx] = seg_ids[redirect_idx - 1]
 
     flat_distances = jump_lengths(
         seg_nw.to_native(),
@@ -222,8 +303,18 @@ def _tripleg_lengths(
     flat_distances = flat_distances.to_numpy() if hasattr(flat_distances, "to_numpy") else np.asarray(flat_distances)
 
     per_row_distance = np.zeros(n, dtype=np.float64)
-    per_row_distance[~first_mask] = np.asarray(flat_distances, dtype=np.float64)
+    per_row_distance[~first_of_user] = np.asarray(flat_distances, dtype=np.float64)
 
-    keyed = seg_nw.with_columns(nw.new_series("__distance_km__", per_row_distance, backend=seg_nw.implementation))
-    group_cols = [uid_col, "segment_id"] if uid_col else ["segment_id"]
-    return keyed.group_by(group_cols).agg(nw.col("__distance_km__").sum().alias("length_km"))
+    lengths_dict: dict[str, Any] = {
+        "segment_id": attribution_segment_id,
+        "__distance_km__": per_row_distance,
+    }
+    if uid_col:
+        lengths_dict["__uid__"] = uid_values
+    lengths_nw = nw.from_dict(lengths_dict, backend=seg_nw.implementation)
+
+    group_by_cols = ["__uid__", "segment_id"] if uid_col else ["segment_id"]
+    grouped = lengths_nw.group_by(group_by_cols).agg(nw.col("__distance_km__").sum().alias("length_km"))
+    if uid_col:
+        grouped = grouped.rename({"__uid__": uid_col})
+    return grouped

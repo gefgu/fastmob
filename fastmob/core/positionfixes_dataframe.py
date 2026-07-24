@@ -58,6 +58,12 @@ class Positionfixes(TrajDataFrame):
         stops_nw = nw.from_native(stops, eager_only=True).rename(
             {self.datetime_col: "started_at", "leaving_datetime": "finished_at"}
         )
+        # A stable identity for each staypoint, assigned once here and
+        # carried through as an ordinary data column by every later
+        # operation (generate_locations' cluster() resort, create_activity_flag,
+        # ...) -- Trips.generate_trips needs it to record which staypoint
+        # brackets each trip.
+        stops_nw = stops_nw.with_row_index("staypoint_id")
         return Staypoints(
             stops_nw.to_native(),
             uid_col=self.uid_col,

@@ -147,8 +147,14 @@ def stay_locations(
     if presorted:
         uid_values, ranges = _build_user_ranges(df, uid_col)
         _result = detect_stay_locations_batch(
-            lats_data, lngs_data, timestamps_data, ranges,
-            spatial_radius_km, minutes_for_a_stop, no_data_for_minutes, effective_min_speed,
+            lats_data,
+            lngs_data,
+            timestamps_data,
+            ranges,
+            spatial_radius_km,
+            minutes_for_a_stop,
+            no_data_for_minutes,
+            effective_min_speed,
         )
         out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _unwrap_stay(*_result)
     else:
@@ -159,8 +165,15 @@ def stay_locations(
             timestamps_data=timestamps_data,
         )
         _result = detect_stay_locations_batch_indexed(
-            lats_data, lngs_data, timestamps_data, sorted_indices, ends,
-            spatial_radius_km, minutes_for_a_stop, no_data_for_minutes, effective_min_speed,
+            lats_data,
+            lngs_data,
+            timestamps_data,
+            sorted_indices,
+            ends,
+            spatial_radius_km,
+            minutes_for_a_stop,
+            no_data_for_minutes,
+            effective_min_speed,
         )
         out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _unwrap_stay(*_result)
 

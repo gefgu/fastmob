@@ -1,5 +1,5 @@
 from . import data, io, privacy, trajectory, utils
-from .core import FlowDataFrame, Locations, Positionfixes, Staypoints, TrajDataFrame, Triplegs
+from .core import FlowDataFrame, Locations, Positionfixes, Staypoints, Tours, TrajDataFrame, Triplegs, Trips
 from .measures import (
     NetworkGraph,
     activity_distribution_jensen_shannon_divergence,
@@ -109,8 +109,10 @@ __all__ = [
     "NetworkGraph",
     "Positionfixes",
     "Staypoints",
+    "Tours",
     "TrajDataFrame",
     "Triplegs",
+    "Trips",
     "activity_distribution_jensen_shannon_divergence",
     "activity_transition_matrix",
     "activity_transition_matrix_jensen_shannon_divergence",
