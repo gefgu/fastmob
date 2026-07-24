@@ -236,7 +236,7 @@ def comparison_skmob_reference(request):
     populate the cache, then commit tests/shared/skmob_reference/ to git.
     After that, these tests run in the normal .venv without skmob installed.
     """
-    from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
+    from tests.shared.skmob_cache import _REFERENCE_DIR, SkmobReferenceDataset
 
     dataset = request.param
     if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
@@ -253,7 +253,7 @@ def movingpandas_reference():
     tests/shared/movingpandas_reference/ to git. After that, these tests run
     in the normal .venv without movingpandas installed.
     """
-    from tests.shared.movingpandas_cache import MovingPandasReferenceDataset, _REFERENCE_DIR
+    from tests.shared.movingpandas_cache import _REFERENCE_DIR, MovingPandasReferenceDataset
 
     dataset = "brightkite"
     if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
@@ -272,12 +272,66 @@ def ptrail_reference():
     git. After that, these tests run in the normal .venv without ptrail
     installed.
     """
-    from tests.shared.ptrail_cache import PtrailReferenceDataset, _REFERENCE_DIR
+    from tests.shared.ptrail_cache import _REFERENCE_DIR, PtrailReferenceDataset
 
     dataset = "brightkite"
     if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
         pytest.skip(f"No PTRAIL reference cache for '{dataset}'. Run 'bash scripts/populate_ptrail_cache.sh' first.")
     return PtrailReferenceDataset(dataset)
+
+
+@pytest.fixture(scope="session")
+def transbigdata_reference():
+    """Cached TransBigData ``traj_mapmatch`` baseline; auto-skips when the cache is absent.
+
+    Run ``bash scripts/populate_transbigdata_cache.sh`` (inside
+    .venv-transbigdata) once to populate the cache, then commit
+    tests/shared/transbigdata_reference/ to git. After that, these tests
+    run in the normal .venv without transbigdata installed -- installing
+    transbigdata's extras into an already-populated .venv can silently
+    downgrade unrelated packages (see pyproject.toml's dev-transbigdata
+    comment), so it gets its own dedicated venv like pymove, even though
+    its own pinned stack is otherwise compatible with the normal .venv.
+    """
+    from tests.shared.transbigdata_cache import _REFERENCE_DIR, TransBigDataReferenceDataset
+
+    dataset = "toy_grid"
+    if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
+        pytest.skip(
+            f"No TransBigData reference cache for '{dataset}'. Run 'bash scripts/populate_transbigdata_cache.sh' first."
+        )
+    return TransBigDataReferenceDataset(dataset)
+
+
+@pytest.fixture(scope="session")
+def pymove_poi_reference():
+    """Cached PyMove POI-join baseline; auto-skips when the cache is absent.
+
+    Run ``bash scripts/populate_pymove_cache.sh`` (inside .venv-pymove)
+    once to populate the cache, then commit tests/shared/pymove_reference/
+    to git. After that, these tests run in the normal .venv without pymove
+    installed.
+    """
+    from tests.shared.pymove_cache import _REFERENCE_DIR, PymoveReferenceDataset
+
+    dataset = "doc_example_poi"
+    if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
+        pytest.skip(f"No PyMove reference cache for '{dataset}'. Run 'bash scripts/populate_pymove_cache.sh' first.")
+    return PymoveReferenceDataset(dataset)
+
+
+@pytest.fixture(scope="session")
+def pymove_events_reference():
+    """Cached PyMove event-join baseline; auto-skips when the cache is absent.
+
+    See :func:`pymove_poi_reference` for setup instructions.
+    """
+    from tests.shared.pymove_cache import _REFERENCE_DIR, PymoveReferenceDataset
+
+    dataset = "doc_example_events"
+    if not (_REFERENCE_DIR / dataset / "input.parquet").exists():
+        pytest.skip(f"No PyMove reference cache for '{dataset}'. Run 'bash scripts/populate_pymove_cache.sh' first.")
+    return PymoveReferenceDataset(dataset)
 
 
 @pytest.fixture(scope="session")
@@ -289,7 +343,7 @@ def movetk_reference():
     directory's ``build.sh``); fastmob's test suite never invokes MoveTK
     itself at test time, only the committed JSON cache.
     """
-    from tests.shared.movetk_cache import MovetkReferenceDataset, _REFERENCE_DIR
+    from tests.shared.movetk_cache import _REFERENCE_DIR, MovetkReferenceDataset
 
     dataset = "brightkite"
     if not (_REFERENCE_DIR / dataset / "simplify_chan_chin.json").exists():
@@ -350,4 +404,12 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "ptrail: tests that require the ptrail package to be installed",
+    )
+    config.addinivalue_line(
+        "markers",
+        "transbigdata: tests that compare against a cached transbigdata baseline",
+    )
+    config.addinivalue_line(
+        "markers",
+        "pymove: tests that require the pymove package to be installed",
     )

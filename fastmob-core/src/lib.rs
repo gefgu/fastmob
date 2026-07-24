@@ -1,3 +1,4 @@
+pub mod integration;
 pub mod measures;
 pub mod models;
 pub mod network;

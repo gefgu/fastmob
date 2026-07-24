@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "benchmark": "integration.join_with_pois+join_with_pois_by_category+join_with_events",
+    "cpu_info": {
+      "cores": 40,
+      "model": "Intel(R) Xeon(R) Silver 4316 CPU @ 2.30GHz",
+      "vendor_slug": "intel"
+    },
+    "dataset": "synthetic_uniform",
+    "n_categories": 5,
+    "n_events": 500,
+    "n_pois": 500,
+    "time_window_s": 900.0
+  },
+  "results": {
+    "by_traj_size": [
+      {
+        "join_with_events_seconds": 0.009329317836090922,
+        "join_with_pois_by_category_seconds": 0.13404403603635728,
+        "join_with_pois_seconds": 0.19190580816939473,
+        "matched_event_fraction": 0.998,
+        "n_categories": 5,
+        "n_events": 500,
+        "n_pois": 500,
+        "n_traj": 1000
+      },
+      {
+        "join_with_events_seconds": 0.009006888139992952,
+        "join_with_pois_by_category_seconds": 0.07988294516690075,
+        "join_with_pois_seconds": 0.01919877785257995,
+        "matched_event_fraction": 1.0,
+        "n_categories": 5,
+        "n_events": 500,
+        "n_pois": 500,
+        "n_traj": 10000
+      },
+      {
+        "join_with_events_seconds": 0.03146443096920848,
+        "join_with_pois_by_category_seconds": 0.5948735368438065,
+        "join_with_pois_seconds": 0.14891061396338046,
+        "matched_event_fraction": 1.0,
+        "n_categories": 5,
+        "n_events": 500,
+        "n_pois": 500,
+        "n_traj": 100000
+      }
+    ]
+  }
+}

@@ -1,4 +1,5 @@
 mod adapters;
+mod integration;
 mod measures;
 mod models;
 mod network;
@@ -19,6 +20,7 @@ use measures::individual::{
     radius_of_gyration, recency_rank, spatial_counts, time_ordering, total_distance,
     uncorrelated_entropy, waiting_times,
 };
+use integration::events_py;
 use network::road_graph_py;
 use preprocessing::{
     cdr, clustering, compress_traj_py, filter_traj_py, h3_py, outliers_traj_py, segment_traj_py,
@@ -191,6 +193,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
     m.add_class::<road_graph_py::RoadNetworkHandle>()?;
     m.add_function(wrap_pyfunction!(road_graph_py::subsample_waypoints_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        events_py::nearest_event_within_window_numpy,
+        m
+    )?)?;
     m.add_class::<preprocessing::filter_traj_py::PyFilterConfig>()?;
     m.add_function(wrap_pyfunction!(filter_traj_py::filter_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(

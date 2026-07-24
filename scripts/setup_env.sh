@@ -8,6 +8,8 @@
 #   bash scripts/setup_env.sh --skmob            # also install scikit-mobility (optional)
 #   bash scripts/setup_env.sh --movingpandas     # also install movingpandas + geopandas (optional)
 #   bash scripts/setup_env.sh --ptrail           # also install ptrail (optional)
+#   bash scripts/setup_env.sh --venv .venv-transbigdata --transbigdata  # dedicated env, see pyproject.toml dev-transbigdata comment
+#   bash scripts/setup_env.sh --venv .venv-pymove --python 3.10 --pymove  # dedicated env, see CLAUDE.md
 #
 # After completion, activate the environment with:
 #   source .venv/bin/activate
@@ -20,6 +22,8 @@ cd "$REPO_ROOT"
 INSTALL_SKMOB=false
 INSTALL_MOVINGPANDAS=false
 INSTALL_PTRAIL=false
+INSTALL_TRANSBIGDATA=false
+INSTALL_PYMOVE=false
 PYTHON_SPEC=""
 VENV_DIR=".venv"
 while [ "$#" -gt 0 ]; do
@@ -34,6 +38,14 @@ while [ "$#" -gt 0 ]; do
             ;;
         --ptrail)
             INSTALL_PTRAIL=true
+            shift
+            ;;
+        --transbigdata)
+            INSTALL_TRANSBIGDATA=true
+            shift
+            ;;
+        --pymove)
+            INSTALL_PYMOVE=true
             shift
             ;;
         --python)
@@ -108,6 +120,40 @@ else
     echo ""
     echo "NOTE: ptrail not installed. ptrail-comparison tests will be skipped."
     echo "      To install it, re-run with: bash scripts/setup_env.sh --ptrail"
+fi
+
+if $INSTALL_TRANSBIGDATA; then
+    echo "==> Installing transbigdata + osmnx (TransBigData comparison tests) ..."
+    uv pip install -e ".[dev-transbigdata]" || {
+        echo "WARNING: transbigdata or osmnx failed to install."
+        echo "         transbigdata-comparison tests will be skipped automatically."
+    }
+else
+    echo ""
+    echo "NOTE: transbigdata not installed. transbigdata-comparison tests will be skipped."
+    echo "      To install it, re-run with: bash scripts/setup_env.sh --transbigdata"
+fi
+
+if $INSTALL_PYMOVE; then
+    echo "==> Installing pymove (PyMove comparison tests) ..."
+    uv pip install -e ".[dev-pymove]" && {
+        # pymove's own metadata allows pandas>=1.5 (this project's base
+        # dependency), but its code needs pandas<1.4; that pin can't live in
+        # the dev-pymove extra without conflicting with the base dependency
+        # at resolve time, so force it here as a plain (non-editable)
+        # install. A newer dask also refuses to import under pandas<2.0, so
+        # pin it down to match. See pyproject.toml's dev-pymove comment.
+        echo "==> Re-pinning pandas/dask for pymove's actual code (see pyproject.toml dev-pymove) ..."
+        uv pip install "pandas>=1.1.0,<1.4.0" "dask[dataframe]<2022.2"
+    } || {
+        echo "WARNING: pymove failed to install."
+        echo "         pymove-comparison tests will be skipped automatically."
+    }
+else
+    echo ""
+    echo "NOTE: pymove not installed. pymove-comparison tests will be skipped."
+    echo "      To install it, re-run with: bash scripts/setup_env.sh --pymove"
+    echo "      (needs a dedicated venv: bash scripts/setup_env.sh --venv .venv-pymove --python 3.10 --pymove)"
 fi
 
 echo ""

@@ -6,7 +6,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.individual.network_distance import jump_lengths_km, radius_of_gyration_km
 from fastmob.network import RoadNetwork
 
@@ -132,12 +131,39 @@ def test_road_network_build_accepts_polars_nodes_and_edges():
 
 def test_road_network_batch_distances_disconnected_reports_not_connected():
     nodes = pd.DataFrame({"node_idx": [0, 1, 2, 3], "lat": [0.0, 0.1, 10.0, 10.1], "lng": [0.0, 0.0, 0.0, 0.0]})
-    edges = pd.DataFrame(
-        {"from_node": [0, 2], "to_node": [1, 3], "length_m": [100.0, 100.0], "weight_ds": [10, 10]}
-    )
+    edges = pd.DataFrame({"from_node": [0, 2], "to_node": [1, 3], "length_m": [100.0, 100.0], "weight_ds": [10, 10]})
     network = RoadNetwork.build(edges, nodes)
     import numpy as np
 
     distances, connected = network.batch_distances(np.array([0]), np.array([3]))
     assert not connected[0]
     assert distances[0] == 0.0
+
+
+def test_road_network_batch_routes_returns_full_chain_geometry(network):
+    import numpy as np
+
+    routes = network.batch_routes(np.array([0]), np.array([3]), max_waypoints=10)
+    assert list(routes["query_id"]) == [0, 0, 0, 0]
+    assert routes["lat"].tolist() == pytest.approx([0.0, 0.0009, 0.0018, 0.0027])
+    assert routes["cum_weight_ds"].tolist() == [0, 10, 20, 30]
+
+
+def test_road_network_batch_routes_decimates_to_max_waypoints(network):
+    import numpy as np
+
+    routes = network.batch_routes(np.array([0]), np.array([3]), max_waypoints=2)
+    assert len(routes) == 2
+    assert routes["lat"].iloc[0] == pytest.approx(0.0)
+    assert routes["lat"].iloc[-1] == pytest.approx(0.0027)
+
+
+def test_road_network_batch_routes_disconnected_query_contributes_no_rows():
+    nodes = pd.DataFrame({"node_idx": [0, 1, 2, 3], "lat": [0.0, 0.1, 10.0, 10.1], "lng": [0.0, 0.0, 0.0, 0.0]})
+    edges = pd.DataFrame({"from_node": [0, 2], "to_node": [1, 3], "length_m": [100.0, 100.0], "weight_ds": [10, 10]})
+    network = RoadNetwork.build(edges, nodes)
+    import numpy as np
+
+    routes = network.batch_routes(np.array([0, -1]), np.array([3, 2]), max_waypoints=10)
+    assert len(routes) == 0
+    assert list(routes.columns) == ["query_id", "lat", "lng", "cum_weight_ds"]

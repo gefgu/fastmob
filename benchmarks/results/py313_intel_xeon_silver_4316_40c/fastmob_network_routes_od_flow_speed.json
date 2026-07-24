@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "benchmark": "network.batch_routes+od_desire_lines",
+    "cpu_info": {
+      "cores": 40,
+      "model": "Intel(R) Xeon(R) Silver 4316 CPU @ 2.30GHz",
+      "vendor_slug": "intel"
+    },
+    "dataset": "synthetic_grid",
+    "graph_edges": 39600,
+    "graph_nodes": 10000,
+    "grid_size": 100,
+    "max_waypoints": 50
+  },
+  "results": {
+    "by_query_count": [
+      {
+        "batch_distances_seconds": 0.03718517906963825,
+        "batch_routes_rows": 44352,
+        "batch_routes_seconds": 0.03357380302622914,
+        "connected_fraction": 1.0,
+        "n_queries": 1000,
+        "od_desire_lines_dropped_flow": 0.0,
+        "od_desire_lines_edges_touched": 24852,
+        "od_desire_lines_seconds": 0.07588440109975636
+      },
+      {
+        "batch_distances_seconds": 0.2531396998092532,
+        "batch_routes_rows": 440166,
+        "batch_routes_seconds": 0.28691391204483807,
+        "connected_fraction": 1.0,
+        "n_queries": 10000,
+        "od_desire_lines_dropped_flow": 0.0,
+        "od_desire_lines_edges_touched": 37798,
+        "od_desire_lines_seconds": 0.42157548386603594
+      },
+      {
+        "batch_distances_seconds": 2.192436902085319,
+        "batch_routes_rows": 4396061,
+        "batch_routes_seconds": 2.336600563954562,
+        "connected_fraction": 1.0,
+        "n_queries": 100000,
+        "od_desire_lines_dropped_flow": 0.0,
+        "od_desire_lines_edges_touched": 39514,
+        "od_desire_lines_seconds": 2.6341038369573653
+      }
+    ],
+    "ch_prep_seconds": 8.134355204878375
+  }
+}
