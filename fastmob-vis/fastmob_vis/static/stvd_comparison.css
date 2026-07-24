@@ -1,0 +1,55 @@
+.ec-extension-leaflet {
+  background: #fbf8f1;
+}
+
+.fastmob-vis-stvd-legend {
+  position: absolute;
+  left: 14px;
+  bottom: 22px;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: 18px 48px repeat(3, 34px);
+  grid-template-rows: repeat(3, 25px) 18px 16px;
+  align-items: center;
+  padding: 9px 10px 7px;
+  color: #14110d;
+  background: rgba(251, 248, 241, 0.95);
+  border: 1px solid #14110d;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.fastmob-vis-stvd-legend__cell {
+  width: 34px;
+  height: 25px;
+}
+
+.fastmob-vis-stvd-legend__y {
+  padding-right: 7px;
+  text-align: right;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.fastmob-vis-stvd-legend__x {
+  text-align: center;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.fastmob-vis-stvd-legend__x-title {
+  grid-column: 3 / 6;
+  grid-row: 5;
+  text-align: center;
+  font-weight: 500;
+}
+
+.fastmob-vis-stvd-legend__y-title {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  justify-self: center;
+  align-self: center;
+  transform: rotate(-90deg);
+  font-weight: 500;
+  white-space: nowrap;
+}

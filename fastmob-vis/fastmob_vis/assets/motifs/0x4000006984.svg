@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mobility motif 0x4000006984">
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#111111"/></marker></defs>
+  <g fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arrow)">
+    <path d="M 54.95 23.95 Q 59.14 40.86 76.05 45.05"/>
+    <path d="M 50.00 26.00 Q 41.00 50.00 50.00 74.00"/>
+    <path d="M 76.05 45.05 Q 71.86 28.14 54.95 23.95"/>
+    <path d="M 74.00 50.00 Q 50.00 41.00 26.00 50.00"/>
+    <path d="M 50.00 74.00 Q 59.00 50.00 50.00 26.00"/>
+    <path d="M 26.00 50.00 Q 50.00 59.00 74.00 50.00"/>
+  </g>
+  <circle cx="50.00" cy="19.00" r="5.5" fill="#d62728"/>
+  <circle cx="81.00" cy="50.00" r="5.5" fill="#111111"/>
+  <circle cx="50.00" cy="81.00" r="5.5" fill="#111111"/>
+  <circle cx="19.00" cy="50.00" r="5.5" fill="#111111"/>
+</svg>

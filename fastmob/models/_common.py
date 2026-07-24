@@ -7,6 +7,7 @@ import narwhals as nw
 import numpy as np
 import pandas as pd
 
+from fastmob._optional import require_optional  # noqa: F401
 from fastmob.core import FlowDataFrame, TrajDataFrame
 
 LATITUDE = "lat"
@@ -95,11 +96,3 @@ def trajectory_dataframe(rows: Any, parameters: dict | None = None) -> TrajDataF
         except Exception:
             frame = df.sort_values([UID, DATETIME]).reset_index(drop=True)[[UID, DATETIME, LATITUDE, LONGITUDE]]
     return TrajDataFrame(frame, parameters=parameters)
-
-
-def require_optional(module_name: str, extra: str = "generation"):
-    try:
-        module = __import__(module_name)
-    except ImportError as exc:
-        raise ImportError(f"{module_name} is required: pip install fastmob[{extra}]") from exc
-    return module

@@ -1,0 +1,18 @@
+[package]
+name = "fastmob-vis"
+version = "0.1.0"
+edition = "2024"
+description = "High-performance ECharts visualization for fastmob mobility-analysis results"
+license = "BSD-3-Clause"
+repository = "https://github.com/gefgu/fastmob"
+
+[lib]
+name = "fastmob_vis"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+charming = "0.6.0"
+numpy = "0.28.0"
+pyo3 = "0.28.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

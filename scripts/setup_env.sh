@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Create a uv virtual environment and install all packages needed to run tests.
 # Run from anywhere — the script resolves the repo root automatically.
+# Builds both fastmob._core and the optional fastmob-vis extension
+# (fastmob_vis) into the same venv by default; the latter has no known
+# dependency conflicts so, unlike the flags below, it isn't gated.
 #
 # Usage:
 #   bash scripts/setup_env.sh                    # core dev deps only
@@ -82,6 +85,13 @@ echo "==> Building Rust extension (maturin develop) ..."
 if ! maturin develop; then
     maturin develop --uv
 fi
+
+echo "==> Building fastmob-vis extension (maturin develop) ..."
+pushd fastmob-vis >/dev/null
+if ! maturin develop; then
+    maturin develop --uv
+fi
+popd >/dev/null
 
 echo "==> Installing dev dependencies ..."
 uv pip install -e ".[dev]"

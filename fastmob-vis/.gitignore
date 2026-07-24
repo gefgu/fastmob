@@ -1,0 +1,11 @@
+/.venv/
+/target/
+/.pytest_cache/
+/.ruff_cache/
+*.so
+__pycache__/
+
+# The repo-root .gitignore's unanchored `bin/` rule (meant for venv bin/
+# dirs) would otherwise swallow this crate's real src/bin/ binary target.
+!/src/bin/
+!/src/bin/**
