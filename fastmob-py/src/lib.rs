@@ -280,6 +280,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         trajectory::smooth_py::smooth_trajectory_presorted,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::shape_cluster_py::trajectory_shape_signatures,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::shape_cluster_py::cluster_trajectory_shape_signatures,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_visitation_stays, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_trip_indices, m)?)?;

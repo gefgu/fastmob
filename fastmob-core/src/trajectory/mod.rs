@@ -7,4 +7,6 @@
 pub mod distance;
 pub mod interpolate;
 pub mod interpolate_at;
+pub mod shape_cluster;
+pub mod shape_signature;
 pub mod smooth;
