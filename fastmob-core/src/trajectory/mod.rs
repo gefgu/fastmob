@@ -7,3 +7,4 @@
 pub mod distance;
 pub mod interpolate;
 pub mod interpolate_at;
+pub mod smooth;

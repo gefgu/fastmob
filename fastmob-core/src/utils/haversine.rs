@@ -121,15 +121,44 @@ const EARTH_RADIUS_KM: f64 = 6371.0088;
 /// distance_time_threshold,corridor}.rs` for building per-user planar
 /// coordinates before computing point-to-line / point-to-segment distances.
 pub fn project_local_planar_km(latitudes: &[f64], longitudes: &[f64]) -> Vec<(f64, f64)> {
-    debug_assert_eq!(latitudes.len(), longitudes.len());
     let n = latitudes.len();
     if n == 0 {
         return Vec::new();
     }
+    let (mean_lat_rad, cos_mean_lat) = local_planar_km_params(latitudes);
+    project_local_planar_km_with_params(latitudes, longitudes, mean_lat_rad, cos_mean_lat)
+}
 
+/// Reference-latitude parameters for [`project_local_planar_km_with_params`] /
+/// [`unproject_local_planar_km`]: the mean latitude (radians) of a point slice
+/// and its cosine, shared by a projection/unprojection round-trip so both
+/// directions agree on the same local tangent plane.
+///
+/// @usedBy `fastmob-core/src/trajectory/smooth.rs` (Kalman CV smoother:
+/// project once per user before filtering, unproject once after).
+pub fn local_planar_km_params(latitudes: &[f64]) -> (f64, f64) {
+    let n = latitudes.len();
+    if n == 0 {
+        return (0.0, 1.0);
+    }
     let mean_lat_rad = (latitudes.iter().sum::<f64>() / n as f64).to_radians();
-    let cos_mean_lat = mean_lat_rad.cos();
+    (mean_lat_rad, mean_lat_rad.cos())
+}
 
+/// Same projection as [`project_local_planar_km`], but with the reference
+/// latitude supplied explicitly (rather than recomputed from `latitudes`) so
+/// callers that need the inverse via [`unproject_local_planar_km`] can reuse
+/// identical parameters on both legs of the round-trip.
+///
+/// @usedBy `fastmob-core/src/trajectory/smooth.rs`.
+pub fn project_local_planar_km_with_params(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    mean_lat_rad: f64,
+    cos_mean_lat: f64,
+) -> Vec<(f64, f64)> {
+    debug_assert_eq!(latitudes.len(), longitudes.len());
+    let _ = mean_lat_rad;
     latitudes
         .iter()
         .zip(longitudes.iter())
@@ -139,6 +168,27 @@ pub fn project_local_planar_km(latitudes: &[f64], longitudes: &[f64]) -> Vec<(f6
             (x, y)
         })
         .collect()
+}
+
+/// Inverse of [`project_local_planar_km_with_params`]: maps local
+/// equirectangular planar kilometre `(x_km, y_km)` points back to
+/// `(latitude, longitude)` degrees, using the same `mean_lat_rad`/
+/// `cos_mean_lat` reference parameters the forward projection used.
+///
+/// @usedBy `fastmob-core/src/trajectory/smooth.rs`.
+pub fn unproject_local_planar_km(
+    points: &[(f64, f64)],
+    mean_lat_rad: f64,
+    cos_mean_lat: f64,
+) -> (Vec<f64>, Vec<f64>) {
+    let _ = mean_lat_rad;
+    let mut lats = Vec::with_capacity(points.len());
+    let mut lngs = Vec::with_capacity(points.len());
+    for &(x, y) in points {
+        lats.push((y / EARTH_RADIUS_KM).to_degrees());
+        lngs.push((x / (EARTH_RADIUS_KM * cos_mean_lat)).to_degrees());
+    }
+    (lats, lngs)
 }
 
 /// Shortest planar Euclidean distance from `point` to the segment `a`-`b`.

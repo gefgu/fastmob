@@ -10,6 +10,7 @@ mod utils;
 
 use pyo3::prelude::*;
 
+use integration::events_py;
 use measures::collective::{co_presence_network, square_displacement, visitation_law};
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
@@ -20,7 +21,6 @@ use measures::individual::{
     radius_of_gyration, recency_rank, spatial_counts, time_ordering, total_distance,
     uncorrelated_entropy, waiting_times,
 };
-use integration::events_py;
 use network::road_graph_py;
 use preprocessing::{
     cdr, clustering, compress_traj_py, filter_traj_py, h3_py, outliers_traj_py, segment_traj_py,
@@ -192,7 +192,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
     m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
     m.add_class::<road_graph_py::RoadNetworkHandle>()?;
-    m.add_function(wrap_pyfunction!(road_graph_py::subsample_waypoints_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        road_graph_py::subsample_waypoints_numpy,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         events_py::nearest_event_within_window_numpy,
         m
@@ -264,7 +267,19 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_class::<trajectory::distance_py::PyDistanceConfig>()?;
-    m.add_function(wrap_pyfunction!(trajectory::distance_py::trajectory_distance, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::distance_py::trajectory_distance,
+        m
+    )?)?;
+    m.add_class::<trajectory::smooth_py::PySmoothConfig>()?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::smooth_py::smooth_trajectory_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        trajectory::smooth_py::smooth_trajectory_presorted,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_approx_travel_minutes, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_visitation_stays, m)?)?;
     m.add_function(wrap_pyfunction!(cdr::cdr_trip_indices, m)?)?;

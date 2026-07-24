@@ -334,6 +334,58 @@ class TrajDataFrame(BaseDataFrame):
             uid_col=self.uid_col,
         )
 
+    def smooth(self, method: str = "kalman_cv", **method_kwargs) -> "TrajDataFrame":
+        """Smooth the trajectory's positions using a named algorithm.
+
+        Unlike :meth:`interpolate`, row count and row order are unchanged --
+        every point's ``(lat, lng)`` is replaced with a denoised estimate at
+        its original timestamp.
+
+        Parameters
+        ----------
+        method : str, optional
+            Only ``"kalman_cv"`` is shipped currently. Default ``"kalman_cv"``.
+        **method_kwargs
+            Method-specific parameters; see
+            :func:`fastmob.trajectory.smooth`.
+
+        Returns
+        -------
+        TrajDataFrame
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> import fastmob
+        >>> df = pd.DataFrame({
+        ...     "uid": [1, 1, 1],
+        ...     "lat": [0.0, 1.0, 2.0],
+        ...     "lng": [0.0, 0.0, 0.0],
+        ...     "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
+        ... })
+        >>> tdf = fastmob.TrajDataFrame(df)
+        >>> tdf.smooth()  # doctest: +SKIP
+        """
+        from fastmob.trajectory import smooth as _smooth
+
+        result = _smooth(
+            self.df,
+            method=method,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            presorted=self.sorted,
+            **method_kwargs,
+        )
+        return TrajDataFrame(
+            result,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+        )
+
     def interpolate_at(self, at, method: str = "linear"):
         """Query the interpolated position of each user at one or more timestamps.
 

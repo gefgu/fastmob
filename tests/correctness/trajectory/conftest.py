@@ -5,6 +5,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from ...shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
+
 # ---------------------------------------------------------------------------
 # interpolate() fixtures
 # ---------------------------------------------------------------------------
@@ -118,3 +120,33 @@ def distance_seq_a() -> pd.DataFrame:
 @pytest.fixture(scope="session")
 def distance_seq_b_translated() -> pd.DataFrame:
     return _line_km_rows([1.0, 2.0, 3.0], [0.0, 0.0, 0.0], [0, 1, 2])
+
+
+# ---------------------------------------------------------------------------
+# smooth() real-dataset structural-invariant fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def brightkite_sample_df() -> pd.DataFrame:
+    """A small raw (non-skmob) Brightkite slice for structural-invariant checks.
+
+    No independent ground truth exists for real GPS noise, so `smooth()`
+    tests using this fixture only check shape/order/other-column invariants,
+    not numeric smoothed values.
+    """
+    import urllib.request
+
+    _BRIGHTKITE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not _BRIGHTKITE_PATH.exists():
+        urllib.request.urlretrieve(_BRIGHTKITE_URL, _BRIGHTKITE_PATH)
+
+    df = pd.read_csv(
+        _BRIGHTKITE_PATH,
+        sep="\t",
+        header=0,
+        nrows=3000,
+        names=["user", "check-in_time", "latitude", "longitude", "location id"],
+    )
+    df["check-in_time"] = pd.to_datetime(df["check-in_time"], errors="coerce")
+    return df.dropna(subset=["user", "check-in_time", "latitude", "longitude"]).reset_index(drop=True)

@@ -16,6 +16,10 @@ these are the only two with any real analogue):
   - MovingPandas (`--library movingpandas`): real `Trajectory.get_position_at`
     for `interpolate_at`, and `Trajectory.hausdorff_distance` for
     `trajectory_distance` (MovingPandas has no DTW/Fréchet/LCSS analogue).
+    `smooth` has no MovingPandas comparison path here: its `KalmanSmootherCV`
+    depends on the optional `stonesoup` package, which was not available in
+    the local `.venv-movingpandas` when this suite was written -- fastmob's
+    `smooth` is only benchmarked standalone (`--library fastmob`).
 
 `trajectory_distance` compares exactly 2 single-trajectory sequences -- an
 O(n*m) (or worse) operation for DTW/Fréchet/LCSS -- so it uses its own,
@@ -65,6 +69,7 @@ INTERPOLATE_METHODS = ("linear", "cubic_spline", "kinematic", "random_walk")
 PTRAIL_INTERPOLATE_METHODS = ("linear", "cubic", "kinematic")
 INTERPOLATE_AT_METHODS = ("linear", "nearest")
 DISTANCE_METHODS = ("dtw", "frechet", "hausdorff", "lcss")
+SMOOTH_METHODS = ("kalman_cv",)
 
 
 class SkippedMetric(Exception):
@@ -185,6 +190,26 @@ def benchmark_fastmob_interpolate_at(df: Any, iterations: int, sleep_seconds: fl
                 interpolate_at,
                 lambda df=df: df,
                 {"at": "2010-01-01 00:00:00", "method": method},
+                iterations=iterations,
+                sleep_seconds=sleep_seconds,
+            )
+        except Exception as exc:
+            print(f"    error: {exc}")
+            results[method] = error_result(str(exc))
+    return results
+
+
+def benchmark_fastmob_smooth(df: Any, iterations: int, sleep_seconds: float) -> dict[str, Any]:
+    from fastmob.trajectory import smooth
+
+    results = {}
+    for method in SMOOTH_METHODS:
+        print(f"  smooth(method={method})")
+        try:
+            results[method] = run_timed_call(
+                smooth,
+                lambda df=df: df,
+                {"method": method},
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
@@ -352,6 +377,7 @@ def run_fastmob_size(
         "backend": backend,
         "interpolate": benchmark_fastmob_interpolate(df, iterations, sleep_seconds),
         "interpolate_at": benchmark_fastmob_interpolate_at(df, iterations, sleep_seconds),
+        "smooth": benchmark_fastmob_smooth(df, iterations, sleep_seconds),
         "trajectory_distance": distance_results,
     }
 
