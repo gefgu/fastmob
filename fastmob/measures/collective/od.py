@@ -6,7 +6,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import DEST_CANDIDATES, ORIGIN_CANDIDATES, _pick_existing_column
+from fastmob.utils._common import DEST_CANDIDATES, ORIGIN_CANDIDATES, _pick_existing_column
 
 
 def _detect_od_columns(

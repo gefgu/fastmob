@@ -6,14 +6,14 @@ import narwhals as nw
 
 from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from .._common import (
+from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
     _take_uid_values,
     _to_native,
+    _values_to_list,
 )
 
 _EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
@@ -166,9 +166,7 @@ def location_frequency(
     out_lats, out_lngs, freqs, user_indices, _out_starts, _out_ends, rank_means = _unpack_location_frequency(raw)
 
     if as_ranks:
-        if hasattr(rank_means, "to_pylist"):
-            return rank_means.to_pylist()
-        return rank_means.tolist()
+        return _values_to_list(rank_means)
 
     if uid_col is None:
         return _to_native({lat_col: out_lats, lng_col: out_lngs, "location_frequency": freqs}, df)

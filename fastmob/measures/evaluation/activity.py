@@ -7,8 +7,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.measures._common import ACTIVITY_CANDIDATES, _pick_existing_column
 from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+from fastmob.utils._common import ACTIVITY_CANDIDATES, _pick_existing_column
 
 from ._utils import _is_null, _series_values
 from .metrics import jensen_shannon_divergence, matrix_jensen_shannon_divergence

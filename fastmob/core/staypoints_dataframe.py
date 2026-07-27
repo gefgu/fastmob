@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 
-from ..measures._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
+from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
+
 from ._hierarchy_common import _detect_interval_columns
 from .base import BaseDataFrame
 

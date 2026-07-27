@@ -7,8 +7,7 @@ import narwhals as nw
 from fastmob._core import latlng_to_h3_arrow as _latlng_to_h3_arrow
 from fastmob._core import latlng_to_h3_numpy as _latlng_to_h3_numpy
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from ..measures._common import LAT_CANDIDATES, LNG_CANDIDATES, _arrow_result_values, _pick_existing_column
+from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _arrow_result_values, _pick_existing_column
 
 H3_DISPATCHER = TrajectoryDispatcher(
     arrow_ops={"convert": _latlng_to_h3_arrow},

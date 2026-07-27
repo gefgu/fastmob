@@ -9,8 +9,7 @@ import narwhals as nw
 import numpy as np
 
 from fastmob._core import visitation_distances
-
-from .._common import (
+from fastmob.utils._common import (
     LAT_CANDIDATES,
     LNG_CANDIDATES,
     LOCATION_CANDIDATES,

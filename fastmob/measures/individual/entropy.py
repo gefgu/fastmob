@@ -9,8 +9,7 @@ import numpy as np
 
 from fastmob._core import trajectory_entropy_batch as _trajectory_entropy_batch_rust
 from fastmob._core import trajectory_predictability_batch as _trajectory_predictability_batch_rust
-
-from .._common import (
+from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     LOCATION_TYPE_CANDIDATES,
     TIMESTAMP_CANDIDATES,

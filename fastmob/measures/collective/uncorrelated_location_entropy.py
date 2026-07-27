@@ -5,7 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import _detect_trajectory_columns, _prepare_trajectory
 
 
 def uncorrelated_location_entropy(

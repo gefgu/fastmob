@@ -10,8 +10,7 @@ from fastmob._core import (
     interpolate_trajectory_presorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from ..measures._common import (
+from fastmob.utils._common import (
     _arrow_flat_result_values,
     _build_presorted_user_ends,
     _build_time_ordered_user_ranges,

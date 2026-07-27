@@ -15,7 +15,12 @@ import narwhals as nw
 
 from fastmob._core import tours_from_trips
 from fastmob.core.dispatch import TrajectoryDispatcher
-from fastmob.measures._common import _arrow_result_values, _factorize_uids_uint64
+from fastmob.utils._common import (
+    _arrow_result_values,
+    _factorize_uids_uint64,
+    _list_column_from_offsets,
+    _values_to_list,
+)
 
 from .base import BaseDataFrame
 
@@ -131,7 +136,7 @@ class Tours(BaseDataFrame):
             ops["extract_data"](tl_nw.get_column("__destination_location_id__")),
         )
 
-        uid_codes_list = _values_to_list(_arrow_result_values(out_uid_codes))
+        uid_codes_list = _values_to_list(out_uid_codes)
         out_dict: dict[str, Any] = {
             "tour_id": list(range(len(uid_codes_list))),
             "__started_at_us__": _arrow_result_values(out_started_at_us),
@@ -155,17 +160,3 @@ class Tours(BaseDataFrame):
             "journey",
         ]
         return Tours(out.select(column_order).to_native(), uid_col=uid_col)
-
-
-def _values_to_list(values: Any) -> list[Any]:
-    if hasattr(values, "to_pylist"):
-        return values.to_pylist()
-    if hasattr(values, "tolist"):
-        return values.tolist()
-    return list(values)
-
-
-def _list_column_from_offsets(flat_values: Any, offsets: Any) -> list[list[Any]]:
-    flat_list = _values_to_list(_arrow_result_values(flat_values))
-    offset_list = _values_to_list(offsets)
-    return [flat_list[start:end] for start, end in zip(offset_list, offset_list[1:])]

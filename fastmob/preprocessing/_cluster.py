@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
 
 _KMS_PER_RADIAN = 6371.0088
 

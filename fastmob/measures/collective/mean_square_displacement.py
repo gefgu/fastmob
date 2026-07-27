@@ -7,8 +7,7 @@ import narwhals as nw
 
 from fastmob._core import mean_square_displacement_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from .._common import (
+from fastmob.utils._common import (
     _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,

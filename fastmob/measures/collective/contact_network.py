@@ -15,7 +15,7 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from .._common import (
+from fastmob.utils._common import (
     DATETIME_CANDIDATES,
     LOCATION_CANDIDATES,
     USER_ID_CANDIDATES,

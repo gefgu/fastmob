@@ -20,7 +20,13 @@ import narwhals as nw
 
 from fastmob._core import trips_from_timeline
 from fastmob.core.dispatch import TrajectoryDispatcher
-from fastmob.measures._common import _arrow_result_values, _factorize_uids_uint64
+from fastmob.utils._common import (
+    _arrow_result_values,
+    _factorize_uids_uint64,
+    _list_column_from_offsets,
+    _null_sentinel_to_none,
+    _values_to_list,
+)
 
 from .base import BaseDataFrame
 
@@ -160,9 +166,9 @@ class Trips(BaseDataFrame):
             ops["extract_data"](timeline.get_column("__finished_at_us__")),
         )
 
-        uid_codes_list = _values_to_list(_arrow_result_values(out_uid_codes))
-        origin_ids = _null_sentinel_to_none(_values_to_list(_arrow_result_values(out_origin_staypoint_id)))
-        destination_ids = _null_sentinel_to_none(_values_to_list(_arrow_result_values(out_destination_staypoint_id)))
+        uid_codes_list = _values_to_list(out_uid_codes)
+        origin_ids = _null_sentinel_to_none(_values_to_list(out_origin_staypoint_id), _NULL_I64)
+        destination_ids = _null_sentinel_to_none(_values_to_list(out_destination_staypoint_id), _NULL_I64)
         tripleg_ids = _list_column_from_offsets(flat_tripleg_ids, tripleg_offsets)
 
         out_dict: dict[str, Any] = {
@@ -199,21 +205,3 @@ class Trips(BaseDataFrame):
         from .tours_dataframe import Tours
 
         return Tours.from_trips(self, staypoints_with_location)
-
-
-def _values_to_list(values: Any) -> list[Any]:
-    if hasattr(values, "to_pylist"):
-        return values.to_pylist()
-    if hasattr(values, "tolist"):
-        return values.tolist()
-    return list(values)
-
-
-def _null_sentinel_to_none(values: list[Any]) -> list[Any]:
-    return [None if value == _NULL_I64 else value for value in values]
-
-
-def _list_column_from_offsets(flat_values: Any, offsets: Any) -> list[list[Any]]:
-    flat_list = _values_to_list(_arrow_result_values(flat_values))
-    offset_list = _values_to_list(offsets)
-    return [flat_list[start:end] for start, end in zip(offset_list, offset_list[1:])]

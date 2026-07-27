@@ -14,8 +14,7 @@ from typing import Any
 import narwhals as nw
 
 from fastmob import _core
-
-from .._common import (
+from fastmob.utils._common import (
     DURATION_CANDIDATES,
     LOCATION_CANDIDATES,
     PURPOSE_CANDIDATES,

@@ -15,13 +15,14 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import (
+from fastmob.utils._common import (
     ACTIVITY_CANDIDATES,
     LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
     _pick_existing_column,
 )
+
 from .diversity import diversity
 from .entropy import trajectory_entropy
 from .mobility_profiling import _END_TIMESTAMP_CANDIDATES, intermittance_and_degree_of_return

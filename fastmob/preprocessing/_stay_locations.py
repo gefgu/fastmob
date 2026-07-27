@@ -11,8 +11,7 @@ from fastmob._core import (
     detect_stay_locations_batch_indexed,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from ..measures._common import (
+from fastmob.utils._common import (
     _arrow_result_values,
     _build_time_ordered_user_ranges,
     _build_user_ranges,

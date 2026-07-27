@@ -9,8 +9,7 @@ import numpy as np
 from fastmob._core import cdr_approx_travel_minutes as _cdr_approx_travel_minutes
 from fastmob._core import cdr_trip_indices as _cdr_trip_indices
 from fastmob._core import cdr_visitation_stays as _cdr_visitation_stays
-
-from ..measures._common import _ROW_ORDER_COL, _build_user_ranges
+from fastmob.utils._common import _ROW_ORDER_COL, _build_user_ranges
 
 _VISITATION_COLUMNS = [
     "user_id",

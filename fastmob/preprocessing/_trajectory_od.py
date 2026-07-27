@@ -5,7 +5,8 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+
 from ..measures.collective.od import od_matrix
 from ._h3 import latlng_to_h3
 

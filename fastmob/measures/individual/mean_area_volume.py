@@ -8,7 +8,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import (
+from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,

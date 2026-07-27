@@ -3,13 +3,7 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 import numpy as np
-
-def series_to_list(values: Any) -> list:
-    if hasattr(values, "to_list"):
-        return values.to_list()
-    if hasattr(values, "tolist"):
-        return values.tolist()
-    return list(values)
+from fastmob.utils._common import _values_to_list as series_to_list
 
 
 def columns(data: Any) -> list[str]:

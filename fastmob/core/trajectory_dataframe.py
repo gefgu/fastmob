@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 
 from fastmob.core.base import BaseDataFrame
-from fastmob.measures._common import _detect_trajectory_columns, _prepare_trajectory
 from fastmob.measures.individual import jump_lengths
+from fastmob.utils._common import _detect_trajectory_columns, _prepare_trajectory
 
 LATITUDE = "lat"
 LONGITUDE = "lng"

@@ -5,8 +5,8 @@ from typing import Any, Callable
 from fastmob._core import DistanceConfig
 from fastmob._core import trajectory_distance as _trajectory_distance_kernel
 from fastmob.core.dispatch import TrajectoryDispatcher
-from fastmob.measures._common import _prepare_trajectory
 from fastmob.measures.evaluation.spatial import _trajectory_input
+from fastmob.utils._common import _prepare_trajectory
 
 # Bare extractor used only for `.get_backend_key(df)` (Rule 1: never inline
 # backend branching).

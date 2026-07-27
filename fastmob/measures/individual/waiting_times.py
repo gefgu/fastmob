@@ -11,8 +11,7 @@ from fastmob._core import (
     waiting_times_presorted_flat,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from .._common import (
+from fastmob.utils._common import (
     _arrow_flat_result_values,
     _build_presorted_user_ends,
     _build_time_ordered_user_ranges,

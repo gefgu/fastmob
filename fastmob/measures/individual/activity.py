@@ -14,8 +14,7 @@ from fastmob._core import (
     activity_transition_counts,
     daily_activity_percentages,
 )
-
-from .._common import (
+from fastmob.utils._common import (
     ACTIVITY_CANDIDATES,
     DAY_CANDIDATES,
     TIMESTAMP_CANDIDATES,

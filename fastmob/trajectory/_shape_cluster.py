@@ -21,8 +21,7 @@ import numpy as np
 from fastmob._core import cluster_trajectory_shape_signatures, trajectory_shape_signatures
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.measures.evaluation.spatial import _trajectory_input
-
-from ..measures._common import _prepare_trajectory
+from fastmob.utils._common import _prepare_trajectory
 
 _EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 

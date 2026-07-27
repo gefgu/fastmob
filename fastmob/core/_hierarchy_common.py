@@ -3,14 +3,14 @@
 These levels need two datetime columns (``started_at``/``finished_at``),
 unlike `TrajDataFrame`'s single ``datetime_col`` model, so they get their own
 small detection helper rather than reusing
-`fastmob.measures._common._detect_trajectory_columns`.
+`fastmob.utils._common._detect_trajectory_columns`.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from ..measures._common import UID_CANDIDATES, _pick_existing_column
+from fastmob.utils._common import UID_CANDIDATES, _pick_existing_column
 
 STARTED_AT_CANDIDATES: list[str] = ["started_at", "datetime", "start_time"]
 FINISHED_AT_CANDIDATES: list[str] = ["finished_at", "leaving_datetime", "end_time"]

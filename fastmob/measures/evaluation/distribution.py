@@ -12,7 +12,7 @@ from typing import Any, Literal
 import narwhals as nw
 import numpy as np
 
-from fastmob.measures._common import (
+from fastmob.utils._common import (
     ACTIVITY_CANDIDATES,
     DAY_CANDIDATES,
     TIMESTAMP_CANDIDATES,

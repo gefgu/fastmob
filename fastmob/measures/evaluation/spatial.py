@@ -13,7 +13,7 @@ try:
 except ImportError:  # Built without the optional SIMD/wass backend.
     _stvd_emd = None
 from fastmob._core import trajectory_common_part_of_commuters as _trajectory_cpc
-from fastmob.measures._common import (
+from fastmob.utils._common import (
     DURATION_CANDIDATES,
     _as_index_array,
     _build_time_ordered_user_ranges,

@@ -22,8 +22,7 @@ import narwhals as nw
 import numpy as np
 
 from fastmob._core import NextLocationModels
-
-from ..measures._common import (
+from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     UID_CANDIDATES,
     _build_presorted_user_ends,

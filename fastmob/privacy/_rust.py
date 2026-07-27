@@ -10,7 +10,7 @@ from fastmob._core import (
     privacy_assess_risk_presorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
-from fastmob.measures._common import (
+from fastmob.utils._common import (
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
     _build_time_ordered_user_ranges,

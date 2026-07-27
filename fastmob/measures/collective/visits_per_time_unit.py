@@ -5,7 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import _detect_trajectory_columns, _prepare_trajectory
 
 _FREQ_RE = re.compile(r"^\s*(?P<count>\d+)?\s*(?P<unit>[A-Za-z]+)\s*$")
 _CASE_SENSITIVE_ALIASES = {

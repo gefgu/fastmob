@@ -8,12 +8,11 @@ import narwhals as nw
 
 from fastmob._core import real_entropy_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from .._common import (
-    _arrow_result_values,
+from fastmob.utils._common import (
     _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
+    _values_to_list,
     _with_datetime_column,
 )
 
@@ -128,11 +127,7 @@ def real_entropy(
         indices,
         ends,
     )
-    entropies = _arrow_result_values(raw)
-    if hasattr(entropies, "to_pylist"):
-        entropies = entropies.to_pylist()
-    else:
-        entropies = entropies.tolist()
+    entropies = _values_to_list(raw)
 
     result_dict: dict[str, Any] = {"real_entropy": entropies}
     if uid_col is not None:

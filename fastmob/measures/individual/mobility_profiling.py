@@ -7,7 +7,7 @@ from typing import Any, Literal, get_args
 import narwhals as nw
 import numpy as np
 
-from .._common import (
+from fastmob.utils._common import (
     DATETIME_CANDIDATES,
     LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,

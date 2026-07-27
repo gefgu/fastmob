@@ -39,7 +39,7 @@ import narwhals as nw
 
 from fastmob._core import tripleg_lengths_attributed
 from fastmob.core.dispatch import TrajectoryDispatcher
-from fastmob.measures._common import _arrow_result_values, _factorize_uids_uint64
+from fastmob.utils._common import _arrow_result_values, _factorize_uids_uint64
 
 from .base import BaseDataFrame
 

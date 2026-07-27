@@ -6,13 +6,14 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import (
+from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     LOCATION_TYPE_CANDIDATES,
     USER_ID_CANDIDATES,
     _build_user_ranges,
     _pick_existing_column,
 )
+
 from .fast_diversity import fast_diversity
 
 

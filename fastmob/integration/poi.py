@@ -14,7 +14,8 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from ..measures._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
+from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
+
 from ..network._nearest import nearest_candidate
 
 

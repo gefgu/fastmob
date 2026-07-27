@@ -6,8 +6,7 @@ import narwhals as nw
 
 from fastmob._core import number_of_visits_indexed, number_of_visits_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from .._common import (
+from fastmob.utils._common import (
     _build_indexed_user_ranges_fast,
     _build_presorted_user_ends,
     _detect_trajectory_columns,

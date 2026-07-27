@@ -4,7 +4,8 @@ from typing import Any
 
 import narwhals as nw
 
-from .._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
+from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
+
 from ..individual.home_location import home_location
 
 

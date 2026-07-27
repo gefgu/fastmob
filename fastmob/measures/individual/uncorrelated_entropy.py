@@ -6,8 +6,7 @@ import narwhals as nw
 
 from fastmob._core import uncorrelated_entropy_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
-
-from .._common import (
+from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _detect_trajectory_columns,
