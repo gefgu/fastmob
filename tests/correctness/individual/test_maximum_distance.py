@@ -177,14 +177,16 @@ def test_maximum_distance_helpers_return_nan_for_short_presorted_groups():
         dtype=np.float64,
     )
 
-    result_numpy = maximum_distance_presorted(lats, lngs, ends)
-    result_arrow = maximum_distance_presorted(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
+    result_numpy = _arrow_to_numpy(maximum_distance_presorted(lats, lngs, ends))
+    result_arrow = _arrow_to_numpy(
+        maximum_distance_presorted(pl.Series(lats).to_arrow(), pl.Series(lngs).to_arrow(), ends)
+    )
 
     assert np.isnan(expected[0])
     assert np.isnan(result_numpy[0])
-    assert np.isnan(_arrow_to_numpy(result_arrow)[0])
+    assert np.isnan(result_arrow[0])
     np.testing.assert_allclose(result_numpy[1:], expected[1:], rtol=0.0, atol=1e-12)
-    np.testing.assert_allclose(_arrow_to_numpy(result_arrow)[1:], expected[1:], rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(result_arrow[1:], expected[1:], rtol=0.0, atol=1e-12)
 
 
 def test_maximum_distance_indexed_arrow_returns_nan_when_nulls_leave_one_valid_point():

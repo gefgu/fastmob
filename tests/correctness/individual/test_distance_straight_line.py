@@ -16,6 +16,15 @@ EXPECTED_TOTAL_DIST: dict[str, float] = {
 }
 
 
+def _arrow_to_numpy(values) -> np.ndarray:
+    if hasattr(values, "to_pyarrow"):
+        values = values.to_pyarrow()
+    try:
+        return values.to_numpy(zero_copy_only=False)
+    except TypeError:
+        return values.to_numpy()
+
+
 def _to_dict(df) -> dict[str, float]:
     """Convert a distance_straight_line result DataFrame to {uid: distance_km}."""
     nw_df = nw.from_native(df, eager_only=True)
@@ -187,17 +196,21 @@ def test_total_distance_indexed_filters_arrow_nulls():
     np.testing.assert_allclose(_core_result_array(result), [222.3901604670658], rtol=0.0, atol=1e-12)
 
 
-def test_total_distance_presorted_rejects_mixed_backends():
+def test_total_distance_presorted_accepts_mixed_coordinate_inputs():
+    """The Arrow-only binding coerces NumPy coordinate arrays alongside Arrow ones."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from fastmob._core import total_distance_presorted
 
     lats = np.array([0.0, 1.0], dtype=np.float64)
-    lngs = pa.array([0.0, 1.0], type=pa.float64())
+    lngs_arrow = pa.array([0.0, 1.0], type=pa.float64())
+    lngs_numpy = np.array([0.0, 1.0], dtype=np.float64)
     ends = np.array([2], dtype=np.uintp)
 
-    with pytest.raises(TypeError, match="NumPy arrays or both be Arrow arrays"):
-        total_distance_presorted(lats, lngs, ends)
+    mixed = _arrow_to_numpy(total_distance_presorted(lats, lngs_arrow, ends))
+    numpy_only = _arrow_to_numpy(total_distance_presorted(lats, lngs_numpy, ends))
+
+    np.testing.assert_allclose(mixed, numpy_only)
 
 
 @pytest.mark.skmob

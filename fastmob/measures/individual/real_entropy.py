@@ -16,7 +16,7 @@ from fastmob.utils._common import (
     _with_datetime_column,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def real_entropy(
@@ -116,14 +116,13 @@ def real_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
     timestamps = _extract_timestamps_ms(df, datetime_col)
-    timestamps_data = ops["extract_data"](timestamps)
+    timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
     uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
 
     raw = real_entropy_indexed(
-        ops["extract_data"](df.get_column(lat_col)),
-        ops["extract_data"](df.get_column(lng_col)),
+        df.get_column(lat_col).to_arrow(),
+        df.get_column(lng_col).to_arrow(),
         indices,
         ends,
     )

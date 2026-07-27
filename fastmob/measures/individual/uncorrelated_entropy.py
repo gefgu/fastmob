@@ -5,15 +5,12 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import uncorrelated_entropy_indexed
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _detect_trajectory_columns,
     _to_native,
 )
-
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def uncorrelated_entropy(
@@ -123,11 +120,10 @@ def uncorrelated_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     entropies = _arrow_result_values(uncorrelated_entropy_indexed(lats_data, lngs_data, indices, ends, normalize))
 
     if uid_col is None:

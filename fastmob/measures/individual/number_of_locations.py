@@ -5,7 +5,6 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import number_of_locations_indexed, number_of_locations_presorted
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
@@ -13,8 +12,6 @@ from fastmob.utils._common import (
     _detect_trajectory_columns,
     _to_native,
 )
-
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def number_of_locations(
@@ -107,9 +104,8 @@ def number_of_locations(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         n_locs = _arrow_result_values(number_of_locations_presorted(lats_data, lngs_data, ends))

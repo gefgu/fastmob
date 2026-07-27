@@ -6,14 +6,12 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import number_of_locations_indexed
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _detect_trajectory_columns,
+    _narwhals_safe_value,
 )
-
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def random_entropy(
@@ -111,16 +109,16 @@ def random_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    n_locs = _arrow_result_values(
-        number_of_locations_indexed(
-            ops["extract_data"](df.get_column(lat_col)),
-            ops["extract_data"](df.get_column(lng_col)),
-            indices,
-            ends,
+    n_locs = _narwhals_safe_value(
+        _arrow_result_values(
+            number_of_locations_indexed(
+                df.get_column(lat_col).to_arrow(),
+                df.get_column(lng_col).to_arrow(),
+                indices,
+                ends,
+            )
         )
     )
 

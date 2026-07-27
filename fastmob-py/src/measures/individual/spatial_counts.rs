@@ -5,10 +5,14 @@ use fastmob_core::measures::individual::spatial_counts::{
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::adapters::trajectory::{
-    PyU64Result, run_indexed_coordinate_u64, run_presorted_coordinate_u64,
-};
+use crate::adapters::trajectory::{run_indexed_coordinate_arrow, run_presorted_coordinate_arrow};
+use crate::utils::u64_results_into_arrow;
+
+fn arrow_u64_output(py: Python<'_>, values: Vec<u64>) -> PyResult<Py<PyAny>> {
+    Ok(Py::new(py, u64_results_into_arrow(values))?.into_any())
+}
 
 #[pyfunction]
 pub fn number_of_visits_presorted<'py>(
@@ -45,24 +49,27 @@ pub fn number_of_visits_indexed<'py>(
 #[pyfunction]
 pub fn number_of_locations_presorted<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     ends: PyReadonlyArray1<'py, usize>,
-) -> PyResult<PyU64Result> {
-    run_presorted_coordinate_u64(py, latitudes, longitudes, ends, |coords, ends| {
-        number_of_locations_from_ends_impl(coords.latitudes, coords.longitudes, ends)
-    })
+) -> PyResult<Py<PyAny>> {
+    let values =
+        run_presorted_coordinate_arrow(py, latitudes, longitudes, ends, |coords, ends| {
+            number_of_locations_from_ends_impl(coords.latitudes, coords.longitudes, ends)
+        })?
+        .map_err(PyValueError::new_err)?;
+    arrow_u64_output(py, values)
 }
 
 #[pyfunction]
 pub fn number_of_locations_indexed<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
-) -> PyResult<PyU64Result> {
-    run_indexed_coordinate_u64(py, latitudes, longitudes, indices, ends, |view| {
+) -> PyResult<Py<PyAny>> {
+    let values = run_indexed_coordinate_arrow(py, latitudes, longitudes, indices, ends, |view| {
         number_of_locations_indexed_impl(
             view.coordinates.latitudes,
             view.coordinates.longitudes,
@@ -70,5 +77,7 @@ pub fn number_of_locations_indexed<'py>(
             view.ends,
             view.valid_rows,
         )
-    })
+    })?
+    .map_err(PyValueError::new_err)?;
+    arrow_u64_output(py, values)
 }
