@@ -18,11 +18,15 @@ from fastmob.utils._common import (
     _detect_trajectory_columns,
     _extract_timestamps_s,
     _grouped_arrow_values,
-    _grouped_numpy_values,
     _to_native,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+# Kept for two purposes: (a) timestamps_data extraction below must match
+# whatever backend _build_time_ordered_user_ranges' own uid-code extraction
+# picks internally (see jump_lengths.py/mean_square_displacement.py for why
+# that pairing can't be forced to Arrow independently), and (b) the merge=True
+# output-contract shim, matching jump_lengths.py's precedent.
+_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def waiting_times(
@@ -130,35 +134,30 @@ def waiting_times(
         uid_col=uid_col,
     )
 
-    ops = _EXTRACTOR.get_ops(df)
+    ops = _DISPATCHER.get_ops(df)
     timestamps_s = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps_s)
+    is_numpy_backend = _DISPATCHER.get_backend_key(df) == "numpy"
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         if merge:
-            return _arrow_flat_result_values(waiting_times_presorted_flat(timestamps_data, ends))
+            flat = _arrow_flat_result_values(waiting_times_presorted_flat(timestamps_data, ends))
+            return flat.to_numpy(zero_copy_only=False) if is_numpy_backend else flat
         value_starts, value_ends, flat_values = waiting_times_presorted(timestamps_data, ends)
         flat_values = _arrow_flat_result_values(flat_values)
-        wt_values = (
-            _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True)
-            if hasattr(flat_values, "__arrow_c_array__")
-            else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
-        )
+        wt_values = _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True)
         if uid_col is None:
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
     uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
     if merge:
-        return _arrow_flat_result_values(waiting_times_indexed_flat(timestamps_data, indices, ends))
+        flat = _arrow_flat_result_values(waiting_times_indexed_flat(timestamps_data, indices, ends))
+        return flat.to_numpy(zero_copy_only=False) if is_numpy_backend else flat
 
     value_starts, value_ends, flat_values = waiting_times_indexed(timestamps_data, indices, ends)
     flat_values = _arrow_flat_result_values(flat_values)
-    wt_values = (
-        _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True)
-        if hasattr(flat_values, "__arrow_c_array__")
-        else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
-    )
+    wt_values = _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True)
     if uid_col is None:
         return _to_native({"waiting_times": wt_values}, df)
     return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)

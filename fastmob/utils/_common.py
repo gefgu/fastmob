@@ -852,28 +852,6 @@ def _value_offsets_from_index_ranges(
     return value_starts, value_ends
 
 
-def _grouped_numpy_values(
-    starts: Any,
-    ends: Any,
-    values: Any,
-    *,
-    value_offsets: bool = False,
-) -> list[np.ndarray]:
-    """Group a flat NumPy values array into per-user sub-arrays.
-
-    When ``value_offsets=True``, *starts*/*ends* are already value-space offsets.
-    When ``False``, they are row-index ranges converted via
-    :func:`_value_offsets_from_index_ranges`.
-    """
-    if value_offsets:
-        starts = np.asarray(starts, dtype=np.uintp)
-        ends = np.asarray(ends, dtype=np.uintp)
-    else:
-        starts, ends = _value_offsets_from_index_ranges(starts, ends)
-    values = np.asarray(values, dtype=np.float64)
-    return [values[int(s) : int(e)] for s, e in zip(starts, ends)]
-
-
 def _arrow_flat_result_values(values: Any) -> Any:
     """Unwrap a pyo3-arrow wrapper and materialise into a concrete ``pa.Array``."""
     values = _arrow_result_values(values)
