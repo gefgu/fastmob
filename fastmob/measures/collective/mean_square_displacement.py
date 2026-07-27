@@ -13,7 +13,7 @@ from fastmob.utils._common import (
     _extract_timestamps_s,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def mean_square_displacement(
@@ -123,11 +123,10 @@ def mean_square_displacement(
     if len(df) == 0:
         return 0.0
 
-    ops = _EXTRACTOR.get_ops(df)
     timestamps = _extract_timestamps_s(df, datetime_col)
-    timestamps_data = ops["extract_data"](timestamps)
+    timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
     _uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
 
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     return mean_square_displacement_indexed(lats_data, lngs_data, timestamps_data, indices, ends, delta_s)

@@ -2,23 +2,30 @@ use fastmob_core::measures::individual::max_distance_from_point::{
     max_distance_from_point_from_ends_impl, max_distance_from_point_indexed_impl,
 };
 use numpy::PyReadonlyArray1;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::adapters::trajectory::{
-    PyF64Result, run_indexed_group_coordinate_f64, run_presorted_group_coordinate_f64,
+    run_indexed_group_coordinate_arrow, run_presorted_group_coordinate_arrow,
 };
+use crate::utils::f64_results_into_arrow;
+
+fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
+    Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
+}
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub fn max_distance_from_point_presorted<'py>(
     py: Python<'py>,
-    home_lats: &Bound<'py, PyAny>,
-    home_lngs: &Bound<'py, PyAny>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    home_lats: ArrowPyArray,
+    home_lngs: ArrowPyArray,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     ends: PyReadonlyArray1<'py, usize>,
-) -> PyResult<PyF64Result> {
-    run_presorted_group_coordinate_f64(
+) -> PyResult<Py<PyAny>> {
+    let values = run_presorted_group_coordinate_arrow(
         py,
         home_lats,
         home_lngs,
@@ -35,21 +42,23 @@ pub fn max_distance_from_point_presorted<'py>(
                 coords.valid_rows,
             )
         },
-    )
+    )?
+    .map_err(PyValueError::new_err)?;
+    arrow_f64_output(py, values)
 }
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub fn max_distance_from_point_indexed<'py>(
     py: Python<'py>,
-    home_lats: &Bound<'py, PyAny>,
-    home_lngs: &Bound<'py, PyAny>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    home_lats: ArrowPyArray,
+    home_lngs: ArrowPyArray,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
-) -> PyResult<PyF64Result> {
-    run_indexed_group_coordinate_f64(
+) -> PyResult<Py<PyAny>> {
+    let values = run_indexed_group_coordinate_arrow(
         py,
         home_lats,
         home_lngs,
@@ -68,5 +77,7 @@ pub fn max_distance_from_point_indexed<'py>(
                 view.valid_rows,
             )
         },
-    )
+    )?
+    .map_err(PyValueError::new_err)?;
+    arrow_f64_output(py, values)
 }

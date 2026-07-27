@@ -1,4 +1,4 @@
-use numpy::{IntoPyArray, PyReadonlyArray1};
+use numpy::PyReadonlyArray1;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -6,8 +6,7 @@ use pyo3_arrow::PyArray as ArrowPyArray;
 use fastmob_core::utils::validate_ends;
 
 use crate::utils::{
-    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, f64_results_into_arrow,
-    validate_indexed_ends,
+    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, validate_indexed_ends,
 };
 
 pub struct CoordinateView<'a> {
@@ -49,8 +48,6 @@ pub struct IndexedGroupCoordinateView<'a> {
     pub ends: &'a [usize],
     pub valid_rows: Option<&'a [bool]>,
 }
-
-pub type PyF64Result = Py<PyAny>;
 
 const COORDINATE_BACKEND_ERROR: &str =
     "latitudes and longitudes must both be NumPy arrays or both be Arrow arrays";
@@ -97,14 +94,6 @@ fn validate_group_coordinate_lengths(
         ));
     }
     Ok(())
-}
-
-fn numpy_f64_output<'py>(py: Python<'py>, values: Vec<f64>) -> Py<PyAny> {
-    values.into_pyarray(py).into_any().unbind()
-}
-
-fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
-    Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
 }
 
 /// Extracts and validates a presorted pair of Arrow coordinate arrays, then runs
@@ -256,210 +245,105 @@ where
     }))
 }
 
+/// Group-coordinate counterpart of [`run_presorted_coordinate_arrow`]: extracts and
+/// validates a presorted group-center pair (non-nullable) alongside a per-row coordinate
+/// pair (nullable, with `valid_rows` computed), then runs `operation` under `py.detach`.
 #[allow(clippy::too_many_arguments)]
-pub fn run_presorted_group_coordinate_f64<'py, F>(
+pub fn run_presorted_group_coordinate_arrow<'py, T, F>(
     py: Python<'py>,
-    group_latitudes: &Bound<'py, PyAny>,
-    group_longitudes: &Bound<'py, PyAny>,
-    row_latitudes: &Bound<'py, PyAny>,
-    row_longitudes: &Bound<'py, PyAny>,
+    group_latitudes: ArrowPyArray,
+    group_longitudes: ArrowPyArray,
+    row_latitudes: ArrowPyArray,
+    row_longitudes: ArrowPyArray,
     ends: PyReadonlyArray1<'py, usize>,
     operation: F,
-) -> PyResult<PyF64Result>
+) -> PyResult<T>
 where
-    F: FnOnce(GroupCoordinateView<'_>, &[usize]) -> Result<Vec<f64>, String> + Send,
+    F: FnOnce(GroupCoordinateView<'_>, &[usize]) -> T + Send,
+    T: Send,
 {
-    if let (Ok(group_latitudes), Ok(group_longitudes), Ok(row_latitudes), Ok(row_longitudes)) = (
-        group_latitudes.extract::<PyReadonlyArray1<f64>>(),
-        group_longitudes.extract::<PyReadonlyArray1<f64>>(),
-        row_latitudes.extract::<PyReadonlyArray1<f64>>(),
-        row_longitudes.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let group_lats = group_latitudes.as_slice()?;
-        let group_lngs = group_longitudes.as_slice()?;
-        let row_lats = row_latitudes.as_slice()?;
-        let row_lngs = row_longitudes.as_slice()?;
-        let ends = ends.as_slice()?;
-        validate_group_coordinate_lengths(
-            group_lats.len(),
-            group_lngs.len(),
-            row_lats.len(),
-            row_lngs.len(),
-            ends.len(),
-        )?;
-        validate_ends(row_lats.len(), ends).map_err(PyValueError::new_err)?;
-        let values = py
-            .detach(|| {
-                operation(
-                    GroupCoordinateView {
-                        group_latitudes: group_lats,
-                        group_longitudes: group_lngs,
-                        row_latitudes: row_lats,
-                        row_longitudes: row_lngs,
-                        valid_rows: None,
-                    },
-                    ends,
-                )
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok(numpy_f64_output(py, values));
-    }
-
-    if is_arrow_array(group_latitudes)?
-        && is_arrow_array(group_longitudes)?
-        && is_arrow_array(row_latitudes)?
-        && is_arrow_array(row_longitudes)?
-    {
-        let group_latitudes = as_f64_array(
-            group_latitudes.extract::<ArrowPyArray>()?,
-            "group_latitudes",
-        )?;
-        let group_longitudes = as_f64_array(
-            group_longitudes.extract::<ArrowPyArray>()?,
-            "group_longitudes",
-        )?;
-        let row_latitudes =
-            as_nullable_f64_array(row_latitudes.extract::<ArrowPyArray>()?, "row_latitudes")?;
-        let row_longitudes =
-            as_nullable_f64_array(row_longitudes.extract::<ArrowPyArray>()?, "row_longitudes")?;
-        let group_lats = arrow_values(&group_latitudes);
-        let group_lngs = arrow_values(&group_longitudes);
-        let row_lats = arrow_values(&row_latitudes);
-        let row_lngs = arrow_values(&row_longitudes);
-        let ends = ends.as_slice()?;
-        validate_group_coordinate_lengths(
-            group_lats.len(),
-            group_lngs.len(),
-            row_lats.len(),
-            row_lngs.len(),
-            ends.len(),
-        )?;
-        validate_ends(row_lats.len(), ends).map_err(PyValueError::new_err)?;
-        let valid_rows = arrow_valid_rows(&[&row_latitudes, &row_longitudes]);
-        let values = py
-            .detach(|| {
-                operation(
-                    GroupCoordinateView {
-                        group_latitudes: group_lats,
-                        group_longitudes: group_lngs,
-                        row_latitudes: row_lats,
-                        row_longitudes: row_lngs,
-                        valid_rows: valid_rows.as_deref(),
-                    },
-                    ends,
-                )
-            })
-            .map_err(PyValueError::new_err)?;
-        return arrow_f64_output(py, values);
-    }
-
-    Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
+    let group_latitudes = as_f64_array(group_latitudes, "group_latitudes")?;
+    let group_longitudes = as_f64_array(group_longitudes, "group_longitudes")?;
+    let row_latitudes = as_nullable_f64_array(row_latitudes, "row_latitudes")?;
+    let row_longitudes = as_nullable_f64_array(row_longitudes, "row_longitudes")?;
+    let group_lats = arrow_values(&group_latitudes);
+    let group_lngs = arrow_values(&group_longitudes);
+    let row_lats = arrow_values(&row_latitudes);
+    let row_lngs = arrow_values(&row_longitudes);
+    let ends = ends.as_slice()?;
+    validate_group_coordinate_lengths(
+        group_lats.len(),
+        group_lngs.len(),
+        row_lats.len(),
+        row_lngs.len(),
+        ends.len(),
+    )?;
+    validate_ends(row_lats.len(), ends).map_err(PyValueError::new_err)?;
+    let valid_rows = arrow_valid_rows(&[&row_latitudes, &row_longitudes]);
+    Ok(py.detach(|| {
+        operation(
+            GroupCoordinateView {
+                group_latitudes: group_lats,
+                group_longitudes: group_lngs,
+                row_latitudes: row_lats,
+                row_longitudes: row_lngs,
+                valid_rows: valid_rows.as_deref(),
+            },
+            ends,
+        )
+    }))
 }
 
+/// Indexed counterpart of [`run_presorted_group_coordinate_arrow`].
 #[allow(clippy::too_many_arguments)]
-pub fn run_indexed_group_coordinate_f64<'py, F>(
+pub fn run_indexed_group_coordinate_arrow<'py, T, F>(
     py: Python<'py>,
-    group_latitudes: &Bound<'py, PyAny>,
-    group_longitudes: &Bound<'py, PyAny>,
-    row_latitudes: &Bound<'py, PyAny>,
-    row_longitudes: &Bound<'py, PyAny>,
+    group_latitudes: ArrowPyArray,
+    group_longitudes: ArrowPyArray,
+    row_latitudes: ArrowPyArray,
+    row_longitudes: ArrowPyArray,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     operation: F,
-) -> PyResult<PyF64Result>
+) -> PyResult<T>
 where
-    F: FnOnce(IndexedGroupCoordinateView<'_>) -> Result<Vec<f64>, String> + Send,
+    F: FnOnce(IndexedGroupCoordinateView<'_>) -> T + Send,
+    T: Send,
 {
     let indices = indices.as_slice()?;
     let ends = ends.as_slice()?;
 
-    if let (Ok(group_latitudes), Ok(group_longitudes), Ok(row_latitudes), Ok(row_longitudes)) = (
-        group_latitudes.extract::<PyReadonlyArray1<f64>>(),
-        group_longitudes.extract::<PyReadonlyArray1<f64>>(),
-        row_latitudes.extract::<PyReadonlyArray1<f64>>(),
-        row_longitudes.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let group_lats = group_latitudes.as_slice()?;
-        let group_lngs = group_longitudes.as_slice()?;
-        let row_lats = row_latitudes.as_slice()?;
-        let row_lngs = row_longitudes.as_slice()?;
-        validate_group_coordinate_lengths(
-            group_lats.len(),
-            group_lngs.len(),
-            row_lats.len(),
-            row_lngs.len(),
-            ends.len(),
-        )?;
-        validate_indexed_ends(row_lats.len(), indices, ends)?;
-        let values = py
-            .detach(|| {
-                operation(IndexedGroupCoordinateView {
-                    coordinates: GroupCoordinateView {
-                        group_latitudes: group_lats,
-                        group_longitudes: group_lngs,
-                        row_latitudes: row_lats,
-                        row_longitudes: row_lngs,
-                        valid_rows: None,
-                    },
-                    indices,
-                    ends,
-                    valid_rows: None,
-                })
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok(numpy_f64_output(py, values));
-    }
-
-    if is_arrow_array(group_latitudes)?
-        && is_arrow_array(group_longitudes)?
-        && is_arrow_array(row_latitudes)?
-        && is_arrow_array(row_longitudes)?
-    {
-        let group_latitudes = as_f64_array(
-            group_latitudes.extract::<ArrowPyArray>()?,
-            "group_latitudes",
-        )?;
-        let group_longitudes = as_f64_array(
-            group_longitudes.extract::<ArrowPyArray>()?,
-            "group_longitudes",
-        )?;
-        let row_latitudes =
-            as_nullable_f64_array(row_latitudes.extract::<ArrowPyArray>()?, "row_latitudes")?;
-        let row_longitudes =
-            as_nullable_f64_array(row_longitudes.extract::<ArrowPyArray>()?, "row_longitudes")?;
-        let group_lats = arrow_values(&group_latitudes);
-        let group_lngs = arrow_values(&group_longitudes);
-        let row_lats = arrow_values(&row_latitudes);
-        let row_lngs = arrow_values(&row_longitudes);
-        validate_group_coordinate_lengths(
-            group_lats.len(),
-            group_lngs.len(),
-            row_lats.len(),
-            row_lngs.len(),
-            ends.len(),
-        )?;
-        validate_indexed_ends(row_lats.len(), indices, ends)?;
-        let valid_rows = arrow_valid_rows(&[&row_latitudes, &row_longitudes]);
-        let values = py
-            .detach(|| {
-                operation(IndexedGroupCoordinateView {
-                    coordinates: GroupCoordinateView {
-                        group_latitudes: group_lats,
-                        group_longitudes: group_lngs,
-                        row_latitudes: row_lats,
-                        row_longitudes: row_lngs,
-                        valid_rows: valid_rows.as_deref(),
-                    },
-                    indices,
-                    ends,
-                    valid_rows: valid_rows.as_deref(),
-                })
-            })
-            .map_err(PyValueError::new_err)?;
-        return arrow_f64_output(py, values);
-    }
-
-    Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
+    let group_latitudes = as_f64_array(group_latitudes, "group_latitudes")?;
+    let group_longitudes = as_f64_array(group_longitudes, "group_longitudes")?;
+    let row_latitudes = as_nullable_f64_array(row_latitudes, "row_latitudes")?;
+    let row_longitudes = as_nullable_f64_array(row_longitudes, "row_longitudes")?;
+    let group_lats = arrow_values(&group_latitudes);
+    let group_lngs = arrow_values(&group_longitudes);
+    let row_lats = arrow_values(&row_latitudes);
+    let row_lngs = arrow_values(&row_longitudes);
+    validate_group_coordinate_lengths(
+        group_lats.len(),
+        group_lngs.len(),
+        row_lats.len(),
+        row_lngs.len(),
+        ends.len(),
+    )?;
+    validate_indexed_ends(row_lats.len(), indices, ends)?;
+    let valid_rows = arrow_valid_rows(&[&row_latitudes, &row_longitudes]);
+    Ok(py.detach(|| {
+        operation(IndexedGroupCoordinateView {
+            coordinates: GroupCoordinateView {
+                group_latitudes: group_lats,
+                group_longitudes: group_lngs,
+                row_latitudes: row_lats,
+                row_longitudes: row_lngs,
+                valid_rows: valid_rows.as_deref(),
+            },
+            indices,
+            ends,
+            valid_rows: valid_rows.as_deref(),
+        })
+    }))
 }
 
 /// Runs a two-independent-whole-sequence -> scalar operation (the shape
