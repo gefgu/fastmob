@@ -273,7 +273,18 @@ The target shape is: small Narwhals wrapper, no pandas/polars imports, no Python
 
 Two mandatory rules apply to every file under `fastmob/` that calls a Rust kernel.
 
-### Rule 1 — TrajectoryDispatcher
+### Rule 1 — TrajectoryDispatcher (index/uid-metadata builders only)
+
+This rule is superseded for *measure data* (coordinates, timestamps, and any other dense
+numeric array that is a direct argument to a Rust kernel) by
+["Arrow-only Rust bindings for dense numeric arrays"](#arrow-only-rust-bindings-for-dense-numeric-arrays)
+below — new measures should follow that convention, not this one. `TrajectoryDispatcher`
+remains the right tool only for the index/uid-metadata builders in `fastmob/utils/_common.py`
+(`_build_indexed_user_ranges_fast`, `_build_time_ordered_user_ranges`,
+`_build_presorted_user_ends`) and their Rust counterparts (`indexed_user_indices`,
+`time_ordered_user_indices`, `presorted_user_starts_ends_*`) — these move small per-user
+boundary arrays, not measure data, and the NumPy-vs-Arrow choice there is about avoiding a
+copy on the input dataframe's own uid column, not about the output array's numeric type.
 
 Never write `if _is_polars_backed(df): ... else: ...` or `if use_arrow: ...` branching inline.
 Use a **module-level `TrajectoryDispatcher`** instance from `fastmob.core.dispatch` instead.
@@ -357,7 +368,9 @@ let valid: Vec<usize> = user_indices.iter().copied()
 Add `valid_rows: Option<&[bool]>` after `ends` in the `_indexed_impl` signature.
 
 In `fastmob-py/src/…/<measure>.rs`:
-- **NumPy binding**: keep `PyReadonlyArray1<f64>` inputs; pass `None` to core.
+- **NumPy binding** (only for bindings that still keep a NumPy path — new Arrow-only bindings
+  skip this step entirely, see the section below): keep `PyReadonlyArray1<f64>` inputs; pass
+  `None` to core.
 - **Arrow binding**: change `as_f64_array` → `as_nullable_f64_array` for each coordinate /
   timestamp array; add `let valid_rows = arrow_valid_rows(&[&lats, &lngs, ...]);`; pass
   `valid_rows.as_deref()` to core.
@@ -365,6 +378,80 @@ In `fastmob-py/src/…/<measure>.rs`:
 
 See `fastmob-core/src/preprocessing/compress_traj.rs` and
 `fastmob-py/src/preprocessing/compress_traj_py.rs` as the canonical Rust reference.
+
+## Arrow-only Rust bindings for dense numeric arrays
+
+New measures (and measures being migrated off Rule 1 above) should use this convention
+instead of a NumPy/Arrow dual-dispatch binding, whenever the Rust kernel's inputs and outputs
+are dense `f64`/`u64`/`i64`/`u8`/`bool` arrays with no strings, nested, or list types — i.e.
+virtually all coordinate, timestamp, and other measure-data arrays. For that shape, NumPy and
+Arrow are both just a contiguous buffer: converting a non-null NumPy array to Arrow (or back)
+is a buffer-level operation on both sides, not a real copy, so a runtime NumPy-vs-Arrow branch
+buys nothing but code complexity — and, measured on `radius_of_gyration`/`jump_lengths` at 4M
+rows, actively costs 2.5–4x in wall time versus going Arrow-only end to end (pandas and polars
+inputs alike; the polars/Arrow path was the *slower* one before this change, since the dual
+dispatch's own branching overhead dominated). This does **not** apply to the index/uid-metadata
+builders carved out in Rule 1 above — those stay dual-path deliberately.
+
+### Rust side
+
+- Type `#[pyfunction]` parameters as `pyo3_arrow::PyArray` (aliased `ArrowPyArray` in most
+  binding files) directly — not `&Bound<'py, PyAny>` plus a runtime `is_arrow_array()` check
+  and dual `.extract::<PyReadonlyArray1<f64>>()` / `.extract::<ArrowPyArray>()` branches.
+  PyO3's argument extraction handles the conversion, and `pyo3_arrow::PyArray`'s
+  `FromPyObject` implementation is lenient enough to also accept a plain NumPy array
+  transparently (verified empirically) — so there is no NumPy-specific code path to write or
+  keep, on either side of the FFI boundary.
+- Non-nullable inputs (the `presorted` fast path, which assumes pre-cleaned data): extract via
+  `as_f64_array(arr, name)` — errors if the array contains nulls.
+- Nullable inputs (the `indexed` path): extract via `as_nullable_f64_array(arr, name)`, then
+  `arrow_valid_rows(&[&arr1, &arr2, ...])` to get `Option<Vec<bool>>`, and pass
+  `valid_rows.as_deref()` to the core `_indexed_impl` exactly as Rule 2 above already
+  describes — that null-handling convention is unchanged by this section, only the
+  NumPy-vs-Arrow *extraction* branching goes away.
+- Get the raw `&[f64]` (or `&[u64]`/`&[i64]`/etc) slice via `arrow_values(&array)`.
+- Wrap output via `f64_results_into_arrow`/`u64_results_into_arrow`/`u32_results_into_arrow`/
+  `bool_results_into_arrow` (in `fastmob-py/src/utils/py_helpers.rs`), then
+  `Py::new(py, array)?.into_any()`. Each binding file keeps its own tiny private
+  `arrow_f64_output(py, values)` wrapper around this — that one-off duplication across binding
+  files is a pre-existing, accepted repo convention; don't try to consolidate it.
+- For the common "presorted contiguous ranges" / "indexed row-order + ends" shapes, reuse the
+  shared generic adapters in `fastmob-py/src/adapters/trajectory.rs`:
+  `run_presorted_coordinate_arrow<T, F>` / `run_indexed_coordinate_arrow<T, F>` (and their
+  timed/group/two-sequence-shaped siblings, where present). Both are generic over the
+  closure's return type `T`, so callers with different output shapes — a plain `Vec<f64>`, a
+  `(Vec<f64>, Vec<bool>)` validity pair, a fallible `Result<_, String>` — all reuse the same
+  extraction/validation/`py.detach` boilerplate and just wrap `T` into Python types themselves
+  afterward. Reference implementations:
+  `fastmob-py/src/measures/individual/radius_of_gyration.rs` and `jump_lengths.rs`.
+
+### Python side
+
+- Extract measure-data columns via `.to_arrow()` unconditionally, regardless of the input
+  dataframe's backend. Do not instantiate a `TrajectoryDispatcher` for this — that class is
+  reserved for the index/uid-metadata builders (Rule 1 above).
+- **Preserve existing public output-type contracts.** If a public measure function's docstring
+  already promises a raw-array return that matches the input backend (e.g. `merge=True` on
+  `jump_lengths`/`waiting_times`: "NumPy array for NumPy-backed inputs... PyArrow array for
+  Arrow-backed inputs"), keep a thin `TrajectoryDispatcher` instance around purely to call
+  `.get_backend_key(df) == "numpy"` at that one output boundary and convert the Arrow result
+  back with `.to_numpy(zero_copy_only=False)`. This is presentation logic at the API edge, not
+  the kind of routing branch Rule 1 forbids.
+- Once a file's Rust results are always Arrow, audit any remaining `import numpy as np`: a
+  NumPy array returned directly by Rust (e.g. a per-user validity mask — that's index
+  metadata, and intentionally stays NumPy) needs no `numpy` import to call methods on: `.sum()`,
+  `.any()`, `.size`, and iteration all work on an existing NumPy array instance without ever
+  writing `import numpy`. Only filtering/masking an actual *value* array now needs
+  `pyarrow.compute` (`pc.filter(...)`) instead of `numpy` (`np.asarray(...)[mask]`).
+
+### A gotcha worth remembering when touching existing tests
+
+Because `pyo3_arrow::PyArray` extraction transparently coerces plain NumPy arrays, a test that
+asserts `TypeError`/`ValueError` when a Rust binding is called with mismatched NumPy/Arrow
+arguments will start failing with "did not raise" once that binding goes Arrow-only — the call
+now just works, with the correct (identical) result either way. Convert such a test into an
+"accepts mixed backends, produces identical output" test instead of trying to preserve the old
+rejection behavior. See `git show 1d444d2` for the exact template already used once.
 
 ## Column name conventions
 
