@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 
-from ._util import haversine_m_batch
+from fastmob._core import haversine_m_batch
 
 
 def nearest_candidate(
@@ -52,5 +52,10 @@ def nearest_candidate(
     _, indices = tree.kneighbors(query_xy)
     nearest_idx = indices[:, 0]
 
-    dist_m = haversine_m_batch(query_lat, query_lng, ref_lat[nearest_idx], ref_lng[nearest_idx])
+    dist_m = haversine_m_batch(
+        np.ascontiguousarray(query_lat, dtype=np.float64),
+        np.ascontiguousarray(query_lng, dtype=np.float64),
+        np.ascontiguousarray(ref_lat[nearest_idx], dtype=np.float64),
+        np.ascontiguousarray(ref_lng[nearest_idx], dtype=np.float64),
+    )
     return nearest_idx.astype(np.int64), dist_m

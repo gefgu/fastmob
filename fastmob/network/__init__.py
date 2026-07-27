@@ -1,6 +1,7 @@
 """Network-constrained distance: road/rail graph construction and routing."""
 
-from ._util import haversine_m_batch
+from fastmob._core import haversine_m_batch
+
 from .builder import build_rail_graph, build_road_graph, fetch_rail_network, fetch_road_network
 from .od_flow import od_desire_lines
 from .road_graph import RoadNetwork

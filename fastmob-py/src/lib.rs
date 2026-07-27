@@ -36,6 +36,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(activity::activity_transition_counts, m)?)?;
     m.add_function(wrap_pyfunction!(activity::daily_activity_percentages, m)?)?;
     m.add_function(wrap_pyfunction!(utils::haversine_py::haversine_km, m)?)?;
+    m.add_function(wrap_pyfunction!(utils::haversine_py::haversine_m_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
         visitation_law::visitation_distances_km,
         m

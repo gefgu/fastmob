@@ -25,7 +25,8 @@ from fastmob.utils._common import (
     _prepare_trajectory,
 )
 
-from ...network._util import haversine_m_batch
+from fastmob._core import haversine_m_batch
+
 from ...network.road_graph import RoadNetwork
 from ...network.snap import snap_locations_to_graph
 

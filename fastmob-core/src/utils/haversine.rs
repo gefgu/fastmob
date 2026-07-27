@@ -1,6 +1,7 @@
 use geo::{Distance, Haversine, Point};
 #[cfg(feature = "numkong")]
 use numkong::Haversine as NumKongHaversine;
+use rayon::prelude::*;
 
 #[cfg(feature = "numkong")]
 const GEO_HAVERSINE_RADIUS_M: f64 = 6_371_008.8;
@@ -13,6 +14,22 @@ pub fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let p1 = Point::new(lon1, lat1);
     let p2 = Point::new(lon2, lat2);
     Haversine.distance(p1, p2) / 1000.0
+}
+
+/// Elementwise Haversine distance (metres) between two same-length arrays of
+/// points, computed in parallel via rayon -- the network sub-module's
+/// unrelated-pair batch distance (nearest-candidate re-scoring, snap
+/// fallback, road-vs-straight-line comparison), as opposed to
+/// [`adjacent_haversine_distances_km`]'s consecutive-pair-within-one-trajectory
+/// shape.
+pub fn haversine_m_batch(lat1: &[f64], lng1: &[f64], lat2: &[f64], lng2: &[f64]) -> Result<Vec<f64>, String> {
+    if lat1.len() != lng1.len() || lat1.len() != lat2.len() || lat1.len() != lng2.len() {
+        return Err("lat1, lng1, lat2, and lng2 must have the same length".to_string());
+    }
+    Ok((0..lat1.len())
+        .into_par_iter()
+        .map(|i| haversine_km(lat1[i], lng1[i], lat2[i], lng2[i]) * 1000.0)
+        .collect())
 }
 
 pub fn adjacent_haversine_distances_km(

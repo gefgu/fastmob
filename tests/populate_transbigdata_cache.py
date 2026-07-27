@@ -30,7 +30,7 @@ import networkx as nx
 import osmnx as ox
 import pandas as pd
 import transbigdata as tbd
-from fastmob.network._util import haversine_m_batch
+from fastmob._core import haversine_m_batch
 from shapely.geometry import LineString
 
 from tests.shared.transbigdata_cache import _REFERENCE_DIR

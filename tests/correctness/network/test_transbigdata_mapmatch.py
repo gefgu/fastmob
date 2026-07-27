@@ -31,11 +31,13 @@ def test_fastmob_node_snap_distance_is_at_least_transbigdata_edge_snap(transbigd
     node_idx = snap_locations_to_graph(input_df, nodes_df, max_distance_m=1_000_000.0)
     assert (node_idx >= 0).all()
 
-    from fastmob.network._util import haversine_m_batch
+    from fastmob._core import haversine_m_batch
 
-    snapped_lat = nodes_df.set_index("node_idx").loc[node_idx, "lat"].to_numpy()
-    snapped_lng = nodes_df.set_index("node_idx").loc[node_idx, "lng"].to_numpy()
-    fastmob_dist_m = haversine_m_batch(input_df["lat"].to_numpy(), input_df["lng"].to_numpy(), snapped_lat, snapped_lng)
+    snapped_lat = nodes_df.set_index("node_idx").loc[node_idx, "lat"].to_numpy(dtype=float)
+    snapped_lng = nodes_df.set_index("node_idx").loc[node_idx, "lng"].to_numpy(dtype=float)
+    fastmob_dist_m = haversine_m_batch(
+        input_df["lat"].to_numpy(dtype=float), input_df["lng"].to_numpy(dtype=float), snapped_lat, snapped_lng
+    )
 
     # A small epsilon absorbs the same haversine-kernel-precision slack
     # CLAUDE.md documents for skmob distance comparisons (different
