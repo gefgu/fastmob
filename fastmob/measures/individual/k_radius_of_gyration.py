@@ -5,7 +5,6 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import k_radius_of_gyration_indexed, k_radius_of_gyration_presorted
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
@@ -14,8 +13,6 @@ from fastmob.utils._common import (
     _extract_timestamps_ms,
     _to_native,
 )
-
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def k_radius_of_gyration(
@@ -127,12 +124,10 @@ def k_radius_of_gyration(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-
-    lats = ops["extract_data"](df.get_column(lat_col))
-    lngs = ops["extract_data"](df.get_column(lng_col))
+    lats = df.get_column(lat_col).to_arrow()
+    lngs = df.get_column(lng_col).to_arrow()
     timestamps = _extract_timestamps_ms(df, datetime_col)
-    timestamps_data = ops["extract_data"](timestamps)
+    timestamps_data = timestamps.to_arrow()
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)

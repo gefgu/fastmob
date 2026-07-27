@@ -10,7 +10,6 @@ from fastmob._core import (
     max_distance_from_point_indexed,
     max_distance_from_point_presorted,
 )
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
@@ -19,8 +18,6 @@ from fastmob.utils._common import (
     _extract_hours,
     _to_native,
 )
-
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def max_distance_from_home(
@@ -135,12 +132,9 @@ def max_distance_from_home(
     )
 
     df, hours = _extract_hours(df, datetime_col)
-    lats = df.get_column(lat_col)
-    lngs = df.get_column(lng_col)
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](lats)
-    lngs_data = ops["extract_data"](lngs)
-    hours_data = ops["extract_data"](hours)
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
+    hours_data = hours.to_arrow()
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         home_lats, home_lngs = home_location_presorted(

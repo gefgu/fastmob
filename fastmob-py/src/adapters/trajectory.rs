@@ -51,7 +51,6 @@ pub struct IndexedGroupCoordinateView<'a> {
 }
 
 pub type PyF64Result = Py<PyAny>;
-pub type PyF64Pair = (Py<PyAny>, Py<PyAny>);
 
 const COORDINATE_BACKEND_ERROR: &str =
     "latitudes and longitudes must both be NumPy arrays or both be Arrow arrays";
@@ -180,282 +179,81 @@ where
     }))
 }
 
-pub fn run_presorted_timed_coordinate_f64<'py, F>(
+/// Timed counterpart of [`run_presorted_coordinate_arrow`]: extracts and validates a
+/// presorted lat/lng/time triple of Arrow arrays, then runs `operation` under `py.detach`.
+pub fn run_presorted_timed_coordinate_arrow<'py, T, F>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
-    times: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    times: ArrowPyArray,
     ends: PyReadonlyArray1<'py, usize>,
     operation: F,
-) -> PyResult<PyF64Result>
+) -> PyResult<T>
 where
-    F: FnOnce(TimedCoordinateView<'_>, &[usize]) -> Result<Vec<f64>, String> + Send,
+    F: FnOnce(TimedCoordinateView<'_>, &[usize]) -> T + Send,
+    T: Send,
 {
-    if let (Ok(latitudes), Ok(longitudes), Ok(times)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-        times.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let lats = latitudes.as_slice()?;
-        let lngs = longitudes.as_slice()?;
-        let times = times.as_slice()?;
-        let ends = ends.as_slice()?;
-        validate_timed_coordinate_lengths(lats.len(), lngs.len(), times.len())?;
-        validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
-        let values = py
-            .detach(|| {
-                operation(
-                    TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    ends,
-                )
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok(numpy_f64_output(py, values));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(times)? {
-        let latitudes = as_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
-        let longitudes = as_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
-        let times = as_f64_array(times.extract::<ArrowPyArray>()?, "times")?;
-        validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), times.len())?;
-        let lats = arrow_values(&latitudes);
-        let lngs = arrow_values(&longitudes);
-        let times = arrow_values(&times);
-        let ends = ends.as_slice()?;
-        validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
-        let values = py
-            .detach(|| {
-                operation(
-                    TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    ends,
-                )
-            })
-            .map_err(PyValueError::new_err)?;
-        return arrow_f64_output(py, values);
-    }
-
-    Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
+    let latitudes = as_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    let times = as_f64_array(times, "times")?;
+    validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), times.len())?;
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let times = arrow_values(&times);
+    let ends = ends.as_slice()?;
+    validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
+    Ok(py.detach(|| {
+        operation(
+            TimedCoordinateView {
+                latitudes: lats,
+                longitudes: lngs,
+                times,
+            },
+            ends,
+        )
+    }))
 }
 
-pub fn run_indexed_timed_coordinate_f64<'py, F>(
+/// Indexed counterpart of [`run_presorted_timed_coordinate_arrow`]: extracts and validates a
+/// (possibly nullable) lat/lng/time triple alongside row indices/ends, computes `valid_rows`,
+/// then runs `operation` under `py.detach`.
+pub fn run_indexed_timed_coordinate_arrow<'py, T, F>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
-    times: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    times: ArrowPyArray,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     operation: F,
-) -> PyResult<PyF64Result>
+) -> PyResult<T>
 where
-    F: FnOnce(IndexedTimedCoordinateView<'_>) -> Result<Vec<f64>, String> + Send,
+    F: FnOnce(IndexedTimedCoordinateView<'_>) -> T + Send,
+    T: Send,
 {
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    let times = as_nullable_f64_array(times, "times")?;
+    validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), times.len())?;
     let indices = indices.as_slice()?;
     let ends = ends.as_slice()?;
+    validate_indexed_ends(latitudes.len(), indices, ends)?;
 
-    if let (Ok(latitudes), Ok(longitudes), Ok(times)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-        times.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let lats = latitudes.as_slice()?;
-        let lngs = longitudes.as_slice()?;
-        let times = times.as_slice()?;
-        validate_timed_coordinate_lengths(lats.len(), lngs.len(), times.len())?;
-        validate_indexed_ends(lats.len(), indices, ends)?;
-        let values = py
-            .detach(|| {
-                operation(IndexedTimedCoordinateView {
-                    coordinates: TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    indices,
-                    ends,
-                    valid_rows: None,
-                })
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok(numpy_f64_output(py, values));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(times)? {
-        let latitudes = as_nullable_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
-        let longitudes =
-            as_nullable_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
-        let times = as_nullable_f64_array(times.extract::<ArrowPyArray>()?, "times")?;
-        validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), times.len())?;
-        validate_indexed_ends(latitudes.len(), indices, ends)?;
-
-        let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &times]);
-        let lats = arrow_values(&latitudes);
-        let lngs = arrow_values(&longitudes);
-        let times = arrow_values(&times);
-        let values = py
-            .detach(|| {
-                operation(IndexedTimedCoordinateView {
-                    coordinates: TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    indices,
-                    ends,
-                    valid_rows: valid_rows.as_deref(),
-                })
-            })
-            .map_err(PyValueError::new_err)?;
-        return arrow_f64_output(py, values);
-    }
-
-    Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
-}
-
-pub fn run_presorted_timed_coordinate_f64_pair<'py, F>(
-    py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
-    times: &Bound<'py, PyAny>,
-    ends: PyReadonlyArray1<'py, usize>,
-    operation: F,
-) -> PyResult<PyF64Pair>
-where
-    F: FnOnce(TimedCoordinateView<'_>, &[usize]) -> Result<(Vec<f64>, Vec<f64>), String> + Send,
-{
-    if let (Ok(latitudes), Ok(longitudes), Ok(times)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-        times.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let lats = latitudes.as_slice()?;
-        let lngs = longitudes.as_slice()?;
-        let times = times.as_slice()?;
-        let ends = ends.as_slice()?;
-        validate_timed_coordinate_lengths(lats.len(), lngs.len(), times.len())?;
-        validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
-        let (first, second) = py
-            .detach(|| {
-                operation(
-                    TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    ends,
-                )
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok((numpy_f64_output(py, first), numpy_f64_output(py, second)));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(times)? {
-        let latitudes = as_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
-        let longitudes = as_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
-        let times = as_f64_array(times.extract::<ArrowPyArray>()?, "times")?;
-        validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), times.len())?;
-        let lats = arrow_values(&latitudes);
-        let lngs = arrow_values(&longitudes);
-        let times = arrow_values(&times);
-        let ends = ends.as_slice()?;
-        validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
-        let (first, second) = py
-            .detach(|| {
-                operation(
-                    TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    ends,
-                )
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok((arrow_f64_output(py, first)?, arrow_f64_output(py, second)?));
-    }
-
-    Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
-}
-
-pub fn run_indexed_timed_coordinate_f64_pair<'py, F>(
-    py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
-    times: &Bound<'py, PyAny>,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
-    operation: F,
-) -> PyResult<PyF64Pair>
-where
-    F: FnOnce(IndexedTimedCoordinateView<'_>) -> Result<(Vec<f64>, Vec<f64>), String> + Send,
-{
-    let indices = indices.as_slice()?;
-    let ends = ends.as_slice()?;
-
-    if let (Ok(latitudes), Ok(longitudes), Ok(times)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-        times.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let lats = latitudes.as_slice()?;
-        let lngs = longitudes.as_slice()?;
-        let times = times.as_slice()?;
-        validate_timed_coordinate_lengths(lats.len(), lngs.len(), times.len())?;
-        validate_indexed_ends(lats.len(), indices, ends)?;
-        let (first, second) = py
-            .detach(|| {
-                operation(IndexedTimedCoordinateView {
-                    coordinates: TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    indices,
-                    ends,
-                    valid_rows: None,
-                })
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok((numpy_f64_output(py, first), numpy_f64_output(py, second)));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(times)? {
-        let latitudes = as_nullable_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
-        let longitudes =
-            as_nullable_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
-        let times = as_nullable_f64_array(times.extract::<ArrowPyArray>()?, "times")?;
-        validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), times.len())?;
-        validate_indexed_ends(latitudes.len(), indices, ends)?;
-
-        let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &times]);
-        let lats = arrow_values(&latitudes);
-        let lngs = arrow_values(&longitudes);
-        let times = arrow_values(&times);
-        let (first, second) = py
-            .detach(|| {
-                operation(IndexedTimedCoordinateView {
-                    coordinates: TimedCoordinateView {
-                        latitudes: lats,
-                        longitudes: lngs,
-                        times,
-                    },
-                    indices,
-                    ends,
-                    valid_rows: valid_rows.as_deref(),
-                })
-            })
-            .map_err(PyValueError::new_err)?;
-        return Ok((arrow_f64_output(py, first)?, arrow_f64_output(py, second)?));
-    }
-
-    Err(PyTypeError::new_err(COORDINATE_BACKEND_ERROR))
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &times]);
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let times = arrow_values(&times);
+    Ok(py.detach(|| {
+        operation(IndexedTimedCoordinateView {
+            coordinates: TimedCoordinateView {
+                latitudes: lats,
+                longitudes: lngs,
+                times,
+            },
+            indices,
+            ends,
+            valid_rows: valid_rows.as_deref(),
+        })
+    }))
 }
 
 #[allow(clippy::too_many_arguments)]

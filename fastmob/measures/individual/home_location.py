@@ -5,7 +5,6 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import home_location_indexed, home_location_presorted
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
@@ -19,9 +18,6 @@ from fastmob.utils._common import (
 def _format_pair(values: tuple[Any, Any]) -> tuple[Any, Any]:
     first, second = values
     return _arrow_result_values(first), _arrow_result_values(second)
-
-
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def home_location(
@@ -136,10 +132,9 @@ def home_location(
     )
 
     df, hours = _extract_hours(df, datetime_col)
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
-    hours_data = ops["extract_data"](hours)
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
+    hours_data = hours.to_arrow()
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         home_lats, home_lngs = _format_pair(
