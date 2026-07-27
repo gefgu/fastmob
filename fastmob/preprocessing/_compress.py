@@ -18,7 +18,7 @@ from fastmob.utils._common import (
     _extract_timestamps_s,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _unpack_result(result: tuple[Any, Any, Any]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -117,12 +117,10 @@ def compress(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    timestamps_data = ops["extract_data"](timestamps_s)
+    timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     if presorted:
         _, ranges = _build_user_ranges(df, uid_col)

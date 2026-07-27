@@ -20,7 +20,7 @@ from fastmob.utils._common import (
     _with_datetime_column,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _unpack_network(raw: tuple[Any, ...]) -> tuple[Any, ...]:
@@ -146,16 +146,15 @@ def individual_mobility_network(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw = individual_mobility_network_presorted(lats_data, lngs_data, ends, self_loops)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
-        timestamps_data = ops["extract_data"](timestamps)
+        timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
         uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
         raw = individual_mobility_network_indexed(lats_data, lngs_data, indices, ends, self_loops)
     lat_origins, lng_origins, lat_dests, lng_dests, n_trips, user_indices = _unpack_network(raw)

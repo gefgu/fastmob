@@ -31,7 +31,7 @@ HOME_WORK = 7
 
 _NO_ROW = np.iinfo(np.uintp).max
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _target_user_indices(df: nw.DataFrame, uid_values: list[Any] | None, targets: Any) -> np.ndarray:
@@ -132,9 +132,8 @@ def assess_risk_rust(
     if df.schema[LATITUDE] != nw.Float64 or df.schema[LONGITUDE] != nw.Float64:
         df = df.with_columns(nw.col(LATITUDE).cast(nw.Float64), nw.col(LONGITUDE).cast(nw.Float64))
 
-    ops = _EXTRACTOR.get_ops(df)
-    lats = ops["extract_data"](df.get_column(LATITUDE))
-    lngs = ops["extract_data"](df.get_column(LONGITUDE))
+    lats = df.get_column(LATITUDE).to_arrow()
+    lngs = df.get_column(LONGITUDE).to_arrow()
     time_keys = _time_keys(df, time_precision)
 
     if presorted:
@@ -158,7 +157,7 @@ def assess_risk_rust(
                 df,
                 UID,
                 DATETIME,
-                ops["extract_data"](timestamps),
+                _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps),
             )
         else:
             uid_values, indices, ends = _build_indexed_user_ranges_fast(df, UID)

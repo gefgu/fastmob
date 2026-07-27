@@ -8,34 +8,35 @@ use fastmob_core::measures::individual::location_frequency::{
     location_frequency_presorted_values_with_row_validity_impl,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3_arrow::PyArray;
+use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
     arrow_values, as_nullable_f64_array, f64_results_into_arrow, u64_results_into_arrow,
 };
 
 type LocFreqValues<'py> = (
-    PyArray,
-    PyArray,
-    PyArray,
+    ArrowPyArray,
+    ArrowPyArray,
+    ArrowPyArray,
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
     Bound<'py, PyArray1<usize>>,
-    PyArray,
+    ArrowPyArray,
 );
 
-type FrequencyRank<'py> = (PyArray, PyArray, PyArray, Bound<'py, PyArray1<usize>>);
-
-fn is_arrow_array(obj: &Bound<'_, PyAny>) -> PyResult<bool> {
-    obj.hasattr("__arrow_c_array__")
-}
+type FrequencyRank<'py> = (
+    ArrowPyArray,
+    ArrowPyArray,
+    ArrowPyArray,
+    Bound<'py, PyArray1<usize>>,
+);
 
 fn location_frequency_values_from_arrow<'py>(
     py: Python<'py>,
-    latitudes: PyArray,
-    longitudes: PyArray,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     indices: Option<PyReadonlyArray1<'py, usize>>,
     ends: PyReadonlyArray1<'py, usize>,
     normalize: bool,
@@ -104,8 +105,8 @@ fn location_frequency_values_from_arrow<'py>(
 
 fn frequency_rank_from_arrow<'py>(
     py: Python<'py>,
-    latitudes: PyArray,
-    longitudes: PyArray,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     indices: Option<PyReadonlyArray1<'py, usize>>,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<FrequencyRank<'py>> {
@@ -164,181 +165,43 @@ fn frequency_rank_from_arrow<'py>(
 #[pyfunction]
 pub fn location_frequency_values_indexed<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     normalize: bool,
 ) -> PyResult<LocFreqValues<'py>> {
-    if let (Ok(latitudes), Ok(longitudes)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let (out_lats, out_lngs, out_values, out_user_indices, out_starts, out_ends, rank_means) =
-            location_frequency_indexed_values_impl(
-                latitudes.as_slice()?,
-                longitudes.as_slice()?,
-                indices.as_slice()?,
-                ends.as_slice()?,
-                normalize,
-                None,
-            )
-            .map_err(PyValueError::new_err)?;
-        return Ok((
-            f64_results_into_arrow(out_lats),
-            f64_results_into_arrow(out_lngs),
-            f64_results_into_arrow(out_values),
-            out_user_indices.into_pyarray(py),
-            out_starts.into_pyarray(py),
-            out_ends.into_pyarray(py),
-            f64_results_into_arrow(rank_means),
-        ));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? {
-        return location_frequency_values_from_arrow(
-            py,
-            latitudes.extract::<PyArray>()?,
-            longitudes.extract::<PyArray>()?,
-            Some(indices),
-            ends,
-            normalize,
-        );
-    }
-
-    Err(PyTypeError::new_err(
-        "latitudes and longitudes must both be NumPy arrays or both be Arrow arrays",
-    ))
+    location_frequency_values_from_arrow(py, latitudes, longitudes, Some(indices), ends, normalize)
 }
 
 #[pyfunction]
 pub fn location_frequency_presorted<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     ends: PyReadonlyArray1<'py, usize>,
     normalize: bool,
 ) -> PyResult<LocFreqValues<'py>> {
-    if let (Ok(latitudes), Ok(longitudes)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let (out_lats, out_lngs, out_values, out_user_indices, out_starts, out_ends, rank_means) =
-            location_frequency_presorted_values_impl(
-                latitudes.as_slice()?,
-                longitudes.as_slice()?,
-                ends.as_slice()?,
-                normalize,
-                None,
-            )
-            .map_err(PyValueError::new_err)?;
-        return Ok((
-            f64_results_into_arrow(out_lats),
-            f64_results_into_arrow(out_lngs),
-            f64_results_into_arrow(out_values),
-            out_user_indices.into_pyarray(py),
-            out_starts.into_pyarray(py),
-            out_ends.into_pyarray(py),
-            f64_results_into_arrow(rank_means),
-        ));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? {
-        return location_frequency_values_from_arrow(
-            py,
-            latitudes.extract::<PyArray>()?,
-            longitudes.extract::<PyArray>()?,
-            None,
-            ends,
-            normalize,
-        );
-    }
-
-    Err(PyTypeError::new_err(
-        "latitudes and longitudes must both be NumPy arrays or both be Arrow arrays",
-    ))
+    location_frequency_values_from_arrow(py, latitudes, longitudes, None, ends, normalize)
 }
 
 #[pyfunction]
 pub fn frequency_rank_indexed<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<FrequencyRank<'py>> {
-    if let (Ok(latitudes), Ok(longitudes)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let (out_lats, out_lngs, out_ranks, out_user_indices) = frequency_rank_indexed_impl(
-            latitudes.as_slice()?,
-            longitudes.as_slice()?,
-            indices.as_slice()?,
-            ends.as_slice()?,
-            None,
-        )
-        .map_err(PyValueError::new_err)?;
-        return Ok((
-            f64_results_into_arrow(out_lats),
-            f64_results_into_arrow(out_lngs),
-            u64_results_into_arrow(out_ranks),
-            out_user_indices.into_pyarray(py),
-        ));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? {
-        return frequency_rank_from_arrow(
-            py,
-            latitudes.extract::<PyArray>()?,
-            longitudes.extract::<PyArray>()?,
-            Some(indices),
-            ends,
-        );
-    }
-
-    Err(PyTypeError::new_err(
-        "latitudes and longitudes must both be NumPy arrays or both be Arrow arrays",
-    ))
+    frequency_rank_from_arrow(py, latitudes, longitudes, Some(indices), ends)
 }
 
 #[pyfunction]
 pub fn frequency_rank_presorted<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
     ends: PyReadonlyArray1<'py, usize>,
 ) -> PyResult<FrequencyRank<'py>> {
-    if let (Ok(latitudes), Ok(longitudes)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let (out_lats, out_lngs, out_ranks, out_user_indices) = frequency_rank_presorted_impl(
-            latitudes.as_slice()?,
-            longitudes.as_slice()?,
-            ends.as_slice()?,
-            None,
-        )
-        .map_err(PyValueError::new_err)?;
-        return Ok((
-            f64_results_into_arrow(out_lats),
-            f64_results_into_arrow(out_lngs),
-            u64_results_into_arrow(out_ranks),
-            out_user_indices.into_pyarray(py),
-        ));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? {
-        return frequency_rank_from_arrow(
-            py,
-            latitudes.extract::<PyArray>()?,
-            longitudes.extract::<PyArray>()?,
-            None,
-            ends,
-        );
-    }
-
-    Err(PyTypeError::new_err(
-        "latitudes and longitudes must both be NumPy arrays or both be Arrow arrays",
-    ))
+    frequency_rank_from_arrow(py, latitudes, longitudes, None, ends)
 }
