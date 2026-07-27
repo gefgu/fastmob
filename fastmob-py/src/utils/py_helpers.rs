@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, BooleanArray, Float64Array, PrimitiveArray, UInt32Array, UInt64Array,
-    types::Float64Type,
+    Array, ArrayRef, BooleanArray, Float64Array, Int64Array, PrimitiveArray, UInt8Array,
+    UInt32Array, UInt64Array,
+    types::{Float64Type, Int64Type, UInt8Type, UInt64Type},
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -15,6 +16,11 @@ pub fn f64_results_into_arrow(results: Vec<f64>) -> PyArray {
 
 pub fn u64_results_into_arrow(results: Vec<u64>) -> PyArray {
     let array: ArrayRef = Arc::new(UInt64Array::from(results));
+    PyArray::from_array_ref(array)
+}
+
+pub fn i64_results_into_arrow(results: Vec<i64>) -> PyArray {
+    let array: ArrayRef = Arc::new(Int64Array::from(results));
     PyArray::from_array_ref(array)
 }
 
@@ -84,6 +90,88 @@ pub fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
     let start = array.offset();
     let end = start + array.len();
     &array.values()[start..end]
+}
+
+pub fn as_u64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<UInt64Type>> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<UInt64Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint64 Arrow array for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow array for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+pub fn as_i64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Int64Type>> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<Int64Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected int64 Arrow array for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow array for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+pub fn as_u8_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<UInt8Type>> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<UInt8Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint8 Arrow array for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow array for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+pub fn as_bool_array(arr: PyArray, name: &str) -> PyResult<BooleanArray> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<BooleanArray>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected bool Arrow array for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow array for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+pub fn arrow_u64_values(array: &PrimitiveArray<UInt64Type>) -> &[u64] {
+    let start = array.offset();
+    let end = start + array.len();
+    &array.values()[start..end]
+}
+
+pub fn arrow_i64_values(array: &PrimitiveArray<Int64Type>) -> &[i64] {
+    let start = array.offset();
+    let end = start + array.len();
+    &array.values()[start..end]
+}
+
+pub fn arrow_u8_values(array: &PrimitiveArray<UInt8Type>) -> &[u8] {
+    let start = array.offset();
+    let end = start + array.len();
+    &array.values()[start..end]
+}
+
+pub fn arrow_bool_values(array: &BooleanArray) -> Vec<bool> {
+    (0..array.len()).map(|i| array.value(i)).collect()
 }
 
 pub fn validate_indexed_ends(value_len: usize, indices: &[usize], ends: &[usize]) -> PyResult<()> {

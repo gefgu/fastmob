@@ -269,20 +269,28 @@ def _result_scalar(values: Any) -> float:
     return float(np.asarray(values)[0])
 
 
+def _narwhals_safe_value(values: Any) -> Any:
+    """Downgrade a raw (non-list) Arrow array to NumPy so narwhals can build any backend from it.
+
+    ``nw.from_dict`` doesn't accept a bare ``pyarrow.Array`` as a column value for every
+    backend (e.g. pandas) -- only list-typed Arrow arrays (grouped per-user results) are passed
+    through untouched, since those are already handled as list columns downstream.
+    """
+    try:
+        is_list_array = str(values.type).startswith("list<")
+    except Exception:  # noqa: BLE001
+        is_list_array = False
+    if hasattr(values, "__arrow_c_array__") and hasattr(values, "to_numpy") and not is_list_array:
+        try:
+            return values.to_numpy(zero_copy_only=False)
+        except TypeError:
+            return values.to_numpy()
+    return values
+
+
 def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
     """Build a backend-matching result dataframe from a column dict."""
-    columns = {}
-    for name, values in values_dict.items():
-        try:
-            is_list_array = str(values.type).startswith("list<")
-        except Exception:  # noqa: BLE001
-            is_list_array = False
-        if hasattr(values, "__arrow_c_array__") and hasattr(values, "to_numpy") and not is_list_array:
-            try:
-                values = values.to_numpy(zero_copy_only=False)
-            except TypeError:
-                values = values.to_numpy()
-        columns[name] = values
+    columns = {name: _narwhals_safe_value(values) for name, values in values_dict.items()}
     return nw.from_dict(columns, backend=df.implementation).to_native()
 
 

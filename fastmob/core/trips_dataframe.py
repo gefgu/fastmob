@@ -19,11 +19,11 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import trips_from_timeline
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _factorize_uids_uint64,
     _list_column_from_offsets,
+    _narwhals_safe_value,
     _null_sentinel_to_none,
     _values_to_list,
 )
@@ -31,7 +31,6 @@ from fastmob.utils._common import (
 from .base import BaseDataFrame
 
 _REQUIRED_COLUMNS = ["trip_id", "started_at", "finished_at"]
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 _NULL_I64 = -(2**63)
 
 
@@ -147,7 +146,6 @@ class Trips(BaseDataFrame):
             timeline = timeline.with_columns(nw.lit(0, dtype=nw.UInt64).alias(uid_code_col))
             code_to_uid = {}
 
-        ops = _EXTRACTOR.get_ops(timeline)
         (
             out_uid_codes,
             out_started_at_us,
@@ -157,13 +155,13 @@ class Trips(BaseDataFrame):
             tripleg_offsets,
             flat_tripleg_ids,
         ) = trips_from_timeline(
-            ops["extract_data"](timeline.get_column(uid_code_col)),
-            ops["extract_data"](timeline.get_column("__kind_code__")),
-            ops["extract_data"](timeline.get_column("activity")),
-            ops["extract_data"](timeline.get_column("staypoint_id")),
-            ops["extract_data"](timeline.get_column("tripleg_id")),
-            ops["extract_data"](timeline.get_column("__started_at_us__")),
-            ops["extract_data"](timeline.get_column("__finished_at_us__")),
+            timeline.get_column(uid_code_col).to_arrow(),
+            timeline.get_column("__kind_code__").to_arrow(),
+            timeline.get_column("activity").to_arrow(),
+            timeline.get_column("staypoint_id").to_arrow(),
+            timeline.get_column("tripleg_id").to_arrow(),
+            timeline.get_column("__started_at_us__").to_arrow(),
+            timeline.get_column("__finished_at_us__").to_arrow(),
         )
 
         uid_codes_list = _values_to_list(out_uid_codes)
@@ -173,8 +171,8 @@ class Trips(BaseDataFrame):
 
         out_dict: dict[str, Any] = {
             "trip_id": list(range(len(uid_codes_list))),
-            "__started_at_us__": _arrow_result_values(out_started_at_us),
-            "__finished_at_us__": _arrow_result_values(out_finished_at_us),
+            "__started_at_us__": _narwhals_safe_value(_arrow_result_values(out_started_at_us)),
+            "__finished_at_us__": _narwhals_safe_value(_arrow_result_values(out_finished_at_us)),
             "origin_staypoint_id": origin_ids,
             "destination_staypoint_id": destination_ids,
             "tripleg_ids": tripleg_ids,

@@ -22,7 +22,6 @@ from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
     _pick_existing_column,
-    _use_arrow_kernel_path,
 )
 
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday"}
@@ -108,14 +107,11 @@ def _factorize_activities(df: nw.DataFrame, activity_col: str) -> tuple[list[Any
 
 
 def _kernel_result(values: Any) -> np.ndarray:
-    return np.asarray(_arrow_result_values(values) if hasattr(values, "to_pyarrow") else values)
+    return np.asarray(_arrow_result_values(values))
 
 
-def _activity_counts(df: nw.DataFrame, codes: nw.Series, n_activities: int) -> np.ndarray:
-    if _use_arrow_kernel_path(df):
-        return _kernel_result(activity_counts(codes.to_arrow(), n_activities)).astype(np.uint64, copy=False)
-    data = np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64)
-    return np.asarray(activity_counts(data, n_activities), dtype=np.uint64)
+def _activity_counts(codes: nw.Series, n_activities: int) -> np.ndarray:
+    return _kernel_result(activity_counts(codes.to_arrow(), n_activities)).astype(np.uint64, copy=False)
 
 
 def visit_purpose_distribution(
@@ -156,7 +152,7 @@ def visit_purpose_distribution(
     df, resolved_activity_col = _with_activity_fallback(df, activity_col, unknown_label)
 
     categories, codes = _factorize_activities(df, resolved_activity_col)
-    category_counts = _activity_counts(df, codes, len(categories))
+    category_counts = _activity_counts(codes, len(categories))
     order = sorted(range(len(categories)), key=lambda index: (-int(category_counts[index]), str(categories[index])))
     labels = [categories[index] for index in order]
     counts = [int(category_counts[index]) for index in order]
@@ -225,29 +221,19 @@ def daily_activity_distribution(
     else:
         end_minutes = np.full(len(df), 1439, dtype=np.int64)
 
-    if _use_arrow_kernel_path(df):
-        start_series = nw.new_series("start_minutes", start_minutes, dtype=nw.Int64, backend=df.implementation)
-        end_series = nw.new_series("end_minutes", end_minutes, dtype=nw.Int64, backend=df.implementation)
-        valid_series = nw.new_series("valid_rows", valid_rows, dtype=nw.Boolean, backend=df.implementation)
-        flat = _kernel_result(
-            daily_activity_percentages(
-                codes.to_arrow(),
-                start_series.to_arrow(),
-                end_series.to_arrow(),
-                valid_series.to_arrow(),
-                len(categories),
-                bin_size_minutes,
-            )
-        )
-    else:
-        flat = daily_activity_percentages(
-            np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64),
-            np.ascontiguousarray(start_minutes),
-            np.ascontiguousarray(end_minutes),
-            np.ascontiguousarray(valid_rows),
+    start_series = nw.new_series("start_minutes", start_minutes, dtype=nw.Int64, backend=df.implementation)
+    end_series = nw.new_series("end_minutes", end_minutes, dtype=nw.Int64, backend=df.implementation)
+    valid_series = nw.new_series("valid_rows", valid_rows, dtype=nw.Boolean, backend=df.implementation)
+    flat = _kernel_result(
+        daily_activity_percentages(
+            codes.to_arrow(),
+            start_series.to_arrow(),
+            end_series.to_arrow(),
+            valid_series.to_arrow(),
             len(categories),
             bin_size_minutes,
         )
+    )
     activity_matrix_pct = np.asarray(flat, dtype=float).reshape(len(categories), n_bins)
 
     return activity_matrix_pct, categories, n_bins
@@ -374,12 +360,7 @@ def activity_transition_matrix(
     activities, codes = _factorize_activities(df, activity_col)
     n_activities = len(activities)
     _, indices, ends = _build_indexed_user_ranges_fast(df, user_id_col)
-    if _use_arrow_kernel_path(df):
-        flat_counts = _kernel_result(activity_transition_counts(codes.to_arrow(), indices, ends, n_activities))
-    else:
-        flat_counts = activity_transition_counts(
-            np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64), indices, ends, n_activities
-        )
+    flat_counts = _kernel_result(activity_transition_counts(codes.to_arrow(), indices, ends, n_activities))
     transition_matrix = np.asarray(flat_counts, dtype=float).reshape(n_activities, n_activities)
     total = transition_matrix.sum()
     if total > 0:

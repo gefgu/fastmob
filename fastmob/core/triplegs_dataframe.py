@@ -38,13 +38,11 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import tripleg_lengths_attributed
-from fastmob.core.dispatch import TrajectoryDispatcher
-from fastmob.utils._common import _arrow_result_values, _factorize_uids_uint64
+from fastmob.utils._common import _arrow_result_values, _factorize_uids_uint64, _narwhals_safe_value
 
 from .base import BaseDataFrame
 
 _REQUIRED_COLUMNS = ["tripleg_id", "started_at", "finished_at", "length_km", "duration_s"]
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 class Triplegs(BaseDataFrame):
@@ -270,20 +268,19 @@ def _tripleg_lengths(
         nw.col("__is_stop__").fill_null(value=False).cast(nw.Boolean)
     )
 
-    ops = _EXTRACTOR.get_ops(seg_with_flag)
     uid_codes, segment_ids, lengths_km = tripleg_lengths_attributed(
-        ops["extract_data"](seg_with_flag.get_column(uid_code_col)),
-        ops["extract_data"](seg_with_flag.get_column("segment_id").cast(nw.Int64)),
-        ops["extract_data"](seg_with_flag.get_column("__is_stop__")),
-        ops["extract_data"](seg_with_flag.get_column(lat_col).cast(nw.Float64)),
-        ops["extract_data"](seg_with_flag.get_column(lng_col).cast(nw.Float64)),
+        seg_with_flag.get_column(uid_code_col).to_arrow(),
+        seg_with_flag.get_column("segment_id").cast(nw.Int64).to_arrow(),
+        seg_with_flag.get_column("__is_stop__").to_arrow(),
+        seg_with_flag.get_column(lat_col).cast(nw.Float64).to_arrow(),
+        seg_with_flag.get_column(lng_col).cast(nw.Float64).to_arrow(),
     )
 
     return nw.from_dict(
         {
-            uid_code_col: _arrow_result_values(uid_codes),
-            "segment_id": _arrow_result_values(segment_ids),
-            "length_km": _arrow_result_values(lengths_km),
+            uid_code_col: _narwhals_safe_value(_arrow_result_values(uid_codes)),
+            "segment_id": _narwhals_safe_value(_arrow_result_values(segment_ids)),
+            "length_km": _narwhals_safe_value(_arrow_result_values(lengths_km)),
         },
         backend=seg_nw.implementation,
     )

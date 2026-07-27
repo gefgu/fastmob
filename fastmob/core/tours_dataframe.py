@@ -14,18 +14,17 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import tours_from_trips
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _factorize_uids_uint64,
     _list_column_from_offsets,
+    _narwhals_safe_value,
     _values_to_list,
 )
 
 from .base import BaseDataFrame
 
 _REQUIRED_COLUMNS = ["tour_id", "started_at", "finished_at"]
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 _NULL_I64 = -(2**63)
 
 
@@ -119,7 +118,6 @@ class Tours(BaseDataFrame):
             tl_nw = tl_nw.with_columns(nw.lit(0, dtype=nw.UInt64).alias(uid_code_col))
             code_to_uid = {}
 
-        ops = _EXTRACTOR.get_ops(tl_nw)
         (
             out_uid_codes,
             out_started_at_us,
@@ -128,20 +126,20 @@ class Tours(BaseDataFrame):
             journey_offsets,
             flat_journey,
         ) = tours_from_trips(
-            ops["extract_data"](tl_nw.get_column(uid_code_col)),
-            ops["extract_data"](tl_nw.get_column("trip_id")),
-            ops["extract_data"](tl_nw.get_column("__started_at_us__")),
-            ops["extract_data"](tl_nw.get_column("__finished_at_us__")),
-            ops["extract_data"](tl_nw.get_column("__origin_location_id__")),
-            ops["extract_data"](tl_nw.get_column("__destination_location_id__")),
+            tl_nw.get_column(uid_code_col).to_arrow(),
+            tl_nw.get_column("trip_id").to_arrow(),
+            tl_nw.get_column("__started_at_us__").to_arrow(),
+            tl_nw.get_column("__finished_at_us__").to_arrow(),
+            tl_nw.get_column("__origin_location_id__").to_arrow(),
+            tl_nw.get_column("__destination_location_id__").to_arrow(),
         )
 
         uid_codes_list = _values_to_list(out_uid_codes)
         out_dict: dict[str, Any] = {
             "tour_id": list(range(len(uid_codes_list))),
-            "__started_at_us__": _arrow_result_values(out_started_at_us),
-            "__finished_at_us__": _arrow_result_values(out_finished_at_us),
-            "location_id": _arrow_result_values(out_location_id),
+            "__started_at_us__": _narwhals_safe_value(_arrow_result_values(out_started_at_us)),
+            "__finished_at_us__": _narwhals_safe_value(_arrow_result_values(out_finished_at_us)),
+            "location_id": _narwhals_safe_value(_arrow_result_values(out_location_id)),
             "journey": _list_column_from_offsets(flat_journey, journey_offsets),
         }
         if uid_col:
