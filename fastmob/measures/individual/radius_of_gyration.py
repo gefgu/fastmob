@@ -11,7 +11,6 @@ from fastmob._core import (
     radius_of_gyration_indexed,
     radius_of_gyration_presorted,
 )
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
     _build_indexed_user_ranges_fast,
@@ -21,8 +20,6 @@ from fastmob.utils._common import (
     _result_scalar,
     _to_native,
 )
-
-ROG_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def radius_of_gyration(
@@ -127,9 +124,8 @@ def radius_of_gyration(
         cast_float_coordinates=True,
     )
 
-    ops = ROG_EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw_values, raw_validity = radius_of_gyration_presorted(lats_data, lngs_data, ends)

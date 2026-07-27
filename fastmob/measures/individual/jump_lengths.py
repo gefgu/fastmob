@@ -13,11 +13,10 @@ from fastmob.utils._common import (
     _detect_trajectory_columns,
     _extract_timestamps_ms,
     _grouped_arrow_values,
-    _grouped_numpy_values,
     _to_native,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def jump_lengths(
@@ -127,29 +126,26 @@ def jump_lengths(
             nw.col(lng_col).cast(nw.Float64),
         )
 
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         v_starts, v_ends, flat_values = jump_lengths_presorted(lats_data, lngs_data, ends)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
-        timestamps_data = ops["extract_data"](timestamps)
+        timestamps_data = _DISPATCHER.get_ops(df)["extract_data"](timestamps)
         uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
         v_starts, v_ends, flat_values = jump_lengths_indexed(lats_data, lngs_data, indices, ends)
 
     flat_values = _arrow_flat_result_values(flat_values)
 
     if merge:
+        if _DISPATCHER.get_backend_key(df) == "numpy":
+            return flat_values.to_numpy(zero_copy_only=False)
         return flat_values
 
-    jump_values = (
-        _grouped_arrow_values(v_starts, v_ends, flat_values, value_offsets=True)
-        if hasattr(flat_values, "__arrow_c_array__")
-        else _grouped_numpy_values(v_starts, v_ends, flat_values, value_offsets=True)
-    )
+    jump_values = _grouped_arrow_values(v_starts, v_ends, flat_values, value_offsets=True)
     if uid_col is None:
         return _to_native({"jump_lengths": jump_values}, df)
     return _to_native({uid_col: uid_values, "jump_lengths": jump_values}, df)

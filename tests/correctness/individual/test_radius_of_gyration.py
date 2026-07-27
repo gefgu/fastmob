@@ -656,18 +656,22 @@ def test_radius_of_gyration_indexed_filters_arrow_nulls():
     np.testing.assert_allclose(np.asarray(values), [0.0], rtol=0.0, atol=1e-12)
 
 
-def test_radius_of_gyration_presorted_rejects_mixed_backends():
-    """Shared adapter rejects mixed NumPy/Arrow coordinate arrays."""
+def test_radius_of_gyration_presorted_accepts_mixed_coordinate_inputs():
+    """The Arrow-only binding coerces NumPy coordinate arrays alongside Arrow ones."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from fastmob._core import radius_of_gyration_presorted
 
     lats = np.array([0.0, 1.0], dtype=np.float64)
-    lngs = pa.array([0.0, 1.0], type=pa.float64())
+    lngs_arrow = pa.array([0.0, 1.0], type=pa.float64())
+    lngs_numpy = np.array([0.0, 1.0], dtype=np.float64)
     ends = np.array([2], dtype=np.uintp)
 
-    with pytest.raises(TypeError, match="NumPy arrays or both be Arrow arrays"):
-        radius_of_gyration_presorted(lats, lngs, ends)
+    mixed_values, mixed_validity = radius_of_gyration_presorted(lats, lngs_arrow, ends)
+    numpy_values, numpy_validity = radius_of_gyration_presorted(lats, lngs_numpy, ends)
+
+    np.testing.assert_allclose(np.asarray(mixed_values), np.asarray(numpy_values))
+    np.testing.assert_array_equal(np.asarray(mixed_validity), np.asarray(numpy_validity))
 
 
 @pytest.mark.skmob
