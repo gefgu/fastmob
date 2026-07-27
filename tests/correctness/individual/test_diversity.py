@@ -3,11 +3,6 @@
 import pandas as pd
 import pytest
 
-pydivsufsort = pytest.importorskip(
-    "pydivsufsort",
-    reason="pydivsufsort not installed; install with: pip install fastmob[diversity]",
-)
-
 from fastmob.measures.individual.diversity import diversity
 
 

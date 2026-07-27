@@ -1,4 +1,5 @@
 pub mod activity;
+pub mod diversity;
 pub mod entropy;
 pub mod home_location;
 pub mod individual_mobility_network;

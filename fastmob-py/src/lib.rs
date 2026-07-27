@@ -19,7 +19,7 @@ use measures::collective::{co_presence_network, square_displacement, visitation_
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
 use measures::individual::{
-    activity, entropy, home_location, indexed_user_indices, individual_mobility_network,
+    activity, diversity, entropy, home_location, indexed_user_indices, individual_mobility_network,
     k_radius_of_gyration, location_frequency, max_distance_from_point, maximum_distance, motifs,
     radius_of_gyration, recency_rank, spatial_counts, time_ordering, total_distance,
     uncorrelated_entropy, waiting_times,
@@ -309,6 +309,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
     m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed, m)?)?;
+    m.add_function(wrap_pyfunction!(diversity::diversity_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_py::detect_stay_locations_batch,
         m

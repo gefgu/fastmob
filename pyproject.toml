@@ -47,7 +47,6 @@ Issues = "https://github.com/gefgu/fastmob/issues"
 [project.optional-dependencies]
 ai = ["scikit-learn>=1.3.2"]
 fitting = ["scipy"]
-diversity = ["pydivsufsort"]
 generation = ["scipy", "powerlaw", "statsmodels", "python-igraph", "tqdm"]
 data = ["geopandas", "shapely", "pyproj", "requests"]
 tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
@@ -75,7 +74,6 @@ dev = [
     "powerlaw",
     "statsmodels",
     "python-igraph",
-    "pydivsufsort",
     "geopandas",
     "shapely",
     "pyproj",

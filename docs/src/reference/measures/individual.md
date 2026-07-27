@@ -30,7 +30,6 @@
 <!-- | [`intermittance_and_degree_of_return`](#fastmob.measures.individual.intermittance_and_degree_of_return) | Compute intermittancy and degree of return per user using vectorized operations. | -->
 <!-- | [`exploration_profiling`](#fastmob.measures.individual.exploration_profiling) | Compute intermittency and degree of return, then cluster users into mobility profiles. | -->
 <!-- | [`compute_profiles`](#fastmob.measures.individual.compute_profiles) | Compute per-user mobility-profile metrics and assign Routiner/Regular/Scouter labels. | -->
-<!-- | [`fast_diversity`](#fastmob.measures.individual.fast_diversity) | Compute the diversity of a sequence using suffix arrays. | -->
 <!-- | [`mean_area_volume`](#fastmob.measures.individual.mean_area_volume) | Mean user volume per area and 10-minute time bin, averaged across days of the week. | -->
 
 ::: fastmob.measures.individual.distance_straight_line
@@ -201,13 +200,6 @@
 ---
 
 ::: fastmob.measures.individual.regularity
-    options:
-      show_source: false
-      show_root_toc_entry: false
-      show_root_heading: false
----
-
-::: fastmob.measures.individual.fast_diversity
     options:
       show_source: false
       show_root_toc_entry: false

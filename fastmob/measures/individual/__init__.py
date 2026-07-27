@@ -2,7 +2,6 @@ from .activity import activity_transition_matrix, daily_activity_distribution, v
 from .distance_straight_line import distance_straight_line
 from .diversity import diversity
 from .entropy import trajectory_entropy, trajectory_predictability
-from .fast_diversity import fast_diversity
 from .frequency_rank import frequency_rank
 from .home_location import home_location
 from .individual_mobility_network import individual_mobility_network
@@ -34,7 +33,6 @@ __all__ = [
     "distance_straight_line",
     "diversity",
     "exploration_profiling",
-    "fast_diversity",
     "frequency_rank",
     "home_location",
     "individual_mobility_network",
