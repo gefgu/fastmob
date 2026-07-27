@@ -15,7 +15,6 @@ from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
-    _is_polars_backed,
     _pick_existing_column,
 )
 
@@ -93,23 +92,11 @@ def _location_coordinates(
 
 
 def _route_visitation_distances(df: nw.DataFrame) -> list[float]:
-    use_arrow = _is_polars_backed(df)
-    home_lats = df.get_column("home_lat")
-    home_lngs = df.get_column("home_lng")
-    loc_lats = df.get_column("loc_lat")
-    loc_lngs = df.get_column("loc_lng")
-    if use_arrow:
-        return visitation_distances(
-            home_lats.to_arrow(),
-            home_lngs.to_arrow(),
-            loc_lats.to_arrow(),
-            loc_lngs.to_arrow(),
-        )
     return visitation_distances(
-        home_lats.to_numpy(),
-        home_lngs.to_numpy(),
-        loc_lats.to_numpy(),
-        loc_lngs.to_numpy(),
+        df.get_column("home_lat").to_arrow(),
+        df.get_column("home_lng").to_arrow(),
+        df.get_column("loc_lat").to_arrow(),
+        df.get_column("loc_lng").to_arrow(),
     )
 
 
