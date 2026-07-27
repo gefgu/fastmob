@@ -1,0 +1,298 @@
+{
+  "metadata": {
+    "backend": "both",
+    "cpu_cores": 32,
+    "cpu_model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "cpu_vendor": "amd",
+    "dataset_path": "/home/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "distance_sizes": [
+      1000
+    ],
+    "iterations": 3,
+    "library": "fastmob",
+    "platform": "Linux-7.0.0-27-generic-x86_64-with-glibc2.43",
+    "python_version": "3.12.13 (main, Jun 11 2026, 04:03:26) [Clang 22.1.3 ]",
+    "sizes": [
+      4000000
+    ],
+    "sleep_seconds": 0.1,
+    "suite": "trajectory",
+    "timestamp_utc": "2026-07-27T18:28:22.005175+00:00"
+  },
+  "results": [
+    {
+      "backend": "pandas",
+      "interpolate": {
+        "cubic_spline": {
+          "average_seconds": 0.2749709893250838,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.2745135009754449,
+          "status": "ok",
+          "times_seconds": [
+            0.2745135009754449,
+            0.2750401369994506,
+            0.27535933000035584
+          ]
+        },
+        "kinematic": {
+          "average_seconds": 0.27623763800753903,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.2708812999771908,
+          "status": "ok",
+          "times_seconds": [
+            0.27436250599566847,
+            0.2834691080497578,
+            0.2708812999771908
+          ]
+        },
+        "linear": {
+          "average_seconds": 0.2807226333146294,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.27597398997750133,
+          "status": "ok",
+          "times_seconds": [
+            0.2768220929428935,
+            0.27597398997750133,
+            0.28937181702349335
+          ]
+        },
+        "random_walk": {
+          "average_seconds": 0.2665406073598812,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.26408504298888147,
+          "status": "ok",
+          "times_seconds": [
+            0.2662373880157247,
+            0.2692993910750374,
+            0.26408504298888147
+          ]
+        }
+      },
+      "interpolate_at": {
+        "linear": {
+          "average_seconds": 0.07563735796914746,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.07464781601447612,
+          "status": "ok",
+          "times_seconds": [
+            0.07464781601447612,
+            0.07539664895739406,
+            0.07686760893557221
+          ]
+        },
+        "nearest": {
+          "average_seconds": 0.07526703535889585,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.07486111903563142,
+          "status": "ok",
+          "times_seconds": [
+            0.07486111903563142,
+            0.07552273804321885,
+            0.0754172489978373
+          ]
+        }
+      },
+      "label": "4M",
+      "rows": 4000000,
+      "size": 4000000,
+      "smooth": {
+        "kalman_cv": {
+          "average_seconds": 0.12472733028698713,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.12430551694706082,
+          "status": "ok",
+          "times_seconds": [
+            0.12544740398880094,
+            0.12442906992509961,
+            0.12430551694706082
+          ]
+        }
+      },
+      "trajectory_distance": {
+        "1000": {
+          "dtw": {
+            "average_seconds": 0.02299311535898596,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.02279677102342248,
+            "status": "ok",
+            "times_seconds": [
+              0.02279677102342248,
+              0.022820446058176458,
+              0.023362128995358944
+            ]
+          },
+          "frechet": {
+            "average_seconds": 0.022701274991656344,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.022684430005028844,
+            "status": "ok",
+            "times_seconds": [
+              0.022712612990289927,
+              0.022684430005028844,
+              0.02270678197965026
+            ]
+          },
+          "hausdorff": {
+            "average_seconds": 0.00813200771032522,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.00780830008443445,
+            "status": "ok",
+            "times_seconds": [
+              0.008023466099984944,
+              0.00780830008443445,
+              0.00856425694655627
+            ]
+          },
+          "lcss": {
+            "average_seconds": 0.028454561640198033,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.026657624053768814,
+            "status": "ok",
+            "times_seconds": [
+              0.026657624053768814,
+              0.029498479911126196,
+              0.029207580955699086
+            ]
+          }
+        }
+      }
+    },
+    {
+      "backend": "polars",
+      "interpolate": {
+        "cubic_spline": {
+          "average_seconds": 0.28266458531531197,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.2796513669891283,
+          "status": "ok",
+          "times_seconds": [
+            0.28626078192610294,
+            0.2796513669891283,
+            0.2820816070307046
+          ]
+        },
+        "kinematic": {
+          "average_seconds": 0.28555331534395617,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.2841911519644782,
+          "status": "ok",
+          "times_seconds": [
+            0.2843738270457834,
+            0.2841911519644782,
+            0.28809496702160686
+          ]
+        },
+        "linear": {
+          "average_seconds": 0.28322856368807453,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.2784397079376504,
+          "status": "ok",
+          "times_seconds": [
+            0.2911801830632612,
+            0.28006580006331205,
+            0.2784397079376504
+          ]
+        },
+        "random_walk": {
+          "average_seconds": 0.2837089776682357,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.2822272119810805,
+          "status": "ok",
+          "times_seconds": [
+            0.2862118490738794,
+            0.2822272119810805,
+            0.2826878719497472
+          ]
+        }
+      },
+      "interpolate_at": {
+        "linear": {
+          "average_seconds": 0.07796872900022815,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.07667770003899932,
+          "status": "ok",
+          "times_seconds": [
+            0.07853606098797172,
+            0.07667770003899932,
+            0.0786924259737134
+          ]
+        },
+        "nearest": {
+          "average_seconds": 0.0771787833267202,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0766932190163061,
+          "status": "ok",
+          "times_seconds": [
+            0.07750219793524593,
+            0.0766932190163061,
+            0.07734093302860856
+          ]
+        }
+      },
+      "label": "4M",
+      "rows": 4000000,
+      "size": 4000000,
+      "smooth": {
+        "kalman_cv": {
+          "average_seconds": 0.12877316233546784,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.1277377699734643,
+          "status": "ok",
+          "times_seconds": [
+            0.12774434208404273,
+            0.13083737494889647,
+            0.1277377699734643
+          ]
+        }
+      },
+      "trajectory_distance": {
+        "1000": {
+          "dtw": {
+            "average_seconds": 0.020333672330404323,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.019983226899057627,
+            "status": "ok",
+            "times_seconds": [
+              0.020944682997651398,
+              0.019983226899057627,
+              0.02007310709450394
+            ]
+          },
+          "frechet": {
+            "average_seconds": 0.020497782660337787,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.020177704049274325,
+            "status": "ok",
+            "times_seconds": [
+              0.020456110942177474,
+              0.020859532989561558,
+              0.020177704049274325
+            ]
+          },
+          "hausdorff": {
+            "average_seconds": 0.004517436299162607,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.0043315819930285215,
+            "status": "ok",
+            "times_seconds": [
+              0.004696410964243114,
+              0.0043315819930285215,
+              0.004524315940216184
+            ]
+          },
+          "lcss": {
+            "average_seconds": 0.020728748369341094,
+            "iterations_completed": 3,
+            "minimum_seconds": 0.020305505022406578,
+            "status": "ok",
+            "times_seconds": [
+              0.020305505022406578,
+              0.02078041306231171,
+              0.021100327023305
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

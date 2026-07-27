@@ -1,0 +1,151 @@
+{
+  "metadata": {
+    "backend": "pandas",
+    "cpu_cores": 32,
+    "cpu_model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "cpu_vendor": "amd",
+    "dataset_path": "/home/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "input_cache_path": null,
+    "input_cache_status": "not_applicable",
+    "input_order": "raw",
+    "input_type": "pandas.DataFrame",
+    "iterations": 5,
+    "library": "fastmob",
+    "metrics": [
+      "random_location_entropy",
+      "uncorrelated_location_entropy",
+      "mean_square_displacement",
+      "visits_per_location",
+      "homes_per_location",
+      "visits_per_time_unit",
+      "od_matrix",
+      "od_metrics_per_area"
+    ],
+    "movingpandas_catalog_path": "/home/gustavo/fastmob/benchmarks/movingpandas_skmob_api_catalog.json",
+    "platform": "Linux-7.0.0-27-generic-x86_64-with-glibc2.43",
+    "profile": "speed",
+    "python_version": "3.12.13 (main, Jun 11 2026, 04:03:26) [Clang 22.1.3 ]",
+    "retries": 0,
+    "sizes": [
+      4000000
+    ],
+    "skmob_catalog_path": "/home/gustavo/fastmob/benchmarks/skmob_public_api_catalog.json",
+    "sleep_seconds": 0.5,
+    "suite": "collective",
+    "timestamp_utc": "2026-07-27T18:38:52.899350+00:00",
+    "timing_mode": "measure_only"
+  },
+  "results": [
+    {
+      "label": "4M",
+      "metrics": {
+        "homes_per_location": {
+          "average_seconds": 0.11843368858098983,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.09958596294745803,
+          "status": "ok",
+          "times_seconds": [
+            0.1268853689543903,
+            0.14067163108848035,
+            0.12263010093010962,
+            0.1023953789845109,
+            0.09958596294745803
+          ]
+        },
+        "mean_square_displacement": {
+          "average_seconds": 0.09815550621133298,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.08458268200047314,
+          "status": "ok",
+          "times_seconds": [
+            0.09335578395985067,
+            0.08458268200047314,
+            0.08934689103625715,
+            0.1231441720155999,
+            0.10034800204448402
+          ]
+        },
+        "od_matrix": {
+          "average_seconds": 2.5303581069689245,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.5108978119678795,
+          "status": "ok",
+          "times_seconds": [
+            2.5108978119678795,
+            2.557283050962724,
+            2.546603807946667,
+            2.514412982040085,
+            2.5225928819272667
+          ]
+        },
+        "od_metrics_per_area": {
+          "average_seconds": 3.0106573330005633,
+          "iterations_completed": 5,
+          "minimum_seconds": 2.9264586640056223,
+          "status": "ok",
+          "times_seconds": [
+            3.0371444809716195,
+            2.9264586640056223,
+            2.979873028001748,
+            3.016846730024554,
+            3.092963761999272
+          ]
+        },
+        "random_location_entropy": {
+          "average_seconds": 0.5828668019967154,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.5507312200497836,
+          "status": "ok",
+          "times_seconds": [
+            0.6119854160351679,
+            0.590820224955678,
+            0.5507312200497836,
+            0.6060313079506159,
+            0.5547658409923315
+          ]
+        },
+        "uncorrelated_location_entropy": {
+          "average_seconds": 0.7286957927979529,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.7088219040306285,
+          "status": "ok",
+          "times_seconds": [
+            0.7088219040306285,
+            0.7645454329904169,
+            0.7153015839867294,
+            0.7207560769747943,
+            0.7340539660071954
+          ]
+        },
+        "visits_per_location": {
+          "average_seconds": 0.3540727755986154,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.3281393370125443,
+          "status": "ok",
+          "times_seconds": [
+            0.3651022679405287,
+            0.34527756995521486,
+            0.3281393370125443,
+            0.3710223500384018,
+            0.36082235304638743
+          ]
+        },
+        "visits_per_time_unit": {
+          "average_seconds": 0.19065491382498295,
+          "iterations_completed": 5,
+          "minimum_seconds": 0.16059214901179075,
+          "status": "ok",
+          "times_seconds": [
+            0.16059214901179075,
+            0.2029320060973987,
+            0.16351425903849304,
+            0.23972927394788712,
+            0.1865068810293451
+          ]
+        }
+      },
+      "rows": 4000000,
+      "size": 4000000
+    }
+  ]
+}
