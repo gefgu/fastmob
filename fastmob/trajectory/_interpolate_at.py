@@ -18,7 +18,10 @@ from fastmob.utils._common import (
     _to_native,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+# Bare extractor used only for `.get_ops(df)["extract_data"]` on the
+# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 _INTERPOLATE_AT_METHODS = ("linear", "nearest")
 
@@ -112,11 +115,10 @@ def interpolate_at(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    times_data = ops["extract_data"](timestamps_s)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     query_times_s = _query_timestamps_s(at)
 

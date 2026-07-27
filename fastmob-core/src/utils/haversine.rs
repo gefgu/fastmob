@@ -22,7 +22,12 @@ pub fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 /// fallback, road-vs-straight-line comparison), as opposed to
 /// [`adjacent_haversine_distances_km`]'s consecutive-pair-within-one-trajectory
 /// shape.
-pub fn haversine_m_batch(lat1: &[f64], lng1: &[f64], lat2: &[f64], lng2: &[f64]) -> Result<Vec<f64>, String> {
+pub fn haversine_m_batch(
+    lat1: &[f64],
+    lng1: &[f64],
+    lat2: &[f64],
+    lng2: &[f64],
+) -> Result<Vec<f64>, String> {
     if lat1.len() != lng1.len() || lat1.len() != lat2.len() || lat1.len() != lng2.len() {
         return Err("lat1, lng1, lat2, and lng2 must have the same length".to_string());
     }

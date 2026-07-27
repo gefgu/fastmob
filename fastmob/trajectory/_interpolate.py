@@ -21,11 +21,10 @@ from fastmob.utils._common import (
     _to_native,
 )
 
-# Bare extractor used only for `.get_ops(df)["extract_data"]` (Rule 1: never
-# inline backend branching). Which logical Rust function to call is a
-# presorted-vs-indexed choice, not a per-backend one; only column extraction
-# differs by backend.
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+# Bare extractor used only for `.get_ops(df)["extract_data"]` on the
+# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _prepare_linear(**_: Any) -> tuple[str, dict]:
@@ -168,11 +167,10 @@ def interpolate(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    times_data = ops["extract_data"](timestamps_s)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     config = InterpolationConfig(method=method_name, sampling_rate_s=sampling_rate_s, **params)
 

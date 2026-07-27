@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable
 
 import narwhals as nw
-import numpy as np
 
 from fastmob._core import (
     SimplifyConfig,
@@ -17,13 +16,13 @@ from fastmob.utils._common import (
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
+    _narwhals_safe_value,
 )
 
-# Bare extractor used only for `.get_ops(df)["extract_data"]` (Rule 1: never
-# inline backend branching). Which logical Rust function to call is no longer
-# a per-backend dict lookup post dispatch-guideline migration; only column
-# extraction still differs by backend.
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+# Bare extractor used only for `.get_ops(df)["extract_data"]` on the
+# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _prepare_douglas_peucker(epsilon_km: float = 0.001, **_: Any) -> tuple[str, dict]:
@@ -204,12 +203,10 @@ def simplify(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    times_data = ops["extract_data"](timestamps_s)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     config = SimplifyConfig(method=method_name, **params)
 
@@ -225,12 +222,8 @@ def simplify(
         )
         raw_mask = simplify_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    keep_mask = _arrow_result_values(raw_mask)
-
-    if hasattr(keep_mask, "__arrow_c_array__"):
-        result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
-    else:
-        result = df.to_native()[np.asarray(keep_mask, dtype=bool)]
+    keep_mask = _narwhals_safe_value(_arrow_result_values(raw_mask))
+    result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
 
     return result
 
