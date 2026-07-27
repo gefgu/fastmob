@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::trajectory::interpolate::{
-    InterpolationConfig as CoreInterpolationConfig, InterpolationMethod,
     interpolate_trajectory_indexed_impl, interpolate_trajectory_presorted_impl,
+    InterpolationConfig as CoreInterpolationConfig, InterpolationMethod,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::{PyTypeError, PyValueError};

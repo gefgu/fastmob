@@ -1,6 +1,6 @@
 use fastmob_core::models::next_location::{
-    MarkovLocationModel, NextLocationConfig as CoreNextLocationConfig, markov_fit_indexed,
-    markov_predict_batch,
+    markov_fit_indexed, markov_predict_batch, MarkovLocationModel,
+    NextLocationConfig as CoreNextLocationConfig,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;

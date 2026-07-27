@@ -2,7 +2,7 @@ use fastmob_core::measures::individual::uncorrelated_entropy::uncorrelated_entro
 use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 
-use crate::adapters::trajectory::{PyF64Result, run_indexed_coordinate_f64};
+use crate::adapters::trajectory::{run_indexed_coordinate_f64, PyF64Result};
 
 #[pyfunction]
 pub fn uncorrelated_entropy_indexed<'py>(

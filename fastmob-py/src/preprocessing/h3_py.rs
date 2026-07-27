@@ -1,15 +1,20 @@
-use fastmob_core::preprocessing::h3::{INVALID_CELL, batch_latlng_to_cells};
+use fastmob_core::preprocessing::h3::{batch_latlng_to_cells, INVALID_CELL};
 use h3o::Resolution;
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array, u64_results_into_arrow_nullable};
+use crate::utils::{
+    arrow_valid_rows, arrow_values, as_nullable_f64_array, u64_results_into_arrow_nullable,
+};
 
 fn resolve_resolution(resolution: u8) -> PyResult<Resolution> {
-    Resolution::try_from(resolution)
-        .map_err(|_| PyValueError::new_err(format!("H3 resolution must be between 0 and 15, got {resolution}")))
+    Resolution::try_from(resolution).map_err(|_| {
+        PyValueError::new_err(format!(
+            "H3 resolution must be between 0 and 15, got {resolution}"
+        ))
+    })
 }
 
 #[pyfunction]

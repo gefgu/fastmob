@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::preprocessing::simplify::{
-    SimplifyConfig as CoreSimplifyConfig, SimplifyMethod, simplify_trajectory_impl,
-    simplify_trajectory_indexed_impl,
+    simplify_trajectory_impl, simplify_trajectory_indexed_impl,
+    SimplifyConfig as CoreSimplifyConfig, SimplifyMethod,
 };
 use numpy::{IntoPyArray, PyReadonlyArray1};
 use pyo3::exceptions::{PyTypeError, PyValueError};

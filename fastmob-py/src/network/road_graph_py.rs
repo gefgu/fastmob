@@ -1,6 +1,5 @@
 use fastmob_core::network::road_graph::{
-    RoadGraph, batch_road_distances, batch_road_routes, batch_route_edge_flows,
-    subsample_waypoints,
+    batch_road_distances, batch_road_routes, batch_route_edge_flows, subsample_waypoints, RoadGraph,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
@@ -87,9 +86,8 @@ impl RoadNetworkHandle {
     )> {
         let from_slice = from_nodes.as_slice()?;
         let to_slice = to_nodes.as_slice()?;
-        let (lats, lngs, cum, connected, starts, ends) = py.detach(|| {
-            batch_road_routes(&self.graph, from_slice, to_slice, max_waypoints)
-        });
+        let (lats, lngs, cum, connected, starts, ends) =
+            py.detach(|| batch_road_routes(&self.graph, from_slice, to_slice, max_waypoints));
         let conn_u8: Vec<u8> = connected.into_iter().map(|b| b as u8).collect();
         let starts_u64: Vec<u64> = starts.into_iter().map(|s| s as u64).collect();
         let ends_u64: Vec<u64> = ends.into_iter().map(|e| e as u64).collect();
@@ -123,9 +121,8 @@ impl RoadNetworkHandle {
         let from_slice = from_nodes.as_slice()?;
         let to_slice = to_nodes.as_slice()?;
         let flow_slice = flows.as_slice()?;
-        let (edge_from, edge_to, flow, dropped_flow) = py.detach(|| {
-            batch_route_edge_flows(&self.graph, from_slice, to_slice, flow_slice)
-        });
+        let (edge_from, edge_to, flow, dropped_flow) =
+            py.detach(|| batch_route_edge_flows(&self.graph, from_slice, to_slice, flow_slice));
         let edge_from_u64: Vec<u64> = edge_from.into_iter().map(|n| n as u64).collect();
         let edge_to_u64: Vec<u64> = edge_to.into_iter().map(|n| n as u64).collect();
         Ok((

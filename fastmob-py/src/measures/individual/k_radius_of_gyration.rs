@@ -7,7 +7,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use crate::adapters::trajectory::{
-    PyF64Result, run_indexed_timed_coordinate_f64, run_presorted_timed_coordinate_f64,
+    run_indexed_timed_coordinate_f64, run_presorted_timed_coordinate_f64, PyF64Result,
 };
 
 #[pyfunction]

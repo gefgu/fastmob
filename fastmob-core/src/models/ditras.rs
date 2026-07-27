@@ -3,7 +3,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 use std::sync::Arc;
 
-use crate::models::od::{CachedGravityOdRows, validate_equal_lengths};
+use crate::models::od::{validate_equal_lengths, CachedGravityOdRows};
 use crate::models::shared::{cdf_choice, derive_agent_seed, weighted_choice_excluding};
 
 type DitrasResult = Result<(Vec<i64>, Vec<f64>, Vec<f64>, Vec<i64>), String>;
@@ -103,7 +103,11 @@ fn return_away(
         return None;
     }
     let loc = weighted_choice_excluding(rng, visited_locs, visit_counts, total_visits, home);
-    if loc == home { None } else { Some(loc) }
+    if loc == home {
+        None
+    } else {
+        Some(loc)
+    }
 }
 
 /// Uniform choice from any unvisited location — last resort before staying put.
