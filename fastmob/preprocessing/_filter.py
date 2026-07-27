@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable
 
 import narwhals as nw
-import numpy as np
 
 from fastmob._core import (
     FilterConfig,
@@ -20,9 +19,10 @@ from fastmob.utils._common import (
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
+    _narwhals_safe_value,
 )
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _filter_speed(
@@ -49,8 +49,6 @@ def _filter_speed(
     """
     df = nw.from_native(traj, eager_only=True)
 
-    ops = _EXTRACTOR.get_ops(df)
-
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
@@ -60,10 +58,13 @@ def _filter_speed(
     )
 
     timestamp_s = _extract_timestamps_s(df, datetime_col)
-    # 2. Extract arrays dynamically using the backend's method
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
-    times_data = ops["extract_data"](timestamp_s)
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
+    # Also feeds _build_time_ordered_user_ranges below, so its extraction must
+    # keep matching whatever backend that helper's own uid-code extraction
+    # picks internally (see waiting_times.py/mean_square_displacement.py for
+    # why this one can't be forced to Arrow independently).
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamp_s)
 
     config = FilterConfig(
         max_speed_kmh=max_speed_kmh,
@@ -86,12 +87,8 @@ def _filter_speed(
         )
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    keep_mask = _arrow_result_values(raw_mask)
-
-    if hasattr(keep_mask, "__arrow_c_array__"):
-        result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
-    else:
-        result = df.to_native()[np.asarray(keep_mask, dtype=bool)]
+    keep_mask = _narwhals_safe_value(_arrow_result_values(raw_mask))
+    result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
 
     return result
 
@@ -275,12 +272,10 @@ def filter(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    ops = _EXTRACTOR.get_ops(df)
-
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    times_data = ops["extract_data"](timestamps_s)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     config = OutlierConfig(method=method_name, **params)
 
@@ -296,12 +291,8 @@ def filter(
         )
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    keep_mask = _arrow_result_values(raw_mask)
-
-    if hasattr(keep_mask, "__arrow_c_array__"):
-        result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
-    else:
-        result = df.to_native()[np.asarray(keep_mask, dtype=bool)]
+    keep_mask = _narwhals_safe_value(_arrow_result_values(raw_mask))
+    result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
 
     return result
 

@@ -42,11 +42,12 @@ def _assign_segment_column(df: nw.DataFrame, segment_ids: Any) -> Any:
     return df.with_columns(nw.new_series("segment_id", segment_ids, backend=df.implementation)).to_native()
 
 
-# Bare extractor used only for `.get_ops(df)["extract_data"]` (Rule 1: never
-# inline backend branching). Which logical Rust function to call is no longer
-# a per-backend dict lookup post dispatch-guideline migration; only column
-# extraction still differs by backend.
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+# Bare extractor kept only for the timestamps_data extraction below, which
+# also feeds _build_time_ordered_user_ranges and so must keep matching
+# whatever backend that helper's own uid-code extraction picks internally
+# (see waiting_times.py/mean_square_displacement.py for why that pairing
+# can't be forced to Arrow independently of the index-metadata builder).
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _prepare_angle_change(min_angle: float = 45.0, min_speed_kmh: float = 0.0, **_: Any) -> tuple[str, dict]:
@@ -316,12 +317,10 @@ def segment(
 
     bucket_ids = _build_bucket_ids(df, datetime_col, params)
 
-    ops = _EXTRACTOR.get_ops(df)
-
-    lats_data = ops["extract_data"](df.get_column(lat_col))
-    lngs_data = ops["extract_data"](df.get_column(lng_col))
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    times_data = ops["extract_data"](timestamps_s)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     config = SegmentConfig(method=method_name, **params)
 
@@ -337,11 +336,7 @@ def segment(
         )
         raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
 
-    if hasattr(raw_ids, "__arrow_c_array__"):
-        segment_ids = np.asarray(_arrow_result_values(raw_ids), dtype=np.uint32)
-    else:
-        segment_ids = raw_ids
-
+    segment_ids = np.asarray(_arrow_result_values(raw_ids), dtype=np.uint32)
     result = _assign_segment_column(df, segment_ids)
 
     return result

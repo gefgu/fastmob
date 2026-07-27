@@ -4,15 +4,13 @@ use fastmob_core::preprocessing::segment::{
     SegmentConfig as CoreSegmentConfig, SegmentMethod, segment_trajectory_impl,
     segment_trajectory_indexed_impl,
 };
-use numpy::{IntoPyArray, PyReadonlyArray1};
-use pyo3::exceptions::{PyTypeError, PyValueError};
+use numpy::PyReadonlyArray1;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::utils::{
-    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, u32_results_into_arrow,
-    validate_indexed_ends,
-};
+use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow;
+use crate::utils::{arrow_values, as_f64_array, u32_results_into_arrow};
 
 #[pyclass(name = "SegmentConfig", from_py_object)]
 #[derive(Clone, Copy)]
@@ -146,14 +144,6 @@ impl PySegmentConfig {
     }
 }
 
-fn is_arrow_array(obj: &Bound<'_, PyAny>) -> PyResult<bool> {
-    obj.hasattr("__arrow_c_array__")
-}
-
-fn numpy_u32_output(py: Python<'_>, values: Vec<u32>) -> Py<PyAny> {
-    values.into_pyarray(py).into_any().unbind()
-}
-
 fn arrow_u32_output(py: Python<'_>, values: Vec<u32>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, u32_results_into_arrow(values))?.into_any())
 }
@@ -162,49 +152,28 @@ fn arrow_u32_output(py: Python<'_>, values: Vec<u32>) -> PyResult<Py<PyAny>> {
 #[pyo3(signature = (latitudes, longitudes, timestamps_s, ranges, config, bucket_ids=None))]
 pub fn segment_trajectory_sorted<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
-    timestamps_s: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    timestamps_s: ArrowPyArray,
     ranges: Vec<(usize, usize)>,
     config: PySegmentConfig,
     bucket_ids: Option<PyReadonlyArray1<'py, i64>>,
 ) -> PyResult<Py<PyAny>> {
     let bucket_slice = bucket_ids.as_ref().map(|b| b.as_slice()).transpose()?;
-
-    if let (Ok(latitudes), Ok(longitudes), Ok(timestamps_s)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-        timestamps_s.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let lats = latitudes.as_slice()?;
-        let lngs = longitudes.as_slice()?;
-        let times = timestamps_s.as_slice()?;
-        let segment_ids = py.detach(|| {
-            segment_trajectory_impl(lats, lngs, times, &ranges, bucket_slice, &config.0)
-        });
-        return Ok(numpy_u32_output(py, segment_ids));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(timestamps_s)? {
-        let latitudes = as_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
-        let longitudes = as_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
-        let timestamps_s = as_f64_array(timestamps_s.extract::<ArrowPyArray>()?, "timestamps_s")?;
-        let segment_ids = py.detach(|| {
-            segment_trajectory_impl(
-                arrow_values(&latitudes),
-                arrow_values(&longitudes),
-                arrow_values(&timestamps_s),
-                &ranges,
-                bucket_slice,
-                &config.0,
-            )
-        });
-        return arrow_u32_output(py, segment_ids);
-    }
-
-    Err(PyTypeError::new_err(
-        "latitudes, longitudes, and timestamps_s must all be NumPy arrays or all be Arrow arrays",
-    ))
+    let latitudes = as_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
+    let segment_ids = py.detach(|| {
+        segment_trajectory_impl(
+            arrow_values(&latitudes),
+            arrow_values(&longitudes),
+            arrow_values(&timestamps_s),
+            &ranges,
+            bucket_slice,
+            &config.0,
+        )
+    });
+    arrow_u32_output(py, segment_ids)
 }
 
 #[pyfunction]
@@ -212,66 +181,34 @@ pub fn segment_trajectory_sorted<'py>(
 #[pyo3(signature = (latitudes, longitudes, timestamps_s, sorted_indices, ends, config, bucket_ids=None))]
 pub fn segment_trajectory_indexed<'py>(
     py: Python<'py>,
-    latitudes: &Bound<'py, PyAny>,
-    longitudes: &Bound<'py, PyAny>,
-    timestamps_s: &Bound<'py, PyAny>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    timestamps_s: ArrowPyArray,
     sorted_indices: PyReadonlyArray1<'py, usize>,
     ends: PyReadonlyArray1<'py, usize>,
     config: PySegmentConfig,
     bucket_ids: Option<PyReadonlyArray1<'py, i64>>,
 ) -> PyResult<Py<PyAny>> {
-    let sorted_indices = sorted_indices.as_slice()?;
-    let ends = ends.as_slice()?;
     let bucket_slice = bucket_ids.as_ref().map(|b| b.as_slice()).transpose()?;
-
-    if let (Ok(latitudes), Ok(longitudes), Ok(timestamps_s)) = (
-        latitudes.extract::<PyReadonlyArray1<f64>>(),
-        longitudes.extract::<PyReadonlyArray1<f64>>(),
-        timestamps_s.extract::<PyReadonlyArray1<f64>>(),
-    ) {
-        let lats = latitudes.as_slice()?;
-        let lngs = longitudes.as_slice()?;
-        let times = timestamps_s.as_slice()?;
-        validate_indexed_ends(lats.len(), sorted_indices, ends)?;
-        let segment_ids = py.detach(|| {
+    let segment_ids = run_indexed_timed_coordinate_arrow(
+        py,
+        latitudes,
+        longitudes,
+        timestamps_s,
+        sorted_indices,
+        ends,
+        |view| {
             segment_trajectory_indexed_impl(
-                lats,
-                lngs,
-                times,
-                sorted_indices,
-                ends,
-                None,
+                view.coordinates.latitudes,
+                view.coordinates.longitudes,
+                view.coordinates.times,
+                view.indices,
+                view.ends,
+                view.valid_rows,
                 bucket_slice,
                 &config.0,
             )
-        });
-        return Ok(numpy_u32_output(py, segment_ids));
-    }
-
-    if is_arrow_array(latitudes)? && is_arrow_array(longitudes)? && is_arrow_array(timestamps_s)? {
-        let latitudes = as_nullable_f64_array(latitudes.extract::<ArrowPyArray>()?, "latitudes")?;
-        let longitudes =
-            as_nullable_f64_array(longitudes.extract::<ArrowPyArray>()?, "longitudes")?;
-        let timestamps_s =
-            as_nullable_f64_array(timestamps_s.extract::<ArrowPyArray>()?, "timestamps_s")?;
-        validate_indexed_ends(latitudes.len(), sorted_indices, ends)?;
-        let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &timestamps_s]);
-        let segment_ids = py.detach(|| {
-            segment_trajectory_indexed_impl(
-                arrow_values(&latitudes),
-                arrow_values(&longitudes),
-                arrow_values(&timestamps_s),
-                sorted_indices,
-                ends,
-                valid_rows.as_deref(),
-                bucket_slice,
-                &config.0,
-            )
-        });
-        return arrow_u32_output(py, segment_ids);
-    }
-
-    Err(PyTypeError::new_err(
-        "latitudes, longitudes, and timestamps_s must all be NumPy arrays or all be Arrow arrays",
-    ))
+        },
+    )?;
+    arrow_u32_output(py, segment_ids)
 }
