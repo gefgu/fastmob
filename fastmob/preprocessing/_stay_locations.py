@@ -17,6 +17,7 @@ from fastmob.utils._common import (
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
+    _to_native,
 )
 
 
@@ -26,11 +27,14 @@ def _unwrap_stay(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
         _arrow_result_values(_g),
         _arrow_result_values(_e),
         _arrow_result_values(_lv),
-        np.asarray(_arrow_result_values(_r), dtype=np.uintp),
+        _r,
     )
 
 
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+# Bare extractor used only for `.get_ops(df)["extract_data"]` on the
+# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
+_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def stay_locations(
@@ -134,12 +138,9 @@ def stay_locations(
     )
 
     timestamps_s = _extract_timestamps_s(df, datetime_col)
-    lats = df.get_column(lat_col)
-    lngs = df.get_column(lng_col)
-    ops = _EXTRACTOR.get_ops(df)
-    lats_data = ops["extract_data"](lats)
-    lngs_data = ops["extract_data"](lngs)
-    timestamps_data = ops["extract_data"](timestamps_s)
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
+    timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
@@ -198,8 +199,7 @@ def stay_locations(
         leaving_datetimes = _seconds_to_naive_utc(leaving_times_s)
         out_dict["leaving_datetime"] = leaving_datetimes
 
-    result = nw.from_dict(out_dict, backend=df.implementation)
-    return result.to_native()
+    return _to_native(out_dict, df)
 
 
 stay_locations.__module__ = "fastmob.preprocessing"
