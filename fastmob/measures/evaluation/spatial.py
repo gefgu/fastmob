@@ -19,7 +19,6 @@ from fastmob.utils._common import (
     _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
-    _is_polars_backed,
     _pick_existing_column,
     _use_arrow_kernel_path,
     _with_datetime_column,
@@ -102,7 +101,7 @@ def _trajectory_cpc_inputs(
     lat_col: str | None,
     lng_col: str | None,
     uid_col: str | None,
-) -> tuple[nw.DataFrame, str, str, Any, Any, bool]:
+) -> tuple[Any, Any, Any, Any]:
     df, datetime_col, lat_col, lng_col, uid_col = _trajectory_input(
         traj,
         datetime_col=datetime_col,
@@ -111,16 +110,17 @@ def _trajectory_cpc_inputs(
         uid_col=uid_col,
     )
     timestamps = _extract_timestamps_ms(df, datetime_col)
-    use_arrow = _use_arrow_kernel_path(df)
-    timestamp_data = timestamps.to_arrow() if use_arrow else timestamps.to_numpy()
+    # Timestamps here only build index metadata (user ranges), so their
+    # extraction still matches whatever backend _build_time_ordered_user_ranges'
+    # own uid-code extraction picks -- see the Rust binding it feeds
+    # (time_ordered_user_indices) for why timestamps and uid codes must agree.
+    timestamp_data = timestamps.to_arrow() if _use_arrow_kernel_path(df) else timestamps.to_numpy()
     _, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamp_data)
     return (
-        df,
-        lat_col,
-        lng_col,
+        df.get_column(lat_col).to_arrow(),
+        df.get_column(lng_col).to_arrow(),
         _as_index_array(indices),
         _as_index_array(ends),
-        use_arrow,
     )
 
 
@@ -147,14 +147,14 @@ def trajectory_common_part_of_commuters(
     if not 0 <= int(resolution) <= 15:
         raise ValueError(f"H3 resolution must be between 0 and 15, got {resolution}")
 
-    df_a, lat_a, lng_a, indices_a, ends_a, use_arrow_a = _trajectory_cpc_inputs(
+    lats_a, lngs_a, indices_a, ends_a = _trajectory_cpc_inputs(
         traj_a,
         datetime_col=datetime_col_a,
         lat_col=lat_col_a,
         lng_col=lng_col_a,
         uid_col=uid_col_a,
     )
-    df_b, lat_b, lng_b, indices_b, ends_b, use_arrow_b = _trajectory_cpc_inputs(
+    lats_b, lngs_b, indices_b, ends_b = _trajectory_cpc_inputs(
         traj_b,
         datetime_col=datetime_col_b,
         lat_col=lat_col_b,
@@ -162,15 +162,14 @@ def trajectory_common_part_of_commuters(
         uid_col=uid_col_b,
     )
 
-    use_arrow = use_arrow_a and use_arrow_b
     return float(
         _trajectory_cpc(
-            df_a.get_column(lat_a).to_arrow() if use_arrow else df_a.get_column(lat_a).to_numpy(),
-            df_a.get_column(lng_a).to_arrow() if use_arrow else df_a.get_column(lng_a).to_numpy(),
+            lats_a,
+            lngs_a,
             indices_a,
             ends_a,
-            df_b.get_column(lat_b).to_arrow() if use_arrow else df_b.get_column(lat_b).to_numpy(),
-            df_b.get_column(lng_b).to_arrow() if use_arrow else df_b.get_column(lng_b).to_numpy(),
+            lats_b,
+            lngs_b,
             indices_b,
             ends_b,
             int(resolution),
@@ -207,32 +206,20 @@ def trajectory_common_part_of_commuters_multi(
         if not 0 <= int(resolution) <= 15:
             raise ValueError(f"H3 resolution must be between 0 and 15, got {resolution}")
 
-    df_a, lat_a, lng_a, indices_a, ends_a, use_arrow_a = _trajectory_cpc_inputs(
+    lats_a, lngs_a, indices_a, ends_a = _trajectory_cpc_inputs(
         traj_a,
         datetime_col=datetime_col_a,
         lat_col=lat_col_a,
         lng_col=lng_col_a,
         uid_col=uid_col_a,
     )
-    df_b, lat_b, lng_b, indices_b, ends_b, use_arrow_b = _trajectory_cpc_inputs(
+    lats_b, lngs_b, indices_b, ends_b = _trajectory_cpc_inputs(
         traj_b,
         datetime_col=datetime_col_b,
         lat_col=lat_col_b,
         lng_col=lng_col_b,
         uid_col=uid_col_b,
     )
-
-    use_arrow = use_arrow_a and use_arrow_b
-    if use_arrow:
-        lats_a = df_a.get_column(lat_a).to_arrow()
-        lngs_a = df_a.get_column(lng_a).to_arrow()
-        lats_b = df_b.get_column(lat_b).to_arrow()
-        lngs_b = df_b.get_column(lng_b).to_arrow()
-    else:
-        lats_a = df_a.get_column(lat_a).to_numpy()
-        lngs_a = df_a.get_column(lng_a).to_numpy()
-        lats_b = df_b.get_column(lat_b).to_numpy()
-        lngs_b = df_b.get_column(lng_b).to_numpy()
 
     return [
         (
@@ -341,17 +328,11 @@ def _route_and_call(
     alpha: float,
     cyclical_period: float,
     num_projections: int,
-    *,
-    use_arrow: bool,
 ) -> float:
     if _stvd_emd is None:
         raise ImportError("stvd_emd requires fastmob to be built with the optional stvd-emd feature")
 
-    if use_arrow:
-        args = [x.to_arrow() for x in (*arrays_a, *arrays_b)]
-        return _stvd_emd(*args, alpha, cyclical_period, num_projections)
-
-    args = [x.to_numpy() for x in (*arrays_a, *arrays_b)]
+    args = [x.to_arrow() for x in (*arrays_a, *arrays_b)]
     return _stvd_emd(*args, alpha, cyclical_period, num_projections)
 
 
@@ -472,13 +453,10 @@ def stvd_emd(
     arrays_a = prepare_arrays(nw_a, tc, cc, wc)
     arrays_b = prepare_arrays(nw_b, tc, cc, wc)
 
-    use_arrow = _is_polars_backed(nw_a)
-
     return _route_and_call(
         arrays_a,
         arrays_b,
         alpha,
         cyclical_period,
         num_projections,
-        use_arrow=use_arrow,
     )

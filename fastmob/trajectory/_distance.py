@@ -4,13 +4,8 @@ from typing import Any, Callable
 
 from fastmob._core import DistanceConfig
 from fastmob._core import trajectory_distance as _trajectory_distance_kernel
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.measures.evaluation.spatial import _trajectory_input
 from fastmob.utils._common import _prepare_trajectory
-
-# Bare extractor used only for `.get_backend_key(df)` (Rule 1: never inline
-# backend branching).
-_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def _prepare_dtw(**_: Any) -> tuple[str, dict]:
@@ -182,18 +177,10 @@ def trajectory_distance(
         uid_col=uid_col_b,
     )
 
-    use_arrow = _EXTRACTOR.get_backend_key(df_a) == "arrow" and _EXTRACTOR.get_backend_key(df_b) == "arrow"
-
-    if use_arrow:
-        lats_a = df_a.get_column(lat_a).to_arrow()
-        lngs_a = df_a.get_column(lng_a).to_arrow()
-        lats_b = df_b.get_column(lat_b).to_arrow()
-        lngs_b = df_b.get_column(lng_b).to_arrow()
-    else:
-        lats_a = df_a.get_column(lat_a).to_numpy()
-        lngs_a = df_a.get_column(lng_a).to_numpy()
-        lats_b = df_b.get_column(lat_b).to_numpy()
-        lngs_b = df_b.get_column(lng_b).to_numpy()
+    lats_a = df_a.get_column(lat_a).to_arrow()
+    lngs_a = df_a.get_column(lng_a).to_arrow()
+    lats_b = df_b.get_column(lat_b).to_arrow()
+    lngs_b = df_b.get_column(lng_b).to_arrow()
 
     config = DistanceConfig(method=method_name, **params)
     return float(_trajectory_distance_kernel(lats_a, lngs_a, lats_b, lngs_b, config))
