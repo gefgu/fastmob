@@ -10,8 +10,9 @@ import os
 import queue
 import time
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 
 def size_label(size: int) -> str:
@@ -160,10 +161,7 @@ def run_memory_call(
             with memray.Tracker(tmp_path, native_traces=False):
                 call_benchmark_func(func, make_input(), kwargs)
             reader = memray.FileReader(tmp_path)
-            peak_bytes = sum(
-                r.size
-                for r in reader.get_high_watermark_allocation_records(merge_threads=True)
-            )
+            peak_bytes = sum(r.size for r in reader.get_high_watermark_allocation_records(merge_threads=True))
             peak_mb = peak_bytes / (1024 * 1024)
         finally:
             with contextlib.suppress(FileNotFoundError):
@@ -248,7 +246,7 @@ def _profiled_call_worker(
                 ),
             )
         )
-    except BaseException as exc:
+    except BaseException as exc:  # noqa: BLE001
         result_queue.put(("error", f"{type(exc).__name__}: {exc}"))
 
 

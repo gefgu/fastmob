@@ -105,15 +105,15 @@ fn validate_inputs(
     if latitudes.len() != longitudes.len() {
         return Err("latitudes and longitudes must have the same length".to_string());
     }
-    if let Some(time_keys) = time_keys {
-        if time_keys.len() != latitudes.len() {
-            return Err("time_keys and coordinates must have the same length".to_string());
-        }
+    if let Some(time_keys) = time_keys
+        && time_keys.len() != latitudes.len()
+    {
+        return Err("time_keys and coordinates must have the same length".to_string());
     }
-    if let Some(valid_rows) = valid_rows {
-        if valid_rows.len() != latitudes.len() {
-            return Err("valid_rows and coordinates must have the same length".to_string());
-        }
+    if let Some(valid_rows) = valid_rows
+        && valid_rows.len() != latitudes.len()
+    {
+        return Err("valid_rows and coordinates must have the same length".to_string());
     }
 
     let mut previous = 0usize;

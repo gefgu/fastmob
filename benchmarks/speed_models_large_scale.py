@@ -31,7 +31,8 @@ import numpy as np
 _SUITE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SUITE_DIR))
 
-from benchmarks.models.speed_suite import (  # noqa: E402
+from benchmark_env import get_default_output_dir
+from benchmarks.models.speed_suite import (
     LOCATION_MODEL_BENCHMARKS,
     SkippedBenchmark,
     benchmark_model,
@@ -51,7 +52,6 @@ from benchmarks.models.speed_suite import (  # noqa: E402
     to_timestamp,
     write_json,
 )
-from benchmark_env import get_default_output_dir  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -64,7 +64,7 @@ CUSTOM_STS_EPR_METRIC = "sts_epr_custom"
 
 MODEL_SEED = 2
 MODEL_START_EPR = "2020-01-01 08:00:00"
-MODEL_END_EPR = "2020-01-08 08:00:00"   # 7-day simulation for EPR
+MODEL_END_EPR = "2020-01-08 08:00:00"  # 7-day simulation for EPR
 MODEL_START_SOCIAL = "2020-01-01 08:00:00"
 MODEL_END_SOCIAL = "2020-01-02 08:00:00"  # 24h for social models (diary-driven)
 
@@ -78,18 +78,20 @@ class LargeBenchmarkSpec:
 
 LARGE_SCALE_BENCHMARKS: tuple[LargeBenchmarkSpec, ...] = (
     # EPR family — 7-day window, increasing agent counts
-    LargeBenchmarkSpec("epr_100a",         "epr", {"model": "EPR",        "n_agents": 100,    "relevance_column": "population"}),
-    LargeBenchmarkSpec("epr_1000a",        "epr", {"model": "EPR",        "n_agents": 1000,   "relevance_column": "population"}),
-    LargeBenchmarkSpec("epr_10000a",       "epr", {"model": "EPR",        "n_agents": 10000,  "relevance_column": "population"}),
-    LargeBenchmarkSpec("epr_50000a",       "epr", {"model": "EPR",        "n_agents": 50000,  "relevance_column": "population"}),
-    LargeBenchmarkSpec("epr_100000a",      "epr", {"model": "EPR",        "n_agents": 100000, "relevance_column": "population"}),
-    LargeBenchmarkSpec("density_epr_1000a", "epr", {"model": "DensityEPR", "n_agents": 1000, "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_100a", "epr", {"model": "EPR", "n_agents": 100, "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_1000a", "epr", {"model": "EPR", "n_agents": 1000, "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_10000a", "epr", {"model": "EPR", "n_agents": 10000, "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_50000a", "epr", {"model": "EPR", "n_agents": 50000, "relevance_column": "population"}),
+    LargeBenchmarkSpec("epr_100000a", "epr", {"model": "EPR", "n_agents": 100000, "relevance_column": "population"}),
+    LargeBenchmarkSpec(
+        "density_epr_1000a", "epr", {"model": "DensityEPR", "n_agents": 1000, "relevance_column": "population"}
+    ),
     LargeBenchmarkSpec("spatial_epr_1000a", "epr", {"model": "SpatialEPR", "n_agents": 1000}),
     # Social models — 24h window, smaller agent counts (social graph scales quadratically)
-    LargeBenchmarkSpec("geosim_20a",      "geosim",  {"n_agents": 20}),
-    LargeBenchmarkSpec("geosim_100a",     "geosim",  {"n_agents": 100}),
-    LargeBenchmarkSpec("sts_epr_20a",     "sts_epr", {"n_agents": 20,  "relevance_column": "population"}),
-    LargeBenchmarkSpec("sts_epr_100a",    "sts_epr", {"n_agents": 100, "relevance_column": "population"}),
+    LargeBenchmarkSpec("geosim_20a", "geosim", {"n_agents": 20}),
+    LargeBenchmarkSpec("geosim_100a", "geosim", {"n_agents": 100}),
+    LargeBenchmarkSpec("sts_epr_20a", "sts_epr", {"n_agents": 20, "relevance_column": "population"}),
+    LargeBenchmarkSpec("sts_epr_100a", "sts_epr", {"n_agents": 100, "relevance_column": "population"}),
 )
 
 
@@ -193,18 +195,20 @@ def benchmark_large_model(
     print(f"  {spec.name}")
     try:
         func = build_large_call(spec, library, tessellation, diary_training, size)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    skipped: {exc}")
         from benchmarks.models.speed_suite import skipped_result
+
         return skipped_result(str(exc), profile)
 
     try:
         if profile == "memory":
             return run_memory_call(func, iterations=iterations, sleep_seconds=sleep_seconds)
         return run_timed_call(func, iterations=iterations, sleep_seconds=sleep_seconds)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    error: {exc}")
         from benchmarks.models.speed_suite import error_result
+
         return error_result(str(exc), profile)
 
 
@@ -225,6 +229,7 @@ def benchmark_large_size(
         tessellation, diary = prepare_library_inputs(library, size_tessellation, diary_training)
     except SkippedBenchmark as exc:
         from benchmarks.models.speed_suite import skipped_result
+
         return {
             "size": size,
             "label": size_label(size),
@@ -245,9 +250,7 @@ def benchmark_large_size(
                 size,
                 profile=profile,
                 iterations=(
-                    _FASTMOB_SPEC_ITERATIONS.get(spec.name, iterations)
-                    if library == "fastmob"
-                    else iterations
+                    _FASTMOB_SPEC_ITERATIONS.get(spec.name, iterations) if library == "fastmob" else iterations
                 ),
                 sleep_seconds=sleep_seconds,
             )
@@ -261,17 +264,17 @@ _SKMOB_SKIP_THRESHOLD_S = 1800.0  # 30 minutes
 # Per-spec iteration overrides for fastmob (reference: timings at N=10000).
 # Fast specs (<5 s): 5 iters.  Medium (5–20 s): 3 iters.  Slow (>20 s): 1 iter.
 _FASTMOB_SPEC_ITERATIONS: dict[str, int] = {
-    "geosim_20a":          5,
-    "geosim_100a":         5,
-    "sts_epr_20a":         5,
-    "epr_100a":            5,
-    "density_epr_1000a":   5,
-    "spatial_epr_1000a":   5,
-    "epr_1000a":           5,
-    "sts_epr_100a":        5,
-    "epr_10000a":          3,
-    "epr_50000a":          1,
-    "epr_100000a":         2,
+    "geosim_20a": 5,
+    "geosim_100a": 5,
+    "sts_epr_20a": 5,
+    "epr_100a": 5,
+    "density_epr_1000a": 5,
+    "spatial_epr_1000a": 5,
+    "epr_1000a": 5,
+    "sts_epr_100a": 5,
+    "epr_10000a": 3,
+    "epr_50000a": 1,
+    "epr_100000a": 2,
 }
 
 
@@ -378,7 +381,7 @@ def run_large_suite(args: argparse.Namespace) -> dict[str, Any]:
                 if skipped:
                     print(f"\nSize {size}: skipping for skmob (estimated > 30 min):")
                     for s, est in skipped:
-                        print(f"  {s.name}: ~{est/60:.1f} min estimated")
+                        print(f"  {s.name}: ~{est / 60:.1f} min estimated")
                 benchmarks = tuple(kept)
             else:
                 benchmarks = selected_benchmarks
@@ -420,8 +423,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run large-scale generation model benchmarks.")
     parser.add_argument("--library", choices=["fastmob", "skmob"], required=True)
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
-    parser.add_argument("--mode", choices=["trajectory", "location"], default="trajectory",
-                        help="trajectory: EPR/GeoSim/STS_epr; location: gravity/radiation only")
+    parser.add_argument(
+        "--mode",
+        choices=["trajectory", "location"],
+        default="trajectory",
+        help="trajectory: EPR/GeoSim/STS_epr; location: gravity/radiation only",
+    )
     parser.add_argument("--iterations", type=positive_int, default=3)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument("--sizes", type=positive_int, nargs="+", default=DEFAULT_SIZES)

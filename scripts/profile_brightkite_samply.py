@@ -21,12 +21,11 @@ from scripts.profile_brightkite_common import (
     write_manifest,
 )
 from tests.profiling.brightkite_workloads import (
-    DEFAULT_ROWS,
     DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+    DEFAULT_ROWS,
     JUMP_LENGTHS_ENTRYPOINTS,
     workload_registry,
 )
-
 
 DEFAULT_OUTPUT_DIR = Path(".profiles") / "samply"
 SCOPES = ("function", "full")

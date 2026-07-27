@@ -14,14 +14,14 @@ from .attacks import (
 )
 
 __all__ = [
-    "attacks",
     "Attack",
+    "HomeWorkAttack",
     "LocationAttack",
-    "LocationSequenceAttack",
-    "LocationTimeAttack",
-    "UniqueLocationAttack",
     "LocationFrequencyAttack",
     "LocationProbabilityAttack",
     "LocationProportionAttack",
-    "HomeWorkAttack",
+    "LocationSequenceAttack",
+    "LocationTimeAttack",
+    "UniqueLocationAttack",
+    "attacks",
 ]

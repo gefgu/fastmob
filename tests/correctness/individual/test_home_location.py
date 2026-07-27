@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import narwhals as nw
 import pandas as pd
 import pytest
-import narwhals as nw
-
 
 # Expected home locations for the shared synthetic fixture.
 # All timestamps are in hours 0-4, which fall within the default nighttime
@@ -126,8 +125,8 @@ def test_home_location_polars_known_values(synthetic_tdf_polars):
 @pytest.mark.skmob
 def test_home_location_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
-    from skmob.measures.individual import home_location as skmob_hl
     from fastmob.measures.individual.home_location import home_location as fastmob_hl
+    from skmob.measures.individual import home_location as skmob_hl
 
     skmob_result = skmob_hl(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()
@@ -184,8 +183,7 @@ def test_home_location_matches_cached_reference(comparison_skmob_reference):
         if abs(got_lat - exp_lat) >= 1e-6 or abs(got_lng - exp_lng) >= 1e-6:
             # Allow difference only when the home location is tie-ambiguous.
             assert _nighttime_is_ambiguous(ref.input_df, uid), (
-                f"uid={uid}: lat cached={exp_lat}, fastmob={got_lat} "
-                f"(no tie, so this is a real correctness failure)"
+                f"uid={uid}: lat cached={exp_lat}, fastmob={got_lat} (no tie, so this is a real correctness failure)"
             )
             continue
         assert abs(got_lat - exp_lat) < 1e-6, f"uid={uid}: lat cached={exp_lat}, fastmob={got_lat}"

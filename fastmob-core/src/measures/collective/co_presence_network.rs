@@ -173,7 +173,11 @@ pub fn pairwise_topological_overlap(adjacency: &[Vec<u32>], a: usize, b: usize) 
     let (na, nb) = (&adjacency[a], &adjacency[b]);
     let inter = count_common(na, nb);
     let union = na.len() + nb.len() - inter as usize;
-    if union == 0 { 0.0 } else { inter as f64 / union as f64 }
+    if union == 0 {
+        0.0
+    } else {
+        inter as f64 / union as f64
+    }
 }
 
 pub struct GraphMetrics {
@@ -188,7 +192,11 @@ pub struct GraphMetrics {
 /// complexity as the naive approach for a graph this dense, but with a
 /// vastly better constant factor (no per-check Python/hash overhead) and
 /// rayon parallelism across cores.
-pub fn compute_graph_metrics(node_count: usize, edge_from: &[u32], edge_to: &[u32]) -> GraphMetrics {
+pub fn compute_graph_metrics(
+    node_count: usize,
+    edge_from: &[u32],
+    edge_to: &[u32],
+) -> GraphMetrics {
     let adjacency = build_adjacency(node_count, edge_from, edge_to);
 
     let clustering_coefficient: Vec<f64> = (0..node_count)

@@ -1,3 +1,6 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
+pub mod hierarchy;
 pub mod integration;
 pub mod measures;
 pub mod models;

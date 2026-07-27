@@ -9,8 +9,8 @@ import tarfile
 import urllib.request
 import zipfile
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import pandas as pd
 
@@ -76,7 +76,7 @@ def load_dataset(name, drop_columns=False, auth=None, show_progress=False):
     if type(show_progress) is not bool:
         raise ValueError("The argument `show_progress` must be a boolean.")
 
-    short_name = name[:-3] if name.endswith(".py") else name
+    short_name = name.removesuffix(".py")
     try:
         module = importlib.import_module(f".datasets.{short_name}.{short_name}", package="fastmob.data")
     except ModuleNotFoundError as exc:
@@ -116,7 +116,7 @@ def load_dataset(name, drop_columns=False, auth=None, show_progress=False):
     else:
         try:
             dataset._info = dataset_info
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
     return dataset
@@ -149,9 +149,8 @@ def list_datasets(details=False, data_types=None):
     """
     if type(details) is not bool:
         raise ValueError("The argument `details` must be a boolean.")
-    if data_types is not None and type(data_types) is not str:
-        if not all(isinstance(item, str) for item in data_types):
-            raise ValueError("The argument `data_types` must be a list of strings.")
+    if data_types is not None and type(data_types) is not str and not all(isinstance(item, str) for item in data_types):
+        raise ValueError("The argument `data_types` must be a list of strings.")
 
     names = sorted(
         path.name
@@ -262,7 +261,7 @@ def _download_url(url: str, destination: Path, auth=()):
     if auth:
         import base64
 
-        token = base64.b64encode(f"{auth[0]}:{auth[1]}".encode("utf-8")).decode("ascii")
+        token = base64.b64encode(f"{auth[0]}:{auth[1]}".encode()).decode("ascii")
         request.add_header("Authorization", f"Basic {token}")
     with urllib.request.urlopen(request) as response, destination.open("wb") as handle:
         shutil.copyfileobj(response, handle)

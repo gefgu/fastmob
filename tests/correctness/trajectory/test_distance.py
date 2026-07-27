@@ -21,7 +21,6 @@ import math
 import numpy as np
 import pandas as pd
 import pytest
-
 from fastmob.trajectory import trajectory_distance
 
 EARTH_RADIUS_KM = 6371.0088  # matches geo::Haversine's default sphere radius (metres / 1000)

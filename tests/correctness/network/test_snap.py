@@ -8,7 +8,7 @@ import pytest
 
 sklearn = pytest.importorskip("sklearn", reason="scikit-learn not installed (fastmob[ai])")
 
-from fastmob.network import snap_locations_to_graph  # noqa: E402
+from fastmob.network import snap_locations_to_graph
 
 _NODES = pd.DataFrame({"node_idx": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lng": [0.0, 0.0, 0.0]})
 

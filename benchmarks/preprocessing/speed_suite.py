@@ -16,15 +16,20 @@ import inspect
 import math
 import platform
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 from benchmarks.sorted_input_cache import DEFAULT_INPUT_CACHE_DIR, load_or_create_sorted_input
 from benchmarks.utils import (
     concrete_backends as iter_concrete_backends,
+)
+from benchmarks.utils import (
     concrete_input_orders as iter_concrete_input_orders,
+)
+from benchmarks.utils import (
     error_result,
     load_catalog,
     merge_payload,
@@ -38,7 +43,6 @@ from benchmarks.utils import (
     write_json,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
 SKMOB_CATALOG_PATH = Path(__file__).resolve().parents[1] / "skmob_public_api_catalog.json"
@@ -46,7 +50,7 @@ SKMOB_CATALOG_PATH = Path(__file__).resolve().parents[1] / "skmob_public_api_cat
 _BENCHMARK_DIR = Path(__file__).resolve().parents[1]
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
-from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
+from benchmark_env import detect_cpu_info, get_default_output_dir
 
 MOVINGPANDAS_CATALOG_PATH = Path(__file__).resolve().parents[1] / "movingpandas_skmob_api_catalog.json"
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
@@ -296,7 +300,7 @@ def patch_numpy_nan_for_skmob() -> None:
     """Restore the NumPy alias still referenced by scikit-mobility 1.3.x."""
     try:
         import numpy as np
-    except Exception:
+    except Exception:  # noqa: BLE001
         return
 
     if not hasattr(np, "NaN"):
@@ -607,7 +611,7 @@ def benchmark_metric(
             iterations=iterations,
             sleep_seconds=sleep_seconds,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    error: {exc}")
         return error_result(str(exc), profile)
 

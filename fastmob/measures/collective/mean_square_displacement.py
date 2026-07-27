@@ -127,9 +127,7 @@ def mean_square_displacement(
     ops = _EXTRACTOR.get_ops(df)
     timestamps = _extract_timestamps_s(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps)
-    _uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps_data
-    )
+    _uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))

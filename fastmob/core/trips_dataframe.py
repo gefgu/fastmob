@@ -7,12 +7,9 @@ a staypoint with ``activity=True``; everything between two activity
 staypoints (including any short "waiting" staypoints along the way) forms
 one trip -- matching trackintel's own `generate_trips` semantics.
 
-Built by merging the (much smaller than raw-GPS-fix-count) per-tripleg/
-per-staypoint tables via Narwhals, then extracting the merged timeline to
-NumPy for the scan itself (Narwhals has no direct "collect to list per
-group" aggregation, and this is not a performance-critical path) --
-`import pandas`/`import polars` stay forbidden inside `fastmob/` per
-CLAUDE.md; NumPy is not restricted by that rule.
+Built by merging the per-tripleg/per-staypoint tables via Narwhals, then
+handing primitive backend-native buffers to the Rust hierarchy kernel for
+the stateful per-user scan.
 """
 
 from __future__ import annotations
@@ -20,11 +17,16 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import numpy as np
+
+from fastmob._core import trips_from_timeline
+from fastmob.core.dispatch import TrajectoryDispatcher
+from fastmob.measures._common import _arrow_result_values, _factorize_uids_uint64
 
 from .base import BaseDataFrame
 
 _REQUIRED_COLUMNS = ["trip_id", "started_at", "finished_at"]
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
+_NULL_I64 = -(2**63)
 
 
 class Trips(BaseDataFrame):
@@ -89,7 +91,7 @@ class Trips(BaseDataFrame):
             nw.col("tripleg_id"),
             nw.col("started_at").cast(nw.Datetime("us")),
             nw.col("finished_at").cast(nw.Datetime("us")),
-            nw.lit("tripleg").alias("__kind__"),
+            nw.lit(1, dtype=nw.UInt8).alias("__kind_code__"),
         )
         sp_ts = sp_nw.select(
             *([nw.col(uid_col)] if uid_col else [nw.lit(0, dtype=nw.Int64).alias(group_key)]),
@@ -97,7 +99,7 @@ class Trips(BaseDataFrame):
             nw.col("activity"),
             nw.col(started_at_col).cast(nw.Datetime("us")).alias("started_at"),
             nw.col(finished_at_col).cast(nw.Datetime("us")).alias("finished_at"),
-            nw.lit("stop").alias("__kind__"),
+            nw.lit(0, dtype=nw.UInt8).alias("__kind_code__"),
         )
         if n_sp == 0:
             return Trips(
@@ -117,94 +119,77 @@ class Trips(BaseDataFrame):
             )
 
         timeline = nw.concat([tl_ts, sp_ts], how="diagonal").sort([group_key, "started_at"])
-        timeline = timeline.with_columns(nw.col("activity").fill_null(value=False))
+        timeline = timeline.with_columns(
+            nw.col("activity").fill_null(value=False).cast(nw.Boolean),
+            nw.col("staypoint_id").fill_null(_NULL_I64).cast(nw.Int64),
+            nw.col("tripleg_id").fill_null(_NULL_I64).cast(nw.Int64),
+            nw.col("started_at").dt.timestamp("us").cast(nw.Int64).alias("__started_at_us__"),
+            nw.col("finished_at").dt.timestamp("us").cast(nw.Int64).alias("__finished_at_us__"),
+        )
+        if uid_col:
+            uid_codes, _num_groups = _factorize_uids_uint64(timeline, group_key, sort=False)
+            timeline = timeline.with_columns(uid_codes)
+            uid_code_col = "__fastmob_uid_codes__"
+            code_to_uid = dict(
+                zip(
+                    timeline.get_column(uid_code_col).to_list(),
+                    timeline.get_column(group_key).to_list(),
+                )
+            )
+        else:
+            uid_code_col = "__fastmob_uid_codes__"
+            timeline = timeline.with_columns(nw.lit(0, dtype=nw.UInt64).alias(uid_code_col))
+            code_to_uid = {}
 
-        n = len(timeline)
-        kind = timeline.get_column("__kind__").to_numpy()
-        uid_values = timeline.get_column(group_key).to_numpy()
-        activity = timeline.get_column("activity").to_numpy().astype(bool)
-        staypoint_id = timeline.get_column("staypoint_id").to_numpy()
-        tripleg_id = timeline.get_column("tripleg_id").to_numpy()
-        started_at = timeline.get_column("started_at").to_numpy()
-        finished_at = timeline.get_column("finished_at").to_numpy()
+        ops = _EXTRACTOR.get_ops(timeline)
+        (
+            out_uid_codes,
+            out_started_at_us,
+            out_finished_at_us,
+            out_origin_staypoint_id,
+            out_destination_staypoint_id,
+            tripleg_offsets,
+            flat_tripleg_ids,
+        ) = trips_from_timeline(
+            ops["extract_data"](timeline.get_column(uid_code_col)),
+            ops["extract_data"](timeline.get_column("__kind_code__")),
+            ops["extract_data"](timeline.get_column("activity")),
+            ops["extract_data"](timeline.get_column("staypoint_id")),
+            ops["extract_data"](timeline.get_column("tripleg_id")),
+            ops["extract_data"](timeline.get_column("__started_at_us__")),
+            ops["extract_data"](timeline.get_column("__finished_at_us__")),
+        )
 
-        is_activity_stop = (kind == "stop") & activity
+        uid_codes_list = _values_to_list(_arrow_result_values(out_uid_codes))
+        origin_ids = _null_sentinel_to_none(_values_to_list(_arrow_result_values(out_origin_staypoint_id)))
+        destination_ids = _null_sentinel_to_none(_values_to_list(_arrow_result_values(out_destination_staypoint_id)))
+        tripleg_ids = _list_column_from_offsets(flat_tripleg_ids, tripleg_offsets)
 
-        first_of_user = np.empty(n, dtype=bool)
-        first_of_user[0] = True
-        first_of_user[1:] = uid_values[1:] != uid_values[:-1]
-
-        # Forward/backward-fill the most recent/next activity staypoint id
-        # across every row (including tripleg rows), reset at each user
-        # boundary -- pure NumPy since Narwhals has no cross-backend
-        # "extract nullable column to array, ffill/bfill" primitive that's
-        # simpler than just doing the scan directly here.
-        origin_staypoint_id = np.full(n, np.nan)
-        destination_staypoint_id = np.full(n, np.nan)
-        last_seen = np.nan
-        for i in range(n):
-            if first_of_user[i]:
-                last_seen = np.nan
-            if is_activity_stop[i]:
-                last_seen = staypoint_id[i]
-            origin_staypoint_id[i] = last_seen
-        next_seen = np.nan
-        for i in range(n - 1, -1, -1):
-            if i + 1 < n and first_of_user[i + 1]:
-                next_seen = np.nan
-            if is_activity_stop[i]:
-                next_seen = staypoint_id[i]
-            destination_staypoint_id[i] = next_seen
-
-        boundary = is_activity_stop.astype(np.int64)
-        cum = np.zeros(n, dtype=np.int64)
-        running = 0
-        for i in range(n):
-            if first_of_user[i]:
-                running = 0
-            local_idx = running
-            running += boundary[i]
-            cum[i] = local_idx
-        local_trip_idx = cum
-
-        is_tripleg = kind == "tripleg"
-        trips: dict[tuple[Any, int], dict[str, Any]] = {}
-        order: list[tuple[Any, int]] = []
-        for i in range(n):
-            if not is_tripleg[i]:
-                continue
-            key = (uid_values[i], local_trip_idx[i])
-            if key not in trips:
-                trips[key] = {
-                    "started_at": started_at[i],
-                    "finished_at": finished_at[i],
-                    "origin_staypoint_id": origin_staypoint_id[i],
-                    "destination_staypoint_id": destination_staypoint_id[i],
-                    "tripleg_ids": [],
-                }
-                order.append(key)
-            entry = trips[key]
-            entry["started_at"] = min(entry["started_at"], started_at[i])
-            entry["finished_at"] = max(entry["finished_at"], finished_at[i])
-            entry["tripleg_ids"].append(tripleg_id[i])
-
-        # Build fixed-dtype NumPy arrays rather than plain Python lists of
-        # NumPy scalars -- some backends (e.g. Polars) can't infer a schema
-        # from a list of individual `numpy.datetime64`/`float64` objects.
         out_dict: dict[str, Any] = {
-            "trip_id": np.arange(len(order), dtype=np.int64),
-            "started_at": np.array([trips[k]["started_at"] for k in order], dtype="datetime64[us]"),
-            "finished_at": np.array([trips[k]["finished_at"] for k in order], dtype="datetime64[us]"),
-            "origin_staypoint_id": np.array([trips[k]["origin_staypoint_id"] for k in order], dtype=np.float64),
-            "destination_staypoint_id": np.array(
-                [trips[k]["destination_staypoint_id"] for k in order], dtype=np.float64
-            ),
-            "tripleg_ids": [trips[k]["tripleg_ids"] for k in order],
+            "trip_id": list(range(len(uid_codes_list))),
+            "__started_at_us__": _arrow_result_values(out_started_at_us),
+            "__finished_at_us__": _arrow_result_values(out_finished_at_us),
+            "origin_staypoint_id": origin_ids,
+            "destination_staypoint_id": destination_ids,
+            "tripleg_ids": tripleg_ids,
         }
         if uid_col:
-            out_dict[uid_col] = [k[0] for k in order]
+            out_dict[uid_col] = [code_to_uid[code] for code in uid_codes_list]
 
-        return Trips(nw.from_dict(out_dict, backend=tl_nw.implementation).to_native(), uid_col=uid_col)
+        out = nw.from_dict(out_dict, backend=tl_nw.implementation).with_columns(
+            nw.col("__started_at_us__").cast(nw.Datetime("us")).alias("started_at"),
+            nw.col("__finished_at_us__").cast(nw.Datetime("us")).alias("finished_at"),
+        )
+        out = out.drop("__started_at_us__", "__finished_at_us__")
+        column_order = ([uid_col] if uid_col else []) + [
+            "trip_id",
+            "started_at",
+            "finished_at",
+            "origin_staypoint_id",
+            "destination_staypoint_id",
+            "tripleg_ids",
+        ]
+        return Trips(out.select(column_order).to_native(), uid_col=uid_col)
 
     def generate_tours(self, staypoints_with_location: Any) -> Any:
         """Group consecutive trips into tours (round trips back to the same location).
@@ -214,3 +199,21 @@ class Trips(BaseDataFrame):
         from .tours_dataframe import Tours
 
         return Tours.from_trips(self, staypoints_with_location)
+
+
+def _values_to_list(values: Any) -> list[Any]:
+    if hasattr(values, "to_pylist"):
+        return values.to_pylist()
+    if hasattr(values, "tolist"):
+        return values.tolist()
+    return list(values)
+
+
+def _null_sentinel_to_none(values: list[Any]) -> list[Any]:
+    return [None if value == _NULL_I64 else value for value in values]
+
+
+def _list_column_from_offsets(flat_values: Any, offsets: Any) -> list[list[Any]]:
+    flat_list = _values_to_list(_arrow_result_values(flat_values))
+    offset_list = _values_to_list(offsets)
+    return [flat_list[start:end] for start, end in zip(offset_list, offset_list[1:])]

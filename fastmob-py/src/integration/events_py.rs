@@ -28,8 +28,11 @@ pub fn nearest_event_within_window_numpy<'py>(
     let ref_lat = ref_lat.as_slice()?;
     let ref_lng = ref_lng.as_slice()?;
     let ref_time_sorted = ref_time_sorted.as_slice()?;
-    let ref_original_index: Vec<usize> =
-        ref_original_index.as_slice()?.iter().map(|&x| x as usize).collect();
+    let ref_original_index: Vec<usize> = ref_original_index
+        .as_slice()?
+        .iter()
+        .map(|&x| x as usize)
+        .collect();
 
     let reference = SortedReferenceEvents {
         lat: ref_lat,
@@ -37,6 +40,8 @@ pub fn nearest_event_within_window_numpy<'py>(
         time_sorted: ref_time_sorted,
         original_index: &ref_original_index,
     };
-    let (idx, dist) = py.detach(|| nearest_event_within_window(query_lat, query_lng, query_time, &reference, window_seconds));
+    let (idx, dist) = py.detach(|| {
+        nearest_event_within_window(query_lat, query_lng, query_time, &reference, window_seconds)
+    });
     Ok((idx.into_pyarray(py), dist.into_pyarray(py)))
 }

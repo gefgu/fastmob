@@ -120,9 +120,7 @@ def real_entropy(
     ops = _EXTRACTOR.get_ops(df)
     timestamps = _extract_timestamps_ms(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps)
-    uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps_data
-    )
+    uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
 
     raw = real_entropy_indexed(
         ops["extract_data"](df.get_column(lat_col)),

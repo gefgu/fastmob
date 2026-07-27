@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.individual.profile_classification import compute_profiles
 
 VALID_PROFILES = {"routiners", "regulars", "scouters"}

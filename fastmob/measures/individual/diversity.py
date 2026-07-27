@@ -75,11 +75,9 @@ def diversity(
     location_key_col = "__fastmob_location_key__"
     if location_id_col and location_type_col:
         nw_df = nw_df.with_columns(
-            (
-                nw.col(location_id_col).cast(nw.String)
-                + nw.lit("_")
-                + nw.col(location_type_col).cast(nw.String)
-            ).alias(location_key_col)
+            (nw.col(location_id_col).cast(nw.String) + nw.lit("_") + nw.col(location_type_col).cast(nw.String)).alias(
+                location_key_col
+            )
         )
     elif location_id_col:
         nw_df = nw_df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
@@ -90,7 +88,9 @@ def diversity(
         nw_df = nw_df.sort(user_id_col)
         uid_values, ranges = _build_user_ranges(nw_df, user_id_col)
         tokens = nw_df.get_column(location_key_col).to_list()
-        values = [fast_diversity(tokens[start:end]) if start < end and location_id_col else 0.0 for start, end in ranges]
+        values = [
+            fast_diversity(tokens[start:end]) if start < end and location_id_col else 0.0 for start, end in ranges
+        ]
         return nw.from_dict(
             {user_id_col: uid_values, "diversity": values},
             backend=nw_df.implementation,

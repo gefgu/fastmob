@@ -6,7 +6,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from fastmob.preprocessing import cdr_to_trips_df, cdr_to_visitation_df
 
 

@@ -492,14 +492,18 @@ def test_ditras_exploration_uses_gravity_distance():
     )
     n_agents = 1200
 
-    result = Ditras(_always_away_diary_generator()).generate(
-        start,
-        end,
-        tess,
-        n_agents=n_agents,
-        starting_locations=[0] * n_agents,
-        random_state=11,
-    ).df
+    result = (
+        Ditras(_always_away_diary_generator())
+        .generate(
+            start,
+            end,
+            tess,
+            n_agents=n_agents,
+            starting_locations=[0] * n_agents,
+            random_state=11,
+        )
+        .df
+    )
     away = result[result["datetime"] > start]
 
     near_visits = ((away["lat"] == tess.loc[1, "lat"]) & (away["lng"] == tess.loc[1, "lng"])).sum()
@@ -522,23 +526,31 @@ def test_ditras_custom_gravity_changes_exploration_distribution():
     n_agents = 1200
     mdg = _always_away_diary_generator()
 
-    default = Ditras(mdg).generate(
-        start,
-        end,
-        tess,
-        n_agents=n_agents,
-        starting_locations=[0] * n_agents,
-        random_state=7,
-    ).df
-    custom = Ditras(mdg).generate(
-        start,
-        end,
-        tess,
-        gravity_singly=Gravity(destination_exp=4.0, gravity_type="singly constrained"),
-        n_agents=n_agents,
-        starting_locations=[0] * n_agents,
-        random_state=7,
-    ).df
+    default = (
+        Ditras(mdg)
+        .generate(
+            start,
+            end,
+            tess,
+            n_agents=n_agents,
+            starting_locations=[0] * n_agents,
+            random_state=7,
+        )
+        .df
+    )
+    custom = (
+        Ditras(mdg)
+        .generate(
+            start,
+            end,
+            tess,
+            gravity_singly=Gravity(destination_exp=4.0, gravity_type="singly constrained"),
+            n_agents=n_agents,
+            starting_locations=[0] * n_agents,
+            random_state=7,
+        )
+        .df
+    )
 
     default_away = default[default["datetime"] > start]
     custom_away = custom[custom["datetime"] > start]
@@ -562,7 +574,7 @@ def test_cluster_imports_without_scikit_learn_until_called(monkeypatch):
 def test_gravity_matches_skmob_when_available():
     try:
         from skmob.models import Gravity as SkmobGravity
-    except Exception as exc:  # pragma: no cover - depends on optional skmob environment
+    except Exception as exc:  # pragma: no cover - depends on optional skmob environment  # noqa: BLE001
         pytest.skip(f"skmob is not importable: {exc}")
 
     tess = _tessellation()

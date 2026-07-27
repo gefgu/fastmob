@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -45,7 +44,7 @@ def test_recency_rank_known_values(synthetic_tdf):
     # Three users present.
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
 
-    for uid, loc_ranks in mapping.items():
+    for loc_ranks in mapping.values():
         # Each user visited 5 distinct locations.
         assert len(loc_ranks) == 5
         # Ranks form a contiguous 1..5 set.
@@ -126,7 +125,7 @@ def test_recency_rank_polars_known_values(synthetic_tdf_polars):
     mapping = _to_dict(result)
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
-    for uid, loc_ranks in mapping.items():
+    for loc_ranks in mapping.values():
         assert len(loc_ranks) == 5
         assert set(loc_ranks.values()) == {1, 2, 3, 4, 5}
 
@@ -152,13 +151,13 @@ def test_recency_rank_presorted_matches_default_pandas():
             "lng": [0.0] * 6,
         }
     )
-    sorted_input = raw.assign(__row_order=np.arange(len(raw))).sort_values(
-        ["uid", "datetime", "__row_order"], kind="mergesort"
-    ).drop(columns=["__row_order"])
-
-    assert _to_dict(recency_rank(sorted_input, presorted=True)) == _to_dict(
-        recency_rank(raw)
+    sorted_input = (
+        raw.assign(__row_order=np.arange(len(raw)))
+        .sort_values(["uid", "datetime", "__row_order"], kind="mergesort")
+        .drop(columns=["__row_order"])
     )
+
+    assert _to_dict(recency_rank(sorted_input, presorted=True)) == _to_dict(recency_rank(raw))
 
 
 def test_recency_rank_presorted_no_uid():
@@ -173,10 +172,7 @@ def test_recency_rank_presorted_no_uid():
         }
     )
     result = recency_rank(df, presorted=True)
-    rows = {
-        row["lat"]: row["recency_rank"]
-        for row in nw.from_native(result, eager_only=True).rows(named=True)
-    }
+    rows = {row["lat"]: row["recency_rank"] for row in nw.from_native(result, eager_only=True).rows(named=True)}
     assert rows == {3.0: 1, 1.0: 2, 2.0: 3}
 
 
@@ -213,8 +209,8 @@ def test_recency_rank_presorted_core_validation_errors():
 def test_recency_rank_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import recency_rank as skmob_rr
     from fastmob.measures.individual.recency_rank import recency_rank as fastmob_rr
+    from skmob.measures.individual import recency_rank as skmob_rr
 
     skmob_result = skmob_rr(comparison_skmob, show_progress=False)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

@@ -38,21 +38,21 @@ import pandas as pd
 _BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_BENCH_DIR))
 
-from model_statistical_baseline import (  # noqa: E402
+from benchmarks.models.speed_suite import expand_tessellation, load_model_inputs
+from model_statistical_baseline import (
+    _trajectory_to_std,
     compute_trajectory_pair_metrics,
     fit_diary,
     summarize,
-    _trajectory_to_std,
 )
-from speed_models_large_scale import (  # noqa: E402
+from speed_models_large_scale import (
     LARGE_SCALE_BENCHMARKS,
-    LargeBenchmarkSpec,
     MODEL_END_EPR,
     MODEL_END_SOCIAL,
     MODEL_START_EPR,
     MODEL_START_SOCIAL,
+    LargeBenchmarkSpec,
 )
-from benchmarks.models.speed_suite import expand_tessellation, load_model_inputs  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -67,16 +67,16 @@ DEFAULT_SIZE = 10000
 # Per-spec N_RUNS from {100, 75, 50, 25, 10, 5}.
 # Constraint: N_RUNS × seconds_per_run < 1800 s (30 min) for each spec.
 LARGE_SPEC_N_RUNS: dict[str, int] = {
-    "epr_100a":            100,   # 100 × 2.3 s  ≈  3.8 min
-    "epr_1000a":           100,   # 100 × 3.7 s  ≈  6.1 min
-    "epr_10000a":           75,   #  75 × 17 s   ≈ 21.6 min
-    "epr_50000a":           10,   #  10 × 78 s   ≈ 13 min
-    "density_epr_1000a":   100,   # 100 × 3.6 s  ≈  6 min
-    "spatial_epr_1000a":   100,   # 100 × 3.7 s  ≈  6.2 min
-    "geosim_20a":          100,   # trivially fast
-    "geosim_100a":         100,   # trivially fast
-    "sts_epr_20a":         100,   # 100 × 2 s    ≈  3.3 min
-    "sts_epr_100a":        100,   # 100 × 4.9 s  ≈  8.1 min
+    "epr_100a": 100,  # 100 × 2.3 s  ≈  3.8 min
+    "epr_1000a": 100,  # 100 × 3.7 s  ≈  6.1 min
+    "epr_10000a": 75,  #  75 × 17 s   ≈ 21.6 min
+    "epr_50000a": 10,  #  10 × 78 s   ≈ 13 min
+    "density_epr_1000a": 100,  # 100 × 3.6 s  ≈  6 min
+    "spatial_epr_1000a": 100,  # 100 × 3.7 s  ≈  6.2 min
+    "geosim_20a": 100,  # trivially fast
+    "geosim_100a": 100,  # trivially fast
+    "sts_epr_20a": 100,  # 100 × 2 s    ≈  3.3 min
+    "sts_epr_100a": 100,  # 100 × 4.9 s  ≈  8.1 min
 }
 
 
@@ -119,7 +119,7 @@ def generate_one_large_run(
     """
     classes = _import_fastmob_models()
     n_locs = len(tessellation)
-    n_agents = spec.kwargs["n_agents"] if "n_agents" in spec.kwargs else 20
+    n_agents = spec.kwargs.get("n_agents", 20)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -186,7 +186,7 @@ def generate_one_large_run(
         except ImportError as exc:
             print(f"    [skip] {spec.name} seed={seed}: missing dep — {exc}")
             return None
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    [error] {spec.name} seed={seed}: {type(exc).__name__}: {exc}")
             return None
 
@@ -245,7 +245,7 @@ def _load_existing(output_path: Path) -> dict[str, Any]:
     if output_path.exists():
         try:
             return json.loads(output_path.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
     return {}
 
@@ -307,8 +307,7 @@ def main(argv: list[str] | None = None) -> int:
 
     spec_filter = set(args.specs) if args.specs else None
     specs_to_run = [
-        s for s in LARGE_SCALE_BENCHMARKS
-        if (spec_filter is None or s.name in spec_filter) and s.name not in baseline
+        s for s in LARGE_SCALE_BENCHMARKS if (spec_filter is None or s.name in spec_filter) and s.name not in baseline
     ]
 
     if not specs_to_run:

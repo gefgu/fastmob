@@ -52,7 +52,12 @@ pub fn nearest_event_within_window(
             let mut best_idx = -1i64;
             let mut best_dist = f64::INFINITY;
             for j in lo..hi {
-                let d = haversine_km(query_lat[i], query_lng[i], reference.lat[j], reference.lng[j]) * 1000.0;
+                let d = haversine_km(
+                    query_lat[i],
+                    query_lng[i],
+                    reference.lat[j],
+                    reference.lng[j],
+                ) * 1000.0;
                 if d < best_dist {
                     best_dist = d;
                     best_idx = reference.original_index[j] as i64;

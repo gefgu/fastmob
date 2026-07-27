@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+import narwhals as nw
 import pandas as pd
 import pytest
-import narwhals as nw
-from pandas.testing import assert_frame_equal
-
-from fastmob.privacy import attacks
 from fastmob import privacy
-
+from fastmob.privacy import attacks
+from pandas.testing import assert_frame_equal
 
 LAT_LONS = [
     [43.8430139, 10.5079940],
@@ -179,7 +177,9 @@ def test_location_sequence_matching_preserves_order_with_repeats():
 
 @pytest.mark.parametrize("precision,expected", [("day", 1.0), ("month", 1.0 / 3.0)])
 def test_location_time_public_risk(privacy_tdf, precision, expected):
-    result = attacks.LocationTimeAttack(knowledge_length=2, time_precision=precision).assess_risk(privacy_tdf, targets=[1])
+    result = attacks.LocationTimeAttack(knowledge_length=2, time_precision=precision).assess_risk(
+        privacy_tdf, targets=[1]
+    )
 
     assert _risk_map(result) == {1: pytest.approx(expected)}
 

@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-
 DEFAULT_INPUT_CACHE_DIR = Path(__file__).resolve().parent / "cache"
 _ROW_ORDER_COL = "__fastmob_benchmark_row_order__"
 

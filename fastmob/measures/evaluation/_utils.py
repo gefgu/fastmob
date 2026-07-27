@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import narwhals as nw
 
 
 def _is_null(value: Any) -> bool:
+    if value is None:
+        return True
     try:
-        return bool(value is None or value != value)
-    except TypeError:
-        return value is None
+        return bool(math.isnan(value))
+    except (TypeError, ValueError):
+        return False
 
 
 def _series_values(df: nw.DataFrame, column: str) -> list[Any]:

@@ -6,7 +6,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.fitting import daily_location_lognormal_fit
 
 # user1/day1: 2 distinct locations (home, work)
@@ -45,7 +44,7 @@ def test_hand_computed_mu_sigma_pandas():
 def test_hand_computed_mu_sigma_polars():
     pl = pytest.importorskip("polars", reason="Polars not installed")
     df = pl.DataFrame(_ROWS).with_columns(pl.col("timestamp").str.to_datetime())
-    x_points, y_points, mu, sigma = daily_location_lognormal_fit(df)
+    x_points, _y_points, mu, sigma = daily_location_lognormal_fit(df)
     assert mu == pytest.approx(_EXPECTED_MU, abs=1e-12)
     assert sigma == pytest.approx(_EXPECTED_SIGMA, abs=1e-12)
     assert list(x_points) == [1.0, 2.0]
@@ -53,7 +52,7 @@ def test_hand_computed_mu_sigma_polars():
 
 def test_explicit_column_overrides():
     df = _pandas_fixture().rename(columns={"user_id": "uid", "location_id": "loc"})
-    x_points, y_points, mu, sigma = daily_location_lognormal_fit(
+    _x_points, _y_points, mu, _sigma = daily_location_lognormal_fit(
         df, user_id_col="uid", location_id_col="loc", timestamp_col="timestamp"
     )
     assert mu == pytest.approx(_EXPECTED_MU, abs=1e-12)

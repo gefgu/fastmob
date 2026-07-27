@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob.preprocessing import filter as traj_filter
 
 
@@ -296,8 +295,8 @@ def test_filter_matches_cached_movetk_reference(movetk_reference, method, kwargs
 @pytest.mark.skmob
 def test_filter_matches_skmob(comparison_skmob):
     """Results must closely match skmob despite tiny Haversine threshold drift."""
-    from skmob.preprocessing import filtering as skmob_filtering
     import pandas as pd
+    from skmob.preprocessing import filtering as skmob_filtering
 
     skmob_result = skmob_filtering.filter(comparison_skmob, max_speed_kmh=500.0)
     skmob_result_df = pd.DataFrame(skmob_result)

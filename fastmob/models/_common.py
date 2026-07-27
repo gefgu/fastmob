@@ -93,6 +93,6 @@ def trajectory_dataframe(rows: Any, parameters: dict | None = None) -> TrajDataF
                 .select([UID, DATETIME, LATITUDE, LONGITUDE])
                 .to_native()
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             frame = df.sort_values([UID, DATETIME]).reset_index(drop=True)[[UID, DATETIME, LATITUDE, LONGITUDE]]
     return TrajDataFrame(frame, parameters=parameters)

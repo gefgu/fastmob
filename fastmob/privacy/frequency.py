@@ -7,14 +7,14 @@ from typing import Any
 import narwhals as nw
 
 from ._constants import FREQUENCY, INSTANCE, INSTANCE_ELEMENT, LATITUDE, LONGITUDE, PROBABILITY, UID
+from ._rust import FREQUENCY as FREQUENCY_ATTACK
+from ._rust import HOME_WORK, PROBABILITY_ATTACK, PROPORTION, UNIQUE_LOCATION, assess_risk_rust
 from .base import (
     _CANDIDATE_UID,
     _POS,
     _TARGET_UID,
     Attack,
 )
-from ._rust import FREQUENCY as FREQUENCY_ATTACK
-from ._rust import HOME_WORK, PROBABILITY_ATTACK, PROPORTION, UNIQUE_LOCATION, assess_risk_rust
 
 
 class UniqueLocationAttack(Attack):
@@ -689,9 +689,9 @@ class HomeWorkAttack(UniqueLocationAttack):
 
 
 __all__ = [
-    "UniqueLocationAttack",
+    "HomeWorkAttack",
     "LocationFrequencyAttack",
     "LocationProbabilityAttack",
     "LocationProportionAttack",
-    "HomeWorkAttack",
+    "UniqueLocationAttack",
 ]

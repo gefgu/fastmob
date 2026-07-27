@@ -1,4 +1,3 @@
-# ruff: noqa: E402
 """Populate the skmob reference cache.
 
 Run this script inside .venv-skmob via the shell wrapper:
@@ -36,20 +35,20 @@ if not hasattr(np, "NaN"):
 
 import pandas as pd
 import skmob
-from skmob.models.epr import DensityEPR as SkmobDensityEPR
+from skmob.measures import individual as skmob_individual
 from skmob.models.epr import EPR as SkmobEPR
+from skmob.models.epr import DensityEPR as SkmobDensityEPR
 from skmob.models.epr import SpatialEPR as SkmobSpatialEPR
 from skmob.models.geosim import GeoSim as SkmobGeoSim
 from skmob.models.gravity import Gravity as SkmobGravity
 from skmob.models.markov_diary_generator import MarkovDiaryGenerator as SkmobMarkovDiaryGenerator
 from skmob.models.radiation import Radiation as SkmobRadiation
 from skmob.models.sts_epr import STS_epr as SkmobSTSEPR
-from skmob.measures import individual as skmob_individual
-from skmob.privacy import attacks as skmob_privacy_attacks
 from skmob.preprocessing import clustering as skmob_clustering
 from skmob.preprocessing import compression as skmob_compression
 from skmob.preprocessing import detection as skmob_detection
 from skmob.preprocessing import filtering as skmob_filtering
+from skmob.privacy import attacks as skmob_privacy_attacks
 
 from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
 from tests.shared.foursquare import FOURSQUARE_DEFAULT_ROWS, load_foursquare_pandas
@@ -368,7 +367,7 @@ def _run_measure(name: str, fn, tdf: skmob.TrajDataFrame, path: Path, *, reset_i
             df = result.reset_index(drop=True)
         _save(df, path)
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"      SKIP ({type(exc).__name__}: {exc})")
         return False
 
@@ -442,7 +441,7 @@ def _run_all(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
         print(f"    {count_name}.json")
         try:
             _save_count(count_fn(tdf), out_dir / f"{count_name}.json")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"      SKIP ({type(exc).__name__}: {exc})")
 
     print("    stay_locations_count.json + cluster_count.json")
@@ -452,9 +451,9 @@ def _run_all(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
         try:
             clustered = skmob_clustering.cluster(stops, cluster_radius_km=0.1)
             _save_count(len(clustered), out_dir / "cluster_count.json")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"      cluster SKIP ({type(exc).__name__}: {exc})")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"      stay_locations SKIP ({type(exc).__name__}: {exc})")
 
     print(f"    → {out_dir}")
@@ -474,7 +473,7 @@ def _run_privacy_toy(tdf: skmob.TrajDataFrame, out_dir: Path) -> None:
                 warnings.simplefilter("ignore", FutureWarning)
                 result = attack.assess_risk(tdf.copy(), show_progress=False, **assess_kwargs)
             _save(result.reset_index(drop=True), out_dir / f"{name}.parquet")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"      SKIP ({type(exc).__name__}: {exc})")
 
     print(f"    → {out_dir}")
@@ -488,7 +487,7 @@ def _reset_model_rng(seed: int = MODEL_SEED) -> None:
 
         if hasattr(igraph, "set_random_number_generator"):
             igraph.set_random_number_generator(random)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
 
@@ -503,7 +502,7 @@ def _run_model_case(name: str, fn, out_dir: Path) -> None:
             else pd.DataFrame(result)
         )
         _save(df.reset_index(drop=True), out_dir / f"{name}.parquet")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"      SKIP ({type(exc).__name__}: {exc})")
 
 

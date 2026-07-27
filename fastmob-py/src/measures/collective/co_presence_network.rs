@@ -94,7 +94,5 @@ pub fn random_baseline_overlap_threshold_py(
             "edge_from and edge_to must have the same length",
         ));
     }
-    Ok(py.detach(|| {
-        random_baseline_overlap_threshold(node_count, from, to, samples, p_rnd, seed)
-    }))
+    Ok(py.detach(|| random_baseline_overlap_threshold(node_count, from, to, samples, p_rnd, seed)))
 }

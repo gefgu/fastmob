@@ -41,9 +41,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
-from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path  # noqa: E402
-from benchmarks.utils import size_label, write_json  # noqa: E402
+from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir
+from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path
+from benchmarks.utils import size_label, write_json
 
 DEFAULT_N_USERS = [1_000, 4_000, 8_000]
 H3_RESOLUTION = 9

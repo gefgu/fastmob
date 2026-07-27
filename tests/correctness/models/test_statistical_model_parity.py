@@ -23,12 +23,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
-
-from fastmob.measures.evaluation import wasserstein_distance, visits_per_user_wasserstein_distance
+from fastmob.measures.evaluation import visits_per_user_wasserstein_distance, wasserstein_distance
 from fastmob.measures.individual import jump_lengths, radius_of_gyration, waiting_times
-from fastmob.models import DensityEPR, EPR, GeoSim, Gravity, Radiation, SpatialEPR, STS_epr, MarkovDiaryGenerator
-
-from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
+from fastmob.models import EPR, DensityEPR, GeoSim, Gravity, MarkovDiaryGenerator, Radiation, SpatialEPR, STS_epr
+from tests.shared.skmob_cache import _REFERENCE_DIR, SkmobReferenceDataset
 
 _SHARED_DIR = Path(__file__).resolve().parents[3] / "tests" / "shared"
 
@@ -71,7 +69,9 @@ def model_tessellation(models_reference: SkmobReferenceDataset) -> pd.DataFrame:
 def model_diary_training() -> pd.DataFrame:
     path = _REFERENCE_DIR / "models" / "diary_training.parquet"
     if not path.exists():
-        pytest.skip("No cached model diary training frame. Run 'bash scripts/populate_skmob_cache.sh --datasets models'.")
+        pytest.skip(
+            "No cached model diary training frame. Run 'bash scripts/populate_skmob_cache.sh --datasets models'."
+        )
     return pd.read_parquet(path)
 
 
@@ -131,7 +131,7 @@ def _compute_trajectory_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[st
     try:
         val, _ = visits_per_user_wasserstein_distance(df1, df2)
         metrics["visits_per_user_wasserstein"] = float(val)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     try:
@@ -139,7 +139,7 @@ def _compute_trajectory_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[st
         jl2 = _flat_array(jump_lengths(df2, merge=True))
         if jl1.size > 0 and jl2.size > 0:
             metrics["jump_lengths_wasserstein"] = float(wasserstein_distance(jl1, jl2))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     try:
@@ -147,7 +147,7 @@ def _compute_trajectory_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[st
         rog2 = _flat_array(pd.DataFrame(radius_of_gyration(df2))["radius_of_gyration"].to_numpy())
         if rog1.size > 0 and rog2.size > 0:
             metrics["radius_of_gyration_wasserstein"] = float(wasserstein_distance(rog1, rog2))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     try:
@@ -155,7 +155,7 @@ def _compute_trajectory_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[st
         wt2 = _flat_array(waiting_times(df2, merge=True))
         if wt1.size > 0 and wt2.size > 0:
             metrics["waiting_times_wasserstein"] = float(wasserstein_distance(wt1, wt2))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     return metrics

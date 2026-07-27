@@ -60,7 +60,7 @@ pub fn decode_packed_motif_id(motif_id: u64) -> Result<Motif, String> {
 }
 
 pub fn start_node_is_in_cycle(motif: &Motif) -> bool {
-    motif.edges.iter().any(|edge| *edge == (0, 0))
+    motif.edges.contains(&(0, 0))
         || motif
             .edges
             .iter()

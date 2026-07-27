@@ -9,12 +9,14 @@ from ..measures._common import _build_user_ranges, _detect_trajectory_columns, _
 
 _KMS_PER_RADIAN = 6371.0088
 
+
 def _dbscan_cls():
     try:
         from sklearn.cluster import DBSCAN
     except ImportError as exc:
         raise ImportError("scikit-learn is required for cluster: pip install fastmob[ai]") from exc
     return DBSCAN
+
 
 def cluster(
     traj: Any,
@@ -29,7 +31,7 @@ def cluster(
     n_jobs: int | None = None,
 ) -> Any:
     """Cluster stop locations using DBSCAN with Haversine metric."""
-    
+
     df = nw.from_native(traj, eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -62,13 +64,7 @@ def cluster(
     all_labels = np.empty(n_rows, dtype=np.int32)
 
     # 3. REUSE ESTIMATOR to avoid initialization overhead
-    db = DBSCAN(
-        eps=eps_rad,
-        min_samples=min_samples,
-        algorithm="ball_tree",
-        metric="haversine",
-        n_jobs=n_jobs 
-    )
+    db = DBSCAN(eps=eps_rad, min_samples=min_samples, algorithm="ball_tree", metric="haversine", n_jobs=n_jobs)
 
     for start, end in ranges:
         user_coords = all_coords[start:end]
@@ -84,16 +80,16 @@ def cluster(
         if len(valid_labels) > 0:
             # Count occurrences of valid labels
             unique_lbls, counts = np.unique(valid_labels, return_counts=True)
-            
+
             # Sort labels by count descending
             sorted_idx = np.argsort(-counts)
             sorted_lbls = unique_lbls[sorted_idx]
-            
+
             # Create a direct array lookup map
             max_lbl = np.max(raw_labels)
             map_arr = np.full(max_lbl + 1, -1, dtype=np.int32)
             map_arr[sorted_lbls] = np.arange(len(sorted_lbls))
-            
+
             # Apply the mapping only to valid labels
             remapped = raw_labels.copy()
             remapped[mask] = map_arr[valid_labels]
@@ -106,12 +102,13 @@ def cluster(
     # 5. USE DATAFRAME API safely based on your specific Narwhals version
     try:
         cluster_series = nw.new_series(name="cluster", values=all_labels, backend=df.implementation)
-    except Exception:
+    except Exception:  # noqa: BLE001
         # Fallback to from_dict (which your original code successfully used)
         cluster_series = nw.from_dict({"cluster": all_labels}, backend=df.implementation).get_column("cluster")
-        
+
     result = df.with_columns(cluster_series)
-    
+
     return result.to_native()
+
 
 cluster.__module__ = "fastmob.preprocessing"

@@ -6,7 +6,6 @@ import math
 
 import numpy as np
 import pytest
-
 from fastmob.measures.evaluation.evaluation import (
     common_part_of_commuters,
     common_part_of_commuters_distance,
@@ -258,7 +257,7 @@ def test_kl_divergence_known_value():
 def test_pearson_perfect_positive_correlation():
     """Pearson r=1.0 for perfectly correlated arrays."""
     v = [1.0, 2.0, 3.0, 4.0, 5.0]
-    r, p = pearson_correlation(v, v)
+    r, _p = pearson_correlation(v, v)
     assert r == pytest.approx(1.0)
 
 
@@ -292,7 +291,7 @@ def test_pearson_known_value():
 def test_spearman_perfect_monotonic():
     """Spearman rho=1.0 for a perfectly monotonic relationship."""
     v = [1.0, 2.0, 3.0, 4.0, 5.0]
-    rho, p = spearman_correlation(v, v)
+    rho, _p = spearman_correlation(v, v)
     assert rho == pytest.approx(1.0)
 
 

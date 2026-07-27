@@ -6,7 +6,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.collective.uncorrelated_location_entropy import uncorrelated_location_entropy
 
 

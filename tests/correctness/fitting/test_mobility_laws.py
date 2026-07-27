@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helper: rejection sampler for the Gonzalez truncated power-law
 # ---------------------------------------------------------------------------
@@ -77,7 +76,7 @@ def test_fit_truncated_powerlaw_recovers_beta():
 
     samples = _sample_truncated_powerlaw(N, beta=TRUE_BETA, r0=TRUE_R0, kappa=TRUE_KAPPA, seed=42)
 
-    popt, x_data, y_data = fit_values_to_truncated_powerlaw(samples, bins=100)
+    popt, _x_data, _y_data = fit_values_to_truncated_powerlaw(samples, bins=100)
     _c_fit, _r0_fit, beta_fit, _kappa_fit = popt
 
     assert abs(beta_fit - TRUE_BETA) < 0.05, f"Recovered beta={beta_fit:.4f}, expected {TRUE_BETA} ± 0.05"

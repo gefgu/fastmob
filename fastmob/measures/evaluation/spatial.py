@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Sequence
+from collections.abc import Sequence
+from typing import Any, Literal
 
 import narwhals as nw
 import numpy as np
@@ -112,9 +113,7 @@ def _trajectory_cpc_inputs(
     timestamps = _extract_timestamps_ms(df, datetime_col)
     use_arrow = _use_arrow_kernel_path(df)
     timestamp_data = timestamps.to_arrow() if use_arrow else timestamps.to_numpy()
-    _, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamp_data
-    )
+    _, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamp_data)
     return (
         df,
         lat_col,
@@ -240,8 +239,14 @@ def trajectory_common_part_of_commuters_multi(
             int(resolution),
             float(
                 _trajectory_cpc(
-                    lats_a, lngs_a, indices_a, ends_a,
-                    lats_b, lngs_b, indices_b, ends_b,
+                    lats_a,
+                    lngs_a,
+                    indices_a,
+                    ends_a,
+                    lats_b,
+                    lngs_b,
+                    indices_b,
+                    ends_b,
                     int(resolution),
                 )
             ),
@@ -278,7 +283,7 @@ def dwell_time_wasserstein_distance(
     df2: Any,
     duration_col: str | None = None,
     *,
-    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    hue: Literal["day_of_week", "day_period", "purpose"] | None = None,
     day_col1: str | None = None,
     day_col2: str | None = None,
     purpose_col: str | None = None,
@@ -340,9 +345,7 @@ def _route_and_call(
     use_arrow: bool,
 ) -> float:
     if _stvd_emd is None:
-        raise ImportError(
-            "stvd_emd requires fastmob to be built with the optional stvd-emd feature"
-        )
+        raise ImportError("stvd_emd requires fastmob to be built with the optional stvd-emd feature")
 
     if use_arrow:
         args = [x.to_arrow() for x in (*arrays_a, *arrays_b)]

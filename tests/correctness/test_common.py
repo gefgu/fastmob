@@ -5,7 +5,6 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # backend kernel dispatch
 # ---------------------------------------------------------------------------
@@ -90,7 +89,7 @@ class TestDetectTrajectoryColumns:
         from fastmob.measures._common import _detect_trajectory_columns
 
         nw_df = self._make_nw_df(["datetime", "lat", "lng"])
-        dt, lat, lng, uid = _detect_trajectory_columns(nw_df)
+        _dt, _lat, _lng, uid = _detect_trajectory_columns(nw_df)
         assert uid is None
 
     def test_explicit_override_used(self):
@@ -337,9 +336,9 @@ class TestBuildTimeOrderedUserRanges:
         assert np.asarray(ends).tolist() == [2, 4]
 
     def test_fallback_preserves_first_seen_user_order(self, monkeypatch):
+        import fastmob.measures._common as common
         import narwhals as nw
         import numpy as np
-        import fastmob.measures._common as common
         from fastmob.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
 
         df = pd.DataFrame(
@@ -561,16 +560,18 @@ class TestShannonEntropy:
 
     def test_uniform_five_items(self):
         """Five equal-count items -> log2(5) bits."""
-        from fastmob.measures._common import _shannon_entropy
         import math
+
+        from fastmob.measures._common import _shannon_entropy
 
         result = _shannon_entropy([1, 1, 1, 1, 1])
         assert abs(result - math.log2(5)) < 1e-12
 
     def test_skewed_distribution(self):
         """p=0.75, p=0.25 -> hand-computed value."""
-        from fastmob.measures._common import _shannon_entropy
         import math
+
+        from fastmob.measures._common import _shannon_entropy
 
         p1, p2 = 0.75, 0.25
         expected = -(p1 * math.log2(p1) + p2 * math.log2(p2))

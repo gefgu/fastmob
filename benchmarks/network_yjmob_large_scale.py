@@ -41,9 +41,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
-from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path  # noqa: E402
-from benchmarks.utils import write_json  # noqa: E402
+from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir
+from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path
+from benchmarks.utils import write_json
 
 # A dense ~5km x 5km sub-region well inside YJMob100K's bbox
 # (lat 34.67-35.66, lon 136.61-137.61) -- see module docstring.
@@ -88,9 +88,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("Loading YJMob100K and restricting to the fetched bbox ...")
     df = load_yjmob(data_path).rename({"lon": "lng"})
-    df = df.filter(
-        (df["lat"] >= min_lat) & (df["lat"] <= max_lat) & (df["lng"] >= min_lon) & (df["lng"] <= max_lon)
-    )
+    df = df.filter((df["lat"] >= min_lat) & (df["lat"] <= max_lat) & (df["lng"] >= min_lon) & (df["lng"] <= max_lon))
     print(f"  pings inside bbox: {len(df)} ({df['uid'].n_unique()} distinct users)")
 
     traj = df.rename({"timestamp": "datetime"}).to_pandas()

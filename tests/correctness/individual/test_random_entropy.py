@@ -8,7 +8,6 @@ import narwhals as nw
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Known-value assertions.
 #
@@ -119,8 +118,8 @@ def test_random_entropy_polars_known_values(synthetic_tdf_polars):
 def test_random_entropy_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import random_entropy as skmob_re
     from fastmob.measures.individual.random_entropy import random_entropy as fastmob_re
+    from skmob.measures.individual import random_entropy as skmob_re
 
     skmob_result = skmob_re(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

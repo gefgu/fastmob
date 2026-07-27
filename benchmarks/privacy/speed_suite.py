@@ -10,23 +10,22 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import gc
 import importlib
 import json
+import os
 import platform
 import sys
-import gc
-import os
 import tempfile
 import time
 import warnings
-
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 from benchmarks.sorted_input_cache import DEFAULT_INPUT_CACHE_DIR, load_or_create_sorted_input
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_PATH = REPO_ROOT / "scikit-mobility" / "examples" / "privacy_toy.csv"
@@ -34,7 +33,7 @@ DEFAULT_DATA_PATH = REPO_ROOT / "scikit-mobility" / "examples" / "privacy_toy.cs
 _BENCHMARK_DIR = Path(__file__).resolve().parents[1]
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
-from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
+from benchmark_env import detect_cpu_info, get_default_output_dir
 
 
 @dataclass(frozen=True)
@@ -225,10 +224,7 @@ def run_memory_call(
             with memray.Tracker(tmp_path, native_traces=False):
                 call_benchmark_func(func, make_input(), kwargs)
             reader = memray.FileReader(tmp_path)
-            peak_bytes = sum(
-                record.size
-                for record in reader.get_high_watermark_allocation_records(merge_threads=True)
-            )
+            peak_bytes = sum(record.size for record in reader.get_high_watermark_allocation_records(merge_threads=True))
             peak_mb = peak_bytes / (1024 * 1024)
         finally:
             with contextlib.suppress(FileNotFoundError):
@@ -320,7 +316,7 @@ def benchmark_attack(
             iterations=iterations,
             sleep_seconds=sleep_seconds,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    error: {exc}")
         return error_result(str(exc), profile)
 
@@ -441,9 +437,11 @@ def load_privacy_toy_for_order(
         backend=backend,
         data_path=data_path,
         load_raw=(
-            lambda: load_privacy_toy_polars(data_path, repeat_dataset)
-            if backend == "polars"
-            else repeat_privacy_toy_pandas(load_privacy_toy_pandas(data_path), repeat_dataset)
+            lambda: (
+                load_privacy_toy_polars(data_path, repeat_dataset)
+                if backend == "polars"
+                else repeat_privacy_toy_pandas(load_privacy_toy_pandas(data_path), repeat_dataset)
+            )
         ),
         uid_col="uid",
         datetime_col="datetime",

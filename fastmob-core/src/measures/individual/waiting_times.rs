@@ -106,10 +106,10 @@ pub fn waiting_times_indexed_impl(
     valid_rows: Option<&[bool]>,
 ) -> WaitingTimesResult {
     validate_indexed_ends(timestamps_s.len(), indices, ends)?;
-    if let Some(valid_rows) = valid_rows {
-        if valid_rows.len() != timestamps_s.len() {
-            return Err("valid_rows and timestamps must have the same length".to_string());
-        }
+    if let Some(valid_rows) = valid_rows
+        && valid_rows.len() != timestamps_s.len()
+    {
+        return Err("valid_rows and timestamps must have the same length".to_string());
     }
 
     if valid_rows.is_none() && indices.iter().all(|&idx| timestamps_s[idx].is_finite()) {
@@ -174,10 +174,10 @@ pub fn waiting_times_indexed_flat_impl(
     valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     validate_indexed_ends(timestamps_s.len(), indices, ends)?;
-    if let Some(valid_rows) = valid_rows {
-        if valid_rows.len() != timestamps_s.len() {
-            return Err("valid_rows and timestamps must have the same length".to_string());
-        }
+    if let Some(valid_rows) = valid_rows
+        && valid_rows.len() != timestamps_s.len()
+    {
+        return Err("valid_rows and timestamps must have the same length".to_string());
     }
 
     let mut waits = Vec::new();

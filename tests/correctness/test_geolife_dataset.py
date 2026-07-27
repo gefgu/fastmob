@@ -6,7 +6,6 @@ import pandas as pd
 
 from tests.shared.geolife import load_geolife_pandas, read_geolife_plt_text
 
-
 PLT_TEXT = """Geolife trajectory
 WGS 84
 Altitude is in Feet

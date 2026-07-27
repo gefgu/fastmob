@@ -157,9 +157,7 @@ def individual_mobility_network(
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
         timestamps_data = ops["extract_data"](timestamps)
-        uid_values, indices, ends = _build_time_ordered_user_ranges(
-            df, uid_col, datetime_col, timestamps_data
-        )
+        uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
         raw = individual_mobility_network_indexed(lats_data, lngs_data, indices, ends, self_loops)
     lat_origins, lng_origins, lat_dests, lng_dests, n_trips, user_indices = _unpack_network(raw)
 

@@ -15,10 +15,11 @@ import inspect
 import math
 import platform
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 from benchmarks.sorted_input_cache import (
     DEFAULT_INPUT_CACHE_DIR,
@@ -26,7 +27,11 @@ from benchmarks.sorted_input_cache import (
 )
 from benchmarks.utils import (
     concrete_backends as iter_concrete_backends,
+)
+from benchmarks.utils import (
     concrete_input_orders as iter_concrete_input_orders,
+)
+from benchmarks.utils import (
     error_result,
     load_catalog,
     merge_payload,
@@ -41,21 +46,15 @@ from benchmarks.utils import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA_PATH = (
-    REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
-)
-SKMOB_CATALOG_PATH = (
-    Path(__file__).resolve().parents[1] / "skmob_public_api_catalog.json"
-)
+DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_totalCheckins.txt.gz"
+SKMOB_CATALOG_PATH = Path(__file__).resolve().parents[1] / "skmob_public_api_catalog.json"
 
 _BENCHMARK_DIR = Path(__file__).resolve().parents[1]
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
-from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
+from benchmark_env import detect_cpu_info, get_default_output_dir
 
-MOVINGPANDAS_CATALOG_PATH = (
-    Path(__file__).resolve().parents[1] / "movingpandas_skmob_api_catalog.json"
-)
+MOVINGPANDAS_CATALOG_PATH = Path(__file__).resolve().parents[1] / "movingpandas_skmob_api_catalog.json"
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
 BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
 SORTED_TRAJECTORY_REQUIRED_COLUMNS = ["user", "check-in_time", "latitude", "longitude"]
@@ -305,9 +304,7 @@ def import_metric(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
         patch_numpy_nan_for_skmob()
 
     try:
-        module_path = (
-            spec.fastmob_module_path if library == "fastmob" else spec.skmob_module_path
-        )
+        module_path = spec.fastmob_module_path if library == "fastmob" else spec.skmob_module_path
         module = importlib.import_module(module_path)
     except Exception as exc:
         raise SkippedMetric(f"import failed: {exc}") from exc
@@ -322,7 +319,7 @@ def patch_numpy_nan_for_skmob() -> None:
     """Restore the NumPy alias still referenced by scikit-mobility 1.3.x."""
     try:
         import numpy as np
-    except Exception:
+    except Exception:  # noqa: BLE001
         return
 
     if not hasattr(np, "NaN"):
@@ -359,10 +356,7 @@ def metric_kwargs_for_library(
     except (TypeError, ValueError):
         return kwargs
 
-    accepts_extra_kwargs = any(
-        param.kind == inspect.Parameter.VAR_KEYWORD
-        for param in signature.parameters.values()
-    )
+    accepts_extra_kwargs = any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
     if "show_progress" in signature.parameters or accepts_extra_kwargs:
         kwargs.setdefault("show_progress", False)
     return kwargs
@@ -438,9 +432,7 @@ def movingpandas_radius_of_gyration(tc: Any) -> list[float]:
             continue
         center_lat = sum(lat for lat, _ in coords) / len(coords)
         center_lng = sum(lng for _, lng in coords) / len(coords)
-        squared = [
-            (lat - center_lat) ** 2 + (lng - center_lng) ** 2 for lat, lng in coords
-        ]
+        squared = [(lat - center_lat) ** 2 + (lng - center_lng) ** 2 for lat, lng in coords]
         results.append(math.sqrt(sum(squared) / len(squared)))
     return results
 
@@ -462,18 +454,14 @@ def movingpandas_callable_for_spec(
             import movingpandas as mpd
         except Exception as exc:
             raise SkippedMetric(f"movingpandas import failed: {exc}") from exc
-        return lambda tc, **kwargs: mpd.MinDistanceGeneralizer(tc).generalize(
-            **kwargs
-        ), {"tolerance": 200}
+        return lambda tc, **kwargs: mpd.MinDistanceGeneralizer(tc).generalize(**kwargs), {"tolerance": 200}
     if spec.name == "stay_locations":
         try:
             import movingpandas as mpd
         except Exception as exc:
             raise SkippedMetric(f"movingpandas import failed: {exc}") from exc
         return (
-            lambda tc, **kwargs: mpd.TrajectoryStopDetector(tc).get_stop_points(
-                **kwargs
-            ),
+            lambda tc, **kwargs: mpd.TrajectoryStopDetector(tc).get_stop_points(**kwargs),
             {"max_diameter": 200, "min_duration": timedelta(minutes=20)},
         )
     raise SkippedMetric("no benchmarkable MovingPandas analogue")
@@ -501,9 +489,7 @@ def benchmark_metric(
             func, kwargs = movingpandas_callable_for_spec(spec)
         else:
             func = import_metric(spec, library)
-            kwargs = metric_kwargs_for_library(
-                spec, library, func, input_order=input_order
-            )
+            kwargs = metric_kwargs_for_library(spec, library, func, input_order=input_order)
     except SkippedMetric as exc:
         print(f"    skipped: {exc}")
         return skipped_result(str(exc), profile)
@@ -528,7 +514,7 @@ def benchmark_metric(
             iterations=iterations,
             sleep_seconds=sleep_seconds,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    error: {exc}")
         return error_result(str(exc), profile)
 
@@ -587,17 +573,13 @@ def make_visit_input(df: Any) -> Any:
             "location id": "location_id",
         }
     )
-    visits["start_timestamp"] = pd.to_datetime(
-        visits["start_timestamp"], errors="coerce"
-    )
+    visits["start_timestamp"] = pd.to_datetime(visits["start_timestamp"], errors="coerce")
     visits["datetime"] = visits["start_timestamp"]
     visits["end_timestamp"] = visits["start_timestamp"] + pd.Timedelta(minutes=30)
     visits["area"] = visits["location_id"].astype(str)
     purpose_codes = pd.factorize(visits["location_id"], sort=False)[0] % 8
     visits["purpose"] = [f"ACTIVITY_{code}" for code in purpose_codes]
-    visits = visits.sort_values(
-        ["user_id", "start_timestamp"], kind="mergesort"
-    ).reset_index(drop=True)
+    visits = visits.sort_values(["user_id", "start_timestamp"], kind="mergesort").reset_index(drop=True)
     if is_polars:
         import polars as pl
 
@@ -757,9 +739,7 @@ def load_brightkite_for_order(
         backend=backend,
         data_path=data_path,
         load_raw=lambda: (
-            load_brightkite_polars(data_path)
-            if backend == "polars"
-            else load_brightkite_pandas(data_path)
+            load_brightkite_polars(data_path) if backend == "polars" else load_brightkite_pandas(data_path)
         ),
         uid_col="user",
         datetime_col="check-in_time",
@@ -771,29 +751,21 @@ def load_brightkite_for_order(
     )
 
 
-def run_suite(
-    args: argparse.Namespace, *, backend: str | None = None
-) -> dict[str, Any]:
+def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[str, Any]:
     data_path = Path(args.data_path)
     if not data_path.exists():
-        raise SystemExit(
-            f"Dataset not found at {data_path}. Place the Brightkite file there before running."
-        )
+        raise SystemExit(f"Dataset not found at {data_path}. Place the Brightkite file there before running.")
     specs = selected_specs(args)
 
     if args.library == "fastmob":
         selected_backend = backend or args.backend
         if selected_backend == "both":
-            raise ValueError(
-                "run_suite requires a concrete backend when library is fastmob"
-            )
+            raise ValueError("run_suite requires a concrete backend when library is fastmob")
         if selected_backend == "pandas":
             input_type = "pandas.DataFrame"
         else:
             input_type = "polars.DataFrame"
-        print(
-            f"Loading {args.input_order} Brightkite into {selected_backend} from {data_path}..."
-        )
+        print(f"Loading {args.input_order} Brightkite into {selected_backend} from {data_path}...")
         df, input_cache_path, input_cache_status = load_brightkite_for_order(
             data_path=data_path,
             backend=selected_backend,
@@ -899,29 +871,19 @@ def selected_specs(args: argparse.Namespace) -> tuple[BenchmarkSpec, ...]:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Run standalone individual speed benchmarks."
-    )
-    parser.add_argument(
-        "--library", choices=["fastmob", "skmob", "movingpandas"], required=True
-    )
-    parser.add_argument(
-        "--backend", choices=["pandas", "polars", "both"], default="both"
-    )
+    parser = argparse.ArgumentParser(description="Run standalone individual speed benchmarks.")
+    parser.add_argument("--library", choices=["fastmob", "skmob", "movingpandas"], required=True)
+    parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="both")
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument(
         "--timing-mode",
         choices=["prebuilt_tdf", "workflow_tdf"],
         default="prebuilt_tdf",
     )
-    parser.add_argument(
-        "--input-order", choices=["raw", "sorted", "both"], default="raw"
-    )
+    parser.add_argument("--input-order", choices=["raw", "sorted", "both"], default="raw")
     parser.add_argument("--input-cache-dir", type=Path, default=DEFAULT_INPUT_CACHE_DIR)
     parser.add_argument("--iterations", type=positive_int, default=5)
-    parser.add_argument(
-        "--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5
-    )
+    parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)
     parser.add_argument(
         "--retries",
         type=nonnegative_int,

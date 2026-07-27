@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 import narwhals as nw
 import numpy as np
 import pandas as pd
+import pytest
 
 # Pre-computed expected total distances for the shared synthetic fixture
 # (3 users, 5 GPS points each, 1-degree steps equator/meridian, Paris cluster).
@@ -204,10 +204,10 @@ def test_total_distance_presorted_rejects_mixed_backends():
 def test_distance_straight_line_matches_skmob(comparison_skmob):
     """fastmob result closely matches skmob on each comparison dataset."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from skmob.measures.individual import distance_straight_line as skmob_dsl
     from fastmob.measures.individual.distance_straight_line import (
         distance_straight_line as fastmob_dsl,
     )
+    from skmob.measures.individual import distance_straight_line as skmob_dsl
 
     skmob_result = skmob_dsl(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

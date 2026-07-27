@@ -1,9 +1,9 @@
 """Tests for trajectory entropy and predictability measures."""
 
 import math
+
 import pandas as pd
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # _kontoyiannis_entropy unit tests

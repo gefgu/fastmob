@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob.preprocessing import cluster
 
 
@@ -108,9 +107,9 @@ def test_cluster_polars_backend(cluster_tdf_polars):
 @pytest.mark.skmob
 def test_cluster_matches_skmob(comparison_skmob):
     """Cluster labels must match skmob on comparison stop data."""
-    from skmob.preprocessing import detection as skmob_detection
-    from skmob.preprocessing import clustering as skmob_clustering
     import pandas as pd
+    from skmob.preprocessing import clustering as skmob_clustering
+    from skmob.preprocessing import detection as skmob_detection
 
     skmob_stops = skmob_detection.stay_locations(comparison_skmob, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
     skmob_result = skmob_clustering.cluster(skmob_stops, cluster_radius_km=0.1)

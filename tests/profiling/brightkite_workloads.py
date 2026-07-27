@@ -16,7 +16,6 @@ import pandas as pd
 
 from tests.shared.brightkite import _BRIGHTKITE_PATH, _BRIGHTKITE_URL
 
-
 DEFAULT_ROWS = 4_000_000
 IMPLEMENTATIONS = ("fastmob", "skmob")
 JUMP_LENGTHS_ENTRYPOINTS = ("method", "function")
@@ -268,7 +267,10 @@ def _fastmob_workloads() -> dict[str, Workload]:
             "fastmob uncorrelated location entropy",
         ),
         "random_entropy": _make_workload(
-            "random_entropy", "trajectory", "fastmob.measures.individual.random_entropy.random_entropy", "fastmob random entropy"
+            "random_entropy",
+            "trajectory",
+            "fastmob.measures.individual.random_entropy.random_entropy",
+            "fastmob random entropy",
         ),
         "uncorrelated_entropy": _make_workload(
             "uncorrelated_entropy",
@@ -277,7 +279,10 @@ def _fastmob_workloads() -> dict[str, Workload]:
             "fastmob uncorrelated entropy",
         ),
         "real_entropy": _make_workload(
-            "real_entropy", "trajectory", "fastmob.measures.individual.real_entropy.real_entropy", "fastmob real entropy"
+            "real_entropy",
+            "trajectory",
+            "fastmob.measures.individual.real_entropy.real_entropy",
+            "fastmob real entropy",
         ),
         "frequency_rank": _make_workload(
             "frequency_rank",
@@ -286,7 +291,10 @@ def _fastmob_workloads() -> dict[str, Workload]:
             "fastmob frequency rank",
         ),
         "recency_rank": _make_workload(
-            "recency_rank", "trajectory", "fastmob.measures.individual.recency_rank.recency_rank", "fastmob recency rank"
+            "recency_rank",
+            "trajectory",
+            "fastmob.measures.individual.recency_rank.recency_rank",
+            "fastmob recency rank",
         ),
         "location_frequency": _make_workload(
             "location_frequency",
@@ -306,7 +314,9 @@ def _fastmob_workloads() -> dict[str, Workload]:
             "fastmob.measures.individual.activity.activity_transition_matrix",
             "fastmob activity transition matrix",
         ),
-        "diversity": _make_workload("diversity", "visits", "fastmob.measures.individual.diversity.diversity", "fastmob diversity"),
+        "diversity": _make_workload(
+            "diversity", "visits", "fastmob.measures.individual.diversity.diversity", "fastmob diversity"
+        ),
         "regularity": _make_workload(
             "regularity", "visits", "fastmob.measures.individual.regularity.regularity", "fastmob regularity"
         ),
@@ -354,7 +364,9 @@ def _fastmob_workloads() -> dict[str, Workload]:
             "fastmob.measures.collective.od.od_metrics_per_area",
             "fastmob OD metrics per area",
         ),
-        "stvd_emd": _make_workload("stvd_emd", "stvd", "fastmob.measures.evaluation.spatial.stvd_emd", "fastmob STVD-EMD"),
+        "stvd_emd": _make_workload(
+            "stvd_emd", "stvd", "fastmob.measures.evaluation.spatial.stvd_emd", "fastmob STVD-EMD"
+        ),
     }
     return dict(sorted(workloads.items()))
 
@@ -486,8 +498,7 @@ def prepare_workload(
     if name not in workloads:
         available = ", ".join(workloads) or "none"
         raise SystemExit(
-            f"Unknown workload {name!r} for {implementation}. "
-            f"Available {implementation} workloads: {available}"
+            f"Unknown workload {name!r} for {implementation}. Available {implementation} workloads: {available}"
         )
 
     if implementation == "fastmob":
@@ -651,7 +662,7 @@ def _allow_external_profiler_attach() -> None:
         pr_set_ptracer = 0x59616D61
         pr_set_ptracer_any = ctypes.c_ulong(-1).value
         libc.prctl(pr_set_ptracer, pr_set_ptracer_any, 0, 0, 0)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return
 
 
@@ -702,7 +713,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--list", action="store_true", help="List workload names and exit.")
     parser.add_argument("--prepared-child", action="store_true", help="Prepare workload, wait on stdin, then execute.")
-    parser.add_argument("--scalene-function-profile", action="store_true", help="Profile only workload execution with Scalene.")
+    parser.add_argument(
+        "--scalene-function-profile", action="store_true", help="Profile only workload execution with Scalene."
+    )
     args = parser.parse_args(argv)
 
     workloads = workload_registry(args.implementation)

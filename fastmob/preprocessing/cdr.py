@@ -55,7 +55,7 @@ def _require_columns(df: nw.DataFrame, columns: list[str]) -> None:
 def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
     try:
         return df.with_columns(nw.col(column).cast(nw.Datetime).alias(column))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return df.with_columns(nw.col(column).str.to_datetime().alias(column))
 
 
@@ -74,7 +74,7 @@ def _ts_to_dt(ts: float | None) -> datetime | None:
 
 
 def _date_midnight(dt: datetime) -> datetime:
-    return datetime(dt.year, dt.month, dt.day)
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def _stable_codes(values: list[Any]) -> list[int]:
@@ -322,9 +322,11 @@ def cdr_to_trips_df(
     purposes = df.get_column("purpose").to_list()
     start_timestamps_s = _timestamp_seconds(df, "start_timestamp")
 
-    has_departure = df.select((~nw.col("end_timestamp").is_null()).alias("__has_departure__")).get_column(
-        "__has_departure__"
-    ).to_list()
+    has_departure = (
+        df.select((~nw.col("end_timestamp").is_null()).alias("__has_departure__"))
+        .get_column("__has_departure__")
+        .to_list()
+    )
     end_timestamps_s = (
         df.with_columns(
             nw.when(nw.col("end_timestamp").is_null())

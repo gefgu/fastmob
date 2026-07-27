@@ -110,7 +110,7 @@ def _group_numeric_values(
     data: Any,
     value_col: str,
     *,
-    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    hue: Literal["day_of_week", "day_period", "purpose"] | None = None,
     trip_start_col: str | None = None,
     day_col: str | None = None,
     purpose_col: str | None = None,
@@ -142,10 +142,7 @@ def _group_numeric_values(
         if _is_null(hue_val):
             continue
         values_np = (
-            df.filter(nw.col("__hue__") == hue_val)
-            .drop_nulls(subset=["__val__"])
-            .get_column("__val__")
-            .to_numpy()
+            df.filter(nw.col("__hue__") == hue_val).drop_nulls(subset=["__val__"]).get_column("__val__").to_numpy()
         )
         finite_vals = values_np[np.isfinite(values_np)]
         if len(finite_vals) > 0:
@@ -157,7 +154,7 @@ def _visits_per_user_groups(
     data: Any,
     *,
     user_id_col: str | None = None,
-    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    hue: Literal["day_of_week", "day_period", "purpose"] | None = None,
     trip_start_col: str | None = None,
     day_col: str | None = None,
     purpose_col: str | None = None,
@@ -187,9 +184,7 @@ def _visits_per_user_groups(
 
     # Count rows per (hue, user) pair — vectorized.
     counts_df = (
-        df.drop_nulls(subset=["__hue__", uid_col])
-        .group_by(["__hue__", uid_col])
-        .agg(nw.len().alias("__count__"))
+        df.drop_nulls(subset=["__hue__", uid_col]).group_by(["__hue__", uid_col]).agg(nw.len().alias("__count__"))
     )
 
     unique_hues: list[Any] = counts_df.get_column("__hue__").unique().to_list()
@@ -197,11 +192,7 @@ def _visits_per_user_groups(
     for hue_val in unique_hues:
         if _is_null(hue_val):
             continue
-        groups[hue_val] = (
-            counts_df.filter(nw.col("__hue__") == hue_val)
-            .get_column("__count__")
-            .to_numpy()
-        )
+        groups[hue_val] = counts_df.filter(nw.col("__hue__") == hue_val).get_column("__count__").to_numpy()
     return groups
 
 
@@ -211,7 +202,7 @@ def column_distribution_jensen_shannon_divergence(
     column: str,
     *,
     bin_size: float = 1.0,
-    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    hue: Literal["day_of_week", "day_period", "purpose"] | None = None,
     trip_start_col1: str | None = None,
     trip_start_col2: str | None = None,
     day_col1: str | None = None,
@@ -251,7 +242,7 @@ def column_distribution_wasserstein_distance(
     df2: Any,
     column: str,
     *,
-    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    hue: Literal["day_of_week", "day_period", "purpose"] | None = None,
     trip_start_col1: str | None = None,
     trip_start_col2: str | None = None,
     day_col1: str | None = None,
@@ -290,7 +281,7 @@ def visits_per_user_jensen_shannon_divergence(
     df1: Any,
     df2: Any,
     *,
-    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    hue: Literal["day_of_week", "day_period", "purpose"] | None = None,
     user_id_col1: str | None = None,
     user_id_col2: str | None = None,
     bin_size: float = 1.0,
@@ -331,7 +322,7 @@ def visits_per_user_wasserstein_distance(
     df1: Any,
     df2: Any,
     *,
-    hue: Literal[None, "day_of_week", "day_period", "purpose"] = None,
+    hue: Literal["day_of_week", "day_period", "purpose"] | None = None,
     user_id_col1: str | None = None,
     user_id_col2: str | None = None,
     trip_start_col: str | None = None,

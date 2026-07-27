@@ -59,7 +59,7 @@ DEFAULT_DATA_PATH = REPO_ROOT / "tests" / "shared" / "data" / "loc-brightkite_to
 _BENCHMARK_DIR = Path(__file__).resolve().parents[1]
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
-from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
+from benchmark_env import detect_cpu_info, get_default_output_dir
 
 BRIGHTKITE_COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
 DEFAULT_SIZES = [1_000, 10_000, 100_000, 1_000_000, 4_000_000]
@@ -173,7 +173,7 @@ def benchmark_fastmob_interpolate(df: Any, iterations: int, sleep_seconds: float
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    error: {exc}")
             results[method] = error_result(str(exc))
     return results
@@ -193,7 +193,7 @@ def benchmark_fastmob_interpolate_at(df: Any, iterations: int, sleep_seconds: fl
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    error: {exc}")
             results[method] = error_result(str(exc))
     return results
@@ -213,7 +213,7 @@ def benchmark_fastmob_smooth(df: Any, iterations: int, sleep_seconds: float) -> 
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    error: {exc}")
             results[method] = error_result(str(exc))
     return results
@@ -233,7 +233,7 @@ def benchmark_fastmob_distance(seq_a: Any, seq_b: Any, iterations: int, sleep_se
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    error: {exc}")
             results[method] = error_result(str(exc))
     return results
@@ -284,7 +284,7 @@ def benchmark_ptrail_interpolate(tdf: Any, iterations: int, sleep_seconds: float
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    error: {exc}")
             results[ip_type] = error_result(str(exc))
     return results
@@ -318,7 +318,7 @@ def benchmark_movingpandas_interpolate_at(tc: Any, iterations: int, sleep_second
                 iterations=iterations,
                 sleep_seconds=sleep_seconds,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    error: {exc}")
             results[method] = error_result(str(exc))
     return results
@@ -334,7 +334,7 @@ def benchmark_movingpandas_distance(traj_a: Any, traj_b: Any, iterations: int, s
             iterations=iterations,
             sleep_seconds=sleep_seconds,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    error: {exc}")
         result = error_result(str(exc))
     return {"hausdorff": result}
@@ -386,7 +386,7 @@ def run_ptrail_size(data_path: Path, size: int, iterations: int, sleep_seconds: 
     print(f"\nSize {size_label(size)}")
     try:
         tdf = load_brightkite_ptrail(data_path, size)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         reason = f"ptrail input setup failed: {exc}"
         print(f"  skipped: {reason}")
         return {
@@ -408,7 +408,7 @@ def run_movingpandas_size(
     print(f"\nSize {size_label(size)}")
     try:
         tc = load_brightkite_movingpandas_collection(data_path, size)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         reason = f"movingpandas input setup failed: {exc}"
         print(f"  skipped: {reason}")
         interpolate_at_result = {m: skipped_result(reason) for m in ("interpolated", "nearest")}
@@ -421,7 +421,7 @@ def run_movingpandas_size(
         try:
             traj_a, traj_b = load_brightkite_movingpandas_pair(data_path, distance_size)
             distance_results[distance_size] = benchmark_movingpandas_distance(traj_a, traj_b, iterations, sleep_seconds)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             reason = f"movingpandas distance input setup failed: {exc}"
             print(f"    skipped: {reason}")
             distance_results[distance_size] = {"hausdorff": skipped_result(reason)}

@@ -190,8 +190,8 @@ def test_k_radius_of_gyration_pandas_polars_agree(synthetic_tdf, synthetic_tdf_p
 def test_k_radius_of_gyration_matches_skmob(comparison_skmob):
     """fastmob k-RoG must agree with skmob's reference implementation within rtol=1e-5."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from skmob.measures.individual import k_radius_of_gyration as skmob_krg
     from fastmob.measures.individual.k_radius_of_gyration import k_radius_of_gyration as fastmob_krg
+    from skmob.measures.individual import k_radius_of_gyration as skmob_krg
 
     k = 2
     skmob_result = skmob_krg(comparison_skmob, k=k, show_progress=False)
@@ -209,10 +209,10 @@ def test_k_radius_of_gyration_matches_skmob(comparison_skmob):
     fastmob_map = dict(zip(fastmob_result[fastmob_uid], fastmob_result[fastmob_value_col]))
 
     assert set(skmob_map.keys()) == set(fastmob_map.keys()), "User sets differ"
-    for uid in skmob_map:
+    for uid, skmob_value in skmob_map.items():
         np.testing.assert_allclose(
             fastmob_map[uid],
-            skmob_map[uid],
+            skmob_value,
             rtol=1e-5,
             atol=1e-12,
             err_msg=f"k-RoG mismatch for uid={uid}",
@@ -240,10 +240,10 @@ def test_k_radius_of_gyration_matches_cached_reference(comparison_skmob_referenc
     fastmob_map = dict(zip(fastmob_result[fastmob_uid], fastmob_result[fastmob_value_col]))
 
     assert set(skmob_map.keys()) == set(fastmob_map.keys()), "User sets differ"
-    for uid in skmob_map:
+    for uid, skmob_value in skmob_map.items():
         np.testing.assert_allclose(
             fastmob_map[uid],
-            skmob_map[uid],
+            skmob_value,
             rtol=1e-5,
             atol=1e-12,
             err_msg=f"k-RoG mismatch for uid={uid}",

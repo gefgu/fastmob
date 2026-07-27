@@ -5,11 +5,7 @@ fn ecdf_sorts_values() {
     let points = ecdf_points(vec![2.0, 1.0, 3.0], "values", 1.0).unwrap();
     assert_eq!(
         points,
-        vec![
-            vec![1.0, 1.0 / 3.0],
-            vec![2.0, 2.0 / 3.0],
-            vec![3.0, 1.0]
-        ]
+        vec![vec![1.0, 1.0 / 3.0], vec![2.0, 2.0 / 3.0], vec![3.0, 1.0]]
     );
 }
 

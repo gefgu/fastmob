@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 import narwhals as nw
 import numpy as np
 import pandas as pd
+import pytest
 
 # The synthetic fixture has points spaced 1 hour apart, so all waiting times
 # should be 3600.0 seconds.
@@ -192,8 +192,8 @@ def test_waiting_times_helper_validation_errors():
 def test_waiting_times_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from skmob.measures.individual import waiting_times as skmob_wt
     from fastmob.measures.individual.waiting_times import waiting_times as fastmob_wt
+    from skmob.measures.individual import waiting_times as skmob_wt
 
     skmob_result = skmob_wt(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

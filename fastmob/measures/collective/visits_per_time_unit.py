@@ -162,7 +162,7 @@ def visits_per_time_unit(
         freq = time_unit
 
     df = nw.from_native(traj, eager_only=True)
-    
+
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
@@ -170,7 +170,7 @@ def visits_per_time_unit(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    
+
     df = _prepare_trajectory(
         df,
         datetime_col=datetime_col,
@@ -181,7 +181,7 @@ def visits_per_time_unit(
     )
 
     normalized_freq = _normalize_frequency_for_narwhals(freq)
-    
+
     if normalized_freq is None:
         # Pandas resample fallback for frequency strings Narwhals cannot truncate
         # (e.g. "1W"). Uses nw.DataFrame.to_pandas() as the bridge; no direct
@@ -189,12 +189,7 @@ def visits_per_time_unit(
         # nw.from_dict(..., backend=backend).
         backend = df.implementation
         pd_df = df.select(datetime_col).to_pandas()
-        resampled = (
-            pd_df.resample(freq, on=datetime_col)
-            .size()
-            .rename("n_visits")
-            .reset_index()
-        )
+        resampled = pd_df.resample(freq, on=datetime_col).size().rename("n_visits").reset_index()
         resampled = resampled[resampled["n_visits"] > 0]
         return (
             nw.from_dict(

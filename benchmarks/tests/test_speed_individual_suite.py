@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from benchmarks.individual import real_entropy_speed_suite
 from benchmarks.individual import speed_suite as suite
 
@@ -28,11 +27,7 @@ def test_old_flat_benchmark_entrypoints_are_removed():
 
 def test_cataloged_default_individual_entries_have_benchmark_cases():
     catalog = suite.load_catalog(suite.SKMOB_CATALOG_PATH)
-    catalog_names = {
-        entry["name"]
-        for entry in catalog["entries"]
-        if entry.get("suite") == "individual"
-    }
+    catalog_names = {entry["name"] for entry in catalog["entries"] if entry.get("suite") == "individual"}
     benchmark_names = {spec.name for spec in suite.INDIVIDUAL_METRICS}
 
     assert catalog_names.issubset(benchmark_names)

@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-
-from fastmob.network.builder import _direction_for_pair, _is_missing_or_empty, _speed_kmh_for_pair
 from fastmob.network._util import haversine_m_batch
+from fastmob.network.builder import _direction_for_pair, _is_missing_or_empty, _speed_kmh_for_pair
 from fastmob.network.speeds import DEFAULT_SPEED_KMH_BY_CLASS
 
 

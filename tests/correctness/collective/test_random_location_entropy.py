@@ -6,7 +6,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.collective.random_location_entropy import random_location_entropy
 
 

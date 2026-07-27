@@ -1,4 +1,7 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 mod adapters;
+mod hierarchy_py;
 mod integration;
 mod measures;
 mod models;
@@ -191,6 +194,12 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
     m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        hierarchy_py::tripleg_lengths_attributed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(hierarchy_py::trips_from_timeline, m)?)?;
+    m.add_function(wrap_pyfunction!(hierarchy_py::tours_from_trips, m)?)?;
     m.add_class::<road_graph_py::RoadNetworkHandle>()?;
     m.add_function(wrap_pyfunction!(
         road_graph_py::subsample_waypoints_numpy,

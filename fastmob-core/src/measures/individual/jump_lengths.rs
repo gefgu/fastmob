@@ -133,10 +133,10 @@ pub fn jump_lengths_indexed_impl(
     valid_rows: Option<&[bool]>,
 ) -> JumpLengthsPresortedResult {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
-    if let Some(valid_rows) = valid_rows {
-        if valid_rows.len() != latitudes.len() {
-            return Err("valid_rows and coordinates must have the same length".to_string());
-        }
+    if let Some(valid_rows) = valid_rows
+        && valid_rows.len() != latitudes.len()
+    {
+        return Err("valid_rows and coordinates must have the same length".to_string());
     }
 
     let grouped_values: Vec<Vec<f64>> = (0..ends.len())

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from benchmarks import markov_diary_speed_suite as suite
 
 

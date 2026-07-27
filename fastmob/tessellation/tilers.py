@@ -19,8 +19,7 @@ def _require_geopandas():
 
 def _require_shapely():
     try:
-        import shapely.geometry as geometry
-        import shapely.ops as ops
+        from shapely import geometry, ops
     except ImportError as exc:  # pragma: no cover - exercised when optional deps are missing.
         raise ImportError("shapely is required for tessellation: pip install fastmob[tessellation]") from exc
     return geometry, ops
@@ -153,15 +152,15 @@ class SquaredTessellationTiler(TessellationTiler):
         area = base_shape.to_crs(tmp_crs)
         min_x, min_y, max_x, max_y = area.total_bounds
 
-        x_squares = int(math.ceil(math.fabs(max_x - min_x) / meters))
-        y_squares = int(math.ceil(math.fabs(min_y - max_y) / meters))
+        x_squares = math.ceil(math.fabs(max_x - min_x) / meters)
+        y_squares = math.ceil(math.fabs(min_y - max_y) / meters)
         shape = area.union_all() if hasattr(area, "union_all") else area.unary_union
         polygons = []
 
-        for i in range(0, x_squares):
+        for i in range(x_squares):
             x1 = min_x + (meters * i)
             x2 = min_x + (meters * (i + 1))
-            for j in range(0, y_squares):
+            for j in range(y_squares):
                 y1 = min_y + (meters * j)
                 y2 = min_y + (meters * (j + 1))
                 polygon = geometry.Polygon([(x1, y1), (x1, y2), (x2, y2), (x2, y1)])
@@ -284,11 +283,14 @@ class H3TessellationTiler(TessellationTiler):
         geometry, _ops = _require_shapely()
         h3 = _require_h3()
         if hasattr(h3, "h3_to_geo_boundary"):
+
             def boundary(hexagon_id):
                 return h3.h3_to_geo_boundary(hexagon_id, geo_json=True)
         else:
+
             def boundary(hexagon_id):
                 return [(lng, lat) for lat, lng in h3.cell_to_boundary(hexagon_id)]
+
         return gpd.GeoDataFrame(
             {
                 "geometry": [geometry.Polygon(boundary(hexagon_id)) for hexagon_id in hexagon_ids],

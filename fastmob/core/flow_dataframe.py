@@ -109,7 +109,7 @@ class FlowDataFrame(BaseDataFrame):
             return df.rename(columns=mapping)
         try:
             return nw.from_native(df, eager_only=True).rename(mapping).to_native()
-        except Exception:
+        except Exception:  # noqa: BLE001
             return df
 
     # ------------------------------------------------------------------
@@ -153,7 +153,7 @@ class FlowDataFrame(BaseDataFrame):
             return 0
         return tmp[FLOW].iloc[0]
 
-    def settings_from(self, other: "FlowDataFrame") -> None:
+    def settings_from(self, other: FlowDataFrame) -> None:
         """Copy metadata attributes from another FlowDataFrame.
 
         Parameters
@@ -345,22 +345,22 @@ class FlowDataFrame(BaseDataFrame):
                 'Visualization requires extra dependencies: pip install "fastmob[visualization]"'
             ) from exc
 
-        kwargs: dict[str, Any] = dict(
-            map_f=map_f,
-            min_flow=min_flow,
-            tiles=tiles,
-            zoom=zoom,
-            flow_color=flow_color,
-            opacity=opacity,
-            flow_weight=flow_weight,
-            flow_exp=flow_exp,
-            flow_popup=flow_popup,
-            num_od_popup=num_od_popup,
-            tile_popup=tile_popup,
-            radius_origin_point=radius_origin_point,
-            color_origin_point=color_origin_point,
-            control_scale=control_scale,
-        )
+        kwargs: dict[str, Any] = {
+            "map_f": map_f,
+            "min_flow": min_flow,
+            "tiles": tiles,
+            "zoom": zoom,
+            "flow_color": flow_color,
+            "opacity": opacity,
+            "flow_weight": flow_weight,
+            "flow_exp": flow_exp,
+            "flow_popup": flow_popup,
+            "num_od_popup": num_od_popup,
+            "tile_popup": tile_popup,
+            "radius_origin_point": radius_origin_point,
+            "color_origin_point": color_origin_point,
+            "control_scale": control_scale,
+        }
         if style_function is not None:
             kwargs["style_function"] = style_function
         return plot.plot_flows(self, **kwargs)
@@ -369,8 +369,8 @@ class FlowDataFrame(BaseDataFrame):
         self,
         map_f=None,
         maxitems: int = -1,
-        style_func_args: dict = {},
-        popup_features: list = [],
+        style_func_args: dict | None = None,
+        popup_features: list | None = None,
         tiles: str = "cartodbpositron",
         zoom: int = 6,
         geom_col: str = "geometry",
@@ -414,6 +414,10 @@ class FlowDataFrame(BaseDataFrame):
         >>> fdf = fastmob.data.load_dataset("flow_foursquare_nyc")  # doctest: +SKIP
         >>> m = fdf.plot_tessellation(popup_features=["tile_id", "population"])  # doctest: +SKIP
         """
+        if popup_features is None:
+            popup_features = []
+        if style_func_args is None:
+            style_func_args = {}
         try:
             from fastmob.utils import plot
         except ImportError as exc:

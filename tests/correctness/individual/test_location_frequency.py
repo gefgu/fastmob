@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -48,7 +47,7 @@ def test_location_frequency_known_values(synthetic_tdf):
     freq_dict = _to_freq_dict(result)
 
     assert set(freq_dict.keys()) == {"user_a", "user_b", "user_c"}
-    for uid, loc_freqs in freq_dict.items():
+    for loc_freqs in freq_dict.values():
         assert len(loc_freqs) == 5
         assert all(v == 1.0 for v in loc_freqs.values())
 
@@ -153,7 +152,7 @@ def test_location_frequency_polars_known_values(synthetic_tdf_polars):
     freq_dict = _to_freq_dict(result)
 
     assert set(freq_dict.keys()) == {"user_a", "user_b", "user_c"}
-    for uid, loc_freqs in freq_dict.items():
+    for loc_freqs in freq_dict.values():
         assert len(loc_freqs) == 5
         assert all(v == 1.0 for v in loc_freqs.values())
 
@@ -307,9 +306,7 @@ def test_location_frequency_indexed_arrow_nulls_are_filtered():
     indices = np.array([0, 1, 2, 3], dtype=np.uintp)
     ends = np.array([4], dtype=np.uintp)
 
-    out_lats, out_lngs, values, *_ = location_frequency_values_indexed(
-        lats, lngs, indices, ends, False
-    )
+    out_lats, out_lngs, values, *_ = location_frequency_values_indexed(lats, lngs, indices, ends, False)
 
     rows = dict(zip(zip(_arrow_list(out_lats), _arrow_list(out_lngs)), _arrow_list(values)))
     assert rows == {(1.0, 0.0): 1.0, (2.0, 0.0): 1.0}
@@ -342,9 +339,7 @@ def test_location_frequency_indexed_arrow_sliced_null_bitmap_offsets():
     indices = np.array([0, 1, 2, 3], dtype=np.uintp)
     ends = np.array([4], dtype=np.uintp)
 
-    out_lats, out_lngs, values, *_ = location_frequency_values_indexed(
-        lats, lngs, indices, ends, False
-    )
+    out_lats, out_lngs, values, *_ = location_frequency_values_indexed(lats, lngs, indices, ends, False)
 
     rows = dict(zip(zip(_arrow_list(out_lats), _arrow_list(out_lngs)), _arrow_list(values)))
     assert rows == {(1.0, 0.0): 1.0, (2.0, 0.0): 1.0}
@@ -354,8 +349,8 @@ def test_location_frequency_indexed_arrow_sliced_null_bitmap_offsets():
 def test_location_frequency_matches_skmob(comparison_skmob):
     """fastmob counts match skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import location_frequency as skmob_lf
     from fastmob.measures.individual.location_frequency import location_frequency as fastmob_lf
+    from skmob.measures.individual import location_frequency as skmob_lf
 
     skmob_result = skmob_lf(comparison_skmob, show_progress=False)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

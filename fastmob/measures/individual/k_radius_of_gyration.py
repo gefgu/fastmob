@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
 from fastmob._core import k_radius_of_gyration_indexed, k_radius_of_gyration_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 
@@ -53,7 +54,7 @@ def k_radius_of_gyration(
         as a single individual.
     k : int, optional
         Number of most-visited locations to consider.  Defaults to 2.
-        Valid range: :math:`[2, +\infty)`.
+        Valid range: :math:`[2, +\\infty)`.
     datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
     lat_col : str or None, optional
@@ -136,18 +137,14 @@ def k_radius_of_gyration(
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        krg_values = _arrow_result_values(
-            k_radius_of_gyration_presorted(lats, lngs, timestamps_data, ends, k)
-        )
+        krg_values = _arrow_result_values(k_radius_of_gyration_presorted(lats, lngs, timestamps_data, ends, k))
         if uid_col is None:
             return _to_native({"k_radius_of_gyration": krg_values}, df)
         return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    krg_values = _arrow_result_values(
-        k_radius_of_gyration_indexed(lats, lngs, timestamps_data, indices, ends, k)
-    )
+    krg_values = _arrow_result_values(k_radius_of_gyration_indexed(lats, lngs, timestamps_data, indices, ends, k))
 
     if uid_col is None:
         return _to_native({"k_radius_of_gyration": krg_values}, df)

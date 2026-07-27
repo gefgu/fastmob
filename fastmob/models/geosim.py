@@ -291,7 +291,10 @@ class GeoSim:
                 uid_out,
                 lats_out,
                 lngs_out,
-                [datetime.datetime.fromtimestamp(int(t)) for t in timestamps],
+                [
+                    datetime.datetime.fromtimestamp(int(t), tz=datetime.timezone.utc).replace(tzinfo=None)
+                    for t in timestamps
+                ],
             )
         )
         return trajectory_dataframe(traj)

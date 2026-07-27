@@ -233,6 +233,16 @@ When writing new measures, use `nw.from_native(traj, eager_only=True)` to accept
 
 Preserve `backend=nw_df.implementation` when constructing output dicts so the result backend matches the input.
 
+### Core dataframe hierarchy wrappers
+
+Files under `fastmob/core/*_dataframe.py` must not extract Narwhals columns with direct `.to_numpy()` calls. These wrappers should follow the same shape as high-throughput functions such as `jump_lengths`:
+
+- Use Narwhals for validation, joins, sorting, timestamp normalization, and final dataframe assembly.
+- Use `TrajectoryDispatcher.get_ops(df)["extract_data"]` to pass backend-native column buffers into Rust; Polars/PyArrow-backed data should route through Arrow, while pandas/NumPy-backed data may route through NumPy inside the dispatcher.
+- Move stateful, non-dataframe work into Rust kernels with PyO3 adapters that accept the input buffer format and dispatch NumPy vs Arrow internally.
+- Keep Python out of per-row scans, grouped forward/backward fills, trip/tour boundary loops, and distance attribution loops.
+- Do not add direct pandas or polars imports to core wrappers; backend-specific handling belongs in shared dispatch/prep helpers or Rust adapters.
+
 ## Radius of gyration performance pattern
 
 `fastmob.measures.individual.radius_of_gyration` is the current reference implementation for a high-throughput, low-memory measure. Treat it as the standard to copy when building or refactoring other measures.

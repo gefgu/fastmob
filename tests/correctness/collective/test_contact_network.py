@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 from fastmob.measures.collective.contact_network import (
     NetworkGraph,
     clustering_coefficients,
@@ -84,14 +83,14 @@ def test_co_presence_graph_polars_matches_pandas():
 def test_co_presence_graph_explicit_day_col():
     df = pd.DataFrame(_visits_rows())
     df["day"] = df["datetime"].dt.normalize()
-    graph, persistence, time_steps, _skip_info = co_presence_graph_from_visits(df, day_col="day", datetime_col=None)
+    graph, _persistence, time_steps, _skip_info = co_presence_graph_from_visits(df, day_col="day", datetime_col=None)
     assert time_steps == 2
     assert graph.edge_count == 4
 
 
 def test_co_presence_graph_oversized_group_skipped():
     df = pd.DataFrame(_visits_rows())
-    graph, persistence, time_steps, skip_info = co_presence_graph_from_visits(df, max_group_size=2)
+    graph, _persistence, _time_steps, skip_info = co_presence_graph_from_visits(df, max_group_size=2)
     # The 3-user group at venue A on day 0 (size 3 > max_group_size=2) is
     # skipped entirely; only the (1,2) pair from day 1 and (4,5) from venue B
     # survive.
@@ -101,7 +100,7 @@ def test_co_presence_graph_oversized_group_skipped():
 
 def test_co_presence_graph_empty_input():
     df = pd.DataFrame({"uid": [], "datetime": pd.to_datetime([]), "location_id": []})
-    graph, persistence, time_steps, skip_info = co_presence_graph_from_visits(df)
+    graph, _persistence, time_steps, skip_info = co_presence_graph_from_visits(df)
     assert graph.node_count == 0
     assert graph.edge_count == 0
     assert time_steps == 0
@@ -163,10 +162,7 @@ def test_topological_overlap_matches_hand_computed_jaccard():
         edge_to=np.array([1, 2, 3, 2], dtype=np.uint32),
     )
     overlap = topological_overlap(graph)
-    by_edge = {
-        (u, v): o
-        for u, v, o in zip(graph.edge_from.tolist(), graph.edge_to.tolist(), overlap.tolist())
-    }
+    by_edge = {(u, v): o for u, v, o in zip(graph.edge_from.tolist(), graph.edge_to.tolist(), overlap.tolist())}
     assert by_edge[(0, 1)] == pytest.approx(1.0 / 3.0)
     assert by_edge[(1, 2)] == pytest.approx(1.0 / 4.0)
     assert by_edge[(2, 3)] == pytest.approx(0.0)
@@ -259,9 +255,7 @@ def _planted_community_graph() -> tuple[NetworkGraph, np.ndarray]:
 
 def test_infer_social_ties_separates_planted_communities_from_bridge():
     graph, persistence = _planted_community_graph()
-    inferred = infer_social_ties(
-        graph, persistence, regularity_threshold=0.5, random_chance_probability=0.5, seed=3
-    )
+    inferred = infer_social_ties(graph, persistence, regularity_threshold=0.5, random_chance_probability=0.5, seed=3)
     inferred_edges = set(zip(inferred.edge_from.tolist(), inferred.edge_to.tolist()))
     assert (3, 4) not in inferred_edges
     assert (0, 1) in inferred_edges

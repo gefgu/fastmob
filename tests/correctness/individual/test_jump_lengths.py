@@ -574,9 +574,7 @@ def test_jump_lengths_indexed_helper_accepts_arrow():
     indices = np.array([3, 4, 1, 2, 5, 0], dtype=np.uintp)
     ends = np.array([3, 6], dtype=np.uintp)
 
-    arrow_starts, arrow_ends, arrow_values = jump_lengths_indexed(
-        pa.array(lats), pa.array(lngs), indices, ends
-    )
+    arrow_starts, arrow_ends, arrow_values = jump_lengths_indexed(pa.array(lats), pa.array(lngs), indices, ends)
     numpy_starts, numpy_ends, numpy_values = jump_lengths_indexed(lats, lngs, indices, ends)
 
     np.testing.assert_array_equal(arrow_starts, numpy_starts)
@@ -669,8 +667,8 @@ def test_jump_lengths_matches_skmob(comparison_skmob):
         reason="Build the fastmob extension first (maturin develop)",
     )
     import pandas as pd
-    from skmob.measures.individual import jump_lengths as skmob_jl
     from fastmob.measures.individual.jump_lengths import jump_lengths as fastmob_jl
+    from skmob.measures.individual import jump_lengths as skmob_jl
 
     skmob_result = skmob_jl(comparison_skmob, show_progress=False, merge=False)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

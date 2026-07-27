@@ -192,13 +192,12 @@ class Radiation:
 
         if out_format not in ["flows", "flows_sample", "probabilities"]:
             raise ValueError(
-                'Value of out_format "%s" is not valid. \nValid values: flows, flows_sample, probabilities.'
-                % out_format
+                f'Value of out_format "{out_format}" is not valid. \nValid values: flows, flows_sample, probabilities.'
             )
         if "flows" in out_format:
             if tot_outflows_column not in spatial_tessellation.columns:
                 raise KeyError(
-                    "The column %s for the 'tot_outflows' must be present in the tessellation." % tot_outflows_column
+                    f"The column {tot_outflows_column} for the 'tot_outflows' must be present in the tessellation."
                 )
             tot_outflows = spatial_tessellation[tot_outflows_column].fillna(0).to_numpy(dtype=int)
             outflows = tot_outflows.astype(float)

@@ -88,9 +88,7 @@ def trajectory_to_od(
         sort=True,
         drop_nulls=True,
     )
-    df = df.filter(
-        nw.col(lat_col).is_between(-90.0, 90.0) & nw.col(lng_col).is_between(-180.0, 180.0)
-    )
+    df = df.filter(nw.col(lat_col).is_between(-90.0, 90.0) & nw.col(lng_col).is_between(-180.0, 180.0))
     if len(df) == 0:
         empty = nw.from_dict({"origin": [], "destination": [], "count": []}, backend=df.implementation)
         return empty.to_native()
@@ -129,9 +127,7 @@ def trajectory_to_od(
         {_ORIGIN_COL: origins, _DESTINATION_COL: destinations}, backend=df.implementation
     ).to_native()
     result = od_matrix(trips_native, origin_col=_ORIGIN_COL, destination_col=_DESTINATION_COL)
-    result_nw = nw.from_native(result, eager_only=True).rename(
-        {_ORIGIN_COL: "origin", _DESTINATION_COL: "destination"}
-    )
+    result_nw = nw.from_native(result, eager_only=True).rename({_ORIGIN_COL: "origin", _DESTINATION_COL: "destination"})
     return result_nw.to_native()
 
 

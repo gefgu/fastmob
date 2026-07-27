@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob.preprocessing import trajectory_to_od
 
 # Two well-separated locations (different H3 cells at any reasonable resolution):

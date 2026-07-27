@@ -6,10 +6,8 @@ import math
 
 import pandas as pd
 import pytest
-
-from fastmob.measures.collective.mean_square_displacement import mean_square_displacement
 from fastmob._core import square_displacement_km2
-
+from fastmob.measures.collective.mean_square_displacement import mean_square_displacement
 
 # ---------------------------------------------------------------------------
 # Fixtures

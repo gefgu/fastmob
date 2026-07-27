@@ -57,9 +57,13 @@ def _location_coordinates(
     lng_col: str | None,
 ) -> nw.DataFrame:
     source = nw.from_native(locations_df, eager_only=True) if locations_df is not None else visits_df
-    source_location_col = location_id_col if location_id_col in source.columns else _pick_existing_column(
-        source.columns,
-        LOCATION_CANDIDATES,
+    source_location_col = (
+        location_id_col
+        if location_id_col in source.columns
+        else _pick_existing_column(
+            source.columns,
+            LOCATION_CANDIDATES,
+        )
     )
     if source_location_col is None:
         raise ValueError(
@@ -670,9 +674,7 @@ def _grid_fit_candidates(
     return best
 
 
-def _fit_truncated_powerlaw_grid(
-    x_data: np.ndarray, y_data: np.ndarray
-) -> np.ndarray:
+def _fit_truncated_powerlaw_grid(x_data: np.ndarray, y_data: np.ndarray) -> np.ndarray:
     """Dependency-free coarse-to-fine grid search fit, ported from
     citybehavex-web's Rust `truncated_powerlaw_dataset` (written there
     specifically to avoid a scipy dependency in a Python-free web backend).
@@ -707,7 +709,7 @@ def _fit_truncated_powerlaw_grid(
 
 
 def fit_values_to_truncated_powerlaw(
-    values: "list[float] | np.ndarray",
+    values: list[float] | np.ndarray,
     bins: int = 100,
     *,
     method: Literal["scipy", "grid"] = "scipy",

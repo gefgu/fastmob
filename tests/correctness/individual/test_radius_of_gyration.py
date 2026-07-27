@@ -259,10 +259,7 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
     actual = _rog_map(result)
 
     assert list(result["uid"]) == ["b", "a", "c"]
-    expected = {
-        uid: _expected_rog(df.loc[df["uid"] == uid, ["lat", "lng"]].to_numpy())
-        for uid in ["b", "a", "c"]
-    }
+    expected = {uid: _expected_rog(df.loc[df["uid"] == uid, ["lat", "lng"]].to_numpy()) for uid in ["b", "a", "c"]}
     for uid, expected_value in expected.items():
         np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
 
@@ -285,10 +282,7 @@ def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
     actual = _rog_map(result)
 
     assert list(result["uid"]) == ["a", "b", "c"]
-    expected = {
-        uid: _expected_rog(rows[["lat", "lng"]].to_numpy())
-        for uid, rows in df.groupby("uid", sort=False)
-    }
+    expected = {uid: _expected_rog(rows[["lat", "lng"]].to_numpy()) for uid, rows in df.groupby("uid", sort=False)}
     for uid, expected_value in expected.items():
         np.testing.assert_allclose(actual[uid], expected_value, rtol=0.0, atol=1e-12)
 
@@ -680,8 +674,8 @@ def test_radius_of_gyration_presorted_rejects_mixed_backends():
 def test_radius_of_gyration_matches_skmob(comparison_skmob):
     """fastmob RoG must agree with skmob's reference implementation within 0.02 km."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from skmob.measures.individual import radius_of_gyration as skmob_rog
     from fastmob.measures.individual.radius_of_gyration import radius_of_gyration as fastmob_rog
+    from skmob.measures.individual import radius_of_gyration as skmob_rog
 
     skmob_result = skmob_rog(comparison_skmob, show_progress=False)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()
@@ -694,9 +688,9 @@ def test_radius_of_gyration_matches_skmob(comparison_skmob):
     fastmob_map = dict(zip(fastmob_result[fastmob_uid], fastmob_result["radius_of_gyration"]))
 
     assert set(skmob_map.keys()) == set(fastmob_map.keys()), "User sets differ"
-    for uid in skmob_map:
-        assert abs(skmob_map[uid] - fastmob_map[uid]) < 0.02, (
-            f"RoG mismatch for uid={uid}: skmob={skmob_map[uid]:.6f}, fastmob={fastmob_map[uid]:.6f}"
+    for uid, skmob_value in skmob_map.items():
+        assert abs(skmob_value - fastmob_map[uid]) < 0.02, (
+            f"RoG mismatch for uid={uid}: skmob={skmob_value:.6f}, fastmob={fastmob_map[uid]:.6f}"
         )
 
 
@@ -714,7 +708,7 @@ def test_radius_of_gyration_matches_cached_reference(comparison_skmob_reference)
     fastmob_map = dict(zip(fastmob_result[fastmob_uid], fastmob_result["radius_of_gyration"]))
 
     assert set(skmob_map.keys()) == set(fastmob_map.keys()), "User sets differ"
-    for uid in skmob_map:
-        assert abs(skmob_map[uid] - fastmob_map[uid]) < 0.02, (
-            f"RoG mismatch for uid={uid}: cached={skmob_map[uid]:.6f}, fastmob={fastmob_map[uid]:.6f}"
+    for uid, skmob_value in skmob_map.items():
+        assert abs(skmob_value - fastmob_map[uid]) < 0.02, (
+            f"RoG mismatch for uid={uid}: cached={skmob_value:.6f}, fastmob={fastmob_map[uid]:.6f}"
         )

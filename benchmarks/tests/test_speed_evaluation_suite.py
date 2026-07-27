@@ -30,14 +30,8 @@ def test_default_sizes_include_four_million():
 
 
 def test_output_path_matches_library_profile_and_synthetic_source(tmp_path: Path):
-    assert (
-        suite.build_output_path(tmp_path, "fastmob")
-        == tmp_path / "fastmob_evaluation_speed_synthetic.json"
-    )
-    assert (
-        suite.build_output_path(tmp_path, "skmob", "memory")
-        == tmp_path / "skmob_evaluation_memory_synthetic.json"
-    )
+    assert suite.build_output_path(tmp_path, "fastmob") == tmp_path / "fastmob_evaluation_speed_synthetic.json"
+    assert suite.build_output_path(tmp_path, "skmob", "memory") == tmp_path / "skmob_evaluation_memory_synthetic.json"
 
 
 def test_parse_args_selects_library():

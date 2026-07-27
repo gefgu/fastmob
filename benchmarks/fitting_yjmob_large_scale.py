@@ -33,9 +33,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
-from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path  # noqa: E402
-from benchmarks.utils import size_label, summarize_times, write_json  # noqa: E402
+from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir
+from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path
+from benchmarks.utils import size_label, summarize_times, write_json
 
 DEFAULT_N_USERS = [1_000, 10_000, 100_000]
 H3_RESOLUTION = 9
@@ -52,7 +52,7 @@ def benchmark_daily_lognormal(data_path: Path, n_users: int, iterations: int) ->
     times: list[float] = []
     for _ in range(iterations):
         start = time.perf_counter()
-        x_points, y_points, mu, sigma = daily_location_lognormal_fit(
+        x_points, _y_points, mu, sigma = daily_location_lognormal_fit(
             visits, user_id_col="uid", location_id_col="location_id", timestamp_col="timestamp"
         )
         elapsed = time.perf_counter() - start

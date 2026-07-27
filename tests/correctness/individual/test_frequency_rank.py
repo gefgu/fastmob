@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -49,7 +48,7 @@ def test_frequency_rank_known_values(synthetic_tdf):
     mapping = _to_dict(result)
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
-    for uid, loc_ranks in mapping.items():
+    for loc_ranks in mapping.values():
         assert len(loc_ranks) == 5
         assert set(loc_ranks.values()) == {1, 2, 3, 4, 5}
 
@@ -142,7 +141,7 @@ def test_frequency_rank_polars_known_values(synthetic_tdf_polars):
     mapping = _to_dict(result)
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
-    for uid, loc_ranks in mapping.items():
+    for loc_ranks in mapping.values():
         assert len(loc_ranks) == 5
         assert set(loc_ranks.values()) == {1, 2, 3, 4, 5}
 
@@ -161,9 +160,7 @@ def test_frequency_rank_presorted_matches_default_pandas():
     )
     sorted_input = raw.sort_values(["uid", "datetime"], kind="mergesort")
 
-    assert _to_dict(frequency_rank(sorted_input, presorted=True)) == _to_dict(
-        frequency_rank(raw)
-    )
+    assert _to_dict(frequency_rank(sorted_input, presorted=True)) == _to_dict(frequency_rank(raw))
 
 
 def test_frequency_rank_presorted_no_uid():
@@ -178,10 +175,7 @@ def test_frequency_rank_presorted_no_uid():
         }
     )
     result = frequency_rank(df, presorted=True)
-    rows = {
-        row["lat"]: row["frequency_rank"]
-        for row in nw.from_native(result, eager_only=True).rows(named=True)
-    }
+    rows = {row["lat"]: row["frequency_rank"] for row in nw.from_native(result, eager_only=True).rows(named=True)}
     assert rows == {1.0: 1, 2.0: 2}
 
 
@@ -235,8 +229,8 @@ def test_frequency_rank_indexed_arrow_nulls_are_filtered():
 def test_frequency_rank_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import frequency_rank as skmob_fr
     from fastmob.measures.individual.frequency_rank import frequency_rank as fastmob_fr
+    from skmob.measures.individual import frequency_rank as skmob_fr
 
     skmob_result = skmob_fr(comparison_skmob, show_progress=False)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()
@@ -278,6 +272,7 @@ def test_frequency_rank_matches_cached_reference(comparison_skmob_reference):
     # Compute raw visit counts per user/location from fastmob to identify ties.
     # skmob and fastmob agree on counts; they differ only in tie-breaking order.
     from fastmob.measures.individual.location_frequency import location_frequency as _lf
+
     lf2 = _lf(ref.input_df, normalize=False)
     uid_col_lf = next((c for c in ("uid", "user", "user_id") if c in lf2.columns), None)
 

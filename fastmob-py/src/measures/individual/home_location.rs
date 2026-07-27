@@ -5,7 +5,7 @@ use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 
 use crate::adapters::trajectory::{
-    run_indexed_timed_coordinate_f64_pair, run_presorted_timed_coordinate_f64_pair, PyF64Pair,
+    PyF64Pair, run_indexed_timed_coordinate_f64_pair, run_presorted_timed_coordinate_f64_pair,
 };
 
 #[pyfunction]

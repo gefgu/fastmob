@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
-from typing import Any, Iterable
+from collections.abc import Callable, Iterable
+from typing import Any
 
 import narwhals as nw
 import numpy as np
@@ -179,7 +179,7 @@ def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
     """Ensure a trajectory datetime column has a Narwhals datetime dtype."""
     try:
         return df.with_columns(nw.col(column).cast(nw.Datetime).alias(column))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return df.with_columns(nw.col(column).str.to_datetime().alias(column))
 
 
@@ -231,8 +231,8 @@ def _filter_result_values(values: Any, keep: Any, *, dtype: Any = None) -> Any:
     """Filter NumPy or Arrow-like result values with a boolean keep mask."""
     values = _arrow_result_values(values)
     if hasattr(values, "__arrow_c_array__"):
-        import pyarrow as pa  # noqa: PLC0415
-        import pyarrow.compute as pc  # noqa: PLC0415
+        import pyarrow as pa
+        import pyarrow.compute as pc
 
         return pc.filter(pa.array(values), pa.array(keep))
     return np.asarray(values, dtype=dtype)[keep]
@@ -251,7 +251,7 @@ def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
     for name, values in values_dict.items():
         try:
             is_list_array = str(values.type).startswith("list<")
-        except Exception:
+        except Exception:  # noqa: BLE001
             is_list_array = False
         if hasattr(values, "__arrow_c_array__") and hasattr(values, "to_numpy") and not is_list_array:
             try:
@@ -270,13 +270,13 @@ def _take_uid_values(uid_values: list | None, user_indices: Any) -> Any:
 
 
 def _indexed_group_indices(uids: Any, num_groups: int) -> Any:
-    from fastmob._core import indexed_user_indices  # noqa: PLC0415
+    from fastmob._core import indexed_user_indices
 
     return indexed_user_indices(uids, num_groups)
 
 
 def _time_ordered_user_indices_from_ndarray(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
-    from fastmob._core import time_ordered_user_indices  # noqa: PLC0415
+    from fastmob._core import time_ordered_user_indices
 
     if uids is None:
         return time_ordered_user_indices(None, timestamps)
@@ -284,7 +284,7 @@ def _time_ordered_user_indices_from_ndarray(uids: Any, timestamps: Any, num_grou
 
 
 def _time_ordered_user_indices_from_c_array(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
-    from fastmob._core import time_ordered_user_indices  # noqa: PLC0415
+    from fastmob._core import time_ordered_user_indices
 
     if uids is None:
         return time_ordered_user_indices(None, timestamps)
@@ -292,13 +292,13 @@ def _time_ordered_user_indices_from_c_array(uids: Any, timestamps: Any, num_grou
 
 
 def _presorted_user_starts_ends_numpy(uids: Any) -> tuple[Any, Any]:
-    from fastmob._core import presorted_user_starts_ends_numpy  # noqa: PLC0415
+    from fastmob._core import presorted_user_starts_ends_numpy
 
     return presorted_user_starts_ends_numpy(uids)
 
 
 def _presorted_user_starts_ends_arrow(uids: Any) -> tuple[Any, Any]:
-    from fastmob._core import presorted_user_starts_ends_arrow  # noqa: PLC0415
+    from fastmob._core import presorted_user_starts_ends_arrow
 
     return presorted_user_starts_ends_arrow(uids)
 
@@ -324,14 +324,14 @@ def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
 
 
 def _factorize_numpy_values_uint64(values: Any, *, sort: bool) -> tuple[np.ndarray, int]:
-    import pandas as pd  # noqa: PLC0415 - pandas-backed factorization
+    import pandas as pd
 
     codes, uniques = pd.factorize(values, sort=sort, use_na_sentinel=False)
     return np.asarray(codes, dtype=np.uint64), len(uniques)
 
 
 def _factorize_polars_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
-    import polars as pl  # noqa: PLC0415
+    import polars as pl
 
     native = df.to_native()
     unique_values = native.get_column(uid_col).unique(maintain_order=not sort)
@@ -361,8 +361,8 @@ def _factorize_polars_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool)
 
 
 def _factorize_pyarrow_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
-    import pyarrow as pa  # noqa: PLC0415
-    import pyarrow.compute as pc  # noqa: PLC0415
+    import pyarrow as pa
+    import pyarrow.compute as pc
 
     values = df.get_column(uid_col).to_arrow()
     if sort:
@@ -457,7 +457,7 @@ def _uid_values_from_index_ranges(
     starts = _starts_from_ends(ends)
     first_row_indices = np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]
     if use_arrow:
-        import pyarrow.compute as pc  # noqa: PLC0415
+        import pyarrow.compute as pc
 
         uid_arrow = uids.to_arrow()
         return pc.take(uid_arrow, first_row_indices).to_pylist()

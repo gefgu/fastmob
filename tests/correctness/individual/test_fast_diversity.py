@@ -7,7 +7,7 @@ pydivsufsort = pytest.importorskip(
     reason="pydivsufsort not installed; install with: pip install fastmob[diversity]",
 )
 
-from fastmob.measures.individual.fast_diversity import fast_diversity  # noqa: E402
+from fastmob.measures.individual.fast_diversity import fast_diversity
 
 
 def test_fast_diversity_constant_sequence_lower_than_varied():
@@ -76,8 +76,8 @@ def test_fast_diversity_longer_unique_beats_short_unique():
 
 def test_fast_diversity_raises_without_pydivsufsort(monkeypatch):
     """ImportError raised when pydivsufsort is None."""
-    import sys
     import importlib
+    import sys
 
     # Ensure the submodule is loaded, then grab it directly from sys.modules
     # to avoid the name collision with the re-exported function in visits/__init__.py

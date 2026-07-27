@@ -30,18 +30,18 @@ PRECISION_LEVELS = [
 ]
 
 __all__ = [
-    "UID",
-    "LATITUDE",
-    "LONGITUDE",
+    "COUNT",
     "DATETIME",
     "FREQUENCY",
-    "PROBABILITY",
-    "TOTAL_FREQ",
-    "COUNT",
-    "TEMP",
-    "PROPORTION",
-    "PRIVACY_RISK",
     "INSTANCE",
     "INSTANCE_ELEMENT",
+    "LATITUDE",
+    "LONGITUDE",
     "PRECISION_LEVELS",
+    "PRIVACY_RISK",
+    "PROBABILITY",
+    "PROPORTION",
+    "TEMP",
+    "TOTAL_FREQ",
+    "UID",
 ]

@@ -116,12 +116,14 @@ def random_entropy(
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    n_locs = _arrow_result_values(number_of_locations_indexed(
-        ops["extract_data"](df.get_column(lat_col)),
-        ops["extract_data"](df.get_column(lng_col)),
-        indices,
-        ends,
-    ))
+    n_locs = _arrow_result_values(
+        number_of_locations_indexed(
+            ops["extract_data"](df.get_column(lat_col)),
+            ops["extract_data"](df.get_column(lng_col)),
+            indices,
+            ends,
+        )
+    )
 
     result_dict: dict[str, Any] = {"__n_locations__": n_locs}
     if uid_col is not None:

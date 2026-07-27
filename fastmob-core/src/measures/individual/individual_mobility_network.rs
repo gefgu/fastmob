@@ -173,10 +173,10 @@ pub fn individual_mobility_network_indexed_impl(
     valid_rows: Option<&[bool]>,
 ) -> Result<MobilityNetworkData, String> {
     validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
-    if let Some(valid_rows) = valid_rows {
-        if valid_rows.len() != latitudes.len() {
-            return Err("valid_rows and coordinates must have the same length".to_string());
-        }
+    if let Some(valid_rows) = valid_rows
+        && valid_rows.len() != latitudes.len()
+    {
+        return Err("valid_rows and coordinates must have the same length".to_string());
     }
 
     let per_user = (0..ends.len())
@@ -201,10 +201,10 @@ pub fn individual_mobility_network_presorted_impl(
     valid_rows: Option<&[bool]>,
 ) -> Result<MobilityNetworkData, String> {
     validate_coord_ends(latitudes, longitudes, ends)?;
-    if let Some(valid_rows) = valid_rows {
-        if valid_rows.len() != latitudes.len() {
-            return Err("valid_rows and coordinates must have the same length".to_string());
-        }
+    if let Some(valid_rows) = valid_rows
+        && valid_rows.len() != latitudes.len()
+    {
+        return Err("valid_rows and coordinates must have the same length".to_string());
     }
 
     let per_user = (0..ends.len())

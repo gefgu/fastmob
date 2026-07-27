@@ -32,11 +32,7 @@ def _frequency_vector(traj: Any) -> Any:
 
 
 def _probability_vector(traj: Any) -> Any:
-    counts = (
-        _as_frame(traj)
-        .group_by([UID, LATITUDE, LONGITUDE])
-        .agg(nw.len().alias(FREQUENCY))
-    )
+    counts = _as_frame(traj).group_by([UID, LATITUDE, LONGITUDE]).agg(nw.len().alias(FREQUENCY))
     return (
         counts.with_columns((nw.col(FREQUENCY) / nw.col(FREQUENCY).sum().over(UID)).alias(PROBABILITY))
         .drop(FREQUENCY)
@@ -59,7 +55,9 @@ def _datetime_precision_format(precision: str) -> str:
 
 
 def _with_date_time_precision(data: Any, datetime_col: str, output_col: str, precision: str) -> nw.DataFrame:
-    return _as_frame(data).with_columns(nw.col(datetime_col).dt.to_string(_datetime_precision_format(precision)).alias(output_col))
+    return _as_frame(data).with_columns(
+        nw.col(datetime_col).dt.to_string(_datetime_precision_format(precision)).alias(output_col)
+    )
 
 
 def _date_time_precision(dt: Any, precision: str) -> str:
@@ -82,9 +80,9 @@ def _date_time_precision(dt: Any, precision: str) -> str:
 __all__ = [
     "_as_frame",
     "_backend",
-    "_to_native",
+    "_date_time_precision",
     "_frequency_vector",
     "_probability_vector",
+    "_to_native",
     "_with_date_time_precision",
-    "_date_time_precision",
 ]

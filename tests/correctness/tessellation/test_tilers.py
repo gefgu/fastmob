@@ -8,7 +8,7 @@ gpd = pytest.importorskip("geopandas")
 shapely_geometry = pytest.importorskip("shapely.geometry")
 pytest.importorskip("h3")
 
-from fastmob.tessellation import tilers  # noqa: E402
+from fastmob.tessellation import tilers
 
 
 @pytest.fixture()

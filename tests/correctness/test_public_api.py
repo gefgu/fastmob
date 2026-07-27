@@ -11,9 +11,7 @@ def test_dataframe_wrappers_are_public_api():
 
 
 def test_measure_taxonomy_uses_canonical_public_packages():
-    import fastmob.measures.collective as collective
-    import fastmob.measures.evaluation as evaluation
-    import fastmob.measures.individual as individual
+    from fastmob.measures import collective, evaluation, individual
 
     assert individual.radius_of_gyration is fastmob.radius_of_gyration
     assert collective.visits_per_location is fastmob.visits_per_location

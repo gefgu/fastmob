@@ -16,17 +16,20 @@ from typing import Any
 from scripts.profile_brightkite_common import (
     implementations,
     profile_jobs,
-    require_executable as _require_executable,
-    select_workloads as _select_workloads,
     write_manifest,
 )
+from scripts.profile_brightkite_common import (
+    require_executable as _require_executable,
+)
+from scripts.profile_brightkite_common import (
+    select_workloads as _select_workloads,
+)
 from tests.profiling.brightkite_workloads import (
-    DEFAULT_ROWS,
     DEFAULT_JUMP_LENGTHS_ENTRYPOINT,
+    DEFAULT_ROWS,
     JUMP_LENGTHS_ENTRYPOINTS,
     workload_registry,
 )
-
 
 DEFAULT_OUTPUT_DIR = Path(".profiles") / "scalene"
 DEFAULT_WORKLOADS = ["jump_lengths"]
@@ -200,7 +203,9 @@ def run_profiles(args: argparse.Namespace) -> int:
                 exit_code = returncode
                 if not args.continue_on_error:
                     elapsed = time.perf_counter() - started
-                    manifest_rows.append(_manifest_row(args, profile, status, returncode, elapsed, error, reduced_json_path))
+                    manifest_rows.append(
+                        _manifest_row(args, profile, status, returncode, elapsed, error, reduced_json_path)
+                    )
                     break
 
         elapsed = time.perf_counter() - started

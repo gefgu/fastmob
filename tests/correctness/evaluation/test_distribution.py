@@ -6,7 +6,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.evaluation import (
     column_distribution_jensen_shannon_divergence,
     column_distribution_wasserstein_distance,

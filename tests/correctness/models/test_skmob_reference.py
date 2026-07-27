@@ -9,10 +9,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
-
 from fastmob.models import Gravity, MarkovDiaryGenerator, Radiation, STS_epr
-from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
+from pandas.testing import assert_frame_equal
+from tests.shared.skmob_cache import _REFERENCE_DIR, SkmobReferenceDataset
 
 MODEL_SEED = 2
 MODEL_START = pd.Timestamp("2020-01-01 08:00:00")
@@ -55,7 +54,9 @@ def model_tessellation(models_reference: SkmobReferenceDataset) -> pd.DataFrame:
 def model_diary_training() -> pd.DataFrame:
     path = _REFERENCE_DIR / "models" / "diary_training.parquet"
     if not path.exists():
-        pytest.skip("No cached model diary training frame. Run 'bash scripts/populate_skmob_cache.sh --datasets models'.")
+        pytest.skip(
+            "No cached model diary training frame. Run 'bash scripts/populate_skmob_cache.sh --datasets models'."
+        )
     return pd.read_parquet(path)
 
 

@@ -4,7 +4,6 @@ import json
 from argparse import Namespace
 
 import pytest
-
 from scripts.profile_brightkite_scalene import (
     DEFAULT_REDUCED_CPU_SAMPLING_RATE,
     DEFAULT_TIMEOUT_SECONDS,
@@ -221,7 +220,11 @@ def test_runner_timeout_marks_workload_and_continues(tmp_path, monkeypatch):
     import scripts.profile_brightkite_scalene as runner
 
     monkeypatch.setattr(runner, "_require_executable", lambda executable, package_name: None)
-    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="fastmob", allow_unavailable=False: ["slow", "fast"])
+    monkeypatch.setattr(
+        runner,
+        "select_workloads",
+        lambda requested, implementation="fastmob", allow_unavailable=False: ["slow", "fast"],
+    )
     monkeypatch.setattr(runner, "_render_html", lambda profile, *, timeout_seconds: (0, False, ""))
 
     results = iter([(124, True, "scalene run timed out after 30s"), (0, False, "")])
@@ -296,7 +299,9 @@ def test_runner_timeout_skips_reducer_when_json_missing(tmp_path, monkeypatch):
     import scripts.profile_brightkite_scalene as runner
 
     monkeypatch.setattr(runner, "_require_executable", lambda executable, package_name: None)
-    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="fastmob", allow_unavailable=False: ["slow"])
+    monkeypatch.setattr(
+        runner, "select_workloads", lambda requested, implementation="fastmob", allow_unavailable=False: ["slow"]
+    )
     monkeypatch.setattr(
         runner,
         "_run_command",
@@ -334,7 +339,9 @@ def test_runner_reduced_success_deletes_full_json_and_skips_html(tmp_path, monke
     import scripts.profile_brightkite_scalene as runner
 
     monkeypatch.setattr(runner, "_require_executable", lambda executable, package_name: None)
-    monkeypatch.setattr(runner, "select_workloads", lambda requested, implementation="fastmob", allow_unavailable=False: ["fast"])
+    monkeypatch.setattr(
+        runner, "select_workloads", lambda requested, implementation="fastmob", allow_unavailable=False: ["fast"]
+    )
     monkeypatch.setattr(runner, "_run_command", lambda command, *, timeout_seconds, cwd=None: (0, False, ""))
 
     render_calls = []

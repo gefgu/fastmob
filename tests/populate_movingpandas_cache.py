@@ -1,4 +1,3 @@
-# ruff: noqa: E402
 """Populate the MovingPandas reference cache.
 
 Run this script inside .venv-movingpandas via the shell wrapper:
@@ -55,8 +54,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-import pandas as pd
 import movingpandas as mpd
+import pandas as pd
 from movingpandas.geometry_utils import angular_difference
 from movingpandas.trajectory_generalizer import (
     DouglasPeuckerGeneralizer,
@@ -424,7 +423,7 @@ def main() -> None:
         for uid, user_df in df.groupby("uid", sort=False):
             try:
                 kept = run_fn(user_df.reset_index(drop=True), uid)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 print(f"    SKIP user={uid} ({type(exc).__name__}: {exc})")
                 continue
             rows.extend({"uid": uid, "row_index": int(idx)} for idx in kept)
@@ -440,7 +439,7 @@ def main() -> None:
         for uid, user_df in df.groupby("uid", sort=False):
             try:
                 segment_pairs = run_fn(user_df.reset_index(drop=True), uid)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 print(f"    SKIP user={uid} ({type(exc).__name__}: {exc})")
                 continue
             rows.extend(
@@ -460,7 +459,7 @@ def main() -> None:
         for uid, user_df in df.groupby("uid", sort=False):
             try:
                 rows.extend(_run_interpolate_at_for_user(user_df.reset_index(drop=True), uid, mpd_method))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 print(f"    SKIP user={uid} method={method} ({type(exc).__name__}: {exc})")
                 continue
         result_df = pd.DataFrame(rows, columns=["uid", "query_time", "lat", "lon", "valid"])

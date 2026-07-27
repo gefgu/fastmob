@@ -4,9 +4,7 @@ from benchmarks import speed_models_large_scale as suite
 
 
 def test_large_scale_registry_contains_fixed_sts_epr_cases():
-    assert {"sts_epr_20a", "sts_epr_100a"}.issubset(
-        {spec.name for spec in suite.LARGE_SCALE_BENCHMARKS}
-    )
+    assert {"sts_epr_20a", "sts_epr_100a"}.issubset({spec.name for spec in suite.LARGE_SCALE_BENCHMARKS})
 
 
 def test_parse_args_accepts_metrics_filter():
@@ -40,6 +38,4 @@ def test_location_mode_defaults_to_location_metrics():
     args = suite.parse_args(["--library", "fastmob", "--mode", "location"])
 
     assert args.metrics == [spec.name for spec in suite.LOCATION_MODEL_BENCHMARKS]
-    assert [spec.name for spec in suite.selected_specs(args)] == [
-        spec.name for spec in suite.LOCATION_MODEL_BENCHMARKS
-    ]
+    assert [spec.name for spec in suite.selected_specs(args)] == [spec.name for spec in suite.LOCATION_MODEL_BENCHMARKS]

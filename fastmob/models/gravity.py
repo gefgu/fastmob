@@ -227,12 +227,14 @@ class Gravity:
     def __init__(
         self,
         deterrence_func_type="power_law",
-        deterrence_func_args=[-2.0],
+        deterrence_func_args=None,
         origin_exp=1.0,
         destination_exp=1.0,
         gravity_type="singly constrained",
         name="Gravity model",
     ):
+        if deterrence_func_args is None:
+            deterrence_func_args = [-2.0]
         self._name = name
         self._deterrence_func_args = deterrence_func_args
         self._origin_exp = origin_exp
@@ -240,8 +242,8 @@ class Gravity:
         self._gravity_type = gravity_type
         if deterrence_func_type not in ("power_law", "exponential"):
             print(
-                'Deterrence function type "%s" not available. Power law will be used.\n'
-                "Available deterrence functions are [power_law, exponential]" % deterrence_func_type
+                f'Deterrence function type "{deterrence_func_type}" not available. Power law will be used.\n'
+                "Available deterrence functions are [power_law, exponential]"
             )
             deterrence_func_type = "power_law"
         self._deterrence_func_type = deterrence_func_type
@@ -272,16 +274,8 @@ class Gravity:
 
     def __str__(self):
         return (
-            'Gravity(name="%s", deterrence_func_type="%s", deterrence_func_args=%s, '
-            'origin_exp=%s, destination_exp=%s, gravity_type="%s")'
-            % (
-                self._name,
-                self._deterrence_func_type,
-                self._deterrence_func_args,
-                self._origin_exp,
-                self._destination_exp,
-                self._gravity_type,
-            )
+            f'Gravity(name="{self._name}", deterrence_func_type="{self._deterrence_func_type}", deterrence_func_args={self._deterrence_func_args}, '
+            f'origin_exp={self._origin_exp}, destination_exp={self._destination_exp}, gravity_type="{self._gravity_type}")'
         )
 
     def generate(
@@ -340,8 +334,8 @@ class Gravity:
 
         if out_format not in ["flows", "flows_sample", "probabilities"]:
             print(
-                'Output format "%s" not available. Flows will be used.\n'
-                "Available output formats are [flows, flows_sample, probabilities]" % out_format
+                f'Output format "{out_format}" not available. Flows will be used.\n'
+                "Available output formats are [flows, flows_sample, probabilities]"
             )
             out_format = "flows"
 
@@ -422,7 +416,7 @@ class Gravity:
         tessellation = to_pandas_frame(flow_df.tessellation)
         self.lats_lngs = tessellation_lat_lngs(tessellation)
         self.weights = tessellation[relevance_column].fillna(0).to_numpy(dtype=float)
-        self.tileid2index = dict((tileid, i) for i, tileid in enumerate(tessellation[TILE_ID].values))
+        self.tileid2index = {tileid: i for i, tileid in enumerate(tessellation[TILE_ID].values)}
         self.X, self.y = [], []
 
         for _, flow_example in to_pandas_frame(flow_df).iterrows():

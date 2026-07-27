@@ -6,7 +6,6 @@ import types
 from pathlib import Path
 
 import pytest
-
 from benchmarks.privacy import speed_suite as suite
 
 
@@ -43,8 +42,7 @@ def test_output_path_matches_library_backend_and_timing_mode(tmp_path: Path):
         == tmp_path / "fastmob_privacy_speed_polars.json"
     )
     assert (
-        suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf")
-        == tmp_path / "skmob_privacy_speed_prebuilt_tdf.json"
+        suite.build_output_path(tmp_path, "skmob", "prebuilt_tdf") == tmp_path / "skmob_privacy_speed_prebuilt_tdf.json"
     )
     assert (
         suite.build_output_path(tmp_path, "fastmob", "prebuilt_tdf", "pandas", input_order="sorted")

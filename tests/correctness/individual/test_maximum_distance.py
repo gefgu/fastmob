@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 import narwhals as nw
 import numpy as np
 import pandas as pd
+import pytest
 
 # Pre-computed expected maximum distances for the shared synthetic fixture
 # (3 users, 5 GPS points each, 1-degree steps equator/meridian, Paris cluster).
@@ -221,8 +221,8 @@ def test_maximum_distance_presorted_helper_validation_errors():
 def test_maximum_distance_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from skmob.measures.individual import maximum_distance as skmob_md
     from fastmob.measures.individual.maximum_distance import maximum_distance as fastmob_md
+    from skmob.measures.individual import maximum_distance as skmob_md
 
     skmob_result = skmob_md(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

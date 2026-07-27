@@ -115,11 +115,8 @@ def random_location_entropy(
         .sort([lat_col, lng_col])
     )
 
-    result = (
-        grouped.with_columns(
-            (nw.col("__n_users__").log() / math.log(2)).alias("random_entropy")
-        )
-        .select([lat_col, lng_col, "random_entropy"])
+    result = grouped.with_columns((nw.col("__n_users__").log() / math.log(2)).alias("random_entropy")).select(
+        [lat_col, lng_col, "random_entropy"]
     )
 
     return result.to_native()

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
 from fastmob.measures.individual.mobility_profiling import intermittance_and_degree_of_return
 

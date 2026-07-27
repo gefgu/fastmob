@@ -6,7 +6,6 @@ import types
 from pathlib import Path
 
 import pytest
-
 from benchmarks.models import speed_suite as suite
 
 
@@ -167,12 +166,10 @@ def test_build_call_passes_agent_and_location_dimensions(monkeypatch):
     class FakeEPR:
         def generate(self, start, end, tessellation, **kwargs):
             calls["epr"] = {"locations": len(tessellation), "kwargs": kwargs}
-            return None
 
     class FakeGeoSim:
         def generate(self, start, end, tessellation, **kwargs):
             calls["geosim"] = {"locations": len(tessellation), "kwargs": kwargs}
-            return None
 
     fake_models = types.ModuleType("fastmob.models")
     fake_models.Gravity = object

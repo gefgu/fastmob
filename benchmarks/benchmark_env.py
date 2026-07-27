@@ -24,7 +24,7 @@ def _detect_cpu_info_impl() -> dict[str, Any]:
             return _detect_macos()
         if system == "Windows":
             return _detect_windows()
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     return _fallback()
 
@@ -69,15 +69,19 @@ def _detect_linux() -> dict[str, Any]:
 
 def _detect_macos() -> dict[str, Any]:
     try:
-        model = subprocess.run(
+        model = subprocess.run(  # noqa: PLW1510
             ["sysctl", "-n", "machdep.cpu.brand_string"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         ).stdout.strip()
-        cores_str = subprocess.run(
+        cores_str = subprocess.run(  # noqa: PLW1510
             ["sysctl", "-n", "hw.logicalcpu"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         ).stdout.strip()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return _fallback()
 
     if not model:
@@ -92,9 +96,11 @@ def _detect_macos() -> dict[str, Any]:
 
 def _detect_windows() -> dict[str, Any]:
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: PLW1510
             ["wmic", "cpu", "get", "Name,NumberOfLogicalProcessors", "/format:csv"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         lines = [ln for ln in result.stdout.splitlines() if ln.strip() and "Node" not in ln]
         if lines:
@@ -105,7 +111,7 @@ def _detect_windows() -> dict[str, Any]:
             except ValueError:
                 cores = os.cpu_count() or 1
             return {"model": model or "unknown", "cores": cores, "vendor_slug": _vendor_from_model(model)}
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     return _fallback()
 

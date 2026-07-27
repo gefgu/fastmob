@@ -16,6 +16,9 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
+from ...network._util import haversine_m_batch
+from ...network.road_graph import RoadNetwork
+from ...network.snap import snap_locations_to_graph
 from .._common import (
     LAT_CANDIDATES,
     LNG_CANDIDATES,
@@ -24,9 +27,6 @@ from .._common import (
     _pick_existing_column,
     _prepare_trajectory,
 )
-from ...network._util import haversine_m_batch
-from ...network.road_graph import RoadNetwork
-from ...network.snap import snap_locations_to_graph
 
 
 def _road_or_haversine_km(
@@ -87,7 +87,9 @@ def jump_lengths_km(
     )
 
     coords_pd = df.select([lat_col, lng_col]).to_pandas()
-    node_idx = snap_locations_to_graph(coords_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col)
+    node_idx = snap_locations_to_graph(
+        coords_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col
+    )
 
     uid_arr = df.get_column(uid_col).to_numpy() if uid_col is not None else None
     lat_arr = df.get_column(lat_col).to_numpy().astype(np.float64)

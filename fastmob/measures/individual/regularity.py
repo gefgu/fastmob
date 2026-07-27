@@ -90,10 +90,7 @@ def regularity(
         totals = nw_df.group_by(user_id_col).agg(nw.len().alias("__total__"))
         if key_cols:
             uniques = (
-                nw_df.select([user_id_col, *key_cols])
-                .unique()
-                .group_by(user_id_col)
-                .agg(nw.len().alias("__unique__"))
+                nw_df.select([user_id_col, *key_cols]).unique().group_by(user_id_col).agg(nw.len().alias("__unique__"))
             )
             result = totals.join(uniques, on=user_id_col, how="left")
         else:

@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 use geo::{Distance, Haversine, Point};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
@@ -21,7 +23,7 @@ pub fn k_radius_of_gyration_km(
     }
 
     let mut pairs: Vec<((f64, f64), u64)> = coords.into_iter().zip(visit_counts).collect();
-    pairs.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+    pairs.sort_unstable_by_key(|pair| Reverse(pair.1));
     let top_k = &pairs[..k.min(pairs.len())];
 
     let total_weight: f64 = top_k.iter().map(|(_, w)| *w as f64).sum();

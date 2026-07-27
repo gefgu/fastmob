@@ -58,9 +58,7 @@ def _stationarity(
     per user, restricted to stays with positive duration.
     """
     df = visits.with_columns(
-        ((nw.col(end_col) - nw.col(start_col)).dt.total_seconds() / 60.0).alias(
-            "__duration_minutes__"
-        )
+        ((nw.col(end_col) - nw.col(start_col)).dt.total_seconds() / 60.0).alias("__duration_minutes__")
     )
     df = df.filter(nw.col("__duration_minutes__") > 0)
 
@@ -113,9 +111,11 @@ def _cluster_and_label(
         for cluster_id in cluster_ids
     }
     ranked = sorted(means.items(), key=lambda item: item[1], reverse=True)
-    names = list(_PROFILE_NAMES[:n_clusters]) if n_clusters <= len(_PROFILE_NAMES) else [
-        f"cluster_{i}" for i in range(n_clusters)
-    ]
+    names = (
+        list(_PROFILE_NAMES[:n_clusters])
+        if n_clusters <= len(_PROFILE_NAMES)
+        else [f"cluster_{i}" for i in range(n_clusters)]
+    )
     mapping = {cluster_id: names[rank] for rank, (cluster_id, _mean) in enumerate(ranked)}
 
     profile_values = [mapping[label] for label in labels.tolist()]
@@ -213,7 +213,12 @@ def compute_profiles(
 
     missing = [
         name
-        for name, col in [("user_id", user_id_col), ("location_id", location_id_col), ("start", start_col), ("end", end_col)]
+        for name, col in [
+            ("user_id", user_id_col),
+            ("location_id", location_id_col),
+            ("start", start_col),
+            ("end", end_col),
+        ]
         if col is None
     ]
     if missing:
@@ -241,8 +246,12 @@ def compute_profiles(
     profiles = nw.from_native(profiles, eager_only=True).select([user_id_col, "intermittency", "degree_of_return"])
 
     metric_frames = [
-        regularity(df.to_native(), user_id_col=user_id_col, location_id_col=location_id_col, location_type_col=purpose_col),
-        diversity(df.to_native(), user_id_col=user_id_col, location_id_col=location_id_col, location_type_col=purpose_col),
+        regularity(
+            df.to_native(), user_id_col=user_id_col, location_id_col=location_id_col, location_type_col=purpose_col
+        ),
+        diversity(
+            df.to_native(), user_id_col=user_id_col, location_id_col=location_id_col, location_type_col=purpose_col
+        ),
         trajectory_entropy(
             df.to_native(),
             user_id_col=user_id_col,
@@ -258,9 +267,7 @@ def compute_profiles(
     # KMeans needs finite clustering features; sparse single-visit users may lack them.
     profiles = profiles.drop_nulls(subset=["intermittency", "degree_of_return"])
     if len(profiles) < n_clusters:
-        raise ValueError(
-            f"need at least {n_clusters} users with finite profiling metrics, got {len(profiles)}"
-        )
+        raise ValueError(f"need at least {n_clusters} users with finite profiling metrics, got {len(profiles)}")
 
     result = _cluster_and_label(profiles, user_id_col=user_id_col, n_clusters=n_clusters, random_state=random_state)
     return result.to_native()

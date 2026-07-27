@@ -6,7 +6,6 @@ import math
 
 import numpy as np
 import pandas as pd
-
 from fastmob.measures.evaluation import (
     activity_distribution_jensen_shannon_divergence,
     activity_transition_matrix_jensen_shannon_divergence,

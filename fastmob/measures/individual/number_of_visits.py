@@ -109,9 +109,7 @@ def number_of_visits(
             return _to_native({"number_of_visits": counts}, df)
         return _to_native({uid_col: uid_values, "number_of_visits": counts}, df)
 
-    valid_mask = (
-        ~df.get_column(lat_col).is_null() & ~df.get_column(lng_col).is_null()
-    ).to_numpy()
+    valid_mask = (~df.get_column(lat_col).is_null() & ~df.get_column(lng_col).is_null()).to_numpy()
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
     counts = number_of_visits_indexed(len(df), indices, ends, valid_mask)
 

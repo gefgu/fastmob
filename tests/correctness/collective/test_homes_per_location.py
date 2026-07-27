@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.collective.homes_per_location import homes_per_location
 
 

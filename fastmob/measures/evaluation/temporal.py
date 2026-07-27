@@ -28,7 +28,7 @@ def _hour_from_value(value: Any) -> int | None:
         import numpy as np
 
         return int(np.datetime64(text, "h").astype(object).hour)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 

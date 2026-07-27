@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from benchmarks import plot_benchmark_comparisons as plot
 
 
@@ -93,9 +92,7 @@ def test_generate_plots_models_location_only(tmp_path: Path, monkeypatch):
 
     monkeypatch.setattr(plot, "draw_plot", fake_draw_plot)
 
-    status = plot.generate_plots(
-        _model_args(original_json, optimized_json, tmp_path)
-    )
+    status = plot.generate_plots(_model_args(original_json, optimized_json, tmp_path))
 
     assert status == 0
     # One chart per location count (12 and 50)
@@ -120,9 +117,7 @@ def test_generate_plots_groups_model_matrix_by_agents(tmp_path: Path, monkeypatc
 
     monkeypatch.setattr(plot, "draw_plot", fake_draw_plot)
 
-    status = plot.generate_plots(
-        _model_args(original_json, optimized_json, tmp_path)
-    )
+    status = plot.generate_plots(_model_args(original_json, optimized_json, tmp_path))
 
     assert status == 0
     # One chart per agent count (2 and 10)

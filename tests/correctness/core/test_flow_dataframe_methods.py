@@ -77,9 +77,9 @@ def test_to_matrix_shape_and_values():
     assert matrix.shape == (2, 2)  # tiles A and B
     # sorted tiles: A=0, B=1
     assert matrix[0, 0] == 100  # A→A
-    assert matrix[0, 1] == 50   # A→B
-    assert matrix[1, 0] == 30   # B→A
-    assert matrix[1, 1] == 10   # B→B
+    assert matrix[0, 1] == 50  # A→B
+    assert matrix[1, 0] == 30  # B→A
+    assert matrix[1, 1] == 10  # B→B
 
 
 def test_to_matrix_empty():
@@ -98,8 +98,8 @@ def test_to_matrix_empty():
 
 def test_get_geometry_returns_correct_shape():
     gpd = pytest.importorskip("geopandas", reason="geopandas required")
-    from shapely.geometry import Point
     from fastmob import FlowDataFrame
+    from shapely.geometry import Point
 
     # Build a minimal tessellation
     tess = gpd.GeoDataFrame(
@@ -115,8 +115,8 @@ def test_get_geometry_returns_correct_shape():
 
 def test_get_geometry_missing_tile_raises():
     gpd = pytest.importorskip("geopandas", reason="geopandas required")
-    from shapely.geometry import Point
     from fastmob import FlowDataFrame
+    from shapely.geometry import Point
 
     tess = gpd.GeoDataFrame(
         {"tile_id": ["A"], "geometry": [Point(0, 0)]},

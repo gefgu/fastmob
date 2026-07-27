@@ -157,7 +157,9 @@ class MarkovDiaryGenerator:
         dt_series = pd.to_datetime(traj[DATETIME])
         if dt_series.isna().any():
             raise ValueError(f"trajectory column {DATETIME!r} must not contain null values")
-        timestamps_ns = np.ascontiguousarray(dt_series.to_numpy(dtype="datetime64[ns]").astype(np.int64), dtype=np.int64)
+        timestamps_ns = np.ascontiguousarray(
+            dt_series.to_numpy(dtype="datetime64[ns]").astype(np.int64), dtype=np.int64
+        )
 
         loc_codes, _ = pd.factorize(traj[lid].astype("str"), sort=False)
         self._cdf_matrix_flat = _core.markov_diary_fit_from_arrays(

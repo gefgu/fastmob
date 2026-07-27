@@ -113,7 +113,7 @@ def synthetic_tdf_polars(synthetic_rows):
 def _import_skmob_or_skip():
     try:
         return importlib.import_module("skmob")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         pytest.skip(f"skmob is not importable: {exc}")
 
 
@@ -189,7 +189,7 @@ def geolife_pd(pytestconfig):
     rows = pytestconfig.getoption("--geolife-rows")
     try:
         return load_geolife_pandas(mode=mode, rows=rows)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         pytest.skip(f"GeoLife dataset is not available: {exc}")
 
 
@@ -201,7 +201,7 @@ def geolife_skmob(pytestconfig):
     rows = pytestconfig.getoption("--geolife-rows")
     try:
         geolife_pd = load_geolife_pandas(mode=mode, rows=rows)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         pytest.skip(f"GeoLife dataset is not available: {exc}")
     return skmob.TrajDataFrame(
         geolife_pd,
@@ -219,7 +219,7 @@ def foursquare_pd(pytestconfig):
     rows = pytestconfig.getoption("--foursquare-rows")
     try:
         return load_foursquare_pandas(mode=mode, rows=rows)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         pytest.skip(f"Foursquare NYC dataset is not available: {exc}")
 
 
@@ -231,7 +231,7 @@ def foursquare_skmob(pytestconfig):
     rows = pytestconfig.getoption("--foursquare-rows")
     try:
         foursquare_pd = load_foursquare_pandas(mode=mode, rows=rows)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         pytest.skip(f"Foursquare NYC dataset is not available: {exc}")
     return skmob.TrajDataFrame(
         foursquare_pd,

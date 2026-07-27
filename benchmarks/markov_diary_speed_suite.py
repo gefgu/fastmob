@@ -27,8 +27,8 @@ _BENCHMARK_DIR = Path(__file__).resolve().parent
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
 
-from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
-from benchmarks.models.speed_suite import nonnegative_float, positive_int, write_json  # noqa: E402
+from benchmark_env import detect_cpu_info, get_default_output_dir
+from benchmarks.models.speed_suite import nonnegative_float, positive_int, write_json
 
 MODEL_SEED = 2
 MODEL_START = pd.Timestamp("2020-01-01 08:00:00")
@@ -76,9 +76,7 @@ def build_fit_call(diary_training: pd.DataFrame, n_individuals: int) -> Callable
     return lambda: fit_diary(diary_training, n_individuals)
 
 
-BENCHMARKS: tuple[BenchmarkSpec, ...] = (
-    BenchmarkSpec("generate_public", build_generate_public_call),
-)
+BENCHMARKS: tuple[BenchmarkSpec, ...] = (BenchmarkSpec("generate_public", build_generate_public_call),)
 
 
 def summarize_times(times: list[float]) -> dict[str, float | None]:

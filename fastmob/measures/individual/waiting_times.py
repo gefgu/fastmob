@@ -140,22 +140,26 @@ def waiting_times(
             return _arrow_flat_result_values(waiting_times_presorted_flat(timestamps_data, ends))
         value_starts, value_ends, flat_values = waiting_times_presorted(timestamps_data, ends)
         flat_values = _arrow_flat_result_values(flat_values)
-        wt_values = _grouped_arrow_values(
-            value_starts, value_ends, flat_values, value_offsets=True
-        ) if hasattr(flat_values, "__arrow_c_array__") else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
+        wt_values = (
+            _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True)
+            if hasattr(flat_values, "__arrow_c_array__")
+            else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
+        )
         if uid_col is None:
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
-    uid_values, indices, ends = _build_time_ordered_user_ranges(
-        df, uid_col, datetime_col, timestamps_data
-    )
+    uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
     if merge:
         return _arrow_flat_result_values(waiting_times_indexed_flat(timestamps_data, indices, ends))
 
     value_starts, value_ends, flat_values = waiting_times_indexed(timestamps_data, indices, ends)
     flat_values = _arrow_flat_result_values(flat_values)
-    wt_values = _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True) if hasattr(flat_values, "__arrow_c_array__") else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
+    wt_values = (
+        _grouped_arrow_values(value_starts, value_ends, flat_values, value_offsets=True)
+        if hasattr(flat_values, "__arrow_c_array__")
+        else _grouped_numpy_values(value_starts, value_ends, flat_values, value_offsets=True)
+    )
     if uid_col is None:
         return _to_native({"waiting_times": wt_values}, df)
     return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)

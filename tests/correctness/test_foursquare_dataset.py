@@ -6,14 +6,7 @@ import pandas as pd
 
 from tests.shared.foursquare import FOURSQUARE_FILE_NAME, load_foursquare_pandas, read_foursquare_text
 
-
-FOURSQUARE_TEXT = "\n".join(
-    [
-        "1\tvenue_b\tcat_b\tCoffee Shop\t40.7001\t-73.9001\t-240\tTue Apr 03 18:00:09 +0000 2012",
-        "1\tvenue_a\tcat_a\tOffice\t40.7000\t-73.9000\t-240\tTue Apr 03 18:00:09 +0000 2012",
-        "2\tvenue_c\tcat_c\tPark\t40.8000\t-73.8000\t-240\tWed Apr 04 19:30:00 +0000 2012",
-    ]
-)
+FOURSQUARE_TEXT = "1\tvenue_b\tcat_b\tCoffee Shop\t40.7001\t-73.9001\t-240\tTue Apr 03 18:00:09 +0000 2012\n1\tvenue_a\tcat_a\tOffice\t40.7000\t-73.9000\t-240\tTue Apr 03 18:00:09 +0000 2012\n2\tvenue_c\tcat_c\tPark\t40.8000\t-73.8000\t-240\tWed Apr 04 19:30:00 +0000 2012"
 
 
 def test_read_foursquare_text_builds_normalized_columns():
@@ -35,14 +28,7 @@ def test_load_foursquare_slice_is_deterministic_row_limited_and_deduplicated(tmp
     data_dir = tmp_path / "dataset_tsmc2014"
     data_dir.mkdir()
     (data_dir / FOURSQUARE_FILE_NAME).write_text(
-        "\n".join(
-            [
-                "2\tvenue_c\tcat_c\tPark\t40.8000\t-73.8000\t-240\tWed Apr 04 19:30:00 +0000 2012",
-                "1\tvenue_b\tcat_b\tCoffee Shop\t40.7001\t-73.9001\t-240\tTue Apr 03 18:00:09 +0000 2012",
-                "1\tvenue_a\tcat_a\tOffice\t40.7000\t-73.9000\t-240\tTue Apr 03 18:00:09 +0000 2012",
-                "1\tvenue_d\tcat_d\tGym\t40.9000\t-73.7000\t-240\tThu Apr 05 20:00:00 +0000 2012",
-            ]
-        ),
+        "2\tvenue_c\tcat_c\tPark\t40.8000\t-73.8000\t-240\tWed Apr 04 19:30:00 +0000 2012\n1\tvenue_b\tcat_b\tCoffee Shop\t40.7001\t-73.9001\t-240\tTue Apr 03 18:00:09 +0000 2012\n1\tvenue_a\tcat_a\tOffice\t40.7000\t-73.9000\t-240\tTue Apr 03 18:00:09 +0000 2012\n1\tvenue_d\tcat_d\tGym\t40.9000\t-73.7000\t-240\tThu Apr 05 20:00:00 +0000 2012",
         encoding="utf-8",
     )
 

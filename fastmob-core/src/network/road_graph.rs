@@ -35,7 +35,14 @@ impl RoadGraph {
         edge_weight_ds: &[usize],
         edge_length_m: &[f64],
     ) -> Self {
-        Self::build_with_length_and_coords(edge_from, edge_to, edge_weight_ds, edge_length_m, &[], &[])
+        Self::build_with_length_and_coords(
+            edge_from,
+            edge_to,
+            edge_weight_ds,
+            edge_length_m,
+            &[],
+            &[],
+        )
     }
 
     /// Same as `build_with_length`, but also carries each node's (lat, lng),
@@ -200,7 +207,14 @@ pub fn batch_road_distances(
 /// user-boundary convention used elsewhere for variable-length-per-group
 /// kernels). A disconnected pair or an unsnapped (negative) node id reports
 /// `connected[i] == false` and an empty `starts[i]..ends[i]` slice.
-type RouteBatch = (Vec<f64>, Vec<f64>, Vec<i64>, Vec<bool>, Vec<usize>, Vec<usize>);
+type RouteBatch = (
+    Vec<f64>,
+    Vec<f64>,
+    Vec<i64>,
+    Vec<bool>,
+    Vec<usize>,
+    Vec<usize>,
+);
 type RouteQueryResult = (Vec<f64>, Vec<f64>, Vec<i64>, bool);
 
 pub fn batch_road_routes(
@@ -301,8 +315,10 @@ pub fn batch_route_edge_flows(
             let mut calc = graph.new_calculator();
             let mut local: FxHashMap<(usize, usize), f64> = FxHashMap::default();
             let mut local_dropped = 0.0;
-            for ((&from, &to), &flow) in
-                from_chunk.iter().zip(to_chunk.iter()).zip(flow_chunk.iter())
+            for ((&from, &to), &flow) in from_chunk
+                .iter()
+                .zip(to_chunk.iter())
+                .zip(flow_chunk.iter())
             {
                 if from < 0 || to < 0 {
                     local_dropped += flow;
@@ -484,8 +500,7 @@ mod tests {
             &node_lat,
             &node_lng,
         );
-        let (lats, lngs, cum, connected, starts, ends) =
-            batch_road_routes(&graph, &[0], &[3], 10);
+        let (lats, lngs, cum, connected, starts, ends) = batch_road_routes(&graph, &[0], &[3], 10);
         assert_eq!(connected, vec![true]);
         assert_eq!(starts, vec![0]);
         assert_eq!(ends, vec![4]);
@@ -556,12 +571,8 @@ mod tests {
         let edge_to = vec![1, 2, 3];
         let edge_weight = vec![10, 10, 10];
         let graph = RoadGraph::build(&edge_from, &edge_to, &edge_weight);
-        let (edge_from_out, edge_to_out, flow_out, dropped_flow) = batch_route_edge_flows(
-            &graph,
-            &[0, 1, 2, -1],
-            &[3, 3, 3, 2],
-            &[5.0, 3.0, 0.5, 1.0],
-        );
+        let (edge_from_out, edge_to_out, flow_out, dropped_flow) =
+            batch_route_edge_flows(&graph, &[0, 1, 2, -1], &[3, 3, 3, 2], &[5.0, 3.0, 0.5, 1.0]);
         assert_eq!(edge_from_out, vec![2, 1, 0]);
         assert_eq!(edge_to_out, vec![3, 2, 1]);
         assert_eq!(flow_out, vec![8.5, 8.0, 5.0]);

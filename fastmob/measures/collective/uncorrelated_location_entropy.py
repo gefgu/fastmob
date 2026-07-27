@@ -118,16 +118,14 @@ def uncorrelated_location_entropy(
 
     # 1. Count visits per (uid, lat, lng) triplet
     visit_counts = (
-        df.select([uid_col, lat_col, lng_col])
-        .group_by([uid_col, lat_col, lng_col])
-        .agg(nw.len().alias("__visits__"))
+        df.select([uid_col, lat_col, lng_col]).group_by([uid_col, lat_col, lng_col]).agg(nw.len().alias("__visits__"))
     )
 
     # 2. Compute the Shannon entropy mathematically using native expressions.
     # Probability p = user_visits / total_location_visits.
     # We get total_location_visits using the window function: .over([lat_col, lng_col])
     p = nw.col("__visits__") / nw.col("__visits__").sum().over([lat_col, lng_col])
-    
+
     # Calculate p * log2(p) * -1 to avoid unary minus error on Expr
     entropy_term = (p * (p.log() / math.log(2))) * -1
 

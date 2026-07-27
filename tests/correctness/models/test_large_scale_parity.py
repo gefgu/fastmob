@@ -24,7 +24,9 @@ import pytest
 _BENCH_DIR = Path(__file__).resolve().parents[3] / "benchmarks"
 sys.path.insert(0, str(_BENCH_DIR))
 
-from correctness_models_large_scale import (  # noqa: E402
+from benchmarks.models.speed_suite import expand_tessellation, load_model_inputs
+
+from correctness_models_large_scale import (
     DEFAULT_OUTPUT_DIR,
     DEFAULT_OUTPUT_NAME,
     DEFAULT_REFERENCE_DIR,
@@ -32,8 +34,7 @@ from correctness_models_large_scale import (  # noqa: E402
     LARGE_SCALE_BENCHMARKS,
     generate_one_large_run,
 )
-from model_statistical_baseline import compute_trajectory_pair_metrics, _trajectory_to_std  # noqa: E402
-from benchmarks.models.speed_suite import expand_tessellation, load_model_inputs  # noqa: E402
+from model_statistical_baseline import _trajectory_to_std, compute_trajectory_pair_metrics
 
 _BASELINE_PATH = DEFAULT_OUTPUT_DIR / DEFAULT_OUTPUT_NAME
 
@@ -58,9 +59,7 @@ def large_scale_baseline() -> dict[str, Any]:
 def large_tessellation() -> pd.DataFrame:
     ref_dir = Path(DEFAULT_REFERENCE_DIR)
     if not (ref_dir / "input.parquet").exists():
-        pytest.skip(
-            "No model cache. Run 'bash scripts/populate_skmob_cache.sh --datasets models' first."
-        )
+        pytest.skip("No model cache. Run 'bash scripts/populate_skmob_cache.sh --datasets models' first.")
     base_tess, _ = load_model_inputs(ref_dir)
     return expand_tessellation(base_tess, DEFAULT_SIZE)
 
@@ -71,8 +70,7 @@ def large_diary_training() -> pd.DataFrame:
     diary_path = ref_dir / "diary_training.parquet"
     if not diary_path.exists():
         pytest.skip(
-            "No cached model diary training frame. "
-            "Run 'bash scripts/populate_skmob_cache.sh --datasets models' first."
+            "No cached model diary training frame. Run 'bash scripts/populate_skmob_cache.sh --datasets models' first."
         )
     return pd.read_parquet(diary_path)
 
@@ -144,14 +142,17 @@ def _run_parity_check(
 
 @pytest.mark.slow
 @pytest.mark.skip(reason="model implementation under revision")
-@pytest.mark.parametrize("spec_name", [
-    "epr_100a",
-    "epr_1000a",
-    "epr_10000a",
-    "epr_50000a",
-    "density_epr_1000a",
-    "spatial_epr_1000a",
-])
+@pytest.mark.parametrize(
+    "spec_name",
+    [
+        "epr_100a",
+        "epr_1000a",
+        "epr_10000a",
+        "epr_50000a",
+        "density_epr_1000a",
+        "spatial_epr_1000a",
+    ],
+)
 def test_epr_large_scale_parity(
     spec_name,
     large_scale_baseline,

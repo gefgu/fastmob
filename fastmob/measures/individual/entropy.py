@@ -67,8 +67,7 @@ def _kontoyiannis_entropy(sequence: list) -> float:
             if sequence[i - 1] == sequence[j - 1]:
                 curr_row[j] = prev_row[j - 1] + 1
             # else curr_row[j] remains 1 (initialised above)
-            if curr_row[j] > col_max[j]:
-                col_max[j] = curr_row[j]
+            col_max[j] = max(col_max[j], curr_row[j])
         prev_row = curr_row
 
     lambdas = sum(col_max)
@@ -161,11 +160,9 @@ def _with_location_key(
     """Add the token column consumed by the trajectory entropy estimator."""
     if location_id_col and location_type_col:
         return df.with_columns(
-            (
-                nw.col(location_id_col).cast(nw.String)
-                + nw.lit("_")
-                + nw.col(location_type_col).cast(nw.String)
-            ).alias(location_key_col)
+            (nw.col(location_id_col).cast(nw.String) + nw.lit("_") + nw.col(location_type_col).cast(nw.String)).alias(
+                location_key_col
+            )
         )
     if location_id_col:
         return df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))

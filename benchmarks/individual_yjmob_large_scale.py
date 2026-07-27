@@ -26,9 +26,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
-from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path  # noqa: E402
-from benchmarks.utils import size_label, summarize_times, write_json  # noqa: E402
+from benchmarks.benchmark_env import detect_cpu_info, get_default_output_dir
+from benchmarks.shared.yjmob import load_yjmob, skip_reason, yjmob_data_path
+from benchmarks.utils import size_label, summarize_times, write_json
 
 # compute_profiles's cost is dominated by intermittance_and_degree_of_return's
 # impute_gaps=True path (a pure-Python per-row 5-minute trajectory expansion,
@@ -42,16 +42,17 @@ H3_RESOLUTION = 9
 
 def _build_visits(data_path: Path, n_users: int):
     import polars as pl
-
     from fastmob.preprocessing import latlng_to_h3
 
     df = load_yjmob(data_path, n_users=n_users)
     df = latlng_to_h3(df, resolution=H3_RESOLUTION, output_col="location_id")
     df = df.sort(["uid", "timestamp"])
     df = df.with_columns(
-        pl.col("timestamp").shift(-1).over("uid").fill_null(pl.col("timestamp") + pl.duration(minutes=30)).alias(
-            "end_timestamp"
-        )
+        pl.col("timestamp")
+        .shift(-1)
+        .over("uid")
+        .fill_null(pl.col("timestamp") + pl.duration(minutes=30))
+        .alias("end_timestamp")
     )
     return df.rename({"timestamp": "start_timestamp"}).select(
         ["uid", "start_timestamp", "end_timestamp", "location_id"]

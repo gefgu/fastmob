@@ -6,7 +6,6 @@ import math
 
 import pandas as pd
 import pytest
-
 from fastmob.preprocessing import latlng_to_h3
 
 # Cross-checked against h3-py: h3.latlng_to_cell(37.769377, -122.388519, 9) == '89283082e73ffff'.

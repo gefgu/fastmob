@@ -8,7 +8,7 @@ use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use crate::adapters::trajectory::{run_indexed_coordinate_f64, PyF64Result};
+use crate::adapters::trajectory::{PyF64Result, run_indexed_coordinate_f64};
 
 type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 

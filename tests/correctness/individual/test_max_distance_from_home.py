@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import pandas as pd
-import pytest
 import narwhals as nw
 import numpy as np
-
+import pandas as pd
+import pytest
 
 # Expected max-distance-from-home for the shared synthetic fixture.
 # Home is the first visited location for each user (all timestamps 00:00-04:00,
@@ -128,8 +127,8 @@ def test_max_distance_from_point_indexed_arrow_null_coordinates_are_ignored():
 def test_max_distance_from_home_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from skmob.measures.individual import max_distance_from_home as skmob_mdfh
     from fastmob.measures.individual.max_distance_from_home import max_distance_from_home as fastmob_mdfh
+    from skmob.measures.individual import max_distance_from_home as skmob_mdfh
 
     skmob_result = skmob_mdfh(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

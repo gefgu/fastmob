@@ -1,7 +1,7 @@
 use arrow_array::{Array, UInt64Array};
 use fastmob_core::measures::individual::time_ordering::{
-    presorted_ranges_for_u64_codes, split_ordered_index_ranges, time_ordered_indices_for_u64_codes,
-    time_ordered_indices_single_user, OrderedIndexRanges,
+    OrderedIndexRanges, presorted_ranges_for_u64_codes, split_ordered_index_ranges,
+    time_ordered_indices_for_u64_codes, time_ordered_indices_single_user,
 };
 use fastmob_core::utils::{split_ranges, validate_uid_len};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};

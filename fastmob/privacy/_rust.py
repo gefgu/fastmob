@@ -41,7 +41,9 @@ def _target_user_indices(df: nw.DataFrame, uid_values: list[Any] | None, targets
     if targets is None:
         target_uids = df.select(UID).unique().sort(UID).get_column(UID).to_list()
     elif isinstance(targets, list):
-        target_uids = nw.from_dict({UID: targets}, backend=df.implementation).unique().sort(UID).get_column(UID).to_list()
+        target_uids = (
+            nw.from_dict({UID: targets}, backend=df.implementation).unique().sort(UID).get_column(UID).to_list()
+        )
     else:
         target_uids = _as_frame(targets).select(UID).unique().sort(UID).get_column(UID).to_list()
 

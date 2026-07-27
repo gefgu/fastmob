@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -192,9 +191,11 @@ def test_imn_presorted_matches_default_pandas():
             "lng": [0.0] * 6,
         }
     )
-    sorted_input = raw.assign(__row_order=np.arange(len(raw))).sort_values(
-        ["uid", "datetime", "__row_order"], kind="mergesort"
-    ).drop(columns=["__row_order"])
+    sorted_input = (
+        raw.assign(__row_order=np.arange(len(raw)))
+        .sort_values(["uid", "datetime", "__row_order"], kind="mergesort")
+        .drop(columns=["__row_order"])
+    )
 
     assert _to_edge_dict(individual_mobility_network(sorted_input, presorted=True)) == _to_edge_dict(
         individual_mobility_network(raw)
@@ -284,7 +285,9 @@ def test_imn_indexed_helper_smoke():
         lats, lngs, indices, ends, False
     )
 
-    assert list(zip(_array_list(lat_o), _array_list(lng_o), _array_list(lat_d), _array_list(lng_d), _array_list(n_trips))) == [
+    assert list(
+        zip(_array_list(lat_o), _array_list(lng_o), _array_list(lat_d), _array_list(lng_d), _array_list(n_trips))
+    ) == [
         (1.0, 0.0, 2.0, 0.0, 1),
         (2.0, 0.0, 1.0, 0.0, 1),
     ]
@@ -299,11 +302,11 @@ def test_imn_presorted_helper_smoke():
     lngs = np.zeros(4, dtype=np.float64)
     ends = np.array([3, 4], dtype=np.uintp)
 
-    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_presorted(
-        lats, lngs, ends, False
-    )
+    lat_o, lng_o, lat_d, lng_d, n_trips, user_indices = individual_mobility_network_presorted(lats, lngs, ends, False)
 
-    assert list(zip(_array_list(lat_o), _array_list(lng_o), _array_list(lat_d), _array_list(lng_d), _array_list(n_trips))) == [
+    assert list(
+        zip(_array_list(lat_o), _array_list(lng_o), _array_list(lat_d), _array_list(lng_d), _array_list(n_trips))
+    ) == [
         (1.0, 0.0, 2.0, 0.0, 1),
         (2.0, 0.0, 1.0, 0.0, 1),
     ]
@@ -334,10 +337,10 @@ def test_imn_native_helper_validation_errors():
 def test_imn_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import individual_mobility_network as skmob_imn
     from fastmob.measures.individual.individual_mobility_network import (
         individual_mobility_network as fastmob_imn,
     )
+    from skmob.measures.individual import individual_mobility_network as skmob_imn
 
     skmob_result = skmob_imn(comparison_skmob, show_progress=False)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

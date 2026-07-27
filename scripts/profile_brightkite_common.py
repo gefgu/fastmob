@@ -10,7 +10,6 @@ from typing import Any, Callable
 
 from tests.profiling.brightkite_workloads import IMPLEMENTATIONS, _skmob_workload_candidates, workload_registry
 
-
 WorkloadSelector = Callable[[list[str] | None, str], list[str]]
 
 
@@ -54,9 +53,7 @@ def select_workloads(
     unknown = sorted(set(workloads) - set(registry))
     if unknown:
         available = ", ".join(registry) or "none"
-        raise SystemExit(
-            f"Unknown workload(s) for {implementation}: {', '.join(unknown)}. Available: {available}"
-        )
+        raise SystemExit(f"Unknown workload(s) for {implementation}: {', '.join(unknown)}. Available: {available}")
     return list(workloads)
 
 

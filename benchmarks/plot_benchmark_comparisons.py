@@ -692,8 +692,7 @@ def draw_standalone_plot(
     min_label_x = x_max * 0.035
     for group_y, row in zip(y_positions, rows, strict=True):
         label_x = row["optimized"] + offset
-        if label_x < min_label_x:
-            label_x = min_label_x
+        label_x = max(label_x, min_label_x)
         ax.text(
             min(label_x, x_max * 0.985),
             group_y,
@@ -1186,8 +1185,7 @@ def draw_memory_standalone_plot(
     min_label_x = x_max * 0.035
     for group_y, row in zip(y_positions, rows, strict=True):
         label_x = row["optimized"] + offset
-        if label_x < min_label_x:
-            label_x = min_label_x
+        label_x = max(label_x, min_label_x)
         ax.text(
             min(label_x, x_max * 0.985),
             group_y,
@@ -1402,10 +1400,12 @@ def _agent_based_standalone_rows(
                 continue
             loc_label = format_size_label(n_locs)
             rows.append({"metric": f"{display_metric_name(model)} / {loc_label} locs", "optimized": float(opt_t)})
-    rows.sort(key=lambda r: (
-        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
-        -r["optimized"],
-    ))
+    rows.sort(
+        key=lambda r: (
+            parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+            -r["optimized"],
+        )
+    )
     return rows
 
 
@@ -1440,10 +1440,12 @@ def _agent_based_rows(
                     "speedup": float(orig_t) / float(opt_t),
                 }
             )
-    rows.sort(key=lambda r: (
-        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
-        -r["original"],
-    ))
+    rows.sort(
+        key=lambda r: (
+            parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+            -r["original"],
+        )
+    )
     return rows
 
 
@@ -1513,10 +1515,12 @@ def _memory_agent_based_standalone_rows(
                 continue
             loc_label = format_size_label(n_locs)
             rows.append({"metric": f"{display_metric_name(model)} / {loc_label} locs", "optimized": float(opt_mb)})
-    rows.sort(key=lambda r: (
-        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
-        -r["optimized"],
-    ))
+    rows.sort(
+        key=lambda r: (
+            parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+            -r["optimized"],
+        )
+    )
     return rows
 
 
@@ -1552,10 +1556,12 @@ def _memory_agent_based_rows(
                     "reduction_pct": reduction_pct,
                 }
             )
-    rows.sort(key=lambda r: (
-        parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
-        -r["original"],
-    ))
+    rows.sort(
+        key=lambda r: (
+            parse_size_key(r["metric"].split("/")[1].strip().split(" ")[0])[1],
+            -r["original"],
+        )
+    )
     return rows
 
 
@@ -1642,9 +1648,7 @@ def generate_model_memory_plots(args: argparse.Namespace) -> int:
         generated += 1
         print(f"Saved {output_path}")
 
-    all_agent_counts = sorted(
-        {ag for (_, ag) in orig_traj} & {ag for (_, ag) in opt_traj}
-    )
+    all_agent_counts = sorted({ag for (_, ag) in orig_traj} & {ag for (_, ag) in opt_traj})
     for n_agents in all_agent_counts:
         rows = _memory_agent_based_rows(orig_traj, opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
         if not rows:
@@ -1665,9 +1669,7 @@ def generate_model_memory_plots(args: argparse.Namespace) -> int:
         generated += 1
         print(f"Saved {output_path}")
 
-    fastmob_only_agents = sorted(
-        {ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj}
-    )
+    fastmob_only_agents = sorted({ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj})
     for n_agents in fastmob_only_agents:
         standalone_rows = _memory_agent_based_standalone_rows(opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
         if not standalone_rows:
@@ -1890,9 +1892,7 @@ def generate_model_plots(args: argparse.Namespace) -> int:
 
     # Family 2 — Agent-based models: one chart per agent count
     # Comparison charts where both libraries have data
-    all_agent_counts = sorted(
-        {ag for (_, ag) in orig_traj} & {ag for (_, ag) in opt_traj}
-    )
+    all_agent_counts = sorted({ag for (_, ag) in orig_traj} & {ag for (_, ag) in opt_traj})
     for n_agents in all_agent_counts:
         rows = _agent_based_rows(orig_traj, opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
         if not rows:
@@ -1914,9 +1914,7 @@ def generate_model_plots(args: argparse.Namespace) -> int:
         print(f"Saved {output_path}")
 
     # Standalone fastmob-only charts for agent counts not available in skmob
-    fastmob_only_agents = sorted(
-        {ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj}
-    )
+    fastmob_only_agents = sorted({ag for (_, ag) in opt_traj} - {ag for (_, ag) in orig_traj})
     for n_agents in fastmob_only_agents:
         standalone_rows = _agent_based_standalone_rows(opt_traj, n_agents, MODEL_TRAJECTORY_METRICS)
         if not standalone_rows:

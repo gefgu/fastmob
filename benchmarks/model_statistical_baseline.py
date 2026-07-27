@@ -82,14 +82,14 @@ def reset_rng(seed: int) -> None:
     random.seed(seed)
     try:
         np.random.seed(seed)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     try:
         import igraph
 
         if hasattr(igraph, "set_random_number_generator"):
             igraph.set_random_number_generator(random)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
 
@@ -112,7 +112,7 @@ def import_model_classes(library: str) -> dict[str, Any]:
 
         if not hasattr(_np, "NaN"):
             _np.NaN = _np.nan  # type: ignore[attr-defined]
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     return {
@@ -280,7 +280,7 @@ def generate_one_run(
 
         except ImportError:
             return None
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    [error] {spec.name} seed={seed}: {type(exc).__name__}: {exc}")
             return None
 
@@ -339,7 +339,7 @@ def compute_trajectory_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dic
     try:
         val, _ = cmp.visits_per_user_wasserstein_distance(df1, df2)
         out["visits_per_user_wasserstein"] = float(val)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     # jump lengths
@@ -348,7 +348,7 @@ def compute_trajectory_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dic
         jl2 = _flat_numpy(spatial.jump_lengths(df2, merge=True))
         if jl1.size > 0 and jl2.size > 0:
             out["jump_lengths_wasserstein"] = float(cmp.wasserstein_distance(jl1, jl2))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     # radius of gyration
@@ -359,7 +359,7 @@ def compute_trajectory_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dic
         rog2 = _flat_numpy(rog_df2["radius_of_gyration"].to_numpy())
         if rog1.size > 0 and rog2.size > 0:
             out["radius_of_gyration_wasserstein"] = float(cmp.wasserstein_distance(rog1, rog2))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     # waiting times
@@ -368,7 +368,7 @@ def compute_trajectory_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dic
         wt2 = _flat_numpy(spatial.waiting_times(df2, merge=True))
         if wt1.size > 0 and wt2.size > 0:
             out["waiting_times_wasserstein"] = float(cmp.wasserstein_distance(wt1, wt2))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     return out
@@ -379,6 +379,7 @@ def compute_flow_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[str,
     out: dict[str, float] = {}
 
     try:
+
         def to_od_matrix(df: pd.DataFrame) -> pd.DataFrame:
             if hasattr(df, "df"):
                 df = df.df
@@ -391,7 +392,7 @@ def compute_flow_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[str,
         mat1 = to_od_matrix(df1)
         mat2 = to_od_matrix(df2)
         out["od_matrix_cpc"] = float(cmp.od_matrix_common_part_of_commuters(mat1, mat2))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     return out
@@ -406,24 +407,34 @@ def summarize(values: list[float]) -> dict[str, Any]:
     if not values:
         return {
             "n_pairs": 0,
-            "mean": None, "std": None,
-            "p5": None, "p25": None, "p50": None,
-            "p75": None, "p95": None, "p99": None,
+            "mean": None,
+            "std": None,
+            "p5": None,
+            "p25": None,
+            "p50": None,
+            "p75": None,
+            "p95": None,
+            "p99": None,
         }
     a = np.array(values, dtype=np.float64)
     a = a[np.isfinite(a)]
     if a.size == 0:
         return {
             "n_pairs": len(values),
-            "mean": None, "std": None,
-            "p5": None, "p25": None, "p50": None,
-            "p75": None, "p95": None, "p99": None,
+            "mean": None,
+            "std": None,
+            "p5": None,
+            "p25": None,
+            "p50": None,
+            "p75": None,
+            "p95": None,
+            "p99": None,
         }
     return {
         "n_pairs": int(a.size),
         "mean": float(a.mean()),
         "std": float(a.std()),
-        "p5":  float(np.percentile(a, 5)),
+        "p5": float(np.percentile(a, 5)),
         "p25": float(np.percentile(a, 25)),
         "p50": float(np.percentile(a, 50)),
         "p75": float(np.percentile(a, 75)),

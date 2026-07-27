@@ -6,7 +6,6 @@ import narwhals as nw
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Known-value assertions for the shared synthetic fixture (3 users, 5 points each,
 # all distinct (lat, lng) pairs).
@@ -105,10 +104,10 @@ def test_number_of_locations_polars_known_values(synthetic_tdf_polars):
 def test_number_of_locations_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import number_of_locations as skmob_nol
     from fastmob.measures.individual.number_of_locations import (
         number_of_locations as fastmob_nol,
     )
+    from skmob.measures.individual import number_of_locations as skmob_nol
 
     skmob_result = skmob_nol(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

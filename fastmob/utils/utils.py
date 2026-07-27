@@ -22,7 +22,7 @@ def get_geom_centroid(geom, return_lat_lng: bool = False) -> list:
     list
         Two-element list with the centroid coordinates.
     """
-    lng, lat = map(lambda x: x.pop(), geom.centroid.xy)
+    lng, lat = (x.pop() for x in geom.centroid.xy)
     if return_lat_lng:
         return [lat, lng]
     return [lng, lat]

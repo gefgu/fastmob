@@ -10,22 +10,20 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import gc
 import importlib
 import json
+import os
 import platform
 import random
 import sys
-import gc
-import os
 import tempfile
 import time
 import warnings
-
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REFERENCE_DIR = REPO_ROOT / "tests" / "shared" / "skmob_reference" / "models"
@@ -33,7 +31,8 @@ DEFAULT_REFERENCE_DIR = REPO_ROOT / "tests" / "shared" / "skmob_reference" / "mo
 _BENCHMARK_DIR = Path(__file__).resolve().parents[1]
 if str(_BENCHMARK_DIR) not in sys.path:
     sys.path.insert(0, str(_BENCHMARK_DIR))
-from benchmark_env import detect_cpu_info, get_default_output_dir  # noqa: E402
+from benchmark_env import detect_cpu_info, get_default_output_dir
+
 DEFAULT_AGENT_COUNTS = [2, 10, 50]
 DEFAULT_LOCATION_COUNTS = [12, 50, 200]
 DEFAULT_SIZES = DEFAULT_LOCATION_COUNTS
@@ -212,14 +211,14 @@ def reset_rng(seed: int = MODEL_SEED) -> None:
         import numpy as np
 
         np.random.seed(seed)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
     try:
         import igraph
 
         if hasattr(igraph, "set_random_number_generator"):
             igraph.set_random_number_generator(random)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
 
@@ -242,7 +241,7 @@ def import_model_classes(library: str) -> dict[str, Any]:
 
         if not hasattr(np, "NaN"):
             np.NaN = np.nan  # type: ignore[attr-defined]
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     return {
@@ -396,10 +395,7 @@ def run_memory_call(func: Callable[[], Any], *, iterations: int, sleep_seconds: 
             with memray.Tracker(tmp_path, native_traces=False):
                 call_benchmark_func(func)
             reader = memray.FileReader(tmp_path)
-            peak_bytes = sum(
-                record.size
-                for record in reader.get_high_watermark_allocation_records(merge_threads=True)
-            )
+            peak_bytes = sum(record.size for record in reader.get_high_watermark_allocation_records(merge_threads=True))
             peak_mb = peak_bytes / (1024 * 1024)
         finally:
             with contextlib.suppress(FileNotFoundError):
@@ -469,7 +465,7 @@ def benchmark_model(
     print(f"  {spec.name}")
     try:
         func = build_call(spec, library, tessellation, diary_training, n_agents=n_agents)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    skipped: {exc}")
         return skipped_result(str(exc), profile)
 
@@ -477,7 +473,7 @@ def benchmark_model(
         if profile == "memory":
             return run_memory_call(func, iterations=iterations, sleep_seconds=sleep_seconds)
         return run_timed_call(func, iterations=iterations, sleep_seconds=sleep_seconds)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    error: {exc}")
         return error_result(str(exc), profile)
 

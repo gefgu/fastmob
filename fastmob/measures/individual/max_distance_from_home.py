@@ -144,16 +144,24 @@ def max_distance_from_home(
     hours_data = ops["extract_data"](hours)
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        home_lats, home_lngs = home_location_presorted(lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night))
-        max_distances = _arrow_result_values(max_distance_from_point_presorted(home_lats, home_lngs, lats_data, lngs_data, ends))
+        home_lats, home_lngs = home_location_presorted(
+            lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night)
+        )
+        max_distances = _arrow_result_values(
+            max_distance_from_point_presorted(home_lats, home_lngs, lats_data, lngs_data, ends)
+        )
         if uid_col is None:
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
 
-    home_lats, home_lngs = home_location_indexed(lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night))
-    max_distances = _arrow_result_values(max_distance_from_point_indexed(home_lats, home_lngs, lats_data, lngs_data, indices, ends))
+    home_lats, home_lngs = home_location_indexed(
+        lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night)
+    )
+    max_distances = _arrow_result_values(
+        max_distance_from_point_indexed(home_lats, home_lngs, lats_data, lngs_data, indices, ends)
+    )
 
     if uid_col is None:
         return _to_native({"max_distance_from_home": max_distances}, df)

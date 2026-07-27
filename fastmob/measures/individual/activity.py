@@ -8,6 +8,7 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 import pandas as pd
+
 from fastmob._core import (
     activity_counts,
     activity_transition_counts,
@@ -53,9 +54,11 @@ def _apply_day_filter(
         )
     days = df.get_column(day_col).to_list()
     keep = [str(day).lower() in allowed_days for day in days]
-    return df.with_columns(nw.new_series("__fastmob_keep__", keep, backend=df.implementation)).filter(
-        nw.col("__fastmob_keep__")
-    ).drop("__fastmob_keep__")
+    return (
+        df.with_columns(nw.new_series("__fastmob_keep__", keep, backend=df.implementation))
+        .filter(nw.col("__fastmob_keep__"))
+        .drop("__fastmob_keep__")
+    )
 
 
 def _with_activity_fallback(
@@ -229,15 +232,22 @@ def daily_activity_distribution(
         valid_series = nw.new_series("valid_rows", valid_rows, dtype=nw.Boolean, backend=df.implementation)
         flat = _kernel_result(
             daily_activity_percentages(
-                codes.to_arrow(), start_series.to_arrow(), end_series.to_arrow(), valid_series.to_arrow(),
-                len(categories), bin_size_minutes,
+                codes.to_arrow(),
+                start_series.to_arrow(),
+                end_series.to_arrow(),
+                valid_series.to_arrow(),
+                len(categories),
+                bin_size_minutes,
             )
         )
     else:
         flat = daily_activity_percentages(
             np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64),
-            np.ascontiguousarray(start_minutes), np.ascontiguousarray(end_minutes),
-            np.ascontiguousarray(valid_rows), len(categories), bin_size_minutes,
+            np.ascontiguousarray(start_minutes),
+            np.ascontiguousarray(end_minutes),
+            np.ascontiguousarray(valid_rows),
+            len(categories),
+            bin_size_minutes,
         )
     activity_matrix_pct = np.asarray(flat, dtype=float).reshape(len(categories), n_bins)
 
@@ -366,9 +376,7 @@ def activity_transition_matrix(
     n_activities = len(activities)
     _, indices, ends = _build_indexed_user_ranges_fast(df, user_id_col)
     if _use_arrow_kernel_path(df):
-        flat_counts = _kernel_result(
-            activity_transition_counts(codes.to_arrow(), indices, ends, n_activities)
-        )
+        flat_counts = _kernel_result(activity_transition_counts(codes.to_arrow(), indices, ends, n_activities))
     else:
         flat_counts = activity_transition_counts(
             np.ascontiguousarray(codes.to_numpy(), dtype=np.uint64), indices, ends, n_activities

@@ -48,7 +48,8 @@ pub fn dtw_distance_impl(
     dp[0][0] = 0.0;
     for i in 1..=n {
         for j in 1..=m {
-            let cost = point_distance_km(lats_a[i - 1], lngs_a[i - 1], lats_b[j - 1], lngs_b[j - 1]);
+            let cost =
+                point_distance_km(lats_a[i - 1], lngs_a[i - 1], lats_b[j - 1], lngs_b[j - 1]);
             let best_prev = dp[i - 1][j].min(dp[i][j - 1]).min(dp[i - 1][j - 1]);
             dp[i][j] = cost + best_prev;
         }

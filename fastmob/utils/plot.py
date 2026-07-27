@@ -73,17 +73,17 @@ def random_hex() -> str:
     def _rand():
         return np.random.randint(0, 255)
 
-    return "#%02X%02X%02X" % (_rand(), _rand(), _rand())
+    return f"#{_rand():02X}{_rand():02X}{_rand():02X}"
 
 
 def traj_style_function(weight, color, opacity, dashArray):
     """Return a Folium GeoJson style function for trajectory lines."""
-    return lambda feature: dict(color=color, weight=weight, opacity=opacity, dashArray=dashArray)
+    return lambda feature: {"color": color, "weight": weight, "opacity": opacity, "dashArray": dashArray}
 
 
 def flow_style_function(weight, color, opacity, weight_factor, flow_exp):
     """Return a Folium GeoJson style function for flow edges."""
-    return lambda feature: dict(color=color, weight=weight_factor * weight**flow_exp, opacity=opacity)
+    return lambda feature: {"color": color, "weight": weight_factor * weight**flow_exp, "opacity": opacity}
 
 
 def plot_trajectory(
@@ -139,22 +139,19 @@ def plot_trajectory(
     if max_users is None:
         max_users = 10
         warnings.warn(
-            "Only the trajectories of the first 10 users will be plotted. "
-            "Use `max_users` to change this.",
+            "Only the trajectories of the first 10 users will be plotted. Use `max_users` to change this.",
             stacklevel=STACKLEVEL,
         )
 
-    nu = 0
     try:
         groups = tdf.groupby(_UID)
     except KeyError:
         groups = [[None, tdf]]
 
     warned = False
-    for user, df in groups:
+    for nu, (user, df) in enumerate(groups):
         if nu >= max_users:
             break
-        nu += 1
 
         traj = df[[_LNG, _LAT]]
 
@@ -192,8 +189,8 @@ def plot_trajectory(
             dtime = dtime.strftime("%Y/%m/%d %H:%M")
             mker = folium.Marker(trajlist[0][::-1], icon=folium.Icon(color="green"))
             popup = folium.Popup(
-                "<i>Start</i><BR>{}<BR>Coord: <a href='https://www.google.co.uk/maps/place/{},{}'"
-                " target='_blank'>{}, {}</a>".format(dtime, la, lo, np.round(la, 4), np.round(lo, 4)),
+                f"<i>Start</i><BR>{dtime}<BR>Coord: <a href='https://www.google.co.uk/maps/place/{la},{lo}'"
+                f" target='_blank'>{np.round(la, 4)}, {np.round(lo, 4)}</a>",
                 max_width=300,
             )
             mker = mker.add_child(popup)
@@ -203,8 +200,8 @@ def plot_trajectory(
             dtime = dtime.strftime("%Y/%m/%d %H:%M")
             mker = folium.Marker(trajlist[-1][::-1], icon=folium.Icon(color="red"))
             popup = folium.Popup(
-                "<i>End</i><BR>{}<BR>Coord: <a href='https://www.google.co.uk/maps/place/{},{}'"
-                " target='_blank'>{}, {}</a>".format(dtime, la, lo, np.round(la, 4), np.round(lo, 4)),
+                f"<i>End</i><BR>{dtime}<BR>Coord: <a href='https://www.google.co.uk/maps/place/{la},{lo}'"
+                f" target='_blank'>{np.round(la, 4)}, {np.round(lo, 4)}</a>",
                 max_width=300,
             )
             mker = mker.add_child(popup)
@@ -313,8 +310,7 @@ def plot_stops(
     if max_users is None:
         max_users = 10
         warnings.warn(
-            "Only the stops of the first 10 users will be plotted. "
-            "Use `max_users` to change this.",
+            "Only the stops of the first 10 users will be plotted. Use `max_users` to change this.",
             stacklevel=STACKLEVEL,
         )
 
@@ -323,16 +319,14 @@ def plot_stops(
         center = list(np.median(lo_la, axis=0)[::-1])
         map_f = folium.Map(location=center, zoom_start=zoom, tiles=tiles, control_scale=control_scale)
 
-    nu = 0
     try:
         groups = stdf.groupby(_UID)
     except KeyError:
         groups = [[None, stdf]]
 
-    for user, df in groups:
+    for nu, (user, df) in enumerate(groups):
         if nu >= max_users:
             break
-        nu += 1
 
         color = get_color(-2) if hex_color is None else hex_color
 
@@ -353,7 +347,7 @@ def plot_stops(
             cl = ""
             try:
                 ncluster = row[_CLUSTER]
-                cl = "<BR>Cluster: {}".format(ncluster)
+                cl = f"<BR>Cluster: {ncluster}"
                 color = get_color(ncluster)
             except (KeyError, NameError):
                 pass
@@ -461,7 +455,7 @@ def plot_diary(
         handles2, labels2 = zip(*hl)
         ax.legend(handles2, labels2, ncol=15, bbox_to_anchor=(1.0, -0.2), frameon=0)
 
-    ax.set_title("user %s" % user)
+    ax.set_title(f"user {user}")
     return ax
 
 
@@ -554,16 +548,19 @@ def plot_flows(
                 style_function=style_function(flow_val / mean_flows, flow_color, opacity, flow_weight, flow_exp),
             )
             if flow_popup:
-                popup = folium.Popup("flow from %s to %s: %s" % (orig, dest, int(flow_val)), max_width=300)
+                popup = folium.Popup(f"flow from {orig} to {dest}: {int(flow_val)}", max_width=300)
                 fgeojson = fgeojson.add_child(popup)
             fgeojson.add_to(map_f)
 
     if radius_origin_point > 0:
         for orig, od in orig_groups:
-            name = "origin: %s" % str(orig).replace("'", "_")
+            name = "origin: {}".format(str(orig).replace("'", "_"))
             t_d = [[fv, d] for d, fv in od[[_DESTINATION, _FLOW]].values]
             trips_info = "<br/>".join(
-                ["flow to %s: %s" % (str(dd).replace("'", "_"), int(tt)) for tt, dd in sorted(t_d, reverse=True)[:num_od_popup]]
+                [
+                    "flow to {}: {}".format(str(dd).replace("'", "_"), int(tt))
+                    for tt, dd in sorted(t_d, reverse=True)[:num_od_popup]
+                ]
             )
 
             geom = fdf.get_geometry(orig)
@@ -595,9 +592,16 @@ default_style_func_args = {
     "radius": 5,
 }
 
+
 def geojson_style_function(weight, color, opacity, fillColor, fillOpacity):
     """Return a Folium GeoJson style function for polygon/line features."""
-    return lambda feature: dict(weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity)
+    return lambda feature: {
+        "weight": weight,
+        "color": color,
+        "opacity": opacity,
+        "fillColor": fillColor,
+        "fillOpacity": fillOpacity,
+    }
 
 
 def manage_colors(color: str, fillColor: str):
@@ -612,8 +616,10 @@ def manage_colors(color: str, fillColor: str):
     return color, fillColor
 
 
-def add_to_map(gway, g, map_f, style_func_args: dict, popup_features: list = []):
+def add_to_map(gway, g, map_f, style_func_args: dict, popup_features: list | None = None):
     """Add a single shapely geometry to a Folium map."""
+    if popup_features is None:
+        popup_features = []
     styles = []
     for k in ["weight", "color", "opacity", "fillColor", "fillOpacity", "radius"]:
         if k in style_func_args:
@@ -628,35 +634,43 @@ def add_to_map(gway, g, map_f, style_func_args: dict, popup_features: list = [])
         vertices = [list(zip(*p.exterior.xy)) for p in gway.geoms]
         gj = folium.GeoJson(
             {"type": "MultiPolygon", "coordinates": [vertices]},
-            style_function=geojson_style_function(weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity),
+            style_function=geojson_style_function(
+                weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity
+            ),
         )
     elif isinstance(gway, shapely.geometry.polygon.Polygon):
         vertices = list(zip(*gway.exterior.xy))
         gj = folium.GeoJson(
             {"type": "Polygon", "coordinates": [vertices]},
-            style_function=geojson_style_function(weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity),
+            style_function=geojson_style_function(
+                weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity
+            ),
         )
     elif isinstance(gway, shapely.geometry.multilinestring.MultiLineString):
         vertices = [list(zip(*seg.xy)) for seg in gway.geoms]
         gj = folium.GeoJson(
             {"type": "MultiLineString", "coordinates": vertices},
-            style_function=geojson_style_function(weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity),
+            style_function=geojson_style_function(
+                weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity
+            ),
         )
     elif isinstance(gway, shapely.geometry.linestring.LineString):
         vertices = list(zip(*gway.xy))
         gj = folium.GeoJson(
             {"type": "LineString", "coordinates": vertices},
-            style_function=geojson_style_function(weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity),
+            style_function=geojson_style_function(
+                weight=weight, color=color, opacity=opacity, fillColor=fillColor, fillOpacity=fillOpacity
+            ),
         )
     else:
         # Point
-        point = list(zip(*gway.xy))[0]
+        point = next(zip(*gway.xy))
         gj = folium.Circle(location=point[::-1], radius=radius, color=color, fill=True, fill_color=fillColor)
 
     popup_parts = []
     for pf in popup_features:
         try:
-            popup_parts.append("%s: %s" % (pf, g[pf]))
+            popup_parts.append(f"{pf}: {g[pf]}")
         except KeyError:
             pass
 
@@ -678,8 +692,8 @@ def plot_gdf(
     gdf,
     map_f=None,
     maxitems: int = -1,
-    style_func_args: dict = {},
-    popup_features: list = [],
+    style_func_args: dict | None = None,
+    popup_features: list | None = None,
     tiles: str = "cartodbpositron",
     zoom: int = 6,
     geom_col: str = "geometry",
@@ -712,6 +726,10 @@ def plot_gdf(
     -------
     folium.Map
     """
+    if popup_features is None:
+        popup_features = []
+    if style_func_args is None:
+        style_func_args = {}
     if map_f is None:
         lon, lat = np.mean(
             np.array(list(gdf[geom_col].apply(get_geom_centroid).values)),
@@ -719,16 +737,20 @@ def plot_gdf(
         )
         map_f = folium.Map(location=[lat, lon], tiles=tiles, zoom_start=zoom, control_scale=control_scale)
 
-    count = 0
-    for k in gdf.index:
+    for count, k in enumerate(gdf.index, start=1):
         g = gdf.loc[k]
         if isinstance(g[geom_col], gpd.geoseries.GeoSeries):
             for i in range(len(g[geom_col])):
-                map_f = add_to_map(g[geom_col].iloc[i], g.iloc[i], map_f, popup_features=popup_features, style_func_args=style_func_args)
+                map_f = add_to_map(
+                    g[geom_col].iloc[i],
+                    g.iloc[i],
+                    map_f,
+                    popup_features=popup_features,
+                    style_func_args=style_func_args,
+                )
         else:
             map_f = add_to_map(g[geom_col], g, map_f, popup_features=popup_features, style_func_args=style_func_args)
 
-        count += 1
         if count == maxitems:
             break
 

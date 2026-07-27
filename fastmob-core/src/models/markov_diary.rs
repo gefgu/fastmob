@@ -288,11 +288,11 @@ fn create_time_series_for_rows(
             *loc = last;
         }
     }
-    if slot_locs.first().is_some_and(Option::is_none) {
-        if let Some(first_loc) = slot_locs.iter().copied().flatten().next() {
-            for loc in slot_locs.iter_mut().take_while(|loc| loc.is_none()) {
-                *loc = Some(first_loc);
-            }
+    if slot_locs.first().is_some_and(Option::is_none)
+        && let Some(first_loc) = slot_locs.iter().copied().flatten().next()
+    {
+        for loc in slot_locs.iter_mut().take_while(|loc| loc.is_none()) {
+            *loc = Some(first_loc);
         }
     }
 

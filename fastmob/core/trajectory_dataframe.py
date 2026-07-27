@@ -188,7 +188,7 @@ class TrajDataFrame(BaseDataFrame):
             return pd.DataFrame(df, columns=columns)
         try:
             return nw.from_native(df, eager_only=True).rename(mapping).to_native()
-        except Exception:
+        except Exception:  # noqa: BLE001
             return df
 
     def _to_pandas(self) -> pd.DataFrame:
@@ -279,7 +279,7 @@ class TrajDataFrame(BaseDataFrame):
             resolution=resolution,
         )
 
-    def interpolate(self, method: str = "linear", sampling_rate_s: float = 3600.0, **method_kwargs) -> "TrajDataFrame":
+    def interpolate(self, method: str = "linear", sampling_rate_s: float = 3600.0, **method_kwargs) -> TrajDataFrame:
         """Fill gaps in the trajectory using a named interpolation algorithm.
 
         Parameters
@@ -334,7 +334,7 @@ class TrajDataFrame(BaseDataFrame):
             uid_col=self.uid_col,
         )
 
-    def smooth(self, method: str = "kalman_cv", **method_kwargs) -> "TrajDataFrame":
+    def smooth(self, method: str = "kalman_cv", **method_kwargs) -> TrajDataFrame:
         """Smooth the trajectory's positions using a named algorithm.
 
         Unlike :meth:`interpolate`, row count and row order are unchanged --
@@ -469,7 +469,7 @@ class TrajDataFrame(BaseDataFrame):
     # Preprocessing methods
     # ------------------------------------------------------------------
 
-    def compress(self, spatial_radius_km: float = 0.2, inplace: bool = False) -> "TrajDataFrame":
+    def compress(self, spatial_radius_km: float = 0.2, inplace: bool = False) -> TrajDataFrame:
         """Compress the trajectory by collapsing nearby consecutive points.
 
         Parameters
@@ -500,13 +500,13 @@ class TrajDataFrame(BaseDataFrame):
         """
         from fastmob.preprocessing import compress
 
-        kwargs = dict(
-            spatial_radius_km=spatial_radius_km,
-            datetime_col=self.datetime_col,
-            lat_col=self.lat_col,
-            lng_col=self.lng_col,
-            uid_col=self.uid_col,
-        )
+        kwargs = {
+            "spatial_radius_km": spatial_radius_km,
+            "datetime_col": self.datetime_col,
+            "lat_col": self.lat_col,
+            "lng_col": self.lng_col,
+            "uid_col": self.uid_col,
+        }
         if inplace:
             self.df = compress(self.df, **kwargs)
             return self
@@ -520,7 +520,7 @@ class TrajDataFrame(BaseDataFrame):
             uid_col=self.uid_col,
         )
 
-    def stay_locations(self, inplace: bool = False, **kwargs) -> "TrajDataFrame":
+    def stay_locations(self, inplace: bool = False, **kwargs) -> TrajDataFrame:
         """Detect stay locations (stops) in the trajectory.
 
         Parameters
@@ -553,12 +553,12 @@ class TrajDataFrame(BaseDataFrame):
         """
         from fastmob.preprocessing import stay_locations
 
-        col_kwargs = dict(
-            datetime_col=self.datetime_col,
-            lat_col=self.lat_col,
-            lng_col=self.lng_col,
-            uid_col=self.uid_col,
-        )
+        col_kwargs = {
+            "datetime_col": self.datetime_col,
+            "lat_col": self.lat_col,
+            "lng_col": self.lng_col,
+            "uid_col": self.uid_col,
+        }
         if inplace:
             self.df = stay_locations(self.df, **col_kwargs, **kwargs)
             return self
@@ -680,7 +680,7 @@ class TrajDataFrame(BaseDataFrame):
             crs="EPSG:4326",
         )
 
-    def mapping(self, tessellation, remove_na: bool = False) -> "TrajDataFrame":
+    def mapping(self, tessellation, remove_na: bool = False) -> TrajDataFrame:
         """Assign each trajectory point to a tile in a spatial tessellation.
 
         Adds a ``tile_id`` column to the result.
@@ -760,7 +760,7 @@ class TrajDataFrame(BaseDataFrame):
     # Utility methods
     # ------------------------------------------------------------------
 
-    def sort_by_uid_and_datetime(self) -> "TrajDataFrame":
+    def sort_by_uid_and_datetime(self) -> TrajDataFrame:
         """Return a copy sorted by user ID then datetime.
 
         Returns
@@ -802,7 +802,7 @@ class TrajDataFrame(BaseDataFrame):
         result.sorted = True
         return result
 
-    def settings_from(self, other: "TrajDataFrame") -> None:
+    def settings_from(self, other: TrajDataFrame) -> None:
         """Copy metadata attributes from another TrajDataFrame.
 
         Parameters
@@ -942,19 +942,19 @@ class TrajDataFrame(BaseDataFrame):
                 'Visualization requires extra dependencies: pip install "fastmob[visualization]"'
             ) from exc
 
-        kwargs: dict[str, Any] = dict(
-            map_f=map_f,
-            max_users=max_users,
-            max_points=max_points,
-            tiles=tiles,
-            zoom=zoom,
-            hex_color=hex_color,
-            weight=weight,
-            opacity=opacity,
-            dashArray=dashArray,
-            start_end_markers=start_end_markers,
-            control_scale=control_scale,
-        )
+        kwargs: dict[str, Any] = {
+            "map_f": map_f,
+            "max_users": max_users,
+            "max_points": max_points,
+            "tiles": tiles,
+            "zoom": zoom,
+            "hex_color": hex_color,
+            "weight": weight,
+            "opacity": opacity,
+            "dashArray": dashArray,
+            "start_end_markers": start_end_markers,
+            "control_scale": control_scale,
+        }
         if style_function is not None:
             kwargs["style_function"] = style_function
         return plot.plot_trajectory(self._to_pandas(), **kwargs)

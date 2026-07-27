@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.collective.visits_per_time_unit import visits_per_time_unit
 
 

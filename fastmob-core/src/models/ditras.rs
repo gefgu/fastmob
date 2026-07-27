@@ -3,7 +3,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 use std::sync::Arc;
 
-use crate::models::od::{validate_equal_lengths, CachedGravityOdRows};
+use crate::models::od::{CachedGravityOdRows, validate_equal_lengths};
 use crate::models::shared::{cdf_choice, derive_agent_seed, weighted_choice_excluding};
 
 type DitrasResult = Result<(Vec<i64>, Vec<f64>, Vec<f64>, Vec<i64>), String>;
@@ -88,7 +88,7 @@ fn explore_location(
     if candidates.is_empty() {
         return None;
     }
-    Some(candidates[cdf_choice(rng, &cdf)])
+    Some(candidates[cdf_choice(rng, cdf)])
 }
 
 /// Visit-count-weighted choice from non-home visited locations.
@@ -103,11 +103,7 @@ fn return_away(
         return None;
     }
     let loc = weighted_choice_excluding(rng, visited_locs, visit_counts, total_visits, home);
-    if loc == home {
-        None
-    } else {
-        Some(loc)
-    }
+    if loc == home { None } else { Some(loc) }
 }
 
 /// Uniform choice from any unvisited location — last resort before staying put.
@@ -313,12 +309,12 @@ pub fn simulate_ditras_agents_impl(
             "diary_starts/diary_ends must have at least {n_agents} entries"
         ));
     }
-    if let Some(starts) = starting_locs {
-        if starts.len() < n_agents {
-            return Err(format!(
-                "starting_locs must have at least {n_agents} entries"
-            ));
-        }
+    if let Some(starts) = starting_locs
+        && starts.len() < n_agents
+    {
+        return Err(format!(
+            "starting_locs must have at least {n_agents} entries"
+        ));
     }
     for agent in 0..n_agents {
         if diary_starts[agent] > diary_ends[agent] || diary_ends[agent] > diary_timestamps.len() {

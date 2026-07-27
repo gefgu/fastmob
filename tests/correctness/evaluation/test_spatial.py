@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 from fastmob.measures.evaluation import (
     od_matrix_common_part_of_commuters,
     trajectory_common_part_of_commuters,
@@ -43,15 +42,9 @@ def _trajectory_od_matrix(df: pd.DataFrame, resolution: int) -> pd.DataFrame:
     points["_lat"] = pd.to_numeric(points["lat"], errors="coerce")
     points["_lng"] = pd.to_numeric(points["lng"], errors="coerce")
     points = points.dropna(subset=["uid", "_datetime", "_lat", "_lng"])
-    points = points[
-        points["_lat"].between(-90, 90)
-        & points["_lng"].between(-180, 180)
-    ]
+    points = points[points["_lat"].between(-90, 90) & points["_lng"].between(-180, 180)]
     points = points.sort_values(["uid", "_datetime"], kind="mergesort")
-    points["origin"] = [
-        h3.latlng_to_cell(lat, lng, resolution)
-        for lat, lng in zip(points["_lat"], points["_lng"])
-    ]
+    points["origin"] = [h3.latlng_to_cell(lat, lng, resolution) for lat, lng in zip(points["_lat"], points["_lng"])]
     points["destination"] = points.groupby("uid")["origin"].shift(-1)
     trips = points.dropna(subset=["destination"])
     trips = trips[trips["origin"] != trips["destination"]]
@@ -127,9 +120,7 @@ def test_trajectory_common_part_multi_matches_single_resolution_calls():
     left, right = _trajectory_fixture()
 
     multi_result = trajectory_common_part_of_commuters_multi(left, right, resolutions=(7, 8, 9))
-    single_results = [
-        (r, trajectory_common_part_of_commuters(left, right, resolution=r)) for r in (7, 8, 9)
-    ]
+    single_results = [(r, trajectory_common_part_of_commuters(left, right, resolution=r)) for r in (7, 8, 9)]
 
     assert multi_result == pytest.approx(single_results)
 

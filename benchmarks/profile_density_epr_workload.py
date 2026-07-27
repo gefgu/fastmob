@@ -16,9 +16,7 @@ import argparse
 from pathlib import Path
 
 import pandas as pd
-
 from fastmob.models import DensityEPR
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REFERENCE_DIR = REPO_ROOT / "tests" / "shared" / "skmob_reference" / "models"

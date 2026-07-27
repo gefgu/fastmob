@@ -7,8 +7,8 @@ from typing import Any
 import narwhals as nw
 
 from ._constants import DATETIME, INSTANCE, INSTANCE_ELEMENT, LATITUDE, LONGITUDE, PRECISION_LEVELS, TEMP, UID
-from .base import _CANDIDATE_POS, _CANDIDATE_UID, _TARGET_UID, Attack
 from ._rust import LOCATION, SEQUENCE, TIME, assess_risk_rust
+from .base import _CANDIDATE_POS, _CANDIDATE_UID, _TARGET_UID, Attack
 
 
 class LocationAttack(Attack):
@@ -246,7 +246,12 @@ class LocationSequenceAttack(Attack):
         instance_lengths = instances.group_by([_TARGET_UID, INSTANCE]).agg(
             nw.col(INSTANCE_ELEMENT).max().alias("__instance_length__")
         )
-        lengths = [int(length) for length in sorted(instance_lengths.select("__instance_length__").unique().get_column("__instance_length__").to_list())]
+        lengths = [
+            int(length)
+            for length in sorted(
+                instance_lengths.select("__instance_length__").unique().get_column("__instance_length__").to_list()
+            )
+        ]
         if not lengths:
             return self._count_candidates(instances.select([_TARGET_UID, INSTANCE, _CANDIDATE_UID]))
 

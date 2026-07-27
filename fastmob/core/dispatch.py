@@ -1,20 +1,14 @@
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 
 class TrajectoryDispatcher:
     """Handles routing Narwhals DataFrames to backend-specific mathematical implementations."""
-    
-    def __init__(self, arrow_ops: Dict[str, Callable], numpy_ops: Dict[str, Callable]):
+
+    def __init__(self, arrow_ops: dict[str, Callable], numpy_ops: dict[str, Callable]):
         # Base dictionary combining shared extraction logic with function-specific ops
         self.dispatch = {
-            "arrow": {
-                "extract_data": lambda s: s.to_arrow(),
-                **arrow_ops
-            },
-            "numpy": {
-                "extract_data": lambda s: s.to_numpy(),
-                **numpy_ops
-            }
+            "arrow": {"extract_data": lambda s: s.to_arrow(), **arrow_ops},
+            "numpy": {"extract_data": lambda s: s.to_numpy(), **numpy_ops},
         }
 
     def get_backend_key(self, df: Any) -> str:

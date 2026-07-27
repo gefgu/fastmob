@@ -8,7 +8,6 @@ import narwhals as nw
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Known-value assertions.
 #
@@ -18,6 +17,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 EXPECTED_ENTROPY: float = 5 * math.log2(5) / 6
+
 
 def _skmob_true_entropy(sequence: list) -> float:
     """Match scikit-mobility's private _true_entropy estimator (LZ77 scan).
@@ -187,8 +187,8 @@ def test_real_entropy_output_backend_matches_input(synthetic_tdf):
 def test_real_entropy_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import real_entropy as skmob_re
     from fastmob.measures.individual.real_entropy import real_entropy as fastmob_re
+    from skmob.measures.individual import real_entropy as skmob_re
 
     skmob_result = skmob_re(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

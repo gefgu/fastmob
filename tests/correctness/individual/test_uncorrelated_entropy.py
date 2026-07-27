@@ -8,7 +8,6 @@ import narwhals as nw
 import pandas as pd
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Known-value assertions.
 #
@@ -161,10 +160,10 @@ def test_uncorrelated_entropy_polars_known_values(synthetic_tdf_polars):
 def test_uncorrelated_entropy_matches_skmob(comparison_skmob):
     """fastmob result matches skmob on each comparison dataset."""
     import pandas as pd
-    from skmob.measures.individual import uncorrelated_entropy as skmob_ue
     from fastmob.measures.individual.uncorrelated_entropy import (
         uncorrelated_entropy as fastmob_ue,
     )
+    from skmob.measures.individual import uncorrelated_entropy as skmob_ue
 
     skmob_result = skmob_ue(comparison_skmob)
     fastmob_input = pd.DataFrame(comparison_skmob).copy()

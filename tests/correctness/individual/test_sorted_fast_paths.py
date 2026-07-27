@@ -7,7 +7,6 @@ import inspect
 import numpy as np
 import pytest
 
-
 SPATIAL_FUNCTIONS = (
     "distance_straight_line",
     "frequency_rank",
@@ -49,9 +48,11 @@ def _tiny_unsorted_df():
 
 
 def _sorted_df(df):
-    return df.assign(__row_order=np.arange(len(df))).sort_values(
-        ["uid", "datetime", "__row_order"], kind="mergesort"
-    ).drop(columns=["__row_order"])
+    return (
+        df.assign(__row_order=np.arange(len(df)))
+        .sort_values(["uid", "datetime", "__row_order"], kind="mergesort")
+        .drop(columns=["__row_order"])
+    )
 
 
 def _metric_kwargs(name: str) -> dict:

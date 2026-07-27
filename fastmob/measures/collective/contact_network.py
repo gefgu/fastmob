@@ -185,11 +185,7 @@ def co_presence_graph_from_visits(
     if location_id_col is None:
         location_id_col = _pick_existing_column(df.columns, LOCATION_CANDIDATES)
 
-    missing = [
-        name
-        for name, col in [("user_id", user_id_col), ("location_id", location_id_col)]
-        if col is None
-    ]
+    missing = [name for name, col in [("user_id", user_id_col), ("location_id", location_id_col)] if col is None]
     if day_col is None and datetime_col is None:
         missing.append("datetime (or day_col)")
     if missing:
@@ -265,7 +261,7 @@ def degree_preserving_random_graph(
     degree alone would produce.
     """
     deg = np.asarray(degrees, dtype=float)
-    n = int(len(deg))
+    n = len(deg)
     total_degree = float(deg.sum())
     if n <= 1 or total_degree <= 0:
         return _empty_graph(n)

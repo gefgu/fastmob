@@ -135,7 +135,9 @@ def compress(
             datetime_col=datetime_col,
             timestamps_data=timestamps_data,
         )
-        result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, sorted_indices, ends, spatial_radius_km)
+        result_raw = compress_trajectory_representatives_indexed(
+            lats_data, lngs_data, sorted_indices, ends, spatial_radius_km
+        )
 
     representative_indices, median_lats, median_lngs = _unpack_result(result_raw)
 

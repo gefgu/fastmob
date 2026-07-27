@@ -7,10 +7,10 @@ from typing import Any
 
 import pandas as pd
 import pytest
+from fastmob.privacy import attacks
 from pandas.testing import assert_frame_equal
 
-from fastmob.privacy import attacks
-from tests.shared.skmob_cache import SkmobReferenceDataset, _REFERENCE_DIR
+from tests.shared.skmob_cache import _REFERENCE_DIR, SkmobReferenceDataset
 
 
 @dataclass(frozen=True)
@@ -158,7 +158,9 @@ PRIVACY_CASES: tuple[PrivacyCase, ...] = (
 @pytest.fixture(scope="session")
 def privacy_toy_reference() -> SkmobReferenceDataset:
     if not (_REFERENCE_DIR / "privacy_toy" / "input.parquet").exists():
-        pytest.skip("No skmob privacy_toy cache. Run '.venv-skmob/bin/python tests/populate_skmob_cache.py --datasets privacy_toy'.")
+        pytest.skip(
+            "No skmob privacy_toy cache. Run '.venv-skmob/bin/python tests/populate_skmob_cache.py --datasets privacy_toy'."
+        )
     return SkmobReferenceDataset("privacy_toy")
 
 

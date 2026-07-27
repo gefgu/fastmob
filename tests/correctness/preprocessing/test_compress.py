@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
 from fastmob.preprocessing import compress
 
 
@@ -100,8 +99,8 @@ def test_compress_multiuser_all_users_processed(compress_tdf):
 @pytest.mark.skmob
 def test_compress_matches_skmob(comparison_skmob):
     """Row count must match skmob on each comparison dataset."""
-    from skmob.preprocessing import compression as skmob_compression
     import pandas as pd
+    from skmob.preprocessing import compression as skmob_compression
 
     skmob_result = skmob_compression.compress(comparison_skmob, spatial_radius_km=0.2)
     our_result = compress(

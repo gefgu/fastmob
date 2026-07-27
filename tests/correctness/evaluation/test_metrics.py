@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from fastmob.measures.evaluation import (
     histogram_jensen_shannon_divergence,
     jensen_shannon_divergence,

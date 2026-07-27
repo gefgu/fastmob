@@ -138,19 +138,19 @@ def jump_lengths(
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
         timestamps_data = ops["extract_data"](timestamps)
-        uid_values, indices, ends = _build_time_ordered_user_ranges(
-            df, uid_col, datetime_col, timestamps_data
-        )
-        v_starts, v_ends, flat_values = jump_lengths_indexed(
-            lats_data, lngs_data, indices, ends
-        )
+        uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
+        v_starts, v_ends, flat_values = jump_lengths_indexed(lats_data, lngs_data, indices, ends)
 
     flat_values = _arrow_flat_result_values(flat_values)
 
     if merge:
         return flat_values
 
-    jump_values = _grouped_arrow_values(v_starts, v_ends, flat_values, value_offsets=True) if hasattr(flat_values, "__arrow_c_array__") else _grouped_numpy_values(v_starts, v_ends, flat_values, value_offsets=True)
+    jump_values = (
+        _grouped_arrow_values(v_starts, v_ends, flat_values, value_offsets=True)
+        if hasattr(flat_values, "__arrow_c_array__")
+        else _grouped_numpy_values(v_starts, v_ends, flat_values, value_offsets=True)
+    )
     if uid_col is None:
         return _to_native({"jump_lengths": jump_values}, df)
     return _to_native({uid_col: uid_values, "jump_lengths": jump_values}, df)

@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from benchmarks.trajectory import speed_suite as suite
 
 

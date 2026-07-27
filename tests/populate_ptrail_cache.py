@@ -1,4 +1,3 @@
-# ruff: noqa: E402
 """Populate the PTRAIL reference cache.
 
 Run this script inside .venv-ptrail via the shell wrapper:
@@ -193,7 +192,7 @@ def main() -> None:
     for uid, user_df in df.groupby("uid", sort=False):
         try:
             kept = _run_hampel_for_user(user_df.reset_index(drop=True))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"    SKIP user={uid} ({type(exc).__name__}: {exc})")
             continue
         rows.extend({"uid": uid, "row_index": int(idx)} for idx in kept)
@@ -209,7 +208,7 @@ def main() -> None:
         for uid, user_df in df.groupby("uid", sort=False):
             try:
                 result = _run_interpolate_for_user(user_df.reset_index(drop=True), uid, method)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 print(f"    SKIP user={uid} method={method} ({type(exc).__name__}: {exc})")
                 continue
             for row in result.itertuples(index=False):

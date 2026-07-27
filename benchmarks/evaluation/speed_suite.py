@@ -343,7 +343,7 @@ def benchmark_metric(
         if profile == "memory":
             return run_memory_call(func, make_input, spec, iterations=iterations, sleep_seconds=sleep_seconds)
         return run_timed_call(func, make_input, spec, iterations=iterations, sleep_seconds=sleep_seconds)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"    error: {exc}")
         return error_result(str(exc), profile)
 
@@ -413,8 +413,12 @@ def run_suite(args: argparse.Namespace) -> dict[str, Any]:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run standalone evaluation speed benchmarks.")
     parser.add_argument("--library", choices=["fastmob", "skmob"], default="fastmob")
-    parser.add_argument("--backend", choices=["pandas", "polars", "both"], default="pandas",
-                        help="Backend label for output filename; evaluation uses numpy so computation is identical.")
+    parser.add_argument(
+        "--backend",
+        choices=["pandas", "polars", "both"],
+        default="pandas",
+        help="Backend label for output filename; evaluation uses numpy so computation is identical.",
+    )
     parser.add_argument("--profile", choices=["speed", "memory"], default="speed")
     parser.add_argument("--iterations", type=positive_int, default=5)
     parser.add_argument("--sleep", dest="sleep_seconds", type=nonnegative_float, default=0.5)

@@ -284,7 +284,8 @@ fn interpolate_user_slice(
                         );
                         let implied_speed_kmh = haversine_km(lat0, lng0, candidate.0, candidate.1)
                             / (config.sampling_rate_s / 3600.0);
-                        if implied_speed_kmh.is_finite() && implied_speed_kmh <= config.max_speed_kmh
+                        if implied_speed_kmh.is_finite()
+                            && implied_speed_kmh <= config.max_speed_kmh
                         {
                             candidate
                         } else {

@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 use charming::{
     Chart,
     component::{Axis, Grid, Legend, Title},
@@ -272,12 +274,12 @@ fn render_option_svg_value(option: Value, width: u32, height: u32) -> Result<Str
         .and_then(|meta| meta.get("chartType"))
         .and_then(Value::as_str)
         .map(str::to_string);
-    if let Some(chart_type) = chart_type.as_deref() {
-        if SVG_RENDERER_UNSUPPORTED_CHART_TYPES.contains(&chart_type) {
-            return Err(format!(
-                "SVG rendering is not supported for chart type {chart_type:?}"
-            ));
-        }
+    if let Some(chart_type) = chart_type.as_deref()
+        && SVG_RENDERER_UNSUPPORTED_CHART_TYPES.contains(&chart_type)
+    {
+        return Err(format!(
+            "SVG rendering is not supported for chart type {chart_type:?}"
+        ));
     }
     let series = series_array(&option)?;
     if series.iter().any(|item| {
@@ -614,13 +616,12 @@ fn build_ecdf_option_value(
     );
 
     // Unwrap grid from Vec to single object for API consistency
-    if let Some(grid_val) = obj.get("grid") {
-        if let Some(arr) = grid_val.as_array() {
-            if arr.len() == 1 {
-                let single = arr[0].clone();
-                obj.insert("grid".to_string(), single);
-            }
-        }
+    if let Some(grid_val) = obj.get("grid")
+        && let Some(arr) = grid_val.as_array()
+        && arr.len() == 1
+    {
+        let single = arr[0].clone();
+        obj.insert("grid".to_string(), single);
     }
 
     // Tooltip: extraCssText, textStyle, axisPointer

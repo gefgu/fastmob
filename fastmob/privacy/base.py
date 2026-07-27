@@ -158,21 +158,26 @@ class Attack(ABC):
         return [LATITUDE, LONGITUDE]
 
     def _generate_instances(self, values: nw.DataFrame, target_uids: nw.DataFrame) -> nw.DataFrame:
-        target_values = (
-            values.join(target_uids, on=UID, how="semi")
-            .with_columns(
-                nw.when(nw.col(_USER_LENGTH) < self.knowledge_length)
-                .then(nw.col(_USER_LENGTH))
-                .otherwise(self.knowledge_length)
-                .cast(nw.Int64)
-                .alias(_EFFECTIVE_LENGTH)
-            )
+        target_values = values.join(target_uids, on=UID, how="semi").with_columns(
+            nw.when(nw.col(_USER_LENGTH) < self.knowledge_length)
+            .then(nw.col(_USER_LENGTH))
+            .otherwise(self.knowledge_length)
+            .cast(nw.Int64)
+            .alias(_EFFECTIVE_LENGTH)
         )
         if len(target_values) == 0:
             return self._empty_instances(values)
 
-        lengths = [int(length) for length in sorted(target_values.select(_EFFECTIVE_LENGTH).unique().get_column(_EFFECTIVE_LENGTH).to_list())]
-        frames = [self._generate_instances_of_length(target_values.filter(nw.col(_EFFECTIVE_LENGTH) == length), length) for length in lengths]
+        lengths = [
+            int(length)
+            for length in sorted(
+                target_values.select(_EFFECTIVE_LENGTH).unique().get_column(_EFFECTIVE_LENGTH).to_list()
+            )
+        ]
+        frames = [
+            self._generate_instances_of_length(target_values.filter(nw.col(_EFFECTIVE_LENGTH) == length), length)
+            for length in lengths
+        ]
         frames = [frame for frame in frames if len(frame) > 0]
         if not frames:
             return self._empty_instances(values)
@@ -186,7 +191,9 @@ class Attack(ABC):
             wide = source.select([_TARGET_UID, nw.col(_POS).alias(f"{_POS}_1"), *self._wide_value_exprs(1)])
             for idx in range(2, length + 1):
                 right = source.select([_TARGET_UID, nw.col(_POS).alias(f"{_POS}_{idx}"), *self._wide_value_exprs(idx)])
-                wide = wide.join(right, on=_TARGET_UID, how="inner").filter(nw.col(f"{_POS}_{idx}") > nw.col(f"{_POS}_{idx - 1}"))
+                wide = wide.join(right, on=_TARGET_UID, how="inner").filter(
+                    nw.col(f"{_POS}_{idx}") > nw.col(f"{_POS}_{idx - 1}")
+                )
 
         sort_cols = [_TARGET_UID, *[f"{_POS}_{idx}" for idx in range(1, length + 1)]]
         wide = (
@@ -237,7 +244,9 @@ class Attack(ABC):
             ).to_native()
         return nw.from_dict({UID: [], PRIVACY_RISK: []}, backend=reference.implementation).to_native()
 
-    def _force_instance_output(self, reference: nw.DataFrame, instances: nw.DataFrame, probs: nw.DataFrame) -> nw.DataFrame:
+    def _force_instance_output(
+        self, reference: nw.DataFrame, instances: nw.DataFrame, probs: nw.DataFrame
+    ) -> nw.DataFrame:
         out = instances.join(probs, on=[_TARGET_UID, INSTANCE], how="left")
         if DATETIME not in out.columns:
             out = out.with_columns(nw.lit(None).alias(DATETIME))
@@ -276,16 +285,12 @@ class Attack(ABC):
         )
         return self._count_candidates(matched)
 
-    def _multiset_match_counts(self, candidates: nw.DataFrame, instances: nw.DataFrame, keys: list[str]) -> nw.DataFrame:
-        required_counts = (
-            instances.group_by([_TARGET_UID, INSTANCE, *keys])
-            .agg(nw.len().alias("__required_count__"))
-        )
+    def _multiset_match_counts(
+        self, candidates: nw.DataFrame, instances: nw.DataFrame, keys: list[str]
+    ) -> nw.DataFrame:
+        required_counts = instances.group_by([_TARGET_UID, INSTANCE, *keys]).agg(nw.len().alias("__required_count__"))
         required_keys = required_counts.group_by([_TARGET_UID, INSTANCE]).agg(nw.len().alias("__required_keys__"))
-        candidate_counts = (
-            candidates.group_by([_CANDIDATE_UID, *keys])
-            .agg(nw.len().alias("__candidate_count__"))
-        )
+        candidate_counts = candidates.group_by([_CANDIDATE_UID, *keys]).agg(nw.len().alias("__candidate_count__"))
         matched = (
             required_counts.join(candidate_counts, on=keys, how="inner")
             .filter(nw.col("__candidate_count__") >= nw.col("__required_count__"))

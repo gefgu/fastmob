@@ -2,7 +2,7 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 
-use crate::models::od::{validate_equal_lengths, CachedGravityOdRows};
+use crate::models::od::{CachedGravityOdRows, validate_equal_lengths};
 use crate::models::shared::{
     cdf_choice, derive_agent_seed, estimate_records_per_agent, sample_tpl_rng,
     validate_starting_locs_length, weighted_choice_excluding,

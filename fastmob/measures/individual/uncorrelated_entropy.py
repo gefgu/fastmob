@@ -129,9 +129,7 @@ def uncorrelated_entropy(
 
     lats_data = ops["extract_data"](df.get_column(lat_col))
     lngs_data = ops["extract_data"](df.get_column(lng_col))
-    entropies = _arrow_result_values(
-        uncorrelated_entropy_indexed(lats_data, lngs_data, indices, ends, normalize)
-    )
+    entropies = _arrow_result_values(uncorrelated_entropy_indexed(lats_data, lngs_data, indices, ends, normalize))
 
     if uid_col is None:
         return _to_native({"uncorrelated_entropy": entropies}, df)

@@ -36,11 +36,15 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import numpy as np
+
+from fastmob._core import tripleg_lengths_attributed
+from fastmob.core.dispatch import TrajectoryDispatcher
+from fastmob.measures._common import _arrow_result_values, _factorize_uids_uint64
 
 from .base import BaseDataFrame
 
 _REQUIRED_COLUMNS = ["tripleg_id", "started_at", "finished_at", "length_km", "duration_s"]
+_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 class Triplegs(BaseDataFrame):
@@ -147,8 +151,15 @@ class Triplegs(BaseDataFrame):
 
         sort_cols = ([uid_col] if uid_col else []) + [datetime_col]
         seg_nw = seg_nw.sort(sort_cols)
+        if uid_col:
+            uid_codes, _num_groups = _factorize_uids_uint64(seg_nw, uid_col, sort=False)
+            seg_nw = seg_nw.with_columns(uid_codes)
+            uid_code_col = "__fastmob_uid_codes__"
+        else:
+            uid_code_col = "__fastmob_uid_codes__"
+            seg_nw = seg_nw.with_columns(nw.lit(0, dtype=nw.UInt64).alias(uid_code_col))
 
-        group_cols = [uid_col, "segment_id"] if uid_col else ["segment_id"]
+        group_cols = ([uid_col] if uid_col else []) + [uid_code_col, "segment_id"]
         summary = seg_nw.group_by(group_cols).agg(
             nw.col(datetime_col).min().alias("started_at"),
             nw.col(datetime_col).max().alias("finished_at"),
@@ -204,7 +215,7 @@ class Triplegs(BaseDataFrame):
             nw.col("__is_stop__").fill_null(value=False).cast(nw.Boolean)
         )
 
-        length_by_group = _tripleg_lengths(seg_nw, summary, uid_col, datetime_col, lat_col, lng_col, group_cols)
+        length_by_group = _tripleg_lengths(seg_nw, summary, uid_code_col, lat_col, lng_col)
 
         triplegs_summary = summary.filter(~nw.col("__is_stop__")).drop("__started_at_ms__", "__is_stop__")
         triplegs_summary = (
@@ -213,7 +224,8 @@ class Triplegs(BaseDataFrame):
             .drop("__prev_finished_at__", "__next_started_at__")
         )
 
-        triplegs_summary = triplegs_summary.join(length_by_group, on=group_cols, how="left")
+        length_join_cols = [uid_code_col, "segment_id"]
+        triplegs_summary = triplegs_summary.join(length_by_group, on=length_join_cols, how="left")
         triplegs_summary = triplegs_summary.with_columns(nw.col("length_km").fill_null(0.0))
 
         triplegs_summary = triplegs_summary.with_columns(
@@ -226,7 +238,7 @@ class Triplegs(BaseDataFrame):
             .then(nw.col("length_km") / (nw.col("duration_s") / 3600.0))
             .otherwise(0.0)
             .alias("mean_speed_kmh")
-        ).drop("n_rows")
+        ).drop("n_rows", uid_code_col)
         triplegs_summary = triplegs_summary.rename({"segment_id": "tripleg_id"})
 
         return Triplegs(triplegs_summary.to_native(), uid_col=uid_col)
@@ -235,86 +247,43 @@ class Triplegs(BaseDataFrame):
 def _tripleg_lengths(
     seg_nw: nw.DataFrame,
     summary_with_is_stop: nw.DataFrame,
-    uid_col: str | None,
-    datetime_col: str,
+    uid_code_col: str,
     lat_col: str,
     lng_col: str,
-    group_cols: list[str],
 ) -> nw.DataFrame:
     """Sum of consecutive-point Haversine distances per moving ``(uid, segment_id)`` group.
-
-    Reuses `jump_lengths`'s existing batched, presorted Rust kernel: a single
-    ``merge=True`` call over the whole (already uid/time-sorted) frame
-    returns one flat array of per-user consecutive distances (length
-    ``n_u - 1`` per user); this is reconstructed here into a full per-row
-    "distance from previous row" NumPy array (first row of each user gets
-    0.0).
 
     `segment(method="stop")` attributes a stop's own entry-transition row to
     the STOP's segment, not the moving segment before it (see this module's
     docstring) -- so the hop leading into a stop would otherwise be
     misattributed to the (discarded) stop segment and silently dropped from
-    the tripleg's length. Each such hop is redirected here to the
-    *preceding* segment (the moving one) before grouping.
+    the tripleg's length. The Rust kernel redirects each such hop to the
+    preceding segment while summing grouped lengths.
     """
-    from ..measures.individual import jump_lengths
-
     n = len(seg_nw)
-    empty_cols = ([uid_col] if uid_col else []) + ["segment_id", "length_km"]
+    empty_cols = [uid_code_col, "segment_id", "length_km"]
     if n == 0:
         return nw.from_dict({col: [] for col in empty_cols}, backend=seg_nw.implementation)
 
-    is_stop_lookup = summary_with_is_stop.select([*group_cols, "__is_stop__"])
-    seg_with_flag = seg_nw.join(is_stop_lookup, on=group_cols, how="left").with_columns(
+    is_stop_lookup = summary_with_is_stop.select([uid_code_col, "segment_id", "__is_stop__"])
+    seg_with_flag = seg_nw.join(is_stop_lookup, on=[uid_code_col, "segment_id"], how="left").with_columns(
         nw.col("__is_stop__").fill_null(value=False).cast(nw.Boolean)
     )
 
-    if uid_col:
-        uid_values = seg_with_flag.get_column(uid_col).to_numpy()
-        first_of_user = np.empty(n, dtype=bool)
-        first_of_user[0] = True
-        first_of_user[1:] = uid_values[1:] != uid_values[:-1]
-    else:
-        uid_values = np.zeros(n, dtype=np.int64)
-        first_of_user = np.zeros(n, dtype=bool)
-        first_of_user[0] = True
-
-    seg_ids = seg_with_flag.get_column("segment_id").to_numpy()
-    is_stop_row = seg_with_flag.get_column("__is_stop__").to_numpy()
-
-    first_of_segment = np.empty(n, dtype=bool)
-    first_of_segment[0] = True
-    first_of_segment[1:] = (seg_ids[1:] != seg_ids[:-1]) | first_of_user[1:]
-
-    redirect_mask = first_of_segment & is_stop_row & ~first_of_user
-    attribution_segment_id = seg_ids.copy()
-    redirect_idx = np.flatnonzero(redirect_mask)
-    attribution_segment_id[redirect_idx] = seg_ids[redirect_idx - 1]
-
-    flat_distances = jump_lengths(
-        seg_nw.to_native(),
-        merge=True,
-        presorted=True,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
+    ops = _EXTRACTOR.get_ops(seg_with_flag)
+    uid_codes, segment_ids, lengths_km = tripleg_lengths_attributed(
+        ops["extract_data"](seg_with_flag.get_column(uid_code_col)),
+        ops["extract_data"](seg_with_flag.get_column("segment_id").cast(nw.Int64)),
+        ops["extract_data"](seg_with_flag.get_column("__is_stop__")),
+        ops["extract_data"](seg_with_flag.get_column(lat_col).cast(nw.Float64)),
+        ops["extract_data"](seg_with_flag.get_column(lng_col).cast(nw.Float64)),
     )
-    flat_distances = flat_distances.to_numpy() if hasattr(flat_distances, "to_numpy") else np.asarray(flat_distances)
 
-    per_row_distance = np.zeros(n, dtype=np.float64)
-    per_row_distance[~first_of_user] = np.asarray(flat_distances, dtype=np.float64)
-
-    lengths_dict: dict[str, Any] = {
-        "segment_id": attribution_segment_id,
-        "__distance_km__": per_row_distance,
-    }
-    if uid_col:
-        lengths_dict["__uid__"] = uid_values
-    lengths_nw = nw.from_dict(lengths_dict, backend=seg_nw.implementation)
-
-    group_by_cols = ["__uid__", "segment_id"] if uid_col else ["segment_id"]
-    grouped = lengths_nw.group_by(group_by_cols).agg(nw.col("__distance_km__").sum().alias("length_km"))
-    if uid_col:
-        grouped = grouped.rename({"__uid__": uid_col})
-    return grouped
+    return nw.from_dict(
+        {
+            uid_code_col: _arrow_result_values(uid_codes),
+            "segment_id": _arrow_result_values(segment_ids),
+            "length_km": _arrow_result_values(lengths_km),
+        },
+        backend=seg_nw.implementation,
+    )
