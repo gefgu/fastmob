@@ -202,6 +202,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "trajectory_entropy",
         {},
+        input_kind="visits",
     ),
     BenchmarkSpec(
         "trajectory_predictability",
@@ -209,6 +210,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "trajectory_predictability",
         {},
+        input_kind="visits",
     ),
     BenchmarkSpec(
         "regularity",
@@ -248,6 +250,7 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         "skmob.measures.individual",
         "mean_area_volume",
         {},
+        input_kind="visits",
     ),
 )
 

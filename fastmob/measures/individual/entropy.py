@@ -158,13 +158,15 @@ def _with_location_key(
 ) -> nw.DataFrame:
     """Add the token column consumed by the trajectory entropy estimator."""
     if location_id_col and location_type_col:
-        return df.with_columns(
+        df = df.with_columns(
             (nw.col(location_id_col).cast(nw.String) + nw.lit("_") + nw.col(location_type_col).cast(nw.String)).alias(
                 location_key_col
             )
         )
+        return df.filter(~nw.col(location_key_col).is_null())
     if location_id_col:
-        return df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
+        df = df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
+        return df.filter(~nw.col(location_key_col).is_null())
     return df
 
 

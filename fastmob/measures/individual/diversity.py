@@ -80,8 +80,10 @@ def diversity(
                 location_key_col
             )
         )
+        nw_df = nw_df.filter(~nw.col(location_key_col).is_null())
     elif location_id_col:
         nw_df = nw_df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
+        nw_df = nw_df.filter(~nw.col(location_key_col).is_null())
 
     if user_id_col:
         nw_df = nw_df.sort(user_id_col)
