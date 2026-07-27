@@ -112,19 +112,14 @@ def jump_lengths(
     distance_straight_line : Sum of all jump lengths per user.
     """
     df = nw.from_native(traj, eager_only=True)
-    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+    df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        cast_float_coordinates=True,
     )
-    schema = df.schema
-    if schema[lat_col] != nw.Float64 or schema[lng_col] != nw.Float64:
-        df = df.with_columns(
-            nw.col(lat_col).cast(nw.Float64),
-            nw.col(lng_col).cast(nw.Float64),
-        )
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()

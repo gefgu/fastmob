@@ -40,15 +40,6 @@ def _grouped_from_offsets(starts, ends, values) -> list[np.ndarray]:
     return [values[int(start) : int(end)] for start, end in zip(starts, ends)]
 
 
-def _grouped_from_index_ranges(starts, ends, values) -> list[np.ndarray]:
-    starts = np.asarray(starts, dtype=np.uintp)
-    ends = np.asarray(ends, dtype=np.uintp)
-    lengths = np.maximum(ends - starts, 1) - 1
-    value_ends = np.cumsum(lengths, dtype=np.uintp)
-    value_starts = value_ends - lengths
-    return _grouped_from_offsets(value_starts, value_ends, values)
-
-
 def test_jump_lengths_known_values(synthetic_tdf):
     pytest.importorskip(
         "fastmob._core",
@@ -454,93 +445,6 @@ def test_jump_lengths_presorted_helper_accepts_arrow():
     np.testing.assert_allclose(_arrow_to_numpy(arrow_values), numpy_values, rtol=0.0, atol=1e-12)
 
 
-def test_jump_lengths_non_ordered_helper_groups_and_sorts_by_time():
-    pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_km, jump_lengths_non_ordered
-
-    uids = np.array([1, 0, 1, 0, 0, 1], dtype=np.uint64)
-    timestamps = np.array([2.0, 2.0, 0.0, 0.0, 1.0, 1.0], dtype=np.float64)
-    lats = np.array([10.0, 0.0, 10.0, 0.0, 0.0, 10.0], dtype=np.float64)
-    lngs = np.array([4.0, 3.0, 0.0, 0.0, 1.0, 2.0], dtype=np.float64)
-
-    indices, starts, ends, values = jump_lengths_non_ordered(uids, timestamps, lats, lngs, 2)
-
-    assert isinstance(indices, np.ndarray)
-    assert isinstance(values, np.ndarray)
-    assert indices.tolist() == [3, 4, 1, 2, 5, 0]
-    assert starts.tolist() == [0, 3]
-    assert ends.tolist() == [3, 6]
-    expected = [
-        jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]),
-        jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]),
-    ]
-    grouped = _grouped_from_index_ranges(starts, ends, values)
-    for actual, expected_values in zip(grouped, expected):
-        np.testing.assert_allclose(actual, expected_values, rtol=0.0, atol=1e-12)
-
-
-def test_jump_lengths_non_ordered_helper_accepts_none_uid():
-    pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_km, jump_lengths_non_ordered
-
-    timestamps = np.array([2.0, 0.0, 1.0], dtype=np.float64)
-    lats = np.array([0.0, 0.0, 0.0], dtype=np.float64)
-    lngs = np.array([3.0, 0.0, 1.0], dtype=np.float64)
-
-    indices, starts, ends, values = jump_lengths_non_ordered(None, timestamps, lats, lngs)
-
-    assert isinstance(indices, np.ndarray)
-    assert values.dtype == np.float64
-    assert indices.tolist() == [1, 2, 0]
-    assert starts.tolist() == [0]
-    assert ends.tolist() == [3]
-    (result,) = _grouped_from_index_ranges(starts, ends, values)
-    np.testing.assert_allclose(result, jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]), rtol=0.0, atol=1e-12)
-
-
-def test_jump_lengths_non_ordered_helper_accepts_uint64_arrow_uid_codes():
-    pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import jump_lengths_non_ordered
-
-    indices, starts, ends, values = jump_lengths_non_ordered(
-        pa.array([1, 0, 1, 0], type=pa.uint64()),
-        pa.array([1.0, 1.0, 0.0, 0.0]),
-        pa.array([10.0, 0.0, 10.0, 0.0]),
-        pa.array([2.0, 1.0, 0.0, 0.0]),
-        2,
-    )
-
-    assert isinstance(indices, np.ndarray)
-    assert indices.tolist() == [3, 1, 2, 0]
-    assert starts.tolist() == [0, 2]
-    assert ends.tolist() == [2, 4]
-    grouped = _grouped_from_index_ranges(starts, ends, _arrow_to_numpy(values))
-    assert len(grouped) == 2
-
-
-def test_jump_lengths_non_ordered_helper_flat_values_accepts_uint64_arrow_uid_codes():
-    pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
-    from fastmob._core import jump_lengths_km, jump_lengths_non_ordered
-
-    indices, starts, ends, values = jump_lengths_non_ordered(
-        pa.array([1, 0, 1, 0], type=pa.uint64()),
-        pa.array([1.0, 1.0, 0.0, 0.0]),
-        pa.array([10.0, 0.0, 10.0, 0.0]),
-        pa.array([2.0, 1.0, 0.0, 0.0]),
-        2,
-    )
-
-    assert isinstance(indices, np.ndarray)
-    assert hasattr(values, "__arrow_c_array__")
-    assert indices.tolist() == [3, 1, 2, 0]
-    assert starts.tolist() == [0, 2]
-    assert ends.tolist() == [2, 4]
-    expected = jump_lengths_km([0.0, 0.0], [0.0, 1.0]) + jump_lengths_km([10.0, 10.0], [0.0, 2.0])
-    np.testing.assert_allclose(_arrow_to_numpy(values), expected, rtol=0.0, atol=1e-12)
-
-
 def test_jump_lengths_indexed_helper_groups_by_offsets():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
     from fastmob._core import jump_lengths_indexed, jump_lengths_km
@@ -649,15 +553,6 @@ def test_jump_lengths_indexed_helper_validation_errors():
         jump_lengths_indexed(arr, arr, np.array([0, 2], dtype=np.uintp), ends)
     with pytest.raises(ValueError, match="range end"):
         jump_lengths_indexed(arr, arr, indices, np.array([3], dtype=np.uintp))
-
-
-def test_jump_lengths_non_ordered_helper_validation_errors():
-    pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
-    from fastmob._core import jump_lengths_non_ordered
-
-    arr = np.array([0.0, 1.0], dtype=np.float64)
-    with pytest.raises(ValueError, match="same length"):
-        jump_lengths_non_ordered(None, arr[:1], arr, arr)
 
 
 @pytest.mark.skmob

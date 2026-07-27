@@ -117,6 +117,79 @@ fn arrow_u64_output(py: Python<'_>, values: Vec<u64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, u64_results_into_arrow(values))?.into_any())
 }
 
+/// Extracts and validates a presorted pair of Arrow coordinate arrays, then runs
+/// `operation` under `py.detach` with clean coordinate slices. Unlike
+/// [`run_presorted_coordinate_f64`], the result is handed back as-is so callers
+/// with different output shapes (a plain `Vec<f64>`, a `(Vec<f64>, Vec<bool>)`
+/// validity pair, a fallible `Result<_, String>`, ...) can wrap it themselves.
+pub fn run_presorted_coordinate_arrow<'py, T, F>(
+    py: Python<'py>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    ends: PyReadonlyArray1<'py, usize>,
+    operation: F,
+) -> PyResult<T>
+where
+    F: FnOnce(CoordinateView<'_>, &[usize]) -> T + Send,
+    T: Send,
+{
+    let latitudes = as_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    validate_coordinate_lengths(latitudes.len(), longitudes.len())?;
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let ends = ends.as_slice()?;
+    validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
+    Ok(py.detach(|| {
+        operation(
+            CoordinateView {
+                latitudes: lats,
+                longitudes: lngs,
+            },
+            ends,
+        )
+    }))
+}
+
+/// Indexed counterpart of [`run_presorted_coordinate_arrow`]: extracts and
+/// validates a pair of (possibly nullable) Arrow coordinate arrays alongside
+/// row indices/ends, computes `valid_rows`, then runs `operation` under
+/// `py.detach`.
+pub fn run_indexed_coordinate_arrow<'py, T, F>(
+    py: Python<'py>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    indices: PyReadonlyArray1<'py, usize>,
+    ends: PyReadonlyArray1<'py, usize>,
+    operation: F,
+) -> PyResult<T>
+where
+    F: FnOnce(IndexedCoordinateView<'_>) -> T + Send,
+    T: Send,
+{
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    validate_coordinate_lengths(latitudes.len(), longitudes.len())?;
+    let indices = indices.as_slice()?;
+    let ends = ends.as_slice()?;
+    validate_indexed_ends(latitudes.len(), indices, ends)?;
+
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    Ok(py.detach(|| {
+        operation(IndexedCoordinateView {
+            coordinates: CoordinateView {
+                latitudes: lats,
+                longitudes: lngs,
+            },
+            indices,
+            ends,
+            valid_rows: valid_rows.as_deref(),
+        })
+    }))
+}
+
 pub fn run_presorted_coordinate_f64<'py, F>(
     py: Python<'py>,
     latitudes: &Bound<'py, PyAny>,

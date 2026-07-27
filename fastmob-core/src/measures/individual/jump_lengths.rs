@@ -1,11 +1,7 @@
 use rayon::prelude::*;
 
-use crate::measures::individual::time_ordering::IndexRanges;
 use crate::utils::haversine::{adjacent_haversine_distances_into_km, haversine_km};
-use crate::utils::{
-    ranges_from_ends, validate_coord_ranges, validate_indexed_coord_ends,
-    validate_indexed_coord_ranges,
-};
+use crate::utils::{ranges_from_ends, validate_coord_ranges, validate_indexed_coord_ends};
 
 type JumpLengthsPresortedResult = Result<(Vec<usize>, Vec<usize>, Vec<f64>), String>;
 
@@ -55,35 +51,6 @@ pub fn jump_lengths_for_indexed_range(
             )
         })
         .collect()
-}
-
-pub fn validate_time_ordered_inputs(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    timestamps: &[f64],
-) -> Result<(), String> {
-    if latitudes.len() != longitudes.len() {
-        return Err("latitudes and longitudes must have the same length".to_string());
-    }
-    if latitudes.len() != timestamps.len() {
-        return Err("latitudes, longitudes, and timestamps must have the same length".to_string());
-    }
-    Ok(())
-}
-
-pub fn time_ordered_flat_values_impl(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    timestamps: &[f64],
-    indices: Vec<usize>,
-    ranges: IndexRanges,
-    valid_rows: Option<&[bool]>,
-) -> Result<(Vec<usize>, IndexRanges, Vec<f64>), String> {
-    validate_time_ordered_inputs(latitudes, longitudes, timestamps)?;
-    validate_indexed_coord_ranges(latitudes, longitudes, &indices, &ranges)?;
-    let values =
-        jump_lengths_indexed_flat_impl(latitudes, longitudes, &indices, &ranges, valid_rows)?;
-    Ok((indices, ranges, values))
 }
 
 fn jump_offsets_for_ranges(ranges: &[(usize, usize)]) -> (Vec<usize>, Vec<usize>) {
@@ -159,23 +126,6 @@ pub fn jump_lengths_indexed_impl(
     }
 
     Ok((value_starts, value_ends, values))
-}
-
-pub fn jump_lengths_indexed_flat_impl(
-    latitudes: &[f64],
-    longitudes: &[f64],
-    indices: &[usize],
-    ranges: &[(usize, usize)],
-    valid_rows: Option<&[bool]>,
-) -> Result<Vec<f64>, String> {
-    validate_indexed_coord_ranges(latitudes, longitudes, indices, ranges)?;
-
-    Ok(ranges
-        .par_iter()
-        .flat_map(|&(start, end)| {
-            jump_lengths_for_indexed_range(latitudes, longitudes, indices, start, end, valid_rows)
-        })
-        .collect())
 }
 
 pub fn jump_lengths_km(latitudes: Vec<f64>, longitudes: Vec<f64>) -> Result<Vec<f64>, String> {

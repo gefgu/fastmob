@@ -55,10 +55,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        measures::individual::jump_lengths::jump_lengths_non_ordered,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
         time_ordering::time_ordered_user_indices,
         m
     )?)?;

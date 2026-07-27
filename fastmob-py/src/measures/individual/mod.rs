@@ -5,8 +5,6 @@ pub mod home_location;
 pub mod indexed_user_indices;
 pub mod individual_mobility_network;
 pub mod jump_lengths;
-pub mod jump_lengths_arrow;
-pub mod jump_lengths_numpy;
 pub mod k_radius_of_gyration;
 pub mod location_frequency;
 pub mod max_distance_from_point;
