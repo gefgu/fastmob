@@ -18,6 +18,7 @@ use pyo3::prelude::*;
 use serde_json::{Value, json};
 
 pub mod motif_svg;
+pub mod motifs;
 
 const SVG_RENDERER_UNSUPPORTED_CHART_TYPES: &[&str] = &["stvd_comparison"];
 
