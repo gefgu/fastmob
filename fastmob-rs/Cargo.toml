@@ -1,0 +1,16 @@
+[package]
+name = "fastmob-rs"
+version = "0.1.0"
+edition = "2024"
+description = "Public Rust DataFrame API for fastmob mobility analysis."
+license = "BSD-3-Clause"
+repository = "https://github.com/gefgu/fastmob"
+
+[lib]
+name = "fastmob_rs"
+path = "src/lib.rs"
+
+[dependencies]
+fastmob-core = { path = "../fastmob-core", default-features = false }
+polars = { version = "0.51", default-features = false, features = ["dtype-date", "dtype-datetime", "dtype-time", "dtype-duration", "fmt", "lazy"] }
+thiserror = "2"

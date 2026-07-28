@@ -1,5 +1,5 @@
 [workspace]
-members = ["fastmob-core", "fastmob-py", "fastmob-vis"]
+members = ["fastmob-core", "fastmob-py", "fastmob-rs", "fastmob-vis"]
 resolver = "2"
 
 [profile.release]
