@@ -53,7 +53,7 @@ def read_rows(rows: int) -> list[tuple[str, str, str, str]]:
 
 def build_case(name: str, records: list[tuple[str, str, str, str]], *, string_uids: bool) -> None:
     """Write one fixture: the input TSV plus the Python path's expected output."""
-    from fastmob.measures.individual import jump_lengths, radius_of_gyration
+    from fastmob.measures.individual import jump_lengths, radius_of_gyration, waiting_times
 
     case_dir = FIXTURES / name
     case_dir.mkdir(parents=True, exist_ok=True)
@@ -88,9 +88,15 @@ def build_case(name: str, records: list[tuple[str, str, str, str]], *, string_ui
         .astype("<f8")
     )
 
+    waits = np.asarray(waiting_times(arranged, merge=True, presorted=True), dtype="<f8")
+
     jumps.tofile(case_dir / "jump_lengths.f64")
     rog.tofile(case_dir / "radius_of_gyration.f64")
-    print(f"{name}: {len(arranged)} rows, {len(jumps)} jumps, {len(rog)} radii")
+    waits.tofile(case_dir / "waiting_times.f64")
+    print(
+        f"{name}: {len(arranged)} rows, {len(jumps)} jumps, "
+        f"{len(rog)} radii, {len(waits)} waits"
+    )
 
 
 def main() -> int:

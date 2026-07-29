@@ -9,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-use fastmob_rs::{Cols, jump_lengths_flat, prepare, radius_of_gyration_flat};
+use fastmob_rs::{Cols, jump_lengths_flat, prepare, radius_of_gyration_flat, waiting_times_flat};
 use polars::prelude::*;
 
 fn fixture_dir(name: &str) -> PathBuf {
@@ -112,6 +112,12 @@ fn check_case(name: &str, string_uids: bool) {
         "radius_of_gyration",
         &rog,
         &read_f64_dump(&dir.join("radius_of_gyration.f64")),
+    );
+
+    assert_exact(
+        "waiting_times",
+        &waiting_times_flat(&prep).expect("waiting times"),
+        &read_f64_dump(&dir.join("waiting_times.f64")),
     );
 }
 

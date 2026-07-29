@@ -25,7 +25,12 @@ pub mod measures;
 pub mod prepare;
 
 pub use error::FastmobRsError;
+pub use measures::evaluation::{
+    common_part_of_commuters, common_part_of_commuters_multi, jensen_shannon_divergence,
+    time_bin_matrix_jsd, wasserstein_distance,
+};
 pub use measures::individual::{
-    jump_lengths, jump_lengths_flat, radius_of_gyration, radius_of_gyration_flat,
+    jump_lengths, jump_lengths_flat, radius_of_gyration, radius_of_gyration_flat, waiting_times,
+    waiting_times_flat,
 };
 pub use prepare::{Cols, PreparedTrajectory, ResolvedColumns, prepare, prepare_keeping};
