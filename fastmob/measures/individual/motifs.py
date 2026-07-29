@@ -5,6 +5,16 @@ Delegates the compute-heavy per-user-per-day graph construction and
 canonicalization to the Rust kernel ``_core.compute_daily_motifs``, which
 parallelises across users with Rayon.  The Python wrapper handles only column
 extraction and result assembly.
+
+Location+purpose identity and the "is this a HOME node" check are the two
+things the Rust kernel needs about each visit besides its hour/day/duration,
+and neither needs the actual string: ``unique_id`` (``location_id + "_" +
+purpose``) is dictionary-encoded into dense ``UInt64`` node codes via
+``_factorize_uids_uint64`` before crossing into Rust, and every dense
+numeric/boolean column is handed over as an Arrow array per the project's
+Arrow-only binding convention (see CLAUDE.md, "Arrow-only Rust bindings for
+dense numeric arrays") instead of a Python list PyO3 has to walk
+element-by-element.
 """
 
 from __future__ import annotations
@@ -12,6 +22,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+import numpy as np
 
 from fastmob import _core
 from fastmob.utils._common import (
@@ -20,8 +31,20 @@ from fastmob.utils._common import (
     PURPOSE_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
+    _arrow_result_values,
+    _build_presorted_user_ends,
+    _factorize_uids_uint64,
+    _narwhals_safe_value,
     _pick_existing_column,
 )
+
+
+def _strip_time_zone(df: nw.DataFrame, column: str) -> nw.DataFrame:
+    """Drop a tz-aware datetime column's time zone so it can cast to naive."""
+    dtype = df.schema[column]
+    if isinstance(dtype, nw.Datetime) and dtype.time_zone is not None:
+        return df.with_columns(nw.col(column).dt.replace_time_zone(None))
+    return df
 
 
 def discover_daily_motifs_from_agents(
@@ -84,6 +107,8 @@ def discover_daily_motifs_from_agents(
     ... })
     >>> daily_df, dist_df = discover_daily_motifs_from_agents(df)
     """
+    import pyarrow as pa
+
     # End-timestamp candidates — motifs-specific, not in _common.py
     _ETS_CANDIDATES = ["end_timestamp", "end_time"]
 
@@ -119,21 +144,30 @@ def discover_daily_motifs_from_agents(
 
     work_df = nw_df.rename(rename_map)
 
+    # Tz-aware sources (e.g. Brightkite's UTC-stamped check-ins) can't cast
+    # straight to a naive Datetime dtype below; drop the zone first.
+    work_df = _strip_time_zone(work_df, "start_timestamp")
+    work_df = _strip_time_zone(work_df, "end_timestamp")
+
     # Build derived columns needed by the Rust kernel:
-    #   unique_id   = location_id + "_" + purpose
+    #   unique_id   = location_id + "_" + purpose (dictionary-encoded below)
+    #   is_home     = purpose == "HOME"
     #   start_hour  = hour of start_timestamp
     #   end_hour    = hour of end_timestamp
-    #   date_id     = days since Unix epoch (Int32) — computed via truncate-to-day
+    #   date_id     = days since Unix epoch (Int64) — computed via truncate-to-day
     #                 then divide epoch-microseconds by 86400*1e6
     work_df = work_df.with_columns(
         nw.col("start_timestamp").cast(nw.Datetime("us")).alias("start_timestamp"),
         nw.col("end_timestamp").cast(nw.Datetime("us")).alias("end_timestamp"),
-        (nw.col(location_id_col).cast(nw.String) + nw.lit("_") + nw.col("purpose").cast(nw.String)).alias("unique_id"),
+        nw.col("purpose").cast(nw.String).alias("purpose"),
+        nw.col(location_id_col).cast(nw.String).alias(location_id_col),
     ).with_columns(
-        nw.col("start_timestamp").dt.hour().cast(nw.UInt32).alias("start_hour"),
-        nw.col("end_timestamp").dt.hour().cast(nw.UInt32).alias("end_hour"),
+        (nw.col(location_id_col) + nw.lit("_") + nw.col("purpose")).alias("unique_id"),
+        (nw.col("purpose") == nw.lit("HOME")).alias("is_home"),
+        nw.col("start_timestamp").dt.hour().cast(nw.UInt64).alias("start_hour"),
+        nw.col("end_timestamp").dt.hour().cast(nw.UInt64).alias("end_hour"),
         (nw.col("start_timestamp").dt.truncate("1d").cast(nw.Int64) // (86400 * 1_000_000))
-        .cast(nw.Int32)
+        .cast(nw.Int64)
         .alias("date_id"),
     )
 
@@ -141,49 +175,47 @@ def discover_daily_motifs_from_agents(
     # in chronological order and users are contiguous in the flat arrays
     work_df = work_df.sort([user_id_col, "start_timestamp"])
 
-    # Extract flat Python lists for the Rust kernel.  user_ids_list stays in
-    # its native dtype: the Rust kernel never needs user identity (it only
-    # tags each result with a position into user_ranges), so there is no
-    # reason to pay for a full-column string cast just to build ranges.
-    user_ids_list: list[Any] = work_df[user_id_col].to_list()
-    unique_ids_list: list[str] = work_df["unique_id"].to_list()
-    purposes_list: list[str] = work_df["purpose"].cast(nw.String).to_list()
-    start_hours_list: list[int] = work_df["start_hour"].to_list()
-    end_hours_list: list[int] = work_df["end_hour"].to_list()
-    date_ids_list: list[int] = work_df["date_id"].to_list()
+    # Per-user contiguous ranges via the shared Rust-backed presorted-range
+    # builder (see "Rule 1" in CLAUDE.md) instead of a hand-rolled Python
+    # scan over every row.
+    user_id_labels, user_ends = _build_presorted_user_ends(work_df, user_id_col)
+
+    # Dictionary-encode location+purpose into dense node codes.  The Rust
+    # kernel only ever compares two visits' locations for equality and asks
+    # "is this a HOME node" — it never needs the string itself — so send a
+    # UInt64 code per row plus a small per-code "is this HOME" lookup built
+    # once, instead of a full N-length Vec<String>.
+    node_code_series, num_codes = _factorize_uids_uint64(work_df, "unique_id", sort=False)
+    node_codes_np = node_code_series.to_numpy()
+    is_home_series = work_df.get_column("is_home")
+    is_home_np = np.asarray(is_home_series.to_numpy(), dtype=bool)
+
+    is_home_by_code = np.zeros(num_codes, dtype=bool)
+    is_home_by_code[node_codes_np] = is_home_np
 
     if "duration_minutes" in work_df.columns:
-        durations_list: list[float | None] = work_df["duration_minutes"].to_list()
+        durations_arrow = work_df.get_column("duration_minutes").cast(nw.Float64).to_arrow()
     else:
-        durations_list = [None] * len(user_ids_list)
+        durations_arrow = pa.nulls(len(work_df), type=pa.float64())
 
-    # Compute user_ranges: contiguous index ranges for each unique user.
-    # user_id_labels stays in native dtype; the Rust kernel returns a
-    # position into user_ranges per output row, and that position is used
-    # below to gather the matching native label — never round-tripped
-    # through Rust as a string.
-    user_ranges: list[tuple[int, int]] = []
-    user_id_labels: list[Any] = []
-    if user_ids_list:
-        start = 0
-        for i in range(1, len(user_ids_list) + 1):
-            if i == len(user_ids_list) or user_ids_list[i] != user_ids_list[start]:
-                user_ranges.append((start, i))
-                user_id_labels.append(user_ids_list[start])
-                start = i
-
-    # Call the Rust kernel
-    user_idx_out, date_ids_out, motif_ids_out = _core.compute_daily_motifs(
-        unique_ids_list,
-        purposes_list,
-        start_hours_list,
-        end_hours_list,
-        date_ids_list,
-        durations_list,
-        user_ranges,
+    # Call the Rust kernel: every measure-data argument is a dense Arrow
+    # array (Arrow-only binding convention); only the per-user boundary
+    # array stays plain NumPy, since it is index metadata, not measure data.
+    raw_user_idx_out, raw_date_ids_out, raw_motif_ids_out = _core.compute_daily_motifs(
+        node_code_series.to_arrow(),
+        is_home_series.to_arrow(),
+        work_df.get_column("start_hour").to_arrow(),
+        work_df.get_column("end_hour").to_arrow(),
+        work_df.get_column("date_id").to_arrow(),
+        durations_arrow,
+        user_ends,
+        pa.array(is_home_by_code),
     )
 
-    if not motif_ids_out:
+    date_ids_out = _arrow_result_values(raw_date_ids_out)
+    motif_ids_out = _arrow_result_values(raw_motif_ids_out)
+
+    if len(motif_ids_out) == 0:
         empty_daily = nw.from_dict(
             {
                 user_id_col: [],
@@ -200,12 +232,12 @@ def discover_daily_motifs_from_agents(
         )
         return empty_daily.to_native(), empty_dist.to_native()
 
-    # Parse num_nodes and num_edges from motif_id strings in Python
-    # motif_id format: "m{n_nodes}:{bits}" or "-1"
+    # Parse num_nodes and num_edges from packed motif IDs in Python
+    # motif_id format: (n_nodes << 36) | adjacency_bits, or -1
     num_nodes_list: list[int] = []
     num_edges_list: list[int] = []
 
-    for mid in motif_ids_out:
+    for mid in motif_ids_out.to_pylist():
         if mid == -1:
             num_nodes_list.append(-1)
             num_edges_list.append(-1)
@@ -221,9 +253,17 @@ def discover_daily_motifs_from_agents(
             # 3. Count the active bits (edges) natively in Python 3.10+
             num_edges_list.append(adjacency_matrix.bit_count())
 
-    # Map each output row's user_ranges position back to its native-dtype
-    # user id label (gathered once above, never touched by Rust).
-    user_ids_out = [user_id_labels[idx] for idx in user_idx_out]
+    # Map each output row's user_ends position back to its native-dtype
+    # user id label (gathered once above, never round-tripped through Rust
+    # as a string).  This is a plain Python list rather than the shared
+    # ``_take_uid_values`` vectorized-numpy-take helper on purpose: that
+    # helper builds an intermediate ``dtype=object`` NumPy array, which
+    # Polars represents as an ``Object`` column that the explicit
+    # ``.cast(user_id_dtype)`` below cannot cast back from. A plain list of
+    # native-dtype Python values lets every backend infer the correct dtype
+    # directly, and this loop runs over output rows (one per user-day, not
+    # per input row), so it is not a hot path.
+    user_ids_out = [user_id_labels[idx] for idx in raw_user_idx_out]
 
     # Convert date_ids_out (days since epoch) back to Datetime(us)
     # date_id * 86400 * 1_000_000 microseconds → Datetime('us')
@@ -231,8 +271,8 @@ def discover_daily_motifs_from_agents(
         nw.from_dict(
             {
                 user_id_col: user_ids_out,
-                "date_id_raw": date_ids_out,
-                "motif_id": motif_ids_out,
+                "date_id_raw": _narwhals_safe_value(date_ids_out),
+                "motif_id": _narwhals_safe_value(motif_ids_out),
                 "num_nodes": num_nodes_list,
                 "num_edges": num_edges_list,
             },

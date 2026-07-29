@@ -101,9 +101,10 @@ def test_discover_motifs_distribution_sum_to_100():
 def test_discover_motifs_preserves_numeric_user_id_dtype():
     """A numeric agent_id source column must come back numeric, not string.
 
-    The Rust kernel only speaks Vec<String> for user IDs, so the wrapper
-    casts to string before calling it; the output must be cast back to the
-    source dtype rather than leaking the intermediate string type.
+    The Rust kernel never sees the uid at all (it only tags each result
+    with a position into the per-user ranges); the wrapper must gather the
+    matching label back in its original dtype rather than leaking whatever
+    intermediate representation was used to build the ranges.
     """
     from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
 
@@ -113,3 +114,42 @@ def test_discover_motifs_preserves_numeric_user_id_dtype():
     daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
     assert pd.api.types.is_integer_dtype(daily_motifs_df["agent_id"])
     assert set(daily_motifs_df["agent_id"].unique()) == {1}
+
+
+def test_discover_motifs_preserves_numeric_user_id_dtype_polars():
+    """Same numeric-uid dtype guarantee on the Polars backend.
+
+    Regression test: an earlier version of the vectorized uid gather built
+    an intermediate ``dtype=object`` NumPy array, which Polars represents
+    as an ``Object`` column that cannot be cast back to Int64.
+    """
+    pl = pytest.importorskip("polars")
+    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+
+    df = _make_multi_day_df()
+    df["agent_id"] = df["agent_id"].map({"u1": 1}).astype("int64")
+    pldf = pl.from_pandas(df)
+
+    daily_motifs_df, _ = discover_daily_motifs_from_agents(pldf)
+    assert daily_motifs_df.schema["agent_id"] == pl.Int64
+    assert set(daily_motifs_df["agent_id"].unique().to_list()) == {1}
+
+
+def test_discover_motifs_handles_tz_aware_timestamps():
+    """Tz-aware start/end timestamps (e.g. UTC-stamped check-ins) must not raise.
+
+    Regression test: casting a tz-aware datetime column straight to a naive
+    Datetime dtype previously raised a pandas TypeError.
+    """
+    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+
+    df = _make_multi_day_df()
+    df["start_timestamp"] = df["start_timestamp"].dt.tz_localize("UTC")
+    df["end_timestamp"] = df["end_timestamp"].dt.tz_localize("UTC")
+
+    naive_df = _make_multi_day_df()
+    tz_daily_df, _ = discover_daily_motifs_from_agents(df)
+    naive_daily_df, _ = discover_daily_motifs_from_agents(naive_df)
+
+    assert tz_daily_df["motif_id"].tolist() == naive_daily_df["motif_id"].tolist()
+    assert tz_daily_df["date"].tolist() == naive_daily_df["date"].tolist()
