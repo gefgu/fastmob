@@ -10,6 +10,11 @@ use crate::prepare::PreparedTrajectory;
 ///
 /// Users with fewer than two fixes contribute nothing. Seconds is fastmob's
 /// unit for this measure; callers wanting minutes divide at the call site.
+///
+/// Accepts either preparation. Prefer
+/// [`prepare_temporal`](crate::prepare_temporal): this measure never reads
+/// coordinates, and `prepare` would drop fixes with unusable ones, inventing a
+/// longer gap between their neighbours.
 pub fn waiting_times_flat(prep: &PreparedTrajectory) -> Result<Vec<f64>, FastmobRsError> {
     let seconds = timestamps_seconds(prep);
     waiting_times_flat_impl(&seconds, prep.ends()).map_err(FastmobRsError::Core)
@@ -33,7 +38,7 @@ fn timestamps_seconds(prep: &PreparedTrajectory) -> Vec<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prepare::{Cols, prepare};
+    use crate::prepare::{Cols, prepare, prepare_temporal};
 
     fn frame(uids: [i64; 5], seconds: [i64; 5]) -> DataFrame {
         let datetimes: Vec<i64> = seconds.iter().map(|s| s * 1_000_000).collect();
@@ -83,6 +88,54 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    /// The reason `prepare_temporal` exists: a fix with an unusable coordinate
+    /// still happened at a real time, and dropping it would silently merge the
+    /// two gaps around it into one longer one.
+    #[test]
+    fn a_bad_coordinate_does_not_erase_its_time_gap() {
+        let df = df![
+            "uid" => [1i64, 1, 1],
+            "datetime" => [0i64, 60_000_000, 120_000_000],
+            "lat" => [Some(0.0), None, Some(0.0)],
+            "lng" => [Some(0.0), Some(0.0), Some(0.0)],
+        ]
+        .unwrap()
+        .lazy()
+        .with_column(col("datetime").cast(DataType::Datetime(TimeUnit::Microseconds, None)))
+        .collect()
+        .unwrap();
+
+        let temporal = prepare_temporal(&df, Cols::auto()).unwrap();
+        assert_eq!(waiting_times_flat(&temporal).unwrap(), vec![60.0, 60.0]);
+
+        // Spatial preparation drops the middle row, fusing the two gaps.
+        let spatial = prepare(&df, Cols::auto()).unwrap();
+        assert_eq!(waiting_times_flat(&spatial).unwrap(), vec![120.0]);
+    }
+
+    #[test]
+    fn time_only_preparation_needs_no_coordinate_columns_at_all() {
+        let df = df![
+            "uid" => [1i64, 1],
+            "datetime" => [0i64, 90_000_000],
+        ]
+        .unwrap()
+        .lazy()
+        .with_column(col("datetime").cast(DataType::Datetime(TimeUnit::Microseconds, None)))
+        .collect()
+        .unwrap();
+        let prep = prepare_temporal(&df, Cols::auto()).unwrap();
+        assert!(!prep.has_coordinates());
+        assert_eq!(waiting_times_flat(&prep).unwrap(), vec![90.0]);
+    }
+
+    #[test]
+    #[should_panic(expected = "prepare_temporal")]
+    fn coordinates_from_a_time_only_trajectory_are_refused() {
+        let df = frame([1, 1, 1, 2, 2], [0, 60, 200, 0, 30]);
+        let _ = prepare_temporal(&df, Cols::auto()).unwrap().lat();
     }
 
     #[test]

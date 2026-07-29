@@ -14,7 +14,7 @@
 use polars::prelude::*;
 
 use super::arrange;
-use super::columns::{Cols, ResolvedColumns, resolve};
+use super::columns::{Cols, Requires, ResolvedColumns, resolve};
 use super::timestamps;
 use super::uid_codes;
 use crate::error::FastmobRsError;
@@ -33,6 +33,7 @@ pub struct PreparedTrajectory {
     ends: Vec<usize>,
     starts: Vec<usize>,
     timestamps_ms: Vec<i64>,
+    spatial: bool,
 }
 
 fn starts_from_ends(ends: &[usize]) -> Vec<usize> {
@@ -56,14 +57,48 @@ fn contiguous_f64<'a>(frame: &'a DataFrame, name: &str) -> &'a [f64] {
 }
 
 impl PreparedTrajectory {
+    /// Whether this trajectory carries usable coordinates, i.e. came from
+    /// [`prepare`] rather than [`prepare_temporal`].
+    pub fn has_coordinates(&self) -> bool {
+        self.spatial
+    }
+
     /// Arranged latitudes, borrowed directly from the Polars buffer.
+    ///
+    /// Panics on a [`prepare_temporal`] trajectory, which has not cleaned its
+    /// coordinates and may hold nulls or non-finite values.
     pub fn lat(&self) -> &[f64] {
-        contiguous_f64(&self.frame, &self.cols.lat)
+        self.assert_spatial();
+        contiguous_f64(
+            &self.frame,
+            self.cols
+                .lat
+                .as_deref()
+                .expect("spatial trajectory has lat"),
+        )
     }
 
     /// Arranged longitudes, borrowed directly from the Polars buffer.
+    ///
+    /// Panics on a [`prepare_temporal`] trajectory, for the same reason as
+    /// [`Self::lat`].
     pub fn lng(&self) -> &[f64] {
-        contiguous_f64(&self.frame, &self.cols.lng)
+        self.assert_spatial();
+        contiguous_f64(
+            &self.frame,
+            self.cols
+                .lng
+                .as_deref()
+                .expect("spatial trajectory has lng"),
+        )
+    }
+
+    fn assert_spatial(&self) {
+        assert!(
+            self.spatial,
+            "coordinates were requested from a trajectory built with prepare_temporal, \
+             which neither requires nor cleans them; use prepare() instead"
+        );
     }
 
     /// Arranged millisecond timestamps.
@@ -155,11 +190,15 @@ impl PreparedTrajectory {
             ends,
             starts,
             timestamps_ms,
+            spatial: self.spatial,
         })
     }
 }
 
 /// Clean and arrange a trajectory, resolving column names automatically.
+///
+/// Requires latitude and longitude, and drops rows whose coordinates are null
+/// or non-finite. Use [`prepare_temporal`] for measures that only need time.
 pub fn prepare(df: &DataFrame, cols: Cols) -> Result<PreparedTrajectory, FastmobRsError> {
     prepare_keeping(df, cols, &[])
 }
@@ -171,8 +210,32 @@ pub fn prepare_keeping(
     cols: Cols,
     extra: &[&str],
 ) -> Result<PreparedTrajectory, FastmobRsError> {
-    let cols = resolve(df, &cols)?;
+    prepare_inner(df, cols, extra, Requires::Coordinates)
+}
+
+/// Arrange a trajectory for time-only measures such as waiting times.
+///
+/// Coordinates are neither required nor cleaned: a fix with a missing latitude
+/// still happened at a real time, so dropping it would invent a longer gap
+/// between its neighbours. This matches the Python `waiting_times`, which never
+/// filters on coordinates either.
+///
+/// [`PreparedTrajectory::lat`] and [`PreparedTrajectory::lng`] must not be
+/// called on the result; check [`PreparedTrajectory::has_coordinates`] first if
+/// the provenance is not obvious at the call site.
+pub fn prepare_temporal(df: &DataFrame, cols: Cols) -> Result<PreparedTrajectory, FastmobRsError> {
+    prepare_inner(df, cols, &[], Requires::TimeOnly)
+}
+
+fn prepare_inner(
+    df: &DataFrame,
+    cols: Cols,
+    extra: &[&str],
+    requires: Requires,
+) -> Result<PreparedTrajectory, FastmobRsError> {
+    let cols = resolve(df, &cols, requires)?;
     let schema = df.schema();
+    let spatial = requires == Requires::Coordinates;
 
     let mut projection = Vec::new();
     let mut required = Vec::new();
@@ -180,23 +243,47 @@ pub fn prepare_keeping(
         projection.push(col(uid_col));
         required.push(uid_col.to_string());
     }
-    projection.push(col(&cols.lat).cast(DataType::Float64));
-    projection.push(col(&cols.lng).cast(DataType::Float64));
+    if let Some(lat_col) = cols.lat.as_deref() {
+        projection.push(col(lat_col).cast(DataType::Float64));
+    }
+    if let Some(lng_col) = cols.lng.as_deref() {
+        projection.push(col(lng_col).cast(DataType::Float64));
+    }
     projection.push(timestamps::datetime_expr(schema, &cols.datetime).alias(&cols.datetime));
-    required.extend([cols.lat.clone(), cols.lng.clone(), cols.datetime.clone()]);
+    required.push(cols.datetime.clone());
+    if spatial {
+        required.extend([
+            cols.lat.clone().expect("spatial preparation resolved lat"),
+            cols.lng.clone().expect("spatial preparation resolved lng"),
+        ]);
+    }
     for name in extra {
         if !required.iter().any(|existing| existing == name) && cols.uid.as_deref() != Some(name) {
             projection.push(col(*name));
         }
     }
 
-    let cleaned = df
-        .clone()
-        .lazy()
-        .select(projection)
-        .drop_nulls(Some(cols_selector(&required)))
-        .filter(col(&cols.lat).is_finite().and(col(&cols.lng).is_finite()))
-        .collect()?;
+    let cleaned = df.clone().lazy().select(projection);
+    let cleaned = cleaned.drop_nulls(Some(cols_selector(&required)));
+    let cleaned = if spatial {
+        cleaned.filter(
+            col(cols
+                .lat
+                .as_deref()
+                .expect("spatial preparation resolved lat"))
+            .is_finite()
+            .and(
+                col(cols
+                    .lng
+                    .as_deref()
+                    .expect("spatial preparation resolved lng"))
+                .is_finite(),
+            ),
+        )
+    } else {
+        cleaned
+    };
+    let cleaned = cleaned.collect()?;
 
     let len = cleaned.height();
     let datetime_series = cleaned.column(&cols.datetime)?.as_materialized_series();
@@ -242,6 +329,7 @@ pub fn prepare_keeping(
         ends,
         starts,
         timestamps_ms,
+        spatial,
     })
 }
 

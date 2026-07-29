@@ -33,4 +33,6 @@ pub use measures::individual::{
     jump_lengths, jump_lengths_flat, radius_of_gyration, radius_of_gyration_flat, waiting_times,
     waiting_times_flat,
 };
-pub use prepare::{Cols, PreparedTrajectory, ResolvedColumns, prepare, prepare_keeping};
+pub use prepare::{
+    Cols, PreparedTrajectory, ResolvedColumns, prepare, prepare_keeping, prepare_temporal,
+};

@@ -5,4 +5,4 @@ pub mod trajectory;
 pub(crate) mod uid_codes;
 
 pub use columns::{Cols, ResolvedColumns};
-pub use trajectory::{PreparedTrajectory, prepare, prepare_keeping};
+pub use trajectory::{PreparedTrajectory, prepare, prepare_keeping, prepare_temporal};
