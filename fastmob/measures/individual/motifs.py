@@ -94,6 +94,7 @@ def discover_daily_motifs_from_agents(
     # Column auto-detection
     if user_id_col is None:
         user_id_col = _pick_existing_column(cols, USER_ID_CANDIDATES) or "agent_id"
+    user_id_dtype = nw_df.schema[user_id_col]
     if location_id_col is None:
         location_id_col = _pick_existing_column(cols, LOCATION_CANDIDATES) or "location_id"
     if purpose_col is None:
@@ -186,7 +187,7 @@ def discover_daily_motifs_from_agents(
                 "num_edges": [],
             },
             backend=backend,
-        )
+        ).with_columns(nw.col(user_id_col).cast(user_id_dtype))
         empty_dist = nw.from_dict(
             {"motif_id": [], "count": [], "percentage": []},
             backend=backend,
@@ -228,7 +229,8 @@ def discover_daily_motifs_from_agents(
             backend=backend,
         )
         .with_columns(
-            (nw.col("date_id_raw").cast(nw.Int64) * (86400 * 1_000_000)).cast(nw.Datetime("us")).alias("date")
+            (nw.col("date_id_raw").cast(nw.Int64) * (86400 * 1_000_000)).cast(nw.Datetime("us")).alias("date"),
+            nw.col(user_id_col).cast(user_id_dtype),
         )
         .drop("date_id_raw")
         .sort([user_id_col, "date"])

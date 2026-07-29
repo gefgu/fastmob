@@ -96,3 +96,20 @@ def test_discover_motifs_distribution_sum_to_100():
     df = _make_multi_day_df()
     _, motif_dist_df = discover_daily_motifs_from_agents(df)
     assert motif_dist_df["percentage"].sum() == pytest.approx(100.0, abs=1e-6)
+
+
+def test_discover_motifs_preserves_numeric_user_id_dtype():
+    """A numeric agent_id source column must come back numeric, not string.
+
+    The Rust kernel only speaks Vec<String> for user IDs, so the wrapper
+    casts to string before calling it; the output must be cast back to the
+    source dtype rather than leaking the intermediate string type.
+    """
+    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+
+    df = _make_multi_day_df()
+    df["agent_id"] = df["agent_id"].map({"u1": 1}).astype("int64")
+
+    daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
+    assert pd.api.types.is_integer_dtype(daily_motifs_df["agent_id"])
+    assert set(daily_motifs_df["agent_id"].unique()) == {1}
