@@ -1,0 +1,37 @@
+[package]
+name = "fastmob-rs"
+version = "0.1.0"
+edition = "2024"
+description = "Public Rust DataFrame API for fastmob mobility analysis."
+license = "BSD-3-Clause"
+repository = "https://github.com/gefgu/fastmob"
+
+[lib]
+name = "fastmob_rs"
+path = "src/lib.rs"
+
+[features]
+# Mirrors fastmob-py's wiring so this crate and the Python extension resolve to
+# the *same* haversine implementation. fastmob-core's accelerated path differs
+# from its pure-Rust fallback in the last bits, which is enough to reclassify
+# near-zero jumps and visibly shift a jump-length ECDF -- so bit-parity with the
+# Python path requires matching this feature, not just the formula.
+default = ["simd"]
+simd = ["fastmob-core/simd"]
+numkong = ["fastmob-core/numkong"]
+stvd-emd = ["fastmob-core/stvd-emd"]
+
+[dependencies]
+fastmob-core = { path = "../fastmob-core", default-features = false }
+polars = { version = "0.51", default-features = false, features = ["dtype-date", "dtype-datetime", "dtype-time", "dtype-duration", "fmt", "lazy", "strings", "temporal", "is_in", "abs", "round_series", "trigonometry", "zip_with", "take_opt_iter"] }
+rayon = "1"
+rustc-hash = "2"
+thiserror = "2"
+
+[dev-dependencies]
+criterion = "0.5"
+flate2 = "1"
+
+[[bench]]
+name = "jump_lengths"
+harness = false
