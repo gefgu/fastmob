@@ -29,6 +29,9 @@ pub use measures::evaluation::{
     common_part_of_commuters, common_part_of_commuters_multi, jensen_shannon_divergence,
     time_bin_matrix_jsd, wasserstein_distance,
 };
+pub use measures::fitting::{
+    bin_visitation_law_data, fit_visitation_law, fit_visitation_law_in_range,
+};
 pub use measures::individual::{
     activity_transition_matrix, daily_activity_distribution, jump_lengths, jump_lengths_flat,
     radius_of_gyration, radius_of_gyration_flat, waiting_times, waiting_times_flat,

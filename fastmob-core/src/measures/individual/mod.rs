@@ -9,6 +9,7 @@ pub mod location_frequency;
 pub mod max_distance_from_point;
 pub mod maximum_distance;
 pub mod motifs;
+pub mod profiles;
 pub mod radius_of_gyration;
 pub mod recency_rank;
 pub mod spatial_counts;
