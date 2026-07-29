@@ -141,8 +141,11 @@ def discover_daily_motifs_from_agents(
     # in chronological order and users are contiguous in the flat arrays
     work_df = work_df.sort([user_id_col, "start_timestamp"])
 
-    # Extract flat Python lists for the Rust kernel
-    user_ids_list: list[str] = work_df[user_id_col].cast(nw.String).to_list()
+    # Extract flat Python lists for the Rust kernel.  user_ids_list stays in
+    # its native dtype: the Rust kernel never needs user identity (it only
+    # tags each result with a position into user_ranges), so there is no
+    # reason to pay for a full-column string cast just to build ranges.
+    user_ids_list: list[Any] = work_df[user_id_col].to_list()
     unique_ids_list: list[str] = work_df["unique_id"].to_list()
     purposes_list: list[str] = work_df["purpose"].cast(nw.String).to_list()
     start_hours_list: list[int] = work_df["start_hour"].to_list()
@@ -154,9 +157,13 @@ def discover_daily_motifs_from_agents(
     else:
         durations_list = [None] * len(user_ids_list)
 
-    # Compute user_ranges: contiguous index ranges for each unique user
+    # Compute user_ranges: contiguous index ranges for each unique user.
+    # user_id_labels stays in native dtype; the Rust kernel returns a
+    # position into user_ranges per output row, and that position is used
+    # below to gather the matching native label — never round-tripped
+    # through Rust as a string.
     user_ranges: list[tuple[int, int]] = []
-    user_id_labels: list[str] = []
+    user_id_labels: list[Any] = []
     if user_ids_list:
         start = 0
         for i in range(1, len(user_ids_list) + 1):
@@ -166,7 +173,7 @@ def discover_daily_motifs_from_agents(
                 start = i
 
     # Call the Rust kernel
-    user_ids_out, date_ids_out, motif_ids_out = _core.compute_daily_motifs(
+    user_idx_out, date_ids_out, motif_ids_out = _core.compute_daily_motifs(
         unique_ids_list,
         purposes_list,
         start_hours_list,
@@ -174,7 +181,6 @@ def discover_daily_motifs_from_agents(
         date_ids_list,
         durations_list,
         user_ranges,
-        user_id_labels,
     )
 
     if not motif_ids_out:
@@ -214,6 +220,10 @@ def discover_daily_motifs_from_agents(
 
             # 3. Count the active bits (edges) natively in Python 3.10+
             num_edges_list.append(adjacency_matrix.bit_count())
+
+    # Map each output row's user_ranges position back to its native-dtype
+    # user id label (gathered once above, never touched by Rust).
+    user_ids_out = [user_id_labels[idx] for idx in user_idx_out]
 
     # Convert date_ids_out (days since epoch) back to Datetime(us)
     # date_id * 86400 * 1_000_000 microseconds → Datetime('us')

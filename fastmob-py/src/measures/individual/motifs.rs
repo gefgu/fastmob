@@ -20,8 +20,7 @@ pub fn compute_daily_motifs(
     date_ids: Vec<i32>,
     durations: Vec<Option<f64>>,
     user_ranges: Vec<(usize, usize)>,
-    user_id_labels: Vec<String>,
-) -> PyResult<(Vec<String>, Vec<i32>, Vec<i64>)> {
+) -> PyResult<(Vec<usize>, Vec<i32>, Vec<i64>)> {
     core_compute_daily_motifs(
         unique_ids,
         purposes,
@@ -30,7 +29,6 @@ pub fn compute_daily_motifs(
         date_ids,
         durations,
         user_ranges,
-        user_id_labels,
     )
     .map_err(PyValueError::new_err)
 }

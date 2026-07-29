@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-type DailyMotifsResult = Result<(Vec<String>, Vec<i32>, Vec<i64>), String>;
+type DailyMotifsResult = Result<(Vec<usize>, Vec<i32>, Vec<i64>), String>;
 
 // ---------------------------------------------------------------------------
 // Structs
@@ -19,7 +19,7 @@ struct Visit<'a> {
 
 #[derive(Debug)]
 struct DailyMotifResult {
-    user_id: String,
+    user_idx: usize,
     date_id: i32,
     motif_id: i64,
 }
@@ -164,7 +164,7 @@ fn compute_primary_home_node_id<'a>(visits: &[Visit<'a>]) -> Option<&'a str> {
 // ---------------------------------------------------------------------------
 
 fn compute_motif_from_daily_visits<'a>(
-    user_id: &str,
+    user_idx: usize,
     daily_visits: &[Visit<'a>],
     primary_home: &'a str,
     last_night_node: Option<&'a str>,
@@ -237,7 +237,7 @@ fn compute_motif_from_daily_visits<'a>(
     };
 
     DailyMotifResult {
-        user_id: user_id.to_string(),
+        user_idx,
         date_id,
         motif_id,
     }
@@ -247,7 +247,7 @@ fn compute_motif_from_daily_visits<'a>(
 // Per-user processing
 // ---------------------------------------------------------------------------
 
-fn process_single_user<'a>(user_id: &str, visits: &[Visit<'a>]) -> Vec<DailyMotifResult> {
+fn process_single_user<'a>(user_idx: usize, visits: &[Visit<'a>]) -> Vec<DailyMotifResult> {
     let primary_home = match compute_primary_home_node_id(visits) {
         Some(h) => h,
         None => return vec![],
@@ -299,7 +299,7 @@ fn process_single_user<'a>(user_id: &str, visits: &[Visit<'a>]) -> Vec<DailyMoti
         };
 
         let result = compute_motif_from_daily_visits(
-            user_id,
+            user_idx,
             current_day,
             primary_home,
             last_night_node,
@@ -324,7 +324,6 @@ pub fn compute_daily_motifs(
     date_ids: Vec<i32>,
     durations: Vec<Option<f64>>,
     user_ranges: Vec<(usize, usize)>,
-    user_id_labels: Vec<String>,
 ) -> DailyMotifsResult {
     let n = unique_ids.len();
 
@@ -336,9 +335,6 @@ pub fn compute_daily_motifs(
         || durations.len() != n
     {
         return Err("All input column vectors must have the same length".to_string());
-    }
-    if user_id_labels.len() != user_ranges.len() {
-        return Err("user_id_labels and user_ranges must have the same length".to_string());
     }
 
     // Build Visit slices from the flat arrays (borrows into the input Vecs)
@@ -353,26 +349,28 @@ pub fn compute_daily_motifs(
         })
         .collect();
 
-    // Parallel processing: each user's range is independent
+    // Parallel processing: each user's range is independent. User identity
+    // never needs to reach Rust — the kernel tags each result with the
+    // range's position, and the caller maps that back to its own uid labels.
     let all_results: Vec<DailyMotifResult> = user_ranges
         .par_iter()
-        .zip(user_id_labels.par_iter())
-        .flat_map(|(&(start, end), uid)| {
+        .enumerate()
+        .flat_map(|(user_idx, &(start, end))| {
             let user_visits = &all_visits[start..end];
-            process_single_user(uid, user_visits)
+            process_single_user(user_idx, user_visits)
         })
         .collect();
 
     // Unzip into three parallel output vectors
-    let mut out_user_ids = Vec::with_capacity(all_results.len());
+    let mut out_user_idx = Vec::with_capacity(all_results.len());
     let mut out_date_ids = Vec::with_capacity(all_results.len());
     let mut out_motif_ids = Vec::with_capacity(all_results.len());
 
     for r in all_results {
-        out_user_ids.push(r.user_id);
+        out_user_idx.push(r.user_idx);
         out_date_ids.push(r.date_id);
         out_motif_ids.push(r.motif_id);
     }
 
-    Ok((out_user_ids, out_date_ids, out_motif_ids))
+    Ok((out_user_idx, out_date_ids, out_motif_ids))
 }
