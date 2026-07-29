@@ -1,6 +1,8 @@
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::utils::validate_indexed_ends;
+
 type DailyMotifsResult = Result<(Vec<usize>, Vec<i64>, Vec<i64>), String>;
 
 // ---------------------------------------------------------------------------
@@ -339,7 +341,8 @@ pub fn compute_daily_motifs(
     end_hours: &[u64],
     date_ids: &[i64],
     durations: &[Option<f64>],
-    user_ends: &[usize],
+    indices: &[usize],
+    ends: &[usize],
     is_home_by_code: &[bool],
 ) -> DailyMotifsResult {
     let n = node_codes.len();
@@ -353,25 +356,30 @@ pub fn compute_daily_motifs(
     {
         return Err("All input column vectors must have the same length".to_string());
     }
+    validate_indexed_ends(n, indices, ends)?;
 
-    // Build Visit values from the flat arrays.  Every field is Copy, so this
-    // is a plain by-value collect — no per-row string allocation/hashing.
-    let all_visits: Vec<Visit> = (0..n)
-        .map(|i| Visit {
-            node_code: node_codes[i],
-            is_home: is_home_row[i],
-            start_hour: start_hours[i],
-            end_hour: end_hours[i],
-            date_id: date_ids[i],
-            duration_minutes: durations[i],
+    // `indices` is a time-ordered permutation built from a skinny
+    // (uid_code, timestamp) sort in Python — the caller never physically
+    // reorders the trajectory dataframe (see jump_lengths'/radius_of_gyration's
+    // "indexed" path). Reading each row through `indices` here, in parallel,
+    // both does the gather that used to be a full-frame pandas sort and
+    // replaces what used to be a single-threaded Visit-vec build.
+    let all_visits: Vec<Visit> = indices
+        .par_iter()
+        .map(|&idx| Visit {
+            node_code: node_codes[idx],
+            is_home: is_home_row[idx],
+            start_hour: start_hours[idx],
+            end_hour: end_hours[idx],
+            date_id: date_ids[idx],
+            duration_minutes: durations[idx],
         })
         .collect();
 
-    // user_ends are cumulative per-user end boundaries over presorted rows
-    // (mirrors the project's presorted-range convention); starts are
-    // implied by the previous user's end.
+    // ends are cumulative per-user end boundaries *into the indices array*;
+    // starts are implied by the previous user's end.
     let mut start = 0usize;
-    let user_ranges: Vec<(usize, usize)> = user_ends
+    let user_ranges: Vec<(usize, usize)> = ends
         .iter()
         .map(|&end| {
             let range = (start, end);

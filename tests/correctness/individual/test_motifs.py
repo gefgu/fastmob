@@ -89,6 +89,33 @@ def test_discover_motifs_home_work_home_classified_correctly():
     assert (daily_motifs_df["num_edges"] == 2).all()
 
 
+def test_discover_motifs_handles_unsorted_input():
+    """The indexed kernel path must preserve chronological per-user visits."""
+    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+
+    df = _make_multi_day_df()
+    df = pd.concat(
+        [
+            df,
+            df.assign(
+                agent_id="u2",
+                start_timestamp=df["start_timestamp"] + pd.Timedelta(hours=1),
+                end_timestamp=df["end_timestamp"] + pd.Timedelta(hours=1),
+            ),
+        ],
+        ignore_index=True,
+    )
+    shuffled = df.sample(frac=1.0, random_state=0).reset_index(drop=True)
+
+    expected, _ = discover_daily_motifs_from_agents(df)
+    actual, _ = discover_daily_motifs_from_agents(shuffled)
+
+    sort_cols = ["agent_id", "date"]
+    expected = expected.sort_values(sort_cols).reset_index(drop=True)
+    actual = actual.sort_values(sort_cols).reset_index(drop=True)
+    pd.testing.assert_frame_equal(actual, expected)
+
+
 def test_discover_motifs_distribution_sum_to_100():
     """Motif distribution percentages sum to 100."""
     from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents

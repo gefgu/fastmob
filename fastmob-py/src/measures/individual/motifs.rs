@@ -22,8 +22,11 @@ type DailyMotifsPy<'py> = (Bound<'py, PyArray1<usize>>, ArrowPyArray, ArrowPyArr
 /// Every measure-data argument is a dense Arrow array (Arrow-only binding
 /// convention: node identity and hours/dates/durations are all fixed-width
 /// numeric/boolean, so there is no string data left to marshal through
-/// PyO3's per-element list extraction). ``user_ends`` stays plain NumPy —
-/// it is per-user boundary metadata, not measure data.
+/// PyO3's per-element list extraction). ``indices``/``ends`` stay plain
+/// NumPy — they are per-user boundary metadata, not measure data.
+/// ``indices`` is a time-ordered permutation built from a skinny
+/// (uid_code, timestamp) sort on the Python side rather than a physical
+/// sort of the trajectory dataframe; the kernel reads each row through it.
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub fn compute_daily_motifs<'py>(
@@ -34,7 +37,8 @@ pub fn compute_daily_motifs<'py>(
     end_hours: ArrowPyArray,
     date_ids: ArrowPyArray,
     durations: ArrowPyArray,
-    user_ends: PyReadonlyArray1<'py, usize>,
+    indices: PyReadonlyArray1<'py, usize>,
+    ends: PyReadonlyArray1<'py, usize>,
     is_home_by_code: ArrowPyArray,
 ) -> PyResult<DailyMotifsPy<'py>> {
     let node_codes = as_u64_array(node_codes, "node_codes")?;
@@ -52,7 +56,8 @@ pub fn compute_daily_motifs<'py>(
     let date_ids_values = arrow_i64_values(&date_ids);
     let durations_values: Vec<Option<f64>> = durations.iter().collect();
     let is_home_by_code_values = arrow_bool_values(&is_home_by_code);
-    let user_ends_values = user_ends.as_slice()?;
+    let indices_values = indices.as_slice()?;
+    let ends_values = ends.as_slice()?;
 
     let (out_user_idx, out_date_ids, out_motif_ids) = py
         .detach(|| {
@@ -63,7 +68,8 @@ pub fn compute_daily_motifs<'py>(
                 end_hours_values,
                 date_ids_values,
                 &durations_values,
-                user_ends_values,
+                indices_values,
+                ends_values,
                 &is_home_by_code_values,
             )
         })
