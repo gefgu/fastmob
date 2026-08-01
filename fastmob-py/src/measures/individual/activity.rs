@@ -1,9 +1,9 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::measures::individual::activity::{
     activity_counts as activity_counts_impl,
     activity_transition_counts as activity_transition_counts_impl,
     daily_activity_percentages as daily_activity_percentages_impl,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -39,8 +39,8 @@ pub fn activity_counts(
 pub fn activity_transition_counts<'py>(
     py: Python<'py>,
     codes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     n_activities: usize,
 ) -> PyResult<Py<PyAny>> {
     let indices = indices.as_slice()?.to_vec();

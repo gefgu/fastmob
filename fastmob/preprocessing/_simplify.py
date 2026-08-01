@@ -12,7 +12,7 @@ from fastmob._core import (
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_time_ordered_user_ranges,
+    _build_indexed_user_ranges,
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
@@ -20,7 +20,7 @@ from fastmob.utils._common import (
 )
 
 # Bare extractor used only for `.get_ops(df)["extract_data"]` on the
-# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# timestamps column, which also feeds `_build_indexed_user_ranges` below
 # (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
@@ -214,11 +214,10 @@ def simplify(
         _, ranges = _build_user_ranges(df, uid_col)
         raw_mask = simplify_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
     else:
-        _, sorted_indices, ends = _build_time_ordered_user_ranges(
+        _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            datetime_col=datetime_col,
-            timestamps_data=times_data,
+            timestamps=timestamps_s,
         )
         raw_mask = simplify_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 

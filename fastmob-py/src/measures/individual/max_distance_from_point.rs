@@ -1,7 +1,6 @@
 use fastmob_core::measures::individual::max_distance_from_point::{
     max_distance_from_point_from_ends_impl, max_distance_from_point_indexed_impl,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -23,7 +22,7 @@ pub fn max_distance_from_point_presorted<'py>(
     home_lngs: ArrowPyArray,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<Py<PyAny>> {
     let values = run_presorted_group_coordinate_arrow(
         py,
@@ -55,8 +54,8 @@ pub fn max_distance_from_point_indexed<'py>(
     home_lngs: ArrowPyArray,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<Py<PyAny>> {
     let values = run_indexed_group_coordinate_arrow(
         py,

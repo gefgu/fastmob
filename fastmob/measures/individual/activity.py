@@ -20,8 +20,10 @@ from fastmob.utils._common import (
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
     _arrow_result_values,
-    _build_indexed_user_ranges_fast,
+    _build_indexed_user_ranges,
+    _factorize_arrow_values,
     _pick_existing_column,
+    _uint64_series,
 )
 
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday"}
@@ -99,11 +101,12 @@ def _resolve_end_column(columns: list[str], end_time_col: str | None) -> str | N
 
 
 def _factorize_activities(df: nw.DataFrame, activity_col: str) -> tuple[list[Any], nw.Series]:
-    values = df.get_column(activity_col).to_list()
-    categories = sorted(set(values), key=lambda value: str(value))
-    category_idx = {category: index for index, category in enumerate(categories)}
-    codes = np.fromiter((category_idx[value] for value in values), dtype=np.uint64, count=len(values))
-    return categories, nw.new_series("__fastmob_activity_codes__", codes, dtype=nw.UInt64, backend=df.implementation)
+    import pyarrow.compute as pc
+
+    values = df.get_column(activity_col).to_arrow()
+    codes, representatives = _factorize_arrow_values(values, sort=True)
+    categories = pc.take(values, representatives).to_pylist()
+    return categories, _uint64_series(df, codes)
 
 
 def _kernel_result(values: Any) -> np.ndarray:
@@ -359,7 +362,7 @@ def activity_transition_matrix(
 
     activities, codes = _factorize_activities(df, activity_col)
     n_activities = len(activities)
-    _, indices, ends = _build_indexed_user_ranges_fast(df, user_id_col)
+    _, indices, ends = _build_indexed_user_ranges(df, user_id_col)
     flat_counts = _kernel_result(activity_transition_counts(codes.to_arrow(), indices, ends, n_activities))
     transition_matrix = np.asarray(flat_counts, dtype=float).reshape(n_activities, n_activities)
     total = transition_matrix.sum()

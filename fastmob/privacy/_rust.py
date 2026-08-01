@@ -9,12 +9,11 @@ from fastmob._core import (
     privacy_assess_risk_indexed,
     privacy_assess_risk_presorted,
 )
-from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _build_indexed_user_ranges_fast,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _extract_timestamps_ms,
+    _factorize_arrow_values,
 )
 
 from ._constants import DATETIME, INSTANCE, INSTANCE_ELEMENT, LATITUDE, LONGITUDE, PRIVACY_RISK, PROBABILITY, TEMP, UID
@@ -31,12 +30,13 @@ HOME_WORK = 7
 
 _NO_ROW = np.iinfo(np.uintp).max
 
-_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
-def _target_user_indices(df: nw.DataFrame, uid_values: list[Any] | None, targets: Any) -> np.ndarray:
+def _target_user_indices(df: nw.DataFrame, uid_values: Any | None, targets: Any) -> Any:
+    import pyarrow as pa
+
     if uid_values is None:
-        return np.array([0], dtype=np.uintp) if len(df) else np.array([], dtype=np.uintp)
+        return pa.array([0] if len(df) else [], type=pa.uint64())
 
     if targets is None:
         target_uids = df.select(UID).unique().sort(UID).get_column(UID).to_list()
@@ -47,21 +47,18 @@ def _target_user_indices(df: nw.DataFrame, uid_values: list[Any] | None, targets
     else:
         target_uids = _as_frame(targets).select(UID).unique().sort(UID).get_column(UID).to_list()
 
-    uid_to_index = {uid: idx for idx, uid in enumerate(uid_values)}
-    return np.asarray([uid_to_index[uid] for uid in target_uids if uid in uid_to_index], dtype=np.uintp)
+    labels = uid_values.to_pylist()
+    uid_to_index = {uid: idx for idx, uid in enumerate(labels)}
+    return pa.array([uid_to_index[uid] for uid in target_uids if uid in uid_to_index], type=pa.uint64())
 
 
-def _time_keys(df: nw.DataFrame, precision: str | None) -> np.ndarray | None:
+def _time_keys(df: nw.DataFrame, precision: str | None) -> Any | None:
     if precision is None:
         return None
 
-    values = _with_date_time_precision(df, DATETIME, TEMP, precision).get_column(TEMP).to_list()
-    codes: dict[Any, int] = {}
-    out = np.empty(len(values), dtype=np.uint64)
-    for idx, value in enumerate(values):
-        code = codes.setdefault(value, len(codes))
-        out[idx] = code
-    return out
+    values = _with_date_time_precision(df, DATETIME, TEMP, precision).get_column(TEMP)
+    codes, _ = _factorize_arrow_values(values, sort=False)
+    return codes
 
 
 def _datetime_values(df: nw.DataFrame, row_indices: np.ndarray, include_datetime: bool) -> list[Any]:
@@ -77,7 +74,7 @@ def _normal_result(df: nw.DataFrame, uid_values: list[Any] | None, user_indices:
     if uid_values is None:
         values = [1] * len(risks)
     else:
-        uid_array = np.asarray(uid_values, dtype=object)
+        uid_array = np.asarray(uid_values.to_pylist(), dtype=object)
         values = uid_array.take(user_indices).tolist()
     return nw.from_dict({UID: values, PRIVACY_RISK: risks}, backend=df.implementation).sort(UID).to_native()
 
@@ -99,7 +96,7 @@ def _force_result(
     if uid_values is None:
         uids = [1] * len(user_indices)
     else:
-        uid_array = np.asarray(uid_values, dtype=object)
+        uid_array = np.asarray(uid_values.to_pylist(), dtype=object)
         uids = uid_array.take(user_indices).tolist()
     out = nw.from_dict(
         {
@@ -153,14 +150,9 @@ def assess_risk_rust(
     else:
         if attack_kind == SEQUENCE:
             timestamps = _extract_timestamps_ms(df, DATETIME)
-            uid_values, indices, ends = _build_time_ordered_user_ranges(
-                df,
-                UID,
-                DATETIME,
-                _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps),
-            )
+            uid_values, indices, ends = _build_indexed_user_ranges(df, UID, timestamps)
         else:
-            uid_values, indices, ends = _build_indexed_user_ranges_fast(df, UID)
+            uid_values, indices, ends = _build_indexed_user_ranges(df, UID)
         target_indices = _target_user_indices(df, uid_values, targets)
         result = privacy_assess_risk_indexed(
             lats,

@@ -1,10 +1,9 @@
 use std::str::FromStr;
 
 use fastmob_core::preprocessing::simplify::{
-    SimplifyConfig as CoreSimplifyConfig, SimplifyMethod, simplify_trajectory_impl,
-    simplify_trajectory_indexed_impl,
+    simplify_trajectory_impl, simplify_trajectory_indexed_impl,
+    SimplifyConfig as CoreSimplifyConfig, SimplifyMethod,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -96,8 +95,8 @@ pub fn simplify_trajectory_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    sorted_indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    sorted_indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     config: PySimplifyConfig,
 ) -> PyResult<Py<PyAny>> {
     let keep_mask = run_indexed_timed_coordinate_arrow(

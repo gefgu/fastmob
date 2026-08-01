@@ -14,7 +14,7 @@ from fastmob._core import (
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_time_ordered_user_ranges,
+    _build_indexed_user_ranges,
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
@@ -43,7 +43,7 @@ def _assign_segment_column(df: nw.DataFrame, segment_ids: Any) -> Any:
 
 
 # Bare extractor kept only for the timestamps_data extraction below, which
-# also feeds _build_time_ordered_user_ranges and so must keep matching
+# also feeds _build_indexed_user_ranges and so must keep matching
 # whatever backend that helper's own uid-code extraction picks internally
 # (see waiting_times.py/mean_square_displacement.py for why that pairing
 # can't be forced to Arrow independently of the index-metadata builder).
@@ -328,11 +328,10 @@ def segment(
         _, ranges = _build_user_ranges(df, uid_col)
         raw_ids = segment_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config, bucket_ids)
     else:
-        _, sorted_indices, ends = _build_time_ordered_user_ranges(
+        _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            datetime_col=datetime_col,
-            timestamps_data=times_data,
+            timestamps=timestamps_s,
         )
         raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
 

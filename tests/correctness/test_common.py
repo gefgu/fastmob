@@ -63,6 +63,33 @@ class TestPickExistingColumn:
         assert _pick_existing_column(["lat"], []) is None
 
 
+class TestArrowFactorization:
+    def test_preserves_first_seen_order_and_groups_nulls(self):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        codes, representatives = factorize_arrow(pa.array(["b", None, "a", "b", None]))
+
+        assert pa.array(codes).to_pylist() == [0, 1, 2, 0, 1]
+        assert pa.array(representatives).to_pylist() == [0, 1, 2]
+
+    def test_sorted_values_put_null_last(self):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        codes, representatives = factorize_arrow(pa.array([2, None, 1, 2]), True)
+
+        assert pa.array(codes).to_pylist() == [1, 2, 0, 1]
+        assert pa.array(representatives).to_pylist() == [2, 0, 1]
+
+    def test_rejects_numpy_input(self):
+        import numpy as np
+        from fastmob._core import factorize_arrow
+
+        with pytest.raises(ValueError, match="expected Arrow array"):
+            factorize_arrow(np.array([1, 2, 1]))
+
+
 # ---------------------------------------------------------------------------
 # _detect_trajectory_columns
 # ---------------------------------------------------------------------------
@@ -266,10 +293,9 @@ class TestPrepareTrajectory:
 
 
 class TestBuildTimeOrderedUserRanges:
-    def test_pandas_string_uids_use_numpy_rust_path(self, capsys):
+    def test_pandas_string_uids_use_arrow_rust_path(self):
         import narwhals as nw
-        import numpy as np
-        from fastmob.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps_s
 
         df = pd.DataFrame(
             {
@@ -289,23 +315,19 @@ class TestBuildTimeOrderedUserRanges:
         nw_df = nw.from_native(df, eager_only=True)
         timestamps = _extract_timestamps_s(nw_df, "datetime")
 
-        uid_values, indices, ends = _build_time_ordered_user_ranges(
+        uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
             "uid",
-            "datetime",
-            timestamps.to_numpy(),
+            timestamps.to_arrow(),
         )
 
-        captured = capsys.readouterr()
-        assert "Indexing@fallback" not in captured.out
-        assert uid_values == ["b", "a"]
-        assert np.asarray(indices).tolist() == [2, 0, 3, 1]
-        assert np.asarray(ends).tolist() == [2, 4]
+        assert uid_values.to_pylist() == ["b", "a"]
+        assert indices.to_pylist() == [2, 0, 3, 1]
+        assert ends.to_pylist() == [2, 4]
 
     def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
         import narwhals as nw
-        import numpy as np
-        from fastmob.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps_s
 
         pl = pytest.importorskip("polars", reason="Polars not installed")
         df = pl.DataFrame(
@@ -324,81 +346,57 @@ class TestBuildTimeOrderedUserRanges:
         nw_df = nw.from_native(df, eager_only=True)
         timestamps = _extract_timestamps_s(nw_df, "datetime")
 
-        uid_values, indices, ends = _build_time_ordered_user_ranges(
+        uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
             "uid",
-            "datetime",
             timestamps.to_arrow(),
         )
 
-        assert uid_values == ["b", "a"]
-        assert np.asarray(indices).tolist() == [2, 0, 3, 1]
-        assert np.asarray(ends).tolist() == [2, 4]
+        assert uid_values.to_pylist() == ["b", "a"]
+        assert indices.to_pylist() == [2, 0, 3, 1]
+        assert ends.to_pylist() == [2, 4]
 
-    def test_fallback_preserves_first_seen_user_order(self, monkeypatch):
-        import fastmob.measures._common as common
+    def test_equal_timestamps_keep_original_row_order(self):
         import narwhals as nw
-        import numpy as np
-        from fastmob.measures._common import _build_time_ordered_user_ranges, _extract_timestamps_s
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps_s
 
         df = pd.DataFrame(
             {
                 "uid": ["b", "a", "b", "a"],
                 "datetime": pd.to_datetime(
-                    [
-                        "2020-01-01 01:00:00",
-                        "2020-01-01 02:00:00",
-                        "2020-01-01 00:00:00",
-                        "2020-01-01 00:30:00",
-                    ]
+                    ["2020-01-01 00:00:00"] * 4
                 ),
             }
         )
         nw_df = nw.from_native(df, eager_only=True)
         timestamps = _extract_timestamps_s(nw_df, "datetime")
 
-        def unsupported(*args):
-            raise ValueError("unsupported dtype")
+        uid_values, indices, ends = _build_indexed_user_ranges(nw_df, "uid", timestamps.to_arrow())
 
-        monkeypatch.setitem(
-            common._TIME_ORDERED_USER_RANGES_DISPATCHER.dispatch["numpy"],
-            "time_ordered_indices",
-            unsupported,
-        )
-
-        uid_values, indices, ends = _build_time_ordered_user_ranges(
-            nw_df,
-            "uid",
-            "datetime",
-            timestamps.to_numpy(),
-        )
-
-        assert uid_values == ["b", "a"]
-        assert np.asarray(indices).tolist() == [2, 0, 3, 1]
-        assert np.asarray(ends).tolist() == [2, 4]
+        assert uid_values.to_pylist() == ["b", "a"]
+        assert indices.to_pylist() == [0, 2, 1, 3]
+        assert ends.to_pylist() == [2, 4]
 
 
 class TestBuildIndexedUserRangesFast:
     def test_pandas_string_uids_use_first_seen_numpy_rust_path(self):
         import narwhals as nw
-        import numpy as np
-        from fastmob.measures._common import _build_indexed_user_ranges_fast
+        from fastmob.measures._common import _build_indexed_user_ranges
 
         df = nw.from_native(
             pd.DataFrame({"uid": ["b", "a", "b", "c", "a", "c"]}),
             eager_only=True,
         )
 
-        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, "uid")
+        uid_values, indices, ends = _build_indexed_user_ranges(df, "uid")
 
-        assert uid_values == ["b", "a", "c"]
-        assert np.asarray(indices).tolist() == [0, 2, 1, 4, 3, 5]
-        assert np.asarray(ends).tolist() == [2, 4, 6]
+        assert uid_values.to_pylist() == ["b", "a", "c"]
+        assert indices.to_pylist() == [0, 2, 1, 4, 3, 5]
+        assert ends.to_pylist() == [2, 4, 6]
 
     def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
         import narwhals as nw
-        import numpy as np
-        from fastmob.measures._common import _build_indexed_user_ranges_fast
+        from fastmob.measures._common import _build_indexed_user_ranges
 
         pl = pytest.importorskip("polars", reason="Polars not installed")
         df = nw.from_native(
@@ -406,11 +404,11 @@ class TestBuildIndexedUserRangesFast:
             eager_only=True,
         )
 
-        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, "uid")
+        uid_values, indices, ends = _build_indexed_user_ranges(df, "uid")
 
-        assert uid_values == ["b", "a", "c"]
-        assert np.asarray(indices).tolist() == [0, 2, 1, 4, 3, 5]
-        assert np.asarray(ends).tolist() == [2, 4, 6]
+        assert uid_values.to_pylist() == ["b", "a", "c"]
+        assert indices.to_pylist() == [0, 2, 1, 4, 3, 5]
+        assert ends.to_pylist() == [2, 4, 6]
 
 
 # ---------------------------------------------------------------------------
@@ -461,8 +459,8 @@ class TestBuildPresortedUserEnds:
 
         uid_values, ends = _build_presorted_user_ends(df, "uid")
 
-        assert uid_values == ["a", "b", "c"]
-        assert ends.tolist() == [2, 5, 6]
+        assert uid_values.to_pylist() == ["a", "b", "c"]
+        assert ends.to_pylist() == [2, 5, 6]
 
     def test_builds_ends_from_pandas_uint64_uid_groups(self):
         import narwhals as nw
@@ -475,8 +473,8 @@ class TestBuildPresortedUserEnds:
 
         uid_values, ends = _build_presorted_user_ends(df, "uid")
 
-        assert uid_values == [1, 3, 9]
-        assert ends.tolist() == [2, 4, 5]
+        assert uid_values.to_pylist() == [1, 3, 9]
+        assert ends.to_pylist() == [2, 4, 5]
 
     def test_builds_empty_ends_for_empty_uid_dataframe(self):
         import narwhals as nw
@@ -486,8 +484,8 @@ class TestBuildPresortedUserEnds:
 
         uid_values, ends = _build_presorted_user_ends(df, "uid")
 
-        assert uid_values == []
-        assert ends.tolist() == []
+        assert uid_values.to_pylist() == []
+        assert ends.to_pylist() == []
 
     def test_builds_single_end_without_uid_column(self):
         import narwhals as nw
@@ -498,7 +496,7 @@ class TestBuildPresortedUserEnds:
         uid_values, ends = _build_presorted_user_ends(df, None)
 
         assert uid_values is None
-        assert ends.tolist() == [3]
+        assert ends.to_pylist() == [3]
 
     def test_builds_ends_from_polars_contiguous_uid_groups(self):
         pl = pytest.importorskip("polars", reason="Polars not installed")
@@ -509,8 +507,8 @@ class TestBuildPresortedUserEnds:
 
         uid_values, ends = _build_presorted_user_ends(df, "uid")
 
-        assert uid_values == ["a", "b", "c"]
-        assert ends.tolist() == [2, 4, 5]
+        assert uid_values.to_pylist() == ["a", "b", "c"]
+        assert ends.to_pylist() == [2, 4, 5]
 
     def test_builds_ends_from_polars_uint64_uid_groups(self):
         pl = pytest.importorskip("polars", reason="Polars not installed")
@@ -524,8 +522,8 @@ class TestBuildPresortedUserEnds:
 
         uid_values, ends = _build_presorted_user_ends(df, "uid")
 
-        assert uid_values == [1, 3, 9]
-        assert ends.tolist() == [2, 4, 5]
+        assert uid_values.to_pylist() == [1, 3, 9]
+        assert ends.to_pylist() == [2, 4, 5]
 
 
 # ---------------------------------------------------------------------------

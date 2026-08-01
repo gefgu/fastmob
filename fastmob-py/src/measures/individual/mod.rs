@@ -1,6 +1,7 @@
 pub mod activity;
 pub mod diversity;
 pub mod entropy;
+pub mod factorization;
 pub mod home_location;
 pub mod indexed_user_indices;
 pub mod individual_mobility_network;

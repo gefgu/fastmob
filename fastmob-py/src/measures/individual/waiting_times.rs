@@ -1,8 +1,9 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::measures::individual::waiting_times::{
     waiting_times_flat_impl, waiting_times_impl, waiting_times_indexed_flat_impl,
     waiting_times_indexed_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -27,7 +28,7 @@ fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
 pub fn waiting_times_presorted<'py>(
     py: Python<'py>,
     timestamps_s: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyGroupedF64<'py>> {
     let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
     let (starts, ends, values) = waiting_times_impl(arrow_values(&timestamps_s), ends.as_slice()?)
@@ -43,7 +44,7 @@ pub fn waiting_times_presorted<'py>(
 pub fn waiting_times_presorted_flat<'py>(
     py: Python<'py>,
     timestamps_s: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyFlatF64> {
     let timestamps_s = as_f64_array(timestamps_s, "timestamps_s")?;
     let values = waiting_times_flat_impl(arrow_values(&timestamps_s), ends.as_slice()?)
@@ -55,8 +56,8 @@ pub fn waiting_times_presorted_flat<'py>(
 pub fn waiting_times_indexed<'py>(
     py: Python<'py>,
     timestamps_s: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyGroupedF64<'py>> {
     let indices = indices.as_slice()?;
     let ends = ends.as_slice()?;
@@ -78,8 +79,8 @@ pub fn waiting_times_indexed<'py>(
 pub fn waiting_times_indexed_flat<'py>(
     py: Python<'py>,
     timestamps_s: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyFlatF64> {
     let indices = indices.as_slice()?;
     let ends = ends.as_slice()?;

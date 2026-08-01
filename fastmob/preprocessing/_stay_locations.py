@@ -13,10 +13,11 @@ from fastmob._core import (
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_time_ordered_user_ranges,
+    _build_indexed_user_ranges,
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
+    _take_uid_values,
     _to_native,
 )
 
@@ -32,7 +33,7 @@ def _unwrap_stay(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
 
 
 # Bare extractor used only for `.get_ops(df)["extract_data"]` on the
-# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# timestamps column, which also feeds `_build_indexed_user_ranges` below
 # (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
@@ -158,11 +159,10 @@ def stay_locations(
         )
         out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _unwrap_stay(*_result)
     else:
-        uid_values, sorted_indices, ends = _build_time_ordered_user_ranges(
+        uid_values, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            datetime_col=datetime_col,
-            timestamps_data=timestamps_data,
+            timestamps=timestamps_s,
         )
         _result = detect_stay_locations_batch_indexed(
             lats_data,
@@ -193,7 +193,7 @@ def stay_locations(
         datetime_col: entry_datetimes,
     }
     if uid_col is not None:
-        out_dict[uid_col] = [uid_values[idx] for idx in user_range_indices]
+        out_dict[uid_col] = _take_uid_values(uid_values, user_range_indices)
 
     if leaving_time:
         leaving_datetimes = _seconds_to_naive_utc(leaving_times_s)

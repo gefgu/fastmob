@@ -9,8 +9,8 @@ from fastmob._core import interpolate_at_indexed, interpolate_at_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_flat_result_values,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
     _take_uid_values,
@@ -19,7 +19,7 @@ from fastmob.utils._common import (
 )
 
 # Bare extractor used only for `.get_ops(df)["extract_data"]` on the
-# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# timestamps column, which also feeds `_build_indexed_user_ranges` below
 # (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
@@ -128,7 +128,7 @@ def interpolate_at(
             lats_data, lngs_data, times_data, ends, query_times_s, method
         )
     else:
-        uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, times_data)
+        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps_s)
         out_lats, out_lngs, out_valid = interpolate_at_indexed(
             lats_data, lngs_data, times_data, indices, ends, query_times_s, method
         )

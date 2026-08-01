@@ -19,7 +19,7 @@ use measures::collective::{co_presence_network, square_displacement, visitation_
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
 use measures::individual::{
-    activity, diversity, entropy, home_location, indexed_user_indices, individual_mobility_network,
+    activity, diversity, entropy, factorization, home_location, indexed_user_indices, individual_mobility_network,
     k_radius_of_gyration, location_frequency, max_distance_from_point, maximum_distance, motifs,
     radius_of_gyration, recency_rank, spatial_counts, time_ordering, total_distance,
     uncorrelated_entropy, waiting_times,
@@ -33,6 +33,7 @@ use preprocessing::{
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(activity::activity_counts, m)?)?;
+    m.add_function(wrap_pyfunction!(factorization::factorize_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(activity::activity_transition_counts, m)?)?;
     m.add_function(wrap_pyfunction!(activity::daily_activity_percentages, m)?)?;
     m.add_function(wrap_pyfunction!(utils::haversine_py::haversine_km, m)?)?;
@@ -67,6 +68,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        indexed_user_indices::single_user_indices,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         radius_of_gyration::radius_of_gyration_indexed,
         m
     )?)?;
@@ -78,14 +83,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         maximum_distance::maximum_distance_indexed,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        time_ordering::presorted_user_starts_ends_numpy,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        time_ordering::presorted_user_starts_ends_arrow,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(time_ordering::presorted_user_starts_ends, m)?)?;
     m.add_function(wrap_pyfunction!(
         total_distance::total_distance_presorted,
         m

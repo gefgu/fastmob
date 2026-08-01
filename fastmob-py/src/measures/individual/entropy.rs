@@ -4,7 +4,6 @@ use fastmob_core::measures::individual::entropy::{
     trajectory_entropy_batch as core_trajectory_entropy_batch,
     trajectory_predictability_batch as core_trajectory_predictability_batch,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -54,8 +53,8 @@ pub fn real_entropy_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<Py<PyAny>> {
     let values = run_indexed_coordinate_arrow(py, latitudes, longitudes, indices, ends, |view| {
         core_real_entropy_indexed_impl(

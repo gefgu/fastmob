@@ -13,8 +13,8 @@ from fastmob._core import (
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_flat_result_values,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
     _grouped_arrow_values,
@@ -22,7 +22,7 @@ from fastmob.utils._common import (
 )
 
 # Kept for two purposes: (a) timestamps_data extraction below must match
-# whatever backend _build_time_ordered_user_ranges' own uid-code extraction
+# whatever backend _build_indexed_user_ranges' own uid-code extraction
 # picks internally (see jump_lengths.py/mean_square_displacement.py for why
 # that pairing can't be forced to Arrow independently), and (b) the merge=True
 # output-contract shim, matching jump_lengths.py's precedent.
@@ -150,7 +150,7 @@ def waiting_times(
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
-    uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
+    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps_s)
     if merge:
         flat = _arrow_flat_result_values(waiting_times_indexed_flat(timestamps_data, indices, ends))
         return flat.to_numpy(zero_copy_only=False) if is_numpy_backend else flat

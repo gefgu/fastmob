@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use fastmob_core::trajectory::interpolate_at::{
-    PositionQueryMethod, interpolate_at_indexed_impl, interpolate_at_presorted_impl,
+    interpolate_at_indexed_impl, interpolate_at_presorted_impl, PositionQueryMethod,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
@@ -26,8 +26,8 @@ pub fn interpolate_at_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    sorted_indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    sorted_indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     query_times_s: PyReadonlyArray1<'py, f64>,
     method: &str,
 ) -> PyResult<InterpolateAtOutput<'py>> {
@@ -67,7 +67,7 @@ pub fn interpolate_at_presorted<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     query_times_s: PyReadonlyArray1<'py, f64>,
     method: &str,
 ) -> PyResult<InterpolateAtOutput<'py>> {

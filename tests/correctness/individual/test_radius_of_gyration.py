@@ -391,9 +391,9 @@ def test_build_indexed_user_ranges_sorts_stable_row_indices():
 
     uid_values, indices, ranges = _build_indexed_user_ranges(df, "uid")
 
-    assert uid_values == ["a", "b", "c"]
-    assert indices == [1, 4, 0, 2, 3, 5]
-    assert ranges == [(0, 2), (2, 4), (4, 6)]
+    assert uid_values.to_pylist() == ["b", "a", "c"]
+    assert indices.to_pylist() == [0, 2, 1, 4, 3, 5]
+    assert ranges.to_pylist() == [2, 4, 6]
 
 
 def test_build_indexed_user_ranges_handles_empty_dataframe():
@@ -404,26 +404,14 @@ def test_build_indexed_user_ranges_handles_empty_dataframe():
 
     df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
 
-    assert _build_indexed_user_ranges(df, "uid") == ([], [], [])
+    uid_values, indices, ends = _build_indexed_user_ranges(df, "uid")
+    assert uid_values.to_pylist() == []
+    assert indices.to_pylist() == []
+    assert ends.to_pylist() == []
 
 
-def test_indexed_user_indices_accepts_numpy_codes():
-    """Rust uid-index helper groups NumPy code arrays."""
-    pytest.importorskip("fastmob._core", reason="Run maturin develop first")
-    from fastmob._core import indexed_user_indices
-
-    indices, ends = indexed_user_indices(
-        np.array([0, 1, 0, 2, 1, 2], dtype=np.uint64),
-        3,
-    )
-
-    assert isinstance(indices, np.ndarray)
-    assert indices.tolist() == [0, 2, 1, 4, 3, 5]
-    assert ends.tolist() == [2, 4, 6]
-
-
-def test_indexed_user_indices_accepts_arrow_codes():
-    """Rust uid-index helper groups Arrow code arrays."""
+def test_indexed_user_indices_returns_arrow_arrays():
+    """Rust uid-index helper groups Arrow code arrays and returns Arrow."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from fastmob._core import indexed_user_indices
@@ -433,18 +421,25 @@ def test_indexed_user_indices_accepts_arrow_codes():
         3,
     )
 
-    assert isinstance(indices, np.ndarray)
-    assert indices.tolist() == [0, 2, 1, 4, 3, 5]
-    assert ends.tolist() == [2, 4, 6]
+    assert pa.array(indices).to_pylist() == [0, 2, 1, 4, 3, 5]
+    assert pa.array(ends).to_pylist() == [2, 4, 6]
+
+
+def test_indexed_user_indices_rejects_numpy_codes():
+    from fastmob._core import indexed_user_indices
+
+    with pytest.raises(ValueError, match="expected Arrow array"):
+        indexed_user_indices(np.array([0, 1], dtype=np.uint64), 2)
 
 
 def test_indexed_user_indices_rejects_out_of_range_codes():
     """Rust uid-index helper validates codes against num_groups before allocation."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
+    pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from fastmob._core import indexed_user_indices
 
     with pytest.raises(ValueError, match="less than num_groups"):
-        indexed_user_indices(np.array([0, 2], dtype=np.uint64), 2)
+        indexed_user_indices(pa.array([0, 2], type=pa.uint64()), 2)
 
 
 def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
@@ -458,9 +453,9 @@ def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():
 
     uid_values, indices, ranges = _build_indexed_user_ranges(df, "uid")
 
-    assert uid_values == ["a", "b", "c"]
-    assert indices == [1, 4, 0, 2, 3, 5]
-    assert ranges == [(0, 2), (2, 4), (4, 6)]
+    assert uid_values.to_pylist() == ["b", "a", "c"]
+    assert indices.to_pylist() == [0, 2, 1, 4, 3, 5]
+    assert ranges.to_pylist() == [2, 4, 6]
 
 
 def test_radius_of_gyration_presorted_numpy_matches_batch_helper():

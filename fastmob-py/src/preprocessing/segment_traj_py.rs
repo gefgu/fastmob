@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::preprocessing::segment::{
-    SegmentConfig as CoreSegmentConfig, SegmentMethod, segment_trajectory_impl,
-    segment_trajectory_indexed_impl,
+    segment_trajectory_impl, segment_trajectory_indexed_impl, SegmentConfig as CoreSegmentConfig,
+    SegmentMethod,
 };
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
@@ -184,8 +184,8 @@ pub fn segment_trajectory_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    sorted_indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    sorted_indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     config: PySegmentConfig,
     bucket_ids: Option<PyReadonlyArray1<'py, i64>>,
 ) -> PyResult<Py<PyAny>> {

@@ -1,7 +1,7 @@
 use fastmob_core::measures::individual::jump_lengths::{
     jump_lengths_indexed_impl, jump_lengths_km as core_jump_lengths_km, jump_lengths_presorted_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -29,7 +29,7 @@ pub fn jump_lengths_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyJumpLengths<'py>> {
     let (starts, ends, values) =
         run_presorted_coordinate_arrow(py, latitudes, longitudes, ends, |coords, ends| {
@@ -48,8 +48,8 @@ pub fn jump_lengths_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyJumpLengths<'py>> {
     let (starts, ends, values) =
         run_indexed_coordinate_arrow(py, latitudes, longitudes, indices, ends, |view| {

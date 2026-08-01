@@ -1,5 +1,5 @@
 use fastmob_core::network::road_graph::{
-    RoadGraph, batch_road_distances, batch_road_routes, batch_route_edge_flows, subsample_waypoints,
+    batch_road_distances, batch_road_routes, batch_route_edge_flows, subsample_waypoints, RoadGraph,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;

@@ -15,7 +15,7 @@ from fastmob._core import (
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_time_ordered_user_ranges,
+    _build_indexed_user_ranges,
     _build_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
@@ -60,7 +60,7 @@ def _filter_speed(
     timestamp_s = _extract_timestamps_s(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    # Also feeds _build_time_ordered_user_ranges below, so its extraction must
+    # Also feeds _build_indexed_user_ranges below, so its extraction must
     # keep matching whatever backend that helper's own uid-code extraction
     # picks internally (see waiting_times.py/mean_square_displacement.py for
     # why this one can't be forced to Arrow independently).
@@ -79,11 +79,10 @@ def _filter_speed(
         _, ranges = _build_user_ranges(df, uid_col)
         raw_mask = filter_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
     else:
-        _, sorted_indices, ends = _build_time_ordered_user_ranges(
+        _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            datetime_col=datetime_col,
-            timestamps_data=times_data,
+            timestamps=timestamp_s,
         )
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
@@ -283,11 +282,10 @@ def filter(
         _, ranges = _build_user_ranges(df, uid_col)
         raw_mask = outlier_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
     else:
-        _, sorted_indices, ends = _build_time_ordered_user_ranges(
+        _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            datetime_col=datetime_col,
-            timestamps_data=times_data,
+            timestamps=timestamps_s,
         )
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 

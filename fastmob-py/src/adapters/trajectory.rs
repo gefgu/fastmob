@@ -1,4 +1,4 @@
-use numpy::PyReadonlyArray1;
+use crate::utils::ArrowUsizeArrayExt;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -97,7 +97,7 @@ pub fn run_presorted_coordinate_arrow<'py, T, F>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     operation: F,
 ) -> PyResult<T>
 where
@@ -130,8 +130,8 @@ pub fn run_indexed_coordinate_arrow<'py, T, F>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     operation: F,
 ) -> PyResult<T>
 where
@@ -168,7 +168,7 @@ pub fn run_presorted_timed_coordinate_arrow<'py, T, F>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     times: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     operation: F,
 ) -> PyResult<T>
 where
@@ -204,8 +204,8 @@ pub fn run_indexed_timed_coordinate_arrow<'py, T, F>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     times: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     operation: F,
 ) -> PyResult<T>
 where
@@ -248,7 +248,7 @@ pub fn run_presorted_group_coordinate_arrow<'py, T, F>(
     group_longitudes: ArrowPyArray,
     row_latitudes: ArrowPyArray,
     row_longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     operation: F,
 ) -> PyResult<T>
 where
@@ -295,8 +295,8 @@ pub fn run_indexed_group_coordinate_arrow<'py, T, F>(
     group_longitudes: ArrowPyArray,
     row_latitudes: ArrowPyArray,
     row_longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     operation: F,
 ) -> PyResult<T>
 where

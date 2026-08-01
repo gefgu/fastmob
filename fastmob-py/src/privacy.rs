@@ -1,10 +1,13 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::privacy::privacy_assess_risk_impl;
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::utils::{arrow_valid_rows, arrow_values, as_nullable_f64_array};
+use crate::utils::{
+    arrow_u64_values, arrow_valid_rows, arrow_values, as_nullable_f64_array, as_u64_array,
+};
 
 type PyPrivacyResult<'py> = (
     Bound<'py, PyArray1<usize>>,
@@ -55,19 +58,20 @@ pub fn privacy_assess_risk_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    time_keys: Option<PyReadonlyArray1<'py, u64>>,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
-    target_user_indices: PyReadonlyArray1<'py, usize>,
+    time_keys: Option<ArrowPyArray>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
+    target_user_indices: pyo3_arrow::PyArray,
     attack_kind: u8,
     knowledge_length: usize,
     tolerance: f64,
     force_instances: bool,
 ) -> PyResult<PyPrivacyResult<'py>> {
-    let time_keys_slice = match time_keys.as_ref() {
-        Some(values) => Some(values.as_slice()?),
+    let time_keys = match time_keys {
+        Some(values) => Some(as_u64_array(values, "time_keys")?),
         None => None,
     };
+    let time_keys_slice = time_keys.as_ref().map(arrow_u64_values);
     let indices = indices.as_slice()?;
     let ends = ends.as_slice()?;
     let target_user_indices = target_user_indices.as_slice()?;
@@ -109,18 +113,19 @@ pub fn privacy_assess_risk_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    time_keys: Option<PyReadonlyArray1<'py, u64>>,
-    ends: PyReadonlyArray1<'py, usize>,
-    target_user_indices: PyReadonlyArray1<'py, usize>,
+    time_keys: Option<ArrowPyArray>,
+    ends: pyo3_arrow::PyArray,
+    target_user_indices: pyo3_arrow::PyArray,
     attack_kind: u8,
     knowledge_length: usize,
     tolerance: f64,
     force_instances: bool,
 ) -> PyResult<PyPrivacyResult<'py>> {
-    let time_keys_slice = match time_keys.as_ref() {
-        Some(values) => Some(values.as_slice()?),
+    let time_keys = match time_keys {
+        Some(values) => Some(as_u64_array(values, "time_keys")?),
         None => None,
     };
+    let time_keys_slice = time_keys.as_ref().map(arrow_u64_values);
     let ends = ends.as_slice()?;
     let target_user_indices = target_user_indices.as_slice()?;
 

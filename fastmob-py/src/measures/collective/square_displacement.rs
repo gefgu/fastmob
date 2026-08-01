@@ -1,7 +1,6 @@
 use fastmob_core::measures::collective::square_displacement::{
     mean_square_displacement_indexed_impl, square_displacement_km2 as core_square_displacement_km2,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -20,8 +19,8 @@ pub fn mean_square_displacement_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     delta_s: f64,
 ) -> PyResult<f64> {
     run_indexed_timed_coordinate_arrow(

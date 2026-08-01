@@ -8,7 +8,7 @@ import narwhals as nw
 from fastmob._core import number_of_locations_indexed
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_indexed_user_ranges_fast,
+    _build_indexed_user_ranges,
     _detect_trajectory_columns,
     _narwhals_safe_value,
 )
@@ -109,7 +109,7 @@ def random_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
+    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
 
     n_locs = _narwhals_safe_value(
         _arrow_result_values(

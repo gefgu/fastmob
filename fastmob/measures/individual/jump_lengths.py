@@ -8,8 +8,8 @@ from fastmob._core import jump_lengths_indexed, jump_lengths_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_flat_result_values,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
     _grouped_arrow_values,
@@ -129,8 +129,7 @@ def jump_lengths(
         v_starts, v_ends, flat_values = jump_lengths_presorted(lats_data, lngs_data, ends)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
-        timestamps_data = _DISPATCHER.get_ops(df)["extract_data"](timestamps)
-        uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
+        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         v_starts, v_ends, flat_values = jump_lengths_indexed(lats_data, lngs_data, indices, ends)
 
     flat_values = _arrow_flat_result_values(flat_values)

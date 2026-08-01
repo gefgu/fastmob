@@ -20,8 +20,8 @@ from fastmob._core import (
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
 )
@@ -46,7 +46,7 @@ def _to_new_series_values(values: Any) -> Any:
 
 
 # Bare extractor used only for `.get_ops(df)["extract_data"]` on the
-# timestamps column, which also feeds `_build_time_ordered_user_ranges` below
+# timestamps column, which also feeds `_build_indexed_user_ranges` below
 # (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
@@ -170,7 +170,7 @@ def smooth(
         _, ends = _build_presorted_user_ends(df, uid_col)
         out_lats, out_lngs = smooth_trajectory_presorted(lats_data, lngs_data, times_data, ends, config)
     else:
-        _, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, times_data)
+        _, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps_s)
         out_lats, out_lngs = smooth_trajectory_indexed(lats_data, lngs_data, times_data, indices, ends, config)
 
     result = df.with_columns(

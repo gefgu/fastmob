@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import warnings
-from itertools import compress
 from typing import Any
 
 import narwhals as nw
@@ -13,7 +12,7 @@ from fastmob._core import (
 )
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_indexed_user_ranges_fast,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
     _filter_result_values,
@@ -130,7 +129,7 @@ def radius_of_gyration(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw_values, raw_validity = radius_of_gyration_presorted(lats_data, lngs_data, ends)
     else:
-        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
+        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
         raw_values, raw_validity = radius_of_gyration_indexed(
             lats_data,
             lngs_data,
@@ -158,7 +157,10 @@ def radius_of_gyration(
             df,
         )
 
-    filtered_uid_values = list(compress(uid_values, keep))
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    filtered_uid_values = pc.filter(pa.array(uid_values), pa.array(keep))
     filtered_rog_values = _filter_result_values(rog_values, keep, dtype=np.float64)
     return _to_native(
         {uid_col: filtered_uid_values, "radius_of_gyration": filtered_rog_values},

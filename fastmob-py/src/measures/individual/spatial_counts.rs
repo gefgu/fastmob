@@ -1,3 +1,4 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::measures::individual::spatial_counts::{
     number_of_locations_from_ends_impl, number_of_locations_indexed_impl,
     number_of_visits_from_ends_impl, number_of_visits_indexed_impl,
@@ -18,7 +19,7 @@ fn arrow_u64_output(py: Python<'_>, values: Vec<u64>) -> PyResult<Py<PyAny>> {
 pub fn number_of_visits_presorted<'py>(
     py: Python<'py>,
     n_values: usize,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<Bound<'py, PyArray1<u64>>> {
     Ok(number_of_visits_from_ends_impl(n_values, ends.as_slice()?)
         .map_err(PyValueError::new_err)?
@@ -30,8 +31,8 @@ pub fn number_of_visits_presorted<'py>(
 pub fn number_of_visits_indexed<'py>(
     py: Python<'py>,
     n_values: usize,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     valid_rows: Option<PyReadonlyArray1<'py, bool>>,
 ) -> PyResult<Bound<'py, PyArray1<u64>>> {
     let valid_slice: Option<&[bool]> = if let Some(ref v) = valid_rows {
@@ -51,7 +52,7 @@ pub fn number_of_locations_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<Py<PyAny>> {
     let values =
         run_presorted_coordinate_arrow(py, latitudes, longitudes, ends, |coords, ends| {
@@ -66,8 +67,8 @@ pub fn number_of_locations_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<Py<PyAny>> {
     let values = run_indexed_coordinate_arrow(py, latitudes, longitudes, indices, ends, |view| {
         number_of_locations_indexed_impl(

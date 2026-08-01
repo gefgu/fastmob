@@ -1,3 +1,4 @@
+use crate::utils::ArrowUsizeArrayExt;
 use arrow_array::Array;
 use fastmob_core::measures::individual::location_frequency::{
     frequency_rank_indexed_impl, frequency_rank_indexed_with_row_validity_impl,
@@ -7,7 +8,7 @@ use fastmob_core::measures::individual::location_frequency::{
     location_frequency_presorted_values_impl,
     location_frequency_presorted_values_with_row_validity_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -37,8 +38,8 @@ fn location_frequency_values_from_arrow<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: Option<PyReadonlyArray1<'py, usize>>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: Option<pyo3_arrow::PyArray>,
+    ends: pyo3_arrow::PyArray,
     normalize: bool,
 ) -> PyResult<LocFreqValues<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
@@ -107,8 +108,8 @@ fn frequency_rank_from_arrow<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: Option<PyReadonlyArray1<'py, usize>>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: Option<pyo3_arrow::PyArray>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<FrequencyRank<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
@@ -167,8 +168,8 @@ pub fn location_frequency_values_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     normalize: bool,
 ) -> PyResult<LocFreqValues<'py>> {
     location_frequency_values_from_arrow(py, latitudes, longitudes, Some(indices), ends, normalize)
@@ -179,7 +180,7 @@ pub fn location_frequency_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     normalize: bool,
 ) -> PyResult<LocFreqValues<'py>> {
     location_frequency_values_from_arrow(py, latitudes, longitudes, None, ends, normalize)
@@ -190,8 +191,8 @@ pub fn frequency_rank_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<FrequencyRank<'py>> {
     frequency_rank_from_arrow(py, latitudes, longitudes, Some(indices), ends)
 }
@@ -201,7 +202,7 @@ pub fn frequency_rank_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<FrequencyRank<'py>> {
     frequency_rank_from_arrow(py, latitudes, longitudes, None, ends)
 }

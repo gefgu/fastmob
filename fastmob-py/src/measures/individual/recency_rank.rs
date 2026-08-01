@@ -1,7 +1,8 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::measures::individual::recency_rank::{
     recency_rank_indexed_values_impl, recency_rank_presorted_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -23,8 +24,8 @@ pub fn recency_rank_values_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<RecencyRankValues<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
@@ -50,7 +51,7 @@ pub fn recency_rank_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<RecencyRankValues<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;

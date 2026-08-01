@@ -17,12 +17,13 @@ from fastmob.utils._common import (
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
     _arrow_result_values,
+    _build_indexed_user_ranges,
+    _build_presorted_user_ends,
+    _factorize_arrow_values,
     _pick_existing_column,
 )
 
 _END_TIMESTAMP_CANDIDATES = ["end_timestamp", "end_time"]
-_ROW_INDEX = "__fastmob_motif_row_index__"
-_ORDER_INDEX = "__fastmob_motif_order_index__"
 
 
 def _detect_visit_columns(
@@ -73,44 +74,8 @@ def _encode_locations(df: nw.DataFrame, column: str) -> Any:
     values = series.to_arrow()
     if isinstance(values, pa.ChunkedArray):
         values = values.combine_chunks()
-    encoded = pc.dictionary_encode(values)
-    codes = encoded.indices
-    if codes.null_count:
-        codes = pc.fill_null(codes, len(encoded.dictionary))
-    return pc.cast(codes, pa.uint64())
-
-
-def _user_ranges(df: nw.DataFrame, uid_col: str, datetime_col: str | None) -> tuple[Any, Any, Any]:
-    """Return Arrow user labels, optional row ordering, and cumulative ends."""
-    import pyarrow as pa
-
-    columns = [uid_col] if datetime_col is None else [uid_col, datetime_col]
-    ordered = df.select(columns).with_row_index(_ROW_INDEX)
-    if datetime_col is not None:
-        ordered = ordered.sort(uid_col, datetime_col, _ROW_INDEX)
-
-    starts = (
-        ordered.with_row_index(_ORDER_INDEX)
-        .filter((nw.col(uid_col) != nw.col(uid_col).shift(1)).fill_null(True))
-        .select([uid_col, _ORDER_INDEX])
-    )
-    labels = starts.get_column(uid_col).to_arrow()
-    start_values = starts.get_column(_ORDER_INDEX).cast(nw.UInt64).to_arrow()
-    if isinstance(labels, pa.ChunkedArray):
-        labels = labels.combine_chunks()
-    if isinstance(start_values, pa.ChunkedArray):
-        start_values = start_values.combine_chunks()
-    ends = (
-        pa.concat_arrays([start_values.slice(1), pa.array([len(df)], type=pa.uint64())])
-        if len(start_values)
-        else pa.array([], type=pa.uint64())
-    )
-    indices = None
-    if datetime_col is not None:
-        indices = ordered.get_column(_ROW_INDEX).cast(nw.UInt64).to_arrow()
-        if isinstance(indices, pa.ChunkedArray):
-            indices = indices.combine_chunks()
-    return labels, indices, ends
+    codes, _ = _factorize_arrow_values(values, sort=False)
+    return codes
 
 
 def daily_motifs(
@@ -168,9 +133,11 @@ def daily_motifs(
     finish_stage("detect_and_cast")
 
     if presorted:
-        uid_labels, indices, ends = _user_ranges(df, uid_col, None)
+        uid_labels, ends = _build_presorted_user_ends(df, uid_col)
+        indices = None
     else:
-        uid_labels, indices, ends = _user_ranges(df, uid_col, datetime_col)
+        timestamps = df.get_column(datetime_col).dt.timestamp("us").cast(nw.Float64)
+        uid_labels, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     finish_stage("order_users")
 
     location_values = _encode_locations(df, location_col)

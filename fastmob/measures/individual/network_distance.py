@@ -16,6 +16,7 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
+from fastmob._core import haversine_m_batch
 from fastmob.utils._common import (
     LAT_CANDIDATES,
     LNG_CANDIDATES,
@@ -24,8 +25,6 @@ from fastmob.utils._common import (
     _pick_existing_column,
     _prepare_trajectory,
 )
-
-from fastmob._core import haversine_m_batch
 
 from ...network.road_graph import RoadNetwork
 from ...network.snap import snap_locations_to_graph

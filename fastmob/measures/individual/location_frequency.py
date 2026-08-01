@@ -7,7 +7,7 @@ import narwhals as nw
 from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_indexed_user_ranges_fast,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
     _take_uid_values,
@@ -157,7 +157,7 @@ def location_frequency(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw = location_frequency_presorted(lats_data, lngs_data, ends, normalize)
     else:
-        uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
+        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
         raw = location_frequency_values_indexed(lats_data, lngs_data, indices, ends, normalize)
     out_lats, out_lngs, freqs, user_indices, _out_starts, _out_ends, rank_means = _unpack_location_frequency(raw)
 

@@ -1,58 +1,37 @@
-use arrow_array::{Array, UInt64Array};
-use fastmob_core::utils::{UserIndexRanges, split_user_index_ranges, user_indices_for_u64_codes};
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use fastmob_core::utils::{split_user_index_ranges, user_indices_for_u64_codes};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3_arrow::PyArray as ArrowPyArray;
+use pyo3_arrow::PyArray;
 
-type PyUserIndexRanges<'py> = (Bound<'py, PyArray1<usize>>, Bound<'py, PyArray1<usize>>);
+use crate::utils::{arrow_u64_values, as_u64_array, extract_arrow_array, u64_results_into_arrow};
 
-fn user_index_ranges_into_numpy<'py>(
-    py: Python<'py>,
-    (indices, ranges): UserIndexRanges,
-) -> PyUserIndexRanges<'py> {
-    let (indices, ends) = split_user_index_ranges((indices, ranges));
-    (indices.into_pyarray(py), ends.into_pyarray(py))
+#[pyfunction]
+pub fn single_user_indices(length: usize) -> (PyArray, PyArray) {
+    let indices = (0..length as u64).collect();
+    let ends = if length == 0 {
+        Vec::new()
+    } else {
+        vec![length as u64]
+    };
+    (
+        u64_results_into_arrow(indices),
+        u64_results_into_arrow(ends),
+    )
 }
 
 #[pyfunction]
-pub fn indexed_user_indices<'py>(
-    py: Python<'py>,
-    uids: &Bound<'py, PyAny>,
+pub fn indexed_user_indices(
+    py: Python<'_>,
+    uids: &Bound<'_, PyAny>,
     num_groups: usize,
-) -> PyResult<PyUserIndexRanges<'py>> {
-    if let Ok(array) = uids.extract::<PyReadonlyArray1<u64>>() {
-        let values = array.as_slice()?;
-        return Ok(user_index_ranges_into_numpy(
-            py,
-            py.detach(|| user_indices_for_u64_codes(values, num_groups))
-                .map_err(PyValueError::new_err)?,
-        ));
-    }
-
-    if uids.hasattr("__arrow_c_array__")? {
-        let uids = uids.extract::<ArrowPyArray>()?;
-        let (array_ref, _field) = uids.into_inner();
-        let array = array_ref.as_any();
-
-        if let Some(array) = array.downcast_ref::<UInt64Array>() {
-            if array.null_count() > 0 {
-                return Err(PyValueError::new_err(
-                    "uint64 uid codes for indexed user grouping must not contain nulls",
-                ));
-            }
-            let start = array.offset();
-            let end = start + array.len();
-            let values = &array.values()[start..end];
-            return Ok(user_index_ranges_into_numpy(
-                py,
-                py.detach(|| user_indices_for_u64_codes(values, num_groups))
-                    .map_err(PyValueError::new_err)?,
-            ));
-        }
-    }
-
-    Err(PyValueError::new_err(
-        "expected uint64 NumPy or Arrow uid codes for indexed user grouping",
+) -> PyResult<(PyArray, PyArray)> {
+    let uids = as_u64_array(extract_arrow_array(uids, "uids")?, "uids")?;
+    let grouped = py
+        .detach(|| user_indices_for_u64_codes(arrow_u64_values(&uids), num_groups))
+        .map_err(PyValueError::new_err)?;
+    let (indices, ends) = split_user_index_ranges(grouped);
+    Ok((
+        u64_results_into_arrow(indices.into_iter().map(|value| value as u64).collect()),
+        u64_results_into_arrow(ends.into_iter().map(|value| value as u64).collect()),
     ))
 }

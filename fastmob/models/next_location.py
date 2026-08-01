@@ -20,15 +20,19 @@ from typing import Any
 
 import narwhals as nw
 import numpy as np
+import pyarrow as pa
+import pyarrow.compute as pc
 
 from fastmob._core import NextLocationModels
 from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     UID_CANDIDATES,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _extract_timestamps_s,
+    _factorize_arrow_values,
     _pick_existing_column,
+    _uint64_series,
 )
 
 
@@ -120,24 +124,24 @@ class NextLocationPredictor:
 
         if started_at_col is not None:
             timestamps_s = _extract_timestamps_s(df, started_at_col)
-            uid_values, indices, ends = _build_time_ordered_user_ranges(
-                df, uid_col, started_at_col, timestamps_s.to_numpy()
-            )
+            uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps_s.to_arrow())
         else:
             uid_values, ends = _build_presorted_user_ends(df, uid_col)
-            indices = np.arange(len(df), dtype=np.uintp)
+            import pyarrow as pa
+
+            indices = pa.array(range(len(df)), type=pa.uint64())
 
         codes_array = df.get_column("__location_code__").to_numpy().astype(np.uint64)
-        indices = np.asarray(indices, dtype=np.uintp)
-        ends = np.asarray(ends, dtype=np.uintp)
+        index_values = indices.to_pylist()
+        end_values = ends.to_pylist()
 
         self._models = NextLocationModels(codes_array, indices, ends, self.order, self.backoff)
-        self._uid_values = uid_values if uid_values is not None else [None]
+        self._uid_values = uid_values.to_pylist() if uid_values is not None else [None]
         self._code_to_label = code_to_label
         self._backend = df.implementation
         self._sequences = {
-            uid: codes_array[indices[start:end]].tolist()
-            for uid, (start, end) in zip(self._uid_values, zip([0, *ends[:-1].tolist()], ends.tolist()), strict=True)
+            uid: codes_array[index_values[start:end]].tolist()
+            for uid, (start, end) in zip(self._uid_values, zip([0, *end_values[:-1]], end_values), strict=True)
         }
         self.uid_col = uid_col
         self.location_col = location_col
@@ -179,8 +183,8 @@ class NextLocationPredictor:
 
         pred_codes, pred_probs, out_starts, out_ends = self._models.predict_batch(
             np.asarray(context_flat, dtype=np.uint64),
-            np.asarray(context_starts, dtype=np.uintp),
-            np.asarray(context_ends, dtype=np.uintp),
+            pa.array(context_starts, type=pa.uint64()),
+            pa.array(context_ends, type=pa.uint64()),
             top_k,
         )
 
@@ -288,18 +292,18 @@ class NextLocationPredictor:
 
                 truths.append(seq[train_end])
 
-            indices = np.arange(len(codes_flat), dtype=np.uintp)
+            indices = pa.array(range(len(codes_flat)), type=pa.uint64())
             models = NextLocationModels(
                 np.asarray(codes_flat, dtype=np.uint64),
                 indices,
-                np.asarray(ends, dtype=np.uintp),
+                pa.array(ends, type=pa.uint64()),
                 self.order,
                 self.backoff,
             )
             pred_codes, _pred_probs, out_starts, out_ends = models.predict_batch(
                 np.asarray(context_flat, dtype=np.uint64),
-                np.asarray(context_starts, dtype=np.uintp),
-                np.asarray(context_ends, dtype=np.uintp),
+                pa.array(context_starts, type=pa.uint64()),
+                pa.array(context_ends, type=pa.uint64()),
                 top_k,
             )
 
@@ -314,10 +318,7 @@ class NextLocationPredictor:
 
 def _factorize_column(df: nw.DataFrame, col: str) -> tuple[nw.Series, dict[int, Any]]:
     """Dense uint64-code a column, returning (codes, {code: original_label})."""
-    values = df.get_column(col)
-    unique_labels = values.unique(maintain_order=True).to_list()
-    label_to_code = {label: code for code, label in enumerate(unique_labels)}
-    codes = np.array([label_to_code[v] for v in values.to_list()], dtype=np.uint64)
-    codes_series = nw.new_series("__location_code__", codes, backend=df.implementation)
-    code_to_label = {code: label for label, code in label_to_code.items()}
-    return codes_series, code_to_label
+    values = df.get_column(col).to_arrow()
+    codes, representatives = _factorize_arrow_values(values, sort=False)
+    labels = pc.take(values, representatives).to_pylist()
+    return _uint64_series(df, codes), dict(enumerate(labels))

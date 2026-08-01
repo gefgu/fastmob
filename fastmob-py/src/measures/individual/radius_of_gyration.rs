@@ -1,7 +1,7 @@
 use fastmob_core::measures::individual::radius_of_gyration::{
     radius_of_gyration_indexed_impl, radius_of_gyration_presorted_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
@@ -19,7 +19,7 @@ pub fn radius_of_gyration_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyRogResult<'py>> {
     let (values, validity) =
         run_presorted_coordinate_arrow(py, latitudes, longitudes, ends, |coords, ends| {
@@ -33,8 +33,8 @@ pub fn radius_of_gyration_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
 ) -> PyResult<PyRogResult<'py>> {
     let (values, validity) =
         run_indexed_coordinate_arrow(py, latitudes, longitudes, indices, ends, |view| {

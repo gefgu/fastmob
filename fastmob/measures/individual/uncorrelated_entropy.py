@@ -7,7 +7,7 @@ import narwhals as nw
 from fastmob._core import uncorrelated_entropy_indexed
 from fastmob.utils._common import (
     _arrow_result_values,
-    _build_indexed_user_ranges_fast,
+    _build_indexed_user_ranges,
     _detect_trajectory_columns,
     _to_native,
 )
@@ -120,7 +120,7 @@ def uncorrelated_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    uid_values, indices, ends = _build_indexed_user_ranges_fast(df, uid_col)
+    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()

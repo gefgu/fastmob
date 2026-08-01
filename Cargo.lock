@@ -1033,6 +1033,7 @@ name = "fastmob-py"
 version = "0.1.1"
 dependencies = [
  "arrow-array",
+ "arrow-schema",
  "fastmob-core",
  "h3o",
  "numpy",

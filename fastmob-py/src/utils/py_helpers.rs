@@ -9,6 +9,15 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 
+pub fn extract_arrow_array(values: &Bound<'_, PyAny>, name: &str) -> PyResult<PyArray> {
+    if !values.hasattr("__arrow_c_array__")? {
+        return Err(PyValueError::new_err(format!(
+            "expected Arrow array for {name}"
+        )));
+    }
+    values.extract()
+}
+
 pub fn f64_results_into_arrow(results: Vec<f64>) -> PyArray {
     let array: ArrayRef = Arc::new(Float64Array::from(results));
     PyArray::from_array_ref(array)
@@ -161,6 +170,34 @@ pub fn arrow_u64_values(array: &PrimitiveArray<UInt64Type>) -> &[u64] {
     let start = array.offset();
     let end = start + array.len();
     &array.values()[start..end]
+}
+
+#[cfg(target_pointer_width = "64")]
+pub fn arrow_usize_values(array: &PrimitiveArray<UInt64Type>) -> &[usize] {
+    let values = arrow_u64_values(array);
+    // UInt64 and usize have identical layouts on supported 64-bit Python targets.
+    unsafe { std::slice::from_raw_parts(values.as_ptr().cast::<usize>(), values.len()) }
+}
+
+pub trait ArrowUsizeArrayExt {
+    fn as_slice(&self) -> PyResult<&[usize]>;
+}
+
+#[cfg(target_pointer_width = "64")]
+impl ArrowUsizeArrayExt for PyArray {
+    fn as_slice(&self) -> PyResult<&[usize]> {
+        let array = self
+            .array()
+            .as_any()
+            .downcast_ref::<UInt64Array>()
+            .ok_or_else(|| PyValueError::new_err("expected uint64 Arrow index array"))?;
+        if array.null_count() > 0 {
+            return Err(PyValueError::new_err(
+                "Arrow index arrays must not contain nulls",
+            ));
+        }
+        Ok(arrow_usize_values(array))
+    }
 }
 
 pub fn arrow_i64_values(array: &PrimitiveArray<Int64Type>) -> &[i64] {

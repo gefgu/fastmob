@@ -1,6 +1,7 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::models::next_location::{
-    MarkovLocationModel, NextLocationConfig as CoreNextLocationConfig, markov_fit_indexed,
-    markov_predict_batch,
+    markov_fit_indexed, markov_predict_batch, MarkovLocationModel,
+    NextLocationConfig as CoreNextLocationConfig,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
@@ -22,8 +23,8 @@ impl PyNextLocationModels {
     #[pyo3(signature = (location_codes, sorted_indices, ends, order=1, backoff=true))]
     fn new(
         location_codes: PyReadonlyArray1<'_, u64>,
-        sorted_indices: PyReadonlyArray1<'_, usize>,
-        ends: PyReadonlyArray1<'_, usize>,
+        sorted_indices: pyo3_arrow::PyArray,
+        ends: pyo3_arrow::PyArray,
         order: usize,
         backoff: bool,
     ) -> PyResult<Self> {
@@ -48,8 +49,8 @@ impl PyNextLocationModels {
         &self,
         py: Python<'py>,
         context_codes: PyReadonlyArray1<'py, u64>,
-        context_starts: PyReadonlyArray1<'py, usize>,
-        context_ends: PyReadonlyArray1<'py, usize>,
+        context_starts: pyo3_arrow::PyArray,
+        context_ends: pyo3_arrow::PyArray,
         top_k: usize,
     ) -> PyResult<(
         Bound<'py, PyArray1<u64>>,

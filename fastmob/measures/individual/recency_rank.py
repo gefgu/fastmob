@@ -8,8 +8,8 @@ from fastmob._core import recency_rank_presorted, recency_rank_values_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
     _take_uid_values,
@@ -133,8 +133,7 @@ def recency_rank(
         raw = recency_rank_presorted(lats_data, lngs_data, ends)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
-        timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
-        uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
+        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         raw = recency_rank_values_indexed(lats_data, lngs_data, indices, ends)
     out_lats, out_lngs, ranks, user_indices = _unpack_rank(raw)
 

@@ -1,7 +1,8 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::measures::individual::individual_mobility_network::{
     individual_mobility_network_indexed_impl, individual_mobility_network_presorted_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -25,8 +26,8 @@ pub fn individual_mobility_network_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     self_loops: bool,
 ) -> PyResult<MobilityNetwork<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
@@ -57,7 +58,7 @@ pub fn individual_mobility_network_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     self_loops: bool,
 ) -> PyResult<MobilityNetwork<'py>> {
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;

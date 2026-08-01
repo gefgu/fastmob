@@ -8,7 +8,7 @@ import narwhals as nw
 from fastmob._core import mean_square_displacement_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _build_time_ordered_user_ranges,
+    _build_indexed_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_s,
 )
@@ -125,7 +125,7 @@ def mean_square_displacement(
 
     timestamps = _extract_timestamps_s(df, datetime_col)
     timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
-    _uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
+    _uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()

@@ -1,5 +1,5 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::measures::evaluation::trajectory_cpc::trajectory_common_part_of_commuters_impl;
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -12,12 +12,12 @@ use crate::utils::{arrow_values, as_f64_array};
 pub fn trajectory_common_part_of_commuters<'py>(
     latitudes_a: ArrowPyArray,
     longitudes_a: ArrowPyArray,
-    indices_a: PyReadonlyArray1<'py, usize>,
-    ends_a: PyReadonlyArray1<'py, usize>,
+    indices_a: pyo3_arrow::PyArray,
+    ends_a: pyo3_arrow::PyArray,
     latitudes_b: ArrowPyArray,
     longitudes_b: ArrowPyArray,
-    indices_b: PyReadonlyArray1<'py, usize>,
-    ends_b: PyReadonlyArray1<'py, usize>,
+    indices_b: pyo3_arrow::PyArray,
+    ends_b: pyo3_arrow::PyArray,
     resolution: u8,
 ) -> PyResult<f64> {
     let latitudes_a = as_f64_array(latitudes_a, "latitudes_a")?;

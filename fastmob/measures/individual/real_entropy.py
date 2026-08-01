@@ -9,7 +9,7 @@ import narwhals as nw
 from fastmob._core import real_entropy_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _build_time_ordered_user_ranges,
+    _build_indexed_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
     _values_to_list,
@@ -117,8 +117,7 @@ def real_entropy(
     )
 
     timestamps = _extract_timestamps_ms(df, datetime_col)
-    timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
-    uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
+    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
 
     raw = real_entropy_indexed(
         df.get_column(lat_col).to_arrow(),

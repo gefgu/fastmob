@@ -1,10 +1,9 @@
 use std::str::FromStr;
 
 use fastmob_core::trajectory::smooth::{
-    SmoothConfig as CoreSmoothConfig, SmoothMethod, smooth_trajectory_indexed_impl,
-    smooth_trajectory_presorted_impl,
+    smooth_trajectory_indexed_impl, smooth_trajectory_presorted_impl,
+    SmoothConfig as CoreSmoothConfig, SmoothMethod,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -48,8 +47,8 @@ pub fn smooth_trajectory_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    sorted_indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    sorted_indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     config: PySmoothConfig,
 ) -> PyResult<SmoothOutput> {
     let (out_lats, out_lngs) = run_indexed_timed_coordinate_arrow(
@@ -84,7 +83,7 @@ pub fn smooth_trajectory_presorted<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     config: PySmoothConfig,
 ) -> PyResult<SmoothOutput> {
     let (out_lats, out_lngs) = run_presorted_timed_coordinate_arrow(

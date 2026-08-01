@@ -2,7 +2,6 @@ use fastmob_core::measures::individual::k_radius_of_gyration::{
     k_radius_of_gyration_from_ends_impl, k_radius_of_gyration_indexed_impl,
     k_radius_of_gyration_km as core_k_rog_km,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -32,7 +31,7 @@ pub fn k_radius_of_gyration_presorted<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     k: usize,
 ) -> PyResult<Py<PyAny>> {
     let values = run_presorted_timed_coordinate_arrow(
@@ -62,8 +61,8 @@ pub fn k_radius_of_gyration_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     k: usize,
 ) -> PyResult<Py<PyAny>> {
     let values = run_indexed_timed_coordinate_arrow(

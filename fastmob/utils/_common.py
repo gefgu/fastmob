@@ -7,8 +7,6 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from fastmob.core.dispatch import TrajectoryDispatcher
-
 _ROW_ORDER_COL = "__fastmob_row_order__"
 _USER_RANGE_START_COL = "__fastmob_user_range_start__"
 
@@ -183,11 +181,6 @@ def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
         return df.with_columns(nw.col(column).str.to_datetime().alias(column))
 
 
-def _as_index_array(values: Any) -> np.ndarray:
-    """Return unsigned pointer-sized indexes for Rust indexed kernels."""
-    return np.asarray(values, dtype=np.uintp)
-
-
 def _ranges_to_starts_ends(
     ranges: list[tuple[int, int]],
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -290,126 +283,48 @@ def _narwhals_safe_value(values: Any) -> Any:
 
 def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
     """Build a backend-matching result dataframe from a column dict."""
+    try:
+        import pyarrow as pa
+
+        arrays = {name: pa.array(_arrow_result_values(values)) for name, values in values_dict.items()}
+        return nw.from_arrow(pa.table(arrays), backend=df.implementation).to_native()
+    except (TypeError, ValueError, pa.ArrowException):
+        pass
     columns = {name: _narwhals_safe_value(values) for name, values in values_dict.items()}
     return nw.from_dict(columns, backend=df.implementation).to_native()
 
 
-def _take_uid_values(uid_values: list | None, user_indices: Any) -> Any:
+def _take_uid_values(uid_values: Any | None, user_indices: Any) -> Any:
     """Return one UID label per flat output row using vectorized positional take."""
     if uid_values is None:
         return None
-    return np.asarray(uid_values, dtype=object).take(np.asarray(user_indices, dtype=np.uintp))
-
-
-def _indexed_group_indices(uids: Any, num_groups: int) -> Any:
-    from fastmob._core import indexed_user_indices
-
-    return indexed_user_indices(uids, num_groups)
-
-
-def _time_ordered_user_indices_from_ndarray(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
-    from fastmob._core import time_ordered_user_indices
-
-    if uids is None:
-        return time_ordered_user_indices(None, timestamps)
-    return time_ordered_user_indices(uids, timestamps, num_groups)
-
-
-def _time_ordered_user_indices_from_c_array(uids: Any, timestamps: Any, num_groups: int | None = None) -> Any:
-    from fastmob._core import time_ordered_user_indices
-
-    if uids is None:
-        return time_ordered_user_indices(None, timestamps)
-    return time_ordered_user_indices(uids, timestamps, num_groups)
-
-
-def _presorted_user_starts_ends_numpy(uids: Any) -> tuple[Any, Any]:
-    from fastmob._core import presorted_user_starts_ends_numpy
-
-    return presorted_user_starts_ends_numpy(uids)
-
-
-def _presorted_user_starts_ends_arrow(uids: Any) -> tuple[Any, Any]:
-    from fastmob._core import presorted_user_starts_ends_arrow
-
-    return presorted_user_starts_ends_arrow(uids)
-
-
-_TIME_ORDERED_USER_RANGES_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={"time_ordered_indices": _time_ordered_user_indices_from_c_array},
-    numpy_ops={"time_ordered_indices": _time_ordered_user_indices_from_ndarray},
-)
-
-_PRESORTED_USER_ENDS_DISPATCHER = TrajectoryDispatcher(
-    arrow_ops={"starts_ends": _presorted_user_starts_ends_arrow},
-    numpy_ops={"starts_ends": _presorted_user_starts_ends_numpy},
-)
-
-
-def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
-    return nw.new_series(
-        "__fastmob_uid_codes__",
-        values,
-        dtype=nw.UInt64,
-        backend=df.implementation,
-    )
-
-
-def _factorize_numpy_values_uint64(values: Any, *, sort: bool) -> tuple[np.ndarray, int]:
-    import pandas as pd
-
-    codes, uniques = pd.factorize(values, sort=sort, use_na_sentinel=False)
-    return np.asarray(codes, dtype=np.uint64), len(uniques)
-
-
-def _factorize_polars_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
-    import polars as pl
-
-    native = df.to_native()
-    unique_values = native.get_column(uid_col).unique(maintain_order=not sort)
-    if sort:
-        unique_values = unique_values.sort(nulls_last=True)
-        replacement_codes = pl.Series(
-            "__fastmob_uid_codes__",
-            np.arange(len(unique_values), dtype=np.uint64),
-        )
-        codes = native.select(
-            pl.col(uid_col)
-            .replace_strict(
-                unique_values,
-                replacement_codes,
-                return_dtype=pl.UInt64,
-            )
-            .alias("__code__")
-        ).get_column("__code__")
-        return codes, len(unique_values)
-
-    raw_codes = native.select(
-        pl.col(uid_col).cast(pl.Utf8).cast(pl.Categorical).to_physical().alias("__code__")
-    ).get_column("__code__")
-    max_code = raw_codes.max()
-    fill_value = 0 if max_code is None else max_code + 1
-    return raw_codes.fill_null(fill_value).cast(pl.UInt64), len(unique_values)
-
-
-def _factorize_pyarrow_uids_uint64(df: nw.DataFrame, uid_col: str, *, sort: bool) -> tuple[Any, int]:
     import pyarrow as pa
     import pyarrow.compute as pc
 
-    values = df.get_column(uid_col).to_arrow()
-    if sort:
-        unique_values = pc.unique(values)
-        sorted_values = pc.take(unique_values, pc.sort_indices(unique_values))
-        codes = pc.index_in(values, value_set=sorted_values)
-        num_groups = len(sorted_values)
-    else:
-        encoded = pc.dictionary_encode(values)
-        codes = pc.fill_null(
-            encoded.indices,
-            pa.scalar(len(encoded.dictionary), type=encoded.indices.type),
-        )
-        num_groups = len(encoded.dictionary) + int(encoded.indices.null_count > 0)
-    return pc.cast(codes, pa.uint64()), num_groups
+    return pc.take(pa.array(uid_values), pa.array(_arrow_result_values(user_indices)))
+
+
+def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
+    import pyarrow as pa
+
+    return nw.from_arrow(
+        pa.table({"__fastmob_uid_codes__": pa.array(values, type=pa.uint64())}),
+        backend=df.implementation,
+    ).get_column("__fastmob_uid_codes__")
+
+
+def _factorize_arrow_values(values: Any, *, sort: bool) -> tuple[Any, Any]:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    from fastmob._core import factorize_arrow
+
+    values = values.to_arrow() if hasattr(values, "to_arrow") else values
+    values = pa.array(values)
+    if pa.types.is_dictionary(values.type):
+        values = pc.dictionary_decode(values)
+    raw_codes, raw_representatives = factorize_arrow(values, sort)
+    return pa.array(_arrow_result_values(raw_codes)), pa.array(_arrow_result_values(raw_representatives))
 
 
 def _factorize_uids_uint64(
@@ -422,21 +337,8 @@ def _factorize_uids_uint64(
     if uid_col is None:
         return None
 
-    if _is_pandas_backed(df):
-        native = df.to_native()
-        codes, num_groups = _factorize_numpy_values_uint64(native[uid_col], sort=sort)
-        return _uint64_series(df, codes), num_groups
-
-    if _is_polars_backed(df):
-        codes, num_groups = _factorize_polars_uids_uint64(df, uid_col, sort=sort)
-        return _uint64_series(df, codes), num_groups
-
-    if _is_pyarrow_backed(df):
-        codes, num_groups = _factorize_pyarrow_uids_uint64(df, uid_col, sort=sort)
-        return _uint64_series(df, codes), num_groups
-
-    codes, num_groups = _factorize_numpy_values_uint64(df.get_column(uid_col).to_numpy(), sort=sort)
-    return _uint64_series(df, codes), num_groups
+    codes, representatives = _factorize_arrow_values(df.get_column(uid_col), sort=sort)
+    return _uint64_series(df, codes), len(representatives)
 
 
 def _extract_timestamps_ms(df: nw.DataFrame, datetime_col: str) -> nw.Series:
@@ -478,92 +380,34 @@ def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, n
     return df, df.get_column("__hour__")
 
 
-def _uid_values_from_index_ranges(
-    uids: nw.Series,
-    indices: Any,
-    ends: Any,
-    *,
-    use_arrow: bool,
-) -> list:
-    """Extract one UID label per indexed range without scanning all rows in Python."""
-    starts = _starts_from_ends(ends)
-    first_row_indices = np.asarray(indices, dtype=np.uintp)[np.asarray(starts, dtype=np.uintp)]
-    if use_arrow:
-        import pyarrow.compute as pc
-
-        uid_arrow = uids.to_arrow()
-        return pc.take(uid_arrow, first_row_indices).to_pylist()
-
-    uid_values = uids.to_numpy()
-    return uid_values[first_row_indices].tolist()
-
-
-def _build_time_ordered_user_ranges(
+def _build_indexed_user_ranges(
     df: nw.DataFrame,
     uid_col: str | None,
-    datetime_col: str,
-    timestamps_data: Any,
-    *,
-    row_index_col: str = "__fastmob_time_order_row_index__",
-) -> tuple[list | None, Any, np.ndarray]:
-    """Build stable time-ordered indexes/ranges without sorting the full dataframe."""
-    ops = _TIME_ORDERED_USER_RANGES_DISPATCHER.get_ops(df)
-    use_arrow = _TIME_ORDERED_USER_RANGES_DISPATCHER.get_backend_key(df) == "arrow"
+    timestamps: Any | None = None,
+) -> tuple[Any | None, Any, Any]:
+    """Build stable grouped indices, optionally ordered by timestamp within each user."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    from fastmob._core import indexed_user_indices, single_user_indices, time_ordered_user_indices
 
     if uid_col is None:
-        indices, ends = ops["time_ordered_indices"](None, timestamps_data)
-        return None, _as_index_array(indices), _as_index_array(ends)
+        if timestamps is None:
+            raw_indices, raw_ends = single_user_indices(len(df))
+        else:
+            timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
+            raw_indices, raw_ends = time_ordered_user_indices(None, pa.array(timestamp_values))
+        return None, pa.array(_arrow_result_values(raw_indices)), pa.array(_arrow_result_values(raw_ends))
 
-    uids = df.get_column(uid_col)
-    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=False)
-    try:
-        indices, ends = ops["time_ordered_indices"](ops["extract_data"](uid_codes), timestamps_data, num_groups)
-        indices = _as_index_array(indices)
-        ends = _as_index_array(ends)
-        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
-        return uid_values, indices, ends
-    except ValueError as exc:
-        if "unsupported" not in str(exc):
-            raise
-
-    index_df = (
-        df.select([uid_col, datetime_col])
-        .with_columns(uid_codes)
-        .with_row_index(row_index_col)
-        .sort("__fastmob_uid_codes__", datetime_col, row_index_col)
-    )
-    uid_values, ranges = _build_user_ranges(index_df, uid_col)
-    indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
-    ends = _ranges_to_ends(ranges)
-    return uid_values, _as_index_array(indices), ends
-
-
-def _build_indexed_user_ranges_fast(
-    df: nw.DataFrame,
-    uid_col: str | None,
-) -> tuple[list | None, Any, np.ndarray]:
-    """Build grouped row indexes using Rust for supported UID dtypes."""
-    use_arrow = _is_polars_backed(df) or _is_pyarrow_backed(df)
-
-    if uid_col is None:
-        indices = np.arange(len(df), dtype=np.uintp)
-        ends = np.array([] if len(df) == 0 else [len(df)], dtype=np.uintp)
-        return None, indices, ends
-
-    uids = df.get_column(uid_col)
-    uid_codes, num_groups = _factorize_uids_uint64(df, uid_col, sort=False)
-    try:
-        uid_code_data = uid_codes.to_arrow() if use_arrow else uid_codes.to_numpy()
-        indices, ends = _indexed_group_indices(uid_code_data, num_groups)
-        uid_values = _uid_values_from_index_ranges(uids, indices, ends, use_arrow=use_arrow)
-        return uid_values, _as_index_array(indices), _as_index_array(ends)
-    except ValueError as exc:
-        if "unsupported" not in str(exc):
-            raise
-
-    uid_values, indices, ranges = _build_indexed_user_ranges(df, uid_col)
-    ends = _ranges_to_ends(ranges)
-    return uid_values, _as_index_array(indices), ends
+    uid_values = pa.array(df.get_column(uid_col).to_arrow())
+    codes, representatives = _factorize_arrow_values(uid_values, sort=False)
+    if timestamps is None:
+        raw_indices, raw_ends = indexed_user_indices(codes, len(representatives))
+    else:
+        timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
+        raw_indices, raw_ends = time_ordered_user_indices(codes, pa.array(timestamp_values), len(representatives))
+    labels = pc.take(uid_values, representatives)
+    return labels, pa.array(_arrow_result_values(raw_indices)), pa.array(_arrow_result_values(raw_ends))
 
 
 def _detect_trajectory_columns(
@@ -763,76 +607,32 @@ def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, lis
     return uid_values, ranges
 
 
-def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, np.ndarray]:
+def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[Any | None, Any]:
     """Build contiguous user group end indices for data already grouped by user."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    from fastmob._core import presorted_user_starts_ends
+
     n = len(df)
     if uid_col is None:
-        return None, np.array([n], dtype=np.uintp)
+        return None, pa.array([] if n == 0 else [n], type=pa.uint64())
 
     if n == 0:
-        return [], np.array([], dtype=np.uintp)
+        return pa.array(df.get_column(uid_col).to_arrow()).slice(0, 0), pa.array([], type=pa.uint64())
 
-    try:
-        ops = _PRESORTED_USER_ENDS_DISPATCHER.get_ops(df)
-        uid_series = df.get_column(uid_col)
-        starts, ends = ops["starts_ends"](ops["extract_data"](uid_series))
-        starts = np.asarray(starts, dtype=np.uintp)
-        ends = np.asarray(ends, dtype=np.uintp)
-        uid_values = uid_series.to_numpy()[starts].tolist()
-        return uid_values, ends
-    except (AttributeError, TypeError, ValueError, NotImplementedError):
-        pass
-
-    if _is_pandas_backed(df):
-        native = df.to_native()
-        uid_series = native[uid_col]
-        boundaries = uid_series.ne(uid_series.shift(1)).fillna(True).to_numpy(dtype=bool, copy=False)
-        starts_array = np.flatnonzero(boundaries)
-        ends = np.empty(len(starts_array), dtype=np.uintp)
-        if len(starts_array) > 1:
-            ends[:-1] = starts_array[1:]
-        ends[-1] = n
-        uid_values = uid_series.iloc[starts_array].tolist()
-        return uid_values, ends
-
-    starts_df = (
-        df.select([uid_col])
-        .with_row_index(_USER_RANGE_START_COL)
-        .filter((nw.col(uid_col) != nw.col(uid_col).shift(1)).fill_null(True))
-    )
-    starts = starts_df.get_column(_USER_RANGE_START_COL).to_list()
-    uid_values = starts_df.get_column(uid_col).to_list()
-    ends = np.asarray(starts[1:] + [n], dtype=np.uintp)
-    return uid_values, ends
+    uid_values = pa.array(df.get_column(uid_col).to_arrow())
+    codes, _ = _factorize_arrow_values(uid_values, sort=False)
+    raw_starts, raw_ends = presorted_user_starts_ends(codes)
+    starts = pa.array(_arrow_result_values(raw_starts))
+    ends = pa.array(_arrow_result_values(raw_ends))
+    return pc.take(uid_values, starts), ends
 
 
 def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
     """Build contiguous user ranges for data already grouped by user."""
     uid_values, ends = _build_presorted_user_ends(df, uid_col)
-    return uid_values, _ranges_from_ends(ends)
-
-
-def _build_indexed_user_ranges(
-    df: nw.DataFrame,
-    uid_col: str,
-    *,
-    row_index_col: str = "__fastmob_indexed_row_index__",
-) -> tuple[list, list[int], list[tuple[int, int]]]:
-    """Build stable row indices and user ranges without reordering the input frame.
-
-    This is the reusable version of the radius-of-gyration indexed grouping
-    pattern.  It sorts a narrow ``uid + row_index`` projection, preserving
-    stable row-order ties, then returns indices into the original frame plus
-    contiguous ranges over that index vector.
-    """
-    n = len(df)
-    if n == 0:
-        return [], [], []
-
-    index_df = df.select([uid_col]).with_row_index(row_index_col).sort(uid_col, row_index_col)
-    uid_values, ranges = _build_user_ranges(index_df, uid_col)
-    indices = [int(idx) for idx in index_df.get_column(row_index_col).to_list()]
-    return uid_values, indices, ranges
+    return (None if uid_values is None else uid_values.to_pylist()), _ranges_from_ends(ends)
 
 
 def _value_offsets_from_index_ranges(

@@ -1,7 +1,7 @@
 use fastmob_core::preprocessing::stay_locations::{
     detect_stay_locations_batch_impl, detect_stay_locations_batch_indexed_impl,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
@@ -64,8 +64,8 @@ pub fn detect_stay_locations_batch_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     timestamps_s: ArrowPyArray,
-    sorted_indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    sorted_indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     stop_radius_km: f64,
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,

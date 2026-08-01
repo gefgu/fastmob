@@ -1,8 +1,8 @@
+use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::preprocessing::compress_traj::{
     compress_trajectory_representatives_impl, compress_trajectory_representatives_indexed_impl,
     compress_user_slice,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
@@ -77,8 +77,8 @@ pub fn compress_trajectory_representatives_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    sorted_indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    sorted_indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     spatial_radius_km: f64,
 ) -> PyResult<CompressRepresentatives<'py>> {
     let sorted_indices = sorted_indices.as_slice()?;

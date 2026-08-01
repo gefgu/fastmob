@@ -1,7 +1,6 @@
 use fastmob_core::measures::individual::home_location::{
     home_location_from_ends_impl, home_location_indexed_impl,
 };
-use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -22,7 +21,7 @@ pub fn home_location_presorted<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     hours: ArrowPyArray,
-    ends: PyReadonlyArray1<'py, usize>,
+    ends: pyo3_arrow::PyArray,
     start_night: f64,
     end_night: f64,
 ) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
@@ -54,8 +53,8 @@ pub fn home_location_indexed<'py>(
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
     hours: ArrowPyArray,
-    indices: PyReadonlyArray1<'py, usize>,
-    ends: PyReadonlyArray1<'py, usize>,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
     start_night: f64,
     end_night: f64,
 ) -> PyResult<(Py<PyAny>, Py<PyAny>)> {

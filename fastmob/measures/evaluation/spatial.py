@@ -15,12 +15,10 @@ except ImportError:  # Built without the optional SIMD/wass backend.
 from fastmob._core import trajectory_common_part_of_commuters as _trajectory_cpc
 from fastmob.utils._common import (
     DURATION_CANDIDATES,
-    _as_index_array,
-    _build_time_ordered_user_ranges,
+    _build_indexed_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
     _pick_existing_column,
-    _use_arrow_kernel_path,
     _with_datetime_column,
 )
 
@@ -111,16 +109,15 @@ def _trajectory_cpc_inputs(
     )
     timestamps = _extract_timestamps_ms(df, datetime_col)
     # Timestamps here only build index metadata (user ranges), so their
-    # extraction still matches whatever backend _build_time_ordered_user_ranges'
+    # extraction still matches whatever backend _build_indexed_user_ranges'
     # own uid-code extraction picks -- see the Rust binding it feeds
     # (time_ordered_user_indices) for why timestamps and uid codes must agree.
-    timestamp_data = timestamps.to_arrow() if _use_arrow_kernel_path(df) else timestamps.to_numpy()
-    _, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamp_data)
+    _, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     return (
         df.get_column(lat_col).to_arrow(),
         df.get_column(lng_col).to_arrow(),
-        _as_index_array(indices),
-        _as_index_array(ends),
+        indices,
+        ends,
     )
 
 

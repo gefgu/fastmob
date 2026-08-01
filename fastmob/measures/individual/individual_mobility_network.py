@@ -11,8 +11,8 @@ from fastmob._core import (
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _arrow_result_values,
+    _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _build_time_ordered_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps_ms,
     _take_uid_values,
@@ -154,8 +154,7 @@ def individual_mobility_network(
         raw = individual_mobility_network_presorted(lats_data, lngs_data, ends, self_loops)
     else:
         timestamps = _extract_timestamps_ms(df, datetime_col)
-        timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
-        uid_values, indices, ends = _build_time_ordered_user_ranges(df, uid_col, datetime_col, timestamps_data)
+        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         raw = individual_mobility_network_indexed(lats_data, lngs_data, indices, ends, self_loops)
     lat_origins, lng_origins, lat_dests, lng_dests, n_trips, user_indices = _unpack_network(raw)
 
