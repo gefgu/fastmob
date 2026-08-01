@@ -351,10 +351,10 @@ def _fastmob_workloads() -> dict[str, Workload]:
             "fastmob.measures.individual.mean_area_volume.mean_area_volume",
             "fastmob mean area volume",
         ),
-        "discover_daily_motifs_from_agents": _make_workload(
-            "discover_daily_motifs_from_agents",
+        "daily_motifs": _make_workload(
+            "daily_motifs",
             "visits",
-            "fastmob.measures.individual.motifs.discover_daily_motifs_from_agents",
+            "fastmob.measures.individual.motifs.daily_motifs",
             "fastmob daily motifs",
         ),
         "od_matrix": _make_workload("od_matrix", "od", "fastmob.measures.collective.od.od_matrix", "fastmob OD matrix"),

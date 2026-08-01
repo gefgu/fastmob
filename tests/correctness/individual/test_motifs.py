@@ -1,15 +1,10 @@
-"""Tests for motif classification measures."""
+"""Tests for daily home-anchored mobility motifs."""
 
 import pandas as pd
 import pytest
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 def _make_multi_day_df():
-    """Two days of visits for one user.  Each day: HOME→WORK→HOME."""
     rows = []
     for day_offset in range(2):
         base = pd.Timestamp("2020-01-01") + pd.Timedelta(days=day_offset)
@@ -18,7 +13,7 @@ def _make_multi_day_df():
                 "agent_id": "u1",
                 "location_id": "home",
                 "purpose": "HOME",
-                "start_timestamp": base + pd.Timedelta(hours=0),
+                "start_timestamp": base,
                 "end_timestamp": base + pd.Timedelta(hours=8),
                 "duration_minutes": 480,
             },
@@ -42,56 +37,84 @@ def _make_multi_day_df():
     return pd.DataFrame(rows)
 
 
-# ---------------------------------------------------------------------------
-# discover_daily_motifs_from_agents tests
-# ---------------------------------------------------------------------------
+def test_daily_motifs_returns_primary_dataframe_only():
+    from fastmob.measures.individual.motifs import daily_motifs
 
-
-def test_discover_motifs_returns_two_dataframes():
-    """discover_daily_motifs_from_agents returns exactly two DataFrames."""
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
-
-    df = _make_multi_day_df()
-    result = discover_daily_motifs_from_agents(df)
+    result = daily_motifs(_make_multi_day_df())
+    assert isinstance(result, pd.DataFrame)
+    assert list(result.columns) == ["agent_id", "date", "motif_id"]
     assert len(result) == 2
-    daily_motifs_df, motif_dist_df = result
-    assert isinstance(daily_motifs_df, pd.DataFrame)
-    assert isinstance(motif_dist_df, pd.DataFrame)
+    assert ((result["motif_id"].to_numpy() >> 36) == 2).all()
 
 
-def test_discover_motifs_daily_rows_count():
-    """Two days, one user → daily_motifs_df has 2 rows."""
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+def test_canonical_motifs_keep_home_anchored_at_node_zero():
+    from fastmob import _core
 
-    df = _make_multi_day_df()
-    daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
-    assert len(daily_motifs_df) == 2
-
-
-def test_discover_motifs_has_required_columns():
-    """daily_motifs_df has required columns."""
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
-
-    df = _make_multi_day_df()
-    daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
-    required = {"agent_id", "date", "motif_id", "num_nodes", "num_edges"}
-    assert required.issubset(set(daily_motifs_df.columns))
+    left = _core.canonical_adjacency_form(3, [(0, 1), (1, 2)])
+    right = _core.canonical_adjacency_form(3, [(1, 0), (0, 2)])
+    assert left != right
 
 
-def test_discover_motifs_home_work_home_classified_correctly():
-    """HOME→WORK→HOME each day → simple return motif (2 nodes, 2 edges)."""
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+def test_daily_motifs_uses_home_anchored_ids():
+    from fastmob.measures.individual.motifs import daily_motifs
 
-    df = _make_multi_day_df()
-    daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
-    # All days are simple returns: 2 nodes, 2 edges
-    assert (daily_motifs_df["num_nodes"] == 2).all()
-    assert (daily_motifs_df["num_edges"] == 2).all()
+    base = pd.Timestamp("2020-01-01")
+    df = pd.DataFrame(
+        [
+            {
+                "agent_id": "u1",
+                "location_id": "home",
+                "purpose": "HOME",
+                "start_timestamp": base,
+                "end_timestamp": base + pd.Timedelta(hours=8),
+                "duration_minutes": 480,
+            },
+            {
+                "agent_id": "u1",
+                "location_id": "a",
+                "purpose": "WORK",
+                "start_timestamp": base + pd.Timedelta(hours=9),
+                "end_timestamp": base + pd.Timedelta(hours=10),
+                "duration_minutes": 60,
+            },
+            {
+                "agent_id": "u1",
+                "location_id": "b",
+                "purpose": "SHOP",
+                "start_timestamp": base + pd.Timedelta(hours=11),
+                "end_timestamp": base + pd.Timedelta(hours=23),
+                "duration_minutes": 720,
+            },
+        ]
+    )
+    result = daily_motifs(df)
+    assert result["motif_id"].iloc[0] == (3 << 36) | 0b010001100
 
 
-def test_discover_motifs_handles_unsorted_input():
-    """The indexed kernel path must preserve chronological per-user visits."""
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+def test_daily_motifs_empty_result_schema_is_stable():
+    from fastmob.measures.individual.motifs import daily_motifs, motif_distribution
+
+    df = pd.DataFrame(
+        {
+            "agent_id": pd.Series([1], dtype="int64"),
+            "location_id": ["work"],
+            "purpose": ["WORK"],
+            "start_timestamp": pd.to_datetime(["2020-01-01 09:00"]),
+            "end_timestamp": pd.to_datetime(["2020-01-01 17:00"]),
+        }
+    )
+    daily = daily_motifs(df)
+    distribution = motif_distribution(daily)
+    assert daily.empty
+    assert pd.api.types.is_integer_dtype(daily["agent_id"])
+    assert pd.api.types.is_datetime64_any_dtype(daily["date"])
+    assert pd.api.types.is_integer_dtype(daily["motif_id"])
+    assert pd.api.types.is_integer_dtype(distribution["motif_id"])
+    assert pd.api.types.is_integer_dtype(distribution["count"])
+
+
+def test_indexed_and_presorted_paths_match():
+    from fastmob.measures.individual.motifs import daily_motifs
 
     df = _make_multi_day_df()
     df = pd.concat(
@@ -104,79 +127,72 @@ def test_discover_motifs_handles_unsorted_input():
             ),
         ],
         ignore_index=True,
-    )
+    ).sort_values(["agent_id", "start_timestamp"], kind="stable")
+    expected = daily_motifs(df, presorted=True).sort_values(["agent_id", "date"]).reset_index(drop=True)
     shuffled = df.sample(frac=1.0, random_state=0).reset_index(drop=True)
-
-    expected, _ = discover_daily_motifs_from_agents(df)
-    actual, _ = discover_daily_motifs_from_agents(shuffled)
-
-    sort_cols = ["agent_id", "date"]
-    expected = expected.sort_values(sort_cols).reset_index(drop=True)
-    actual = actual.sort_values(sort_cols).reset_index(drop=True)
+    actual = daily_motifs(shuffled).sort_values(["agent_id", "date"]).reset_index(drop=True)
     pd.testing.assert_frame_equal(actual, expected)
 
 
-def test_discover_motifs_distribution_sum_to_100():
-    """Motif distribution percentages sum to 100."""
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+def test_motif_distribution_sum_to_100():
+    from fastmob.measures.individual.motifs import daily_motifs, motif_distribution
 
-    df = _make_multi_day_df()
-    _, motif_dist_df = discover_daily_motifs_from_agents(df)
-    assert motif_dist_df["percentage"].sum() == pytest.approx(100.0, abs=1e-6)
+    distribution = motif_distribution(daily_motifs(_make_multi_day_df()))
+    assert distribution["percentage"].sum() == pytest.approx(100.0, abs=1e-6)
+    assert distribution["count"].sum() == 2
 
 
-def test_discover_motifs_preserves_numeric_user_id_dtype():
-    """A numeric agent_id source column must come back numeric, not string.
+def test_motif_distribution_supports_custom_id_column():
+    from fastmob.measures.individual.motifs import motif_distribution
 
-    The Rust kernel never sees the uid at all (it only tags each result
-    with a position into the per-user ranges); the wrapper must gather the
-    matching label back in its original dtype rather than leaking whatever
-    intermediate representation was used to build the ranges.
-    """
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+    result = motif_distribution(pd.DataFrame({"kind": [7, 7, 9]}), motif_id_col="kind")
+    assert result["kind"].tolist() == [7, 9]
+    assert result["count"].tolist() == [2, 1]
+    assert result["percentage"].tolist() == pytest.approx([200 / 3, 100 / 3])
+
+
+def test_integer_and_string_locations_produce_the_same_motifs():
+    from fastmob.measures.individual.motifs import daily_motifs
+
+    strings = _make_multi_day_df()
+    integers = strings.assign(location_id=strings["location_id"].map({"home": 10, "work": 20}))
+    assert daily_motifs(strings)["motif_id"].tolist() == daily_motifs(integers)["motif_id"].tolist()
+
+
+def test_daily_motifs_preserves_numeric_user_id_dtype():
+    from fastmob.measures.individual.motifs import daily_motifs
 
     df = _make_multi_day_df()
     df["agent_id"] = df["agent_id"].map({"u1": 1}).astype("int64")
+    result = daily_motifs(df)
+    assert pd.api.types.is_integer_dtype(result["agent_id"])
+    assert set(result["agent_id"].unique()) == {1}
 
-    daily_motifs_df, _ = discover_daily_motifs_from_agents(df)
-    assert pd.api.types.is_integer_dtype(daily_motifs_df["agent_id"])
-    assert set(daily_motifs_df["agent_id"].unique()) == {1}
 
-
-def test_discover_motifs_preserves_numeric_user_id_dtype_polars():
-    """Same numeric-uid dtype guarantee on the Polars backend.
-
-    Regression test: an earlier version of the vectorized uid gather built
-    an intermediate ``dtype=object`` NumPy array, which Polars represents
-    as an ``Object`` column that cannot be cast back to Int64.
-    """
+def test_daily_motifs_preserves_numeric_user_id_dtype_polars():
     pl = pytest.importorskip("polars")
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+    from fastmob.measures.individual.motifs import daily_motifs
 
     df = _make_multi_day_df()
     df["agent_id"] = df["agent_id"].map({"u1": 1}).astype("int64")
-    pldf = pl.from_pandas(df)
-
-    daily_motifs_df, _ = discover_daily_motifs_from_agents(pldf)
-    assert daily_motifs_df.schema["agent_id"] == pl.Int64
-    assert set(daily_motifs_df["agent_id"].unique().to_list()) == {1}
+    result = daily_motifs(pl.from_pandas(df))
+    assert result.schema["agent_id"] == pl.Int64
+    assert set(result["agent_id"].unique().to_list()) == {1}
 
 
-def test_discover_motifs_handles_tz_aware_timestamps():
-    """Tz-aware start/end timestamps (e.g. UTC-stamped check-ins) must not raise.
+def test_daily_motifs_handles_tz_aware_timestamps():
+    from fastmob.measures.individual.motifs import daily_motifs
 
-    Regression test: casting a tz-aware datetime column straight to a naive
-    Datetime dtype previously raised a pandas TypeError.
-    """
-    from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+    aware = _make_multi_day_df()
+    aware["start_timestamp"] = aware["start_timestamp"].dt.tz_localize("UTC")
+    aware["end_timestamp"] = aware["end_timestamp"].dt.tz_localize("UTC")
+    aware_result = daily_motifs(aware)
+    naive_result = daily_motifs(_make_multi_day_df())
+    assert aware_result["motif_id"].tolist() == naive_result["motif_id"].tolist()
+    assert aware_result["date"].tolist() == naive_result["date"].tolist()
 
-    df = _make_multi_day_df()
-    df["start_timestamp"] = df["start_timestamp"].dt.tz_localize("UTC")
-    df["end_timestamp"] = df["end_timestamp"].dt.tz_localize("UTC")
 
-    naive_df = _make_multi_day_df()
-    tz_daily_df, _ = discover_daily_motifs_from_agents(df)
-    naive_daily_df, _ = discover_daily_motifs_from_agents(naive_df)
+def test_old_agent_specific_api_is_removed():
+    import fastmob
 
-    assert tz_daily_df["motif_id"].tolist() == naive_daily_df["motif_id"].tolist()
-    assert tz_daily_df["date"].tolist() == naive_daily_df["date"].tolist()
+    assert not hasattr(fastmob, "discover_daily_motifs_from_agents")

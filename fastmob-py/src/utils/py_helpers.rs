@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, BooleanArray, Float64Array, Int64Array, PrimitiveArray, UInt8Array,
-    UInt32Array, UInt64Array,
+    Array, ArrayRef, BooleanArray, Float64Array, Int32Array, Int64Array, PrimitiveArray,
+    UInt8Array, UInt32Array, UInt64Array,
     types::{Float64Type, Int64Type, UInt8Type, UInt64Type},
 };
 use pyo3::exceptions::PyValueError;
@@ -21,6 +21,11 @@ pub fn u64_results_into_arrow(results: Vec<u64>) -> PyArray {
 
 pub fn i64_results_into_arrow(results: Vec<i64>) -> PyArray {
     let array: ArrayRef = Arc::new(Int64Array::from(results));
+    PyArray::from_array_ref(array)
+}
+
+pub fn i32_results_into_arrow(results: Vec<i32>) -> PyArray {
+    let array: ArrayRef = Arc::new(Int32Array::from(results));
     PyArray::from_array_ref(array)
 }
 

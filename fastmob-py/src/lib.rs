@@ -190,7 +190,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;
-    m.add_function(wrap_pyfunction!(motifs::compute_daily_motifs, m)?)?;
+    m.add_function(wrap_pyfunction!(motifs::daily_motifs_indexed, m)?)?;
+    m.add_function(wrap_pyfunction!(motifs::daily_motifs_presorted, m)?)?;
     m.add_function(wrap_pyfunction!(
         hierarchy_py::tripleg_lengths_attributed,
         m

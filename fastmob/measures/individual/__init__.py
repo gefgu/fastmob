@@ -12,7 +12,7 @@ from .max_distance_from_home import max_distance_from_home
 from .maximum_distance import maximum_distance
 from .mean_area_volume import mean_area_volume
 from .mobility_profiling import exploration_profiling, intermittance_and_degree_of_return
-from .motifs import discover_daily_motifs_from_agents
+from .motifs import daily_motifs, motif_distribution
 from .network_distance import jump_lengths_km, radius_of_gyration_km
 from .number_of_locations import number_of_locations
 from .number_of_visits import number_of_visits
@@ -29,7 +29,7 @@ __all__ = [
     "activity_transition_matrix",
     "compute_profiles",
     "daily_activity_distribution",
-    "discover_daily_motifs_from_agents",
+    "daily_motifs",
     "distance_straight_line",
     "diversity",
     "exploration_profiling",
@@ -44,6 +44,7 @@ __all__ = [
     "max_distance_from_home",
     "maximum_distance",
     "mean_area_volume",
+    "motif_distribution",
     "number_of_locations",
     "number_of_visits",
     "radius_of_gyration",

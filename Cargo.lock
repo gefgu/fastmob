@@ -1038,6 +1038,7 @@ dependencies = [
  "numpy",
  "pyo3",
  "pyo3-arrow",
+ "rustc-hash",
 ]
 
 [[package]]

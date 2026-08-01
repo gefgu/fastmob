@@ -7,7 +7,7 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.measures.individual.motifs import discover_daily_motifs_from_agents
+from fastmob.measures.individual.motifs import daily_motifs
 from fastmob.utils._common import ACTIVITY_CANDIDATES, _pick_existing_column
 
 from ._utils import _is_null, _series_values
@@ -48,8 +48,8 @@ def motif_distribution_jensen_shannon_divergence(
     location_id_col: str | None = None,
 ) -> float:
     """Discover daily motifs for two visit datasets and compare motif distributions."""
-    daily1, _ = discover_daily_motifs_from_agents(visits1, user_id_col=user_id_col1, location_id_col=location_id_col)
-    daily2, _ = discover_daily_motifs_from_agents(visits2, user_id_col=user_id_col2, location_id_col=location_id_col)
+    daily1 = daily_motifs(visits1, uid_col=user_id_col1, location_col=location_id_col)
+    daily2 = daily_motifs(visits2, uid_col=user_id_col2, location_col=location_id_col)
     n1 = nw.from_native(daily1, eager_only=True)
     n2 = nw.from_native(daily2, eager_only=True)
     motifs1 = _series_values(n1, "motif_id")
