@@ -1,6 +1,9 @@
-use std::time::Instant;
+use std::sync::Arc;
 
-use arrow_array::{Array, LargeStringArray, StringArray, TimestampMicrosecondArray};
+use arrow_array::{
+    Array, ArrayRef, Float64Array, LargeStringArray, StringArray, StringViewArray,
+    TimestampMicrosecondArray, UInt16Array, UInt64Array,
+};
 use fastmob_core::measures::individual::motifs::{
     canonical_adjacency_form as core_canonical_adjacency_form,
     compute_daily_motifs_indexed as core_compute_daily_motifs_indexed,
@@ -8,11 +11,12 @@ use fastmob_core::measures::individual::motifs::{
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3_arrow::PyArray as ArrowPyArray;
+use pyo3_arrow::{PyArray as ArrowPyArray, PyChunkedArray, PyRecordBatch};
+use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 use crate::utils::{
-    arrow_u64_values, arrow_values, as_f64_array, as_u64_array, i32_results_into_arrow,
+    arrow_u64_values, arrow_usize_values, arrow_values, as_u64_array, i32_results_into_arrow,
     i64_results_into_arrow, u64_results_into_arrow,
 };
 
@@ -23,76 +27,266 @@ pub fn canonical_adjacency_form(n_nodes: u32, edges: Vec<(u32, u32)>) -> PyResul
 
 type DailyMotifsPy = (ArrowPyArray, ArrowPyArray, ArrowPyArray);
 
-enum PurposeArray {
+enum PurposeChunk {
     Utf8(StringArray),
     LargeUtf8(LargeStringArray),
+    Utf8View(StringViewArray),
 }
 
-fn as_purpose_array(arr: ArrowPyArray) -> PyResult<PurposeArray> {
-    let (array_ref, _field) = arr.into_inner();
-    if let Some(array) = array_ref.as_any().downcast_ref::<StringArray>() {
-        return Ok(PurposeArray::Utf8(array.clone()));
+impl PurposeChunk {
+    fn try_new(array: &ArrayRef) -> PyResult<Self> {
+        if let Some(values) = array.as_any().downcast_ref::<StringArray>() {
+            return Ok(Self::Utf8(values.clone()));
+        }
+        if let Some(values) = array.as_any().downcast_ref::<LargeStringArray>() {
+            return Ok(Self::LargeUtf8(values.clone()));
+        }
+        if let Some(values) = array.as_any().downcast_ref::<StringViewArray>() {
+            return Ok(Self::Utf8View(values.clone()));
+        }
+        Err(PyValueError::new_err(format!(
+            "expected string Arrow chunks for purposes, got {}",
+            array.data_type()
+        )))
     }
-    if let Some(array) = array_ref.as_any().downcast_ref::<LargeStringArray>() {
-        return Ok(PurposeArray::LargeUtf8(array.clone()));
+
+    fn len(&self) -> usize {
+        match self {
+            Self::Utf8(values) => values.len(),
+            Self::LargeUtf8(values) => values.len(),
+            Self::Utf8View(values) => values.len(),
+        }
     }
-    Err(PyValueError::new_err(
-        "expected string Arrow array for purposes",
+
+    fn discover(&self, offset: usize) -> (FxHashMap<String, usize>, Option<usize>) {
+        match self {
+            Self::Utf8(values) => discover_purposes(values.len(), offset, |index| {
+                values.is_valid(index).then(|| values.value(index))
+            }),
+            Self::LargeUtf8(values) => discover_purposes(values.len(), offset, |index| {
+                values.is_valid(index).then(|| values.value(index))
+            }),
+            Self::Utf8View(values) => discover_purposes(values.len(), offset, |index| {
+                values.is_valid(index).then(|| values.value(index))
+            }),
+        }
+    }
+
+    fn encode(&self, mapping: &FxHashMap<String, u16>, null_code: Option<u16>) -> Vec<u16> {
+        match self {
+            Self::Utf8(values) => encode_purpose_chunk(values.len(), mapping, null_code, |index| {
+                values.is_valid(index).then(|| values.value(index))
+            }),
+            Self::LargeUtf8(values) => {
+                encode_purpose_chunk(values.len(), mapping, null_code, |index| {
+                    values.is_valid(index).then(|| values.value(index))
+                })
+            }
+            Self::Utf8View(values) => {
+                encode_purpose_chunk(values.len(), mapping, null_code, |index| {
+                    values.is_valid(index).then(|| values.value(index))
+                })
+            }
+        }
+    }
+}
+
+fn discover_purposes<'a, F>(
+    len: usize,
+    offset: usize,
+    value_at: F,
+) -> (FxHashMap<String, usize>, Option<usize>)
+where
+    F: Fn(usize) -> Option<&'a str> + Sync,
+{
+    (0..len)
+        .into_par_iter()
+        .fold(
+            || (FxHashMap::default(), None),
+            |(mut values, null_index), index| {
+                if let Some(value) = value_at(index) {
+                    values
+                        .entry(value.to_owned())
+                        .and_modify(|first: &mut usize| *first = (*first).min(offset + index))
+                        .or_insert(offset + index);
+                    (values, null_index)
+                } else {
+                    (
+                        values,
+                        Some(
+                            null_index
+                                .map_or(offset + index, |first: usize| first.min(offset + index)),
+                        ),
+                    )
+                }
+            },
+        )
+        .reduce(
+            || (FxHashMap::default(), None),
+            |(mut left, left_null), (right, right_null)| {
+                for (value, index) in right {
+                    left.entry(value)
+                        .and_modify(|first| *first = (*first).min(index))
+                        .or_insert(index);
+                }
+                let null_index = match (left_null, right_null) {
+                    (Some(left), Some(right)) => Some(left.min(right)),
+                    (left, right) => left.or(right),
+                };
+                (left, null_index)
+            },
+        )
+}
+
+fn encode_purpose_chunk<'a, F>(
+    len: usize,
+    mapping: &FxHashMap<String, u16>,
+    null_code: Option<u16>,
+    value_at: F,
+) -> Vec<u16>
+where
+    F: Fn(usize) -> Option<&'a str> + Sync,
+{
+    (0..len)
+        .into_par_iter()
+        .map(|index| match value_at(index) {
+            Some(value) => mapping[value],
+            None => null_code.expect("null purpose code must exist"),
+        })
+        .collect()
+}
+
+#[pyfunction]
+pub fn encode_motif_purposes(values: PyChunkedArray) -> PyResult<(ArrowPyArray, u16)> {
+    let chunks: Vec<PurposeChunk> = values
+        .chunks()
+        .iter()
+        .map(PurposeChunk::try_new)
+        .collect::<PyResult<_>>()?;
+    let mut unique_values: FxHashMap<String, usize> = FxHashMap::default();
+    let mut null_index: Option<usize> = None;
+    let mut offset = 0;
+    for chunk in &chunks {
+        let (chunk_values, chunk_null) = chunk.discover(offset);
+        for (value, index) in chunk_values {
+            unique_values
+                .entry(value)
+                .and_modify(|first| *first = (*first).min(index))
+                .or_insert(index);
+        }
+        null_index = match (null_index, chunk_null) {
+            (Some(left), Some(right)) => Some(left.min(right)),
+            (left, right) => left.or(right),
+        };
+        offset += chunk.len();
+    }
+
+    let mut groups: Vec<(Option<String>, usize)> = unique_values
+        .into_iter()
+        .map(|(value, index)| (Some(value), index))
+        .collect();
+    if let Some(index) = null_index {
+        groups.push((None, index));
+    }
+    groups.sort_unstable_by_key(|(_, index)| *index);
+    if groups.len() >= u16::MAX as usize {
+        return Err(PyValueError::new_err(
+            "motif purpose encoding supports at most 65,534 distinct values",
+        ));
+    }
+
+    let mut mapping = FxHashMap::default();
+    let mut null_code = None;
+    for (code, (value, _)) in groups.into_iter().enumerate() {
+        if let Some(value) = value {
+            mapping.insert(value, code as u16);
+        } else {
+            null_code = Some(code as u16);
+        }
+    }
+    let home_code = mapping.get("HOME").copied().unwrap_or(u16::MAX);
+    let mut codes = Vec::with_capacity(offset);
+    for chunk in &chunks {
+        codes.extend(chunk.encode(&mapping, null_code));
+    }
+    Ok((
+        ArrowPyArray::from_array_ref(Arc::new(UInt16Array::from(codes))),
+        home_code,
     ))
 }
 
-fn encode_purpose_values<'a>(values: impl Iterator<Item = Option<&'a str>>) -> (Vec<u64>, u64) {
-    let mut mapping: FxHashMap<&str, u64> = FxHashMap::default();
-    let mut null_code = None;
-    let mut home_code = None;
-    let mut codes = Vec::with_capacity(values.size_hint().0);
-    for value in values {
-        let code = if let Some(value) = value {
-            if let Some(&code) = mapping.get(value) {
-                code
-            } else {
-                let code = mapping.len() as u64 + u64::from(null_code.is_some());
-                mapping.insert(value, code);
-                code
-            }
-        } else {
-            *null_code.get_or_insert(mapping.len() as u64)
-        };
-        if value == Some("HOME") {
-            home_code = Some(code);
-        }
-        codes.push(code);
-    }
-    let missing_home = mapping.len() as u64 + u64::from(null_code.is_some());
-    (codes, home_code.unwrap_or(missing_home))
-}
-
-fn encode_purposes(array: &PurposeArray) -> (Vec<u64>, u64) {
-    match array {
-        PurposeArray::Utf8(values) => encode_purpose_values(
-            (0..values.len()).map(|index| values.is_valid(index).then(|| values.value(index))),
-        ),
-        PurposeArray::LargeUtf8(values) => encode_purpose_values(
-            (0..values.len()).map(|index| values.is_valid(index).then(|| values.value(index))),
-        ),
-    }
-}
-
-fn as_timestamp_us_array(arr: ArrowPyArray, name: &str) -> PyResult<TimestampMicrosecondArray> {
-    let (array_ref, _field) = arr.into_inner();
-    let array = array_ref
-        .as_any()
-        .downcast_ref::<TimestampMicrosecondArray>()
+fn u64_column(batch: &arrow_array::RecordBatch, name: &str) -> PyResult<UInt64Array> {
+    let array = batch
+        .column_by_name(name)
+        .and_then(|column| column.as_any().downcast_ref::<UInt64Array>())
         .cloned()
-        .ok_or_else(|| {
-            PyValueError::new_err(format!("expected timestamp[us] Arrow array for {name}"))
-        })?;
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint64 Arrow column for {name}")))?;
     if array.null_count() > 0 {
         return Err(PyValueError::new_err(format!(
-            "Arrow array for {name} must not contain nulls"
+            "Arrow column for {name} must not contain nulls"
         )));
     }
     Ok(array)
+}
+
+fn u16_column(batch: &arrow_array::RecordBatch, name: &str) -> PyResult<UInt16Array> {
+    let array = batch
+        .column_by_name(name)
+        .and_then(|column| column.as_any().downcast_ref::<UInt16Array>())
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint16 Arrow column for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow column for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+fn u16_values(array: &UInt16Array) -> &[u16] {
+    let start = array.offset();
+    let end = start + array.len();
+    &array.values()[start..end]
+}
+
+fn timestamp_column(
+    batch: &arrow_array::RecordBatch,
+    name: &str,
+) -> PyResult<TimestampMicrosecondArray> {
+    let array = batch
+        .column_by_name(name)
+        .and_then(|column| column.as_any().downcast_ref::<TimestampMicrosecondArray>())
+        .cloned()
+        .ok_or_else(|| {
+            PyValueError::new_err(format!("expected timestamp[us] Arrow column for {name}"))
+        })?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow column for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+fn optional_duration_column(batch: &arrow_array::RecordBatch) -> PyResult<Option<Float64Array>> {
+    batch
+        .column_by_name("durations")
+        .map(|column| {
+            let array = column
+                .as_any()
+                .downcast_ref::<Float64Array>()
+                .cloned()
+                .ok_or_else(|| {
+                    PyValueError::new_err("expected float64 Arrow column for durations")
+                })?;
+            if array.null_count() > 0 {
+                return Err(PyValueError::new_err(
+                    "Arrow column for durations must not contain nulls",
+                ));
+            }
+            Ok(array)
+        })
+        .transpose()
 }
 
 fn timestamp_values(array: &TimestampMicrosecondArray) -> &[i64] {
@@ -116,49 +310,31 @@ fn motif_result(
 #[allow(clippy::too_many_arguments)]
 pub fn daily_motifs_indexed<'py>(
     py: Python<'py>,
-    location_codes: ArrowPyArray,
-    purposes: ArrowPyArray,
-    start_timestamps: ArrowPyArray,
-    end_timestamps: ArrowPyArray,
-    durations: Option<ArrowPyArray>,
+    batch: PyRecordBatch,
     indices: ArrowPyArray,
     ends: ArrowPyArray,
+    home_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let location_codes = as_u64_array(location_codes, "location_codes")?;
-    let purposes = as_purpose_array(purposes)?;
-    let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
-    let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
-    let durations = durations
-        .map(|values| as_f64_array(values, "durations"))
-        .transpose()?;
+    let batch = batch.into_inner();
+    let location_codes = u64_column(&batch, "location_codes")?;
+    let purpose_codes = u16_column(&batch, "purpose_codes")?;
+    let starts = timestamp_column(&batch, "start_timestamps")?;
+    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
+    let durations = optional_duration_column(&batch)?;
     let duration_values = durations.as_ref().map(arrow_values);
     let indices = as_u64_array(indices, "indices")?;
     let ends = as_u64_array(ends, "ends")?;
-    let index_values: Vec<usize> = arrow_u64_values(&indices)
-        .iter()
-        .map(|&value| value as usize)
-        .collect();
-    let end_values: Vec<usize> = arrow_u64_values(&ends)
-        .iter()
-        .map(|&value| value as usize)
-        .collect();
+    let index_values = arrow_usize_values(&indices);
+    let end_values = arrow_usize_values(&ends);
     let result = py.detach(|| {
-        let encode_started = Instant::now();
-        let (purpose_codes, home_purpose_code) = encode_purposes(&purposes);
-        if std::env::var_os("FASTMOB_PROFILE_MOTIFS").is_some() {
-            eprintln!(
-                "fastmob motif rust: purpose_encoding={:.6}s",
-                encode_started.elapsed().as_secs_f64()
-            );
-        }
         core_compute_daily_motifs_indexed(
             arrow_u64_values(&location_codes),
-            &purpose_codes,
+            u16_values(&purpose_codes),
             timestamp_values(&starts),
             timestamp_values(&ends_ts),
             duration_values,
-            &index_values,
-            &end_values,
+            index_values,
+            end_values,
             home_purpose_code,
         )
     });
@@ -169,42 +345,27 @@ pub fn daily_motifs_indexed<'py>(
 #[allow(clippy::too_many_arguments)]
 pub fn daily_motifs_presorted<'py>(
     py: Python<'py>,
-    location_codes: ArrowPyArray,
-    purposes: ArrowPyArray,
-    start_timestamps: ArrowPyArray,
-    end_timestamps: ArrowPyArray,
-    durations: Option<ArrowPyArray>,
+    batch: PyRecordBatch,
     ends: ArrowPyArray,
+    home_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let location_codes = as_u64_array(location_codes, "location_codes")?;
-    let purposes = as_purpose_array(purposes)?;
-    let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
-    let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
-    let durations = durations
-        .map(|values| as_f64_array(values, "durations"))
-        .transpose()?;
+    let batch = batch.into_inner();
+    let location_codes = u64_column(&batch, "location_codes")?;
+    let purpose_codes = u16_column(&batch, "purpose_codes")?;
+    let starts = timestamp_column(&batch, "start_timestamps")?;
+    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
+    let durations = optional_duration_column(&batch)?;
     let duration_values = durations.as_ref().map(arrow_values);
     let ends = as_u64_array(ends, "ends")?;
-    let end_values: Vec<usize> = arrow_u64_values(&ends)
-        .iter()
-        .map(|&value| value as usize)
-        .collect();
+    let end_values = arrow_usize_values(&ends);
     let result = py.detach(|| {
-        let encode_started = Instant::now();
-        let (purpose_codes, home_purpose_code) = encode_purposes(&purposes);
-        if std::env::var_os("FASTMOB_PROFILE_MOTIFS").is_some() {
-            eprintln!(
-                "fastmob motif rust: purpose_encoding={:.6}s",
-                encode_started.elapsed().as_secs_f64()
-            );
-        }
         core_compute_daily_motifs_presorted(
             arrow_u64_values(&location_codes),
-            &purpose_codes,
+            u16_values(&purpose_codes),
             timestamp_values(&starts),
             timestamp_values(&ends_ts),
             duration_values,
-            &end_values,
+            end_values,
             home_purpose_code,
         )
     });

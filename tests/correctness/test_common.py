@@ -90,6 +90,30 @@ class TestArrowFactorization:
             factorize_arrow(np.array([1, 2, 1]))
 
 
+class TestMotifPurposeEncoding:
+    def test_encodes_nullable_arrow_chunks_in_first_seen_order(self):
+        import pyarrow as pa
+        from fastmob._core import encode_motif_purposes
+
+        codes, home_code = encode_motif_purposes(
+            pa.chunked_array([["WORK", None, "HOME"], ["WORK", None]])
+        )
+
+        assert pa.array(codes).type == pa.uint16()
+        assert pa.array(codes).to_pylist() == [0, 1, 2, 0, 1]
+        assert home_code == 2
+
+    def test_accepts_polars_string_view_stream(self):
+        import pyarrow as pa
+        from fastmob._core import encode_motif_purposes
+
+        pl = pytest.importorskip("polars", reason="Polars not installed")
+        codes, home_code = encode_motif_purposes(pl.Series(["HOME", "WORK", "HOME"]))
+
+        assert pa.array(codes).to_pylist() == [0, 1, 0]
+        assert home_code == 0
+
+
 # ---------------------------------------------------------------------------
 # _detect_trajectory_columns
 # ---------------------------------------------------------------------------

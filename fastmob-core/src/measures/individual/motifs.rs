@@ -20,7 +20,7 @@ struct DailyMotifResult {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 struct NodeCode {
     location: u64,
-    purpose: u64,
+    purpose: u16,
 }
 
 #[derive(Default)]
@@ -31,11 +31,11 @@ struct Scratch {
 
 struct MotifColumns<'a> {
     location_codes: &'a [u64],
-    purpose_codes: &'a [u64],
+    purpose_codes: &'a [u16],
     start_timestamps_us: &'a [i64],
     end_timestamps_us: &'a [i64],
     durations: Option<&'a [f64]>,
-    home_purpose_code: u64,
+    home_purpose_code: u16,
 }
 
 impl MotifColumns<'_> {
@@ -113,7 +113,7 @@ fn cell_bit(n: usize, i: usize, j: usize) -> u64 {
 }
 
 #[inline]
-fn is_home_code(code: NodeCode, home_purpose_code: u64) -> bool {
+fn is_home_code(code: NodeCode, home_purpose_code: u16) -> bool {
     code.purpose == home_purpose_code
 }
 
@@ -399,13 +399,13 @@ fn compute_daily_motifs_impl(
 #[allow(clippy::too_many_arguments)]
 pub fn compute_daily_motifs_indexed(
     location_codes: &[u64],
-    purpose_codes: &[u64],
+    purpose_codes: &[u16],
     start_timestamps_us: &[i64],
     end_timestamps_us: &[i64],
     durations: Option<&[f64]>,
     indices: &[usize],
     ends: &[usize],
-    home_purpose_code: u64,
+    home_purpose_code: u16,
 ) -> DailyMotifsResult {
     compute_daily_motifs_impl(
         MotifColumns {
@@ -424,12 +424,12 @@ pub fn compute_daily_motifs_indexed(
 #[allow(clippy::too_many_arguments)]
 pub fn compute_daily_motifs_presorted(
     location_codes: &[u64],
-    purpose_codes: &[u64],
+    purpose_codes: &[u16],
     start_timestamps_us: &[i64],
     end_timestamps_us: &[i64],
     durations: Option<&[f64]>,
     ends: &[usize],
-    home_purpose_code: u64,
+    home_purpose_code: u16,
 ) -> DailyMotifsResult {
     compute_daily_motifs_impl(
         MotifColumns {
@@ -451,7 +451,7 @@ mod tests {
 
     fn test_columns<'a>(
         location_codes: &'a [u64],
-        purpose_codes: &'a [u64],
+        purpose_codes: &'a [u16],
         start: &'a [i64],
         end: &'a [i64],
     ) -> MotifColumns<'a> {

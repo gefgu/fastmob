@@ -78,6 +78,14 @@ def _encode_locations(df: nw.DataFrame, column: str) -> Any:
     return codes
 
 
+def _arrow_array(series: nw.Series) -> Any:
+    """Return one contiguous Arrow array for a motif input column."""
+    import pyarrow as pa
+
+    values = series.to_arrow()
+    return values.combine_chunks() if isinstance(values, pa.ChunkedArray) else values
+
+
 def daily_motifs(
     visits: Any,
     *,
@@ -143,32 +151,38 @@ def daily_motifs(
     location_values = _encode_locations(df, location_col)
     finish_stage("encode_nodes")
 
-    durations = None
+    purpose_series = df.get_column(purpose_col)
+    purpose_source = purpose_series.to_native()
+    if not hasattr(purpose_source, "__arrow_c_stream__"):
+        purpose_source = pa.chunked_array([_arrow_array(purpose_series)])
+    raw_purpose_codes, home_purpose_code = _core.encode_motif_purposes(purpose_source)
+    purpose_codes = pa.array(_arrow_result_values(raw_purpose_codes))
+    finish_stage("encode_purposes")
+
+    batch_columns = {
+        "location_codes": location_values,
+        "purpose_codes": purpose_codes,
+        "start_timestamps": _arrow_array(df.get_column(datetime_col)),
+        "end_timestamps": _arrow_array(df.get_column(end_datetime_col)),
+    }
     if duration_col is not None:
         duration_series = df.get_column(duration_col).cast(nw.Float64).fill_null(0.0)
-        durations = duration_series.to_arrow()
+        batch_columns["durations"] = _arrow_array(duration_series)
+    kernel_batch = pa.record_batch(batch_columns)
+    finish_stage("prepare_arrow")
 
-    purpose_data = df.get_column(purpose_col).to_arrow()
-    if isinstance(purpose_data, pa.ChunkedArray):
-        purpose_data = purpose_data.combine_chunks()
-
-    kernel_args = (
-        location_values,
-        purpose_data,
-        df.get_column(datetime_col).to_arrow(),
-        df.get_column(end_datetime_col).to_arrow(),
-        durations,
-    )
     if presorted:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_presorted(
-            *kernel_args,
+            kernel_batch,
             ends,
+            home_purpose_code,
         )
     else:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_indexed(
-            *kernel_args,
+            kernel_batch,
             indices,
             ends,
+            home_purpose_code,
         )
     finish_stage("rust_kernel")
 

@@ -18,6 +18,7 @@ pyo3-arrow = "0.17.0"
 arrow-array = "58.1.0"
 arrow-schema = "58.1.0"
 rustc-hash = "2.1.1"
+rayon = "1.12"
 h3o = "0.10"
 
 [features]

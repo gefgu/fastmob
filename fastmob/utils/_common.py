@@ -612,8 +612,6 @@ def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[A
     import pyarrow as pa
     import pyarrow.compute as pc
 
-    from fastmob._core import presorted_user_starts_ends
-
     n = len(df)
     if uid_col is None:
         return None, pa.array([] if n == 0 else [n], type=pa.uint64())
@@ -622,11 +620,8 @@ def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[A
         return pa.array(df.get_column(uid_col).to_arrow()).slice(0, 0), pa.array([], type=pa.uint64())
 
     uid_values = pa.array(df.get_column(uid_col).to_arrow())
-    codes, _ = _factorize_arrow_values(uid_values, sort=False)
-    raw_starts, raw_ends = presorted_user_starts_ends(codes)
-    starts = pa.array(_arrow_result_values(raw_starts))
-    ends = pa.array(_arrow_result_values(raw_ends))
-    return pc.take(uid_values, starts), ends
+    encoded = pc.run_end_encode(uid_values)
+    return encoded.values, pc.cast(encoded.run_ends, pa.uint64())
 
 
 def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
