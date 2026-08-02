@@ -21,9 +21,12 @@ pub struct SortedReferenceEvents<'a> {
     pub original_index: &'a [usize],
 }
 
-/// For each query point `(query_lat[i], query_lng[i], query_time[i])`, finds
+/// For each query point `(query_lat[i], query_lng[i], query_time_ms[i])`, finds
 /// the nearest reference event whose time lies within `[time -
-/// window_seconds, time + window_seconds]`.
+/// window_ms, time + window_ms]`. `query_time_ms`/`time_sorted`/`window_ms`
+/// are unit-agnostic `i64` deltas; the Python wrapper feeds millisecond
+/// Unix timestamps (matching `fastmob.utils._common._extract_timestamps`'s
+/// default unit).
 ///
 /// Returns `(nearest_idx, dist_m)`: `nearest_idx[i]` is the reference's
 /// *original* row index for query `i`'s nearest in-window event, or `-1` if
@@ -33,17 +36,17 @@ pub struct SortedReferenceEvents<'a> {
 pub fn nearest_event_within_window(
     query_lat: &[f64],
     query_lng: &[f64],
-    query_time: &[i64],
+    query_time_ms: &[i64],
     reference: &SortedReferenceEvents,
-    window_seconds: i64,
+    window_ms: i64,
 ) -> (Vec<i64>, Vec<f64>) {
     let n = query_lat.len();
     (0..n)
         .into_par_iter()
         .map(|i| {
-            let t = query_time[i];
-            let lo_time = t - window_seconds;
-            let hi_time = t + window_seconds;
+            let t = query_time_ms[i];
+            let lo_time = t - window_ms;
+            let hi_time = t + window_ms;
             let lo = reference.time_sorted.partition_point(|&rt| rt < lo_time);
             let hi = reference.time_sorted.partition_point(|&rt| rt <= hi_time);
             if lo >= hi {

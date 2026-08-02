@@ -123,7 +123,7 @@ def assess_risk(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         indices = None
     else:
-        timestamps = _extract_timestamps(df, datetime_col, unit="ms") if attack == "sequence" else None
+        timestamps = _extract_timestamps(df, datetime_col) if attack == "sequence" else None
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     result = privacy_assess_risk(
         df.get_column(lat_col).to_arrow(),

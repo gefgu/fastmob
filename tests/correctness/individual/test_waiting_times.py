@@ -133,7 +133,7 @@ def test_waiting_times_helpers_return_offsets_and_flat_values():
         waiting_times_presorted_flat,
     )
 
-    timestamps = np.array([0.0, 60.0, 90.0, 1000.0, 1060.0], dtype=np.float64)
+    timestamps = np.array([0, 60_000, 90_000, 1_000_000, 1_060_000], dtype=np.int64)
     ends = np.array([3, 5], dtype=np.uintp)
 
     expected_starts = np.array([0, 2], dtype=np.uintp)
@@ -159,7 +159,7 @@ def test_waiting_times_helper_offsets_include_empty_groups():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     from fastmob._core import waiting_times_presorted
 
-    timestamps = np.array([0.0, 60.0, 120.0, 1000.0], dtype=np.float64)
+    timestamps = np.array([0, 60_000, 120_000, 1_000_000], dtype=np.int64)
     ends = np.array([1, 3, 4], dtype=np.uintp)
 
     starts, value_ends, values = waiting_times_presorted(timestamps, ends)
@@ -183,7 +183,7 @@ def test_waiting_times_helper_validation_errors():
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     from fastmob._core import waiting_times_presorted
 
-    arr = np.array([0.0, 1.0], dtype=np.float64)
+    arr = np.array([0, 1000], dtype=np.int64)
     with pytest.raises(ValueError, match="range end"):
         waiting_times_presorted(arr, np.array([3], dtype=np.uintp))
 

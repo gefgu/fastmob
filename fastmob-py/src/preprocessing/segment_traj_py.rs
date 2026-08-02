@@ -9,7 +9,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow;
+use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow_ms;
 use crate::utils::{arrow_values, as_f64_array, u32_results_into_arrow};
 
 #[pyclass(name = "SegmentConfig", from_py_object)]
@@ -178,23 +178,23 @@ pub fn segment_trajectory_sorted<'py>(
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-#[pyo3(signature = (latitudes, longitudes, timestamps_s, sorted_indices, ends, config, bucket_ids=None))]
+#[pyo3(signature = (latitudes, longitudes, timestamps_ms, sorted_indices, ends, config, bucket_ids=None))]
 pub fn segment_trajectory_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     sorted_indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     config: PySegmentConfig,
     bucket_ids: Option<PyReadonlyArray1<'py, i64>>,
 ) -> PyResult<Py<PyAny>> {
     let bucket_slice = bucket_ids.as_ref().map(|b| b.as_slice()).transpose()?;
-    let segment_ids = run_indexed_timed_coordinate_arrow(
+    let segment_ids = run_indexed_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         sorted_indices,
         ends,
         |view| {

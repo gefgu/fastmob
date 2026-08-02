@@ -4,7 +4,6 @@ import math
 from typing import Any
 
 import narwhals as nw
-import numpy as np
 
 from fastmob._core import detect_stay_locations_batch_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
@@ -14,6 +13,7 @@ from fastmob.utils._common import (
     _detect_trajectory_columns,
     _extract_timestamps,
     _take_uid_values,
+    _timestamps_ms_to_datetime_ns,
     _to_native,
 )
 
@@ -134,10 +134,10 @@ def stay_locations(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
+    timestamps = _extract_timestamps(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
+    timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
@@ -154,12 +154,12 @@ def stay_locations(
             no_data_for_minutes,
             effective_min_speed,
         )
-        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _unwrap_stay(*_result)
+        out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
     else:
         uid_values, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            timestamps=timestamps_s,
+            timestamps=timestamps,
         )
         _result = detect_stay_locations_batch_indexed(
             lats_data,
@@ -172,7 +172,7 @@ def stay_locations(
             no_data_for_minutes,
             effective_min_speed,
         )
-        out_lats, out_lngs, entry_times_s, leaving_times_s, user_range_indices = _unwrap_stay(*_result)
+        out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
 
     if len(out_lats) == 0:
         out_dict: dict[str, list] = {lat_col: [], lng_col: [], datetime_col: []}
@@ -182,7 +182,7 @@ def stay_locations(
             out_dict["leaving_datetime"] = []
         return nw.from_dict(out_dict, backend=df.implementation).to_native()
 
-    entry_datetimes = _seconds_to_naive_utc(entry_times_s)
+    entry_datetimes = _timestamps_ms_to_datetime_ns(entry_times_ms)
 
     out_dict = {
         lat_col: out_lats,
@@ -193,14 +193,10 @@ def stay_locations(
         out_dict[uid_col] = _take_uid_values(uid_values, user_range_indices)
 
     if leaving_time:
-        leaving_datetimes = _seconds_to_naive_utc(leaving_times_s)
+        leaving_datetimes = _timestamps_ms_to_datetime_ns(leaving_times_ms)
         out_dict["leaving_datetime"] = leaving_datetimes
 
     return _to_native(out_dict, df)
 
 
 stay_locations.__module__ = "fastmob.preprocessing"
-
-
-def _seconds_to_naive_utc(seconds) -> np.ndarray:
-    return (np.asarray(seconds, dtype="float64") * 1e9).astype("int64").view("datetime64[ns]")

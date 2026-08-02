@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::adapters::trajectory::{
-    run_indexed_timed_coordinate_arrow, run_presorted_timed_coordinate_arrow,
+    run_indexed_timed_coordinate_arrow_ms, run_presorted_timed_coordinate_arrow_ms,
 };
 use crate::utils::f64_results_into_arrow;
 
@@ -30,15 +30,15 @@ pub fn k_radius_of_gyration_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     ends: pyo3_arrow::PyArray,
     k: usize,
 ) -> PyResult<Py<PyAny>> {
-    let values = run_presorted_timed_coordinate_arrow(
+    let values = run_presorted_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps,
+        timestamps_ms,
         ends,
         |coords, ends| {
             k_radius_of_gyration_from_ends_impl(
@@ -60,16 +60,16 @@ pub fn k_radius_of_gyration_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     k: usize,
 ) -> PyResult<Py<PyAny>> {
-    let values = run_indexed_timed_coordinate_arrow(
+    let values = run_indexed_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps,
+        timestamps_ms,
         indices,
         ends,
         |view| {

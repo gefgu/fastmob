@@ -135,8 +135,8 @@ def waiting_times(
     )
 
     ops = _DISPATCHER.get_ops(df)
-    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
-    timestamps_data = ops["extract_data"](timestamps_s)
+    timestamps = _extract_timestamps(df, datetime_col)
+    timestamps_data = ops["extract_data"](timestamps)
     is_numpy_backend = _DISPATCHER.get_backend_key(df) == "numpy"
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
@@ -150,7 +150,7 @@ def waiting_times(
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
-    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps_s)
+    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     if merge:
         flat = _as_arrow(waiting_times_indexed_flat(timestamps_data, indices, ends))
         return flat.to_numpy(zero_copy_only=False) if is_numpy_backend else flat

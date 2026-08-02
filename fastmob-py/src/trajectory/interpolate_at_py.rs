@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::adapters::trajectory::{
-    run_indexed_timed_coordinate_arrow, run_presorted_timed_coordinate_arrow,
+    run_indexed_timed_coordinate_arrow_ms, run_presorted_timed_coordinate_arrow_ms,
 };
 use crate::utils::f64_results_into_arrow;
 
@@ -25,7 +25,7 @@ pub fn interpolate_at_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     sorted_indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     query_times_s: PyReadonlyArray1<'py, f64>,
@@ -33,11 +33,11 @@ pub fn interpolate_at_indexed<'py>(
 ) -> PyResult<InterpolateAtOutput<'py>> {
     let query_times_s = query_times_s.as_slice()?;
     let method = PositionQueryMethod::from_str(method).map_err(PyValueError::new_err)?;
-    let (out_lats, out_lngs, out_valid) = run_indexed_timed_coordinate_arrow(
+    let (out_lats, out_lngs, out_valid) = run_indexed_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         sorted_indices,
         ends,
         |view| {
@@ -66,18 +66,18 @@ pub fn interpolate_at_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     ends: pyo3_arrow::PyArray,
     query_times_s: PyReadonlyArray1<'py, f64>,
     method: &str,
 ) -> PyResult<InterpolateAtOutput<'py>> {
     let query_times_s = query_times_s.as_slice()?;
     let method = PositionQueryMethod::from_str(method).map_err(PyValueError::new_err)?;
-    let (out_lats, out_lngs, out_valid) = run_presorted_timed_coordinate_arrow(
+    let (out_lats, out_lngs, out_valid) = run_presorted_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         ends,
         |view, ends| {
             interpolate_at_presorted_impl(

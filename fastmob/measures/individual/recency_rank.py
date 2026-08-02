@@ -132,7 +132,7 @@ def recency_rank(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw = recency_rank_presorted(lats_data, lngs_data, ends)
     else:
-        timestamps = _extract_timestamps(df, datetime_col, unit="ms")
+        timestamps = _extract_timestamps(df, datetime_col)
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         raw = recency_rank_values_indexed(lats_data, lngs_data, indices, ends)
     out_lats, out_lngs, ranks, user_indices = _unpack_rank(raw)

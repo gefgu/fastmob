@@ -15,19 +15,19 @@ pub fn nearest_event_within_window_numpy<'py>(
     py: Python<'py>,
     query_lat: PyReadonlyArray1<'py, f64>,
     query_lng: PyReadonlyArray1<'py, f64>,
-    query_time: PyReadonlyArray1<'py, i64>,
+    query_time_ms: PyReadonlyArray1<'py, i64>,
     ref_lat: PyReadonlyArray1<'py, f64>,
     ref_lng: PyReadonlyArray1<'py, f64>,
-    ref_time_sorted: PyReadonlyArray1<'py, i64>,
+    ref_time_sorted_ms: PyReadonlyArray1<'py, i64>,
     ref_original_index: PyReadonlyArray1<'py, i64>,
-    window_seconds: i64,
+    window_ms: i64,
 ) -> PyResult<(Bound<'py, PyArray1<i64>>, Bound<'py, PyArray1<f64>>)> {
     let query_lat = query_lat.as_slice()?;
     let query_lng = query_lng.as_slice()?;
-    let query_time = query_time.as_slice()?;
+    let query_time_ms = query_time_ms.as_slice()?;
     let ref_lat = ref_lat.as_slice()?;
     let ref_lng = ref_lng.as_slice()?;
-    let ref_time_sorted = ref_time_sorted.as_slice()?;
+    let ref_time_sorted_ms = ref_time_sorted_ms.as_slice()?;
     let ref_original_index: Vec<usize> = ref_original_index
         .as_slice()?
         .iter()
@@ -37,11 +37,11 @@ pub fn nearest_event_within_window_numpy<'py>(
     let reference = SortedReferenceEvents {
         lat: ref_lat,
         lng: ref_lng,
-        time_sorted: ref_time_sorted,
+        time_sorted: ref_time_sorted_ms,
         original_index: &ref_original_index,
     };
     let (idx, dist) = py.detach(|| {
-        nearest_event_within_window(query_lat, query_lng, query_time, &reference, window_seconds)
+        nearest_event_within_window(query_lat, query_lng, query_time_ms, &reference, window_ms)
     });
     Ok((idx.into_pyarray(py), dist.into_pyarray(py)))
 }

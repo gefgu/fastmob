@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::adapters::trajectory::{
-    run_indexed_timed_coordinate_arrow, run_presorted_timed_coordinate_arrow,
+    run_indexed_timed_coordinate_arrow_ms, run_presorted_timed_coordinate_arrow_ms,
 };
 use crate::utils::f64_results_into_arrow;
 
@@ -46,16 +46,16 @@ pub fn smooth_trajectory_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     sorted_indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     config: PySmoothConfig,
 ) -> PyResult<SmoothOutput> {
-    let (out_lats, out_lngs) = run_indexed_timed_coordinate_arrow(
+    let (out_lats, out_lngs) = run_indexed_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         sorted_indices,
         ends,
         |view| {
@@ -82,15 +82,15 @@ pub fn smooth_trajectory_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     ends: pyo3_arrow::PyArray,
     config: PySmoothConfig,
 ) -> PyResult<SmoothOutput> {
-    let (out_lats, out_lngs) = run_presorted_timed_coordinate_arrow(
+    let (out_lats, out_lngs) = run_presorted_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         ends,
         |view, ends| {
             smooth_trajectory_presorted_impl(

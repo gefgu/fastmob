@@ -126,7 +126,7 @@ def k_radius_of_gyration(
 
     lats = df.get_column(lat_col).to_arrow()
     lngs = df.get_column(lng_col).to_arrow()
-    timestamps = _extract_timestamps(df, datetime_col, unit="ms")
+    timestamps = _extract_timestamps(df, datetime_col)
     timestamps_data = timestamps.to_arrow()
 
     if presorted:

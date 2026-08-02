@@ -97,7 +97,7 @@ def join_with_events(
 
     query_lat = df.get_column(lat_col).to_numpy().astype(np.float64)
     query_lng = df.get_column(lng_col).to_numpy().astype(np.float64)
-    query_time_i64 = np.rint(_extract_timestamps(df, datetime_col, unit="s").to_numpy()).astype(np.int64)
+    query_time_ms = _extract_timestamps(df, datetime_col).to_numpy().astype(np.int64)
 
     events = nw.from_native(events_df, eager_only=True)
     event_lat = events.get_column(event_lat_col).to_numpy().astype(np.float64)
@@ -111,17 +111,17 @@ def join_with_events(
         nearest_idx = np.full(n_query, -1, dtype=np.int64)
         dist_m = np.full(n_query, np.inf, dtype=np.float64)
     else:
-        event_time_i64 = np.rint(_extract_timestamps(events, event_datetime_col, unit="s").to_numpy()).astype(np.int64)
-        sort_order = np.argsort(event_time_i64, kind="stable")
+        event_time_ms = _extract_timestamps(events, event_datetime_col).to_numpy().astype(np.int64)
+        sort_order = np.argsort(event_time_ms, kind="stable")
         nearest_idx, dist_m = nearest_event_within_window(
             query_lat,
             query_lng,
-            query_time_i64,
+            query_time_ms,
             event_lat[sort_order],
             event_lng[sort_order],
-            event_time_i64[sort_order],
+            event_time_ms[sort_order],
             sort_order.astype(np.int64),
-            round(time_window_s),
+            round(time_window_s * 1000.0),
         )
         nearest_idx = np.asarray(nearest_idx)
         dist_m = np.asarray(dist_m, dtype=np.float64)

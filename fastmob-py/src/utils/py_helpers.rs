@@ -106,6 +106,28 @@ pub fn arrow_values(array: &PrimitiveArray<Float64Type>) -> &[f64] {
     &array.values()[start..end]
 }
 
+/// `fastmob.utils._common._extract_timestamps`'s null-datetime-row sentinel, matched
+/// exactly: pandas/NumPy int64 has no null representation, so a null datetime row is
+/// filled with this value (i64::MIN, never a real Unix-ms timestamp) rather than
+/// carrying a genuine Arrow null.
+pub const NULL_TIMESTAMP_SENTINEL_MS: i64 = i64::MIN;
+
+/// Converts `i64` millisecond timestamps to `f64` seconds, mapping the null sentinel to
+/// `f64::NAN` so downstream `is_finite()` null-row exclusion (already present in every
+/// timed core kernel) keeps working unchanged.
+pub fn ms_to_seconds(values: &[i64]) -> Vec<f64> {
+    values
+        .iter()
+        .map(|&t| {
+            if t == NULL_TIMESTAMP_SENTINEL_MS {
+                f64::NAN
+            } else {
+                t as f64 / 1000.0
+            }
+        })
+        .collect()
+}
+
 pub fn as_u64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<UInt64Type>> {
     let (array_ref, _field) = arr.into_inner();
     let array = array_ref
@@ -134,6 +156,29 @@ pub fn as_i64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Int64Ty
         )));
     }
     Ok(array)
+}
+
+pub fn as_nullable_i64_array(arr: PyArray, name: &str) -> PyResult<Int64Array> {
+    let (array_ref, _field) = arr.into_inner();
+    array_ref
+        .as_any()
+        .downcast_ref::<Int64Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected int64 Arrow array for {name}")))
+}
+
+/// Like [`arrow_valid_rows`], but for the common case of `f64` coordinate arrays
+/// paired with one `i64` millisecond-timestamp array (the timed-adapter shape).
+pub fn arrow_valid_rows_f64_i64(f64_arrays: &[&Float64Array], i64_array: &Int64Array) -> Option<Vec<bool>> {
+    if f64_arrays.iter().all(|a| a.null_count() == 0) && i64_array.null_count() == 0 {
+        return None;
+    }
+    let n = i64_array.len();
+    Some(
+        (0..n)
+            .map(|idx| f64_arrays.iter().all(|a| a.is_valid(idx)) && i64_array.is_valid(idx))
+            .collect(),
+    )
 }
 
 pub fn as_u8_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<UInt8Type>> {

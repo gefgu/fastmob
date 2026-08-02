@@ -5,7 +5,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow;
+use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow_ms;
 
 #[pyfunction]
 pub fn square_displacement_km2(lat0: f64, lng0: f64, lat_t: f64, lng_t: f64) -> f64 {
@@ -18,16 +18,16 @@ pub fn mean_square_displacement_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     delta_s: f64,
 ) -> PyResult<f64> {
-    run_indexed_timed_coordinate_arrow(
+    run_indexed_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         indices,
         ends,
         |view| {

@@ -5,8 +5,8 @@ use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow;
-use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow};
+use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow_ms;
+use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow, i64_results_into_arrow};
 
 type StayLocationsBatchResult<'py> = (
     Py<PyAny>,
@@ -18,6 +18,13 @@ type StayLocationsBatchResult<'py> = (
 
 fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
+}
+
+/// Converts kernel-internal seconds (`f64`) back to milliseconds (`i64`) at the
+/// FFI boundary, matching `fastmob.utils._common._extract_timestamps`'s default unit.
+fn arrow_ms_output(py: Python<'_>, seconds: Vec<f64>) -> PyResult<Py<PyAny>> {
+    let ms: Vec<i64> = seconds.into_iter().map(|s| (s * 1000.0).round() as i64).collect();
+    Ok(Py::new(py, i64_results_into_arrow(ms))?.into_any())
 }
 
 #[pyfunction]
@@ -63,7 +70,7 @@ pub fn detect_stay_locations_batch_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     sorted_indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     stop_radius_km: f64,
@@ -72,11 +79,11 @@ pub fn detect_stay_locations_batch_indexed<'py>(
     min_speed_kmh: f64,
 ) -> PyResult<StayLocationsBatchResult<'py>> {
     let (out_lats, out_lngs, entry_times, leaving_times, user_range_idx) =
-        run_indexed_timed_coordinate_arrow(
+        run_indexed_timed_coordinate_arrow_ms(
             py,
             latitudes,
             longitudes,
-            timestamps_s,
+            timestamps_ms,
             sorted_indices,
             ends,
             |view| {
@@ -97,8 +104,8 @@ pub fn detect_stay_locations_batch_indexed<'py>(
     Ok((
         arrow_f64_output(py, out_lats)?,
         arrow_f64_output(py, out_lngs)?,
-        arrow_f64_output(py, entry_times)?,
-        arrow_f64_output(py, leaving_times)?,
+        arrow_ms_output(py, entry_times)?,
+        arrow_ms_output(py, leaving_times)?,
         user_range_idx.into_pyarray(py),
     ))
 }

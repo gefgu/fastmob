@@ -54,14 +54,14 @@ def _filter_speed(
         uid_col=uid_col,
     )
 
-    timestamp_s = _extract_timestamps(df, datetime_col, unit="s")
+    timestamps = _extract_timestamps(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     # Also feeds _build_indexed_user_ranges below, so its extraction must
     # keep matching whatever backend that helper's own uid-code extraction
     # picks internally (see waiting_times.py/mean_square_displacement.py for
     # why this one can't be forced to Arrow independently).
-    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamp_s)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = FilterConfig(
         max_speed_kmh=max_speed_kmh,
@@ -79,7 +79,7 @@ def _filter_speed(
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            timestamps=timestamp_s,
+            timestamps=timestamps,
         )
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
@@ -270,8 +270,8 @@ def filter(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
-    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
+    timestamps = _extract_timestamps(df, datetime_col)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = OutlierConfig(method=method_name, **params)
 
@@ -282,7 +282,7 @@ def filter(
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            timestamps=timestamps_s,
+            timestamps=timestamps,
         )
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 

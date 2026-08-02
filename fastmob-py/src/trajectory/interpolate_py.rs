@@ -10,9 +10,9 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::adapters::trajectory::{
-    run_indexed_timed_coordinate_arrow, run_presorted_timed_coordinate_arrow,
+    run_indexed_timed_coordinate_arrow_ms, run_presorted_timed_coordinate_arrow_ms,
 };
-use crate::utils::f64_results_into_arrow;
+use crate::utils::{f64_results_into_arrow, i64_results_into_arrow};
 
 #[pyclass(name = "InterpolationConfig", from_py_object)]
 #[derive(Clone, Copy)]
@@ -44,6 +44,13 @@ fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
 }
 
+/// Converts kernel-internal seconds (`f64`) back to milliseconds (`i64`) at the
+/// FFI boundary, matching `fastmob.utils._common._extract_timestamps`'s default unit.
+fn arrow_ms_output(py: Python<'_>, seconds: Vec<f64>) -> PyResult<Py<PyAny>> {
+    let ms: Vec<i64> = seconds.into_iter().map(|s| (s * 1000.0).round() as i64).collect();
+    Ok(Py::new(py, i64_results_into_arrow(ms))?.into_any())
+}
+
 type InterpolateOutput<'py> = (Py<PyAny>, Py<PyAny>, Py<PyAny>, Bound<'py, PyArray1<usize>>);
 
 #[pyfunction]
@@ -52,16 +59,16 @@ pub fn interpolate_trajectory_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     sorted_indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     config: PyInterpolationConfig,
 ) -> PyResult<InterpolateOutput<'py>> {
-    let (out_lats, out_lngs, out_times, out_user_indices) = run_indexed_timed_coordinate_arrow(
+    let (out_lats, out_lngs, out_times, out_user_indices) = run_indexed_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         sorted_indices,
         ends,
         |view| {
@@ -80,7 +87,7 @@ pub fn interpolate_trajectory_indexed<'py>(
     Ok((
         arrow_f64_output(py, out_lats)?,
         arrow_f64_output(py, out_lngs)?,
-        arrow_f64_output(py, out_times)?,
+        arrow_ms_output(py, out_times)?,
         out_user_indices.into_pyarray(py),
     ))
 }
@@ -90,15 +97,15 @@ pub fn interpolate_trajectory_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     ends: pyo3_arrow::PyArray,
     config: PyInterpolationConfig,
 ) -> PyResult<InterpolateOutput<'py>> {
-    let (out_lats, out_lngs, out_times, out_user_indices) = run_presorted_timed_coordinate_arrow(
+    let (out_lats, out_lngs, out_times, out_user_indices) = run_presorted_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         ends,
         |view, ends| {
             interpolate_trajectory_presorted_impl(
@@ -114,7 +121,7 @@ pub fn interpolate_trajectory_presorted<'py>(
     Ok((
         arrow_f64_output(py, out_lats)?,
         arrow_f64_output(py, out_lngs)?,
-        arrow_f64_output(py, out_times)?,
+        arrow_ms_output(py, out_times)?,
         out_user_indices.into_pyarray(py),
     ))
 }

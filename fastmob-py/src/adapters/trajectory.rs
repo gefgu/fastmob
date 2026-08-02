@@ -6,7 +6,8 @@ use pyo3_arrow::PyArray as ArrowPyArray;
 use fastmob_core::utils::validate_ends;
 
 use crate::utils::{
-    arrow_valid_rows, arrow_values, as_f64_array, as_nullable_f64_array, validate_indexed_ends,
+    arrow_i64_values, arrow_valid_rows, arrow_valid_rows_f64_i64, arrow_values, as_f64_array,
+    as_i64_array, as_nullable_f64_array, as_nullable_i64_array, ms_to_seconds, validate_indexed_ends,
 };
 
 pub struct CoordinateView<'a> {
@@ -230,6 +231,87 @@ where
                 latitudes: lats,
                 longitudes: lngs,
                 times,
+            },
+            indices,
+            ends,
+            valid_rows: valid_rows.as_deref(),
+        })
+    }))
+}
+
+/// Millisecond-`i64` counterpart of [`run_presorted_timed_coordinate_arrow`]: the
+/// timestamp array is extracted as `i64` milliseconds (matching
+/// `fastmob.utils._common._extract_timestamps`'s default) and converted to `f64`
+/// seconds once, here at the FFI boundary, so `operation` sees exactly the same
+/// `TimedCoordinateView` seconds shape the core kernels have always taken --
+/// no core kernel needs to change for the ms/i64 migration.
+pub fn run_presorted_timed_coordinate_arrow_ms<'py, T, F>(
+    py: Python<'py>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
+    ends: pyo3_arrow::PyArray,
+    operation: F,
+) -> PyResult<T>
+where
+    F: FnOnce(TimedCoordinateView<'_>, &[usize]) -> T + Send,
+    T: Send,
+{
+    let latitudes = as_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_f64_array(longitudes, "longitudes")?;
+    let timestamps_ms = as_i64_array(timestamps_ms, "timestamps_ms")?;
+    validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), timestamps_ms.len())?;
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let times_s: Vec<f64> = ms_to_seconds(arrow_i64_values(&timestamps_ms));
+    let ends = ends.as_slice()?;
+    validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
+    Ok(py.detach(|| {
+        operation(
+            TimedCoordinateView {
+                latitudes: lats,
+                longitudes: lngs,
+                times: &times_s,
+            },
+            ends,
+        )
+    }))
+}
+
+/// Millisecond-`i64` counterpart of [`run_indexed_timed_coordinate_arrow`]. See
+/// [`run_presorted_timed_coordinate_arrow_ms`] for why the ms->seconds
+/// conversion lives here instead of in the core kernels.
+pub fn run_indexed_timed_coordinate_arrow_ms<'py, T, F>(
+    py: Python<'py>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
+    indices: pyo3_arrow::PyArray,
+    ends: pyo3_arrow::PyArray,
+    operation: F,
+) -> PyResult<T>
+where
+    F: FnOnce(IndexedTimedCoordinateView<'_>) -> T + Send,
+    T: Send,
+{
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    let timestamps_ms = as_nullable_i64_array(timestamps_ms, "timestamps_ms")?;
+    validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), timestamps_ms.len())?;
+    let indices = indices.as_slice()?;
+    let ends = ends.as_slice()?;
+    validate_indexed_ends(latitudes.len(), indices, ends)?;
+
+    let valid_rows = arrow_valid_rows_f64_i64(&[&latitudes, &longitudes], &timestamps_ms);
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let times_s: Vec<f64> = ms_to_seconds(arrow_i64_values(&timestamps_ms));
+    Ok(py.detach(|| {
+        operation(IndexedTimedCoordinateView {
+            coordinates: TimedCoordinateView {
+                latitudes: lats,
+                longitudes: lngs,
+                times: &times_s,
             },
             indices,
             ends,

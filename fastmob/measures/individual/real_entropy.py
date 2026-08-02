@@ -116,7 +116,7 @@ def real_entropy(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    timestamps = _extract_timestamps(df, datetime_col, unit="ms")
+    timestamps = _extract_timestamps(df, datetime_col)
     uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
 
     raw = real_entropy_indexed(

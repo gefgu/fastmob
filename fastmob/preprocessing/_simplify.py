@@ -203,8 +203,8 @@ def simplify(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
-    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
+    timestamps = _extract_timestamps(df, datetime_col)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = SimplifyConfig(method=method_name, **params)
 
@@ -215,7 +215,7 @@ def simplify(
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            timestamps=timestamps_s,
+            timestamps=timestamps,
         )
         raw_mask = simplify_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 

@@ -107,7 +107,7 @@ def _trajectory_cpc_inputs(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    timestamps = _extract_timestamps(df, datetime_col, unit="ms")
+    timestamps = _extract_timestamps(df, datetime_col)
     # Timestamps here only build index metadata (user ranges), so their
     # extraction still matches whatever backend _build_indexed_user_ranges'
     # own uid-code extraction picks -- see the Rust binding it feeds

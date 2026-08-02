@@ -17,7 +17,7 @@ from fastmob.utils._common import (
     _detect_trajectory_columns,
     _extract_timestamps,
     _take_uid_values,
-    _timestamps_s_to_datetime_ns,
+    _timestamps_ms_to_datetime_ns,
     _to_native,
 )
 
@@ -169,8 +169,8 @@ def interpolate(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
-    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
+    timestamps = _extract_timestamps(df, datetime_col)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = InterpolationConfig(method=method_name, sampling_rate_s=sampling_rate_s, **params)
 
@@ -180,7 +180,7 @@ def interpolate(
             lats_data, lngs_data, times_data, ends, config
         )
     else:
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps_s)
+        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         out_lats, out_lngs, out_times, out_user_idx = interpolate_trajectory_indexed(
             lats_data, lngs_data, times_data, indices, ends, config
         )
@@ -188,7 +188,7 @@ def interpolate(
     result_dict: dict[str, Any] = {}
     if uid_col is not None:
         result_dict[uid_col] = _take_uid_values(uid_values, out_user_idx)
-    result_dict[datetime_col] = _timestamps_s_to_datetime_ns(out_times)
+    result_dict[datetime_col] = _timestamps_ms_to_datetime_ns(out_times)
     result_dict[lat_col] = _as_arrow(out_lats)
     result_dict[lng_col] = _as_arrow(out_lngs)
 

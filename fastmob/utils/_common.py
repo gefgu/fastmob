@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Literal
+from typing import Any
 
 import narwhals as nw
 import numpy as np
@@ -182,32 +182,35 @@ def _factorize_uids_uint64(
     return _uint64_series(df, codes), len(representatives)
 
 
-def _extract_timestamps(
-    df: nw.DataFrame,
-    datetime_col: str,
-    *,
-    unit: Literal["ms", "s"],
-) -> nw.Series:
-    """Return Float64 Unix timestamps in ``unit`` from a Narwhals datetime column.
+_NULL_TIMESTAMP_SENTINEL_MS = -(2**63)  # i64::MIN; never a real Unix-ms timestamp
 
-    Seconds are derived from millisecond timestamps so every backend has the
-    same rounding and epoch semantics.
+
+def _extract_timestamps(df: nw.DataFrame, datetime_col: str) -> nw.Series:
+    """Return Int64 Unix milliseconds from a Narwhals datetime column.
+
+    Rust kernels take millisecond ``i64`` timestamps directly; a kernel that
+    strictly needs elapsed seconds derives them from milliseconds itself
+    rather than Python doing that conversion.
+
+    A null datetime row becomes ``_NULL_TIMESTAMP_SENTINEL_MS`` rather than a
+    null Int64 cell: plain (non-nullable) pandas/NumPy int64 cannot represent
+    a null at all -- unlike Polars/Arrow's nullable Int64 -- so every backend
+    needs a concrete placeholder here (mirrors ``_build_bucket_ids``'s own
+    ``fill_null(0)``). The Rust ms->seconds conversion
+    (`run_indexed_timed_coordinate_arrow_ms` et al.) maps this sentinel back
+    to ``f64::NAN``, so the existing `is_finite()` null-row exclusion
+    downstream is unaffected.
     """
-    if unit not in {"ms", "s"}:
-        raise ValueError("unit must be 'ms' or 's'")
-    values = nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)
-    if unit == "s":
-        values = values / 1000.0
+    values = nw.col(datetime_col).dt.timestamp("ms").fill_null(_NULL_TIMESTAMP_SENTINEL_MS).cast(nw.Int64)
     return df.with_columns(values.alias("__fastmob_timestamp__")).get_column("__fastmob_timestamp__")
 
 
-def _timestamps_s_to_datetime_ns(values: Any) -> np.ndarray:
-    """Convert flat seconds-since-epoch values (NumPy or Arrow) to a naive ``datetime64[ns]`` NumPy array.
+def _timestamps_ms_to_datetime_ns(values: Any) -> np.ndarray:
+    """Convert flat milliseconds-since-epoch values (NumPy or Arrow) to a naive ``datetime64[ns]`` NumPy array.
 
-    Inverse of :func:`_extract_timestamps` with ``unit="s"``. No existing measure needs to
-    re-emit an expanded/reconstructed datetime column, so this is new;
-    mirrors ``fastmob/preprocessing/_stay_locations.py``'s private
-    ``_seconds_to_naive_utc`` helper.
+    Inverse of :func:`_extract_timestamps`, shared by every measure that reconstructs a
+    datetime column from Rust kernel output (e.g. ``fastmob/preprocessing/_stay_locations.py``,
+    ``fastmob/trajectory/_interpolate.py``).
     """
     values = _as_arrow(values)
     if hasattr(values, "to_numpy"):
@@ -215,7 +218,7 @@ def _timestamps_s_to_datetime_ns(values: Any) -> np.ndarray:
             values = values.to_numpy(zero_copy_only=False)
         except TypeError:
             values = values.to_numpy()
-    return (np.asarray(values, dtype="float64") * 1e9).astype("int64").view("datetime64[ns]")
+    return (np.asarray(values, dtype="int64") * 1_000_000).astype("int64").view("datetime64[ns]")
 
 
 def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, nw.Series]:
@@ -240,7 +243,14 @@ def _build_indexed_user_ranges(
             raw_indices, raw_ends = single_user_indices(len(df))
         else:
             timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
-            raw_indices, raw_ends = time_ordered_user_indices(None, pa.array(timestamp_values))
+            # unsafe: only ordering matters here, and the ms i64 -> f64 cast is otherwise
+            # lossless within the ~285000-year range a real Unix-ms timestamp falls in --
+            # this only needs `safe=False` to tolerate `_extract_timestamps`'
+            # out-of-float64-exact-range null sentinel (i64::MIN), which just needs to sort
+            # to one end, not round-trip exactly.
+            raw_indices, raw_ends = time_ordered_user_indices(
+                None, pc.cast(pa.array(timestamp_values), pa.float64(), safe=False)
+            )
         return None, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
     uid_values = pa.array(df.get_column(uid_col).to_arrow())
@@ -249,7 +259,9 @@ def _build_indexed_user_ranges(
         raw_indices, raw_ends = indexed_user_indices(codes, len(representatives))
     else:
         timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
-        raw_indices, raw_ends = time_ordered_user_indices(codes, pa.array(timestamp_values), len(representatives))
+        raw_indices, raw_ends = time_ordered_user_indices(
+            codes, pc.cast(pa.array(timestamp_values), pa.float64(), safe=False), len(representatives)
+        )
     labels = pc.take(uid_values, representatives)
     return labels, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 

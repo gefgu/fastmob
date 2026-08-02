@@ -329,7 +329,7 @@ class TestBuildTimeOrderedUserRanges:
             }
         )
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps(nw_df, "datetime", unit="s")
+        timestamps = _extract_timestamps(nw_df, "datetime")
 
         uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
@@ -360,7 +360,7 @@ class TestBuildTimeOrderedUserRanges:
             }
         ).with_columns(pl.col("datetime").str.to_datetime())
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps(nw_df, "datetime", unit="s")
+        timestamps = _extract_timestamps(nw_df, "datetime")
 
         uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
@@ -385,7 +385,7 @@ class TestBuildTimeOrderedUserRanges:
             }
         )
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps(nw_df, "datetime", unit="s")
+        timestamps = _extract_timestamps(nw_df, "datetime")
 
         uid_values, indices, ends = _build_indexed_user_ranges(nw_df, "uid", timestamps.to_arrow())
 

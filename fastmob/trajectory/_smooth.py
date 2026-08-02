@@ -161,8 +161,8 @@ def smooth(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
-    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
+    timestamps = _extract_timestamps(df, datetime_col)
+    times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = SmoothConfig(method=method_name, **params)
 
@@ -170,7 +170,7 @@ def smooth(
         _, ends = _build_presorted_user_ends(df, uid_col)
         out_lats, out_lngs = smooth_trajectory_presorted(lats_data, lngs_data, times_data, ends, config)
     else:
-        _, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps_s)
+        _, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         out_lats, out_lngs = smooth_trajectory_indexed(lats_data, lngs_data, times_data, indices, ends, config)
 
     result = df.with_columns(

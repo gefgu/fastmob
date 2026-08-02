@@ -128,7 +128,7 @@ def jump_lengths(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         v_starts, v_ends, flat_values = jump_lengths_presorted(lats_data, lngs_data, ends)
     else:
-        timestamps = _extract_timestamps(df, datetime_col, unit="ms")
+        timestamps = _extract_timestamps(df, datetime_col)
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         v_starts, v_ends, flat_values = jump_lengths_indexed(lats_data, lngs_data, indices, ends)
 

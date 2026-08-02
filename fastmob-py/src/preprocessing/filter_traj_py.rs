@@ -4,7 +4,7 @@ use fastmob_core::preprocessing::filter_traj::{
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow;
+use crate::adapters::trajectory::run_indexed_timed_coordinate_arrow_ms;
 use crate::utils::{arrow_values, as_f64_array, bool_results_into_arrow};
 
 #[pyclass(name = "FilterConfig", from_py_object)]
@@ -124,16 +124,16 @@ pub fn filter_trajectory_indexed<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,
-    timestamps_s: ArrowPyArray,
+    timestamps_ms: ArrowPyArray,
     sorted_indices: pyo3_arrow::PyArray,
     ends: pyo3_arrow::PyArray,
     config: PyFilterConfig,
 ) -> PyResult<Py<PyAny>> {
-    let keep_mask = run_indexed_timed_coordinate_arrow(
+    let keep_mask = run_indexed_timed_coordinate_arrow_ms(
         py,
         latitudes,
         longitudes,
-        timestamps_s,
+        timestamps_ms,
         sorted_indices,
         ends,
         |view| {
