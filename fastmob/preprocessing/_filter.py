@@ -8,17 +8,14 @@ from fastmob._core import (
     FilterConfig,
     OutlierConfig,
     filter_trajectory_indexed,
-    filter_trajectory_sorted,
     outlier_trajectory_indexed,
-    outlier_trajectory_sorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
-    _build_user_ranges,
     _detect_trajectory_columns,
-    _extract_timestamps_s,
+    _extract_timestamps,
     _narwhals_safe_value,
 )
 
@@ -57,7 +54,7 @@ def _filter_speed(
         uid_col=uid_col,
     )
 
-    timestamp_s = _extract_timestamps_s(df, datetime_col)
+    timestamp_s = _extract_timestamps(df, datetime_col, unit="s")
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     # Also feeds _build_indexed_user_ranges below, so its extraction must
@@ -76,8 +73,8 @@ def _filter_speed(
 
     # 3. Build ranges and select the appropriate core function from the dictionary
     if is_sorted:
-        _, ranges = _build_user_ranges(df, uid_col)
-        raw_mask = filter_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
+        _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
     else:
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
@@ -86,7 +83,7 @@ def _filter_speed(
         )
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    keep_mask = _narwhals_safe_value(_arrow_result_values(raw_mask))
+    keep_mask = _narwhals_safe_value(_as_arrow(raw_mask))
     result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
 
     return result
@@ -273,14 +270,14 @@ def filter(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     config = OutlierConfig(method=method_name, **params)
 
     if is_sorted:
-        _, ranges = _build_user_ranges(df, uid_col)
-        raw_mask = outlier_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config)
+        _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
     else:
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
@@ -289,7 +286,7 @@ def filter(
         )
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
-    keep_mask = _narwhals_safe_value(_arrow_result_values(raw_mask))
+    keep_mask = _narwhals_safe_value(_as_arrow(raw_mask))
     result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
 
     return result

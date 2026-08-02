@@ -15,7 +15,7 @@ import narwhals as nw
 
 from fastmob._core import tours_from_trips
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _factorize_uids_uint64,
     _list_column_from_offsets,
     _narwhals_safe_value,
@@ -137,9 +137,9 @@ class Tours(BaseDataFrame):
         uid_codes_list = _values_to_list(out_uid_codes)
         out_dict: dict[str, Any] = {
             "tour_id": list(range(len(uid_codes_list))),
-            "__started_at_us__": _narwhals_safe_value(_arrow_result_values(out_started_at_us)),
-            "__finished_at_us__": _narwhals_safe_value(_arrow_result_values(out_finished_at_us)),
-            "location_id": _narwhals_safe_value(_arrow_result_values(out_location_id)),
+            "__started_at_us__": _narwhals_safe_value(_as_arrow(out_started_at_us)),
+            "__finished_at_us__": _narwhals_safe_value(_as_arrow(out_finished_at_us)),
+            "location_id": _narwhals_safe_value(_as_arrow(out_location_id)),
             "journey": _list_column_from_offsets(flat_journey, journey_offsets),
         }
         if uid_col:

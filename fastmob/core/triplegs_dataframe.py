@@ -38,7 +38,7 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import tripleg_lengths_attributed
-from fastmob.utils._common import _arrow_result_values, _factorize_uids_uint64, _narwhals_safe_value
+from fastmob.utils._common import _as_arrow, _factorize_uids_uint64, _narwhals_safe_value
 
 from .base import BaseDataFrame
 
@@ -278,9 +278,9 @@ def _tripleg_lengths(
 
     return nw.from_dict(
         {
-            uid_code_col: _narwhals_safe_value(_arrow_result_values(uid_codes)),
-            "segment_id": _narwhals_safe_value(_arrow_result_values(segment_ids)),
-            "length_km": _narwhals_safe_value(_arrow_result_values(lengths_km)),
+            uid_code_col: _narwhals_safe_value(_as_arrow(uid_codes)),
+            "segment_id": _narwhals_safe_value(_as_arrow(segment_ids)),
+            "length_km": _narwhals_safe_value(_as_arrow(lengths_km)),
         },
         backend=seg_nw.implementation,
     )

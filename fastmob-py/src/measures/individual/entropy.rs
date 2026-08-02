@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::adapters::trajectory::run_indexed_coordinate_arrow;
-use crate::utils::f64_results_into_arrow;
+use crate::utils::{f64_results_into_arrow, ranges_from_ends};
 
 fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
@@ -21,8 +21,9 @@ type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 pub fn real_entropy_batch(
     py: Python<'_>,
     tokens: Vec<String>,
-    ranges: Vec<(usize, usize)>,
+    ends: ArrowPyArray,
 ) -> PyResult<Vec<f64>> {
+    let ranges = ranges_from_ends(ends, tokens.len())?;
     let result = py.detach(move || core_real_entropy_batch(tokens, ranges));
     result.map_err(PyValueError::new_err)
 }
@@ -31,9 +32,10 @@ pub fn real_entropy_batch(
 pub fn trajectory_entropy_batch(
     py: Python<'_>,
     tokens: Vec<String>,
-    ranges: Vec<(usize, usize)>,
+    ends: ArrowPyArray,
     normalized: bool,
 ) -> PyResult<Vec<f64>> {
+    let ranges = ranges_from_ends(ends, tokens.len())?;
     let result = py.detach(move || core_trajectory_entropy_batch(tokens, ranges, normalized));
     result.map_err(PyValueError::new_err)
 }
@@ -42,8 +44,9 @@ pub fn trajectory_entropy_batch(
 pub fn trajectory_predictability_batch(
     py: Python<'_>,
     tokens: Vec<String>,
-    ranges: Vec<(usize, usize)>,
+    ends: ArrowPyArray,
 ) -> PyResult<PredictabilityBatchResult> {
+    let ranges = ranges_from_ends(ends, tokens.len())?;
     let result = py.detach(move || core_trajectory_predictability_batch(tokens, ranges));
     result.map_err(PyValueError::new_err)
 }

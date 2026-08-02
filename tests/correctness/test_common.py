@@ -1,35 +1,27 @@
-"""Correctness tests for fastmob/measures/_common.py."""
+"""Correctness tests for shared fastmob utility helpers."""
 
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-# ---------------------------------------------------------------------------
-# backend kernel dispatch
-# ---------------------------------------------------------------------------
 
-
-class TestBackendKernelDispatch:
-    def test_pandas_uses_numpy_kernel_path(self):
+class TestArrowCoercion:
+    def test_converts_pandas_backed_narwhals_series(self):
         import narwhals as nw
-        from fastmob.measures._common import _use_arrow_kernel_path
+        import pyarrow as pa
+        from fastmob.utils._common import _as_arrow
 
-        df = pd.DataFrame({"lat": [1.0], "lng": [2.0]})
-        nw_df = nw.from_native(df, eager_only=True)
+        values = _as_arrow(nw.from_native(pd.DataFrame({"x": [1, 2]}), eager_only=True).get_column("x"))
+        assert isinstance(values, pa.Array)
+        assert values.to_pylist() == [1, 2]
 
-        assert _use_arrow_kernel_path(nw_df) is False
+    def test_preserves_chunked_arrow_input(self):
+        import pyarrow as pa
+        from fastmob.utils._common import _as_arrow
 
-    def test_polars_uses_arrow_kernel_path(self):
-        pl = pytest.importorskip("polars", reason="Polars not installed")
-        import narwhals as nw
-        from fastmob.measures._common import _use_arrow_kernel_path
-
-        df = pl.DataFrame({"lat": [1.0], "lng": [2.0]})
-        nw_df = nw.from_native(df, eager_only=True)
-
-        assert _use_arrow_kernel_path(nw_df) is True
-
+        values = pa.chunked_array([["a"], ["b"]])
+        assert _as_arrow(values) is values
 
 # ---------------------------------------------------------------------------
 # _pick_existing_column
@@ -319,7 +311,7 @@ class TestPrepareTrajectory:
 class TestBuildTimeOrderedUserRanges:
     def test_pandas_string_uids_use_arrow_rust_path(self):
         import narwhals as nw
-        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps_s
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps
 
         df = pd.DataFrame(
             {
@@ -337,7 +329,7 @@ class TestBuildTimeOrderedUserRanges:
             }
         )
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps_s(nw_df, "datetime")
+        timestamps = _extract_timestamps(nw_df, "datetime", unit="s")
 
         uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
@@ -351,7 +343,7 @@ class TestBuildTimeOrderedUserRanges:
 
     def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
         import narwhals as nw
-        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps_s
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps
 
         pl = pytest.importorskip("polars", reason="Polars not installed")
         df = pl.DataFrame(
@@ -368,7 +360,7 @@ class TestBuildTimeOrderedUserRanges:
             }
         ).with_columns(pl.col("datetime").str.to_datetime())
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps_s(nw_df, "datetime")
+        timestamps = _extract_timestamps(nw_df, "datetime", unit="s")
 
         uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
@@ -382,7 +374,7 @@ class TestBuildTimeOrderedUserRanges:
 
     def test_equal_timestamps_keep_original_row_order(self):
         import narwhals as nw
-        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps_s
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps
 
         df = pd.DataFrame(
             {
@@ -393,7 +385,7 @@ class TestBuildTimeOrderedUserRanges:
             }
         )
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps_s(nw_df, "datetime")
+        timestamps = _extract_timestamps(nw_df, "datetime", unit="s")
 
         uid_values, indices, ends = _build_indexed_user_ranges(nw_df, "uid", timestamps.to_arrow())
 
@@ -433,40 +425,6 @@ class TestBuildIndexedUserRangesFast:
         assert uid_values.to_pylist() == ["b", "a", "c"]
         assert indices.to_pylist() == [0, 2, 1, 4, 3, 5]
         assert ends.to_pylist() == [2, 4, 6]
-
-
-# ---------------------------------------------------------------------------
-# _build_user_ranges
-# ---------------------------------------------------------------------------
-
-
-class TestBuildUserRanges:
-    def test_builds_ranges_from_contiguous_uid_groups(self):
-        import narwhals as nw
-        from fastmob.measures._common import _build_user_ranges
-
-        df = nw.from_native(pd.DataFrame({"uid": ["a", "a", "b", "b", "b", "c"]}), eager_only=True)
-
-        uid_values, ranges = _build_user_ranges(df, "uid")
-
-        assert uid_values == ["a", "b", "c"]
-        assert ranges == [(0, 2), (2, 5), (5, 6)]
-
-    def test_builds_empty_ranges_for_empty_uid_dataframe(self):
-        import narwhals as nw
-        from fastmob.measures._common import _build_user_ranges
-
-        df = nw.from_native(pd.DataFrame({"uid": []}), eager_only=True)
-
-        assert _build_user_ranges(df, "uid") == ([], [])
-
-    def test_builds_single_range_without_uid_column(self):
-        import narwhals as nw
-        from fastmob.measures._common import _build_user_ranges
-
-        df = nw.from_native(pd.DataFrame({"lat": [1.0, 2.0, 3.0]}), eager_only=True)
-
-        assert _build_user_ranges(df, None) == ([None], [(0, 3)])
 
 
 # ---------------------------------------------------------------------------
@@ -548,61 +506,3 @@ class TestBuildPresortedUserEnds:
 
         assert uid_values.to_pylist() == [1, 3, 9]
         assert ends.to_pylist() == [2, 4, 5]
-
-
-# ---------------------------------------------------------------------------
-# _shannon_entropy
-# ---------------------------------------------------------------------------
-
-
-class TestShannonEntropy:
-    def test_equal_counts_two_items(self):
-        """Two items with equal counts -> 1 bit of entropy."""
-        from fastmob.measures._common import _shannon_entropy
-
-        assert abs(_shannon_entropy([1, 1]) - 1.0) < 1e-12
-
-    def test_single_item(self):
-        """One item -> 0 bits (no uncertainty)."""
-        from fastmob.measures._common import _shannon_entropy
-
-        assert _shannon_entropy([5]) == 0.0
-
-    def test_empty_list(self):
-        """Empty list -> 0.0 without error."""
-        from fastmob.measures._common import _shannon_entropy
-
-        assert _shannon_entropy([]) == 0.0
-
-    def test_zero_total(self):
-        """All-zero counts -> 0.0 without division error."""
-        from fastmob.measures._common import _shannon_entropy
-
-        assert _shannon_entropy([0, 0, 0]) == 0.0
-
-    def test_uniform_five_items(self):
-        """Five equal-count items -> log2(5) bits."""
-        import math
-
-        from fastmob.measures._common import _shannon_entropy
-
-        result = _shannon_entropy([1, 1, 1, 1, 1])
-        assert abs(result - math.log2(5)) < 1e-12
-
-    def test_skewed_distribution(self):
-        """p=0.75, p=0.25 -> hand-computed value."""
-        import math
-
-        from fastmob.measures._common import _shannon_entropy
-
-        p1, p2 = 0.75, 0.25
-        expected = -(p1 * math.log2(p1) + p2 * math.log2(p2))
-        result = _shannon_entropy([3, 1])
-        assert abs(result - expected) < 1e-12
-
-    def test_zeros_ignored(self):
-        """Zero-count items do not affect entropy (0*log(0) = 0)."""
-        from fastmob.measures._common import _shannon_entropy
-
-        # [1, 1] and [1, 1, 0] should give the same entropy.
-        assert abs(_shannon_entropy([1, 1]) - _shannon_entropy([1, 1, 0])) < 1e-12

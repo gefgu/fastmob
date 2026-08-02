@@ -17,7 +17,7 @@ from fastmob.utils._common import (
     DURATION_CANDIDATES,
     _build_indexed_user_ranges,
     _detect_trajectory_columns,
-    _extract_timestamps_ms,
+    _extract_timestamps,
     _pick_existing_column,
     _with_datetime_column,
 )
@@ -107,7 +107,7 @@ def _trajectory_cpc_inputs(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    timestamps = _extract_timestamps_ms(df, datetime_col)
+    timestamps = _extract_timestamps(df, datetime_col, unit="ms")
     # Timestamps here only build index metadata (user ranges), so their
     # extraction still matches whatever backend _build_indexed_user_ranges'
     # own uid-code extraction picks -- see the Rust binding it feeds

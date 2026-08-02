@@ -9,15 +9,13 @@ import numpy as np
 from fastmob._core import (
     SegmentConfig,
     segment_trajectory_indexed,
-    segment_trajectory_sorted,
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
-    _build_user_ranges,
     _detect_trajectory_columns,
-    _extract_timestamps_s,
+    _extract_timestamps,
     _factorize_uids_uint64,
 )
 
@@ -319,14 +317,14 @@ def segment(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     config = SegmentConfig(method=method_name, **params)
 
     if is_sorted:
-        _, ranges = _build_user_ranges(df, uid_col)
-        raw_ids = segment_trajectory_sorted(lats_data, lngs_data, times_data, ranges, config, bucket_ids)
+        _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
     else:
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
@@ -335,7 +333,7 @@ def segment(
         )
         raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
 
-    segment_ids = np.asarray(_arrow_result_values(raw_ids), dtype=np.uint32)
+    segment_ids = np.asarray(_as_arrow(raw_ids), dtype=np.uint32)
     result = _assign_segment_column(df, segment_ids)
 
     return result

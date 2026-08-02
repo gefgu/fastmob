@@ -23,7 +23,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps_s,
+    _extract_timestamps,
 )
 
 
@@ -33,7 +33,7 @@ def _to_new_series_values(values: Any) -> Any:
 
     ``arro3.core.Array`` (the type pyo3-arrow's ``PyArray`` unwraps to in
     Python) implements ``__arrow_c_array__`` but not ``to_pyarrow``, so it
-    slips past ``_arrow_result_values``'s pyarrow-conversion check. Passing
+    slips past ``_as_arrow``'s pyarrow-conversion check. Passing
     it directly to ``nw.new_series`` triggers a narwhals/Polars bug where two
     such nameless arrays added in the same ``with_columns`` call collide on
     an empty default name (``the name '' passed to LazyFrame.with_columns is
@@ -161,7 +161,7 @@ def smooth(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     config = SmoothConfig(method=method_name, **params)

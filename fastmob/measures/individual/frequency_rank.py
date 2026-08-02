@@ -6,7 +6,7 @@ import narwhals as nw
 
 from fastmob._core import frequency_rank_indexed, frequency_rank_presorted
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -17,9 +17,9 @@ from fastmob.utils._common import (
 
 def _unpack_rank(raw: tuple[Any, Any, Any, Any]) -> tuple[Any, Any, Any, Any]:
     return (
-        _arrow_result_values(raw[0]),
-        _arrow_result_values(raw[1]),
-        _arrow_result_values(raw[2]),
+        _as_arrow(raw[0]),
+        _as_arrow(raw[1]),
+        _as_arrow(raw[2]),
         raw[3],
     )
 

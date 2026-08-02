@@ -12,7 +12,7 @@ from fastmob._core import (
 from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _extract_timestamps_ms,
+    _extract_timestamps,
     _factorize_arrow_values,
 )
 
@@ -149,7 +149,7 @@ def assess_risk_rust(
         )
     else:
         if attack_kind == SEQUENCE:
-            timestamps = _extract_timestamps_ms(df, DATETIME)
+            timestamps = _extract_timestamps(df, DATETIME, unit="ms")
             uid_values, indices, ends = _build_indexed_user_ranges(df, UID, timestamps)
         else:
             uid_values, indices, ends = _build_indexed_user_ranges(df, UID)

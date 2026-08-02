@@ -20,7 +20,7 @@ import narwhals as nw
 
 from fastmob._core import trips_from_timeline
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _factorize_uids_uint64,
     _list_column_from_offsets,
     _narwhals_safe_value,
@@ -171,8 +171,8 @@ class Trips(BaseDataFrame):
 
         out_dict: dict[str, Any] = {
             "trip_id": list(range(len(uid_codes_list))),
-            "__started_at_us__": _narwhals_safe_value(_arrow_result_values(out_started_at_us)),
-            "__finished_at_us__": _narwhals_safe_value(_arrow_result_values(out_finished_at_us)),
+            "__started_at_us__": _narwhals_safe_value(_as_arrow(out_started_at_us)),
+            "__finished_at_us__": _narwhals_safe_value(_as_arrow(out_finished_at_us)),
             "origin_staypoint_id": origin_ids,
             "destination_staypoint_id": destination_ids,
             "tripleg_ids": tripleg_ids,

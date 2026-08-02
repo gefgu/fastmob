@@ -7,11 +7,11 @@ import narwhals as nw
 from fastmob._core import jump_lengths_indexed, jump_lengths_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _arrow_flat_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps_ms,
+    _extract_timestamps,
     _grouped_arrow_values,
     _to_native,
 )
@@ -128,11 +128,11 @@ def jump_lengths(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         v_starts, v_ends, flat_values = jump_lengths_presorted(lats_data, lngs_data, ends)
     else:
-        timestamps = _extract_timestamps_ms(df, datetime_col)
+        timestamps = _extract_timestamps(df, datetime_col, unit="ms")
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         v_starts, v_ends, flat_values = jump_lengths_indexed(lats_data, lngs_data, indices, ends)
 
-    flat_values = _arrow_flat_result_values(flat_values)
+    flat_values = _as_arrow(flat_values)
 
     if merge:
         if _DISPATCHER.get_backend_key(df) == "numpy":

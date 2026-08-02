@@ -3,6 +3,9 @@ use fastmob_core::preprocessing::cdr::{
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
+
+use crate::utils::ranges_from_ends;
 
 type VisitationBatchResult = (Vec<usize>, Vec<usize>, Vec<f64>, Vec<bool>);
 type TripBatchResult = (Vec<usize>, Vec<usize>);
@@ -31,15 +34,17 @@ pub fn cdr_approx_travel_minutes(
 pub fn cdr_visitation_stays(
     venue_codes: Vec<i64>,
     timestamps_s: Vec<f64>,
-    ranges: Vec<(usize, usize)>,
+    ends: ArrowPyArray,
 ) -> PyResult<VisitationBatchResult> {
+    let ranges = ranges_from_ends(ends, venue_codes.len())?;
     cdr_visitation_stays_impl(&venue_codes, &timestamps_s, &ranges).map_err(PyValueError::new_err)
 }
 
 #[pyfunction]
 pub fn cdr_trip_indices(
     has_departure_timestamp: Vec<bool>,
-    ranges: Vec<(usize, usize)>,
+    ends: ArrowPyArray,
 ) -> PyResult<TripBatchResult> {
+    let ranges = ranges_from_ends(ends, has_departure_timestamp.len())?;
     cdr_trip_indices_impl(&has_departure_timestamp, &ranges).map_err(PyValueError::new_err)
 }

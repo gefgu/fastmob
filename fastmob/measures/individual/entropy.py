@@ -14,7 +14,7 @@ from fastmob.utils._common import (
     LOCATION_TYPE_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
-    _build_user_ranges,
+    _build_presorted_user_ends,
     _pick_existing_column,
 )
 
@@ -255,14 +255,15 @@ def trajectory_entropy(
     tokens = df.get_column(location_key_col).to_list() if has_location_key else []
 
     if user_id_col:
-        uid_values, ranges = _build_user_ranges(df, user_id_col)
-        entropies = _trajectory_entropy_batch_rust(tokens, ranges, normalized)
+        uid_values, ends = _build_presorted_user_ends(df, user_id_col)
+        entropies = _trajectory_entropy_batch_rust(tokens, ends, normalized)
         return nw.from_dict(
-            {user_id_col: uid_values, "entropy": entropies},
+            {user_id_col: uid_values.to_pylist(), "entropy": entropies},
             backend=df.implementation,
         ).to_native()
 
-    entropies = _trajectory_entropy_batch_rust(tokens, [(0, len(tokens))], normalized)
+    _, ends = _build_presorted_user_ends(df, None)
+    entropies = _trajectory_entropy_batch_rust(tokens, ends, normalized)
     return nw.from_dict(
         {"entropy": entropies},
         backend=df.implementation,
@@ -350,14 +351,14 @@ def trajectory_predictability(
     tokens = df.get_column(location_key_col).to_list() if has_location_key else []
 
     if user_id_col:
-        uid_values, ranges = _build_user_ranges(df, user_id_col)
+        uid_values, ends = _build_presorted_user_ends(df, user_id_col)
         real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(
             tokens,
-            ranges,
+            ends,
         )
         return nw.from_dict(
             {
-                user_id_col: uid_values,
+                user_id_col: uid_values.to_pylist(),
                 "real_entropy": real_entropies,
                 "predictability": predictabilities,
                 "n_unique_locations": n_unique_locations,
@@ -366,10 +367,8 @@ def trajectory_predictability(
             backend=df.implementation,
         ).to_native()
 
-    real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(
-        tokens,
-        [(0, len(tokens))],
-    )
+    _, ends = _build_presorted_user_ends(df, None)
+    real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(tokens, ends)
     return nw.from_dict(
         {
             "real_entropy": real_entropies,

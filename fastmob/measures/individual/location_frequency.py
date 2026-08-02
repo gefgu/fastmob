@@ -6,7 +6,7 @@ import narwhals as nw
 
 from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -18,13 +18,13 @@ from fastmob.utils._common import (
 
 def _unpack_location_frequency(raw: tuple[Any, ...]) -> tuple[Any, ...]:
     return (
-        _arrow_result_values(raw[0]),
-        _arrow_result_values(raw[1]),
-        _arrow_result_values(raw[2]),
+        _as_arrow(raw[0]),
+        _as_arrow(raw[1]),
+        _as_arrow(raw[2]),
         raw[3],
         raw[4],
         raw[5],
-        _arrow_result_values(raw[6]),
+        _as_arrow(raw[6]),
     )
 
 

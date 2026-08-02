@@ -8,11 +8,11 @@ import numpy as np
 from fastmob._core import interpolate_at_indexed, interpolate_at_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _arrow_flat_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps_s,
+    _extract_timestamps,
     _take_uid_values,
     _timestamps_s_to_datetime_ns,
     _to_native,
@@ -117,7 +117,7 @@ def interpolate_at(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
 
     query_times_s = _query_timestamps_s(at)
@@ -142,9 +142,9 @@ def interpolate_at(
     if uid_col is not None:
         result_dict[uid_col] = _take_uid_values(uid_values, user_positions)
     result_dict["query_time"] = _timestamps_s_to_datetime_ns(query_time_values)
-    result_dict[lat_col] = _arrow_flat_result_values(out_lats)
-    result_dict[lng_col] = _arrow_flat_result_values(out_lngs)
-    result_dict["valid"] = _arrow_flat_result_values(out_valid)
+    result_dict[lat_col] = _as_arrow(out_lats)
+    result_dict[lng_col] = _as_arrow(out_lngs)
+    result_dict["valid"] = _as_arrow(out_valid)
 
     return _to_native(result_dict, df)
 

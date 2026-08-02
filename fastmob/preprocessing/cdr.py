@@ -9,7 +9,7 @@ import numpy as np
 from fastmob._core import cdr_approx_travel_minutes as _cdr_approx_travel_minutes
 from fastmob._core import cdr_trip_indices as _cdr_trip_indices
 from fastmob._core import cdr_visitation_stays as _cdr_visitation_stays
-from fastmob.utils._common import _ROW_ORDER_COL, _build_user_ranges
+from fastmob.utils._common import _ROW_ORDER_COL, _build_presorted_user_ends
 
 _VISITATION_COLUMNS = [
     "user_id",
@@ -180,8 +180,7 @@ def cdr_to_visitation_df(
     if len(df) == 0:
         return _empty_native(_VISITATION_COLUMNS, df.implementation)
 
-    uid_values, ranges = _build_user_ranges(df, user_id_column)
-    del uid_values
+    _, group_ends = _build_presorted_user_ends(df, user_id_column)
 
     user_values = df.get_column(user_id_column).to_list()
     venues = df.get_column(venue_column).to_list()
@@ -192,7 +191,7 @@ def cdr_to_visitation_df(
     starts, ends, _, has_end_timestamp = _cdr_visitation_stays(
         _stable_codes(venues),
         timestamps_s,
-        ranges,
+        group_ends,
     )
 
     if not starts:
@@ -312,7 +311,7 @@ def cdr_to_trips_df(
     if len(df) == 0:
         return _empty_native(_TRIPS_COLUMNS, df.implementation)
 
-    _, ranges = _build_user_ranges(df, user_id_column)
+    _, group_ends = _build_presorted_user_ends(df, user_id_column)
 
     users = df.get_column(user_id_column).to_list()
     areas = df.get_column("area").to_list()
@@ -337,7 +336,7 @@ def cdr_to_trips_df(
         .to_list()
     )
 
-    origins, destinations = _cdr_trip_indices(has_departure, ranges)
+    origins, destinations = _cdr_trip_indices(has_departure, group_ends)
     if not origins:
         return _empty_native(_TRIPS_COLUMNS, df.implementation)
 

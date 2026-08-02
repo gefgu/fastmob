@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from fastmob.utils._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import _build_presorted_user_ends, _detect_trajectory_columns, _prepare_trajectory
 
 from ..measures.collective.od import od_matrix
 from ._h3 import latlng_to_h3
@@ -105,9 +105,11 @@ def trajectory_to_od(
     # real cell index). Building the origin/destination pairing from raw
     # per-user row ranges instead keeps everything in integer arithmetic.
     cells = df.get_column(_ORIGIN_COL).to_numpy().astype(np.uint64)
-    _, ranges = _build_user_ranges(df, uid_col)
+    _, group_ends = _build_presorted_user_ends(df, uid_col)
+    ends = np.asarray(group_ends, dtype=np.int64)
+    starts = np.concatenate(([0], ends[:-1]))
     next_idx = np.full(len(cells), -1, dtype=np.int64)
-    for start, end in ranges:
+    for start, end in zip(starts, ends):
         if end - start > 1:
             next_idx[start : end - 1] = np.arange(start + 1, end)
 

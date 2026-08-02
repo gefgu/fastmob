@@ -7,7 +7,7 @@ import narwhals as nw
 from fastmob._core import latlng_to_h3_arrow as _latlng_to_h3_arrow
 from fastmob._core import latlng_to_h3_numpy as _latlng_to_h3_numpy
 from fastmob.core.dispatch import TrajectoryDispatcher
-from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _arrow_result_values, _pick_existing_column
+from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _as_arrow, _pick_existing_column
 
 H3_DISPATCHER = TrajectoryDispatcher(
     arrow_ops={"convert": _latlng_to_h3_arrow},
@@ -73,7 +73,7 @@ def latlng_to_h3(
     lngs_data = ops["extract_data"](df.get_column(lng_col))
 
     raw_cells = ops["convert"](lats_data, lngs_data, resolution)
-    cells = _arrow_result_values(raw_cells)
+    cells = _as_arrow(raw_cells)
 
     # `.alias(...)` is required, not just `new_series(output_col, ...)`: when
     # `cells` is an Arrow-native array (Polars/PyArrow backends), the backend

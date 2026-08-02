@@ -6,7 +6,7 @@ import narwhals as nw
 
 from fastmob._core import home_location_indexed, home_location_presorted
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -17,7 +17,7 @@ from fastmob.utils._common import (
 
 def _format_pair(values: tuple[Any, Any]) -> tuple[Any, Any]:
     first, second = values
-    return _arrow_result_values(first), _arrow_result_values(second)
+    return _as_arrow(first), _as_arrow(second)
 
 
 def home_location(

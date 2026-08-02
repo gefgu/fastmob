@@ -16,7 +16,7 @@ from fastmob.utils._common import (
     PURPOSE_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _factorize_arrow_values,
@@ -156,7 +156,7 @@ def daily_motifs(
     if not hasattr(purpose_source, "__arrow_c_stream__"):
         purpose_source = pa.chunked_array([_arrow_array(purpose_series)])
     raw_purpose_codes, home_purpose_code = _core.encode_motif_purposes(purpose_source)
-    purpose_codes = pa.array(_arrow_result_values(raw_purpose_codes))
+    purpose_codes = pa.array(_as_arrow(raw_purpose_codes))
     finish_stage("encode_purposes")
 
     batch_columns = {
@@ -186,9 +186,9 @@ def daily_motifs(
         )
     finish_stage("rust_kernel")
 
-    user_indices = pa.array(_arrow_result_values(raw_users))
-    date_ids = pa.array(_arrow_result_values(raw_dates))
-    motif_ids = pa.array(_arrow_result_values(raw_motifs))
+    user_indices = pa.array(_as_arrow(raw_users))
+    date_ids = pa.array(_as_arrow(raw_dates))
+    motif_ids = pa.array(_as_arrow(raw_motifs))
     user_ids = pc.take(uid_labels, user_indices)
     result = (
         nw.from_arrow(

@@ -11,7 +11,7 @@ from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     LOCATION_TYPE_CANDIDATES,
     USER_ID_CANDIDATES,
-    _build_user_ranges,
+    _build_presorted_user_ends,
     _pick_existing_column,
 )
 
@@ -87,20 +87,21 @@ def diversity(
 
     if user_id_col:
         nw_df = nw_df.sort(user_id_col)
-        uid_values, ranges = _build_user_ranges(nw_df, user_id_col)
+        uid_values, ends = _build_presorted_user_ends(nw_df, user_id_col)
         if location_id_col:
             tokens = nw_df.get_column(location_key_col).to_list()
-            values = _diversity_batch_rust(tokens, ranges)
+            values = _diversity_batch_rust(tokens, ends)
         else:
-            values = [0.0] * len(ranges)
+            values = [0.0] * len(ends)
         return nw.from_dict(
-            {user_id_col: uid_values, "diversity": values},
+            {user_id_col: uid_values.to_pylist(), "diversity": values},
             backend=nw_df.implementation,
         ).to_native()
 
     if location_id_col:
         tokens = nw_df.get_column(location_key_col).to_list()
-        div = _diversity_batch_rust(tokens, [(0, len(tokens))])[0]
+        _, ends = _build_presorted_user_ends(nw_df, None)
+        div = _diversity_batch_rust(tokens, ends)[0]
     else:
         div = 0.0
     return nw.from_dict({"diversity": [div]}, backend=nw_df.implementation).to_native()

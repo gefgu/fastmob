@@ -11,7 +11,7 @@ from fastmob._core import (
     radius_of_gyration_presorted,
 )
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -137,7 +137,7 @@ def radius_of_gyration(
             ends,
         )
 
-    rog_values = _arrow_result_values(raw_values)
+    rog_values = _as_arrow(raw_values)
     keep = np.asarray(raw_validity, dtype=bool)
     filtered_count = keep.size - int(keep.sum())
     if filtered_count:

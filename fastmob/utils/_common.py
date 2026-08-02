@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import math
-from collections.abc import Callable, Iterable
-from typing import Any
+from collections.abc import Iterable
+from typing import Any, Literal
 
 import narwhals as nw
 import numpy as np
+import pyarrow as pa
+import pyarrow.compute as pc
 
 _ROW_ORDER_COL = "__fastmob_row_order__"
-_USER_RANGE_START_COL = "__fastmob_user_range_start__"
 
 # ---------------------------------------------------------------------------
 # Authoritative candidate lists for column auto-detection.
@@ -37,42 +37,6 @@ DEST_CANDIDATES: list[str] = [
 ]
 
 
-def _shannon_entropy(counts: list[int]) -> float:
-    """Compute Shannon entropy in bits for a list of event counts.
-
-    Parameters
-    ----------
-    counts:
-        A list of non-negative integer counts (e.g. visit counts per location).
-        Zero-count items are ignored (contribute 0 to entropy, matching the
-        information-theoretic convention ``0 * log2(0) = 0``).
-
-    Returns
-    -------
-    float
-        Shannon entropy in bits.  Returns 0.0 when the total count is 0 or
-        when all probability mass is concentrated on a single item.
-
-    Examples
-    --------
-    >>> _shannon_entropy([1, 1])   # two equal-probability items -> 1 bit
-    1.0
-    >>> _shannon_entropy([1, 0])   # one item -> 0 bits
-    0.0
-    >>> _shannon_entropy([])
-    0.0
-    """
-    total = sum(counts)
-    if total == 0:
-        return 0.0
-    entropy = 0.0
-    for c in counts:
-        if c > 0:
-            p = c / total
-            entropy -= p * math.log2(p)
-    return entropy
-
-
 def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str | None:
     """Return the first candidate that exists in ``columns``, or None."""
     for candidate in candidates:
@@ -81,96 +45,9 @@ def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str 
     return None
 
 
-def is_arrow_backed(nw_df: nw.DataFrame) -> bool:
-    """Return True when a Narwhals DataFrame is backed by an Arrow object."""
-    native = nw_df.to_native()
-    return hasattr(native, "to_arrow") and hasattr(native, "dtypes")
-
-
-def _is_polars_backed(nw_df: nw.DataFrame) -> bool:
-    """Return True when a Narwhals DataFrame is backed by a Polars object."""
-    implementation = getattr(nw_df, "implementation", None)
-    if implementation is not None and hasattr(implementation, "is_polars"):
-        return bool(implementation.is_polars())
-
-    native = nw_df.to_native()
-    return hasattr(native, "lazy")
-
-
-def _use_arrow_kernel_path(nw_df: nw.DataFrame) -> bool:
-    """Return True when Rust kernels should consume Arrow buffers directly.
-
-    Pandas-backed Narwhals series expose ``to_arrow()``, but that converts
-    pandas/NumPy storage into Arrow buffers and can add large temporary
-    allocations.  Use Arrow kernels only for backends whose native storage is
-    already Arrow-oriented.
-    """
-    implementation = getattr(nw_df, "implementation", None)
-    if implementation is not None:
-        if hasattr(implementation, "is_polars") and implementation.is_polars():
-            return True
-        if hasattr(implementation, "is_pyarrow") and implementation.is_pyarrow():
-            return True
-    return False
-
-
-def _is_pandas_backed(nw_df: nw.DataFrame) -> bool:
-    """Return True when a Narwhals DataFrame is backed by pandas."""
-    native = nw_df.to_native()
-    return hasattr(native, "iloc") and hasattr(native, "dtypes")
-
-
-def _is_pyarrow_backed(nw_df: nw.DataFrame) -> bool:
-    """Return True when a Narwhals DataFrame is backed by PyArrow."""
-    implementation = getattr(nw_df, "implementation", None)
-    if implementation is not None and getattr(implementation, "value", None) == "pyarrow":
-        return True
-
-    native = nw_df.to_native()
-    return hasattr(native, "column") and hasattr(native, "schema")
-
-
 def _empty_like(nw_df: nw.DataFrame, columns: list[str]) -> Any:
     """Build an empty native DataFrame using the same backend as ``nw_df``."""
     return nw.from_dict({col: [] for col in columns}, backend=nw_df.implementation).to_native()
-
-
-def _dispatch_kernel(
-    numpy_kernel: Callable,
-    arrow_kernel: Callable,
-    series: Iterable[nw.Series],
-    *extra_args,
-    use_arrow: bool,
-    convert_arrow_result: bool = True,
-) -> Any:
-    """Call the NumPy or Arrow kernel after converting input series.
-
-    When ``use_arrow`` is True the input series are converted via ``to_arrow``
-    and the (possibly pyo3-arrow-wrapped) result is unwrapped through
-    :func:`_arrow_result_values` unless ``convert_arrow_result=False`` (used
-    when the result is fed back into another Arrow kernel).
-    """
-    if use_arrow:
-        result = arrow_kernel(*(s.to_arrow() for s in series), *extra_args)
-        return _arrow_result_values(result) if convert_arrow_result else result
-    return numpy_kernel(*(s.to_numpy() for s in series), *extra_args)
-
-
-def _dispatch_pair_kernel(
-    numpy_kernel: Callable,
-    arrow_kernel: Callable,
-    series: Iterable[nw.Series],
-    *extra_args,
-    use_arrow: bool,
-    convert_arrow_result: bool = True,
-) -> tuple[Any, Any]:
-    """Like :func:`_dispatch_kernel` but for kernels returning a 2-tuple."""
-    if use_arrow:
-        first, second = arrow_kernel(*(s.to_arrow() for s in series), *extra_args)
-        if convert_arrow_result:
-            return _arrow_result_values(first), _arrow_result_values(second)
-        return first, second
-    return numpy_kernel(*(s.to_numpy() for s in series), *extra_args)
 
 
 def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
@@ -181,48 +58,26 @@ def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
         return df.with_columns(nw.col(column).str.to_datetime().alias(column))
 
 
-def _ranges_to_starts_ends(
-    ranges: list[tuple[int, int]],
-) -> tuple[np.ndarray, np.ndarray]:
-    """Convert Python range tuples to NumPy start/end arrays."""
-    starts = np.fromiter((start for start, _ in ranges), dtype=np.uintp, count=len(ranges))
-    ends = np.fromiter((end for _, end in ranges), dtype=np.uintp, count=len(ranges))
-    return starts, ends
+def _as_arrow(values: Any) -> pa.Array | pa.ChunkedArray:
+    """Return a concrete Arrow array from a Narwhals, pyo3-arrow, or Arrow value.
 
-
-def _ranges_to_ends(ranges: list[tuple[int, int]]) -> np.ndarray:
-    """Convert Python range tuples to a cumulative end-boundary array."""
-    return np.fromiter((end for _, end in ranges), dtype=np.uintp, count=len(ranges))
-
-
-def _starts_from_ends(ends: Any) -> np.ndarray:
-    """Derive range starts from a cumulative end-boundary array."""
-    ends = np.asarray(ends, dtype=np.uintp)
-    starts = np.empty_like(ends)
-    if len(ends) == 0:
-        return starts
-    starts[0] = 0
-    starts[1:] = ends[:-1]
-    return starts
-
-
-def _ranges_from_ends(ends: Any) -> list[tuple[int, int]]:
-    """Convert cumulative end boundaries to Python half-open ranges."""
-    starts = _starts_from_ends(ends)
-    ends = np.asarray(ends, dtype=np.uintp)
-    return list(zip(starts.tolist(), ends.tolist()))
-
-
-def _arrow_result_values(values: Any) -> Any:
-    """Return a PyArrow value object when a pyo3-arrow wrapper is returned."""
+    This is the only conversion used at Python/Rust boundaries.  It deliberately
+    accepts pandas-backed Narwhals series too: the project uses Arrow buffers
+    consistently for kernel inputs, regardless of the caller's dataframe
+    backend.
+    """
+    if hasattr(values, "to_arrow"):
+        values = values.to_arrow()
     if hasattr(values, "to_pyarrow"):
-        return values.to_pyarrow()
-    return values
+        values = values.to_pyarrow()
+    if isinstance(values, (pa.Array, pa.ChunkedArray)):
+        return values
+    return pa.array(values)
 
 
 def _values_to_list(values: Any) -> list[Any]:
     """Materialize Arrow/NumPy/pandas-like values as a Python list."""
-    values = _arrow_result_values(values)
+    values = _as_arrow(values)
     if hasattr(values, "to_pylist"):
         return values.to_pylist()
     if hasattr(values, "to_list"):
@@ -246,7 +101,7 @@ def _list_column_from_offsets(flat_values: Any, offsets: Any) -> list[list[Any]]
 
 def _filter_result_values(values: Any, keep: Any, *, dtype: Any = None) -> Any:
     """Filter NumPy or Arrow-like result values with a boolean keep mask."""
-    values = _arrow_result_values(values)
+    values = _as_arrow(values)
     if hasattr(values, "__arrow_c_array__"):
         import pyarrow as pa
         import pyarrow.compute as pc
@@ -283,48 +138,34 @@ def _narwhals_safe_value(values: Any) -> Any:
 
 def _to_native(values_dict: dict[str, Any], df: nw.DataFrame) -> Any:
     """Build a backend-matching result dataframe from a column dict."""
-    try:
-        import pyarrow as pa
-
-        arrays = {name: pa.array(_arrow_result_values(values)) for name, values in values_dict.items()}
-        return nw.from_arrow(pa.table(arrays), backend=df.implementation).to_native()
-    except (TypeError, ValueError, pa.ArrowException):
-        pass
-    columns = {name: _narwhals_safe_value(values) for name, values in values_dict.items()}
-    return nw.from_dict(columns, backend=df.implementation).to_native()
+    arrays = {name: _as_arrow(values) for name, values in values_dict.items()}
+    return nw.from_arrow(pa.table(arrays), backend=df.implementation).to_native()
 
 
 def _take_uid_values(uid_values: Any | None, user_indices: Any) -> Any:
     """Return one UID label per flat output row using vectorized positional take."""
     if uid_values is None:
         return None
-    import pyarrow as pa
-    import pyarrow.compute as pc
-
-    return pc.take(pa.array(uid_values), pa.array(_arrow_result_values(user_indices)))
+    return pc.take(_as_arrow(uid_values), _as_arrow(user_indices))
 
 
 def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
-    import pyarrow as pa
-
     return nw.from_arrow(
-        pa.table({"__fastmob_uid_codes__": pa.array(values, type=pa.uint64())}),
+        pa.table({"__fastmob_uid_codes__": pa.array(_as_arrow(values), type=pa.uint64())}),
         backend=df.implementation,
     ).get_column("__fastmob_uid_codes__")
 
 
 def _factorize_arrow_values(values: Any, *, sort: bool) -> tuple[Any, Any]:
-    import pyarrow as pa
-    import pyarrow.compute as pc
-
     from fastmob._core import factorize_arrow
 
-    values = values.to_arrow() if hasattr(values, "to_arrow") else values
-    values = pa.array(values)
+    values = _as_arrow(values)
+    if isinstance(values, pa.ChunkedArray):
+        values = values.combine_chunks()
     if pa.types.is_dictionary(values.type):
         values = pc.dictionary_decode(values)
     raw_codes, raw_representatives = factorize_arrow(values, sort)
-    return pa.array(_arrow_result_values(raw_codes)), pa.array(_arrow_result_values(raw_representatives))
+    return _as_arrow(raw_codes), _as_arrow(raw_representatives)
 
 
 def _factorize_uids_uint64(
@@ -341,31 +182,34 @@ def _factorize_uids_uint64(
     return _uint64_series(df, codes), len(representatives)
 
 
-def _extract_timestamps_ms(df: nw.DataFrame, datetime_col: str) -> nw.Series:
-    """Return a Float64 Narwhals Series of millisecond Unix timestamps."""
-    return df.with_columns(nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64).alias("__ts_ms__")).get_column(
-        "__ts_ms__"
-    )
+def _extract_timestamps(
+    df: nw.DataFrame,
+    datetime_col: str,
+    *,
+    unit: Literal["ms", "s"],
+) -> nw.Series:
+    """Return Float64 Unix timestamps in ``unit`` from a Narwhals datetime column.
 
-
-def _extract_timestamps_s(df: nw.DataFrame, datetime_col: str) -> nw.Series:
-    """Return a Float64 Narwhals Series of second-resolution Unix timestamps.
-
-    Goes through the millisecond path so backends with nanosecond or
-    microsecond storage produce identical values.
+    Seconds are derived from millisecond timestamps so every backend has the
+    same rounding and epoch semantics.
     """
-    return df.with_columns((nw.col(datetime_col).dt.timestamp("ms") / 1000.0).alias("__ts_s__")).get_column("__ts_s__")
+    if unit not in {"ms", "s"}:
+        raise ValueError("unit must be 'ms' or 's'")
+    values = nw.col(datetime_col).dt.timestamp("ms").cast(nw.Float64)
+    if unit == "s":
+        values = values / 1000.0
+    return df.with_columns(values.alias("__fastmob_timestamp__")).get_column("__fastmob_timestamp__")
 
 
 def _timestamps_s_to_datetime_ns(values: Any) -> np.ndarray:
     """Convert flat seconds-since-epoch values (NumPy or Arrow) to a naive ``datetime64[ns]`` NumPy array.
 
-    Inverse of :func:`_extract_timestamps_s`. No existing measure needs to
+    Inverse of :func:`_extract_timestamps` with ``unit="s"``. No existing measure needs to
     re-emit an expanded/reconstructed datetime column, so this is new;
     mirrors ``fastmob/preprocessing/_stay_locations.py``'s private
     ``_seconds_to_naive_utc`` helper.
     """
-    values = _arrow_result_values(values)
+    values = _as_arrow(values)
     if hasattr(values, "to_numpy"):
         try:
             values = values.to_numpy(zero_copy_only=False)
@@ -397,7 +241,7 @@ def _build_indexed_user_ranges(
         else:
             timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
             raw_indices, raw_ends = time_ordered_user_indices(None, pa.array(timestamp_values))
-        return None, pa.array(_arrow_result_values(raw_indices)), pa.array(_arrow_result_values(raw_ends))
+        return None, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
     uid_values = pa.array(df.get_column(uid_col).to_arrow())
     codes, representatives = _factorize_arrow_values(uid_values, sort=False)
@@ -407,7 +251,7 @@ def _build_indexed_user_ranges(
         timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
         raw_indices, raw_ends = time_ordered_user_indices(codes, pa.array(timestamp_values), len(representatives))
     labels = pc.take(uid_values, representatives)
-    return labels, pa.array(_arrow_result_values(raw_indices)), pa.array(_arrow_result_values(raw_ends))
+    return labels, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
 
 def _detect_trajectory_columns(
@@ -577,36 +421,6 @@ def _prepare_trajectory(
     return nw_df
 
 
-def _build_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list, list[tuple[int, int]]]:
-    """Split a uid-sorted DataFrame into per-user (uid_value, index_range) pairs.
-
-    Returns
-    -------
-    tuple[list, list[tuple[int, int]]]
-        ``(uid_values, ranges)`` where ``ranges[i]`` is the half-open row
-        interval ``[start, end)`` for ``uid_values[i]``.  When ``uid_col`` is
-        None the whole frame is treated as one user and returns
-        ``([None], [(0, len(df))])``.
-    """
-    n = len(df)
-    if uid_col is None:
-        return [None], [(0, n)]
-    if n == 0:
-        return [], []
-
-    starts_df = (
-        df.select([uid_col])
-        .with_row_index(_USER_RANGE_START_COL)
-        .filter((nw.col(uid_col) != nw.col(uid_col).shift(1)).fill_null(True))
-    )
-    starts = starts_df.get_column(_USER_RANGE_START_COL).to_list()
-    uid_values = starts_df.get_column(uid_col).to_list()
-    ends = starts[1:] + [n]
-    ranges = list(zip(starts, ends))
-
-    return uid_values, ranges
-
-
 def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[Any | None, Any]:
     """Build contiguous user group end indices for data already grouped by user."""
     import pyarrow as pa
@@ -624,12 +438,6 @@ def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[A
     return encoded.values, pc.cast(encoded.run_ends, pa.uint64())
 
 
-def _build_presorted_user_ranges(df: nw.DataFrame, uid_col: str | None) -> tuple[list | None, list[tuple[int, int]]]:
-    """Build contiguous user ranges for data already grouped by user."""
-    uid_values, ends = _build_presorted_user_ends(df, uid_col)
-    return (None if uid_values is None else uid_values.to_pylist()), _ranges_from_ends(ends)
-
-
 def _value_offsets_from_index_ranges(
     index_starts: Any,
     index_ends: Any,
@@ -645,16 +453,6 @@ def _value_offsets_from_index_ranges(
     value_ends = np.cumsum(lengths, dtype=np.uintp)
     value_starts = value_ends - lengths
     return value_starts, value_ends
-
-
-def _arrow_flat_result_values(values: Any) -> Any:
-    """Unwrap a pyo3-arrow wrapper and materialise into a concrete ``pa.Array``."""
-    values = _arrow_result_values(values)
-    if hasattr(values, "__arrow_c_array__"):
-        import pyarrow as pa
-
-        return pa.array(values)
-    return values
 
 
 def _grouped_arrow_values(
@@ -675,4 +473,4 @@ def _grouped_arrow_values(
     offsets = np.empty(len(starts) + 1, dtype=np.int32)
     offsets[:-1] = starts
     offsets[-1] = ends[-1] if len(ends) else 0
-    return pa.ListArray.from_arrays(offsets, _arrow_flat_result_values(values))
+    return pa.ListArray.from_arrays(offsets, _as_arrow(values))

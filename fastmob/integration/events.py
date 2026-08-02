@@ -18,7 +18,7 @@ from fastmob.utils._common import (
     DATETIME_CANDIDATES,
     LAT_CANDIDATES,
     LNG_CANDIDATES,
-    _extract_timestamps_s,
+    _extract_timestamps,
     _pick_existing_column,
 )
 
@@ -97,7 +97,7 @@ def join_with_events(
 
     query_lat = df.get_column(lat_col).to_numpy().astype(np.float64)
     query_lng = df.get_column(lng_col).to_numpy().astype(np.float64)
-    query_time_i64 = np.rint(_extract_timestamps_s(df, datetime_col).to_numpy()).astype(np.int64)
+    query_time_i64 = np.rint(_extract_timestamps(df, datetime_col, unit="s").to_numpy()).astype(np.int64)
 
     events = nw.from_native(events_df, eager_only=True)
     event_lat = events.get_column(event_lat_col).to_numpy().astype(np.float64)
@@ -111,7 +111,7 @@ def join_with_events(
         nearest_idx = np.full(n_query, -1, dtype=np.int64)
         dist_m = np.full(n_query, np.inf, dtype=np.float64)
     else:
-        event_time_i64 = np.rint(_extract_timestamps_s(events, event_datetime_col).to_numpy()).astype(np.int64)
+        event_time_i64 = np.rint(_extract_timestamps(events, event_datetime_col, unit="s").to_numpy()).astype(np.int64)
         sort_order = np.argsort(event_time_i64, kind="stable")
         nearest_idx, dist_m = nearest_event_within_window(
             query_lat,

@@ -11,7 +11,7 @@ from fastmob._core import (
     max_distance_from_point_presorted,
 )
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -140,7 +140,7 @@ def max_distance_from_home(
         home_lats, home_lngs = home_location_presorted(
             lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night)
         )
-        max_distances = _arrow_result_values(
+        max_distances = _as_arrow(
             max_distance_from_point_presorted(home_lats, home_lngs, lats_data, lngs_data, ends)
         )
         if uid_col is None:
@@ -152,7 +152,7 @@ def max_distance_from_home(
     home_lats, home_lngs = home_location_indexed(
         lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night)
     )
-    max_distances = _arrow_result_values(
+    max_distances = _as_arrow(
         max_distance_from_point_indexed(home_lats, home_lngs, lats_data, lngs_data, indices, ends)
     )
 

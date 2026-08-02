@@ -7,11 +7,11 @@ import narwhals as nw
 from fastmob._core import recency_rank_presorted, recency_rank_values_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps_ms,
+    _extract_timestamps,
     _take_uid_values,
     _to_native,
     _with_datetime_column,
@@ -22,9 +22,9 @@ _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 def _unpack_rank(raw: tuple[Any, Any, Any, Any]) -> tuple[Any, Any, Any, Any]:
     return (
-        _arrow_result_values(raw[0]),
-        _arrow_result_values(raw[1]),
-        _arrow_result_values(raw[2]),
+        _as_arrow(raw[0]),
+        _as_arrow(raw[1]),
+        _as_arrow(raw[2]),
         raw[3],
     )
 
@@ -132,7 +132,7 @@ def recency_rank(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw = recency_rank_presorted(lats_data, lngs_data, ends)
     else:
-        timestamps = _extract_timestamps_ms(df, datetime_col)
+        timestamps = _extract_timestamps(df, datetime_col, unit="ms")
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         raw = recency_rank_values_indexed(lats_data, lngs_data, indices, ends)
     out_lats, out_lngs, ranks, user_indices = _unpack_rank(raw)

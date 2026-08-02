@@ -6,11 +6,11 @@ import narwhals as nw
 
 from fastmob._core import k_radius_of_gyration_indexed, k_radius_of_gyration_presorted
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps_ms,
+    _extract_timestamps,
     _to_native,
 )
 
@@ -126,19 +126,19 @@ def k_radius_of_gyration(
 
     lats = df.get_column(lat_col).to_arrow()
     lngs = df.get_column(lng_col).to_arrow()
-    timestamps = _extract_timestamps_ms(df, datetime_col)
+    timestamps = _extract_timestamps(df, datetime_col, unit="ms")
     timestamps_data = timestamps.to_arrow()
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        krg_values = _arrow_result_values(k_radius_of_gyration_presorted(lats, lngs, timestamps_data, ends, k))
+        krg_values = _as_arrow(k_radius_of_gyration_presorted(lats, lngs, timestamps_data, ends, k))
         if uid_col is None:
             return _to_native({"k_radius_of_gyration": krg_values}, df)
         return _to_native({uid_col: uid_values, "k_radius_of_gyration": krg_values}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
 
-    krg_values = _arrow_result_values(k_radius_of_gyration_indexed(lats, lngs, timestamps_data, indices, ends, k))
+    krg_values = _as_arrow(k_radius_of_gyration_indexed(lats, lngs, timestamps_data, indices, ends, k))
 
     if uid_col is None:
         return _to_native({"k_radius_of_gyration": krg_values}, df)

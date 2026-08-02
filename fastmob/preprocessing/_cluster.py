@@ -5,7 +5,7 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from fastmob.utils._common import _build_user_ranges, _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import _build_presorted_user_ends, _detect_trajectory_columns, _prepare_trajectory
 
 _KMS_PER_RADIAN = 6371.0088
 
@@ -52,7 +52,9 @@ def cluster(
     eps_rad = cluster_radius_km / _KMS_PER_RADIAN
     DBSCAN = _dbscan_cls()
 
-    _, ranges = _build_user_ranges(df, uid_col)
+    _, group_ends = _build_presorted_user_ends(df, uid_col)
+    ends = np.asarray(group_ends, dtype=np.intp)
+    starts = np.concatenate(([0], ends[:-1]))
 
     # 1. PRE-COMPUTE COORDINATES globally
     lats = df.get_column(lat_col).to_numpy()
@@ -66,7 +68,7 @@ def cluster(
     # 3. REUSE ESTIMATOR to avoid initialization overhead
     db = DBSCAN(eps=eps_rad, min_samples=min_samples, algorithm="ball_tree", metric="haversine", n_jobs=n_jobs)
 
-    for start, end in ranges:
+    for start, end in zip(starts, ends):
         user_coords = all_coords[start:end]
         if len(user_coords) == 0:
             continue

@@ -6,17 +6,13 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from fastmob._core import (
-    detect_stay_locations_batch,
-    detect_stay_locations_batch_indexed,
-)
+from fastmob._core import detect_stay_locations_batch_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
-    _build_user_ranges,
     _detect_trajectory_columns,
-    _extract_timestamps_s,
+    _extract_timestamps,
     _take_uid_values,
     _to_native,
 )
@@ -24,10 +20,10 @@ from fastmob.utils._common import (
 
 def _unwrap_stay(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
     return (
-        _arrow_result_values(_l),
-        _arrow_result_values(_g),
-        _arrow_result_values(_e),
-        _arrow_result_values(_lv),
+        _as_arrow(_l),
+        _as_arrow(_g),
+        _as_arrow(_e),
+        _as_arrow(_lv),
         _r,
     )
 
@@ -138,7 +134,7 @@ def stay_locations(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    timestamps_s = _extract_timestamps_s(df, datetime_col)
+    timestamps_s = _extract_timestamps(df, datetime_col, unit="s")
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps_s)
@@ -146,12 +142,13 @@ def stay_locations(
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
     if presorted:
-        uid_values, ranges = _build_user_ranges(df, uid_col)
-        _result = detect_stay_locations_batch(
+        uid_values, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        _result = detect_stay_locations_batch_indexed(
             lats_data,
             lngs_data,
             timestamps_data,
-            ranges,
+            sorted_indices,
+            ends,
             spatial_radius_km,
             minutes_for_a_stop,
             no_data_for_minutes,

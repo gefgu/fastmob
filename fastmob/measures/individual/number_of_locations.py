@@ -6,7 +6,7 @@ import narwhals as nw
 
 from fastmob._core import number_of_locations_indexed, number_of_locations_presorted
 from fastmob.utils._common import (
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -108,14 +108,14 @@ def number_of_locations(
     lngs_data = df.get_column(lng_col).to_arrow()
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        n_locs = _arrow_result_values(number_of_locations_presorted(lats_data, lngs_data, ends))
+        n_locs = _as_arrow(number_of_locations_presorted(lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"number_of_locations": n_locs}, df)
         return _to_native({uid_col: uid_values, "number_of_locations": n_locs}, df)
 
     uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
 
-    n_locs = _arrow_result_values(number_of_locations_indexed(lats_data, lngs_data, indices, ends))
+    n_locs = _as_arrow(number_of_locations_indexed(lats_data, lngs_data, indices, ends))
 
     if uid_col is None:
         result = _to_native({"number_of_locations": n_locs}, df)

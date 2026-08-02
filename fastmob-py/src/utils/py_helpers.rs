@@ -179,6 +179,27 @@ pub fn arrow_usize_values(array: &PrimitiveArray<UInt64Type>) -> &[usize] {
     unsafe { std::slice::from_raw_parts(values.as_ptr().cast::<usize>(), values.len()) }
 }
 
+/// Decode Arrow cumulative group ends at the last possible legacy boundary.
+///
+/// Python callers keep group metadata in Arrow; older core algorithms still
+/// accept half-open ranges internally.
+pub fn ranges_from_ends(ends: PyArray, value_len: usize) -> PyResult<Vec<(usize, usize)>> {
+    let ends = as_u64_array(ends, "ends")?;
+    let mut start = 0;
+    let mut ranges = Vec::with_capacity(ends.len());
+    for &end in arrow_usize_values(&ends) {
+        if end < start || end > value_len {
+            return Err(PyValueError::new_err("group ends must be monotonic and within input bounds"));
+        }
+        ranges.push((start, end));
+        start = end;
+    }
+    if start != value_len {
+        return Err(PyValueError::new_err("final group end must equal input length"));
+    }
+    Ok(ranges)
+}
+
 pub trait ArrowUsizeArrayExt {
     fn as_slice(&self) -> PyResult<&[usize]>;
 }

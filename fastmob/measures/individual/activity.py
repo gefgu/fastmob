@@ -19,7 +19,7 @@ from fastmob.utils._common import (
     DAY_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
-    _arrow_result_values,
+    _as_arrow,
     _build_indexed_user_ranges,
     _factorize_arrow_values,
     _pick_existing_column,
@@ -110,7 +110,7 @@ def _factorize_activities(df: nw.DataFrame, activity_col: str) -> tuple[list[Any
 
 
 def _kernel_result(values: Any) -> np.ndarray:
-    return np.asarray(_arrow_result_values(values))
+    return np.asarray(_as_arrow(values))
 
 
 def _activity_counts(codes: nw.Series, n_activities: int) -> np.ndarray:
