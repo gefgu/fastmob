@@ -1,5 +1,5 @@
 use crate::utils::ArrowUsizeArrayExt;
-use fastmob_core::privacy::{AttackKind, privacy_assess_risk_impl};
+use fastmob_core::privacy::{privacy_assess_risk_impl, AttackKind};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;

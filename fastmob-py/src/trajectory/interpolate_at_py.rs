@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use fastmob_core::trajectory::interpolate_at::{
-    PositionQueryMethod, interpolate_at_indexed_impl, interpolate_at_presorted_impl,
+    interpolate_at_indexed_impl, interpolate_at_presorted_impl, PositionQueryMethod,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;

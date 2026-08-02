@@ -146,6 +146,11 @@ Benchmarks are parametrized over five dataset sizes (1k / 10k / 100k / 1M / 4M r
 
 ## Profiling
 
+Python measure wrappers must not contain ad-hoc timing state or `print` calls.
+For opt-in, stage-level diagnostics, use `fastmob.utils._profiling.StageTimer`
+with a clearly named `FASTMOB_PROFILE_*` environment variable. The helper keeps
+profiling output on stderr and is a no-op unless that variable is set.
+
 Start with a small row count, then scale to 4M only after the profiler path works. Brightkite workloads are registered in `tests/profiling/brightkite_workloads.py`; use `--workload filter`, `--workload radius_of_gyration`, etc. The Brightkite dataset is cached at `tests/shared/data/loc-brightkite_totalCheckins.txt.gz`.
 
 ```bash

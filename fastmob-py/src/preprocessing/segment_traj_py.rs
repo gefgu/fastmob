@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::preprocessing::segment::{
-    SegmentConfig as CoreSegmentConfig, SegmentMethod, segment_trajectory_impl,
-    segment_trajectory_indexed_impl,
+    segment_trajectory_impl, segment_trajectory_indexed_impl, SegmentConfig as CoreSegmentConfig,
+    SegmentMethod,
 };
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;

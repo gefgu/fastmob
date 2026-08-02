@@ -1,5 +1,5 @@
 use fastmob_core::preprocessing::filter_traj::{
-    FilterConfig as CoreFilterConfig, filter_trajectory_impl, filter_trajectory_indexed_impl,
+    filter_trajectory_impl, filter_trajectory_indexed_impl, FilterConfig as CoreFilterConfig,
 };
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;

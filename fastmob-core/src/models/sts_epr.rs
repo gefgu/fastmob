@@ -3,7 +3,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 
 use crate::models::geosim::{
-    GeoSimAgentState, GeoSimScratch, SocialMode, cosine_similarity_sparse, make_individual_return,
+    cosine_similarity_sparse, make_individual_return, GeoSimAgentState, GeoSimScratch, SocialMode,
 };
 use crate::models::od::CachedGravityOdRows;
 use crate::models::shared::{cdf_choice, derive_agent_seed};
