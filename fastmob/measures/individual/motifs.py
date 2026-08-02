@@ -92,9 +92,9 @@ def _encode_locations(df: nw.DataFrame, column: str) -> Any:
 def _encode_locations_pair(visits_series: nw.Series, locations_series: nw.Series, dtype: Any) -> tuple[Any, Any]:
     """Encode two location-id columns with one consistent codebook.
 
-    Used by the Rust-join path so a location_id value maps to the same code
-    on both the visits (Staypoints) side and the locations (Locations)
-    side. Integer ids (the real trackintel case -- ``location_id`` from
+    Used by :func:`daily_motifs_from_staypoints` so a location_id value maps
+    to the same code on both the visits (Staypoints) side and the locations
+    (Locations) side. Integer ids (the real trackintel case -- ``location_id`` from
     ``generate_locations`` is always an integer cluster id) are cast
     independently on each side; raw integer values are inherently
     consistent between tables, no shared factorization state needed. Other
@@ -221,7 +221,9 @@ def _assemble_motif_result(
     raw_dates: Any,
     raw_motifs: Any,
 ) -> Any:
-    """Build the ``[uid_col, "date", "motif_id"]`` result shared by every join path."""
+    """Build the ``[uid_col, "date", "motif_id"]`` result shared by :func:`daily_motifs`
+    and :func:`daily_motifs_from_staypoints`.
+    """
     import pyarrow as pa
     import pyarrow.compute as pc
 

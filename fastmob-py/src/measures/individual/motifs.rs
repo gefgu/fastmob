@@ -197,9 +197,10 @@ pub fn encode_motif_purposes(values: PyChunkedArray) -> PyResult<(ArrowPyArray, 
         ));
     }
     // One past the highest real/null code ever assigned (0..groups.len()) --
-    // used by the Rust-join path to mark a (user_idx, location_code) lookup
-    // miss, distinct from both real codes and from home_code's u16::MAX
-    // "HOME not found" sentinel (groups.len() <= 65533 < 65535).
+    // used by the Staypoints/Locations hierarchy lookup to mark a
+    // (user_idx, location_code) miss, distinct from both real codes and
+    // from home_code's u16::MAX "HOME not found" sentinel
+    // (groups.len() <= 65533 < 65535).
     let unmatched_code = groups.len() as u16;
 
     let mut mapping = FxHashMap::default();
