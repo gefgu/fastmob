@@ -358,7 +358,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         models::ditras::model_ditras_simulate_agents,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(privacy::privacy_assess_risk_indexed, m)?)?;
-    m.add_function(wrap_pyfunction!(privacy::privacy_assess_risk_presorted, m)?)?;
+    m.add_class::<privacy::PyPrivacyRiskResult>()?;
+    m.add_function(wrap_pyfunction!(privacy::privacy_assess_risk, m)?)?;
     Ok(())
 }

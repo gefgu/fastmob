@@ -34,20 +34,20 @@ struct ForceRow {
     prob: f64,
 }
 
-pub type PrivacyRiskResult = (
-    Vec<usize>,
-    Vec<f64>,
-    Vec<f64>,
-    Vec<f64>,
-    Vec<usize>,
-    Vec<usize>,
-    Vec<usize>,
-    Vec<usize>,
-    Vec<f64>,
-);
+pub struct PrivacyRiskResult {
+    pub user_indices: Vec<usize>,
+    pub risks: Vec<f64>,
+    pub force_lats: Vec<f64>,
+    pub force_lngs: Vec<f64>,
+    pub row_indices: Vec<usize>,
+    pub force_user_indices: Vec<usize>,
+    pub instances: Vec<usize>,
+    pub elems: Vec<usize>,
+    pub probs: Vec<f64>,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum AttackKind {
+pub enum AttackKind {
     Location,
     Sequence,
     Time,
@@ -58,19 +58,19 @@ enum AttackKind {
     HomeWork,
 }
 
-impl TryFrom<u8> for AttackKind {
+impl TryFrom<&str> for AttackKind {
     type Error = String;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(Self::Location),
-            1 => Ok(Self::Sequence),
-            2 => Ok(Self::Time),
-            3 => Ok(Self::UniqueLocation),
-            4 => Ok(Self::Frequency),
-            5 => Ok(Self::Probability),
-            6 => Ok(Self::Proportion),
-            7 => Ok(Self::HomeWork),
+            "location" => Ok(Self::Location),
+            "sequence" => Ok(Self::Sequence),
+            "time" => Ok(Self::Time),
+            "unique_location" => Ok(Self::UniqueLocation),
+            "frequency" => Ok(Self::Frequency),
+            "probability" => Ok(Self::Probability),
+            "proportion" => Ok(Self::Proportion),
+            "home_work" => Ok(Self::HomeWork),
             _ => Err("unknown privacy attack kind".to_string()),
         }
     }
@@ -512,17 +512,17 @@ fn flatten_result(
         probs.push(row.prob);
     }
 
-    (
-        normal_user_indices,
+    PrivacyRiskResult {
+        user_indices: normal_user_indices,
         risks,
-        lats,
-        lngs,
+        force_lats: lats,
+        force_lngs: lngs,
         row_indices,
         force_user_indices,
         instances,
         elems,
         probs,
-    )
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -533,7 +533,7 @@ pub fn privacy_assess_risk_impl(
     indices: Option<&[usize]>,
     ends: &[usize],
     target_user_indices: &[usize],
-    attack_kind: u8,
+    attack_kind: AttackKind,
     knowledge_length: usize,
     tolerance: f64,
     force_instances: bool,
@@ -542,12 +542,11 @@ pub fn privacy_assess_risk_impl(
     if knowledge_length == 0 {
         return Err("knowledge_length must be greater than zero".to_string());
     }
-    let kind = AttackKind::try_from(attack_kind)?;
     validate_inputs(latitudes, longitudes, time_keys, indices, ends, valid_rows)?;
 
     let obs_users =
         build_observation_users(latitudes, longitudes, time_keys, indices, ends, valid_rows);
-    let values = build_values(&obs_users, kind);
+    let values = build_values(&obs_users, attack_kind);
 
     let mut normal_user_indices = Vec::new();
     let mut risks = Vec::new();
@@ -565,7 +564,7 @@ pub fn privacy_assess_risk_impl(
             continue;
         }
 
-        let positions = if kind == AttackKind::HomeWork {
+        let positions = if attack_kind == AttackKind::HomeWork {
             vec![(0..n).collect()]
         } else {
             combination_positions(n, knowledge_length.min(n))
@@ -576,7 +575,7 @@ pub fn privacy_assess_risk_impl(
             let instance = instance_from_positions(&values[user_idx], combo);
             let match_count = values
                 .iter()
-                .filter(|candidate| candidate_matches(kind, &instance, candidate, tolerance))
+                .filter(|candidate| candidate_matches(attack_kind, &instance, candidate, tolerance))
                 .count();
             if match_count == 0 {
                 continue;
@@ -587,7 +586,7 @@ pub fn privacy_assess_risk_impl(
                 &mut risks,
                 &mut force_rows,
                 force_instances,
-                kind,
+                attack_kind,
                 user_idx,
                 instance_idx + 1,
                 prob,

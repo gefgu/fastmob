@@ -262,6 +262,7 @@ def _detect_trajectory_columns(
     uid_col: str | None = None,
     *,
     cast_float_coordinates: bool = False,
+    require_datetime: bool = True,
 ) -> Any:
     """Auto-detect trajectory column names from a Narwhals DataFrame.
 
@@ -284,6 +285,8 @@ def _detect_trajectory_columns(
     cast_float_coordinates:
         When True, cast latitude and longitude columns to Float64 and return
         the possibly updated DataFrame before the column names.
+    require_datetime:
+        When False, datetime is resolved when present but is not required.
 
     Returns
     -------
@@ -321,7 +324,7 @@ def _detect_trajectory_columns(
         name
         for name, col in zip(
             ["datetime", "latitude", "longitude"],
-            [datetime_col, lat_col, lng_col],
+            [datetime_col if require_datetime else "", lat_col, lng_col],
         )
         if col is None
     ]

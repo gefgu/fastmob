@@ -222,9 +222,9 @@
       "name": "location_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "LocationAttack",
-      "fastmob_class": "LocationAttack",
+      "fastmob_function": "location_risk",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -234,9 +234,9 @@
       "name": "location_sequence_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "LocationSequenceAttack",
-      "fastmob_class": "LocationSequenceAttack",
+      "fastmob_function": "location_sequence_risk",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -246,9 +246,9 @@
       "name": "location_time_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "LocationTimeAttack",
-      "fastmob_class": "LocationTimeAttack",
+      "fastmob_function": "location_time_risk",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -258,9 +258,9 @@
       "name": "unique_location_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "UniqueLocationAttack",
-      "fastmob_class": "UniqueLocationAttack",
+      "fastmob_function": "unique_location_risk",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -270,9 +270,9 @@
       "name": "location_frequency_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "LocationFrequencyAttack",
-      "fastmob_class": "LocationFrequencyAttack",
+      "fastmob_function": "location_frequency_risk",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -282,9 +282,9 @@
       "name": "location_probability_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "LocationProbabilityAttack",
-      "fastmob_class": "LocationProbabilityAttack",
+      "fastmob_function": "location_probability_risk",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -294,9 +294,9 @@
       "name": "location_proportion_kl2",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "LocationProportionAttack",
-      "fastmob_class": "LocationProportionAttack",
+      "fastmob_function": "location_proportion_risk",
       "default_kwargs": {
         "knowledge_length": 2
       },
@@ -306,9 +306,9 @@
       "name": "home_work",
       "suite": "privacy",
       "legacy_module": "skmob.privacy.attacks",
-      "fastmob_module": "fastmob.privacy.attacks",
+      "fastmob_module": "fastmob.privacy",
       "legacy_class": "HomeWorkAttack",
-      "fastmob_class": "HomeWorkAttack",
+      "fastmob_function": "home_work_risk",
       "default_kwargs": {},
       "input_kind": "privacy_toy"
     },

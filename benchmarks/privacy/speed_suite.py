@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import functools
 import gc
 import importlib
+import inspect
 import json
 import os
 import platform
@@ -119,11 +121,21 @@ def nonnegative_float(value: str) -> float:
 
 
 def import_attack(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
-    module_path = "fastmob.privacy.attacks" if library == "fastmob" else "skmob.privacy.attacks"
     try:
-        module = importlib.import_module(module_path)
-        attack_cls = getattr(module, spec.class_name)
-        attack = attack_cls(**spec.init_kwargs)
+        if library == "fastmob":
+            function_names = {
+                "LocationAttack": "location_risk",
+                "LocationSequenceAttack": "location_sequence_risk",
+                "LocationTimeAttack": "location_time_risk",
+                "UniqueLocationAttack": "unique_location_risk",
+                "LocationFrequencyAttack": "location_frequency_risk",
+                "LocationProbabilityAttack": "location_probability_risk",
+                "LocationProportionAttack": "location_proportion_risk",
+                "HomeWorkAttack": "home_work_risk",
+            }
+            return functools.partial(getattr(importlib.import_module("fastmob.privacy"), function_names[spec.class_name]), **spec.init_kwargs)
+        module = importlib.import_module("skmob.privacy.attacks")
+        attack = getattr(module, spec.class_name)(**spec.init_kwargs)
     except Exception as exc:
         raise SkippedAttack(f"attack setup failed: {exc}") from exc
     return attack.assess_risk
@@ -166,7 +178,9 @@ def call_benchmark_func(func: Callable[..., Any], input_value: Any, kwargs: dict
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
         warnings.simplefilter("ignore", UserWarning)
-        return func(input_value, show_progress=False, **kwargs)
+        if "show_progress" in inspect.signature(func).parameters:
+            kwargs = {**kwargs, "show_progress": False}
+        return func(input_value, **kwargs)
 
 
 def run_timed_call(
