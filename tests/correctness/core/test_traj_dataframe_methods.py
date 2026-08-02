@@ -173,12 +173,10 @@ def test_to_geodataframe_shape():
 
 
 def test_plot_trajectory_missing_dep(monkeypatch):
-    """plot_trajectory raises ImportError when visualization deps are absent."""
+    """plot_trajectory raises ImportError when fastmob-vis is absent."""
     import sys
 
-    folium_backup = sys.modules.pop("folium", None)
-    monkeypatch.setitem(sys.modules, "folium", None)
-    monkeypatch.setitem(sys.modules, "fastmob.utils.plot", None)
+    monkeypatch.setitem(sys.modules, "fastmob_vis", None)
 
     from fastmob import TrajDataFrame
 
@@ -191,8 +189,5 @@ def test_plot_trajectory_missing_dep(monkeypatch):
         }
     )
     tdf = TrajDataFrame(df)
-    with pytest.raises(ImportError, match="visualization"):
+    with pytest.raises(ImportError, match="fastmob-vis"):
         tdf.plot_trajectory()
-
-    if folium_backup is not None:
-        sys.modules["folium"] = folium_backup

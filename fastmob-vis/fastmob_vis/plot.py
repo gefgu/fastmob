@@ -1,8 +1,8 @@
-"""Visualization utilities for fastmob TrajDataFrame and FlowDataFrame.
+"""Folium and Matplotlib visualizations for fastmob dataframes.
 
-Requires ``fastmob[visualization]``::
+Requires ``fastmob-vis[legacy]`` (or ``fastmob[vis]``)::
 
-    pip install "fastmob[visualization]"
+    pip install "fastmob[vis]"
 
 All functions accept plain ``pandas.DataFrame`` objects (for trajectory/stop
 plots) or fastmob ``FlowDataFrame`` objects (for flow and tessellation plots).
@@ -22,8 +22,6 @@ import shapely
 from folium.plugins import HeatMap
 from geojson import LineString
 
-from fastmob.utils.utils import get_geom_centroid
-
 # Column name constants (mirror fastmob core defaults)
 _UID = "uid"
 _LAT = "lat"
@@ -37,6 +35,13 @@ _FLOW = "flow"
 _TILE_ID = "tile_id"
 
 STACKLEVEL = 2
+
+
+def get_geom_centroid(geom, return_lat_lng: bool = False) -> list[float]:
+    """Return a geometry centroid as ``[longitude, latitude]``."""
+    lng, lat = float(geom.centroid.x), float(geom.centroid.y)
+    return [lat, lng] if return_lat_lng else [lng, lat]
+
 
 # Color-blind-friendly palette from <http://mkweb.bcgsc.ca/colorblind/palettes.mhtml>
 COLOR = {

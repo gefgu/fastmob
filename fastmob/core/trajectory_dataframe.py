@@ -10,7 +10,7 @@ import pandas as pd
 
 from fastmob.core.base import BaseDataFrame
 from fastmob.measures.individual import jump_lengths
-from fastmob.utils._common import _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import _detect_trajectory_columns, _prepare_trajectory, require_optional
 
 LATITUDE = "lat"
 LONGITUDE = "lng"
@@ -19,6 +19,20 @@ UID = "uid"
 TID = "tid"
 TILE_ID = "tile_id"
 DEFAULT_CRS = {"init": "epsg:4326"}
+
+
+def _nearest_tessellation_values(origin, tessellation, column: str):
+    """Return the value from the closest tessellation point for each origin row."""
+
+    def nearest_index(row):
+        point = row.geometry
+        distances = tessellation.geometry.apply(
+            lambda candidate: (point.y - candidate.y) ** 2 + (point.x - candidate.x) ** 2
+        )
+        return distances.idxmin()
+
+    indices = origin.apply(nearest_index, axis=1)
+    return tessellation.loc[indices, column]
 
 
 class TrajDataFrame(BaseDataFrame):
@@ -737,9 +751,7 @@ class TrajDataFrame(BaseDataFrame):
             joined = gpd.sjoin(gdf, tess[[tile_id_col, "geometry"]], how=how, predicate="within")
             tile_ids = joined[[tile_id_col]]
         elif all(isinstance(x, Point) for x in tess.geometry):
-            from fastmob.utils.utils import nearest
-
-            tile_series = nearest(gdf, tess, tile_id_col)
+            tile_series = _nearest_tessellation_values(gdf, tess, tile_id_col)
             tile_ids = pd.DataFrame({tile_id_col: tile_series.values}, index=tile_series.index)
         else:
             raise ValueError("Tessellation geometry must be all Polygon or all Point.")
@@ -870,7 +882,7 @@ class TrajDataFrame(BaseDataFrame):
         ).to_native()
 
     # ------------------------------------------------------------------
-    # Visualization methods  (require fastmob[visualization])
+    # Visualization methods  (require fastmob[vis])
     # ------------------------------------------------------------------
 
     def plot_trajectory(
@@ -901,7 +913,7 @@ class TrajDataFrame(BaseDataFrame):
             longer. Default 1000.
         style_function : callable, optional
             GeoJson style factory ``(weight, color, opacity, dashArray) → fn``.
-            Defaults to ``fastmob.utils.plot.traj_style_function``.
+            Defaults to ``fastmob_vis.plot.traj_style_function``.
         tiles : str, optional
             Folium tile layer name. Default ``'cartodbpositron'``.
         zoom : int, optional
@@ -925,9 +937,9 @@ class TrajDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[visualization]``::
+        Requires ``fastmob[vis]``::
 
-            pip install "fastmob[visualization]"
+            pip install "fastmob[vis]"
 
         Examples
         --------
@@ -936,11 +948,9 @@ class TrajDataFrame(BaseDataFrame):
         >>> m = tdf.plot_trajectory(zoom=12)  # doctest: +SKIP
         """
         try:
-            from fastmob.utils import plot
+            plot = require_optional("fastmob_vis.plot", "vis")
         except ImportError as exc:
-            raise ImportError(
-                'Visualization requires extra dependencies: pip install "fastmob[visualization]"'
-            ) from exc
+            raise ImportError('Visualization requires fastmob-vis: pip install "fastmob[vis]"') from exc
 
         kwargs: dict[str, Any] = {
             "map_f": map_f,
@@ -1006,9 +1016,9 @@ class TrajDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[visualization]``::
+        Requires ``fastmob[vis]``::
 
-            pip install "fastmob[visualization]"
+            pip install "fastmob[vis]"
 
         Examples
         --------
@@ -1018,11 +1028,9 @@ class TrajDataFrame(BaseDataFrame):
         >>> m = stdf.plot_stops(zoom=12)  # doctest: +SKIP
         """
         try:
-            from fastmob.utils import plot
+            plot = require_optional("fastmob_vis.plot", "vis")
         except ImportError as exc:
-            raise ImportError(
-                'Visualization requires extra dependencies: pip install "fastmob[visualization]"'
-            ) from exc
+            raise ImportError('Visualization requires fastmob-vis: pip install "fastmob[vis]"') from exc
 
         return plot.plot_stops(
             self._to_pandas(),
@@ -1073,9 +1081,9 @@ class TrajDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[visualization]``::
+        Requires ``fastmob[vis]``::
 
-            pip install "fastmob[visualization]"
+            pip install "fastmob[vis]"
 
         Examples
         --------
@@ -1086,11 +1094,9 @@ class TrajDataFrame(BaseDataFrame):
         >>> ax = cstdf.plot_diary(user=1)  # doctest: +SKIP
         """
         try:
-            from fastmob.utils import plot
+            plot = require_optional("fastmob_vis.plot", "vis")
         except ImportError as exc:
-            raise ImportError(
-                'Visualization requires extra dependencies: pip install "fastmob[visualization]"'
-            ) from exc
+            raise ImportError('Visualization requires fastmob-vis: pip install "fastmob[vis]"') from exc
 
         return plot.plot_diary(
             self._to_pandas(),

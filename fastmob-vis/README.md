@@ -19,6 +19,13 @@ or standalone:
 pip install fastmob-vis
 ```
 
+The legacy Folium/Matplotlib maps exposed by ``TrajDataFrame.plot_*`` and
+``FlowDataFrame.plot_*`` additionally require:
+
+```bash
+pip install "fastmob-vis[legacy]"
+```
+
 For development from source (as a workspace member of `fastmob`):
 
 ```bash

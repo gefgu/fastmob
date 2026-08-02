@@ -2,4 +2,6 @@
 
 from .load import DatasetBuilder, get_dataset_info, list_datasets, load_dataset
 
-__all__ = ["DatasetBuilder", "get_dataset_info", "list_datasets", "load_dataset"]
+BRIGHTKITE_SAMPLE = "https://snap.stanford.edu/data/loc-brightkite_totalCheckins.txt.gz"
+
+__all__ = ["BRIGHTKITE_SAMPLE", "DatasetBuilder", "get_dataset_info", "list_datasets", "load_dataset"]

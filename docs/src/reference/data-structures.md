@@ -105,10 +105,10 @@
 
 ### Visualization methods
 
-Visualization methods require the optional `visualization` extra:
+Visualization methods require the optional `vis` extra:
 
 ```bash
-pip install "fastmob[visualization]"
+pip install "fastmob[vis]"
 ```
 
 | API | Description |
@@ -181,10 +181,10 @@ pip install "fastmob[visualization]"
 
 ### Visualization methods
 
-Visualization methods require the optional `visualization` extra:
+Visualization methods require the optional `vis` extra:
 
 ```bash
-pip install "fastmob[visualization]"
+pip install "fastmob[vis]"
 ```
 
 | API | Description |

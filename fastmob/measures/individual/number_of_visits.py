@@ -57,7 +57,7 @@ def number_of_visits(
     --------
     >>> import pandas as pd
     >>> import fastmob
-    >>> url = fastmob.utils.constants.BRIGHTKITE_SAMPLE
+    >>> url = fastmob.data.BRIGHTKITE_SAMPLE
     >>> df = pd.read_csv(
     ...     url,
     ...     sep="\\t",

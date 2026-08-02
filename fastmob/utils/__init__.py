@@ -1,3 +1,4 @@
-from . import constants, utils
+"""Private shared implementation helpers.
 
-__all__ = ["constants", "utils"]
+Public utilities live with the feature they support.
+"""

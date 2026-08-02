@@ -145,20 +145,15 @@ def test_get_geometry_no_tessellation_raises():
 
 
 def test_plot_flows_missing_dep(monkeypatch):
-    """plot_flows raises ImportError when visualization deps are absent."""
+    """plot_flows raises ImportError when fastmob-vis is absent."""
     import sys
 
-    folium_backup = sys.modules.pop("folium", None)
-    monkeypatch.setitem(sys.modules, "folium", None)
-    monkeypatch.setitem(sys.modules, "fastmob.utils.plot", None)
+    monkeypatch.setitem(sys.modules, "fastmob_vis", None)
 
     from fastmob import FlowDataFrame
 
     flows = pd.DataFrame({"origin": ["A"], "destination": ["B"], "flow": [5]})
     fdf = FlowDataFrame(flows)
 
-    with pytest.raises(ImportError, match="visualization"):
+    with pytest.raises(ImportError, match="fastmob-vis"):
         fdf.plot_flows()
-
-    if folium_backup is not None:
-        sys.modules["folium"] = folium_backup

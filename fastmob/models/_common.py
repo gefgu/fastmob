@@ -7,7 +7,6 @@ import narwhals as nw
 import numpy as np
 import pandas as pd
 
-from fastmob._optional import require_optional  # noqa: F401
 from fastmob.core import FlowDataFrame, TrajDataFrame
 
 LATITUDE = "lat"

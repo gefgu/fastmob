@@ -54,11 +54,9 @@ tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
 # Road/rail network fetch+snap also needs `ai` (scikit-learn, for
 # snap_locations_to_graph's NearestNeighbors) -- install both extras.
 network = ["duckdb", "requests"]
-# `visualization` is the folium/matplotlib stack behind `fastmob.utils.plot`.
-# `vis` is the unrelated, Rust-backed ECharts/Leaflet stack behind
-# `fastmob.vis` (the `fastmob-vis` crate/wheel in this same workspace).
-visualization = ["folium", "matplotlib", "geojson"]
-vis = ["fastmob-vis"]
+# `vis` is the separate fastmob-vis package, which also owns the legacy
+# Folium/Matplotlib visualizations.
+vis = ["fastmob-vis[legacy]"]
 dev = [
     "pre-commit",
     "maturin>=1.13,<2.0",

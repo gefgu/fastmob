@@ -32,10 +32,24 @@ Repository = "https://github.com/gefgu/fastmob"
 Issues = "https://github.com/gefgu/fastmob/issues"
 
 [project.optional-dependencies]
+legacy = [
+    "folium",
+    "geopandas",
+    "geojson",
+    "matplotlib",
+    "pandas",
+    "shapely",
+]
 dev = [
+    "folium",
+    "geopandas",
+    "geojson",
+    "matplotlib",
     "maturin>=1.13,<2.0",
+    "pandas",
     "pytest",
     "ruff",
+    "shapely",
 ]
 
 [tool.maturin]

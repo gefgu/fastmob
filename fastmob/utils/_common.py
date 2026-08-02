@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from importlib import import_module
 from typing import Any
 
 import narwhals as nw
@@ -9,6 +10,14 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 _ROW_ORDER_COL = "__fastmob_row_order__"
+
+
+def require_optional(module_name: str, extra: str):
+    """Import an optional dependency or give its fastmob installation hint."""
+    try:
+        return import_module(module_name)
+    except ImportError as exc:
+        raise ImportError(f"{module_name} is required: pip install fastmob[{extra}]") from exc
 
 # ---------------------------------------------------------------------------
 # Authoritative candidate lists for column auto-detection.

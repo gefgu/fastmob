@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from fastmob.core.base import BaseDataFrame
+from fastmob.utils._common import require_optional
 
 TILE_ID = "tile_id"
 ORIGIN = "origin"
@@ -263,7 +264,7 @@ class FlowDataFrame(BaseDataFrame):
         return str(value)
 
     # ------------------------------------------------------------------
-    # Visualization methods  (require fastmob[visualization])
+    # Visualization methods  (require fastmob[vis])
     # ------------------------------------------------------------------
 
     def plot_flows(
@@ -308,7 +309,7 @@ class FlowDataFrame(BaseDataFrame):
             Exponent for edge thickness scaling. Default 0.5.
         style_function : callable, optional
             Custom GeoJson style factory. Defaults to
-            ``fastmob.utils.plot.flow_style_function``.
+            ``fastmob_vis.plot.flow_style_function``.
         flow_popup : bool, optional
             Show a popup on edge click. Default ``False``.
         num_od_popup : int, optional
@@ -328,9 +329,9 @@ class FlowDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[visualization]``::
+        Requires ``fastmob[vis]``::
 
-            pip install "fastmob[visualization]"
+            pip install "fastmob[vis]"
 
         Examples
         --------
@@ -339,11 +340,9 @@ class FlowDataFrame(BaseDataFrame):
         >>> m = fdf.plot_flows(flow_color="red", zoom=10)  # doctest: +SKIP
         """
         try:
-            from fastmob.utils import plot
+            plot = require_optional("fastmob_vis.plot", "vis")
         except ImportError as exc:
-            raise ImportError(
-                'Visualization requires extra dependencies: pip install "fastmob[visualization]"'
-            ) from exc
+            raise ImportError('Visualization requires fastmob-vis: pip install "fastmob[vis]"') from exc
 
         kwargs: dict[str, Any] = {
             "map_f": map_f,
@@ -404,9 +403,9 @@ class FlowDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[visualization]``::
+        Requires ``fastmob[vis]``::
 
-            pip install "fastmob[visualization]"
+            pip install "fastmob[vis]"
 
         Examples
         --------
@@ -419,11 +418,9 @@ class FlowDataFrame(BaseDataFrame):
         if style_func_args is None:
             style_func_args = {}
         try:
-            from fastmob.utils import plot
+            plot = require_optional("fastmob_vis.plot", "vis")
         except ImportError as exc:
-            raise ImportError(
-                'Visualization requires extra dependencies: pip install "fastmob[visualization]"'
-            ) from exc
+            raise ImportError('Visualization requires fastmob-vis: pip install "fastmob[vis]"') from exc
 
         if self.tessellation is None:
             raise ValueError("No tessellation attached to this FlowDataFrame.")
