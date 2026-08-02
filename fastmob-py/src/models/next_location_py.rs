@@ -1,7 +1,7 @@
 use crate::utils::ArrowUsizeArrayExt;
 use fastmob_core::models::next_location::{
-    markov_fit_indexed, markov_predict_batch, MarkovLocationModel,
-    NextLocationConfig as CoreNextLocationConfig,
+    MarkovLocationModel, NextLocationConfig as CoreNextLocationConfig, markov_fit_indexed,
+    markov_predict_batch,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;

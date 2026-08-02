@@ -7,7 +7,8 @@ use fastmob_core::utils::validate_ends;
 
 use crate::utils::{
     arrow_i64_values, arrow_valid_rows, arrow_valid_rows_f64_i64, arrow_values, as_f64_array,
-    as_i64_array, as_nullable_f64_array, as_nullable_i64_array, ms_to_seconds, validate_indexed_ends,
+    as_i64_array, as_nullable_f64_array, as_nullable_i64_array, ms_to_seconds,
+    validate_indexed_ends,
 };
 
 pub struct CoordinateView<'a> {

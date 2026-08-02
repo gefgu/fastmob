@@ -1,4 +1,4 @@
-use fastmob_core::preprocessing::h3::{batch_latlng_to_cells, INVALID_CELL};
+use fastmob_core::preprocessing::h3::{INVALID_CELL, batch_latlng_to_cells};
 use h3o::Resolution;
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;

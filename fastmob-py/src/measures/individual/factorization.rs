@@ -2,11 +2,15 @@ use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
 use arrow_array::types::*;
-use arrow_array::{Array, BooleanArray, LargeStringArray, PrimitiveArray, StringArray};
+use arrow_array::{
+    Array, BooleanArray, DictionaryArray, LargeStringArray, PrimitiveArray, StringArray,
+};
+use arrow_buffer::ArrowNativeType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
-use rustc_hash::FxHashMap;
+use rayon::prelude::*;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::utils::{extract_arrow_array, u64_results_into_arrow};
 
@@ -51,24 +55,50 @@ impl Ord for TotalF64 {
     }
 }
 
+const CARDINALITY_SAMPLE: usize = 4096;
+const MAX_INITIAL_CAPACITY: usize = 1 << 22;
+
+/// Choose a capacity that avoids both a repeated growth cascade for high-cardinality
+/// columns and a huge, mostly-empty allocation for categoricals.
+fn estimate_cardinality<K, F>(len: usize, value_at: &F) -> usize
+where
+    K: Clone + Eq + Hash,
+    F: Fn(usize) -> Option<K>,
+{
+    if len <= CARDINALITY_SAMPLE {
+        return len;
+    }
+    let stride = len / CARDINALITY_SAMPLE;
+    let mut sample = FxHashSet::with_capacity_and_hasher(CARDINALITY_SAMPLE, Default::default());
+    for sample_index in 0..CARDINALITY_SAMPLE {
+        sample.insert(value_at(sample_index * stride));
+    }
+    let distinct = sample.len();
+    if distinct < CARDINALITY_SAMPLE / 4 {
+        distinct.saturating_mul(4).max(1)
+    } else {
+        (len / 4).clamp(CARDINALITY_SAMPLE, MAX_INITIAL_CAPACITY)
+    }
+}
+
 fn factorize_values<K, F>(len: usize, sort: bool, value_at: F) -> (Vec<u64>, Vec<u64>)
 where
     K: Clone + Eq + Hash + Ord,
     F: Fn(usize) -> Option<K>,
 {
-    // A bounded initial allocation removes repeated growth for common medium-
-    // cardinality inputs without reserving the full row count for a low-cardinality column.
-    let mut seen: FxHashMap<Option<K>, u64> =
-        FxHashMap::with_capacity_and_hasher(len.min(1 << 20), Default::default());
+    let mut seen: FxHashMap<Option<K>, u64> = FxHashMap::with_capacity_and_hasher(
+        estimate_cardinality(len, &value_at),
+        Default::default(),
+    );
     let mut codes = Vec::with_capacity(len);
     let mut representatives = Vec::new();
     for index in 0..len {
         let value = value_at(index);
-        let code = match seen.get(&value) {
-            Some(&code) => code,
-            None => {
+        let code = match seen.entry(value) {
+            std::collections::hash_map::Entry::Occupied(entry) => *entry.get(),
+            std::collections::hash_map::Entry::Vacant(entry) => {
                 let code = representatives.len() as u64;
-                seen.insert(value, code);
+                entry.insert(code);
                 representatives.push(index as u64);
                 code
             }
@@ -87,26 +117,25 @@ where
     K: Ord,
     F: Fn(usize) -> Option<K>,
 {
+    let keys: Vec<Option<K>> = representatives
+        .iter()
+        .map(|&representative| value_at(representative as usize))
+        .collect();
     let mut order: Vec<usize> = (0..representatives.len()).collect();
-    order.sort_unstable_by(|&left, &right| {
-        match (
-            value_at(representatives[left] as usize),
-            value_at(representatives[right] as usize),
-        ) {
-            (Some(left), Some(right)) => left.cmp(&right),
-            (Some(_), None) => Ordering::Less,
-            (None, Some(_)) => Ordering::Greater,
-            (None, None) => Ordering::Equal,
-        }
+    order.sort_unstable_by(|&left, &right| match (&keys[left], &keys[right]) {
+        (Some(left), Some(right)) => left.cmp(&right),
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => Ordering::Equal,
     });
 
     let mut ranks = vec![0u64; order.len()];
     for (new_code, &old_code) in order.iter().enumerate() {
         ranks[old_code] = new_code as u64;
     }
-    for code in codes {
-        *code = ranks[*code as usize];
-    }
+    codes
+        .par_iter_mut()
+        .for_each(|code| *code = ranks[*code as usize]);
     *representatives = order
         .into_iter()
         .map(|old_code| representatives[old_code])
@@ -117,23 +146,21 @@ fn factorize_strings<'a, F>(len: usize, sort: bool, value_at: F) -> (Vec<u64>, V
 where
     F: Fn(usize) -> Option<&'a str>,
 {
-    if sort {
-        return factorize_values(len, true, value_at);
-    }
-
-    let mut seen: FxHashMap<&str, u64> =
-        FxHashMap::with_capacity_and_hasher(len.min(1 << 20), Default::default());
+    let mut seen: FxHashMap<&str, u64> = FxHashMap::with_capacity_and_hasher(
+        estimate_cardinality(len, &value_at),
+        Default::default(),
+    );
     let mut null_code = None;
     let mut codes = Vec::with_capacity(len);
     let mut representatives = Vec::new();
     for index in 0..len {
         let value = value_at(index);
         let code = if let Some(value) = value {
-            match seen.get(value) {
-                Some(&code) => code,
-                None => {
-                    let code = seen.len() as u64 + u64::from(null_code.is_some());
-                    seen.insert(value, code);
+            match seen.entry(value) {
+                std::collections::hash_map::Entry::Occupied(entry) => *entry.get(),
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    let code = representatives.len() as u64;
+                    entry.insert(code);
                     representatives.push(index as u64);
                     code
                 }
@@ -147,6 +174,9 @@ where
             code
         };
         codes.push(code);
+    }
+    if sort {
+        sort_factorized(&mut codes, &mut representatives, &value_at);
     }
     (codes, representatives)
 }
@@ -162,16 +192,22 @@ where
     if array.is_empty() {
         return Some((Vec::new(), Vec::new()));
     }
-    let mut range: Option<(i128, i128)> = None;
-    for index in 0..array.len() {
-        if array.is_valid(index) {
-            let value = array.value(index).into();
-            range = Some(match range {
-                Some((min, max)) => (min.min(value), max.max(value)),
-                None => (value, value),
-            });
-        }
-    }
+    let range = if array.null_count() == 0 {
+        let mut values = array.values().iter().map(|&value| value.into());
+        let first = values.next().expect("non-empty array has a first value");
+        Some(values.fold((first, first), |(min, max), value| {
+            (min.min(value), max.max(value))
+        }))
+    } else {
+        let mut values = (0..array.len())
+            .filter(|&index| array.is_valid(index))
+            .map(|index| array.value(index).into());
+        values.next().map(|first| {
+            values.fold((first, first), |(min, max), value| {
+                (min.min(value), max.max(value))
+            })
+        })
+    };
     let Some((min, max)) = range else {
         return Some((vec![0; array.len()], vec![0]));
     };
@@ -247,18 +283,17 @@ fn factorize_boolean(array: &BooleanArray, sort: bool) -> (Vec<u64>, Vec<u64>) {
         true if array.value(index) => 1,
         true => 0,
     };
-    let mut representatives_by_state = [usize::MAX; 3];
-    for index in 0..array.len() {
-        let state = state_at(index);
-        if representatives_by_state[state] == usize::MAX {
-            representatives_by_state[state] = index;
-        }
-    }
-    let order: &[usize] = if sort { &[0, 1, 2] } else { &[] };
     let mut codes_by_state = [u64::MAX; 3];
     let mut representatives = Vec::new();
     if sort {
-        for &state in order {
+        let mut representatives_by_state = [usize::MAX; 3];
+        for index in 0..array.len() {
+            let state = state_at(index);
+            if representatives_by_state[state] == usize::MAX {
+                representatives_by_state[state] = index;
+            }
+        }
+        for state in [0, 1, 2] {
             if representatives_by_state[state] != usize::MAX {
                 codes_by_state[state] = representatives.len() as u64;
                 representatives.push(representatives_by_state[state] as u64);
@@ -275,6 +310,77 @@ fn factorize_boolean(array: &BooleanArray, sort: bool) -> (Vec<u64>, Vec<u64>) {
     }
     let codes = (0..array.len())
         .map(|index| codes_by_state[state_at(index)])
+        .collect();
+    (codes, representatives)
+}
+
+/// Factorize a string dictionary through its key array.  The dictionary values are
+/// factorized only once (including duplicate values), then the row scan is made of
+/// small integer gathers rather than string hashes.
+fn factorize_string_dictionary<K>(array: &DictionaryArray<K>, sort: bool) -> (Vec<u64>, Vec<u64>)
+where
+    K: ArrowDictionaryKeyType,
+    K::Native: ArrowNativeType,
+{
+    let values = array
+        .values()
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .expect("dictionary dispatch and values must agree");
+    let (dictionary_codes, dictionary_representatives) =
+        factorize_strings(values.len(), sort, |index| {
+            values.is_valid(index).then(|| values.value(index))
+        });
+    let dictionary_null_code = (0..values.len())
+        .find(|&index| !values.is_valid(index))
+        .map(|index| dictionary_codes[index] as usize);
+    let virtual_null_code = dictionary_representatives.len();
+    let null_code = dictionary_null_code.unwrap_or(virtual_null_code);
+    let logical_code_count =
+        dictionary_representatives.len() + usize::from(dictionary_null_code.is_none());
+    let mut logical_codes = Vec::with_capacity(array.len());
+    for index in 0..array.len() {
+        let code = if array.is_valid(index) {
+            dictionary_codes[array.keys().value(index).as_usize()] as usize
+        } else {
+            null_code
+        };
+        logical_codes.push(code);
+    }
+
+    let mut representatives_by_value = vec![usize::MAX; logical_code_count];
+    for (index, &code) in logical_codes.iter().enumerate() {
+        if representatives_by_value[code] == usize::MAX {
+            representatives_by_value[code] = index;
+        }
+    }
+    let mut output_code_by_value = vec![u64::MAX; logical_code_count];
+    let mut representatives = Vec::new();
+    if sort {
+        for code in 0..dictionary_representatives.len() {
+            if code == null_code {
+                continue;
+            }
+            if representatives_by_value[code] != usize::MAX {
+                output_code_by_value[code] = representatives.len() as u64;
+                representatives.push(representatives_by_value[code] as u64);
+            }
+        }
+        if representatives_by_value[null_code] != usize::MAX {
+            output_code_by_value[null_code] = representatives.len() as u64;
+            representatives.push(representatives_by_value[null_code] as u64);
+        }
+    } else {
+        for (index, &code) in logical_codes.iter().enumerate() {
+            if output_code_by_value[code] == u64::MAX {
+                output_code_by_value[code] = representatives.len() as u64;
+                representatives.push(index as u64);
+            }
+        }
+    }
+    let codes = logical_codes
+        .into_iter()
+        .map(|code| output_code_by_value[code])
         .collect();
     (codes, representatives)
 }
@@ -302,6 +408,16 @@ macro_rules! factorize_integer {
                 array.is_valid(index).then(|| array.value(index))
             })
         })
+    }};
+}
+
+macro_rules! factorize_string_dictionary {
+    ($array:expr, $key_type:ty, $sort:expr) => {{
+        let array = $array
+            .as_any()
+            .downcast_ref::<DictionaryArray<$key_type>>()
+            .expect("Arrow data type and dictionary array must agree");
+        factorize_string_dictionary(array, $sort)
     }};
 }
 
@@ -380,6 +496,25 @@ pub fn factorize_arrow(
                     factorize_strings(array.len(), sort, |index| {
                         array.is_valid(index).then(|| array.value(index))
                     })
+                }
+                DataType::Dictionary(key_type, value_type)
+                    if matches!(value_type.as_ref(), DataType::Utf8) =>
+                {
+                    match key_type.as_ref() {
+                        DataType::Int8 => factorize_string_dictionary!(&array, Int8Type, sort),
+                        DataType::Int16 => factorize_string_dictionary!(&array, Int16Type, sort),
+                        DataType::Int32 => factorize_string_dictionary!(&array, Int32Type, sort),
+                        DataType::Int64 => factorize_string_dictionary!(&array, Int64Type, sort),
+                        DataType::UInt8 => factorize_string_dictionary!(&array, UInt8Type, sort),
+                        DataType::UInt16 => factorize_string_dictionary!(&array, UInt16Type, sort),
+                        DataType::UInt32 => factorize_string_dictionary!(&array, UInt32Type, sort),
+                        DataType::UInt64 => factorize_string_dictionary!(&array, UInt64Type, sort),
+                        key_type => {
+                            return Err(format!(
+                                "unsupported dictionary key dtype for factorization: {key_type}"
+                            ));
+                        }
+                    }
                 }
                 data_type => {
                     return Err(format!(

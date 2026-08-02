@@ -23,7 +23,10 @@ fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
 /// Converts kernel-internal seconds (`f64`) back to milliseconds (`i64`) at the
 /// FFI boundary, matching `fastmob.utils._common._extract_timestamps`'s default unit.
 fn arrow_ms_output(py: Python<'_>, seconds: Vec<f64>) -> PyResult<Py<PyAny>> {
-    let ms: Vec<i64> = seconds.into_iter().map(|s| (s * 1000.0).round() as i64).collect();
+    let ms: Vec<i64> = seconds
+        .into_iter()
+        .map(|s| (s * 1000.0).round() as i64)
+        .collect();
     Ok(Py::new(py, i64_results_into_arrow(ms))?.into_any())
 }
 

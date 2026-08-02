@@ -160,3 +160,18 @@ class Staypoints(BaseDataFrame):
         )
         locations = Locations(locations_df.to_native(), uid_col=self.uid_col)
         return locations, staypoints_with_location
+
+    def generate_daily_motifs(
+        self,
+        locations: Locations,
+        *,
+        join: str = "python",
+        presorted: bool = False,
+    ) -> Any:
+        """Compute one home-anchored mobility motif per user and day.
+
+        See :func:`fastmob.measures.individual.motifs.daily_motifs_from_staypoints`.
+        """
+        from ..measures.individual.motifs import daily_motifs_from_staypoints
+
+        return daily_motifs_from_staypoints(self, locations, join=join, presorted=presorted)

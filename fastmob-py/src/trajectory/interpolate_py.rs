@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::trajectory::interpolate::{
-    interpolate_trajectory_indexed_impl, interpolate_trajectory_presorted_impl,
     InterpolationConfig as CoreInterpolationConfig, InterpolationMethod,
+    interpolate_trajectory_indexed_impl, interpolate_trajectory_presorted_impl,
 };
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
@@ -47,7 +47,10 @@ fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
 /// Converts kernel-internal seconds (`f64`) back to milliseconds (`i64`) at the
 /// FFI boundary, matching `fastmob.utils._common._extract_timestamps`'s default unit.
 fn arrow_ms_output(py: Python<'_>, seconds: Vec<f64>) -> PyResult<Py<PyAny>> {
-    let ms: Vec<i64> = seconds.into_iter().map(|s| (s * 1000.0).round() as i64).collect();
+    let ms: Vec<i64> = seconds
+        .into_iter()
+        .map(|s| (s * 1000.0).round() as i64)
+        .collect();
     Ok(Py::new(py, i64_results_into_arrow(ms))?.into_any())
 }
 
@@ -101,23 +104,24 @@ pub fn interpolate_trajectory_presorted<'py>(
     ends: pyo3_arrow::PyArray,
     config: PyInterpolationConfig,
 ) -> PyResult<InterpolateOutput<'py>> {
-    let (out_lats, out_lngs, out_times, out_user_indices) = run_presorted_timed_coordinate_arrow_ms(
-        py,
-        latitudes,
-        longitudes,
-        timestamps_ms,
-        ends,
-        |view, ends| {
-            interpolate_trajectory_presorted_impl(
-                view.latitudes,
-                view.longitudes,
-                view.times,
-                ends,
-                &config.0,
-            )
-        },
-    )?
-    .map_err(PyValueError::new_err)?;
+    let (out_lats, out_lngs, out_times, out_user_indices) =
+        run_presorted_timed_coordinate_arrow_ms(
+            py,
+            latitudes,
+            longitudes,
+            timestamps_ms,
+            ends,
+            |view, ends| {
+                interpolate_trajectory_presorted_impl(
+                    view.latitudes,
+                    view.longitudes,
+                    view.times,
+                    ends,
+                    &config.0,
+                )
+            },
+        )?
+        .map_err(PyValueError::new_err)?;
     Ok((
         arrow_f64_output(py, out_lats)?,
         arrow_f64_output(py, out_lngs)?,

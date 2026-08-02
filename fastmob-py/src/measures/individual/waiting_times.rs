@@ -96,7 +96,8 @@ pub fn waiting_times_indexed_flat<'py>(
     let valid_rows = arrow_valid_rows_f64_i64(&[], &timestamps_ms);
     let timestamps_s = timestamps_ms_to_seconds(&timestamps_ms);
     validate_indexed_ends(timestamps_s.len(), indices, ends)?;
-    let waits = waiting_times_indexed_flat_impl(&timestamps_s, indices, ends, valid_rows.as_deref())
-        .map_err(PyValueError::new_err)?;
+    let waits =
+        waiting_times_indexed_flat_impl(&timestamps_s, indices, ends, valid_rows.as_deref())
+            .map_err(PyValueError::new_err)?;
     arrow_f64_output(py, waits)
 }

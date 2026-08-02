@@ -169,7 +169,10 @@ pub fn as_nullable_i64_array(arr: PyArray, name: &str) -> PyResult<Int64Array> {
 
 /// Like [`arrow_valid_rows`], but for the common case of `f64` coordinate arrays
 /// paired with one `i64` millisecond-timestamp array (the timed-adapter shape).
-pub fn arrow_valid_rows_f64_i64(f64_arrays: &[&Float64Array], i64_array: &Int64Array) -> Option<Vec<bool>> {
+pub fn arrow_valid_rows_f64_i64(
+    f64_arrays: &[&Float64Array],
+    i64_array: &Int64Array,
+) -> Option<Vec<bool>> {
     if f64_arrays.iter().all(|a| a.null_count() == 0) && i64_array.null_count() == 0 {
         return None;
     }
@@ -234,13 +237,17 @@ pub fn ranges_from_ends(ends: PyArray, value_len: usize) -> PyResult<Vec<(usize,
     let mut ranges = Vec::with_capacity(ends.len());
     for &end in arrow_usize_values(&ends) {
         if end < start || end > value_len {
-            return Err(PyValueError::new_err("group ends must be monotonic and within input bounds"));
+            return Err(PyValueError::new_err(
+                "group ends must be monotonic and within input bounds",
+            ));
         }
         ranges.push((start, end));
         start = end;
     }
     if start != value_len {
-        return Err(PyValueError::new_err("final group end must equal input length"));
+        return Err(PyValueError::new_err(
+            "final group end must equal input length",
+        ));
     }
     Ok(ranges)
 }

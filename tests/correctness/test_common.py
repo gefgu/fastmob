@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import math
+import random
+
 import pandas as pd
 import pytest
 
@@ -56,6 +59,36 @@ class TestPickExistingColumn:
 
 
 class TestArrowFactorization:
+    @staticmethod
+    def _reference(values, sort):
+        """Reference the documented first-seen/null-last factorization contract."""
+        def key(value):
+            if value is None:
+                return (2, None)
+            if isinstance(value, float) and math.isnan(value):
+                return (1, None)
+            return (0, value)
+
+        representatives = []
+        codes = []
+        seen = []
+        for index, value in enumerate(values):
+            value_key = key(value)
+            try:
+                code = seen.index(value_key)
+            except ValueError:
+                code = len(seen)
+                seen.append(value_key)
+                representatives.append(index)
+            codes.append(code)
+        if not sort:
+            return codes, representatives
+        order = sorted(range(len(seen)), key=lambda code: seen[code])
+        ranks = [0] * len(order)
+        for rank, code in enumerate(order):
+            ranks[code] = rank
+        return [ranks[code] for code in codes], [representatives[code] for code in order]
+
     def test_preserves_first_seen_order_and_groups_nulls(self):
         import pyarrow as pa
         from fastmob._core import factorize_arrow
@@ -105,6 +138,47 @@ class TestArrowFactorization:
         assert pa.array(codes).to_pylist() == [1, 2, 0, 1, 2]
         assert pa.array(representatives).to_pylist() == [2, 0, 1]
 
+    @pytest.mark.parametrize("sort", [False, True])
+    @pytest.mark.parametrize(
+        "values",
+        [[], [None, None], [7, None, 7], [3, 1, 3, None, 2], [0.0, -0.0, float("nan"), None, float("nan")]],
+    )
+    def test_matches_reference_for_empty_null_and_float_edge_cases(self, values, sort):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        array = pa.array(values, type=pa.float64()) if not values or all(value is None for value in values) else pa.array(values)
+        codes, representatives = factorize_arrow(array, sort)
+        expected_codes, expected_representatives = self._reference(values, sort)
+        assert pa.array(codes).to_pylist() == expected_codes
+        assert pa.array(representatives).to_pylist() == expected_representatives
+
+    @pytest.mark.parametrize("sort", [False, True])
+    def test_matches_reference_for_seeded_nullable_integers(self, sort):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        rng = random.Random(20260802)
+        values = [None if rng.randrange(11) == 0 else rng.randrange(-7, 8) for _ in range(512)]
+        codes, representatives = factorize_arrow(pa.array(values), sort)
+        expected_codes, expected_representatives = self._reference(values, sort)
+        assert pa.array(codes).to_pylist() == expected_codes
+        assert pa.array(representatives).to_pylist() == expected_representatives
+
+    @pytest.mark.parametrize("sort", [False, True])
+    def test_utf8_dictionary_fast_path_matches_decoded_values(self, sort):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        dictionary = pa.DictionaryArray.from_arrays(
+            pa.array([1, None, 0, 1, 2, 0], type=pa.int8()),
+            pa.array(["b", "a", "a"]),
+        )
+        codes, representatives = factorize_arrow(dictionary, sort)
+        expected_codes, expected_representatives = self._reference(dictionary.to_pylist(), sort)
+        assert pa.array(codes).to_pylist() == expected_codes
+        assert pa.array(representatives).to_pylist() == expected_representatives
+
     def test_rejects_numpy_input(self):
         import numpy as np
         from fastmob._core import factorize_arrow
@@ -118,23 +192,25 @@ class TestMotifPurposeEncoding:
         import pyarrow as pa
         from fastmob._core import encode_motif_purposes
 
-        codes, home_code = encode_motif_purposes(
+        codes, home_code, unmatched_code = encode_motif_purposes(
             pa.chunked_array([["WORK", None, "HOME"], ["WORK", None]])
         )
 
         assert pa.array(codes).type == pa.uint16()
         assert pa.array(codes).to_pylist() == [0, 1, 2, 0, 1]
         assert home_code == 2
+        assert unmatched_code == 3
 
     def test_accepts_polars_string_view_stream(self):
         import pyarrow as pa
         from fastmob._core import encode_motif_purposes
 
         pl = pytest.importorskip("polars", reason="Polars not installed")
-        codes, home_code = encode_motif_purposes(pl.Series(["HOME", "WORK", "HOME"]))
+        codes, home_code, unmatched_code = encode_motif_purposes(pl.Series(["HOME", "WORK", "HOME"]))
 
         assert pa.array(codes).to_pylist() == [0, 1, 0]
         assert home_code == 0
+        assert unmatched_code == 2
 
 
 # ---------------------------------------------------------------------------

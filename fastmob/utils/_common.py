@@ -162,8 +162,6 @@ def _factorize_arrow_values(values: Any, *, sort: bool) -> tuple[Any, Any]:
     values = _as_arrow(values)
     if isinstance(values, pa.ChunkedArray):
         values = values.combine_chunks()
-    if pa.types.is_dictionary(values.type):
-        values = pc.dictionary_decode(values)
     raw_codes, raw_representatives = factorize_arrow(values, sort)
     return _as_arrow(raw_codes), _as_arrow(raw_representatives)
 
