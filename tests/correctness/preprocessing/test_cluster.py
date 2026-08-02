@@ -104,6 +104,17 @@ def test_cluster_polars_backend(cluster_tdf_polars):
     assert result["cluster"][0] == 0  # most visited = label 0
 
 
+def test_cluster_explicit_h3_resolution_overrides_radius(cluster_tdf):
+    """An explicit grid resolution must take precedence over radius mapping."""
+    result = cluster(cluster_tdf, cluster_radius_km=0.0, h3_resolution=11)
+    assert result.iloc[0]["cluster"] == result.iloc[1]["cluster"]
+
+
+def test_cluster_rejects_invalid_h3_resolution(cluster_tdf):
+    with pytest.raises(ValueError, match="h3_resolution"):
+        cluster(cluster_tdf, h3_resolution=16)
+
+
 @pytest.mark.skmob
 def test_cluster_matches_skmob(comparison_skmob):
     """Cluster labels must match skmob on comparison stop data."""

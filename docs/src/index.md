@@ -164,7 +164,6 @@ result = jump_lengths(df)  # returns a polars DataFrame
 
 | Extra | Installs | Used by |
 |---|---|---|
-| `ai` | `scikit-learn` | `cluster` |
 | `fitting` | `scipy` | `fit_values_to_truncated_powerlaw` |
 | `generation` | `scipy`, `powerlaw`, `statsmodels`, `python-igraph`, `tqdm` | `fastmob.models` generation APIs |
 | `docs` | `mkdocs`, `mkdocs-material`, `mkdocstrings[python]` | documentation build |

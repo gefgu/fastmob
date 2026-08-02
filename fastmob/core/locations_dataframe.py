@@ -1,8 +1,7 @@
 """Locations — spatially-aggregated recurring stop locations.
 
-Built via `Staypoints.generate_locations()`, which wraps the existing
-`fastmob.preprocessing.cluster` DBSCAN stop-clustering -- no new Rust kernel
-is needed for this level.
+Built via `Staypoints.generate_locations()`, which wraps the Rust-backed H3
+connected-component stop clustering in `fastmob.preprocessing.cluster`.
 """
 
 from __future__ import annotations

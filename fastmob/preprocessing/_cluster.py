@@ -1,21 +1,44 @@
 from __future__ import annotations
 
+import math
+from numbers import Integral
 from typing import Any
 
 import narwhals as nw
-import numpy as np
 
-from fastmob.utils._common import _build_presorted_user_ends, _detect_trajectory_columns, _prepare_trajectory
+from fastmob._core import h3_cluster_labels_arrow as _h3_cluster_labels
+from fastmob.utils._common import _as_arrow, _build_presorted_user_ends, _detect_trajectory_columns, _prepare_trajectory
 
-_KMS_PER_RADIAN = 6371.0088
+# Calibrated around H3's average cell edge lengths.  The automatic path keeps
+# the long-standing kilometre-radius API useful; callers needing exact grid
+# control can supply ``h3_resolution`` directly.
+_RADIUS_RESOLUTION = (
+    (0.025, 12),
+    (0.05, 11),
+    (0.1, 10),
+    (0.2, 9),
+    (0.5, 8),
+    (1.0, 7),
+)
 
 
-def _dbscan_cls():
-    try:
-        from sklearn.cluster import DBSCAN
-    except ImportError as exc:
-        raise ImportError("scikit-learn is required for cluster: pip install fastmob[ai]") from exc
-    return DBSCAN
+def _auto_resolution(cluster_radius_km: float) -> int:
+    if not math.isfinite(cluster_radius_km) or cluster_radius_km <= 0:
+        raise ValueError("cluster_radius_km must be a finite positive number")
+    log_radius = math.log(cluster_radius_km)
+    # Prefer the finer grid for an exact midpoint tie: accidental merging is
+    # more surprising than splitting a boundary-adjacent location.
+    return min(_RADIUS_RESOLUTION, key=lambda item: (abs(math.log(item[0]) - log_radius), -item[1]))[1]
+
+
+def _resolve_resolution(cluster_radius_km: float, h3_resolution: int | None) -> int:
+    if h3_resolution is None:
+        return _auto_resolution(cluster_radius_km)
+    if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, Integral):
+        raise ValueError("h3_resolution must be an integer between 0 and 15")
+    if not 0 <= int(h3_resolution) <= 15:
+        raise ValueError("h3_resolution must be an integer between 0 and 15")
+    return int(h3_resolution)
 
 
 def cluster(
@@ -23,6 +46,7 @@ def cluster(
     cluster_radius_km: float = 0.1,
     min_samples: int = 1,
     *,
+    h3_resolution: int | None = None,
     datetime_col: str | None = None,
     lat_col: str | None = None,
     lng_col: str | None = None,
@@ -30,15 +54,28 @@ def cluster(
     presorted=False,
     n_jobs: int | None = None,
 ) -> Any:
-    """Cluster stop locations using DBSCAN with Haversine metric."""
+    """Cluster stop locations with H3 cells and connected components.
+
+    Points are assigned to an H3 cell. Cells containing fewer than
+    ``min_samples`` points are noise; active cells touching at an edge are
+    joined into a cluster. ``cluster_radius_km`` selects a calibrated grid
+    resolution for compatibility with the previous DBSCAN API. Pass
+    ``h3_resolution`` (0--15) to control the grid explicitly; it takes
+    precedence over ``cluster_radius_km``. ``n_jobs`` is accepted for API
+    compatibility and has no effect.
+    """
+    if isinstance(min_samples, bool) or not isinstance(min_samples, Integral) or min_samples < 1:
+        raise ValueError("min_samples must be an integer of at least 1")
+    resolution = _resolve_resolution(cluster_radius_km, h3_resolution)
 
     df = nw.from_native(traj, eager_only=True)
-    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+    df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
+        cast_float_coordinates=True,
     )
     df = _prepare_trajectory(
         df,
@@ -49,68 +86,22 @@ def cluster(
         sort=not presorted,
     )
 
-    eps_rad = cluster_radius_km / _KMS_PER_RADIAN
-    DBSCAN = _dbscan_cls()
-
     _, group_ends = _build_presorted_user_ends(df, uid_col)
-    ends = np.asarray(group_ends, dtype=np.intp)
-    starts = np.concatenate(([0], ends[:-1]))
+    all_labels = _as_arrow(
+        _h3_cluster_labels(
+            df.get_column(lat_col).to_arrow(),
+            df.get_column(lng_col).to_arrow(),
+            group_ends,
+            resolution,
+            int(min_samples),
+        )
+    )
 
-    # 1. PRE-COMPUTE COORDINATES globally
-    lats = df.get_column(lat_col).to_numpy()
-    lngs = df.get_column(lng_col).to_numpy()
-    all_coords = np.radians(np.column_stack([lats, lngs]))
-
-    # 2. PRE-ALLOCATE MEMORY for the output labels
-    n_rows = len(df)
-    all_labels = np.empty(n_rows, dtype=np.int32)
-
-    # 3. REUSE ESTIMATOR to avoid initialization overhead
-    db = DBSCAN(eps=eps_rad, min_samples=min_samples, algorithm="ball_tree", metric="haversine", n_jobs=n_jobs)
-
-    for start, end in zip(starts, ends):
-        user_coords = all_coords[start:end]
-        if len(user_coords) == 0:
-            continue
-
-        raw_labels = db.fit(user_coords).labels_
-
-        # 4. VECTORIZE THE REMAPPING
-        mask = raw_labels >= 0
-        valid_labels = raw_labels[mask]
-
-        if len(valid_labels) > 0:
-            # Count occurrences of valid labels
-            unique_lbls, counts = np.unique(valid_labels, return_counts=True)
-
-            # Sort labels by count descending
-            sorted_idx = np.argsort(-counts)
-            sorted_lbls = unique_lbls[sorted_idx]
-
-            # Create a direct array lookup map
-            max_lbl = np.max(raw_labels)
-            map_arr = np.full(max_lbl + 1, -1, dtype=np.int32)
-            map_arr[sorted_lbls] = np.arange(len(sorted_lbls))
-
-            # Apply the mapping only to valid labels
-            remapped = raw_labels.copy()
-            remapped[mask] = map_arr[valid_labels]
-        else:
-            remapped = raw_labels
-
-        # Assign directly into the pre-allocated array
-        all_labels[start:end] = remapped
-
-    # 5. USE DATAFRAME API safely based on your specific Narwhals version
     try:
         cluster_series = nw.new_series(name="cluster", values=all_labels, backend=df.implementation)
     except Exception:  # noqa: BLE001
-        # Fallback to from_dict (which your original code successfully used)
         cluster_series = nw.from_dict({"cluster": all_labels}, backend=df.implementation).get_column("cluster")
-
-    result = df.with_columns(cluster_series)
-
-    return result.to_native()
+    return df.with_columns(cluster_series).to_native()
 
 
 cluster.__module__ = "fastmob.preprocessing"

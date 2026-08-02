@@ -560,14 +560,13 @@ def test_ditras_custom_gravity_changes_exploration_distribution():
     assert custom_far > default_far + 250
 
 
-def test_cluster_imports_without_scikit_learn_until_called(monkeypatch):
+def test_cluster_imports_without_scikit_learn(monkeypatch):
     cluster_mod = importlib.import_module("fastmob.preprocessing._cluster")
 
     monkeypatch.setitem(sys.modules, "sklearn", None)
     monkeypatch.setitem(sys.modules, "sklearn.cluster", None)
 
-    with pytest.raises(ImportError, match=r"pip install fastmob\[ai\]"):
-        cluster_mod._dbscan_cls()
+    assert callable(cluster_mod.cluster)
 
 
 @pytest.mark.skmob

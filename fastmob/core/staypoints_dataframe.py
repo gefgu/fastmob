@@ -104,9 +104,11 @@ class Staypoints(BaseDataFrame):
         Parameters
         ----------
         epsilon_km : float, optional
-            DBSCAN neighborhood radius, in km. Default ``0.1``.
+            Approximate spatial scale, in km, used to select an H3 grid
+            resolution. Default ``0.1``.
         min_samples : int, optional
-            DBSCAN minimum samples per cluster. Default ``1``.
+            Minimum staypoints in an H3 cell for it to be active. Default
+            ``1``.
         agg_level : str, optional
             Only ``"user"`` (cluster each user's own staypoints
             independently) is implemented; ``"dataset"``-level (shared

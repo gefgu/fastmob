@@ -3,6 +3,7 @@ pub mod clustering;
 pub mod compress_traj;
 pub mod filter_traj;
 pub mod h3;
+pub mod h3_cluster;
 pub mod outliers;
 pub mod segment;
 pub mod simplify;
