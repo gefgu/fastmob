@@ -47,6 +47,24 @@ def test_daily_motifs_returns_primary_dataframe_only():
     assert ((result["motif_id"].to_numpy() >> 36) == 2).all()
 
 
+@pytest.mark.parametrize(
+    "drop_col,match",
+    [
+        ("agent_id", "Could not find a user-ID column"),
+        ("location_id", "Could not find a location column"),
+        ("purpose", "Could not find a purpose column"),
+        ("start_timestamp", "Could not find a start-timestamp column"),
+        ("end_timestamp", "Could not find an end-timestamp column"),
+    ],
+)
+def test_daily_motifs_raises_when_required_column_missing(drop_col, match):
+    from fastmob.measures.individual.motifs import daily_motifs
+
+    df = _make_multi_day_df().drop(columns=[drop_col])
+    with pytest.raises(ValueError, match=match):
+        daily_motifs(df)
+
+
 def test_canonical_motifs_keep_home_anchored_at_node_zero():
     from fastmob import _core
 

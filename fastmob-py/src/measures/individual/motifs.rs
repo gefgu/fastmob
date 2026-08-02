@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use arrow_array::{
     Array, ArrayRef, Float64Array, LargeStringArray, StringArray, StringViewArray,
-    TimestampMicrosecondArray, UInt16Array, UInt64Array,
+    TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array,
 };
 use fastmob_core::measures::individual::motifs::{
     canonical_adjacency_form as core_canonical_adjacency_form,
     compute_daily_motifs_indexed as core_compute_daily_motifs_indexed,
+    compute_daily_motifs_indexed_joined as core_compute_daily_motifs_indexed_joined,
     compute_daily_motifs_presorted as core_compute_daily_motifs_presorted,
+    compute_daily_motifs_presorted_joined as core_compute_daily_motifs_presorted_joined,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -157,7 +159,7 @@ where
 }
 
 #[pyfunction]
-pub fn encode_motif_purposes(values: PyChunkedArray) -> PyResult<(ArrowPyArray, u16)> {
+pub fn encode_motif_purposes(values: PyChunkedArray) -> PyResult<(ArrowPyArray, u16, u16)> {
     let chunks: Vec<PurposeChunk> = values
         .chunks()
         .iter()
@@ -194,6 +196,11 @@ pub fn encode_motif_purposes(values: PyChunkedArray) -> PyResult<(ArrowPyArray, 
             "motif purpose encoding supports at most 65,534 distinct values",
         ));
     }
+    // One past the highest real/null code ever assigned (0..groups.len()) --
+    // used by the Rust-join path to mark a (user_idx, location_code) lookup
+    // miss, distinct from both real codes and from home_code's u16::MAX
+    // "HOME not found" sentinel (groups.len() <= 65533 < 65535).
+    let unmatched_code = groups.len() as u16;
 
     let mut mapping = FxHashMap::default();
     let mut null_code = None;
@@ -212,6 +219,7 @@ pub fn encode_motif_purposes(values: PyChunkedArray) -> PyResult<(ArrowPyArray, 
     Ok((
         ArrowPyArray::from_array_ref(Arc::new(UInt16Array::from(codes))),
         home_code,
+        unmatched_code,
     ))
 }
 
@@ -244,6 +252,26 @@ fn u16_column(batch: &arrow_array::RecordBatch, name: &str) -> PyResult<UInt16Ar
 }
 
 fn u16_values(array: &UInt16Array) -> &[u16] {
+    let start = array.offset();
+    let end = start + array.len();
+    &array.values()[start..end]
+}
+
+fn u32_column(batch: &arrow_array::RecordBatch, name: &str) -> PyResult<UInt32Array> {
+    let array = batch
+        .column_by_name(name)
+        .and_then(|column| column.as_any().downcast_ref::<UInt32Array>())
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint32 Arrow column for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow column for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+fn u32_values(array: &UInt32Array) -> &[u32] {
     let start = array.offset();
     let end = start + array.len();
     &array.values()[start..end]
@@ -367,6 +395,112 @@ pub fn daily_motifs_presorted<'py>(
             duration_values,
             end_values,
             home_purpose_code,
+        )
+    });
+    motif_result(result)
+}
+
+/// Build the `(user_idx, location_code) -> purpose_code` lookup used by the
+/// Staypoints/Locations hierarchy integration, from a small Locations-grain
+/// record batch. Sequential, not parallel: this table is one row per `(uid, location_id)`,
+/// dramatically smaller than the visits table it serves, so a parallel
+/// fold/reduce (as `discover_purposes` uses elsewhere in this file) buys
+/// nothing here. Duplicate `(user_idx, location_code)` keys (shouldn't
+/// happen -- Locations is one row per `(uid, location_id)` by construction)
+/// silently keep the last-inserted value.
+fn build_purpose_lookup(batch: &PyRecordBatch) -> PyResult<FxHashMap<(u32, u64), u16>> {
+    let batch: &arrow_array::RecordBatch = batch.as_ref();
+    let user_idx = u32_column(batch, "user_idx")?;
+    let location_code = u64_column(batch, "location_code")?;
+    let purpose_code = u16_column(batch, "purpose_code")?;
+    let user_idx_values = u32_values(&user_idx);
+    let location_code_values = arrow_u64_values(&location_code);
+    let purpose_code_values = u16_values(&purpose_code);
+    let mut lookup: FxHashMap<(u32, u64), u16> =
+        FxHashMap::with_capacity_and_hasher(user_idx_values.len(), Default::default());
+    for i in 0..user_idx_values.len() {
+        lookup.insert(
+            (user_idx_values[i], location_code_values[i]),
+            purpose_code_values[i],
+        );
+    }
+    Ok(lookup)
+}
+
+/// Rust-join sibling of [`daily_motifs_indexed`]: `visits_batch` carries
+/// `location_codes`/`start_timestamps`/`end_timestamps`/optional
+/// `durations` (no `purpose_codes`); `lookup_batch` carries
+/// `user_idx`/`location_code`/`purpose_code`, one row per
+/// `(uid, location_id)`, resolved from a `Locations` table.
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub fn daily_motifs_indexed_joined<'py>(
+    py: Python<'py>,
+    visits_batch: PyRecordBatch,
+    lookup_batch: PyRecordBatch,
+    indices: ArrowPyArray,
+    ends: ArrowPyArray,
+    home_purpose_code: u16,
+    unmatched_purpose_code: u16,
+) -> PyResult<DailyMotifsPy> {
+    let batch = visits_batch.into_inner();
+    let location_codes = u64_column(&batch, "location_codes")?;
+    let starts = timestamp_column(&batch, "start_timestamps")?;
+    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
+    let durations = optional_duration_column(&batch)?;
+    let duration_values = durations.as_ref().map(arrow_values);
+    let indices = as_u64_array(indices, "indices")?;
+    let ends = as_u64_array(ends, "ends")?;
+    let index_values = arrow_usize_values(&indices);
+    let end_values = arrow_usize_values(&ends);
+    let lookup = build_purpose_lookup(&lookup_batch)?;
+    let result = py.detach(|| {
+        core_compute_daily_motifs_indexed_joined(
+            arrow_u64_values(&location_codes),
+            timestamp_values(&starts),
+            timestamp_values(&ends_ts),
+            duration_values,
+            index_values,
+            end_values,
+            home_purpose_code,
+            &lookup,
+            unmatched_purpose_code,
+        )
+    });
+    motif_result(result)
+}
+
+/// Rust-join sibling of [`daily_motifs_presorted`]. See
+/// [`daily_motifs_indexed_joined`].
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub fn daily_motifs_presorted_joined<'py>(
+    py: Python<'py>,
+    visits_batch: PyRecordBatch,
+    lookup_batch: PyRecordBatch,
+    ends: ArrowPyArray,
+    home_purpose_code: u16,
+    unmatched_purpose_code: u16,
+) -> PyResult<DailyMotifsPy> {
+    let batch = visits_batch.into_inner();
+    let location_codes = u64_column(&batch, "location_codes")?;
+    let starts = timestamp_column(&batch, "start_timestamps")?;
+    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
+    let durations = optional_duration_column(&batch)?;
+    let duration_values = durations.as_ref().map(arrow_values);
+    let ends = as_u64_array(ends, "ends")?;
+    let end_values = arrow_usize_values(&ends);
+    let lookup = build_purpose_lookup(&lookup_batch)?;
+    let result = py.detach(|| {
+        core_compute_daily_motifs_presorted_joined(
+            arrow_u64_values(&location_codes),
+            timestamp_values(&starts),
+            timestamp_values(&ends_ts),
+            duration_values,
+            end_values,
+            home_purpose_code,
+            &lookup,
+            unmatched_purpose_code,
         )
     });
     motif_result(result)

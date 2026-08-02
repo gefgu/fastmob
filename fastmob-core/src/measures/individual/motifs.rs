@@ -29,9 +29,24 @@ struct Scratch {
     motif_cache: FxHashMap<(u8, u64), i64>,
 }
 
+/// Where a row's purpose code comes from: either a flat array (one value
+/// per visit row -- used by the standalone `daily_motifs` API, where the
+/// caller already supplies a purpose column), or a small
+/// `(user_idx, location_code) -> purpose_code` lookup built once from a
+/// separate Locations-grain table (used by the Staypoints/Locations
+/// hierarchy integration), read only, shared across `rayon` threads with no
+/// locking needed.
+enum PurposeSource<'a> {
+    Flat(&'a [u16]),
+    Lookup {
+        table: &'a FxHashMap<(u32, u64), u16>,
+        unmatched_code: u16,
+    },
+}
+
 struct MotifColumns<'a> {
     location_codes: &'a [u64],
-    purpose_codes: &'a [u16],
+    purpose_source: PurposeSource<'a>,
     start_timestamps_us: &'a [i64],
     end_timestamps_us: &'a [i64],
     durations: Option<&'a [f64]>,
@@ -40,10 +55,24 @@ struct MotifColumns<'a> {
 
 impl MotifColumns<'_> {
     #[inline]
-    fn node(&self, row: usize) -> NodeCode {
+    fn purpose_at(&self, user_idx: usize, row: usize) -> u16 {
+        match &self.purpose_source {
+            PurposeSource::Flat(codes) => codes[row],
+            PurposeSource::Lookup {
+                table,
+                unmatched_code,
+            } => table
+                .get(&(user_idx as u32, self.location_codes[row]))
+                .copied()
+                .unwrap_or(*unmatched_code),
+        }
+    }
+
+    #[inline]
+    fn node(&self, user_idx: usize, row: usize) -> NodeCode {
         NodeCode {
             location: self.location_codes[row],
-            purpose: self.purpose_codes[row],
+            purpose: self.purpose_at(user_idx, row),
         }
     }
 
@@ -68,8 +97,8 @@ impl MotifColumns<'_> {
     }
 
     #[inline]
-    fn is_home(&self, row: usize) -> bool {
-        self.purpose_codes[row] == self.home_purpose_code
+    fn is_home(&self, user_idx: usize, row: usize) -> bool {
+        self.purpose_at(user_idx, row) == self.home_purpose_code
     }
 }
 
@@ -169,6 +198,7 @@ pub fn canonical_adjacency_form(n_nodes: u32, edges: Vec<(u32, u32)>) -> Result<
 }
 
 fn compute_primary_home(
+    user_idx: usize,
     columns: &MotifColumns<'_>,
     indices: Option<&[usize]>,
     start: usize,
@@ -177,8 +207,12 @@ fn compute_primary_home(
     let mut night_duration: FxHashMap<NodeCode, f64> = FxHashMap::default();
     for position in start..end {
         let row = ordered_row(indices, position);
-        if columns.is_home(row) && (columns.start_hour(row) >= 22 || columns.start_hour(row) < 6) {
-            *night_duration.entry(columns.node(row)).or_insert(0.0) += columns.duration(row);
+        if columns.is_home(user_idx, row)
+            && (columns.start_hour(row) >= 22 || columns.start_hour(row) < 6)
+        {
+            *night_duration
+                .entry(columns.node(user_idx, row))
+                .or_insert(0.0) += columns.duration(row);
         }
     }
     if !night_duration.is_empty() {
@@ -191,8 +225,8 @@ fn compute_primary_home(
     let mut home_counts: FxHashMap<NodeCode, usize> = FxHashMap::default();
     for position in start..end {
         let row = ordered_row(indices, position);
-        if columns.is_home(row) {
-            *home_counts.entry(columns.node(row)).or_insert(0) += 1;
+        if columns.is_home(user_idx, row) {
+            *home_counts.entry(columns.node(user_idx, row)).or_insert(0) += 1;
         }
     }
     home_counts
@@ -203,11 +237,13 @@ fn compute_primary_home(
 
 #[inline]
 fn previous_primary_home_bleeds_into_today(
+    user_idx: usize,
     columns: &MotifColumns<'_>,
     row: usize,
     primary_home: NodeCode,
 ) -> bool {
-    columns.node(row) == primary_home && (columns.end_hour(row) < 3 || columns.end_hour(row) == 23)
+    columns.node(user_idx, row) == primary_home
+        && (columns.end_hour(row) < 3 || columns.end_hour(row) == 23)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -229,7 +265,7 @@ fn compute_day(
         .cleaned
         .push(last_night_node.unwrap_or(primary_home));
     for position in day_start..day_end {
-        let code = columns.node(ordered_row(indices, position));
+        let code = columns.node(user_idx, ordered_row(indices, position));
         if scratch.cleaned.last().copied() != Some(code) {
             scratch.cleaned.push(code);
         }
@@ -293,7 +329,7 @@ fn process_user(
     end: usize,
     scratch: &mut Scratch,
 ) -> Vec<DailyMotifResult> {
-    let Some(primary_home) = compute_primary_home(columns, indices, start, end) else {
+    let Some(primary_home) = compute_primary_home(user_idx, columns, indices, start, end) else {
         return Vec::new();
     };
 
@@ -308,14 +344,15 @@ fn process_user(
 
         let last_night_node = if day_start > start {
             let row = ordered_row(indices, day_start - 1);
-            previous_primary_home_bleeds_into_today(columns, row, primary_home)
-                .then(|| columns.node(row))
+            previous_primary_home_bleeds_into_today(user_idx, columns, row, primary_home)
+                .then(|| columns.node(user_idx, row))
         } else {
             None
         };
         let next_day_first_node = if day_end < end {
             let row = ordered_row(indices, day_end);
-            (columns.start_hour(row) < 3 && columns.is_home(row)).then(|| columns.node(row))
+            (columns.start_hour(row) < 3 && columns.is_home(user_idx, row))
+                .then(|| columns.node(user_idx, row))
         } else {
             None
         };
@@ -337,7 +374,12 @@ fn process_user(
 
 fn validate_columns(columns: &MotifColumns<'_>) -> Result<(), String> {
     let n = columns.location_codes.len();
-    if columns.purpose_codes.len() != n
+    let purpose_len_ok = match &columns.purpose_source {
+        PurposeSource::Flat(codes) => codes.len() == n,
+        // A lookup table's size has no length relationship to `n` -- nothing to check.
+        PurposeSource::Lookup { .. } => true,
+    };
+    if !purpose_len_ok
         || columns.start_timestamps_us.len() != n
         || columns.end_timestamps_us.len() != n
     {
@@ -410,7 +452,7 @@ pub fn compute_daily_motifs_indexed(
     compute_daily_motifs_impl(
         MotifColumns {
             location_codes,
-            purpose_codes,
+            purpose_source: PurposeSource::Flat(purpose_codes),
             start_timestamps_us,
             end_timestamps_us,
             durations,
@@ -434,7 +476,73 @@ pub fn compute_daily_motifs_presorted(
     compute_daily_motifs_impl(
         MotifColumns {
             location_codes,
-            purpose_codes,
+            purpose_source: PurposeSource::Flat(purpose_codes),
+            start_timestamps_us,
+            end_timestamps_us,
+            durations,
+            home_purpose_code,
+        },
+        None,
+        ends,
+    )
+}
+
+/// Rust-level-join sibling of [`compute_daily_motifs_indexed`]: instead of a
+/// flat, pre-joined `purpose_codes` array, takes a small
+/// `(user_idx, location_code) -> purpose_code` lookup built from a separate
+/// Locations-grain table, resolving each row's purpose lazily during the
+/// per-user scan. A lookup miss (e.g. a staypoint whose location fell below
+/// a clustering threshold) resolves to `unmatched_purpose_code`, matching
+/// the same never-error null-purpose convention as the flat path.
+#[allow(clippy::too_many_arguments)]
+pub fn compute_daily_motifs_indexed_joined(
+    location_codes: &[u64],
+    start_timestamps_us: &[i64],
+    end_timestamps_us: &[i64],
+    durations: Option<&[f64]>,
+    indices: &[usize],
+    ends: &[usize],
+    home_purpose_code: u16,
+    lookup: &FxHashMap<(u32, u64), u16>,
+    unmatched_purpose_code: u16,
+) -> DailyMotifsResult {
+    compute_daily_motifs_impl(
+        MotifColumns {
+            location_codes,
+            purpose_source: PurposeSource::Lookup {
+                table: lookup,
+                unmatched_code: unmatched_purpose_code,
+            },
+            start_timestamps_us,
+            end_timestamps_us,
+            durations,
+            home_purpose_code,
+        },
+        Some(indices),
+        ends,
+    )
+}
+
+/// Rust-level-join sibling of [`compute_daily_motifs_presorted`]. See
+/// [`compute_daily_motifs_indexed_joined`].
+#[allow(clippy::too_many_arguments)]
+pub fn compute_daily_motifs_presorted_joined(
+    location_codes: &[u64],
+    start_timestamps_us: &[i64],
+    end_timestamps_us: &[i64],
+    durations: Option<&[f64]>,
+    ends: &[usize],
+    home_purpose_code: u16,
+    lookup: &FxHashMap<(u32, u64), u16>,
+    unmatched_purpose_code: u16,
+) -> DailyMotifsResult {
+    compute_daily_motifs_impl(
+        MotifColumns {
+            location_codes,
+            purpose_source: PurposeSource::Lookup {
+                table: lookup,
+                unmatched_code: unmatched_purpose_code,
+            },
             start_timestamps_us,
             end_timestamps_us,
             durations,
@@ -457,7 +565,7 @@ mod tests {
     ) -> MotifColumns<'a> {
         MotifColumns {
             location_codes,
-            purpose_codes,
+            purpose_source: PurposeSource::Flat(purpose_codes),
             start_timestamps_us: start,
             end_timestamps_us: end,
             durations: None,
@@ -480,6 +588,7 @@ mod tests {
         for hour in [0, 2, 23] {
             let end = [i64::from(hour) * MICROS_PER_HOUR];
             assert!(previous_primary_home_bleeds_into_today(
+                0,
                 &test_columns(&location_codes, &purpose_codes, &start, &end),
                 0,
                 NodeCode {
@@ -491,6 +600,7 @@ mod tests {
         for hour in [3, 4] {
             let end = [i64::from(hour) * MICROS_PER_HOUR];
             assert!(!previous_primary_home_bleeds_into_today(
+                0,
                 &test_columns(&location_codes, &purpose_codes, &start, &end),
                 0,
                 NodeCode {
@@ -499,5 +609,68 @@ mod tests {
                 }
             ));
         }
+    }
+
+    #[test]
+    fn flat_and_lookup_purpose_sources_produce_identical_results() {
+        // 2 users, 4 rows each: home overnight, work daytime, repeated for 2 days.
+        let location_codes: Vec<u64> = vec![
+            10, 11, 10, 11, // user 0: home, work, home, work
+            20, 21, 20, 21, // user 1: home, work, home, work
+        ];
+        let purpose_codes: Vec<u16> = vec![0, 1, 0, 1, 0, 1, 0, 1]; // 0 = HOME, 1 = WORK
+        let day0 = 0i64;
+        let day1 = MICROS_PER_DAY;
+        let start_timestamps_us: Vec<i64> = vec![
+            day0,
+            day0 + 9 * MICROS_PER_HOUR,
+            day0 + 18 * MICROS_PER_HOUR,
+            day1 + 9 * MICROS_PER_HOUR,
+            day0,
+            day0 + 9 * MICROS_PER_HOUR,
+            day0 + 18 * MICROS_PER_HOUR,
+            day1 + 9 * MICROS_PER_HOUR,
+        ];
+        let end_timestamps_us: Vec<i64> = start_timestamps_us
+            .iter()
+            .map(|&t| t + 4 * MICROS_PER_HOUR)
+            .collect();
+        let indices: Vec<usize> = (0..8).collect();
+        let ends: Vec<usize> = vec![4, 8];
+        let home_purpose_code = 0u16;
+
+        let flat_result = compute_daily_motifs_indexed(
+            &location_codes,
+            &purpose_codes,
+            &start_timestamps_us,
+            &end_timestamps_us,
+            None,
+            &indices,
+            &ends,
+            home_purpose_code,
+        )
+        .unwrap();
+
+        let mut lookup: FxHashMap<(u32, u64), u16> = FxHashMap::default();
+        lookup.insert((0, 10), 0);
+        lookup.insert((0, 11), 1);
+        lookup.insert((1, 20), 0);
+        lookup.insert((1, 21), 1);
+        let unmatched_purpose_code = 2u16;
+
+        let lookup_result = compute_daily_motifs_indexed_joined(
+            &location_codes,
+            &start_timestamps_us,
+            &end_timestamps_us,
+            None,
+            &indices,
+            &ends,
+            home_purpose_code,
+            &lookup,
+            unmatched_purpose_code,
+        )
+        .unwrap();
+
+        assert_eq!(flat_result, lookup_result);
     }
 }

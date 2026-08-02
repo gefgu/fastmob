@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import sys
-import time
 from typing import Any
 
 import narwhals as nw
@@ -38,13 +35,27 @@ def _detect_visit_columns(
 ) -> tuple[str, str, str, str, str, str | None]:
     """Resolve the visit schema in one place, matching other measures."""
     columns = df.columns
-    uid_col = uid_col or _pick_existing_column(columns, USER_ID_CANDIDATES) or "agent_id"
-    location_col = location_col or _pick_existing_column(columns, LOCATION_CANDIDATES) or "location_id"
-    purpose_col = purpose_col or _pick_existing_column(columns, PURPOSE_CANDIDATES) or "purpose"
-    datetime_col = datetime_col or _pick_existing_column(columns, TIMESTAMP_CANDIDATES) or "start_timestamp"
-    end_datetime_col = (
-        end_datetime_col or _pick_existing_column(columns, _END_TIMESTAMP_CANDIDATES) or "end_timestamp"
-    )
+    uid_col = uid_col or _pick_existing_column(columns, USER_ID_CANDIDATES)
+    location_col = location_col or _pick_existing_column(columns, LOCATION_CANDIDATES)
+    purpose_col = purpose_col or _pick_existing_column(columns, PURPOSE_CANDIDATES)
+    datetime_col = datetime_col or _pick_existing_column(columns, TIMESTAMP_CANDIDATES)
+    end_datetime_col = end_datetime_col or _pick_existing_column(columns, _END_TIMESTAMP_CANDIDATES)
+
+    # Unlike _detect_interval_columns, daily_motifs's result-assembly path
+    # (pc.take(uid_labels, ...), df.schema[uid_col], pa.table({uid_col: ...}))
+    # does not support uid_col=None end-to-end, so every one of these raises
+    # instead of falling back to a guessed column name or "single individual" mode.
+    if uid_col is None:
+        raise ValueError(f"Could not find a user-ID column; checked {USER_ID_CANDIDATES}")
+    if location_col is None:
+        raise ValueError(f"Could not find a location column; checked {LOCATION_CANDIDATES}")
+    if purpose_col is None:
+        raise ValueError(f"Could not find a purpose column; checked {PURPOSE_CANDIDATES}")
+    if datetime_col is None:
+        raise ValueError(f"Could not find a start-timestamp column; checked {TIMESTAMP_CANDIDATES}")
+    if end_datetime_col is None:
+        raise ValueError(f"Could not find an end-timestamp column; checked {_END_TIMESTAMP_CANDIDATES}")
+
     if duration_col is None:
         duration_col = _pick_existing_column(columns, DURATION_CANDIDATES)
     elif duration_col not in columns:
@@ -78,6 +89,38 @@ def _encode_locations(df: nw.DataFrame, column: str) -> Any:
     return codes
 
 
+def _encode_locations_pair(visits_series: nw.Series, locations_series: nw.Series, dtype: Any) -> tuple[Any, Any]:
+    """Encode two location-id columns with one consistent codebook.
+
+    Used by the Rust-join path so a location_id value maps to the same code
+    on both the visits (Staypoints) side and the locations (Locations)
+    side. Integer ids (the real trackintel case -- ``location_id`` from
+    ``generate_locations`` is always an integer cluster id) are cast
+    independently on each side; raw integer values are inherently
+    consistent between tables, no shared factorization state needed. Other
+    types are concatenated and factorized once so the same raw value maps
+    to the same code on both sides.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    visits_values = _arrow_array(visits_series)
+    locations_values = _arrow_array(locations_series)
+    if dtype.is_integer() and visits_series.null_count() == 0 and locations_series.null_count() == 0:
+        return (
+            pc.cast(visits_values, pa.uint64(), safe=False),
+            pc.cast(locations_values, pa.uint64(), safe=False),
+        )
+    if visits_values.type != locations_values.type:
+        visits_values = pc.cast(visits_values, pa.string())
+        locations_values = pc.cast(locations_values, pa.string())
+    n_visits = len(visits_values)
+    n_locations = len(locations_values)
+    combined = pa.concat_arrays([visits_values, locations_values])
+    codes, _ = _factorize_arrow_values(combined, sort=False)
+    return codes.slice(0, n_visits), codes.slice(n_visits, n_locations)
+
+
 def _arrow_array(series: nw.Series) -> Any:
     """Return one contiguous Arrow array for a motif input column."""
     import pyarrow as pa
@@ -104,31 +147,17 @@ def daily_motifs(
     rows are already grouped by user and chronological within each user.
     """
     import pyarrow as pa
-    import pyarrow.compute as pc
-
-    profiling = os.environ.get("FASTMOB_PROFILE_MOTIFS") is not None
-    total_started = time.perf_counter()
-    stage_started = total_started
-    timings: dict[str, float] = {}
-
-    def finish_stage(name: str) -> None:
-        nonlocal stage_started
-        now = time.perf_counter()
-        timings[name] = now - stage_started
-        stage_started = now
 
     df = nw.from_native(visits, eager_only=True)
     backend = df.implementation
-    uid_col, location_col, purpose_col, datetime_col, end_datetime_col, duration_col = (
-        _detect_visit_columns(
-            df,
-            uid_col=uid_col,
-            location_col=location_col,
-            purpose_col=purpose_col,
-            datetime_col=datetime_col,
-            end_datetime_col=end_datetime_col,
-            duration_col=duration_col,
-        )
+    uid_col, location_col, purpose_col, datetime_col, end_datetime_col, duration_col = _detect_visit_columns(
+        df,
+        uid_col=uid_col,
+        location_col=location_col,
+        purpose_col=purpose_col,
+        datetime_col=datetime_col,
+        end_datetime_col=end_datetime_col,
+        duration_col=duration_col,
     )
     uid_dtype = df.schema[uid_col]
     df = _strip_time_zone(df, datetime_col)
@@ -138,7 +167,6 @@ def daily_motifs(
         nw.col(end_datetime_col).cast(nw.Datetime("us")).alias(end_datetime_col),
         nw.col(purpose_col).cast(nw.String).alias(purpose_col),
     )
-    finish_stage("detect_and_cast")
 
     if presorted:
         uid_labels, ends = _build_presorted_user_ends(df, uid_col)
@@ -146,18 +174,15 @@ def daily_motifs(
     else:
         timestamps = df.get_column(datetime_col).dt.timestamp("us").cast(nw.Float64)
         uid_labels, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
-    finish_stage("order_users")
 
     location_values = _encode_locations(df, location_col)
-    finish_stage("encode_nodes")
 
     purpose_series = df.get_column(purpose_col)
     purpose_source = purpose_series.to_native()
     if not hasattr(purpose_source, "__arrow_c_stream__"):
         purpose_source = pa.chunked_array([_arrow_array(purpose_series)])
-    raw_purpose_codes, home_purpose_code = _core.encode_motif_purposes(purpose_source)
+    raw_purpose_codes, home_purpose_code, _unmatched_purpose_code = _core.encode_motif_purposes(purpose_source)
     purpose_codes = pa.array(_as_arrow(raw_purpose_codes))
-    finish_stage("encode_purposes")
 
     batch_columns = {
         "location_codes": location_values,
@@ -169,7 +194,6 @@ def daily_motifs(
         duration_series = df.get_column(duration_col).cast(nw.Float64).fill_null(0.0)
         batch_columns["durations"] = _arrow_array(duration_series)
     kernel_batch = pa.record_batch(batch_columns)
-    finish_stage("prepare_arrow")
 
     if presorted:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_presorted(
@@ -184,13 +208,28 @@ def daily_motifs(
             ends,
             home_purpose_code,
         )
-    finish_stage("rust_kernel")
+
+    return _assemble_motif_result(uid_col, uid_dtype, uid_labels, backend, raw_users, raw_dates, raw_motifs)
+
+
+def _assemble_motif_result(
+    uid_col: str,
+    uid_dtype: Any,
+    uid_labels: Any,
+    backend: Any,
+    raw_users: Any,
+    raw_dates: Any,
+    raw_motifs: Any,
+) -> Any:
+    """Build the ``[uid_col, "date", "motif_id"]`` result shared by every join path."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
 
     user_indices = pa.array(_as_arrow(raw_users))
     date_ids = pa.array(_as_arrow(raw_dates))
     motif_ids = pa.array(_as_arrow(raw_motifs))
     user_ids = pc.take(uid_labels, user_indices)
-    result = (
+    return (
         nw.from_arrow(
             pa.table(
                 {
@@ -209,15 +248,106 @@ def daily_motifs(
         .select([uid_col, "date", "motif_id"])
         .to_native()
     )
-    finish_stage("assemble")
-    if profiling:
-        detail = " ".join(f"{name}={value:.6f}s" for name, value in timings.items())
-        print(
-            f"fastmob motif python: {detail} total={time.perf_counter() - total_started:.6f}s",
-            file=sys.stderr,
-            flush=True,
+
+
+def daily_motifs_from_staypoints(
+    staypoints: Any,
+    locations: Any,
+    *,
+    presorted: bool = False,
+) -> Any:
+    """Compute daily motifs directly from a ``Staypoints``/``Locations`` pair.
+
+    Projects each ``Locations`` row's ``purpose`` (as produced by
+    ``Locations.identify``) onto its ``Staypoints`` rows, uppercased
+    (``identify_locations`` emits lowercase ``"home"``/``"work"``/``"other"``,
+    while the motif purpose encoder anchors on an exact-match ``"HOME"``).
+
+    Builds a small ``(user_idx, location_code) -> purpose_code`` lookup from
+    ``locations`` (one row per ``(uid, location_id)``) and passes it straight
+    to a Rust kernel that resolves each visit row's purpose lazily during the
+    per-user scan, rather than materializing a full-length purpose column
+    alongside every staypoint row; see ``fastmob-core``'s
+    ``compute_daily_motifs_indexed_joined``.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    uid_col = staypoints.uid_col
+    if uid_col is None:
+        raise ValueError("generate_daily_motifs requires staypoints to have a uid column")
+
+    sp_nw = nw.from_native(staypoints.df, eager_only=True)
+    if "location_id" not in sp_nw.columns:
+        raise ValueError("generate_daily_motifs requires staypoints to have a 'location_id' column")
+
+    loc_nw = nw.from_native(locations.df, eager_only=True)
+    if uid_col not in loc_nw.columns:
+        raise ValueError(f"generate_daily_motifs requires locations to have a {uid_col!r} column")
+
+    started_at_col = staypoints.started_at_col
+    finished_at_col = staypoints.finished_at_col
+    sp_nw = _strip_time_zone(sp_nw, started_at_col)
+    sp_nw = _strip_time_zone(sp_nw, finished_at_col)
+    sp_nw = sp_nw.with_columns(
+        nw.col(started_at_col).cast(nw.Datetime("us")),
+        nw.col(finished_at_col).cast(nw.Datetime("us")),
+    )
+    uid_dtype = sp_nw.schema[uid_col]
+    backend = sp_nw.implementation
+
+    if presorted:
+        uid_labels, ends = _build_presorted_user_ends(sp_nw, uid_col)
+        indices = None
+    else:
+        timestamps = sp_nw.get_column(started_at_col).dt.timestamp("us").cast(nw.Float64)
+        uid_labels, indices, ends = _build_indexed_user_ranges(sp_nw, uid_col, timestamps)
+
+    location_dtype = sp_nw.schema["location_id"]
+    location_id_col = locations.location_id_col
+    visit_location_codes, lookup_location_codes = _encode_locations_pair(
+        sp_nw.get_column("location_id"), loc_nw.get_column(location_id_col), location_dtype
+    )
+
+    purpose_series = loc_nw.get_column("purpose").cast(nw.String).str.to_uppercase()
+    purpose_source = purpose_series.to_native()
+    if not hasattr(purpose_source, "__arrow_c_stream__"):
+        purpose_source = pa.chunked_array([_arrow_array(purpose_series)])
+    raw_lookup_purpose_codes, home_purpose_code, unmatched_purpose_code = _core.encode_motif_purposes(purpose_source)
+    lookup_purpose_codes = pa.array(_as_arrow(raw_lookup_purpose_codes))
+
+    loc_uid_values = pa.array(loc_nw.get_column(uid_col).to_arrow())
+    matched_user_idx = pc.index_in(loc_uid_values, value_set=uid_labels)
+    keep_mask = pc.is_valid(matched_user_idx)
+    lookup_batch = pa.record_batch(
+        {
+            "user_idx": pc.cast(pc.filter(matched_user_idx, keep_mask), pa.uint32()),
+            "location_code": pc.filter(lookup_location_codes, keep_mask),
+            "purpose_code": pc.filter(lookup_purpose_codes, keep_mask),
+        }
+    )
+
+    visits_batch_columns = {
+        "location_codes": visit_location_codes,
+        "start_timestamps": _arrow_array(sp_nw.get_column(started_at_col)),
+        "end_timestamps": _arrow_array(sp_nw.get_column(finished_at_col)),
+    }
+    duration_col = _pick_existing_column(sp_nw.columns, DURATION_CANDIDATES)
+    if duration_col is not None:
+        duration_series = sp_nw.get_column(duration_col).cast(nw.Float64).fill_null(0.0)
+        visits_batch_columns["durations"] = _arrow_array(duration_series)
+    visits_batch = pa.record_batch(visits_batch_columns)
+
+    if presorted:
+        raw_users, raw_dates, raw_motifs = _core.daily_motifs_presorted_joined(
+            visits_batch, lookup_batch, ends, home_purpose_code, unmatched_purpose_code
         )
-    return result
+    else:
+        raw_users, raw_dates, raw_motifs = _core.daily_motifs_indexed_joined(
+            visits_batch, lookup_batch, indices, ends, home_purpose_code, unmatched_purpose_code
+        )
+
+    return _assemble_motif_result(uid_col, uid_dtype, uid_labels, backend, raw_users, raw_dates, raw_motifs)
 
 
 def motif_distribution(daily: Any, motif_id_col: str = "motif_id") -> Any:
@@ -229,19 +359,16 @@ def motif_distribution(daily: Any, motif_id_col: str = "motif_id") -> Any:
     if total == 0:
         import pyarrow as pa
 
-        return (
-            nw.from_arrow(
-                pa.table(
-                    {
-                        motif_id_col: pa.array([], type=pa.int64()),
-                        "count": pa.array([], type=pa.int64()),
-                        "percentage": pa.array([], type=pa.float64()),
-                    }
-                ),
-                backend=df.implementation,
-            )
-            .to_native()
-        )
+        return nw.from_arrow(
+            pa.table(
+                {
+                    motif_id_col: pa.array([], type=pa.int64()),
+                    "count": pa.array([], type=pa.int64()),
+                    "percentage": pa.array([], type=pa.float64()),
+                }
+            ),
+            backend=df.implementation,
+        ).to_native()
     return (
         df.group_by(motif_id_col)
         .agg(nw.len().alias("count"))

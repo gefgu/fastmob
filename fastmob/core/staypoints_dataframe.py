@@ -165,7 +165,6 @@ class Staypoints(BaseDataFrame):
         self,
         locations: Locations,
         *,
-        join: str = "python",
         presorted: bool = False,
     ) -> Any:
         """Compute one home-anchored mobility motif per user and day.
@@ -174,4 +173,4 @@ class Staypoints(BaseDataFrame):
         """
         from ..measures.individual.motifs import daily_motifs_from_staypoints
 
-        return daily_motifs_from_staypoints(self, locations, join=join, presorted=presorted)
+        return daily_motifs_from_staypoints(self, locations, presorted=presorted)
