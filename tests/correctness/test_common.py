@@ -74,6 +74,37 @@ class TestArrowFactorization:
         assert pa.array(codes).to_pylist() == [1, 2, 0, 1]
         assert pa.array(representatives).to_pylist() == [2, 0, 1]
 
+    def test_dense_nullable_integers_preserve_first_seen_order(self):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        codes, representatives = factorize_arrow(pa.array([3, None, 2, 3, None]))
+
+        assert pa.array(codes).to_pylist() == [0, 1, 2, 0, 1]
+        assert pa.array(representatives).to_pylist() == [0, 1, 2]
+
+    def test_dense_nullable_integers_sort_with_null_last(self):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        codes, representatives = factorize_arrow(pa.array([3, None, 2, 3, None]), True)
+
+        assert pa.array(codes).to_pylist() == [1, 2, 0, 1, 2]
+        assert pa.array(representatives).to_pylist() == [2, 0, 1]
+
+    def test_boolean_fast_path_preserves_both_orderings(self):
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        values = pa.array([True, None, False, True, None])
+        codes, representatives = factorize_arrow(values)
+        assert pa.array(codes).to_pylist() == [0, 1, 2, 0, 1]
+        assert pa.array(representatives).to_pylist() == [0, 1, 2]
+
+        codes, representatives = factorize_arrow(values, True)
+        assert pa.array(codes).to_pylist() == [1, 2, 0, 1, 2]
+        assert pa.array(representatives).to_pylist() == [2, 0, 1]
+
     def test_rejects_numpy_input(self):
         import numpy as np
         from fastmob._core import factorize_arrow
