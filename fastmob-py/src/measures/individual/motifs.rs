@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow_array::{
     Array, ArrayRef, Float64Array, LargeStringArray, StringArray, StringViewArray,
-    TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array,
+    TimestampMicrosecondArray, UInt16Array, UInt32Array,
 };
 use fastmob_core::measures::individual::motifs::{
     canonical_adjacency_form as core_canonical_adjacency_form,
@@ -13,13 +13,13 @@ use fastmob_core::measures::individual::motifs::{
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3_arrow::{PyArray as ArrowPyArray, PyChunkedArray, PyRecordBatch};
+use pyo3_arrow::{PyArray as ArrowPyArray, PyChunkedArray};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 use crate::utils::{
-    arrow_u64_values, arrow_usize_values, arrow_values, as_u64_array, i32_results_into_arrow,
-    i64_results_into_arrow, u64_results_into_arrow,
+    arrow_u64_values, arrow_usize_values, arrow_values, as_f64_array, as_u64_array,
+    i32_results_into_arrow, i64_results_into_arrow, u64_results_into_arrow,
 };
 
 #[pyfunction]
@@ -224,29 +224,16 @@ pub fn encode_motif_purposes(values: PyChunkedArray) -> PyResult<(ArrowPyArray, 
     ))
 }
 
-fn u64_column(batch: &arrow_array::RecordBatch, name: &str) -> PyResult<UInt64Array> {
-    let array = batch
-        .column_by_name(name)
-        .and_then(|column| column.as_any().downcast_ref::<UInt64Array>())
+fn as_u16_array(arr: ArrowPyArray, name: &str) -> PyResult<UInt16Array> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<UInt16Array>()
         .cloned()
-        .ok_or_else(|| PyValueError::new_err(format!("expected uint64 Arrow column for {name}")))?;
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint16 Arrow array for {name}")))?;
     if array.null_count() > 0 {
         return Err(PyValueError::new_err(format!(
-            "Arrow column for {name} must not contain nulls"
-        )));
-    }
-    Ok(array)
-}
-
-fn u16_column(batch: &arrow_array::RecordBatch, name: &str) -> PyResult<UInt16Array> {
-    let array = batch
-        .column_by_name(name)
-        .and_then(|column| column.as_any().downcast_ref::<UInt16Array>())
-        .cloned()
-        .ok_or_else(|| PyValueError::new_err(format!("expected uint16 Arrow column for {name}")))?;
-    if array.null_count() > 0 {
-        return Err(PyValueError::new_err(format!(
-            "Arrow column for {name} must not contain nulls"
+            "Arrow array for {name} must not contain nulls"
         )));
     }
     Ok(array)
@@ -258,15 +245,16 @@ fn u16_values(array: &UInt16Array) -> &[u16] {
     &array.values()[start..end]
 }
 
-fn u32_column(batch: &arrow_array::RecordBatch, name: &str) -> PyResult<UInt32Array> {
-    let array = batch
-        .column_by_name(name)
-        .and_then(|column| column.as_any().downcast_ref::<UInt32Array>())
+fn as_u32_array(arr: ArrowPyArray, name: &str) -> PyResult<UInt32Array> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<UInt32Array>()
         .cloned()
-        .ok_or_else(|| PyValueError::new_err(format!("expected uint32 Arrow column for {name}")))?;
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint32 Arrow array for {name}")))?;
     if array.null_count() > 0 {
         return Err(PyValueError::new_err(format!(
-            "Arrow column for {name} must not contain nulls"
+            "Arrow array for {name} must not contain nulls"
         )));
     }
     Ok(array)
@@ -278,44 +266,25 @@ fn u32_values(array: &UInt32Array) -> &[u32] {
     &array.values()[start..end]
 }
 
-fn timestamp_column(
-    batch: &arrow_array::RecordBatch,
-    name: &str,
-) -> PyResult<TimestampMicrosecondArray> {
-    let array = batch
-        .column_by_name(name)
-        .and_then(|column| column.as_any().downcast_ref::<TimestampMicrosecondArray>())
+fn as_timestamp_us_array(arr: ArrowPyArray, name: &str) -> PyResult<TimestampMicrosecondArray> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<TimestampMicrosecondArray>()
         .cloned()
         .ok_or_else(|| {
-            PyValueError::new_err(format!("expected timestamp[us] Arrow column for {name}"))
+            PyValueError::new_err(format!("expected timestamp[us] Arrow array for {name}"))
         })?;
     if array.null_count() > 0 {
         return Err(PyValueError::new_err(format!(
-            "Arrow column for {name} must not contain nulls"
+            "Arrow array for {name} must not contain nulls"
         )));
     }
     Ok(array)
 }
 
-fn optional_duration_column(batch: &arrow_array::RecordBatch) -> PyResult<Option<Float64Array>> {
-    batch
-        .column_by_name("durations")
-        .map(|column| {
-            let array = column
-                .as_any()
-                .downcast_ref::<Float64Array>()
-                .cloned()
-                .ok_or_else(|| {
-                    PyValueError::new_err("expected float64 Arrow column for durations")
-                })?;
-            if array.null_count() > 0 {
-                return Err(PyValueError::new_err(
-                    "Arrow column for durations must not contain nulls",
-                ));
-            }
-            Ok(array)
-        })
-        .transpose()
+fn optional_duration_array(arr: Option<ArrowPyArray>) -> PyResult<Option<Float64Array>> {
+    arr.map(|arr| as_f64_array(arr, "durations")).transpose()
 }
 
 fn timestamp_values(array: &TimestampMicrosecondArray) -> &[i64] {
@@ -339,17 +308,20 @@ fn motif_result(
 #[allow(clippy::too_many_arguments)]
 pub fn daily_motifs_indexed<'py>(
     py: Python<'py>,
-    batch: PyRecordBatch,
+    location_codes: ArrowPyArray,
+    purpose_codes: ArrowPyArray,
+    start_timestamps: ArrowPyArray,
+    end_timestamps: ArrowPyArray,
+    durations: Option<ArrowPyArray>,
     indices: ArrowPyArray,
     ends: ArrowPyArray,
     home_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let batch = batch.into_inner();
-    let location_codes = u64_column(&batch, "location_codes")?;
-    let purpose_codes = u16_column(&batch, "purpose_codes")?;
-    let starts = timestamp_column(&batch, "start_timestamps")?;
-    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
-    let durations = optional_duration_column(&batch)?;
+    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let purpose_codes = as_u16_array(purpose_codes, "purpose_codes")?;
+    let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
+    let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
+    let durations = optional_duration_array(durations)?;
     let duration_values = durations.as_ref().map(arrow_values);
     let indices = as_u64_array(indices, "indices")?;
     let ends = as_u64_array(ends, "ends")?;
@@ -374,16 +346,19 @@ pub fn daily_motifs_indexed<'py>(
 #[allow(clippy::too_many_arguments)]
 pub fn daily_motifs_presorted<'py>(
     py: Python<'py>,
-    batch: PyRecordBatch,
+    location_codes: ArrowPyArray,
+    purpose_codes: ArrowPyArray,
+    start_timestamps: ArrowPyArray,
+    end_timestamps: ArrowPyArray,
+    durations: Option<ArrowPyArray>,
     ends: ArrowPyArray,
     home_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let batch = batch.into_inner();
-    let location_codes = u64_column(&batch, "location_codes")?;
-    let purpose_codes = u16_column(&batch, "purpose_codes")?;
-    let starts = timestamp_column(&batch, "start_timestamps")?;
-    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
-    let durations = optional_duration_column(&batch)?;
+    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let purpose_codes = as_u16_array(purpose_codes, "purpose_codes")?;
+    let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
+    let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
+    let durations = optional_duration_array(durations)?;
     let duration_values = durations.as_ref().map(arrow_values);
     let ends = as_u64_array(ends, "ends")?;
     let end_values = arrow_usize_values(&ends);
@@ -402,18 +377,21 @@ pub fn daily_motifs_presorted<'py>(
 }
 
 /// Build the `(user_idx, location_code) -> purpose_code` lookup used by the
-/// Staypoints/Locations hierarchy integration, from a small Locations-grain
-/// record batch. Sequential, not parallel: this table is one row per `(uid, location_id)`,
-/// dramatically smaller than the visits table it serves, so a parallel
-/// fold/reduce (as `discover_purposes` uses elsewhere in this file) buys
-/// nothing here. Duplicate `(user_idx, location_code)` keys (shouldn't
-/// happen -- Locations is one row per `(uid, location_id)` by construction)
-/// silently keep the last-inserted value.
-fn build_purpose_lookup(batch: &PyRecordBatch) -> PyResult<FxHashMap<(u32, u64), u16>> {
-    let batch: &arrow_array::RecordBatch = batch.as_ref();
-    let user_idx = u32_column(batch, "user_idx")?;
-    let location_code = u64_column(batch, "location_code")?;
-    let purpose_code = u16_column(batch, "purpose_code")?;
+/// Staypoints/Locations hierarchy integration, from three small
+/// Locations-grain arrays. Sequential, not parallel: this table is one row
+/// per `(uid, location_id)`, dramatically smaller than the visits table it
+/// serves, so a parallel fold/reduce (as `discover_purposes` uses elsewhere
+/// in this file) buys nothing here. Duplicate `(user_idx, location_code)`
+/// keys (shouldn't happen -- Locations is one row per `(uid, location_id)`
+/// by construction) silently keep the last-inserted value.
+fn build_purpose_lookup(
+    user_idx: ArrowPyArray,
+    location_code: ArrowPyArray,
+    purpose_code: ArrowPyArray,
+) -> PyResult<FxHashMap<(u32, u64), u16>> {
+    let user_idx = as_u32_array(user_idx, "user_idx")?;
+    let location_code = as_u64_array(location_code, "location_code")?;
+    let purpose_code = as_u16_array(purpose_code, "purpose_code")?;
     let user_idx_values = u32_values(&user_idx);
     let location_code_values = arrow_u64_values(&location_code);
     let purpose_code_values = u16_values(&purpose_code);
@@ -428,33 +406,37 @@ fn build_purpose_lookup(batch: &PyRecordBatch) -> PyResult<FxHashMap<(u32, u64),
     Ok(lookup)
 }
 
-/// Rust-join sibling of [`daily_motifs_indexed`]: `visits_batch` carries
+/// Rust-join sibling of [`daily_motifs_indexed`]: takes
 /// `location_codes`/`start_timestamps`/`end_timestamps`/optional
-/// `durations` (no `purpose_codes`); `lookup_batch` carries
-/// `user_idx`/`location_code`/`purpose_code`, one row per
+/// `durations` (no `purpose_codes`), plus `lookup_user_idx`/
+/// `lookup_location_code`/`lookup_purpose_code` -- one row per
 /// `(uid, location_id)`, resolved from a `Locations` table.
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub fn daily_motifs_indexed_joined<'py>(
     py: Python<'py>,
-    visits_batch: PyRecordBatch,
-    lookup_batch: PyRecordBatch,
+    location_codes: ArrowPyArray,
+    start_timestamps: ArrowPyArray,
+    end_timestamps: ArrowPyArray,
+    durations: Option<ArrowPyArray>,
+    lookup_user_idx: ArrowPyArray,
+    lookup_location_code: ArrowPyArray,
+    lookup_purpose_code: ArrowPyArray,
     indices: ArrowPyArray,
     ends: ArrowPyArray,
     home_purpose_code: u16,
     unmatched_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let batch = visits_batch.into_inner();
-    let location_codes = u64_column(&batch, "location_codes")?;
-    let starts = timestamp_column(&batch, "start_timestamps")?;
-    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
-    let durations = optional_duration_column(&batch)?;
+    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
+    let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
+    let durations = optional_duration_array(durations)?;
     let duration_values = durations.as_ref().map(arrow_values);
     let indices = as_u64_array(indices, "indices")?;
     let ends = as_u64_array(ends, "ends")?;
     let index_values = arrow_usize_values(&indices);
     let end_values = arrow_usize_values(&ends);
-    let lookup = build_purpose_lookup(&lookup_batch)?;
+    let lookup = build_purpose_lookup(lookup_user_idx, lookup_location_code, lookup_purpose_code)?;
     let result = py.detach(|| {
         core_compute_daily_motifs_indexed_joined(
             arrow_u64_values(&location_codes),
@@ -477,21 +459,25 @@ pub fn daily_motifs_indexed_joined<'py>(
 #[allow(clippy::too_many_arguments)]
 pub fn daily_motifs_presorted_joined<'py>(
     py: Python<'py>,
-    visits_batch: PyRecordBatch,
-    lookup_batch: PyRecordBatch,
+    location_codes: ArrowPyArray,
+    start_timestamps: ArrowPyArray,
+    end_timestamps: ArrowPyArray,
+    durations: Option<ArrowPyArray>,
+    lookup_user_idx: ArrowPyArray,
+    lookup_location_code: ArrowPyArray,
+    lookup_purpose_code: ArrowPyArray,
     ends: ArrowPyArray,
     home_purpose_code: u16,
     unmatched_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let batch = visits_batch.into_inner();
-    let location_codes = u64_column(&batch, "location_codes")?;
-    let starts = timestamp_column(&batch, "start_timestamps")?;
-    let ends_ts = timestamp_column(&batch, "end_timestamps")?;
-    let durations = optional_duration_column(&batch)?;
+    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
+    let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
+    let durations = optional_duration_array(durations)?;
     let duration_values = durations.as_ref().map(arrow_values);
     let ends = as_u64_array(ends, "ends")?;
     let end_values = arrow_usize_values(&ends);
-    let lookup = build_purpose_lookup(&lookup_batch)?;
+    let lookup = build_purpose_lookup(lookup_user_idx, lookup_location_code, lookup_purpose_code)?;
     let result = py.detach(|| {
         core_compute_daily_motifs_presorted_joined(
             arrow_u64_values(&location_codes),

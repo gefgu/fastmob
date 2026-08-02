@@ -184,26 +184,30 @@ def daily_motifs(
     raw_purpose_codes, home_purpose_code, _unmatched_purpose_code = _core.encode_motif_purposes(purpose_source)
     purpose_codes = pa.array(_as_arrow(raw_purpose_codes))
 
-    batch_columns = {
-        "location_codes": location_values,
-        "purpose_codes": purpose_codes,
-        "start_timestamps": _arrow_array(df.get_column(datetime_col)),
-        "end_timestamps": _arrow_array(df.get_column(end_datetime_col)),
-    }
+    start_timestamps = _arrow_array(df.get_column(datetime_col))
+    end_timestamps = _arrow_array(df.get_column(end_datetime_col))
+    durations = None
     if duration_col is not None:
         duration_series = df.get_column(duration_col).cast(nw.Float64).fill_null(0.0)
-        batch_columns["durations"] = _arrow_array(duration_series)
-    kernel_batch = pa.record_batch(batch_columns)
+        durations = _arrow_array(duration_series)
 
     if presorted:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_presorted(
-            kernel_batch,
+            location_values,
+            purpose_codes,
+            start_timestamps,
+            end_timestamps,
+            durations,
             ends,
             home_purpose_code,
         )
     else:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_indexed(
-            kernel_batch,
+            location_values,
+            purpose_codes,
+            start_timestamps,
+            end_timestamps,
+            durations,
             indices,
             ends,
             home_purpose_code,
@@ -321,32 +325,44 @@ def daily_motifs_from_staypoints(
     loc_uid_values = pa.array(loc_nw.get_column(uid_col).to_arrow())
     matched_user_idx = pc.index_in(loc_uid_values, value_set=uid_labels)
     keep_mask = pc.is_valid(matched_user_idx)
-    lookup_batch = pa.record_batch(
-        {
-            "user_idx": pc.cast(pc.filter(matched_user_idx, keep_mask), pa.uint32()),
-            "location_code": pc.filter(lookup_location_codes, keep_mask),
-            "purpose_code": pc.filter(lookup_purpose_codes, keep_mask),
-        }
-    )
+    lookup_user_idx = pc.cast(pc.filter(matched_user_idx, keep_mask), pa.uint32())
+    lookup_location_code = pc.filter(lookup_location_codes, keep_mask)
+    lookup_purpose_code = pc.filter(lookup_purpose_codes, keep_mask)
 
-    visits_batch_columns = {
-        "location_codes": visit_location_codes,
-        "start_timestamps": _arrow_array(sp_nw.get_column(started_at_col)),
-        "end_timestamps": _arrow_array(sp_nw.get_column(finished_at_col)),
-    }
+    start_timestamps = _arrow_array(sp_nw.get_column(started_at_col))
+    end_timestamps = _arrow_array(sp_nw.get_column(finished_at_col))
+    durations = None
     duration_col = _pick_existing_column(sp_nw.columns, DURATION_CANDIDATES)
     if duration_col is not None:
         duration_series = sp_nw.get_column(duration_col).cast(nw.Float64).fill_null(0.0)
-        visits_batch_columns["durations"] = _arrow_array(duration_series)
-    visits_batch = pa.record_batch(visits_batch_columns)
+        durations = _arrow_array(duration_series)
 
     if presorted:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_presorted_joined(
-            visits_batch, lookup_batch, ends, home_purpose_code, unmatched_purpose_code
+            visit_location_codes,
+            start_timestamps,
+            end_timestamps,
+            durations,
+            lookup_user_idx,
+            lookup_location_code,
+            lookup_purpose_code,
+            ends,
+            home_purpose_code,
+            unmatched_purpose_code,
         )
     else:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_indexed_joined(
-            visits_batch, lookup_batch, indices, ends, home_purpose_code, unmatched_purpose_code
+            visit_location_codes,
+            start_timestamps,
+            end_timestamps,
+            durations,
+            lookup_user_idx,
+            lookup_location_code,
+            lookup_purpose_code,
+            indices,
+            ends,
+            home_purpose_code,
+            unmatched_purpose_code,
         )
 
     return _assemble_motif_result(uid_col, uid_dtype, uid_labels, backend, raw_users, raw_dates, raw_motifs)
