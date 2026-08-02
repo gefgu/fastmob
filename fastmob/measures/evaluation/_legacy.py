@@ -47,15 +47,13 @@ def compare_motif_distributions_with_jsd(
     user_id_col_sample: str | None = "user_id",
     location_id_col: str | None = "area",
 ) -> float:
+    from fastmob.measures.individual.motifs import daily_motifs
+
     from .activity import motif_distribution_jensen_shannon_divergence
 
-    return motif_distribution_jensen_shannon_divergence(
-        agent_visitation_df,
-        sample_visitation_df,
-        user_id_col1=user_id_col_agent,
-        user_id_col2=user_id_col_sample,
-        location_id_col=location_id_col,
-    )
+    daily_agent = daily_motifs(agent_visitation_df, uid_col=user_id_col_agent, location_col=location_id_col)
+    daily_sample = daily_motifs(sample_visitation_df, uid_col=user_id_col_sample, location_col=location_id_col)
+    return motif_distribution_jensen_shannon_divergence(daily_agent, daily_sample)
 
 
 compare_regularity_with_wasserstein = _wasserstein_column_wrapper("regularity")

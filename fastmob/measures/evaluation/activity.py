@@ -7,7 +7,6 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.measures.individual.motifs import daily_motifs
 from fastmob.utils._common import ACTIVITY_CANDIDATES, _pick_existing_column
 
 from ._utils import _is_null, _series_values
@@ -40,20 +39,20 @@ def activity_transition_matrix_jensen_shannon_divergence(
 
 
 def motif_distribution_jensen_shannon_divergence(
-    visits1: Any,
-    visits2: Any,
+    daily1: Any,
+    daily2: Any,
     *,
-    user_id_col1: str | None = None,
-    user_id_col2: str | None = None,
-    location_id_col: str | None = None,
+    motif_id_col: str = "motif_id",
 ) -> float:
-    """Discover daily motifs for two visit datasets and compare motif distributions."""
-    daily1 = daily_motifs(visits1, uid_col=user_id_col1, location_col=location_id_col)
-    daily2 = daily_motifs(visits2, uid_col=user_id_col2, location_col=location_id_col)
+    """Compare two daily-motif results (as returned by ``daily_motifs`` or
+    ``daily_motifs_from_staypoints``) with Jensen-Shannon divergence.
+    """
     n1 = nw.from_native(daily1, eager_only=True)
     n2 = nw.from_native(daily2, eager_only=True)
-    motifs1 = _series_values(n1, "motif_id")
-    motifs2 = _series_values(n2, "motif_id")
+    if motif_id_col not in n1.columns or motif_id_col not in n2.columns:
+        raise ValueError(f"Motif ID column {motif_id_col!r} does not exist in both dataframes.")
+    motifs1 = _series_values(n1, motif_id_col)
+    motifs2 = _series_values(n2, motif_id_col)
     c1 = Counter(motifs1)
     c2 = Counter(motifs2)
     labels = sorted(set(c1) | set(c2), key=lambda value: str(value))

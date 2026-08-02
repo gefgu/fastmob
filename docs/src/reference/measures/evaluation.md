@@ -30,7 +30,7 @@
 | [`stvd_emd`](#fastmob.measures.evaluation.stvd_emd) | Compute the spatio-temporal Wasserstein distance between two distributions. |
 | [`activity_distribution_jensen_shannon_divergence`](#fastmob.measures.evaluation.activity_distribution_jensen_shannon_divergence) | Compare categorical activity distributions with Jensen-Shannon divergence. |
 | [`activity_transition_matrix_jensen_shannon_divergence`](#fastmob.measures.evaluation.activity_transition_matrix_jensen_shannon_divergence) | Compare activity transition matrices with Jensen-Shannon divergence. |
-| [`motif_distribution_jensen_shannon_divergence`](#fastmob.measures.evaluation.motif_distribution_jensen_shannon_divergence) | Discover daily motifs for two visit datasets and compare motif distributions. |
+| [`motif_distribution_jensen_shannon_divergence`](#fastmob.measures.evaluation.motif_distribution_jensen_shannon_divergence) | Compare two daily-motif results with Jensen-Shannon divergence. |
 
 ::: fastmob.measures.evaluation
     options:
