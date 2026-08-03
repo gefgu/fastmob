@@ -56,6 +56,7 @@ from tests.shared.geolife import GEOLIFE_DEFAULT_ROWS, load_geolife_pandas
 from tests.shared.skmob_cache import _REFERENCE_DIR
 
 PRIVACY_TOY_PATH = REPO_ROOT / "scikit-mobility" / "examples" / "privacy_toy.csv"
+PRIVACY_H3_RESOLUTION = 12
 SKMOB_EXAMPLES_DIR = REPO_ROOT / "scikit-mobility" / "examples"
 MODEL_SEED = 2
 MODEL_START = pd.Timestamp("2020-01-01 08:00:00")
@@ -256,7 +257,21 @@ def _load_privacy_toy() -> skmob.TrajDataFrame:
         raise FileNotFoundError(f"Privacy toy dataset not found at {PRIVACY_TOY_PATH}")
     df = pd.read_csv(PRIVACY_TOY_PATH)
     df["datetime"] = pd.to_datetime(df["datetime"])
+    df = _canonicalize_privacy_h3_cells(df)
     return skmob.TrajDataFrame(df, latitude="lat", longitude="lng", datetime="datetime", user_id="uid")
+
+
+def _canonicalize_privacy_h3_cells(df: pd.DataFrame) -> pd.DataFrame:
+    """Use H3 cell centers so scikit-mobility shares Fastmob's location model."""
+    import h3
+
+    result = df.copy()
+    centers = [
+        h3.cell_to_latlng(h3.latlng_to_cell(lat, lng, PRIVACY_H3_RESOLUTION))
+        for lat, lng in zip(result["lat"], result["lng"])
+    ]
+    result["lat"], result["lng"] = zip(*centers) if centers else ([], [])
+    return result
 
 
 def _load_model_tessellation():

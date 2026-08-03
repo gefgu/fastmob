@@ -79,6 +79,8 @@ def test_privacy_toy_matches_cached_skmob_pandas(privacy_toy_reference, case: Pr
     expected = privacy_toy_reference.result(case.name)
     if expected is None:
         pytest.skip(f"No cached skmob output for {case.name}")
+    # The cache generator maps this input to resolution-12 H3 centers before
+    # running scikit-mobility, making its exact comparisons H3-equivalent.
     actual = case.function(privacy_toy_reference.input_df.copy(), **case.kwargs)
     actual = _normalized(actual)
     expected = _normalized(expected)

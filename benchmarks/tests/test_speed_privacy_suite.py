@@ -95,6 +95,16 @@ def test_repeat_privacy_toy_offsets_user_ids():
     assert repeated["uid"].tolist() == [1, 2, 3, 4, 5, 6]
 
 
+def test_canonicalize_privacy_h3_cells_replaces_coordinates_with_centers():
+    pytest.importorskip("h3")
+    pd = pytest.importorskip("pandas")
+    source = pd.DataFrame({"lat": [37.769377], "lng": [-122.388519]})
+
+    result = suite.canonicalize_privacy_h3_cells(source)
+
+    assert (result.loc[0, "lat"], result.loc[0, "lng"]) != (source.loc[0, "lat"], source.loc[0, "lng"])
+
+
 def test_benchmark_attack_records_import_skip(monkeypatch):
     spec = suite.BenchmarkSpec("missing", "MissingAttack", {}, {})
 

@@ -56,6 +56,7 @@ PRIVACY_ATTACKS: tuple[BenchmarkSpec, ...] = (
     BenchmarkSpec("location_proportion_kl2", "LocationProportionAttack", {"knowledge_length": 2}, {}),
     BenchmarkSpec("home_work", "HomeWorkAttack", {}, {}),
 )
+PRIVACY_H3_RESOLUTION = 12
 
 
 class SkippedAttack(Exception):
@@ -162,6 +163,25 @@ def repeat_privacy_toy_pandas(df: Any, repeat_factor: int) -> Any:
         piece["uid"] = piece["uid"] + (repeat_index * max_uid)
         pieces.append(piece)
     return pd.concat(pieces, ignore_index=True)
+
+
+def canonicalize_privacy_h3_cells(df: Any, resolution: int = PRIVACY_H3_RESOLUTION) -> Any:
+    """Replace privacy benchmark coordinates with their H3 cell centers.
+
+    This makes Fastmob's default H3 equivalence relation identical to
+    scikit-mobility's exact-coordinate relation for fair comparisons.
+    """
+    import h3
+
+    lats = df["lat"].to_list()
+    lngs = df["lng"].to_list()
+    centers = [h3.cell_to_latlng(h3.latlng_to_cell(lat, lng, resolution)) for lat, lng in zip(lats, lngs)]
+    center_lats, center_lngs = zip(*centers) if centers else ([], [])
+    if type(df).__module__.startswith("polars"):
+        import polars as pl
+
+        return df.with_columns(pl.Series("lat", center_lats), pl.Series("lng", center_lngs))
+    return df.assign(lat=center_lats, lng=center_lngs)
 
 
 def load_privacy_toy_polars(data_path: Path, repeat_factor: int):
@@ -428,6 +448,7 @@ def build_metadata(
         "input_order": args.input_order,
         "input_cache_path": None if input_cache_path is None else str(input_cache_path),
         "input_cache_status": input_cache_status,
+        "h3_resolution": PRIVACY_H3_RESOLUTION,
         **({"memory_method": "memray_peak_heap"} if args.profile == "memory" else {}),
     }
 
@@ -485,6 +506,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
             input_cache_dir=Path(args.input_cache_dir),
             repeat_dataset=args.repeat_dataset,
         )
+        df = canonicalize_privacy_h3_cells(df)
         metadata = build_metadata(
             args,
             input_type=input_type,
@@ -514,6 +536,7 @@ def run_suite(args: argparse.Namespace, *, backend: str | None = None) -> dict[s
         input_cache_dir=Path(args.input_cache_dir),
         repeat_dataset=args.repeat_dataset,
     )
+    raw_df = canonicalize_privacy_h3_cells(raw_df)
     try:
         skmob_module = importlib.import_module("skmob")
     except Exception as exc:

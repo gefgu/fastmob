@@ -103,11 +103,14 @@ def assess_risk(
     uid_col: str | None = None,
     presorted: bool = False,
     require_datetime: bool = False,
+    h3_resolution: int = 12,
 ) -> Any:
     if knowledge_length < 1:
         raise ValueError("knowledge_length must be greater than zero")
     if not 0.0 <= tolerance <= 1.0:
         raise ValueError("tolerance must be in the interval [0.0, 1.0]")
+    if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, int) or not 0 <= h3_resolution <= 15:
+        raise ValueError("h3_resolution must be an integer between 0 and 15")
     df = nw.from_native(traj, eager_only=True)
     df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -136,6 +139,7 @@ def assess_risk(
         indices=indices,
         tolerance=tolerance,
         force_instances=force_instances,
+        h3_resolution=h3_resolution,
     )
     return _result(
         df,

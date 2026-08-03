@@ -1115,6 +1115,7 @@ dev-pymove = [
 ]
 dev-skmob = [
     { name = "fiona" },
+    { name = "h3" },
     { name = "scikit-mobility" },
 ]
 dev-transbigdata = [
@@ -1183,6 +1184,7 @@ requires-dist = [
     { name = "geopandas", marker = "extra == 'dev-movingpandas'" },
     { name = "geopandas", marker = "extra == 'tessellation'" },
     { name = "h3", marker = "extra == 'dev'" },
+    { name = "h3", marker = "extra == 'dev-skmob'" },
     { name = "h3", marker = "extra == 'tessellation'" },
     { name = "hampel", marker = "extra == 'dev-ptrail'", specifier = "==0.0.5" },
     { name = "ipython", marker = "extra == 'dev-ptrail'", specifier = "<8" },

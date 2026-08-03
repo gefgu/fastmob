@@ -1,19 +1,20 @@
+use h3o::{CellIndex, LatLng};
 use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::preprocessing::h3::INVALID_CELL;
 
 const NO_ROW: usize = usize::MAX;
 
 #[derive(Clone, Copy, Debug)]
 struct Obs {
-    lat: f64,
-    lng: f64,
+    location: u64,
     time_key: u64,
     row_idx: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
 struct MetricObs {
-    lat: f64,
-    lng: f64,
+    location: u64,
     value: f64,
 }
 
@@ -23,10 +24,33 @@ enum UserValues {
     Metrics(Vec<MetricObs>),
 }
 
+enum PreparedCandidate<'a> {
+    Observations {
+        values: &'a [Obs],
+        locations: FxHashMap<u64, usize>,
+        location_times: FxHashMap<(u64, u64), usize>,
+    },
+    Metrics {
+        locations: FxHashSet<u64>,
+        metrics: FxHashMap<u64, f64>,
+    },
+}
+
+enum PreparedInstance<'a> {
+    Observations {
+        values: &'a [Obs],
+        locations: FxHashMap<u64, usize>,
+        location_times: FxHashMap<(u64, u64), usize>,
+    },
+    Metrics {
+        values: &'a [MetricObs],
+        locations: FxHashSet<u64>,
+    },
+}
+
 #[derive(Clone, Debug)]
 struct ForceRow {
-    lat: f64,
-    lng: f64,
+    location: u64,
     row_idx: usize,
     user_idx: usize,
     instance: usize,
@@ -76,12 +100,8 @@ impl TryFrom<&str> for AttackKind {
     }
 }
 
-fn loc_key(lat: f64, lng: f64) -> (u64, u64) {
-    (lat.to_bits(), lng.to_bits())
-}
-
-fn loc_time_key(obs: Obs) -> (u64, u64, u64) {
-    (obs.lat.to_bits(), obs.lng.to_bits(), obs.time_key)
+fn loc_time_key(obs: Obs) -> (u64, u64) {
+    (obs.location, obs.time_key)
 }
 
 fn starts_from_ends(ends: &[usize]) -> Vec<usize> {
@@ -101,6 +121,7 @@ fn validate_inputs(
     indices: Option<&[usize]>,
     ends: &[usize],
     valid_rows: Option<&[bool]>,
+    location_ids: &[u64],
 ) -> Result<(), String> {
     if latitudes.len() != longitudes.len() {
         return Err("latitudes and longitudes must have the same length".to_string());
@@ -114,6 +135,9 @@ fn validate_inputs(
         && valid_rows.len() != latitudes.len()
     {
         return Err("valid_rows and coordinates must have the same length".to_string());
+    }
+    if location_ids.len() != latitudes.len() {
+        return Err("location_ids and coordinates must have the same length".to_string());
     }
 
     let mut previous = 0usize;
@@ -155,6 +179,7 @@ fn build_observation_users(
     indices: Option<&[usize]>,
     ends: &[usize],
     valid_rows: Option<&[bool]>,
+    location_ids: &[u64],
 ) -> Vec<Vec<Obs>> {
     let starts = starts_from_ends(ends);
     starts
@@ -164,42 +189,55 @@ fn build_observation_users(
             (start..end)
                 .filter_map(|pos| {
                     let idx = indices.map_or(pos, |values| values[pos]);
-                    row_is_valid(latitudes, longitudes, valid_rows, idx).then_some(Obs {
-                        lat: latitudes[idx],
-                        lng: longitudes[idx],
-                        time_key: time_keys.map_or(0, |values| values[idx]),
-                        row_idx: idx,
-                    })
+                    (row_is_valid(latitudes, longitudes, valid_rows, idx)
+                        && location_ids[idx] != INVALID_CELL)
+                        .then_some(Obs {
+                            location: location_ids[idx],
+                            time_key: time_keys.map_or(0, |values| values[idx]),
+                            row_idx: idx,
+                        })
                 })
                 .collect()
         })
         .collect()
 }
 
-fn sorted_location_counts(obs: &[Obs]) -> Vec<(f64, f64, u64)> {
-    let mut counts: FxHashMap<(u64, u64), (f64, f64, u64)> = FxHashMap::default();
+fn cell_center(cell: u64) -> (f64, f64) {
+    let center = LatLng::from(
+        CellIndex::try_from(cell).expect("privacy location ID must be a valid H3 cell"),
+    );
+    (center.lat(), center.lng())
+}
+
+fn sorted_location_counts(obs: &[Obs]) -> Vec<(u64, u64)> {
+    let mut counts: FxHashMap<u64, u64> = FxHashMap::default();
     for item in obs {
-        let entry = counts
-            .entry(loc_key(item.lat, item.lng))
-            .or_insert((item.lat, item.lng, 0));
-        entry.2 += 1;
+        *counts.entry(item.location).or_insert(0) += 1;
     }
-    let mut values: Vec<_> = counts.into_values().collect();
+    let mut values: Vec<_> = counts
+        .into_iter()
+        .map(|(location, count)| {
+            let (lat, lng) = cell_center(location);
+            (location, count, lat, lng)
+        })
+        .collect();
     values.sort_unstable_by(|a, b| {
-        a.2.cmp(&b.2)
-            .then(a.0.total_cmp(&b.0))
-            .then(a.1.total_cmp(&b.1))
+        a.1.cmp(&b.1)
+            .then(a.2.total_cmp(&b.2))
+            .then(a.3.total_cmp(&b.3))
     });
     values
+        .into_iter()
+        .map(|(location, count, _, _)| (location, count))
+        .collect()
 }
 
 fn top_two_metric_values(obs: &[Obs]) -> Vec<MetricObs> {
     sorted_location_counts(obs)
         .into_iter()
         .take(2)
-        .map(|(lat, lng, count)| MetricObs {
-            lat,
-            lng,
+        .map(|(location, count)| MetricObs {
+            location,
             value: count as f64,
         })
         .collect()
@@ -207,12 +245,11 @@ fn top_two_metric_values(obs: &[Obs]) -> Vec<MetricObs> {
 
 fn metric_values_for_user(obs: &[Obs], kind: AttackKind) -> Vec<MetricObs> {
     let counts = sorted_location_counts(obs);
-    let total: u64 = counts.iter().map(|(_, _, count)| *count).sum();
+    let total: u64 = counts.iter().map(|(_, count)| *count).sum();
     counts
         .into_iter()
-        .map(|(lat, lng, count)| MetricObs {
-            lat,
-            lng,
+        .map(|(location, count)| MetricObs {
+            location,
             value: if kind == AttackKind::Probability {
                 if total == 0 {
                     0.0
@@ -266,15 +303,15 @@ fn combination_positions(n: usize, k: usize) -> Vec<Vec<usize>> {
     out
 }
 
-fn loc_multiset(obs: &[Obs]) -> FxHashMap<(u64, u64), usize> {
+fn loc_multiset(obs: &[Obs]) -> FxHashMap<u64, usize> {
     let mut counts = FxHashMap::default();
     for item in obs {
-        *counts.entry(loc_key(item.lat, item.lng)).or_insert(0) += 1;
+        *counts.entry(item.location).or_insert(0) += 1;
     }
     counts
 }
 
-fn loc_time_multiset(obs: &[Obs]) -> FxHashMap<(u64, u64, u64), usize> {
+fn loc_time_multiset(obs: &[Obs]) -> FxHashMap<(u64, u64), usize> {
     let mut counts = FxHashMap::default();
     for item in obs {
         *counts.entry(loc_time_key(*item)).or_insert(0) += 1;
@@ -282,25 +319,55 @@ fn loc_time_multiset(obs: &[Obs]) -> FxHashMap<(u64, u64, u64), usize> {
     counts
 }
 
-fn metric_map(values: &[MetricObs]) -> FxHashMap<(u64, u64), f64> {
+fn metric_map(values: &[MetricObs]) -> FxHashMap<u64, f64> {
     let mut out = FxHashMap::default();
     for value in values {
-        out.insert(loc_key(value.lat, value.lng), value.value);
+        out.insert(value.location, value.value);
     }
     out
 }
 
-fn matches_location(instance: &[Obs], candidate: &[Obs]) -> bool {
-    let required = loc_multiset(instance);
-    let available = loc_multiset(candidate);
+fn prepare_candidates(values: &[UserValues]) -> Vec<PreparedCandidate<'_>> {
+    values
+        .iter()
+        .map(|value| match value {
+            UserValues::Observations(observations) => PreparedCandidate::Observations {
+                values: observations,
+                locations: loc_multiset(observations),
+                location_times: loc_time_multiset(observations),
+            },
+            UserValues::Metrics(metrics) => PreparedCandidate::Metrics {
+                locations: metrics.iter().map(|item| item.location).collect(),
+                metrics: metric_map(metrics),
+            },
+        })
+        .collect()
+}
+
+fn prepare_instance(values: &UserValues) -> PreparedInstance<'_> {
+    match values {
+        UserValues::Observations(items) => PreparedInstance::Observations {
+            values: items,
+            locations: loc_multiset(items),
+            location_times: loc_time_multiset(items),
+        },
+        UserValues::Metrics(items) => PreparedInstance::Metrics {
+            values: items,
+            locations: items.iter().map(|item| item.location).collect(),
+        },
+    }
+}
+
+fn matches_location(required: &FxHashMap<u64, usize>, available: &FxHashMap<u64, usize>) -> bool {
     required
         .iter()
         .all(|(key, count)| available.get(key).copied().unwrap_or(0) >= *count)
 }
 
-fn matches_time(instance: &[Obs], candidate: &[Obs]) -> bool {
-    let required = loc_time_multiset(instance);
-    let available = loc_time_multiset(candidate);
+fn matches_time(
+    required: &FxHashMap<(u64, u64), usize>,
+    available: &FxHashMap<(u64, u64), usize>,
+) -> bool {
     required
         .iter()
         .all(|(key, count)| available.get(key).copied().unwrap_or(0) >= *count)
@@ -313,7 +380,7 @@ fn matches_sequence(instance: &[Obs], candidate: &[Obs]) -> bool {
     let mut pos = 0usize;
     for cand in candidate {
         let inst = instance[pos];
-        if loc_key(inst.lat, inst.lng) == loc_key(cand.lat, cand.lng) {
+        if inst.location == cand.location {
             pos += 1;
             if pos == instance.len() {
                 return true;
@@ -323,27 +390,18 @@ fn matches_sequence(instance: &[Obs], candidate: &[Obs]) -> bool {
     false
 }
 
-fn matches_unique_or_home(instance: &[MetricObs], candidate: &[MetricObs]) -> bool {
-    let required: FxHashSet<_> = instance
-        .iter()
-        .map(|item| loc_key(item.lat, item.lng))
-        .collect();
-    let available: FxHashSet<_> = candidate
-        .iter()
-        .map(|item| loc_key(item.lat, item.lng))
-        .collect();
+fn matches_unique_or_home(required: &FxHashSet<u64>, available: &FxHashSet<u64>) -> bool {
     required.iter().all(|key| available.contains(key))
 }
 
 fn matches_metric_tolerance(
     instance: &[MetricObs],
-    candidate: &[MetricObs],
+    candidate: &FxHashMap<u64, f64>,
     tolerance: f64,
 ) -> bool {
-    let candidate = metric_map(candidate);
     instance.iter().all(|item| {
         candidate
-            .get(&loc_key(item.lat, item.lng))
+            .get(&item.location)
             .is_some_and(|candidate_value| {
                 item.value >= candidate_value * (1.0 - tolerance)
                     && item.value <= candidate_value * (1.0 + tolerance)
@@ -351,23 +409,27 @@ fn matches_metric_tolerance(
     })
 }
 
-fn matches_proportion(instance: &[MetricObs], candidate: &[MetricObs], tolerance: f64) -> bool {
-    let candidate = metric_map(candidate);
-    let mut pairs = Vec::with_capacity(instance.len());
+fn matches_proportion(
+    instance: &[MetricObs],
+    candidate: &FxHashMap<u64, f64>,
+    tolerance: f64,
+) -> bool {
+    let max_instance = instance.iter().map(|item| item.value).fold(0.0, f64::max);
+    let mut max_candidate = 0.0f64;
     for item in instance {
-        if let Some(candidate_value) = candidate.get(&loc_key(item.lat, item.lng)) {
-            pairs.push((item.value, *candidate_value));
-        } else {
+        let Some(candidate_value) = candidate.get(&item.location) else {
             return false;
-        }
+        };
+        max_candidate = max_candidate.max(*candidate_value);
     }
-    let max_instance = pairs.iter().map(|(value, _)| *value).fold(0.0, f64::max);
-    let max_candidate = pairs.iter().map(|(_, value)| *value).fold(0.0, f64::max);
     if max_instance <= 0.0 || max_candidate <= 0.0 {
         return false;
     }
-    pairs.into_iter().all(|(instance_value, candidate_value)| {
-        let instance_prop = instance_value / max_instance;
+    instance.iter().all(|item| {
+        let Some(candidate_value) = candidate.get(&item.location) else {
+            return false;
+        };
+        let instance_prop = item.value / max_instance;
         let candidate_prop = candidate_value / max_candidate;
         instance_prop >= candidate_prop * (1.0 - tolerance)
             && instance_prop <= candidate_prop * (1.0 + tolerance)
@@ -376,39 +438,56 @@ fn matches_proportion(instance: &[MetricObs], candidate: &[MetricObs], tolerance
 
 fn candidate_matches(
     kind: AttackKind,
-    instance: &UserValues,
-    candidate: &UserValues,
+    instance: &PreparedInstance<'_>,
+    candidate: &PreparedCandidate<'_>,
     tolerance: f64,
 ) -> bool {
     match (kind, instance, candidate) {
         (
             AttackKind::Location,
-            UserValues::Observations(instance),
-            UserValues::Observations(candidate),
-        ) => matches_location(instance, candidate),
+            PreparedInstance::Observations {
+                locations: required,
+                ..
+            },
+            PreparedCandidate::Observations { locations, .. },
+        ) => matches_location(required, locations),
         (
             AttackKind::Sequence,
-            UserValues::Observations(instance),
-            UserValues::Observations(candidate),
-        ) => matches_sequence(instance, candidate),
+            PreparedInstance::Observations {
+                values: instance, ..
+            },
+            PreparedCandidate::Observations { values, .. },
+        ) => matches_sequence(instance, values),
         (
             AttackKind::Time,
-            UserValues::Observations(instance),
-            UserValues::Observations(candidate),
-        ) => matches_time(instance, candidate),
+            PreparedInstance::Observations {
+                location_times: required,
+                ..
+            },
+            PreparedCandidate::Observations { location_times, .. },
+        ) => matches_time(required, location_times),
         (
             AttackKind::UniqueLocation | AttackKind::HomeWork,
-            UserValues::Metrics(instance),
-            UserValues::Metrics(candidate),
-        ) => matches_unique_or_home(instance, candidate),
+            PreparedInstance::Metrics {
+                locations: required,
+                ..
+            },
+            PreparedCandidate::Metrics { locations, .. },
+        ) => matches_unique_or_home(required, locations),
         (
             AttackKind::Frequency | AttackKind::Probability,
-            UserValues::Metrics(instance),
-            UserValues::Metrics(candidate),
-        ) => matches_metric_tolerance(instance, candidate, tolerance),
-        (AttackKind::Proportion, UserValues::Metrics(instance), UserValues::Metrics(candidate)) => {
-            matches_proportion(instance, candidate, tolerance)
-        }
+            PreparedInstance::Metrics {
+                values: instance, ..
+            },
+            PreparedCandidate::Metrics { metrics, .. },
+        ) => matches_metric_tolerance(instance, metrics, tolerance),
+        (
+            AttackKind::Proportion,
+            PreparedInstance::Metrics {
+                values: instance, ..
+            },
+            PreparedCandidate::Metrics { metrics, .. },
+        ) => matches_proportion(instance, metrics, tolerance),
         _ => false,
     }
 }
@@ -436,8 +515,7 @@ fn append_force_rows(
         UserValues::Observations(items) => {
             for (idx, item) in items.iter().enumerate() {
                 rows.push(ForceRow {
-                    lat: item.lat,
-                    lng: item.lng,
+                    location: item.location,
                     row_idx: item.row_idx,
                     user_idx,
                     instance: instance_id,
@@ -449,8 +527,7 @@ fn append_force_rows(
         UserValues::Metrics(items) => {
             for (idx, item) in items.iter().enumerate() {
                 rows.push(ForceRow {
-                    lat: item.lat,
-                    lng: item.lng,
+                    location: item.location,
                     row_idx: NO_ROW,
                     user_idx,
                     instance: instance_id,
@@ -503,8 +580,9 @@ fn flatten_result(
     let mut probs = Vec::with_capacity(force_rows.len());
 
     for row in force_rows {
-        lats.push(row.lat);
-        lngs.push(row.lng);
+        let (lat, lng) = cell_center(row.location);
+        lats.push(lat);
+        lngs.push(lng);
         row_indices.push(row.row_idx);
         force_user_indices.push(row.user_idx);
         instances.push(row.instance);
@@ -538,15 +616,32 @@ pub fn privacy_assess_risk_impl(
     tolerance: f64,
     force_instances: bool,
     valid_rows: Option<&[bool]>,
+    location_ids: &[u64],
 ) -> Result<PrivacyRiskResult, String> {
     if knowledge_length == 0 {
         return Err("knowledge_length must be greater than zero".to_string());
     }
-    validate_inputs(latitudes, longitudes, time_keys, indices, ends, valid_rows)?;
+    validate_inputs(
+        latitudes,
+        longitudes,
+        time_keys,
+        indices,
+        ends,
+        valid_rows,
+        location_ids,
+    )?;
 
-    let obs_users =
-        build_observation_users(latitudes, longitudes, time_keys, indices, ends, valid_rows);
+    let obs_users = build_observation_users(
+        latitudes,
+        longitudes,
+        time_keys,
+        indices,
+        ends,
+        valid_rows,
+        location_ids,
+    );
     let values = build_values(&obs_users, attack_kind);
+    let candidates = prepare_candidates(&values);
 
     let mut normal_user_indices = Vec::new();
     let mut risks = Vec::new();
@@ -573,9 +668,12 @@ pub fn privacy_assess_risk_impl(
         let mut max_prob = 0.0f64;
         for (instance_idx, combo) in positions.iter().enumerate() {
             let instance = instance_from_positions(&values[user_idx], combo);
-            let match_count = values
+            let prepared_instance = prepare_instance(&instance);
+            let match_count = candidates
                 .iter()
-                .filter(|candidate| candidate_matches(attack_kind, &instance, candidate, tolerance))
+                .filter(|candidate| {
+                    candidate_matches(attack_kind, &prepared_instance, candidate, tolerance)
+                })
                 .count();
             if match_count == 0 {
                 continue;
@@ -601,4 +699,75 @@ pub fn privacy_assess_risk_impl(
     }
 
     Ok(flatten_result(normal_user_indices, risks, force_rows))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn h3_location_ids_match_without_coordinate_equality() {
+        let result = privacy_assess_risk_impl(
+            &[37.769377, 37.769378],
+            &[-122.388519, -122.388518],
+            None,
+            None,
+            &[1, 2],
+            &[0, 1],
+            AttackKind::Location,
+            1,
+            0.0,
+            false,
+            None,
+            &[0x8c283082e73b9ff, 0x8c283082e73b9ff],
+        )
+        .unwrap();
+
+        assert_eq!(result.user_indices, vec![0, 1]);
+        assert_eq!(result.risks, vec![0.5, 0.5]);
+    }
+
+    #[test]
+    fn location_ids_must_match_coordinate_length() {
+        let error = match privacy_assess_risk_impl(
+            &[1.0],
+            &[2.0],
+            None,
+            None,
+            &[1],
+            &[0],
+            AttackKind::Location,
+            1,
+            0.0,
+            false,
+            None,
+            &[],
+        ) {
+            Ok(_) => panic!("mismatched location IDs must fail validation"),
+            Err(error) => error,
+        };
+
+        assert!(error.contains("location_ids"));
+    }
+
+    #[test]
+    fn invalid_h3_ids_are_excluded() {
+        let result = privacy_assess_risk_impl(
+            &[37.769377],
+            &[-122.388519],
+            None,
+            None,
+            &[1],
+            &[0],
+            AttackKind::Location,
+            1,
+            0.0,
+            false,
+            None,
+            &[INVALID_CELL],
+        )
+        .unwrap();
+
+        assert!(result.user_indices.is_empty());
+    }
 }

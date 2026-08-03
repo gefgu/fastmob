@@ -83,6 +83,7 @@ dev = [
 ]
 dev-skmob = [
     "fiona",
+    "h3",
     "scikit-mobility",
 ]
 dev-movingpandas = [

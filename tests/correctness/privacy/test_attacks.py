@@ -37,6 +37,7 @@ def test_function_api_is_public_and_classes_are_removed():
     assert set(privacy.__all__) == {function.__name__ for function in FUNCTIONS}
     assert not hasattr(privacy, "LocationAttack")
     assert "knowledge_length" in inspect.signature(privacy.location_risk).parameters
+    assert inspect.signature(privacy.location_risk).parameters["h3_resolution"].default == 12
 
 
 @pytest.mark.parametrize("function", FUNCTIONS, ids=lambda function: function.__name__)
@@ -80,3 +81,35 @@ def test_presorted_path_matches_default(trajectory):
     expected = privacy.location_sequence_risk(trajectory, 2)
     actual = privacy.location_sequence_risk(trajectory, 2, presorted=True)
     pd.testing.assert_frame_equal(actual, expected)
+
+
+def test_default_h3_groups_gps_jitter():
+    trajectory = pd.DataFrame(
+        {
+            "uid": [1, 2],
+            "lat": [37.769377, 37.769378],
+            "lng": [-122.388519, -122.388518],
+        }
+    )
+
+    result = privacy.location_risk(trajectory, 1)
+
+    assert set(result["risk"]) == {0.5}
+
+
+def test_h3_force_instances_return_cell_centers():
+    h3 = pytest.importorskip("h3")
+    trajectory = pd.DataFrame({"uid": [1], "lat": [37.769377], "lng": [-122.388519]})
+
+    result = privacy.location_risk(trajectory, 1, force_instances=True)
+    cell = h3.latlng_to_cell(37.769377, -122.388519, 12)
+    expected_lat, expected_lng = h3.cell_to_latlng(cell)
+
+    assert result.loc[0, "lat"] == pytest.approx(expected_lat)
+    assert result.loc[0, "lng"] == pytest.approx(expected_lng)
+
+
+@pytest.mark.parametrize("resolution", [None, -1, 16, 1.5, True])
+def test_invalid_h3_resolution(trajectory, resolution):
+    with pytest.raises(ValueError, match="h3_resolution"):
+        privacy.location_risk(trajectory, 1, h3_resolution=resolution)
