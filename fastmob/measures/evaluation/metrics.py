@@ -1,6 +1,7 @@
 """Core Jensen-Shannon and Wasserstein primitives.
 
-Pure numpy + simsimd + Rust kernels — no Narwhals dependency.
+Numpy + simsimd for Jensen-Shannon; Wasserstein is Arrow-first into the Rust
+kernel. No Narwhals dependency.
 """
 
 from __future__ import annotations
@@ -8,6 +9,8 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.compute as pc
 
 from fastmob._core import wasserstein as _wasserstein
 
@@ -167,10 +170,15 @@ def histogram_jensen_shannon_divergence(values1: Any, values2: Any, bin_size: fl
     return jensen_shannon_divergence(hist1, hist2)
 
 
+def _finite_arrow_array(values: Any) -> pa.Array:
+    arr = pa.array(values, type=pa.float64())
+    return pc.filter(arr, pc.is_finite(arr))
+
+
 def wasserstein_distance(values1: Any, values2: Any) -> float:
     """Return Rust-backed 1D Wasserstein distance between empirical samples."""
-    v1 = _finite_array(values1)
-    v2 = _finite_array(values2)
-    if v1.size == 0 or v2.size == 0:
+    v1 = _finite_arrow_array(values1)
+    v2 = _finite_arrow_array(values2)
+    if len(v1) == 0 or len(v2) == 0:
         return float("nan")
-    return float(_wasserstein(np.ascontiguousarray(v1, dtype=np.float64), np.ascontiguousarray(v2, dtype=np.float64)))
+    return float(_wasserstein(v1, v2))
