@@ -14,7 +14,6 @@ from fastmob.social.contact_network import (
     graph_from_edges,
     infer_social_ties,
     random_persistence,
-    safe_wasserstein,
     topological_overlap,
 )
 from fastmob.core import Staypoints
@@ -219,7 +218,7 @@ def test_random_persistence_empty_graph_returns_empty():
 
 
 # ---------------------------------------------------------------------------
-# distribution_summary / safe_wasserstein
+# distribution_summary
 # ---------------------------------------------------------------------------
 
 
@@ -234,15 +233,6 @@ def test_distribution_summary_empty_after_filtering_non_finite():
     summary = distribution_summary(np.array([np.nan, np.inf]))
     assert summary["count"] == 0
     assert summary["mean"] is None
-
-
-def test_safe_wasserstein_identical_distributions_is_zero():
-    a = np.array([1.0, 2.0, 3.0])
-    assert safe_wasserstein(a, a) == pytest.approx(0.0)
-
-
-def test_safe_wasserstein_empty_returns_none():
-    assert safe_wasserstein(np.array([]), np.array([1.0])) is None
 
 
 # ---------------------------------------------------------------------------

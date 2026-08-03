@@ -7,7 +7,6 @@ from .contact_network import (
     graph_from_edges,
     infer_social_ties,
     random_persistence,
-    safe_wasserstein,
     topological_overlap,
 )
 from .homes_per_location import homes_per_location
@@ -32,7 +31,6 @@ __all__ = [
     "od_metrics_per_area",
     "random_location_entropy",
     "random_persistence",
-    "safe_wasserstein",
     "topological_overlap",
     "uncorrelated_location_entropy",
     "visits_per_location",

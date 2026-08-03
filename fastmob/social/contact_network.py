@@ -9,14 +9,12 @@ contact (a Fournet & Barrat-style random-graph-baseline significance test).
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any
 
 import narwhals as nw
 import numpy as np
 
-from fastmob.measures.evaluation.metrics import wasserstein_distance
 from fastmob.utils._common import (
     DATETIME_CANDIDATES,
     LOCATION_CANDIDATES,
@@ -360,13 +358,6 @@ def distribution_summary(values: np.ndarray) -> dict[str, float | int | None]:
     }
 
 
-def safe_wasserstein(left: np.ndarray, right: np.ndarray) -> float | None:
-    """Wasserstein distance between two metric distributions, or None if
-    either is empty after dropping non-finite values."""
-    value = wasserstein_distance(left, right)
-    return None if math.isnan(value) else value
-
-
 def infer_social_ties(
     graph: NetworkGraph,
     edge_persistence: np.ndarray,
@@ -479,7 +470,6 @@ for _public_function in (
     graph_from_edges,
     infer_social_ties,
     random_persistence,
-    safe_wasserstein,
     topological_overlap,
 ):
     _public_function.__module__ = "fastmob.social"

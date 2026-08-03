@@ -15,7 +15,6 @@ contact.
 | [`degree_preserving_random_graph`](#fastmob.social.degree_preserving_random_graph) | Chung-Lu-style degree-preserving null model. |
 | [`random_persistence`](#fastmob.social.random_persistence) | Synthetic per-edge persistence for a random null-model graph. |
 | [`distribution_summary`](#fastmob.social.distribution_summary) | Summary stats of a metric distribution. |
-| [`safe_wasserstein`](#fastmob.social.safe_wasserstein) | Wasserstein distance between two metric distributions. |
 | [`infer_social_ties`](#fastmob.social.infer_social_ties) | Infer genuine social ties from a co-presence graph. |
 
 ## Social-tie inference methodology
@@ -85,12 +84,6 @@ transfer.
 ---
 
 ::: fastmob.social.distribution_summary
-    options:
-      show_source: false
-
----
-
-::: fastmob.social.safe_wasserstein
     options:
       show_source: false
 

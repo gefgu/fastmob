@@ -10,7 +10,6 @@ from .social import (
     graph_from_edges,
     infer_social_ties,
     random_persistence,
-    safe_wasserstein,
     topological_overlap,
 )
 from .measures import (
@@ -192,7 +191,6 @@ __all__ = [
     "recency_rank",
     "regularity",
     "rmse",
-    "safe_wasserstein",
     "segment",
     "simplify",
     "spearman_correlation",

@@ -16,7 +16,6 @@ from .contact_network import (
     graph_from_edges,
     infer_social_ties,
     random_persistence,
-    safe_wasserstein,
     topological_overlap,
 )
 
@@ -30,6 +29,5 @@ __all__ = [
     "graph_from_edges",
     "infer_social_ties",
     "random_persistence",
-    "safe_wasserstein",
     "topological_overlap",
 ]
