@@ -18,6 +18,7 @@ from fastmob.utils._common import (
     _build_presorted_user_ends,
     _factorize_arrow_values,
     _pick_existing_column,
+    _strip_time_zone,
 )
 
 _END_TIMESTAMP_CANDIDATES = ["end_timestamp", "end_time"]
@@ -61,13 +62,6 @@ def _detect_visit_columns(
     elif duration_col not in columns:
         raise ValueError(f"Duration column {duration_col!r} does not exist.")
     return uid_col, location_col, purpose_col, datetime_col, end_datetime_col, duration_col
-
-
-def _strip_time_zone(df: nw.DataFrame, column: str) -> nw.DataFrame:
-    dtype = df.schema[column]
-    if isinstance(dtype, nw.Datetime) and dtype.time_zone is not None:
-        return df.with_columns(nw.col(column).dt.replace_time_zone(None))
-    return df
 
 
 def _encode_locations(df: nw.DataFrame, column: str) -> Any:

@@ -23,6 +23,15 @@ pub fn f64_results_into_arrow(results: Vec<f64>) -> PyArray {
     PyArray::from_array_ref(array)
 }
 
+pub fn f64_results_into_arrow_nullable(results: Vec<f64>) -> PyArray {
+    let array: ArrayRef = Arc::new(Float64Array::from_iter(
+        results
+            .into_iter()
+            .map(|value| value.is_finite().then_some(value)),
+    ));
+    PyArray::from_array_ref(array)
+}
+
 pub fn u64_results_into_arrow(results: Vec<u64>) -> PyArray {
     let array: ArrayRef = Arc::new(UInt64Array::from(results));
     PyArray::from_array_ref(array)
@@ -88,6 +97,15 @@ pub fn as_nullable_f64_array(arr: PyArray, name: &str) -> PyResult<Float64Array>
         .downcast_ref::<Float64Array>()
         .cloned()
         .ok_or_else(|| PyValueError::new_err(format!("expected float64 Arrow array for {name}")))
+}
+
+pub fn as_nullable_u64_array(arr: PyArray, name: &str) -> PyResult<UInt64Array> {
+    let (array_ref, _field) = arr.into_inner();
+    array_ref
+        .as_any()
+        .downcast_ref::<UInt64Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint64 Arrow array for {name}")))
 }
 
 pub fn arrow_valid_rows(arrays: &[&Float64Array]) -> Option<Vec<bool>> {

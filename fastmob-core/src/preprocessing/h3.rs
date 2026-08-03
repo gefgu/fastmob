@@ -6,7 +6,7 @@
 //! hundreds of millions of rows need this converted in bulk, so it's run here
 //! across all rows in one call, in parallel.
 
-use h3o::{LatLng, Resolution};
+use h3o::{CellIndex, LatLng, Resolution};
 use rayon::prelude::*;
 
 /// `u64::MAX` is not a valid H3 cell index (the top reserved bits are never
@@ -43,6 +43,25 @@ pub fn batch_latlng_to_cells(
                 .unwrap_or(INVALID_CELL)
         })
         .collect()
+}
+
+/// Convert H3 cell indices to their fixed geographic centers in parallel.
+/// Invalid or masked cells produce NaN coordinates.
+pub fn batch_cells_to_latlng(cells: &[u64], valid_rows: Option<&[bool]>) -> (Vec<f64>, Vec<f64>) {
+    let centers: Vec<(f64, f64)> = cells
+        .par_iter()
+        .enumerate()
+        .map(|(idx, &cell)| {
+            if valid_rows.is_some_and(|valid| !valid[idx]) || cell == INVALID_CELL {
+                return (f64::NAN, f64::NAN);
+            }
+            CellIndex::try_from(cell)
+                .map(LatLng::from)
+                .map(|center| (center.lat(), center.lng()))
+                .unwrap_or((f64::NAN, f64::NAN))
+        })
+        .collect();
+    centers.into_iter().unzip()
 }
 
 #[cfg(test)]
@@ -93,5 +112,13 @@ mod tests {
     fn empty_input_returns_empty_output() {
         let cells = batch_latlng_to_cells(&[], &[], Resolution::Nine, None);
         assert!(cells.is_empty());
+    }
+
+    #[test]
+    fn cell_centers_are_stable_and_invalid_cells_are_nan() {
+        let cell = batch_latlng_to_cells(&[37.769377], &[-122.388519], Resolution::Nine, None)[0];
+        let (lats, lngs) = batch_cells_to_latlng(&[cell, INVALID_CELL], None);
+        assert!(lats[0].is_finite() && lngs[0].is_finite());
+        assert!(lats[1].is_nan() && lngs[1].is_nan());
     }
 }

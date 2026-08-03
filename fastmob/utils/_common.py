@@ -54,6 +54,23 @@ def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str 
     return None
 
 
+def _detect_required_column(
+    df: nw.DataFrame,
+    explicit: str | None,
+    candidates: list[str],
+) -> str:
+    """Return an explicit or auto-detected column, raising when none is available."""
+    column = explicit or _pick_existing_column(df.columns, candidates)
+    if column is None:
+        raise ValueError(
+            f"Could not detect a required column. Tried: {candidates}. "
+            f"Available columns: {df.columns}. Pass the column name explicitly."
+        )
+    if column not in df.columns:
+        raise ValueError(f"Column {column!r} not found. Available columns: {df.columns}.")
+    return column
+
+
 def _empty_like(nw_df: nw.DataFrame, columns: list[str]) -> Any:
     """Build an empty native DataFrame using the same backend as ``nw_df``."""
     return nw.from_dict({col: [] for col in columns}, backend=nw_df.implementation).to_native()
@@ -65,6 +82,14 @@ def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
         return df.with_columns(nw.col(column).cast(nw.Datetime).alias(column))
     except Exception:  # noqa: BLE001
         return df.with_columns(nw.col(column).str.to_datetime().alias(column))
+
+
+def _strip_time_zone(df: nw.DataFrame, column: str) -> nw.DataFrame:
+    """Drop timezone metadata while preserving each timestamp's local clock time."""
+    dtype = df.schema[column]
+    if isinstance(dtype, nw.Datetime) and dtype.time_zone is not None:
+        return df.with_columns(nw.col(column).dt.replace_time_zone(None))
+    return df
 
 
 def _as_arrow(values: Any) -> pa.Array | pa.ChunkedArray:

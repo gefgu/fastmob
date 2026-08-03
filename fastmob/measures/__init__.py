@@ -50,14 +50,12 @@ from .evaluation import (
     visits_per_user_wasserstein_distance,
     wasserstein_distance,
 )
-from .fitting.mobility_laws import (
-    bin_visitation_law_data,
-    compute_visitation_law_data,
+from .fitting import (
+    VisitationLawFit,
     daily_location_lognormal_fit,
     fit_values_to_truncated_powerlaw,
     fit_visitation_law,
     log_truncated_powerlaw,
-    visitation_law_curve,
 )
 from .individual import (
     activity_transition_matrix,
@@ -94,10 +92,10 @@ from .individual import (
 
 __all__ = [
     "NetworkGraph",
+    "VisitationLawFit",
     "activity_distribution_jensen_shannon_divergence",
     "activity_transition_matrix",
     "activity_transition_matrix_jensen_shannon_divergence",
-    "bin_visitation_law_data",
     "clustering_coefficients",
     "co_presence_graph_from_visits",
     "column_distribution_jensen_shannon_divergence",
@@ -106,7 +104,6 @@ __all__ = [
     "common_part_of_commuters_distance",
     "common_part_of_links",
     "compute_profiles",
-    "compute_visitation_law_data",
     "daily_activity_distribution",
     "daily_location_lognormal_fit",
     "daily_motifs",
@@ -171,7 +168,6 @@ __all__ = [
     "uncorrelated_entropy",
     "uncorrelated_location_entropy",
     "visit_purpose_distribution",
-    "visitation_law_curve",
     "visits_per_location",
     "visits_per_time_unit",
     "visits_per_user_jensen_shannon_divergence",

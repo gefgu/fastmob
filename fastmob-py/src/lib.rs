@@ -285,6 +285,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cdr::cdr_trip_indices, m)?)?;
     m.add_function(wrap_pyfunction!(h3_py::latlng_to_h3_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(h3_py::latlng_to_h3_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(h3_py::h3_to_latlng_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
         preprocessing::h3_cluster_py::h3_cluster_labels_arrow,
         m
