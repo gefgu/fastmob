@@ -222,6 +222,42 @@ def co_presence_graph_from_visits(
     return graph, persistence, time_steps, skip_info
 
 
+def co_presence_graph_from_staypoints(
+    staypoints: Any,
+    *,
+    locations: Any | None = None,
+    location_id_col: str = "location_id",
+    day_col: str | None = None,
+    max_group_size: int = 200,
+) -> tuple[NetworkGraph, np.ndarray, int, dict[str, int]]:
+    """Build a co-presence graph from staypoints assigned to global locations.
+
+    ``locations``, when supplied, must be a global :class:`Locations`
+    catalogue. The staypoints must already carry matching exact IDs; use
+    :meth:`Staypoints.associate_global_locations` to validate an external
+    catalogue first. The legacy dataframe function remains available for
+    callers with generic visitation tables.
+    """
+    from fastmob.core.staypoints_dataframe import Staypoints
+
+    if isinstance(staypoints, Staypoints):
+        if locations is not None:
+            staypoints = staypoints.associate_global_locations(locations, location_id_col=location_id_col)
+        return co_presence_graph_from_visits(
+            staypoints.df,
+            user_id_col=staypoints.uid_col,
+            datetime_col=staypoints.started_at_col,
+            location_id_col=location_id_col,
+            day_col=day_col,
+            max_group_size=max_group_size,
+        )
+    if locations is not None and locations.scope != "global":
+        raise ValueError("co_presence_graph_from_staypoints requires global Locations")
+    return co_presence_graph_from_visits(
+        staypoints, location_id_col=location_id_col, day_col=day_col, max_group_size=max_group_size
+    )
+
+
 def clustering_coefficients(graph: NetworkGraph) -> np.ndarray:
     """Per-node clustering coefficient (see :func:`_graph_metrics`)."""
     clustering, _overlap = _graph_metrics(graph)
@@ -437,6 +473,7 @@ NetworkGraph.__module__ = "fastmob.social"
 for _public_function in (
     clustering_coefficients,
     co_presence_graph_from_visits,
+    co_presence_graph_from_staypoints,
     degree_preserving_random_graph,
     distribution_summary,
     graph_from_edges,

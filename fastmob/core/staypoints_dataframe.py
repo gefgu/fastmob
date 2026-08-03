@@ -70,19 +70,18 @@ class Staypoints(BaseDataFrame):
             self.validate(nw_df, started_at_col, finished_at_col)
 
     @staticmethod
-    def validate(df: Any, started_at_col: str, finished_at_col: str) -> None:
-        """Check required columns are present and ``finished_at >= started_at``."""
+    def validate(df: Any, started_at_col: str, finished_at_col: str | None = None) -> None:
+        """Check the start column and, when present, interval ordering."""
         nw_df = nw.from_native(df, eager_only=True) if not isinstance(df, nw.DataFrame) else df
-        for col in (started_at_col, finished_at_col):
+        columns = [started_at_col] if finished_at_col is None else [started_at_col, finished_at_col]
+        for col in columns:
             if col not in nw_df.columns:
                 raise ValueError(f"Staypoints requires a '{col}' column")
-        if len(nw_df) == 0:
+        if finished_at_col is None or len(nw_df) == 0:
             return
         bad_rows = nw_df.filter(nw.col(finished_at_col) < nw.col(started_at_col))
         if len(bad_rows) > 0:
-            raise ValueError(
-                f"Staypoints requires finished_at >= started_at for every row ({len(bad_rows)} violating row(s))"
-            )
+            raise ValueError(f"Staypoints requires finished_at >= started_at for every row ({len(bad_rows)} violating row(s))")
 
     def create_activity_flag(self, method: str = "time_threshold", time_threshold_min: float = 15.0) -> Staypoints:
         """Flag each staypoint as a genuine "activity" by dwell time.
@@ -93,13 +92,12 @@ class Staypoints(BaseDataFrame):
 
         return create_activity_flag(self, method=method, time_threshold_min=time_threshold_min)
 
-    def generate_locations(
+    def generate_user_locations(
         self,
         epsilon_km: float = 0.1,
         min_samples: int = 1,
-        agg_level: str = "user",
     ) -> tuple[Locations, Staypoints]:
-        """Cluster staypoints spatially into recurring `Locations`.
+        """Cluster each user's staypoints into recurring locations.
 
         Parameters
         ----------
@@ -109,11 +107,6 @@ class Staypoints(BaseDataFrame):
         min_samples : int, optional
             Minimum staypoints in an H3 cell for it to be active. Default
             ``1``.
-        agg_level : str, optional
-            Only ``"user"`` (cluster each user's own staypoints
-            independently) is implemented; ``"dataset"``-level (shared
-            cross-user locations) is a planned follow-up.
-
         Returns
         -------
         tuple[Locations, Staypoints]
@@ -121,11 +114,6 @@ class Staypoints(BaseDataFrame):
             ``location_id`` column (null where a staypoint didn't join any
             recurring location).
         """
-        if agg_level != "user":
-            raise NotImplementedError(
-                f"generate_locations(agg_level={agg_level!r}) is not implemented yet; only 'user' is supported"
-            )
-
         from ..preprocessing import cluster
         from .locations_dataframe import Locations
 
@@ -160,8 +148,67 @@ class Staypoints(BaseDataFrame):
             finished_at_col=self.finished_at_col,
             parameters=self.parameters,
         )
-        locations = Locations(locations_df.to_native(), uid_col=self.uid_col)
+        locations = Locations(locations_df.to_native(), uid_col=self.uid_col, scope="user", scheme="cluster")
         return locations, staypoints_with_location
+
+    def generate_global_locations(self, h3_resolution: int = 9) -> tuple[Locations, Staypoints]:
+        """Assign staypoints to shared H3 locations and return their catalogue.
+
+        The returned ``Locations`` has global scope and one row per occupied
+        H3 cell; the returned staypoints carry that cell as ``location_id``.
+        """
+        if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, int) or not 0 <= h3_resolution <= 15:
+            raise ValueError("h3_resolution must be an integer between 0 and 15")
+        import pyarrow as pa
+
+        from fastmob._core import h3_to_latlng_arrow, latlng_to_h3_arrow
+
+        from .locations_dataframe import Locations
+
+        nwc = nw.from_native(self.df, eager_only=True)
+        cells = latlng_to_h3_arrow(
+            nwc.get_column(self.lat_col).to_arrow(), nwc.get_column(self.lng_col).to_arrow(), h3_resolution
+        )
+        center_lats, center_lngs = h3_to_latlng_arrow(cells)
+        arrow = nw.from_arrow(
+            pa.table({"location_id": cells, "__center_lat__": center_lats, "__center_lng__": center_lngs}),
+            backend=nwc.implementation,
+        )
+        assigned = nwc.with_columns(
+            arrow.get_column("location_id").alias("location_id"),
+            arrow.get_column("__center_lat__").alias("__center_lat__"),
+            arrow.get_column("__center_lng__").alias("__center_lng__"),
+        )
+        locations_df = assigned.drop_nulls(subset=["location_id"]).group_by("location_id").agg(
+            nw.col("__center_lat__").first().alias("center_lat"),
+            nw.col("__center_lng__").first().alias("center_lng"),
+            nw.len().alias("n_staypoints"),
+        )
+        assigned = assigned.drop("__center_lat__", "__center_lng__")
+        locations = Locations(locations_df.to_native(), scope="global", scheme="h3")
+        return locations, Staypoints(
+            assigned.to_native(), uid_col=self.uid_col, lat_col=self.lat_col, lng_col=self.lng_col,
+            started_at_col=self.started_at_col, finished_at_col=self.finished_at_col, parameters=self.parameters,
+        )
+
+    def associate_global_locations(self, locations: Locations, location_id_col: str = "location_id") -> Staypoints:
+        """Validate preassigned exact global IDs against a location catalogue."""
+        if locations.scope != "global":
+            raise ValueError("associate_global_locations requires global Locations")
+        df = nw.from_native(self.df, eager_only=True)
+        if location_id_col not in df.columns:
+            raise ValueError(f"Staypoints is missing global location-ID column {location_id_col!r}")
+        known = set(nw.from_native(locations.df, eager_only=True).get_column(locations.location_id_col).to_list())
+        assigned = set(df.get_column(location_id_col).drop_nulls().to_list())
+        unknown = assigned - known
+        if unknown:
+            raise ValueError("Staypoints contains location IDs absent from the global Locations catalogue")
+        if location_id_col != "location_id":
+            df = df.rename({location_id_col: "location_id"})
+        return Staypoints(
+            df.to_native(), uid_col=self.uid_col, lat_col=self.lat_col, lng_col=self.lng_col,
+            started_at_col=self.started_at_col, finished_at_col=self.finished_at_col, parameters=self.parameters,
+        )
 
     def generate_daily_motifs(
         self,

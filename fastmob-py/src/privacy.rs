@@ -106,7 +106,7 @@ fn resolve_resolution(resolution: u8) -> PyResult<Resolution> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (latitudes, longitudes, ends, target_user_indices, attack, knowledge_length, time_keys=None, indices=None, tolerance=0.0, force_instances=false, h3_resolution=12))]
+#[pyo3(signature = (latitudes, longitudes, ends, target_user_indices, attack, knowledge_length, time_keys=None, indices=None, tolerance=0.0, force_instances=false, h3_resolution=12, location_ids=None))]
 #[allow(clippy::too_many_arguments)]
 pub fn privacy_assess_risk<'py>(
     py: Python<'py>,
@@ -121,6 +121,7 @@ pub fn privacy_assess_risk<'py>(
     tolerance: f64,
     force_instances: bool,
     h3_resolution: u8,
+    location_ids: Option<ArrowPyArray>,
 ) -> PyResult<Py<PyPrivacyRiskResult>> {
     let time_keys = time_keys
         .map(|values| as_u64_array(values, "time_keys"))
@@ -134,21 +135,37 @@ pub fn privacy_assess_risk<'py>(
     let target_user_indices = target_user_indices.as_slice()?;
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+    let provided_location_ids = location_ids
+        .map(|values| as_u64_array(values, "location_ids"))
+        .transpose()?;
+    if force_instances && provided_location_ids.is_some() {
+        return Err(PyValueError::new_err(
+            "force_instances is not supported with externally assigned location_ids",
+        ));
+    }
     let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
-    let resolution = resolve_resolution(h3_resolution)?;
     let lats = arrow_values(&latitudes);
     let lngs = arrow_values(&longitudes);
-    let (location_ids, h3_valid_rows) = py.detach(|| {
-        let cells = batch_latlng_to_cells(lats, lngs, resolution, valid_rows.as_deref());
-        let valid: Vec<bool> = cells
+    let (location_ids, h3_valid_rows) = if let Some(ids) = provided_location_ids {
+        let cells = arrow_u64_values(&ids).to_vec();
+        let valid = cells
             .iter()
             .enumerate()
-            .map(|(idx, &cell)| {
-                cell != INVALID_CELL && valid_rows.as_ref().is_none_or(|rows| rows[idx])
-            })
+            .map(|(idx, _)| valid_rows.as_ref().is_none_or(|rows| rows[idx]))
             .collect();
         (cells, valid)
-    });
+    } else {
+        let resolution = resolve_resolution(h3_resolution)?;
+        py.detach(|| {
+            let cells = batch_latlng_to_cells(lats, lngs, resolution, valid_rows.as_deref());
+            let valid: Vec<bool> = cells
+                .iter()
+                .enumerate()
+                .map(|(idx, &cell)| cell != INVALID_CELL && valid_rows.as_ref().is_none_or(|rows| rows[idx]))
+                .collect();
+            (cells, valid)
+        })
+    };
     let result = privacy_assess_risk_impl(
         lats,
         lngs,

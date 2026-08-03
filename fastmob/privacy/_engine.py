@@ -104,6 +104,8 @@ def assess_risk(
     presorted: bool = False,
     require_datetime: bool = False,
     h3_resolution: int = 12,
+    locations: Any | None = None,
+    location_id_col: str = "location_id",
 ) -> Any:
     if knowledge_length < 1:
         raise ValueError("knowledge_length must be greater than zero")
@@ -121,6 +123,19 @@ def assess_risk(
         cast_float_coordinates=True,
         require_datetime=require_datetime,
     )
+    location_ids = None
+    if locations is not None:
+        if locations.scope != "global":
+            raise ValueError("privacy risk assessment requires global Locations")
+        if location_id_col not in df.columns:
+            raise ValueError(f"Input data is missing global location-ID column {location_id_col!r}")
+        known = set(nw.from_native(locations.df, eager_only=True).get_column(locations.location_id_col).to_list())
+        present = set(df.get_column(location_id_col).drop_nulls().to_list())
+        if present - known:
+            raise ValueError("Input contains location IDs absent from the global Locations catalogue")
+        location_ids, _ = _factorize_arrow_values(df.get_column(location_id_col), sort=False)
+        if force_instances:
+            raise ValueError("force_instances is not supported with externally assigned global locations")
     time_keys = _time_keys(df, datetime_col, time_precision) if time_precision is not None else None
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
@@ -140,6 +155,7 @@ def assess_risk(
         tolerance=tolerance,
         force_instances=force_instances,
         h3_resolution=h3_resolution,
+        location_ids=location_ids,
     )
     return _result(
         df,

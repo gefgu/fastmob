@@ -197,7 +197,7 @@ def test_short_non_activity_stop_merges_two_triplegs_into_one_trip():
 
 def _build_tours(rows: pd.DataFrame, **location_kwargs):
     _pf, _sp, _tl, sp_act, trips = _build_trips(rows)
-    locations, sp_with_location = sp_act.generate_locations(**{"epsilon_km": 0.15, "min_samples": 1, **location_kwargs})
+    locations, sp_with_location = sp_act.generate_user_locations(**{"epsilon_km": 0.15, "min_samples": 1, **location_kwargs})
     tours = trips.generate_tours(sp_with_location)
     return locations, sp_with_location, trips, tours
 
@@ -245,7 +245,7 @@ def test_tours_polars_matches_pandas():
     tl_pl = pf_pl.generate_triplegs(sp_pl)
     sp_pl_act = sp_pl.create_activity_flag(time_threshold_min=15.0)
     trips_pl = tl_pl.generate_trips(sp_pl_act)
-    _loc_pl, sp_pl_loc = sp_pl_act.generate_locations(epsilon_km=0.15, min_samples=1)
+    _loc_pl, sp_pl_loc = sp_pl_act.generate_user_locations(epsilon_km=0.15, min_samples=1)
     tours_pl = trips_pl.generate_tours(sp_pl_loc)
 
     tours_pl_pd = tours_pl.df.to_pandas()

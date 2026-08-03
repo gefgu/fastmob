@@ -97,7 +97,7 @@ def identify_locations(
     ----------
     locations : Locations
         Locations previously generated from ``staypoints`` (via
-        `Staypoints.generate_locations`), so ``location_id`` values line up.
+        `Staypoints.generate_user_locations`), so ``location_id`` values line up.
     staypoints : Staypoints
         Must carry a ``location_id`` column (the enriched `Staypoints`
         returned alongside ``locations``).
@@ -125,6 +125,9 @@ def identify_locations(
         raise ValueError(f"unknown location-identification method: {method!r}; choose from ['freq']")
 
     from ..core.locations_dataframe import Locations
+
+    if locations.scope != "user":
+        raise ValueError("identify_locations only supports user-scoped Locations; purposes are user-specific")
 
     uid_col = staypoints.uid_col
     if uid_col is None:
@@ -186,7 +189,7 @@ def identify_locations(
         .drop("home_location_id", "work_location_id")
     )
 
-    return Locations(labeled.to_native(), uid_col=locations.uid_col)
+    return Locations(labeled.to_native(), uid_col=locations.uid_col, scope="user", scheme=locations.scheme)
 
 
 identify_locations.__module__ = "fastmob.preprocessing"

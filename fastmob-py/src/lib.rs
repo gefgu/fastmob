@@ -8,13 +8,15 @@ mod models;
 mod network;
 mod preprocessing;
 mod privacy;
+mod social;
 mod trajectory;
 mod utils;
 
 use pyo3::prelude::*;
 
 use integration::events_py;
-use measures::collective::{co_presence_network, square_displacement, visitation_law};
+use measures::collective::{square_displacement, visitation_law};
+use social::co_presence_network;
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};

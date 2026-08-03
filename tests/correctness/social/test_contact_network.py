@@ -1,11 +1,11 @@
-"""Correctness tests for fastmob.measures.collective.contact_network."""
+"""Correctness tests for fastmob.social.contact_network."""
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 import pytest
-from fastmob.measures.collective.contact_network import (
+from fastmob.social.contact_network import (
     NetworkGraph,
     clustering_coefficients,
     co_presence_graph_from_visits,
@@ -17,6 +17,8 @@ from fastmob.measures.collective.contact_network import (
     safe_wasserstein,
     topological_overlap,
 )
+from fastmob.core import Staypoints
+from fastmob.social import co_presence_graph_from_staypoints
 
 # ---------------------------------------------------------------------------
 # co_presence_graph_from_visits
@@ -26,6 +28,21 @@ from fastmob.measures.collective.contact_network import (
 # Day 0: users 4,5 co-present at venueB -> edge (4,5), independent component.
 # Cross-checked against citybehavex-core's Rust unit test
 # `co_presence_edges_from_two_day_groups`.
+
+
+def test_co_presence_graph_from_global_staypoints():
+    df = pd.DataFrame(
+        {
+            "uid": ["a", "b"],
+            "lat": [40.0, 40.0],
+            "lng": [-73.0, -73.0],
+            "started_at": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 08:10"]),
+            "finished_at": pd.to_datetime(["2020-01-01 08:20", "2020-01-01 08:30"]),
+        }
+    )
+    locations, assigned = Staypoints(df).generate_global_locations()
+    graph, _persistence, _steps, _skip = co_presence_graph_from_staypoints(assigned, locations=locations)
+    assert graph.edge_count == 1
 
 
 def _visits_rows():

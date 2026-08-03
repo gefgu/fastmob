@@ -1,4 +1,4 @@
-use fastmob_core::measures::collective::co_presence_network::{
+use fastmob_core::social::co_presence_network::{
     build_co_presence_edges, compute_graph_metrics, random_baseline_overlap_threshold,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};

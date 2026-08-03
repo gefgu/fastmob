@@ -1,8 +1,4 @@
-"""Locations — spatially-aggregated recurring stop locations.
-
-Built via `Staypoints.generate_locations()`, which wraps the Rust-backed H3
-connected-component stop clustering in `fastmob.preprocessing.cluster`.
-"""
+"""Locations — user-scoped recurring clusters or globally shared places."""
 
 from __future__ import annotations
 
@@ -14,15 +10,20 @@ from .base import BaseDataFrame
 
 
 class Locations(BaseDataFrame):
-    """One row per detected recurring location (a spatial cluster of staypoints).
+    """One row per location in either a user or global scope.
 
     Parameters
     ----------
     df : DataFrame-like
         Source data; any Narwhals-compatible eager backend.
     uid_col : str, optional
-        User-ID column name. ``None`` when locations were clustered across
-        all users at once (not yet supported by `generate_locations`).
+        User-ID column name for user-scoped locations. Must be ``None`` for
+        global locations.
+    scope : {"user", "global"}, optional
+        Location identity scope. When omitted it is inferred from ``uid_col``.
+    scheme : {"cluster", "h3", "external"}, optional
+        Location-ID scheme. User locations default to ``"cluster"`` and
+        global locations default to ``"external"``.
     location_id_col, center_lat_col, center_lng_col : str, optional
         Column name overrides.
     validate : bool, optional
@@ -36,6 +37,8 @@ class Locations(BaseDataFrame):
         location_id_col: str = "location_id",
         center_lat_col: str = "center_lat",
         center_lng_col: str = "center_lng",
+        scope: str | None = None,
+        scheme: str | None = None,
         validate: bool = True,
     ):
         super().__init__(df)
@@ -43,6 +46,15 @@ class Locations(BaseDataFrame):
         self.location_id_col = location_id_col
         self.center_lat_col = center_lat_col
         self.center_lng_col = center_lng_col
+        inferred_scope = "user" if uid_col is not None else "global"
+        self.scope = inferred_scope if scope is None else scope
+        if self.scope not in {"user", "global"}:
+            raise ValueError("Locations scope must be 'user' or 'global'")
+        if self.scope == "global" and uid_col is not None:
+            raise ValueError("Locations scope='global' requires uid_col=None")
+        self.scheme = ("cluster" if self.scope == "user" else "external") if scheme is None else scheme
+        if self.scheme not in {"cluster", "h3", "external"}:
+            raise ValueError("Locations scheme must be 'cluster', 'h3', or 'external'")
 
         if validate:
             nw_df = nw.from_native(df, eager_only=True)
@@ -50,12 +62,17 @@ class Locations(BaseDataFrame):
             missing = [col for col in required if col not in nw_df.columns]
             if missing:
                 raise ValueError(f"Locations is missing required columns: {missing}")
+            key_cols = [location_id_col] if self.scope == "global" or uid_col is None else [uid_col, location_id_col]
+            if len(nw_df.select(key_cols).unique()) != len(nw_df):
+                raise ValueError(f"Locations requires unique rows by {key_cols}")
 
     def identify(self, staypoints: Any, method: str = "freq", **kwargs: Any) -> Locations:
         """Label each location as ``"home"``, ``"work"``, or ``"other"``.
 
         See :func:`fastmob.preprocessing.identify_locations`.
         """
+        if self.scope != "user":
+            raise ValueError("identify is only defined for user-scoped Locations; home/work purposes are user-specific")
         from ..preprocessing import identify_locations
 
         return identify_locations(self, staypoints, method=method, **kwargs)

@@ -60,7 +60,7 @@ class Positionfixes(TrajDataFrame):
         )
         # A stable identity for each staypoint, assigned once here and
         # carried through as an ordinary data column by every later
-        # operation (generate_locations' cluster() resort, create_activity_flag,
+        # operation (generate_user_locations' cluster() resort, create_activity_flag,
         # ...) -- Trips.generate_trips needs it to record which staypoint
         # brackets each trip.
         stops_nw = stops_nw.with_row_index("staypoint_id")

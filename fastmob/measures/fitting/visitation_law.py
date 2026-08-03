@@ -55,7 +55,7 @@ def _as_staypoint_dataframe(
     lat_col: str | None,
     lng_col: str | None,
 ) -> tuple[nw.DataFrame, str, str, str, str]:
-    """Normalize a dataframe or Staypoints object and resolve its columns."""
+    """Normalize a dataframe or Staypoints object and validate its intervals."""
     if isinstance(staypoints, Staypoints):
         user_id_col = user_id_col or staypoints.uid_col
         timestamp_col = timestamp_col or staypoints.started_at_col
@@ -68,6 +68,8 @@ def _as_staypoint_dataframe(
     timestamp_col = _detect_required_column(df, timestamp_col, TIMESTAMP_CANDIDATES)
     lat_col = _detect_required_column(df, lat_col, LAT_CANDIDATES)
     lng_col = _detect_required_column(df, lng_col, LNG_CANDIDATES)
+    # Keep dataframe inputs on the same validation path as Staypoints.
+    Staypoints.validate(df, timestamp_col)
     return df, user_id_col, timestamp_col, lat_col, lng_col
 
 
@@ -100,6 +102,7 @@ def _h3_centered_staypoints(
 def _prepare_visitation_law_data(
     staypoints: Any | Staypoints,
     *,
+    locations: Any | None = None,
     h3_resolution: int = 9,
     user_id_col: str | None = None,
     timestamp_col: str | None = None,
@@ -137,6 +140,12 @@ def _prepare_visitation_law_data(
     if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, int) or not 0 <= h3_resolution <= 15:
         raise ValueError("h3_resolution must be an integer between 0 and 15")
 
+    if locations is not None:
+        if locations.scope != "global":
+            raise ValueError("fit_visitation_law requires global Locations when locations is supplied")
+        if isinstance(staypoints, Staypoints):
+            staypoints = staypoints.associate_global_locations(locations)
+
     df, user_id_col, timestamp_col, lat_col, lng_col = _as_staypoint_dataframe(
         staypoints,
         user_id_col=user_id_col,
@@ -145,7 +154,20 @@ def _prepare_visitation_law_data(
         lng_col=lng_col,
     )
     df = _strip_time_zone(df, timestamp_col)
-    centered = _h3_centered_staypoints(df, lat_col=lat_col, lng_col=lng_col, h3_resolution=h3_resolution)
+    if locations is None:
+        centered = _h3_centered_staypoints(df, lat_col=lat_col, lng_col=lng_col, h3_resolution=h3_resolution)
+    else:
+        location_id_col = locations.location_id_col
+        if location_id_col not in df.columns:
+            raise ValueError(f"Staypoints is missing global location-ID column {location_id_col!r}")
+        catalogue = nw.from_native(locations.df, eager_only=True).select(
+            [location_id_col, locations.center_lat_col, locations.center_lng_col]
+        ).rename({
+            location_id_col: _H3_CELL_COL,
+            locations.center_lat_col: lat_col,
+            locations.center_lng_col: lng_col,
+        })
+        centered = df.drop(lat_col, lng_col).join(catalogue, left_on=location_id_col, right_on=_H3_CELL_COL, how="inner")
     centered = centered.drop_nulls(subset=[user_id_col, timestamp_col, lat_col, lng_col])
     if len(centered) == 0:
         return _empty_visitation_law_data(df, user_id_col)
@@ -403,6 +425,7 @@ def _fit_visitation_law_spectrum(
 def fit_visitation_law(
     staypoints: Any | Staypoints,
     *,
+    locations: Any | None = None,
     h3_resolution: int = 9,
     user_id_col: str | None = None,
     timestamp_col: str | None = None,
@@ -418,9 +441,8 @@ def fit_visitation_law(
 ) -> VisitationLawFit:
     """Fit the universal visitation law from staypoints.
 
-    Converts each staypoint to a shared H3 cell, detects homes from nighttime
-    H3-cell visits in local time, creates the per-user observations, bins the
-    population density spectrum, and fits ``rho = mu * rf**(-eta)``.
+    Uses supplied global locations directly, or assigns shared H3 cells when
+    no catalogue is supplied; it then fits ``rho = mu * rf**(-eta)``.
 
     Returns
     -------
@@ -432,6 +454,7 @@ def fit_visitation_law(
     """
     data = _prepare_visitation_law_data(
         staypoints,
+        locations=locations,
         h3_resolution=h3_resolution,
         user_id_col=user_id_col,
         timestamp_col=timestamp_col,

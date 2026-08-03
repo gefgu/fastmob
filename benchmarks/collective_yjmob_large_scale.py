@@ -50,7 +50,7 @@ H3_RESOLUTION = 9
 
 
 def benchmark_contact_network(data_path: Path, n_users: int) -> dict:
-    from fastmob.measures.collective.contact_network import co_presence_graph_from_visits, infer_social_ties
+    from fastmob.social import co_presence_graph_from_visits, infer_social_ties
     from fastmob.preprocessing import latlng_to_h3
 
     df = load_yjmob(data_path, n_users=n_users)

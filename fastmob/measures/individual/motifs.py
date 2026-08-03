@@ -89,7 +89,7 @@ def _encode_locations_pair(visits_series: nw.Series, locations_series: nw.Series
     Used by :func:`daily_motifs_from_staypoints` so a location_id value maps
     to the same code on both the visits (Staypoints) side and the locations
     (Locations) side. Integer ids (the real trackintel case -- ``location_id`` from
-    ``generate_locations`` is always an integer cluster id) are cast
+    ``generate_user_locations`` is always an integer cluster id) are cast
     independently on each side; raw integer values are inherently
     consistent between tables, no shared factorization state needed. Other
     types are concatenated and factorized once so the same raw value maps
@@ -276,6 +276,8 @@ def daily_motifs_from_staypoints(
     uid_col = staypoints.uid_col
     if uid_col is None:
         raise ValueError("generate_daily_motifs requires staypoints to have a uid column")
+    if locations.scope != "user":
+        raise ValueError("generate_daily_motifs requires user-scoped Locations; purposes are user-specific")
 
     sp_nw = nw.from_native(staypoints.df, eager_only=True)
     if "location_id" not in sp_nw.columns:

@@ -50,7 +50,7 @@ def _home_work_staypoints(uid: str = "u1"):
 
 def _staypoints_and_locations(uid: str = "u1"):
     sp = Staypoints(_home_work_staypoints(uid), started_at_col="started_at", finished_at_col="finished_at")
-    locations, sp_with_location = sp.generate_locations(min_samples=1)
+    locations, sp_with_location = sp.generate_user_locations(min_samples=1)
     locations = locations.identify(sp_with_location)
     return sp_with_location, locations
 
@@ -120,7 +120,8 @@ def test_generate_daily_motifs_requires_location_id_column():
     )
     sp = Staypoints(sp_df, started_at_col="started_at", finished_at_col="finished_at")
     locations = Locations(
-        pd.DataFrame({"uid": ["u1"], "location_id": [0], "center_lat": [0.0], "center_lng": [0.0], "purpose": ["HOME"]})
+        pd.DataFrame({"uid": ["u1"], "location_id": [0], "center_lat": [0.0], "center_lng": [0.0], "purpose": ["HOME"]}),
+        uid_col="uid",
     )
     with pytest.raises(ValueError, match="requires staypoints to have a 'location_id' column"):
         sp.generate_daily_motifs(locations)
@@ -176,7 +177,7 @@ def test_generate_daily_motifs_presorted_matches_default_path():
 
 def test_generate_daily_motifs_disambiguates_colliding_location_ids_across_users():
     sp = Staypoints(_two_user_home_work_staypoints(), started_at_col="started_at", finished_at_col="finished_at")
-    locations, sp_with_location = sp.generate_locations(min_samples=1)
+    locations, sp_with_location = sp.generate_user_locations(min_samples=1)
     locations = locations.identify(sp_with_location)
     # location_id 0/1 exist for both u1 and u2 independently -- confirms the
     # (user_idx, location_code) lookup is keyed by user, not location_id alone.

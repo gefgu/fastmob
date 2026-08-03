@@ -158,10 +158,10 @@ def test_polars_matches_pandas():
 # ---------------------------------------------------------------------------
 
 
-def test_generate_locations_clusters_each_stop_separately():
+def test_generate_user_locations_clusters_each_stop_separately():
     pf = Positionfixes(_two_stop_rows())
     sp = pf.generate_staypoints(**STOP_KWARGS)
-    locations, sp_with_location = sp.generate_locations(epsilon_km=0.1, min_samples=1)
+    locations, sp_with_location = sp.generate_user_locations(epsilon_km=0.1, min_samples=1)
 
     assert isinstance(locations, Locations)
     assert len(locations.df) == 2
@@ -174,11 +174,21 @@ def test_locations_validate_rejects_missing_columns():
         Locations(pd.DataFrame({"location_id": [0]}))
 
 
-def test_generate_locations_only_supports_user_agg_level():
+def test_generate_global_locations_uses_shared_h3_ids():
     pf = Positionfixes(_two_stop_rows())
     sp = pf.generate_staypoints(**STOP_KWARGS)
-    with pytest.raises(NotImplementedError):
-        sp.generate_locations(agg_level="dataset")
+    locations, assigned = sp.generate_global_locations()
+    assert locations.scope == "global"
+    assert locations.scheme == "h3"
+    assert "location_id" in assigned.df.columns
+
+
+def test_associate_global_locations_validates_exact_ids():
+    pf = Positionfixes(_two_stop_rows())
+    sp = pf.generate_staypoints(**STOP_KWARGS)
+    locations, assigned = sp.generate_global_locations()
+    reassigned = assigned.associate_global_locations(locations, location_id_col="location_id")
+    assert reassigned.df["location_id"].equals(assigned.df["location_id"])
 
 
 # ---------------------------------------------------------------------------
@@ -200,5 +210,5 @@ def test_brightkite_pipeline_structural_invariants(brightkite_sample_df):
     assert (tl.df["mean_speed_kmh"] >= 0).all()
 
     if len(sp.df) > 0:
-        locations, _sp_with_location = sp.generate_locations(epsilon_km=0.1, min_samples=1)
+        locations, _sp_with_location = sp.generate_user_locations(epsilon_km=0.1, min_samples=1)
         assert (locations.df["n_staypoints"] >= 1).all()

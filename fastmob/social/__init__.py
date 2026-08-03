@@ -1,14 +1,16 @@
-"""Compatibility imports for social-network methodology.
+"""Social-network analysis and social-tie inference.
 
-Social contact-network analysis now lives in :mod:`fastmob.social`.  Import
-from that namespace in new code; these names remain available here so
-existing collective-measure callers do not break.
+This namespace contains methodology that derives contact networks and social
+ties from mobility observations.  It is deliberately separate from
+``fastmob.measures.collective`` so social analysis has a stable, dedicated
+home.
 """
 
-from fastmob.social.contact_network import (
+from .contact_network import (
     NetworkGraph,
     clustering_coefficients,
     co_presence_graph_from_visits,
+    co_presence_graph_from_staypoints,
     degree_preserving_random_graph,
     distribution_summary,
     graph_from_edges,
@@ -22,6 +24,7 @@ __all__ = [
     "NetworkGraph",
     "clustering_coefficients",
     "co_presence_graph_from_visits",
+    "co_presence_graph_from_staypoints",
     "degree_preserving_random_graph",
     "distribution_summary",
     "graph_from_edges",

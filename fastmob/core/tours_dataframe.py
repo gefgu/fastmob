@@ -3,7 +3,7 @@ and ends at the same location).
 
 Requires each trip's ``origin_staypoint_id``/``destination_staypoint_id`` to
 resolve to a ``location_id`` via an already-clustered `Staypoints` table
-(see `Staypoints.generate_locations`). Narwhals performs the joins; the
+(see `Staypoints.generate_user_locations`). Narwhals performs the joins; the
 stateful per-user tour scan runs in the Rust hierarchy kernel.
 """
 
@@ -65,7 +65,7 @@ class Tours(BaseDataFrame):
         if "location_id" not in sp_nw.columns:
             raise ValueError(
                 "Tours.from_trips requires staypoints_with_location to have a 'location_id' column; "
-                "run Staypoints.generate_locations() first"
+                "run Staypoints.generate_user_locations() first"
             )
         if "staypoint_id" not in sp_nw.columns:
             raise ValueError("Tours.from_trips requires staypoints_with_location to have a 'staypoint_id' column")
