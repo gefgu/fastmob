@@ -1,4 +1,4 @@
-use fastmob_core::integration::events::{SortedReferenceEvents, nearest_event_within_window};
+use fastmob_core::integration::events::{nearest_event_within_window, SortedReferenceEvents};
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 

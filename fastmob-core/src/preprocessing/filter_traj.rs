@@ -103,7 +103,7 @@ fn filter_user_slice_into(
         let imax = dr_dt
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.0.total_cmp(&b.1.0))
+            .max_by(|a, b| a.1 .0.total_cmp(&b.1 .0))
             .map(|(idx, _)| idx)
             .unwrap_or(0);
 
@@ -248,7 +248,7 @@ fn filter_user_slice_indexed(
         let imax = dr_dt
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.0.total_cmp(&b.1.0))
+            .max_by(|a, b| a.1 .0.total_cmp(&b.1 .0))
             .map(|(idx, _)| idx)
             .unwrap_or(0);
 
