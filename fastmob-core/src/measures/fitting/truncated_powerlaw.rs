@@ -2,14 +2,17 @@
 //!
 //! Fits the log-density of a log-spaced histogram by a deterministic
 //! coarse-to-fine grid search over `(r0, beta, kappa)`, solving the optimal `c`
-//! in closed form in log space for every candidate.
+//! in closed form in log space for every candidate. The search is
+//! parallelized across `r0` candidates with rayon.
 //!
-//! This is **not** the same estimator as fastmob's default Python path, which
-//! uses scipy's Trust-Region-Reflective `curve_fit`. It is the estimator behind
-//! that function's `method="grid"` option, which exists precisely so a caller
-//! without scipy can get a comparable fit. Treat the two as different methods
-//! with different answers, not as an implementation that should converge on
-//! scipy's to the last bit.
+//! This is fastmob's sole production estimator for
+//! `fit_values_to_truncated_powerlaw` -- it replaced an earlier scipy
+//! `curve_fit`-based path. It is a grid search, not a gradient-based
+//! nonlinear least squares solver, so treat it as an approximate method with
+//! its own error profile rather than something that should converge on
+//! scipy's answer to the last bit.
+
+use rayon::prelude::*;
 
 /// Fitted parameters `[c, r0, beta, kappa]` plus the histogram that produced
 /// them: geometric bin centres and their densities.
@@ -88,6 +91,10 @@ fn linear_grid(low: f64, high: f64, n: usize) -> Vec<f64> {
 }
 
 /// Best `(sse, c, r0, beta, kappa)` over the cartesian product of the grids.
+///
+/// Parallelized across `r0` candidates: each rayon task owns its slice of the
+/// `beta`/`kappa` cartesian product sequentially, then the per-`r0` bests are
+/// reduced to a single global best by minimum `sse`.
 fn search(
     x: &[f64],
     log_y: &[f64],
@@ -95,33 +102,37 @@ fn search(
     beta_values: &[f64],
     kappa_values: &[f64],
 ) -> (f64, f64, f64, f64, f64) {
-    let mut best = (f64::INFINITY, 1.0, 1.0, 1.5, 100.0);
-    for &r0 in r0_values {
-        for &beta in beta_values {
-            for &kappa in kappa_values {
-                let shape_log: Vec<f64> = x
-                    .iter()
-                    .map(|&xi| -beta * (xi + r0).ln() - xi / kappa)
-                    .collect();
-                // With the shape fixed, the optimal log(c) is the mean residual.
-                let log_c = log_y
-                    .iter()
-                    .zip(&shape_log)
-                    .map(|(ly, sl)| ly - sl)
-                    .sum::<f64>()
-                    / log_y.len() as f64;
-                let sse = log_y
-                    .iter()
-                    .zip(&shape_log)
-                    .map(|(ly, sl)| (ly - (log_c + sl)).powi(2))
-                    .sum::<f64>();
-                if sse < best.0 {
-                    best = (sse, log_c.exp(), r0, beta, kappa);
+    let default_best = (f64::INFINITY, 1.0, 1.0, 1.5, 100.0);
+    r0_values
+        .par_iter()
+        .map(|&r0| {
+            let mut best = default_best;
+            for &beta in beta_values {
+                for &kappa in kappa_values {
+                    let shape_log: Vec<f64> = x
+                        .iter()
+                        .map(|&xi| -beta * (xi + r0).ln() - xi / kappa)
+                        .collect();
+                    // With the shape fixed, the optimal log(c) is the mean residual.
+                    let log_c = log_y
+                        .iter()
+                        .zip(&shape_log)
+                        .map(|(ly, sl)| ly - sl)
+                        .sum::<f64>()
+                        / log_y.len() as f64;
+                    let sse = log_y
+                        .iter()
+                        .zip(&shape_log)
+                        .map(|(ly, sl)| (ly - (log_c + sl)).powi(2))
+                        .sum::<f64>();
+                    if sse < best.0 {
+                        best = (sse, log_c.exp(), r0, beta, kappa);
+                    }
                 }
             }
-        }
-    }
-    best
+            best
+        })
+        .reduce(|| default_best, |a, b| if a.0 <= b.0 { a } else { b })
 }
 
 /// Fit a truncated power-law to positive values via a coarse-to-fine grid.

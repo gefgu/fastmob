@@ -8,11 +8,12 @@ Two benchmarks, both against real YJMob100K-derived data:
   per-day counts, a small array regardless of input size). Locations are
   derived via `fastmob.preprocessing.latlng_to_h3` (item 1) since YJMob100K
   ships raw pings, not pre-tessellated location IDs.
-- `truncated_powerlaw`: times `fit_values_to_truncated_powerlaw`'s
-  `method="scipy"` vs `method="grid"` (item 5) on the histogram derived from
-  YJMob100K's full jump-length distribution. Both methods consume the same
-  small aggregated histogram regardless of how many raw rows built it, so
-  the interesting number here is fit time, not data-loading time.
+- `truncated_powerlaw`: times `fit_values_to_truncated_powerlaw`'s Rust
+  parallel grid search against a direct `scipy.optimize.curve_fit` call on
+  the same histogram, derived from YJMob100K's full jump-length distribution.
+  Both consume the same small aggregated histogram regardless of how many raw
+  rows built it, so the interesting number here is fit time, not
+  data-loading time.
 
 Requires FASTMOB_YJMOB_DATA_PATH; skips cleanly (exit 0) when unset. See
 `benchmarks/shared/yjmob.py`.
@@ -74,8 +75,10 @@ def benchmark_daily_lognormal(data_path: Path, n_users: int, iterations: int) ->
 
 
 def benchmark_truncated_powerlaw(data_path: Path, n_users: int, iterations: int) -> dict:
-    from fastmob.measures.fitting import fit_values_to_truncated_powerlaw
+    import numpy as np
+    from fastmob.measures.fitting import fit_values_to_truncated_powerlaw, log_truncated_powerlaw
     from fastmob.measures.individual import jump_lengths
+    from scipy.optimize import curve_fit
 
     df = load_yjmob(data_path, n_users=None if n_users >= 100_000 else n_users).to_pandas()
     jumps = jump_lengths(df, merge=True, uid_col="uid", datetime_col="timestamp", lat_col="lat", lng_col="lon")
@@ -83,17 +86,34 @@ def benchmark_truncated_powerlaw(data_path: Path, n_users: int, iterations: int)
     n_rows = len(df)
 
     result = {"benchmark": "truncated_powerlaw", "n_users": n_users, "n_rows": n_rows, "size_label": size_label(n_rows)}
-    for method in ("scipy", "grid"):
-        times: list[float] = []
-        popt = None
-        for _ in range(iterations):
-            start = time.perf_counter()
-            popt, _x_data, _y_data = fit_values_to_truncated_powerlaw(jumps, bins=100, method=method)
-            times.append(time.perf_counter() - start)
-        stats = summarize_times(times)
-        result[f"{method}_minimum_seconds"] = stats["minimum_seconds"]
-        result[f"{method}_average_seconds"] = stats["average_seconds"]
-        result[f"{method}_popt"] = [float(v) for v in popt]
+
+    rust_times: list[float] = []
+    popt_rust = x_data = y_data = None
+    for _ in range(iterations):
+        start = time.perf_counter()
+        popt_rust, x_data, y_data = fit_values_to_truncated_powerlaw(jumps, bins=100)
+        rust_times.append(time.perf_counter() - start)
+    stats = summarize_times(rust_times)
+    result["rust_minimum_seconds"] = stats["minimum_seconds"]
+    result["rust_average_seconds"] = stats["average_seconds"]
+    result["rust_popt"] = [float(v) for v in popt_rust]
+
+    scipy_times: list[float] = []
+    popt_scipy = None
+    for _ in range(iterations):
+        start = time.perf_counter()
+        popt_scipy, _pcov = curve_fit(
+            log_truncated_powerlaw,
+            x_data,
+            np.log(y_data),
+            p0=[1.0, 1.0, 1.75, 400.0],
+            bounds=([1e-5, 1e-5, 0, 1e-5], [np.inf, np.inf, np.inf, np.inf]),
+        )
+        scipy_times.append(time.perf_counter() - start)
+    stats = summarize_times(scipy_times)
+    result["scipy_minimum_seconds"] = stats["minimum_seconds"]
+    result["scipy_average_seconds"] = stats["average_seconds"]
+    result["scipy_popt"] = [float(v) for v in popt_scipy]
     return result
 
 
@@ -152,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(
                 f"  [truncated_powerlaw] n_users={r['n_users']:>7} rows={r['n_rows']:>10} "
-                f"scipy={r['scipy_minimum_seconds']:.4f}s grid={r['grid_minimum_seconds']:.4f}s"
+                f"rust={r['rust_minimum_seconds']:.4f}s scipy={r['scipy_minimum_seconds']:.4f}s"
             )
     return 0
 

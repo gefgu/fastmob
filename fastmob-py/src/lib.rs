@@ -18,6 +18,7 @@ use measures::collective::{co_presence_network, square_displacement, visitation_
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
+use measures::fitting::truncated_powerlaw as fitting_truncated_powerlaw;
 use measures::individual::{
     activity, diversity, entropy, factorization, home_location, indexed_user_indices,
     individual_mobility_network, k_radius_of_gyration, location_frequency, max_distance_from_point,
@@ -43,6 +44,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(visitation_law::visitation_distances, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        fitting_truncated_powerlaw::fit_truncated_powerlaw_grid,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         measures::individual::jump_lengths::jump_lengths_km,
         m
