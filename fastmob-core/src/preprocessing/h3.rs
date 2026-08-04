@@ -45,6 +45,52 @@ pub fn batch_latlng_to_cells(
         .collect()
 }
 
+/// Converts `(lat, lng)` pairs directly to `(cell, center_lat, center_lng)`
+/// in one parallel pass.
+///
+/// Equivalent to calling [`batch_latlng_to_cells`] followed by
+/// [`batch_cells_to_latlng`] on its output, but callers that need both the
+/// cell index and its center coordinates (rather than just one or the
+/// other) avoid a second full traversal of the data and a second rayon
+/// dispatch by computing the center from the cell within the same per-row
+/// closure. Invalid coordinates map to [`INVALID_CELL`] and NaN centers,
+/// matching the two-call behavior exactly.
+pub fn batch_latlng_to_h3_centered(
+    lats: &[f64],
+    lngs: &[f64],
+    resolution: Resolution,
+    valid_rows: Option<&[bool]>,
+) -> (Vec<u64>, Vec<f64>, Vec<f64>) {
+    let rows: Vec<(u64, f64, f64)> = lats
+        .par_iter()
+        .zip(lngs.par_iter())
+        .enumerate()
+        .map(|(idx, (&lat, &lng))| {
+            if valid_rows.is_some_and(|valid| !valid[idx]) {
+                return (INVALID_CELL, f64::NAN, f64::NAN);
+            }
+            match LatLng::new(lat, lng) {
+                Ok(ll) => {
+                    let cell = ll.to_cell(resolution);
+                    let center = LatLng::from(cell);
+                    (u64::from(cell), center.lat(), center.lng())
+                }
+                Err(_) => (INVALID_CELL, f64::NAN, f64::NAN),
+            }
+        })
+        .collect();
+
+    let mut out_cells = Vec::with_capacity(rows.len());
+    let mut out_lats = Vec::with_capacity(rows.len());
+    let mut out_lngs = Vec::with_capacity(rows.len());
+    for (cell, lat, lng) in rows {
+        out_cells.push(cell);
+        out_lats.push(lat);
+        out_lngs.push(lng);
+    }
+    (out_cells, out_lats, out_lngs)
+}
+
 /// Convert H3 cell indices to their fixed geographic centers in parallel.
 /// Invalid or masked cells produce NaN coordinates.
 pub fn batch_cells_to_latlng(cells: &[u64], valid_rows: Option<&[bool]>) -> (Vec<f64>, Vec<f64>) {
@@ -120,5 +166,32 @@ mod tests {
         let (lats, lngs) = batch_cells_to_latlng(&[cell, INVALID_CELL], None);
         assert!(lats[0].is_finite() && lngs[0].is_finite());
         assert!(lats[1].is_nan() && lngs[1].is_nan());
+    }
+
+    #[test]
+    fn fused_encode_decode_matches_the_two_separate_calls() {
+        let lats = [37.769377, 40.712776, f64::NAN];
+        let lngs = [-122.388519, -74.005974, -122.0];
+        let expected_cells = batch_latlng_to_cells(&lats, &lngs, Resolution::Nine, None);
+        let (expected_lats, expected_lngs) = batch_cells_to_latlng(&expected_cells, None);
+
+        let (cells, centered_lats, centered_lngs) =
+            batch_latlng_to_h3_centered(&lats, &lngs, Resolution::Nine, None);
+
+        assert_eq!(cells, expected_cells);
+        for index in 0..lats.len() {
+            let (a, b) = (centered_lats[index], expected_lats[index]);
+            assert!(a == b || (a.is_nan() && b.is_nan()), "lat[{index}]: {a} vs {b}");
+            let (a, b) = (centered_lngs[index], expected_lngs[index]);
+            assert!(a == b || (a.is_nan() && b.is_nan()), "lng[{index}]: {a} vs {b}");
+        }
+    }
+
+    #[test]
+    fn fused_encode_decode_honors_masked_rows() {
+        let (cells, lats, lngs) =
+            batch_latlng_to_h3_centered(&[37.769377], &[-122.388519], Resolution::Nine, Some(&[false]));
+        assert_eq!(cells, [INVALID_CELL]);
+        assert!(lats[0].is_nan() && lngs[0].is_nan());
     }
 }

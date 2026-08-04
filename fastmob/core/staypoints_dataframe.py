@@ -13,7 +13,14 @@ from typing import TYPE_CHECKING, Any
 
 import narwhals as nw
 
-from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
+from fastmob.utils._common import (
+    LAT_CANDIDATES,
+    LNG_CANDIDATES,
+    TIMESTAMP_CANDIDATES,
+    USER_ID_CANDIDATES,
+    _detect_required_column,
+    _pick_existing_column,
+)
 
 from ._hierarchy_common import _detect_interval_columns
 from .base import BaseDataFrame
@@ -82,6 +89,38 @@ class Staypoints(BaseDataFrame):
         bad_rows = nw_df.filter(nw.col(finished_at_col) < nw.col(started_at_col))
         if len(bad_rows) > 0:
             raise ValueError(f"Staypoints requires finished_at >= started_at for every row ({len(bad_rows)} violating row(s))")
+
+    @staticmethod
+    def resolve_dataframe(
+        staypoints: Any | Staypoints,
+        *,
+        user_id_col: str | None = None,
+        timestamp_col: str | None = None,
+        lat_col: str | None = None,
+        lng_col: str | None = None,
+        require_coordinates: bool = False,
+    ) -> tuple[nw.DataFrame, str, str, str | None, str | None]:
+        """Normalize staypoint input, resolve measure columns, and validate starts.
+
+        ``Staypoints`` metadata takes precedence over candidate detection. Raw
+        dataframe inputs stay supported for measures whose historical API did
+        not require an interval end column.
+        """
+        if isinstance(staypoints, Staypoints):
+            user_id_col = user_id_col or staypoints.uid_col
+            timestamp_col = timestamp_col or staypoints.started_at_col
+            lat_col = lat_col or staypoints.lat_col
+            lng_col = lng_col or staypoints.lng_col
+            staypoints = staypoints.df
+
+        df = nw.from_native(staypoints, eager_only=True)
+        user_id_col = _detect_required_column(df, user_id_col, USER_ID_CANDIDATES)
+        timestamp_col = _detect_required_column(df, timestamp_col, TIMESTAMP_CANDIDATES)
+        if require_coordinates:
+            lat_col = _detect_required_column(df, lat_col, LAT_CANDIDATES)
+            lng_col = _detect_required_column(df, lng_col, LNG_CANDIDATES)
+        Staypoints.validate(df, timestamp_col)
+        return df, user_id_col, timestamp_col, lat_col, lng_col
 
     def create_activity_flag(self, method: str = "time_threshold", time_threshold_min: float = 15.0) -> Staypoints:
         """Flag each staypoint as a genuine "activity" by dwell time.

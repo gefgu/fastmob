@@ -114,3 +114,37 @@ def test_visitation_distance_core_helper_validation_errors():
     arr = np.array([0.0, 1.0], dtype=np.float64)
     with pytest.raises(ValueError, match="same length"):
         visitation_distances(arr, arr, arr[:1], arr)
+
+
+def test_visitation_law_arrow_binning_factorizes_string_ids_and_filters_invalid_rows():
+    import pyarrow as pa
+
+    from fastmob._core import bin_visitation_law_arrow
+
+    rf, rho = bin_visitation_law_arrow(
+        pa.array(["u1", "u1", "u2", "u2", "ignored"]),
+        pa.array(["a", "a", "a", "b", "a"]),
+        pa.array([0.2, 0.2, 0.2, 1.2, np.nan], type=pa.float64()),
+        pa.array([2.0, 2.0, 2.0, 3.0, 1.0], type=pa.float64()),
+        2,
+        1.0,
+    )
+
+    np.testing.assert_allclose(np.asarray(rf), [4.5**0.25, 4.5**0.75])
+    np.testing.assert_allclose(np.asarray(rho), [2.0 / np.pi, 1.0 / (3.0 * np.pi)])
+
+
+def test_visitation_law_arrow_binning_validates_arrow_column_lengths():
+    import pyarrow as pa
+
+    from fastmob._core import bin_visitation_law_arrow
+
+    with pytest.raises(ValueError, match="same length"):
+        bin_visitation_law_arrow(
+            pa.array(["u1", "u2"]),
+            pa.array(["a"]),
+            pa.array([1.0, 2.0], type=pa.float64()),
+            pa.array([1.0, 2.0], type=pa.float64()),
+            2,
+            1.0,
+        )

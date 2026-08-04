@@ -8,21 +8,32 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 
-from fastmob._core import h3_to_latlng_arrow, latlng_to_h3_arrow, visitation_distances
+from fastmob._core import (
+    aggregate_visitation_cells_arrow,
+    bin_visitation_law_arrow,
+    latlng_to_h3_centered_arrow,
+    visitation_distances,
+)
 from fastmob.core.staypoints_dataframe import Staypoints
 from fastmob.measures.individual.home_location import home_location
 from fastmob.utils._common import (
-    LAT_CANDIDATES,
-    LNG_CANDIDATES,
-    TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
+    _as_arrow,
     _detect_required_column,
+    _extract_timestamps,
+    _factorize_arrow_values,
     _strip_time_zone,
 )
 
 _VISITATION_YLABEL = r"$\rho_i(r,f)$ (visitors km$^{-2}$)"
 _H3_CELL_COL = "h3_cell"
+# Internal-only: the dense UInt64 user codes `_prepare_visitation_law_data`
+# already factorizes once, carried through so `_bin_visitation_law` can reuse
+# them instead of factorizing `user_id_col` a second time. Dropped before
+# `data` is returned to callers, so it never appears in the public schema.
+_USER_CODE_COL = "__user_code__"
 
 
 @dataclass(frozen=True)
@@ -47,32 +58,6 @@ def _empty_visitation_law_data(df: nw.DataFrame, user_id_col: str) -> Any:
     ).to_native()
 
 
-def _as_staypoint_dataframe(
-    staypoints: Any | Staypoints,
-    *,
-    user_id_col: str | None,
-    timestamp_col: str | None,
-    lat_col: str | None,
-    lng_col: str | None,
-) -> tuple[nw.DataFrame, str, str, str, str]:
-    """Normalize a dataframe or Staypoints object and validate its intervals."""
-    if isinstance(staypoints, Staypoints):
-        user_id_col = user_id_col or staypoints.uid_col
-        timestamp_col = timestamp_col or staypoints.started_at_col
-        lat_col = lat_col or staypoints.lat_col
-        lng_col = lng_col or staypoints.lng_col
-        staypoints = staypoints.df
-
-    df = nw.from_native(staypoints, eager_only=True)
-    user_id_col = _detect_required_column(df, user_id_col, USER_ID_CANDIDATES)
-    timestamp_col = _detect_required_column(df, timestamp_col, TIMESTAMP_CANDIDATES)
-    lat_col = _detect_required_column(df, lat_col, LAT_CANDIDATES)
-    lng_col = _detect_required_column(df, lng_col, LNG_CANDIDATES)
-    # Keep dataframe inputs on the same validation path as Staypoints.
-    Staypoints.validate(df, timestamp_col)
-    return df, user_id_col, timestamp_col, lat_col, lng_col
-
-
 def _arrow_series(df: nw.DataFrame, name: str, values: Any) -> nw.Series:
     """Build a backend-matching series from an Arrow-compatible result."""
     return nw.from_arrow(pa.table({name: pa.array(values)}), backend=df.implementation).get_column(name)
@@ -86,12 +71,11 @@ def _h3_centered_staypoints(
     h3_resolution: int,
 ) -> nw.DataFrame:
     """Assign H3 cells and replace coordinates with each cell's fixed center."""
-    cells = latlng_to_h3_arrow(
+    cells, center_lats, center_lngs = latlng_to_h3_centered_arrow(
         df.get_column(lat_col).to_arrow(),
         df.get_column(lng_col).to_arrow(),
         h3_resolution,
     )
-    center_lats, center_lngs = h3_to_latlng_arrow(cells)
     return df.with_columns(
         _arrow_series(df, _H3_CELL_COL, cells).alias(_H3_CELL_COL),
         _arrow_series(df, lat_col, center_lats).alias(lat_col),
@@ -146,12 +130,13 @@ def _prepare_visitation_law_data(
         if isinstance(staypoints, Staypoints):
             staypoints = staypoints.associate_global_locations(locations)
 
-    df, user_id_col, timestamp_col, lat_col, lng_col = _as_staypoint_dataframe(
+    df, user_id_col, timestamp_col, lat_col, lng_col = Staypoints.resolve_dataframe(
         staypoints,
         user_id_col=user_id_col,
         timestamp_col=timestamp_col,
         lat_col=lat_col,
         lng_col=lng_col,
+        require_coordinates=True,
     )
     df = _strip_time_zone(df, timestamp_col)
     if locations is None:
@@ -186,25 +171,48 @@ def _prepare_visitation_law_data(
         eager_only=True,
     ).rename({lat_col: "home_lat", lng_col: "home_lng"})
 
-    staypoints_by_cell = centered.with_columns(
-        nw.col(timestamp_col).dt.truncate("1d").alias("__staypoint_day__")
-    ).drop_nulls(subset=["__staypoint_day__"])
+    staypoints_by_cell = centered.with_columns(nw.col(_H3_CELL_COL).cast(nw.UInt64))
     if len(staypoints_by_cell) == 0:
         return _empty_visitation_law_data(df, user_id_col)
 
-    counts = staypoints_by_cell.group_by([user_id_col, _H3_CELL_COL]).agg(
-        nw.len().alias("n_staypoints"),
-        nw.col(lat_col).first().alias("loc_lat"),
-        nw.col(lng_col).first().alias("loc_lng"),
+    # A per-(user, cell) group-by mixing `n_unique()` with `len()`/`first()`/
+    # `first()` in one call cannot be expressed as a single vectorized
+    # pandas groupby through Narwhals, so it silently falls back to a slow
+    # per-group Python path at this dataframe's scale (see
+    # narwhals-dev.github.io/narwhals/concepts/improve_group_by_operation).
+    # Aggregating in Rust sidesteps that backend-dependent fallback entirely.
+    user_id_values = pa.array(staypoints_by_cell.get_column(user_id_col).to_arrow())
+    user_codes, user_representatives = _factorize_arrow_values(user_id_values, sort=False)
+    user_labels_by_code = pc.take(user_id_values, user_representatives)
+    timestamps_ms = _extract_timestamps(staypoints_by_cell, timestamp_col)
+
+    group_user_codes, group_cells, n_staypoints, f_values, loc_lat, loc_lng = (
+        _as_arrow(values)
+        for values in aggregate_visitation_cells_arrow(
+            user_codes,
+            staypoints_by_cell.get_column(_H3_CELL_COL).to_arrow(),
+            timestamps_ms.to_arrow(),
+            staypoints_by_cell.get_column(lat_col).to_arrow(),
+            staypoints_by_cell.get_column(lng_col).to_arrow(),
+        )
     )
-    frequencies = (
-        staypoints_by_cell.select([user_id_col, _H3_CELL_COL, "__staypoint_day__"])
-        .unique()
-        .group_by([user_id_col, _H3_CELL_COL])
-        .agg(nw.len().alias("f"))
-        .with_columns(nw.col("f").cast(nw.Float64))
+    counts = nw.from_arrow(
+        pa.table(
+            {
+                user_id_col: pc.take(user_labels_by_code, group_user_codes),
+                _USER_CODE_COL: group_user_codes,
+                _H3_CELL_COL: group_cells,
+                "n_staypoints": n_staypoints,
+                "f": f_values,
+                "loc_lat": loc_lat,
+                "loc_lng": loc_lng,
+            }
+        ),
+        backend=df.implementation,
     )
-    counts = counts.join(frequencies, on=[user_id_col, _H3_CELL_COL], how="inner")
+    if len(counts) == 0:
+        return _empty_visitation_law_data(df, user_id_col)
+
     merged = counts.join(homes, on=user_id_col, how="inner").with_columns(
         nw.col("n_staypoints").cast(nw.Int64),
         nw.col("home_lat").cast(nw.Float64),
@@ -224,7 +232,7 @@ def _prepare_visitation_law_data(
     return (
         merged.with_columns(nw.new_series("r_km", r_km, backend=df.implementation))
         .with_columns((nw.col("r_km") * nw.col("f")).alias("rf"))
-        .select([user_id_col, _H3_CELL_COL, "r_km", "f", "rf", "n_staypoints"])
+        .select([user_id_col, _USER_CODE_COL, _H3_CELL_COL, "r_km", "f", "rf", "n_staypoints"])
         .sort([user_id_col, _H3_CELL_COL])
         .to_native()
     )
@@ -267,45 +275,22 @@ def _bin_visitation_law(
     if missing:
         raise ValueError(f"Columns are required: {missing}.")
 
-    valid = df.filter(
-        nw.col("r_km").is_finite()
-        & nw.col("f").is_finite()
-        & nw.col("rf").is_finite()
-        & (nw.col("r_km") > 0)
-        & (nw.col("f") > 0)
-        & (nw.col("rf") > 0)
-    ).with_columns(
-        ((nw.col("r_km") / distance_bin_width_km).floor() * distance_bin_width_km + distance_bin_width_km / 2.0)
-        .alias("__r_center__")
+    # Reuse `_prepare_visitation_law_data`'s user-id factorization when it's
+    # present: `bin_visitation_law_arrow` skips its own factorization for a
+    # non-null UInt64 array, so passing these codes instead of raw
+    # `user_id_col` values avoids factorizing the same column a second time.
+    user_id_values = (
+        df.get_column(_USER_CODE_COL).to_arrow() if _USER_CODE_COL in df.columns else df.get_column(user_id_col).to_arrow()
     )
-    if len(valid) == 0:
-        return np.array([]), np.array([]), _VISITATION_YLABEL
-
-    spectrum = (
-        valid.select([user_id_col, h3_cell_col, "__r_center__", "f"])
-        .unique()
-        .group_by([h3_cell_col, "__r_center__", "f"])
-        .agg(nw.len().alias("__n_users__"))
-        .with_columns(
-        (nw.col("__r_center__") * nw.col("f")).alias("__rf__"),
-        (nw.col("__n_users__") / (2.0 * np.pi * nw.col("__r_center__") * distance_bin_width_km)).alias("__rho__"),
-        )
+    rf_values, rho_values = bin_visitation_law_arrow(
+        user_id_values,
+        df.get_column(h3_cell_col).to_arrow(),
+        df.get_column("r_km").to_arrow(),
+        df.get_column("f").to_arrow(),
+        n_bins,
+        distance_bin_width_km,
     )
-    spectrum_rf = spectrum.get_column("__rf__").to_numpy().astype(float)
-    spectrum_rho = spectrum.get_column("__rho__").to_numpy().astype(float)
-    rf_min, rf_max = float(spectrum_rf.min()), float(spectrum_rf.max())
-    if rf_min == rf_max:
-        return np.array([rf_min]), np.array([float(spectrum_rho.mean())]), _VISITATION_YLABEL
-
-    bin_edges = np.logspace(np.log10(rf_min), np.log10(rf_max), n_bins + 1)
-    centers = np.sqrt(bin_edges[:-1] * bin_edges[1:])
-    rf_centers, rho_binned = [], []
-    for idx, (lo, hi, center) in enumerate(zip(bin_edges[:-1], bin_edges[1:], centers)):
-        mask = (spectrum_rf >= lo) & ((spectrum_rf <= hi) if idx == len(centers) - 1 else (spectrum_rf < hi))
-        if mask.any():
-            rf_centers.append(center)
-            rho_binned.append(float(spectrum_rho[mask].mean()))
-    return np.asarray(rf_centers), np.asarray(rho_binned), _VISITATION_YLABEL
+    return np.asarray(rf_values, dtype=float), np.asarray(rho_values, dtype=float), _VISITATION_YLABEL
 
 
 def _visitation_law_curve(
@@ -481,4 +466,6 @@ def fit_visitation_law(
         {"rf": rf_values, "rho": rho_values},
         backend=data_df.implementation,
     ).to_native()
+    if _USER_CODE_COL in data_df.columns:
+        data = data_df.drop(_USER_CODE_COL).to_native()
     return VisitationLawFit(data=data, spectrum=spectrum, eta=eta, mu=mu, r2=r2)

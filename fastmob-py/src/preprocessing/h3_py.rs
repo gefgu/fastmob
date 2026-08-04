@@ -1,5 +1,7 @@
 use arrow_array::Array;
-use fastmob_core::preprocessing::h3::{batch_cells_to_latlng, batch_latlng_to_cells, INVALID_CELL};
+use fastmob_core::preprocessing::h3::{
+    batch_cells_to_latlng, batch_latlng_to_cells, batch_latlng_to_h3_centered, INVALID_CELL,
+};
 use h3o::Resolution;
 use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
@@ -69,4 +71,32 @@ pub fn latlng_to_h3_arrow(
     let cells = py.detach(|| batch_latlng_to_cells(lats, lngs, resolution, valid_rows.as_deref()));
 
     Ok(u64_results_into_arrow_nullable(cells, INVALID_CELL))
+}
+
+/// Convert `(lat, lng)` pairs directly to `(cell, center_lat, center_lng)` in
+/// one pass, for callers that need both instead of chaining
+/// [`latlng_to_h3_arrow`] and [`h3_to_latlng_arrow`].
+#[pyfunction]
+pub fn latlng_to_h3_centered_arrow(
+    py: Python<'_>,
+    latitudes: ArrowPyArray,
+    longitudes: ArrowPyArray,
+    resolution: u8,
+) -> PyResult<(ArrowPyArray, ArrowPyArray, ArrowPyArray)> {
+    let resolution = resolve_resolution(resolution)?;
+    let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
+    let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
+
+    let lats = arrow_values(&latitudes);
+    let lngs = arrow_values(&longitudes);
+    let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
+
+    let (cells, center_lats, center_lngs) =
+        py.detach(|| batch_latlng_to_h3_centered(lats, lngs, resolution, valid_rows.as_deref()));
+
+    Ok((
+        u64_results_into_arrow_nullable(cells, INVALID_CELL),
+        f64_results_into_arrow_nullable(center_lats),
+        f64_results_into_arrow_nullable(center_lngs),
+    ))
 }

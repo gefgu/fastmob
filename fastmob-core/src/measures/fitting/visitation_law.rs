@@ -1,7 +1,97 @@
-//! The universal visitation law: binning `(r, f)` observations into
-//! `(rf, rho)` pairs, and fitting `rho(r, f) = mu * (rf)^-eta`.
+//! The universal visitation law: aggregating raw staypoints into per-user,
+//! per-cell `(r, f)` observations, binning those into `(rf, rho)` pairs, and
+//! fitting `rho(r, f) = mu * (rf)^-eta`.
 
+use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
+
+type VisitationCellAggregate = (Vec<u64>, Vec<u64>, Vec<u64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
+struct CellAccumulator {
+    count: u64,
+    days: FxHashSet<i64>,
+    lat: f64,
+    lng: f64,
+}
+
+/// Aggregate raw per-row staypoints into one row per `(user, h3 cell)` pair.
+///
+/// Returns `(user_codes, h3_cells, n_staypoints, f, loc_lat, loc_lng)`, sorted
+/// by `(user_code, h3_cell)` so the result does not depend on hash iteration
+/// order. `f` is the count of distinct values in `days` (typically calendar-day
+/// buckets) seen at that `(user, cell)` pair. `loc_lat`/`loc_lng` are the
+/// coordinates of the first row observed for that pair, matching the
+/// Narwhals `.first()` aggregation this replaces. Rows with a non-finite
+/// latitude or longitude are skipped.
+pub fn aggregate_visitation_cells_impl(
+    user_codes: &[u64],
+    h3_cells: &[u64],
+    days: &[i64],
+    lats: &[f64],
+    lngs: &[f64],
+) -> Result<VisitationCellAggregate, String> {
+    let len = user_codes.len();
+    if h3_cells.len() != len || days.len() != len || lats.len() != len || lngs.len() != len {
+        return Err("all visitation-cell columns must have the same length".to_string());
+    }
+
+    let groups = (0..len)
+        .into_par_iter()
+        .fold(
+            FxHashMap::default,
+            |mut groups: FxHashMap<(u64, u64), CellAccumulator>, index| {
+                let (lat, lng) = (lats[index], lngs[index]);
+                if !lat.is_finite() || !lng.is_finite() {
+                    return groups;
+                }
+                let entry = groups
+                    .entry((user_codes[index], h3_cells[index]))
+                    .or_insert_with(|| CellAccumulator {
+                        count: 0,
+                        days: FxHashSet::default(),
+                        lat,
+                        lng,
+                    });
+                entry.count += 1;
+                entry.days.insert(days[index]);
+                groups
+            },
+        )
+        .reduce(FxHashMap::default, |mut left, right| {
+            for (key, right_accum) in right {
+                match left.entry(key) {
+                    std::collections::hash_map::Entry::Occupied(mut existing) => {
+                        let left_accum = existing.get_mut();
+                        left_accum.count += right_accum.count;
+                        left_accum.days.extend(right_accum.days);
+                    }
+                    std::collections::hash_map::Entry::Vacant(slot) => {
+                        slot.insert(right_accum);
+                    }
+                }
+            }
+            left
+        });
+
+    let mut rows: Vec<((u64, u64), CellAccumulator)> = groups.into_iter().collect();
+    rows.sort_unstable_by_key(|(key, _)| *key);
+
+    let mut out_user = Vec::with_capacity(rows.len());
+    let mut out_cell = Vec::with_capacity(rows.len());
+    let mut out_count = Vec::with_capacity(rows.len());
+    let mut out_f = Vec::with_capacity(rows.len());
+    let mut out_lat = Vec::with_capacity(rows.len());
+    let mut out_lng = Vec::with_capacity(rows.len());
+    for ((user_code, cell), accum) in rows {
+        out_user.push(user_code);
+        out_cell.push(cell);
+        out_count.push(accum.count);
+        out_f.push(accum.days.len() as f64);
+        out_lat.push(accum.lat);
+        out_lng.push(accum.lng);
+    }
+    Ok((out_user, out_cell, out_count, out_f, out_lat, out_lng))
+}
 
 /// Aggregate visitation-law rows into logarithmically binned `(rf, rho)` pairs.
 ///
@@ -195,6 +285,84 @@ pub fn fit_visitation_law_impl(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn aggregates_count_distinct_days_and_keep_first_coordinates() {
+        // user 1 visits cell 7 twice on day 10 and once on day 11: n_staypoints=3, f=2.
+        let (users, cells, counts, f, lat, lng) = aggregate_visitation_cells_impl(
+            &[1, 1, 1],
+            &[7, 7, 7],
+            &[10, 10, 11],
+            &[1.0, 2.0, 3.0],
+            &[10.0, 20.0, 30.0],
+        )
+        .unwrap();
+        assert_eq!(users, [1]);
+        assert_eq!(cells, [7]);
+        assert_eq!(counts, [3]);
+        assert_eq!(f, [2.0]);
+        assert_eq!(lat, [1.0], "first row's coordinates are kept");
+        assert_eq!(lng, [10.0]);
+    }
+
+    #[test]
+    fn distinct_user_cell_pairs_form_separate_groups() {
+        let (users, cells, counts, f, ..) = aggregate_visitation_cells_impl(
+            &[1, 1, 2],
+            &[7, 8, 7],
+            &[10, 10, 10],
+            &[1.0, 1.0, 1.0],
+            &[1.0, 1.0, 1.0],
+        )
+        .unwrap();
+        assert_eq!(users, [1, 1, 2]);
+        assert_eq!(cells, [7, 8, 7]);
+        assert_eq!(counts, [1, 1, 1]);
+        assert_eq!(f, [1.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn output_is_sorted_regardless_of_input_order() {
+        let forward = aggregate_visitation_cells_impl(
+            &[2, 1, 1],
+            &[3, 9, 5],
+            &[1, 1, 1],
+            &[1.0, 2.0, 3.0],
+            &[1.0, 2.0, 3.0],
+        )
+        .unwrap();
+        let backward = aggregate_visitation_cells_impl(
+            &[1, 1, 2],
+            &[5, 9, 3],
+            &[1, 1, 1],
+            &[3.0, 2.0, 1.0],
+            &[3.0, 2.0, 1.0],
+        )
+        .unwrap();
+        assert_eq!(forward.0, backward.0, "user codes");
+        assert_eq!(forward.1, backward.1, "h3 cells");
+    }
+
+    #[test]
+    fn non_finite_coordinates_are_skipped() {
+        let (users, ..) = aggregate_visitation_cells_impl(
+            &[1, 2],
+            &[7, 8],
+            &[10, 10],
+            &[f64::NAN, 1.0],
+            &[1.0, f64::INFINITY],
+        )
+        .unwrap();
+        assert!(users.is_empty(), "both rows have a non-finite coordinate");
+    }
+
+    #[test]
+    fn mismatched_lengths_are_rejected() {
+        assert!(
+            aggregate_visitation_cells_impl(&[1, 2], &[1], &[1, 1], &[1.0, 1.0], &[1.0, 1.0])
+                .is_err()
+        );
+    }
 
     #[test]
     fn a_perfect_power_law_is_recovered_exactly() {

@@ -421,6 +421,107 @@ macro_rules! factorize_string_dictionary {
     }};
 }
 
+/// Factorize a supported Arrow array without crossing the Python boundary.
+///
+/// This is shared by Arrow-native kernels that need categorical codes but must
+/// keep dataframe adapters out of their hot path.
+pub(crate) fn factorize_array(
+    array: &dyn Array,
+    sort: bool,
+) -> Result<(Vec<u64>, Vec<u64>), String> {
+    use arrow_schema::DataType;
+
+    let result = match array.data_type() {
+        DataType::Int8 => factorize_integer!(array, Int8Type, sort),
+        DataType::Int16 => factorize_integer!(array, Int16Type, sort),
+        DataType::Int32 => factorize_integer!(array, Int32Type, sort),
+        DataType::Int64 => factorize_integer!(array, Int64Type, sort),
+        DataType::UInt8 => factorize_integer!(array, UInt8Type, sort),
+        DataType::UInt16 => factorize_integer!(array, UInt16Type, sort),
+        DataType::UInt32 => factorize_integer!(array, UInt32Type, sort),
+        DataType::UInt64 => factorize_integer!(array, UInt64Type, sort),
+        DataType::Date32 => factorize_primitive!(array, Date32Type, sort),
+        DataType::Date64 => factorize_primitive!(array, Date64Type, sort),
+        DataType::Timestamp(unit, _) => match unit {
+            arrow_schema::TimeUnit::Second => {
+                factorize_primitive!(array, TimestampSecondType, sort)
+            }
+            arrow_schema::TimeUnit::Millisecond => {
+                factorize_primitive!(array, TimestampMillisecondType, sort)
+            }
+            arrow_schema::TimeUnit::Microsecond => {
+                factorize_primitive!(array, TimestampMicrosecondType, sort)
+            }
+            arrow_schema::TimeUnit::Nanosecond => {
+                factorize_primitive!(array, TimestampNanosecondType, sort)
+            }
+        },
+        DataType::Float32 => {
+            let array = array
+                .as_any()
+                .downcast_ref::<PrimitiveArray<Float32Type>>()
+                .unwrap();
+            factorize_values(array.len(), sort, |index| {
+                array
+                    .is_valid(index)
+                    .then(|| TotalF64::new(array.value(index) as f64))
+            })
+        }
+        DataType::Float64 => {
+            let array = array
+                .as_any()
+                .downcast_ref::<PrimitiveArray<Float64Type>>()
+                .unwrap();
+            factorize_values(array.len(), sort, |index| {
+                array
+                    .is_valid(index)
+                    .then(|| TotalF64::new(array.value(index)))
+            })
+        }
+        DataType::Boolean => {
+            let array = array.as_any().downcast_ref::<BooleanArray>().unwrap();
+            factorize_boolean(array, sort)
+        }
+        DataType::Utf8 => {
+            let array = array.as_any().downcast_ref::<StringArray>().unwrap();
+            factorize_strings(array.len(), sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        }
+        DataType::LargeUtf8 => {
+            let array = array.as_any().downcast_ref::<LargeStringArray>().unwrap();
+            factorize_strings(array.len(), sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        }
+        DataType::Dictionary(key_type, value_type)
+            if matches!(value_type.as_ref(), DataType::Utf8) =>
+        {
+            match key_type.as_ref() {
+                DataType::Int8 => factorize_string_dictionary!(array, Int8Type, sort),
+                DataType::Int16 => factorize_string_dictionary!(array, Int16Type, sort),
+                DataType::Int32 => factorize_string_dictionary!(array, Int32Type, sort),
+                DataType::Int64 => factorize_string_dictionary!(array, Int64Type, sort),
+                DataType::UInt8 => factorize_string_dictionary!(array, UInt8Type, sort),
+                DataType::UInt16 => factorize_string_dictionary!(array, UInt16Type, sort),
+                DataType::UInt32 => factorize_string_dictionary!(array, UInt32Type, sort),
+                DataType::UInt64 => factorize_string_dictionary!(array, UInt64Type, sort),
+                key_type => {
+                    return Err(format!(
+                        "unsupported dictionary key dtype for factorization: {key_type}"
+                    ));
+                }
+            }
+        }
+        data_type => {
+            return Err(format!(
+                "unsupported Arrow dtype for factorization: {data_type}"
+            ));
+        }
+    };
+    Ok(result)
+}
+
 #[pyfunction]
 #[pyo3(signature = (values, sort = false))]
 pub fn factorize_arrow(
@@ -430,100 +531,8 @@ pub fn factorize_arrow(
 ) -> PyResult<(PyArray, PyArray)> {
     let values = extract_arrow_array(values, "values")?;
     let (array, _field) = values.into_inner();
-    use arrow_schema::DataType;
-
     let result = py
-        .detach(|| -> Result<_, String> {
-            let result = match array.data_type() {
-                DataType::Int8 => factorize_integer!(&array, Int8Type, sort),
-                DataType::Int16 => factorize_integer!(&array, Int16Type, sort),
-                DataType::Int32 => factorize_integer!(&array, Int32Type, sort),
-                DataType::Int64 => factorize_integer!(&array, Int64Type, sort),
-                DataType::UInt8 => factorize_integer!(&array, UInt8Type, sort),
-                DataType::UInt16 => factorize_integer!(&array, UInt16Type, sort),
-                DataType::UInt32 => factorize_integer!(&array, UInt32Type, sort),
-                DataType::UInt64 => factorize_integer!(&array, UInt64Type, sort),
-                DataType::Date32 => factorize_primitive!(&array, Date32Type, sort),
-                DataType::Date64 => factorize_primitive!(&array, Date64Type, sort),
-                DataType::Timestamp(unit, _) => match unit {
-                    arrow_schema::TimeUnit::Second => {
-                        factorize_primitive!(&array, TimestampSecondType, sort)
-                    }
-                    arrow_schema::TimeUnit::Millisecond => {
-                        factorize_primitive!(&array, TimestampMillisecondType, sort)
-                    }
-                    arrow_schema::TimeUnit::Microsecond => {
-                        factorize_primitive!(&array, TimestampMicrosecondType, sort)
-                    }
-                    arrow_schema::TimeUnit::Nanosecond => {
-                        factorize_primitive!(&array, TimestampNanosecondType, sort)
-                    }
-                },
-                DataType::Float32 => {
-                    let array = array
-                        .as_any()
-                        .downcast_ref::<PrimitiveArray<Float32Type>>()
-                        .unwrap();
-                    factorize_values(array.len(), sort, |index| {
-                        array
-                            .is_valid(index)
-                            .then(|| TotalF64::new(array.value(index) as f64))
-                    })
-                }
-                DataType::Float64 => {
-                    let array = array
-                        .as_any()
-                        .downcast_ref::<PrimitiveArray<Float64Type>>()
-                        .unwrap();
-                    factorize_values(array.len(), sort, |index| {
-                        array
-                            .is_valid(index)
-                            .then(|| TotalF64::new(array.value(index)))
-                    })
-                }
-                DataType::Boolean => {
-                    let array = array.as_any().downcast_ref::<BooleanArray>().unwrap();
-                    factorize_boolean(array, sort)
-                }
-                DataType::Utf8 => {
-                    let array = array.as_any().downcast_ref::<StringArray>().unwrap();
-                    factorize_strings(array.len(), sort, |index| {
-                        array.is_valid(index).then(|| array.value(index))
-                    })
-                }
-                DataType::LargeUtf8 => {
-                    let array = array.as_any().downcast_ref::<LargeStringArray>().unwrap();
-                    factorize_strings(array.len(), sort, |index| {
-                        array.is_valid(index).then(|| array.value(index))
-                    })
-                }
-                DataType::Dictionary(key_type, value_type)
-                    if matches!(value_type.as_ref(), DataType::Utf8) =>
-                {
-                    match key_type.as_ref() {
-                        DataType::Int8 => factorize_string_dictionary!(&array, Int8Type, sort),
-                        DataType::Int16 => factorize_string_dictionary!(&array, Int16Type, sort),
-                        DataType::Int32 => factorize_string_dictionary!(&array, Int32Type, sort),
-                        DataType::Int64 => factorize_string_dictionary!(&array, Int64Type, sort),
-                        DataType::UInt8 => factorize_string_dictionary!(&array, UInt8Type, sort),
-                        DataType::UInt16 => factorize_string_dictionary!(&array, UInt16Type, sort),
-                        DataType::UInt32 => factorize_string_dictionary!(&array, UInt32Type, sort),
-                        DataType::UInt64 => factorize_string_dictionary!(&array, UInt64Type, sort),
-                        key_type => {
-                            return Err(format!(
-                                "unsupported dictionary key dtype for factorization: {key_type}"
-                            ));
-                        }
-                    }
-                }
-                data_type => {
-                    return Err(format!(
-                        "unsupported Arrow dtype for factorization: {data_type}"
-                    ));
-                }
-            };
-            Ok(result)
-        })
+        .detach(|| factorize_array(array.as_ref(), sort))
         .map_err(PyValueError::new_err)?;
     Ok((
         u64_results_into_arrow(result.0),
