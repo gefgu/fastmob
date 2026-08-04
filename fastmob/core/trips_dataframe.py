@@ -42,7 +42,9 @@ class Trips(BaseDataFrame):
     (a list of the tripleg ids making up the trip), plus ``uid_col`` when
     present. ``origin_staypoint_id`` is null for a user's very first trip
     (no staypoint precedes it); ``destination_staypoint_id`` is null for a
-    user's last trip if it never reaches another activity staypoint.
+    user's last trip if it never reaches another activity staypoint. Optional
+    ``origin_location_id`` and ``destination_location_id`` columns identify
+    globally comparable locations for sparse OD comparisons.
 
     Parameters
     ----------
@@ -179,6 +181,12 @@ class Trips(BaseDataFrame):
         }
         if uid_col:
             out_dict[uid_col] = [code_to_uid[code] for code in uid_codes_list]
+        if "location_id" in sp_nw.columns:
+            location_by_staypoint = dict(
+                zip(sp_nw.get_column("staypoint_id").to_list(), sp_nw.get_column("location_id").to_list())
+            )
+            out_dict["origin_location_id"] = [location_by_staypoint.get(value) for value in origin_ids]
+            out_dict["destination_location_id"] = [location_by_staypoint.get(value) for value in destination_ids]
 
         out = nw.from_dict(out_dict, backend=tl_nw.implementation).with_columns(
             nw.col("__started_at_us__").cast(nw.Datetime("us")).alias("started_at"),
@@ -193,7 +201,48 @@ class Trips(BaseDataFrame):
             "destination_staypoint_id",
             "tripleg_ids",
         ]
+        if "origin_location_id" in out_dict:
+            column_order.extend(["origin_location_id", "destination_location_id"])
         return Trips(out.select(column_order).to_native(), uid_col=uid_col)
+
+    def common_part_of_commuters(self, other: Trips) -> float:
+        """Compare trips using globally comparable endpoint location IDs."""
+        from fastmob.measures.evaluation.cpc import common_part_of_commuters
+
+        return common_part_of_commuters(self, other)
+
+    def common_part_of_links(self, other: Trips) -> float:
+        from fastmob.measures.evaluation.cpc import common_part_of_links
+
+        return common_part_of_links(self, other)
+
+    def common_part_of_commuters_distance(self, other: Trips) -> float:
+        from fastmob.measures.evaluation.cpc import common_part_of_commuters_distance
+
+        return common_part_of_commuters_distance(self, other)
+
+    def to_flow_dataframe(self):
+        """Materialize this trip set as aggregated sparse OD flows.
+
+        CPC does not call this method: it streams endpoint IDs straight to the
+        Rust kernel. Use it only when an explicit FlowDataFrame is required.
+        """
+        from .flow_dataframe import FlowDataFrame
+
+        df = nw.from_native(self.df, eager_only=True)
+        required = ["origin_location_id", "destination_location_id"]
+        missing = [column for column in required if column not in df.columns]
+        if missing:
+            raise ValueError(f"Trips is missing required CPC columns: {missing}")
+        flows = (
+            df.select("origin_location_id", "destination_location_id")
+            .drop_nulls()
+            .filter(nw.col("origin_location_id") != nw.col("destination_location_id"))
+            .group_by("origin_location_id", "destination_location_id")
+            .agg(nw.len().alias("flow"))
+            .rename({"origin_location_id": "origin", "destination_location_id": "destination"})
+        )
+        return FlowDataFrame(flows.to_native())
 
     def generate_tours(self, staypoints_with_location: Any) -> Any:
         """Group consecutive trips into tours (round trips back to the same location).

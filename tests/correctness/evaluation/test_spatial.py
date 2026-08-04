@@ -5,11 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-from fastmob.measures.evaluation import (
-    od_matrix_common_part_of_commuters,
-    trajectory_common_part_of_commuters,
-    trajectory_common_part_of_commuters_multi,
-)
 
 
 def _skip_if_no_core():
@@ -28,6 +23,7 @@ def _dist_df(centroid: str, time_bin: str, mean_volume: float) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="superseded by sparse FlowDataFrame CPC")
 def test_od_matrix_common_part_aligns_origins_and_destinations():
     left = pd.DataFrame([[10, 0], [0, 5]], index=["a", "b"], columns=["x", "y"])
     right = pd.DataFrame([[5, 5], [0, 5]], index=["a", "c"], columns=["x", "z"])
@@ -99,6 +95,7 @@ def _trajectory_fixture() -> tuple[pd.DataFrame, pd.DataFrame]:
     return left, right
 
 
+@pytest.mark.skip(reason="trajectory CPC was removed in favor of Trips CPC")
 def test_trajectory_common_part_matches_od_matrix_reference():
     _skip_if_no_core()
     left, right = _trajectory_fixture()
@@ -108,6 +105,7 @@ def test_trajectory_common_part_matches_od_matrix_reference():
     assert result == pytest.approx(_reference_trajectory_cpc(left, right, 9))
 
 
+@pytest.mark.skip(reason="trajectory CPC was removed in favor of Trips CPC")
 def test_trajectory_common_part_identical_is_one():
     _skip_if_no_core()
     left, _ = _trajectory_fixture()
@@ -115,6 +113,7 @@ def test_trajectory_common_part_identical_is_one():
     assert trajectory_common_part_of_commuters(left, left, resolution=9) == pytest.approx(1.0)
 
 
+@pytest.mark.skip(reason="trajectory CPC was removed in favor of Trips CPC")
 def test_trajectory_common_part_multi_matches_single_resolution_calls():
     _skip_if_no_core()
     left, right = _trajectory_fixture()
@@ -125,6 +124,7 @@ def test_trajectory_common_part_multi_matches_single_resolution_calls():
     assert multi_result == pytest.approx(single_results)
 
 
+@pytest.mark.skip(reason="trajectory CPC was removed in favor of Trips CPC")
 def test_trajectory_common_part_multi_prepares_inputs_only_once(monkeypatch):
     _skip_if_no_core()
     import fastmob.measures.evaluation.spatial as spatial_module
@@ -146,6 +146,7 @@ def test_trajectory_common_part_multi_prepares_inputs_only_once(monkeypatch):
     assert len(calls) == 2
 
 
+@pytest.mark.skip(reason="trajectory CPC was removed in favor of Trips CPC")
 def test_trajectory_common_part_empty_or_self_loop_only_returns_zero():
     _skip_if_no_core()
     loops = pd.DataFrame(
@@ -160,6 +161,7 @@ def test_trajectory_common_part_empty_or_self_loop_only_returns_zero():
     assert trajectory_common_part_of_commuters(loops, loops, resolution=9) == pytest.approx(0.0)
 
 
+@pytest.mark.skip(reason="trajectory CPC was removed in favor of Trips CPC")
 def test_trajectory_common_part_dataframe_method_and_public_exports():
     _skip_if_no_core()
     import fastmob
@@ -175,6 +177,7 @@ def test_trajectory_common_part_dataframe_method_and_public_exports():
     )
 
 
+@pytest.mark.skip(reason="trajectory CPC was removed in favor of Trips CPC")
 def test_trajectory_common_part_polars_smoke():
     _skip_if_no_core()
     pl = pytest.importorskip("polars")

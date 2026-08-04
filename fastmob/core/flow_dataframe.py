@@ -154,6 +154,17 @@ class FlowDataFrame(BaseDataFrame):
             return 0
         return tmp[FLOW].iloc[0]
 
+    def common_part_of_commuters(self, other: FlowDataFrame) -> float:
+        """Compare sparse OD flows with another FlowDataFrame using Rust CPC."""
+        from fastmob.measures.evaluation.cpc import common_part_of_commuters
+
+        return common_part_of_commuters(self, other)
+
+    def common_part_of_links(self, other: FlowDataFrame) -> float:
+        from fastmob.measures.evaluation.cpc import common_part_of_links
+
+        return common_part_of_links(self, other)
+
     def settings_from(self, other: FlowDataFrame) -> None:
         """Copy metadata attributes from another FlowDataFrame.
 

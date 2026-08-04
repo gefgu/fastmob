@@ -283,16 +283,6 @@ class TrajDataFrame(BaseDataFrame):
             uid_col=self.uid_col,
         )
 
-    def common_part_of_commuters(self, other, resolution: int = 9) -> float:
-        """Compute trajectory CPC against another trajectory at an H3 resolution."""
-        from fastmob.measures.evaluation import trajectory_common_part_of_commuters
-
-        return trajectory_common_part_of_commuters(
-            self,
-            other,
-            resolution=resolution,
-        )
-
     def interpolate(self, method: str = "linear", sampling_rate_s: float = 3600.0, **method_kwargs) -> TrajDataFrame:
         """Fill gaps in the trajectory using a named interpolation algorithm.
 
