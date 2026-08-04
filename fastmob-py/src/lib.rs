@@ -47,7 +47,19 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(visitation_law::visitation_distances, m)?)?;
     m.add_function(wrap_pyfunction!(
+        visitation_law::bin_visitation_law_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        visitation_law::aggregate_visitation_cells_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         fitting_truncated_powerlaw::fit_truncated_powerlaw_grid,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        fitting_daily_location_lognormal::daily_unique_location_histogram_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

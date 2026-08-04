@@ -1,178 +1,151 @@
-//! Co-presence graph construction and graph-metric computation for
-//! contact-network analysis of mobility data.
+//! RECAST temporal-contact construction and classification kernels.
 //!
-//! Two pieces exist here because they don't scale past toy graphs in pure
-//! Python:
-//!
-//! - `build_co_presence_edges`: turns (day, location, agent) rows into an
-//!   edge list + per-edge day-persistence, replacing an `itertools.combinations`
-//!   loop keyed into a `dict[edge, set[day]]` (measured: 150s on a
-//!   58,502-user real-world dataset, ~65M raw pair-instances).
-//! - `compute_graph_metrics`: per-node clustering coefficient + per-edge
-//!   topological overlap, replacing pure-Python `O(sum of degree^2)` nested
-//!   loops over `set`-based adjacency (measured: ~51 minutes extrapolated on
-//!   the same data, whose co-presence graph is unusually dense -- average
-//!   degree ~1,070 because popular venues see the same users repeatedly
-//!   across many days).
+//! Inputs are factorized user/location ids and staypoint intervals.  All
+//! expensive temporal graph construction, exact degree-preserving T-RND
+//! randomization, and graph metrics stay in Rust.
 
+use rand::{Rng, SeedableRng};
+use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Ordering;
 
-/// Groups `(day, location, node)` rows by `(day, location)`, emits every
-/// pair within each group up to `max_group_size` (groups larger than that
-/// are skipped, treating an oversized daily crowd at one location as
-/// uninformative rather than combinatorially exploding), then collapses
-/// `(u, v, day)` instances into one edge per unique pair with
-/// `persistence = distinct_day_count / time_steps`.
-///
-/// Inputs are one row per `(day, location, node)` presence (the caller is
-/// expected to already deduplicate repeated presences before calling this).
-pub fn build_co_presence_edges(
-    day_codes: &[i64],
-    location_codes: &[i64],
-    nodes: &[i64],
-    max_group_size: usize,
-    time_steps: usize,
-) -> (Vec<u32>, Vec<u32>, Vec<f64>, u64, u64) {
-    let mut groups: FxHashMap<(i64, i64), Vec<u32>> = FxHashMap::default();
-    for i in 0..nodes.len() {
-        groups
-            .entry((day_codes[i], location_codes[i]))
-            .or_default()
-            .push(nodes[i] as u32);
-    }
+type Edge = (u32, u32);
+const DAY_MS: i64 = 86_400_000;
 
-    let mut skipped_groups = 0u64;
-    let mut skipped_rows = 0u64;
-    // (u, v, day) instances, deduped later via sort -- a pair seen at two
-    // different locations on the same day must still count as one
-    // day-of-persistence, not two.
-    let mut triples: Vec<(u32, u32, i64)> = Vec::new();
-    for ((day, _location), mut members) in groups {
-        let n = members.len();
-        if n < 2 {
+fn edge(a: u32, b: u32) -> Edge {
+    if a < b {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
+
+#[derive(Clone)]
+struct Interval {
+    user: u32,
+    start: i64,
+    end: i64,
+}
+
+/// Event graphs keyed by UTC-aligned fixed windows.  A contact exists only
+/// when two intervals overlap strictly at the same global location.
+fn event_graphs(
+    users: &[u32],
+    locations: &[u32],
+    starts: &[i64],
+    ends: &[i64],
+    min_contact_ms: i64,
+) -> (Vec<FxHashSet<Edge>>, usize) {
+    if users.is_empty() {
+        return (Vec::new(), 0);
+    }
+    let min_window = starts.iter().copied().min().unwrap().div_euclid(DAY_MS);
+    let max_window = ends
+        .iter()
+        .copied()
+        .filter(|&x| x > i64::MIN)
+        .map(|x| (x - 1).div_euclid(DAY_MS))
+        .max()
+        .unwrap_or(min_window);
+    let steps = (max_window - min_window + 1).max(0) as usize;
+    let mut groups: FxHashMap<(i64, u32), Vec<Interval>> = FxHashMap::default();
+    for i in 0..users.len() {
+        if ends[i] <= starts[i] {
             continue;
         }
-        if n > max_group_size {
-            skipped_groups += 1;
-            skipped_rows += n as u64;
-            continue;
-        }
-        members.sort_unstable();
-        members.dedup();
-        for i in 0..members.len() {
-            for j in (i + 1)..members.len() {
-                triples.push((members[i], members[j], day));
+        let first = starts[i].div_euclid(DAY_MS);
+        let last = (ends[i] - 1).div_euclid(DAY_MS);
+        for window in first..=last {
+            let lo = starts[i].max(window * DAY_MS);
+            let hi = ends[i].min((window + 1) * DAY_MS);
+            if lo < hi {
+                groups
+                    .entry((window, locations[i]))
+                    .or_default()
+                    .push(Interval {
+                        user: users[i],
+                        start: lo,
+                        end: hi,
+                    });
             }
         }
     }
-
-    triples.par_sort_unstable();
-    triples.dedup();
-
-    let mut edge_from = Vec::new();
-    let mut edge_to = Vec::new();
-    let mut persistence = Vec::new();
-    let mut idx = 0;
-    while idx < triples.len() {
-        let (u, v, _) = triples[idx];
-        let start = idx;
-        while idx < triples.len() && triples[idx].0 == u && triples[idx].1 == v {
-            idx += 1;
+    let mut events: Vec<FxHashSet<Edge>> = (0..steps).map(|_| FxHashSet::default()).collect();
+    for ((window, _), mut intervals) in groups {
+        intervals.sort_unstable_by_key(|x| (x.start, x.end, x.user));
+        let mut active: Vec<Interval> = Vec::new();
+        let target = &mut events[(window - min_window) as usize];
+        for current in intervals {
+            active.retain(|other| other.end > current.start);
+            for other in &active {
+                if other.user != current.user
+                    && other.end.min(current.end) - current.start >= min_contact_ms
+                {
+                    target.insert(edge(other.user, current.user));
+                }
+            }
+            active.push(current);
         }
-        edge_from.push(u);
-        edge_to.push(v);
-        persistence.push((idx - start) as f64 / time_steps.max(1) as f64);
     }
-
-    (
-        edge_from,
-        edge_to,
-        persistence,
-        skipped_groups,
-        skipped_rows,
-    )
+    (events, steps)
 }
 
-/// Sorted, deduplicated adjacency list per node, built from an edge list
-/// (each edge contributes to both endpoints' neighbor lists).
-fn build_adjacency(node_count: usize, edge_from: &[u32], edge_to: &[u32]) -> Vec<Vec<u32>> {
-    let mut degree = vec![0u32; node_count];
-    for i in 0..edge_from.len() {
-        degree[edge_from[i] as usize] += 1;
-        degree[edge_to[i] as usize] += 1;
+fn aggregate(events: &[FxHashSet<Edge>], steps: usize) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+    let mut counts: FxHashMap<Edge, usize> = FxHashMap::default();
+    for event in events {
+        for &e in event {
+            *counts.entry(e).or_insert(0) += 1;
+        }
     }
-    let mut adjacency: Vec<Vec<u32>> = degree
-        .iter()
-        .map(|&d| Vec::with_capacity(d as usize))
-        .collect();
-    for i in 0..edge_from.len() {
-        let (u, v) = (edge_from[i], edge_to[i]);
-        adjacency[u as usize].push(v);
-        adjacency[v as usize].push(u);
+    let mut values: Vec<(Edge, usize)> = counts.into_iter().collect();
+    values.sort_unstable_by_key(|(e, _)| *e);
+    let denom = steps.max(1) as f64;
+    let mut from = Vec::with_capacity(values.len());
+    let mut to = Vec::with_capacity(values.len());
+    let mut persistence = Vec::with_capacity(values.len());
+    for ((u, v), n) in values {
+        from.push(u);
+        to.push(v);
+        persistence.push(n as f64 / denom);
     }
-    adjacency.par_iter_mut().for_each(|neighbors| {
-        neighbors.sort_unstable();
-        neighbors.dedup();
+    (from, to, persistence)
+}
+
+fn build_adjacency(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>> {
+    let mut adjacency = vec![Vec::new(); node_count];
+    for i in 0..from.len() {
+        adjacency[from[i] as usize].push(to[i]);
+        adjacency[to[i] as usize].push(from[i]);
+    }
+    adjacency.par_iter_mut().for_each(|v| {
+        v.sort_unstable();
+        v.dedup();
     });
     adjacency
 }
 
-/// Count of elements present in both sorted slices, restricted to values
-/// `> threshold`. Used to count, for a node `i` and one neighbor `a` (with
-/// `a` itself drawn from `i`'s sorted neighbor list), how many of `i`'s
-/// other neighbors greater than `a` are also neighbors of `a` -- i.e. how
-/// many triangles through `i` include the edge `(a, b)` for `b > a`,
-/// counting each unordered neighbor pair `{a, b}` exactly once.
-fn count_common_greater_than(sorted_a: &[u32], sorted_b: &[u32], threshold: u32) -> u64 {
-    let start_a = sorted_a.partition_point(|&x| x <= threshold);
-    let start_b = sorted_b.partition_point(|&x| x <= threshold);
-    let (mut i, mut j) = (start_a, start_b);
-    let mut count = 0u64;
-    while i < sorted_a.len() && j < sorted_b.len() {
-        match sorted_a[i].cmp(&sorted_b[j]) {
+fn count_common(a: &[u32], b: &[u32]) -> usize {
+    let (mut i, mut j, mut out) = (0, 0, 0);
+    while i < a.len() && j < b.len() {
+        match a[i].cmp(&b[j]) {
             Ordering::Less => i += 1,
             Ordering::Greater => j += 1,
             Ordering::Equal => {
-                count += 1;
+                out += 1;
                 i += 1;
                 j += 1;
             }
         }
     }
-    count
+    out
 }
 
-/// Size of the intersection of two sorted slices (no threshold).
-fn count_common(sorted_a: &[u32], sorted_b: &[u32]) -> u64 {
-    let (mut i, mut j) = (0, 0);
-    let mut count = 0u64;
-    while i < sorted_a.len() && j < sorted_b.len() {
-        match sorted_a[i].cmp(&sorted_b[j]) {
-            Ordering::Less => i += 1,
-            Ordering::Greater => j += 1,
-            Ordering::Equal => {
-                count += 1;
-                i += 1;
-                j += 1;
-            }
-        }
-    }
-    count
-}
-
-/// Topological (Jaccard) overlap of two nodes' neighbor sets, for arbitrary
-/// node ids -- not just ones already connected by an edge. Used by social-tie
-/// inference (`random_baseline_overlap_threshold`) to evaluate overlap for
-/// randomly sampled pairs that are usually not edges themselves.
-pub fn pairwise_topological_overlap(adjacency: &[Vec<u32>], a: usize, b: usize) -> f64 {
-    if a == b {
-        return 1.0;
-    }
-    let (na, nb) = (&adjacency[a], &adjacency[b]);
-    let inter = count_common(na, nb);
-    let union = na.len() + nb.len() - inter as usize;
+fn overlap(adjacency: &[Vec<u32>], u: u32, v: u32) -> f64 {
+    let a = &adjacency[u as usize];
+    let b = &adjacency[v as usize];
+    let inter = count_common(a, b);
+    let union = a.len() + b.len() - inter;
     if union == 0 {
         0.0
     } else {
@@ -180,229 +153,200 @@ pub fn pairwise_topological_overlap(adjacency: &[Vec<u32>], a: usize, b: usize) 
     }
 }
 
-pub struct GraphMetrics {
-    pub clustering_coefficient: Vec<f64>,
+fn overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f64> {
+    let adjacency = build_adjacency(node_count, from, to);
+    (0..from.len())
+        .into_par_iter()
+        .map(|i| overlap(&adjacency, from[i], to[i]))
+        .collect()
+}
+
+/// Exact simple-graph degree-preserving double-edge swaps.
+fn randomize(
+    event: &FxHashSet<Edge>,
+    swaps_per_edge: usize,
+    rng: &mut Xoshiro256PlusPlus,
+) -> FxHashSet<Edge> {
+    let mut set = event.clone();
+    let mut edges: Vec<Edge> = set.iter().copied().collect();
+    if edges.len() < 2 || swaps_per_edge == 0 {
+        return set;
+    }
+    let target = swaps_per_edge.saturating_mul(edges.len());
+    let max_attempts = target.saturating_mul(100).max(100);
+    let mut accepted = 0;
+    for _ in 0..max_attempts {
+        if accepted >= target {
+            break;
+        }
+        let i = rng.gen_range(0..edges.len());
+        let mut j = rng.gen_range(0..edges.len());
+        while j == i {
+            j = rng.gen_range(0..edges.len());
+        }
+        let (a, b) = edges[i];
+        let (c, d) = edges[j];
+        let (x, y) = if rng.gen_bool(0.5) {
+            (edge(a, d), edge(c, b))
+        } else {
+            (edge(a, c), edge(b, d))
+        };
+        if x.0 == x.1 || y.0 == y.1 || x == y || set.contains(&x) || set.contains(&y) {
+            continue;
+        }
+        set.remove(&(a, b));
+        set.remove(&(c, d));
+        set.insert(x);
+        set.insert(y);
+        edges[i] = x;
+        edges[j] = y;
+        accepted += 1;
+    }
+    set
+}
+
+fn threshold(values: &mut [f64], p_rnd: f64) -> f64 {
+    if values.is_empty() {
+        return 1.0;
+    }
+    values.sort_by(|a, b| a.total_cmp(b));
+    let index = (((values.len() as f64) * (1.0 - p_rnd)).ceil() as usize)
+        .saturating_sub(1)
+        .min(values.len() - 1);
+    values[index]
+}
+
+fn relationship_class(
+    persistence: f64,
+    overlap: f64,
+    persistence_threshold: f64,
+    overlap_threshold: f64,
+) -> u8 {
+    match (
+        persistence > persistence_threshold,
+        overlap > overlap_threshold,
+    ) {
+        (true, true) => 0,
+        (true, false) => 1,
+        (false, true) => 2,
+        (false, false) => 3,
+    }
+}
+
+pub struct RecastOutput {
+    pub edge_from: Vec<u32>,
+    pub edge_to: Vec<u32>,
+    pub persistence: Vec<f64>,
     pub topological_overlap: Vec<f64>,
+    pub classes: Vec<u8>,
+    pub persistence_threshold: f64,
+    pub overlap_threshold: f64,
+    pub time_steps: usize,
 }
 
-/// Per-node clustering coefficient and per-edge topological overlap
-/// (Jaccard similarity of endpoint neighborhoods), computed in parallel
-/// across nodes/edges using sorted-adjacency intersection instead of
-/// Python's per-pair `set` membership checks -- the same asymptotic
-/// complexity as the naive approach for a graph this dense, but with a
-/// vastly better constant factor (no per-check Python/hash overhead) and
-/// rayon parallelism across cores.
-pub fn compute_graph_metrics(
+/// Faithful RECAST classification.  Class codes: 0 Friends, 1 Bridges,
+/// 2 Acquaintances, 3 Random.
+pub fn recast_classify(
     node_count: usize,
-    edge_from: &[u32],
-    edge_to: &[u32],
-) -> GraphMetrics {
-    let adjacency = build_adjacency(node_count, edge_from, edge_to);
-
-    let clustering_coefficient: Vec<f64> = (0..node_count)
-        .into_par_iter()
-        .map(|i| {
-            let neighbors = &adjacency[i];
-            let degree = neighbors.len();
-            if degree < 2 {
-                return 0.0;
-            }
-            let links: u64 = neighbors
-                .iter()
-                .map(|&a| count_common_greater_than(neighbors, &adjacency[a as usize], a))
-                .sum();
-            (2.0 * links as f64) / (degree as f64 * (degree as f64 - 1.0))
-        })
-        .collect();
-
-    let topological_overlap: Vec<f64> = (0..edge_from.len())
-        .into_par_iter()
-        .map(|i| {
-            let (u, v) = (edge_from[i] as usize, edge_to[i] as usize);
-            pairwise_topological_overlap(&adjacency, u, v)
-        })
-        .collect();
-
-    GraphMetrics {
-        clustering_coefficient,
-        topological_overlap,
-    }
-}
-
-/// Samples `samples` random node pairs and returns their topological
-/// overlaps' `(1 - p_rnd)`-quantile -- the null-model significance threshold
-/// used by social-tie inference to decide whether an observed pair's overlap
-/// is higher than random chance would produce. Deterministic given `seed`.
-pub fn random_baseline_overlap_threshold(
-    node_count: usize,
-    edge_from: &[u32],
-    edge_to: &[u32],
-    samples: usize,
+    users: &[u32],
+    locations: &[u32],
+    starts: &[i64],
+    ends: &[i64],
+    min_contact_ms: i64,
     p_rnd: f64,
+    replicas: usize,
     seed: u64,
-) -> f64 {
-    use rand::Rng;
-    use rand::SeedableRng;
-    use rand_xoshiro::Xoshiro256PlusPlus;
-
-    if node_count < 2 || samples == 0 {
-        return 0.0;
+    swaps_per_edge: usize,
+) -> RecastOutput {
+    let (events, time_steps) = event_graphs(users, locations, starts, ends, min_contact_ms);
+    let (edge_from, edge_to, persistence) = aggregate(&events, time_steps);
+    if edge_from.is_empty() {
+        return RecastOutput {
+            edge_from,
+            edge_to,
+            persistence,
+            topological_overlap: Vec::new(),
+            classes: Vec::new(),
+            persistence_threshold: 1.0,
+            overlap_threshold: 1.0,
+            time_steps,
+        };
     }
-    let adjacency = build_adjacency(node_count, edge_from, edge_to);
-    let mut rng = Xoshiro256PlusPlus::seed_from_u64(seed);
-
-    let mut overlaps: Vec<f64> = (0..samples)
-        .map(|_| {
-            let a = rng.gen_range(0..node_count);
-            let mut b = rng.gen_range(0..node_count);
-            while b == a {
-                b = rng.gen_range(0..node_count);
-            }
-            pairwise_topological_overlap(&adjacency, a, b)
-        })
+    let topological_overlap = overlaps(node_count, &edge_from, &edge_to);
+    let mut null_persistence = Vec::new();
+    let mut null_overlap = Vec::new();
+    for replica in 0..replicas.max(1) {
+        let mut randomized = Vec::with_capacity(events.len());
+        for (window, event) in events.iter().enumerate() {
+            let stream = seed
+                ^ ((replica as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15))
+                ^ (window as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
+            let mut rng = Xoshiro256PlusPlus::seed_from_u64(stream);
+            randomized.push(randomize(event, swaps_per_edge, &mut rng));
+        }
+        let (rf, rt, rp) = aggregate(&randomized, time_steps);
+        null_persistence.extend(rp);
+        null_overlap.extend(overlaps(node_count, &rf, &rt));
+    }
+    let persistence_threshold = threshold(&mut null_persistence, p_rnd);
+    let overlap_threshold = threshold(&mut null_overlap, p_rnd);
+    let classes = persistence
+        .iter()
+        .zip(&topological_overlap)
+        .map(|(&p, &o)| relationship_class(p, o, persistence_threshold, overlap_threshold))
         .collect();
-
-    overlaps.sort_by(|x, y| x.total_cmp(y));
-    let p_rnd = p_rnd.clamp(0.0, 1.0);
-    let quantile = (1.0 - p_rnd).clamp(0.0, 1.0);
-    let idx = ((overlaps.len() as f64 - 1.0) * quantile).round() as usize;
-    overlaps[idx.min(overlaps.len() - 1)]
+    RecastOutput {
+        edge_from,
+        edge_to,
+        persistence,
+        topological_overlap,
+        classes,
+        persistence_threshold,
+        overlap_threshold,
+        time_steps,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn co_presence_edges_from_two_day_groups() {
-        // Day 0 at location A: users 1,2,3 co-present -> edges (1,2),(1,3),(2,3).
-        // Day 1 at location A: users 1,2 co-present again -> edge (1,2) persists.
-        // Day 0 at location B: users 4,5 -> edge (4,5), independent component.
-        let day = vec![0, 0, 0, 1, 1, 0, 0];
-        let loc = vec![0, 0, 0, 0, 0, 1, 1];
-        let node = vec![1, 2, 3, 1, 2, 4, 5];
-        let (from, to, persistence, skipped_groups, skipped_rows) =
-            build_co_presence_edges(&day, &loc, &node, 200, 2);
-        assert_eq!(skipped_groups, 0);
-        assert_eq!(skipped_rows, 0);
-
-        let mut edges: Vec<(u32, u32, f64)> = from
+    fn interval_contacts_require_overlap() {
+        let (events, steps) = event_graphs(&[0, 1, 2], &[0, 0, 0], &[0, 5, 20], &[10, 15, 30], 1);
+        assert_eq!(steps, 1);
+        assert!(events[0].contains(&(0, 1)));
+        assert_eq!(events[0].len(), 1);
+    }
+    #[test]
+    fn interval_contacts_require_minimum_duration() {
+        let users = [0, 1];
+        let locations = [0, 0];
+        let starts = [0, 60_000];
+        let ends = [360_000, 300_000]; // Four minutes of overlap.
+        let (events, _) = event_graphs(&users, &locations, &starts, &ends, 300_000);
+        assert!(events[0].is_empty());
+        let (events, _) = event_graphs(&users, &locations, &starts, &ends, 240_000);
+        assert!(events[0].contains(&(0, 1)));
+    }
+    #[test]
+    fn swaps_preserve_degrees_and_edge_count() {
+        let event: FxHashSet<Edge> = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 5)]
             .into_iter()
-            .zip(to)
-            .zip(persistence)
-            .map(|((u, v), p)| (u, v, p))
             .collect();
-        edges.sort_by_key(|&(u, v, _)| (u, v));
-
-        assert_eq!(
-            edges,
-            vec![(1, 2, 1.0), (1, 3, 0.5), (2, 3, 0.5), (4, 5, 0.5)]
-        );
-    }
-
-    #[test]
-    fn oversized_group_is_skipped_not_paired() {
-        let day = vec![0, 0, 0];
-        let loc = vec![0, 0, 0];
-        let node = vec![1, 2, 3];
-        let (from, to, persistence, skipped_groups, skipped_rows) =
-            build_co_presence_edges(&day, &loc, &node, 2, 1);
-        assert!(from.is_empty());
-        assert!(to.is_empty());
-        assert!(persistence.is_empty());
-        assert_eq!(skipped_groups, 1);
-        assert_eq!(skipped_rows, 3);
-    }
-
-    #[test]
-    fn duplicate_presence_in_same_group_counted_once() {
-        // Same (day, location, node) row repeated should not produce a
-        // self-loop or double an edge -- dedup happens inside the group.
-        let day = vec![0, 0, 0];
-        let loc = vec![0, 0, 0];
-        let node = vec![1, 1, 2];
-        let (from, to, persistence, _, _) = build_co_presence_edges(&day, &loc, &node, 200, 1);
-        assert_eq!(from, vec![1]);
-        assert_eq!(to, vec![2]);
-        assert_eq!(persistence, vec![1.0]);
-    }
-
-    #[test]
-    fn clustering_coefficient_of_a_triangle_is_one() {
-        // 0-1-2 triangle plus a pendant 3 attached to 0. Node 0 has 3
-        // neighbors (1,2,3) but only the pair (1,2) is connected, so its
-        // own coefficient is 1/3; nodes 1 and 2 have exactly 2 neighbors
-        // each, both connected, so theirs is 1.0; node 3 has degree 1 (< 2)
-        // so its coefficient is 0 by definition.
-        let edge_from = vec![0u32, 1, 0, 0];
-        let edge_to = vec![1u32, 2, 2, 3];
-        let metrics = compute_graph_metrics(4, &edge_from, &edge_to);
-        assert!((metrics.clustering_coefficient[0] - 1.0 / 3.0).abs() < 1e-9);
-        assert!((metrics.clustering_coefficient[1] - 1.0).abs() < 1e-9);
-        assert!((metrics.clustering_coefficient[2] - 1.0).abs() < 1e-9);
-        assert_eq!(metrics.clustering_coefficient[3], 0.0);
-    }
-
-    #[test]
-    fn clustering_coefficient_of_a_star_is_zero() {
-        // Center 0 connected to 1,2,3 with no edges among the leaves.
-        let edge_from = vec![0u32, 0, 0];
-        let edge_to = vec![1u32, 2, 3];
-        let metrics = compute_graph_metrics(4, &edge_from, &edge_to);
-        assert_eq!(metrics.clustering_coefficient[0], 0.0);
-    }
-
-    #[test]
-    fn topological_overlap_matches_hand_computed_jaccard() {
-        // Path 0-1-2-3 plus edge 0-2.
-        let edge_from = vec![0u32, 1, 2, 0];
-        let edge_to = vec![1u32, 2, 3, 2];
-        let metrics = compute_graph_metrics(4, &edge_from, &edge_to);
-        // N(0) = {1,2}, N(1) = {0,2}, N(2) = {0,1,3}, N(3) = {2}
-        // edge (0,1): inter({1,2},{0,2}) = {2} -> 1; union = 2+2-1 = 3 -> 1/3
-        // edge (1,2): inter({0,2},{0,1,3}) = {0} -> 1; union = 2+3-1 = 4 -> 1/4
-        // edge (2,3): inter({0,1,3},{2}) = {} -> 0; union = 3+1-0 = 4 -> 0
-        // edge (0,2): inter({1,2},{0,1,3}) = {1} -> 1; union = 2+3-1 = 4 -> 1/4
-        let mut by_edge: FxHashMap<(u32, u32), f64> = FxHashMap::default();
-        for i in 0..edge_from.len() {
-            by_edge.insert((edge_from[i], edge_to[i]), metrics.topological_overlap[i]);
+        let mut rng = Xoshiro256PlusPlus::seed_from_u64(4);
+        let result = randomize(&event, 10, &mut rng);
+        assert_eq!(event.len(), result.len());
+        let degree =
+            |edges: &FxHashSet<Edge>, n| edges.iter().filter(|&&(a, b)| a == n || b == n).count();
+        for n in 0..6 {
+            assert_eq!(degree(&event, n), degree(&result, n));
         }
-        assert!((by_edge[&(0, 1)] - 1.0 / 3.0).abs() < 1e-9);
-        assert!((by_edge[&(1, 2)] - 1.0 / 4.0).abs() < 1e-9);
-        assert!((by_edge[&(2, 3)] - 0.0).abs() < 1e-9);
-        assert!((by_edge[&(0, 2)] - 1.0 / 4.0).abs() < 1e-9);
     }
-
     #[test]
-    fn empty_graph_produces_empty_metrics() {
-        let metrics = compute_graph_metrics(0, &[], &[]);
-        assert!(metrics.clustering_coefficient.is_empty());
-        assert!(metrics.topological_overlap.is_empty());
-    }
-
-    #[test]
-    fn pairwise_topological_overlap_works_for_non_edge_pairs() {
-        // 0-1, 2-1: node 0 and node 2 are not connected to each other, but
-        // both connect to 1 -- overlap must still be computable directly.
-        let edge_from = vec![0u32, 2];
-        let edge_to = vec![1u32, 1];
-        let adjacency = build_adjacency(3, &edge_from, &edge_to);
-        // N(0) = {1}, N(2) = {1} -> intersection {1}, union {1} -> overlap 1.0
-        assert!((pairwise_topological_overlap(&adjacency, 0, 2) - 1.0).abs() < 1e-9);
-    }
-
-    #[test]
-    fn random_baseline_overlap_threshold_is_deterministic() {
-        let edge_from = vec![0u32, 1, 2, 0];
-        let edge_to = vec![1u32, 2, 3, 2];
-        let a = random_baseline_overlap_threshold(4, &edge_from, &edge_to, 100, 0.1, 42);
-        let b = random_baseline_overlap_threshold(4, &edge_from, &edge_to, 100, 0.1, 42);
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn random_baseline_overlap_threshold_handles_tiny_graph() {
-        let result = random_baseline_overlap_threshold(1, &[], &[], 10, 0.1, 1);
-        assert_eq!(result, 0.0);
+    fn recast_emits_all_four_relationship_classes() {
+        assert_eq!(relationship_class(2.0, 2.0, 1.0, 1.0), 0); // Friends
+        assert_eq!(relationship_class(2.0, 1.0, 1.0, 1.0), 1); // Bridges
+        assert_eq!(relationship_class(1.0, 2.0, 1.0, 1.0), 2); // Acquaintances
+        assert_eq!(relationship_class(1.0, 1.0, 1.0, 1.0), 3); // Random
     }
 }
