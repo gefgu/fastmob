@@ -4,8 +4,7 @@ from typing import Any, Callable
 
 from fastmob._core import DistanceConfig
 from fastmob._core import trajectory_distance as _trajectory_distance_kernel
-from fastmob.measures.evaluation.spatial import _trajectory_input
-from fastmob.utils._common import _prepare_trajectory
+from fastmob.utils._common import _prepare_trajectory, _trajectory_input
 
 
 def _prepare_dtw(**_: Any) -> tuple[str, dict]:
