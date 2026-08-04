@@ -82,22 +82,35 @@ pub fn event_graphs(
             }
         }
     }
-    let mut events: Vec<FxHashSet<Edge>> = (0..steps).map(|_| FxHashSet::default()).collect();
-    for ((window, _), mut intervals) in groups {
-        intervals.sort_unstable_by_key(|x| (x.start, x.end, x.user));
-        let mut active: Vec<Interval> = Vec::new();
-        let target = &mut events[(window - min_window) as usize];
-        for current in intervals {
-            active.retain(|other| other.end > current.start);
-            for other in &active {
-                if other.user != current.user
-                    && other.end.min(current.end) - current.start >= min_contact_ms
-                {
-                    target.insert(edge(other.user, current.user));
+    // Buckets are independent once intervals have been assigned. Sort first so
+    // parallel scheduling cannot affect the subsequent per-day merge order.
+    let mut buckets: Vec<_> = groups.into_iter().collect();
+    buckets.sort_unstable_by_key(|((window, location), _)| (*window, *location));
+    let bucket_edges: Vec<(usize, Vec<Edge>)> = buckets
+        .into_par_iter()
+        .map(|((window, _), mut intervals)| {
+            intervals.sort_unstable_by_key(|x| (x.start, x.end, x.user));
+            let mut active: Vec<Interval> = Vec::new();
+            let mut edges = FxHashSet::default();
+            for current in intervals {
+                active.retain(|other| other.end > current.start);
+                for other in &active {
+                    if other.user != current.user
+                        && other.end.min(current.end) - current.start >= min_contact_ms
+                    {
+                        edges.insert(edge(other.user, current.user));
+                    }
                 }
+                active.push(current);
             }
-            active.push(current);
-        }
+            let mut edges: Vec<_> = edges.into_iter().collect();
+            edges.sort_unstable();
+            ((window - min_window) as usize, edges)
+        })
+        .collect();
+    let mut events: Vec<FxHashSet<Edge>> = (0..steps).map(|_| FxHashSet::default()).collect();
+    for (window, edges) in bucket_edges {
+        events[window].extend(edges);
     }
     TemporalEvents {
         events,
@@ -135,16 +148,13 @@ pub fn flatten_events(temporal: &TemporalEvents) -> TemporalGraphOutput {
     }
 }
 
-fn aggregate(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
-    let mut counts: FxHashMap<Edge, usize> = FxHashMap::default();
-    for event in events {
-        for &e in event {
-            *counts.entry(e).or_insert(0) += 1;
-        }
-    }
+fn aggregate_from_counts(
+    counts: FxHashMap<Edge, usize>,
+    steps: usize,
+) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
     let mut values: Vec<_> = counts.into_iter().collect();
     values.sort_unstable_by_key(|(e, _)| *e);
-    let denom = events.len().max(1) as f64;
+    let denom = steps.max(1) as f64;
     let mut from = Vec::with_capacity(values.len());
     let mut to = Vec::with_capacity(values.len());
     let mut persistence = Vec::with_capacity(values.len());
@@ -154,6 +164,34 @@ fn aggregate(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
         persistence.push(n as f64 / denom);
     }
     (from, to, persistence)
+}
+
+fn aggregate_serial(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+    let mut counts: FxHashMap<Edge, usize> = FxHashMap::default();
+    for event in events {
+        for &e in event {
+            *counts.entry(e).or_insert(0) += 1;
+        }
+    }
+    aggregate_from_counts(counts, events.len())
+}
+
+fn aggregate(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+    let counts = events
+        .par_iter()
+        .fold(FxHashMap::default, |mut counts, event| {
+            for &e in event {
+                *counts.entry(e).or_insert(0) += 1;
+            }
+            counts
+        })
+        .reduce(FxHashMap::default, |mut left, right| {
+            for (edge, count) in right {
+                *left.entry(edge).or_insert(0) += count;
+            }
+            left
+        });
+    aggregate_from_counts(counts, events.len())
 }
 
 fn build_adjacency(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>> {
@@ -166,6 +204,18 @@ fn build_adjacency(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>>
         v.sort_unstable();
         v.dedup();
     });
+    adjacency
+}
+fn build_adjacency_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>> {
+    let mut adjacency = vec![Vec::new(); node_count];
+    for i in 0..from.len() {
+        adjacency[from[i] as usize].push(to[i]);
+        adjacency[to[i] as usize].push(from[i]);
+    }
+    for neighbors in &mut adjacency {
+        neighbors.sort_unstable();
+        neighbors.dedup();
+    }
     adjacency
 }
 fn count_common(a: &[u32], b: &[u32]) -> usize {
@@ -187,6 +237,22 @@ fn overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f64> {
     let adjacency = build_adjacency(node_count, from, to);
     (0..from.len())
         .into_par_iter()
+        .map(|i| {
+            let a = &adjacency[from[i] as usize];
+            let b = &adjacency[to[i] as usize];
+            let inter = count_common(a, b);
+            let union = a.len() + b.len() - inter;
+            if union == 0 {
+                0.0
+            } else {
+                inter as f64 / union as f64
+            }
+        })
+        .collect()
+}
+fn overlaps_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f64> {
+    let adjacency = build_adjacency_serial(node_count, from, to);
+    (0..from.len())
         .map(|i| {
             let a = &adjacency[from[i] as usize];
             let b = &adjacency[to[i] as usize];
@@ -238,7 +304,7 @@ pub fn t_rnd(
 ) -> TemporalEvents {
     let events = temporal
         .events
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(window, event)| {
             let mut rng = Xoshiro256PlusPlus::seed_from_u64(stream_seed(seed, replica, window));
@@ -329,12 +395,47 @@ pub struct RecastOutput {
     pub overlap_threshold: f64,
     pub time_steps: usize,
 }
-fn classify_events(
+/// Generate all replica/window random graphs in one flat Rayon stage.  The
+/// result is reassembled in replica/window order, independent of scheduling.
+fn random_replicas(
+    node_count: usize,
+    temporal: &TemporalEvents,
+    replicas: usize,
+    seed: u64,
+) -> Vec<TemporalEvents> {
+    let replicas = replicas.max(1);
+    let windows = temporal.events.len();
+    if windows == 0 {
+        return (0..replicas)
+            .map(|_| TemporalEvents {
+                events: Vec::new(),
+                window_starts_ms: Vec::new(),
+            })
+            .collect();
+    }
+    let generated: Vec<FxHashSet<Edge>> = (0..replicas * windows)
+        .into_par_iter()
+        .map(|index| {
+            let replica = index / windows;
+            let window = index % windows;
+            let mut rng = Xoshiro256PlusPlus::seed_from_u64(stream_seed(seed, replica, window));
+            rnd(node_count, &temporal.events[window], &mut rng)
+        })
+        .collect();
+    generated
+        .chunks(windows)
+        .map(|events| TemporalEvents {
+            events: events.to_vec(),
+            window_starts_ms: temporal.window_starts_ms.clone(),
+        })
+        .collect()
+}
+
+fn classify_events_with_randoms(
     node_count: usize,
     temporal: &TemporalEvents,
     p_rnd: f64,
-    replicas: usize,
-    seed: u64,
+    randoms: &[TemporalEvents],
 ) -> (RecastOutput, Vec<f64>, Vec<f64>) {
     let (edge_from, edge_to, persistence) = aggregate(&temporal.events);
     let time_steps = temporal.events.len();
@@ -355,13 +456,21 @@ fn classify_events(
         );
     }
     let topological_overlap = overlaps(node_count, &edge_from, &edge_to);
+    // Replica-level tasks own their aggregation and serial overlap calculation;
+    // this avoids nesting Rayon work beneath the flat replica/window stage.
+    let null_metrics: Vec<_> = randoms
+        .par_iter()
+        .map(|random| {
+            let (rf, rt, rp) = aggregate_serial(&random.events);
+            let overlap = overlaps_serial(node_count, &rf, &rt);
+            (rp, overlap)
+        })
+        .collect();
     let mut null_persistence = Vec::new();
     let mut null_overlap = Vec::new();
-    for replica in 0..replicas.max(1) {
-        let random = t_rnd(node_count, temporal, replica, seed);
-        let (rf, rt, rp) = aggregate(&random.events);
-        null_persistence.extend(rp);
-        null_overlap.extend(overlaps(node_count, &rf, &rt));
+    for (persistence, overlap) in null_metrics {
+        null_persistence.extend(persistence);
+        null_overlap.extend(overlap);
     }
     let persistence_threshold = threshold(&mut null_persistence, p_rnd);
     let overlap_threshold = threshold(&mut null_overlap, p_rnd);
@@ -384,6 +493,17 @@ fn classify_events(
         null_persistence,
         null_overlap,
     )
+}
+
+fn classify_events(
+    node_count: usize,
+    temporal: &TemporalEvents,
+    p_rnd: f64,
+    replicas: usize,
+    seed: u64,
+) -> (RecastOutput, Vec<f64>, Vec<f64>) {
+    let randoms = random_replicas(node_count, temporal, replicas, seed);
+    classify_events_with_randoms(node_count, temporal, p_rnd, &randoms)
 }
 
 /// Faithful RECAST classification. Class codes: 0 Friends, 1 Bridges, 2 Acquaintances, 3 Random.
@@ -436,6 +556,42 @@ fn cumulative_clustering(node_count: usize, temporal: &TemporalEvents) -> Vec<f6
         .map(|event| {
             aggregate.extend(event.iter().copied());
             average_clustering(node_count, &aggregate)
+        })
+        .collect()
+}
+fn average_clustering_serial(node_count: usize, event: &FxHashSet<Edge>) -> f64 {
+    if node_count == 0 {
+        return 0.0;
+    }
+    let (from, to): (Vec<_>, Vec<_>) = event.iter().copied().unzip();
+    let adjacency = build_adjacency_serial(node_count, &from, &to);
+    let total: f64 = adjacency
+        .iter()
+        .map(|neighbors| {
+            if neighbors.len() < 2 {
+                return 0.0;
+            }
+            let mut links = 0usize;
+            for i in 0..neighbors.len() {
+                for &v in &neighbors[(i + 1)..] {
+                    if adjacency[neighbors[i] as usize].binary_search(&v).is_ok() {
+                        links += 1;
+                    }
+                }
+            }
+            2.0 * links as f64 / (neighbors.len() * (neighbors.len() - 1)) as f64
+        })
+        .sum();
+    total / node_count as f64
+}
+fn cumulative_clustering_serial(node_count: usize, temporal: &TemporalEvents) -> Vec<f64> {
+    let mut aggregate = FxHashSet::default();
+    temporal
+        .events
+        .iter()
+        .map(|event| {
+            aggregate.extend(event.iter().copied());
+            average_clustering_serial(node_count, &aggregate)
         })
         .collect()
 }
@@ -510,22 +666,20 @@ pub fn validate_recast(
     seed: u64,
 ) -> RecastValidationOutput {
     let temporal = event_graphs(users, locations, starts, ends, min_contact_ms);
+    let randoms = random_replicas(node_count, &temporal, replicas, seed);
     let (classification, random_persistence, random_overlap) =
-        classify_events(node_count, &temporal, p_rnd, replicas, seed);
+        classify_events_with_randoms(node_count, &temporal, p_rnd, &randoms);
     let full_observed_clustering = cumulative_clustering(node_count, &temporal);
-    let randoms: Vec<_> = (0..replicas.max(1))
-        .map(|r| t_rnd(node_count, &temporal, r, seed))
-        .collect();
     let full_series: Vec<_> = randoms
-        .iter()
-        .map(|x| cumulative_clustering(node_count, x))
+        .par_iter()
+        .map(|x| cumulative_clustering_serial(node_count, x))
         .collect();
     let (full_random_mean, full_random_std) = mean_std(&full_series);
     let observed_random = random_only_events(&temporal, &classification);
     let random_only_observed_clustering = cumulative_clustering(node_count, &observed_random);
     let random_only_series: Vec<_> = randoms
-        .iter()
-        .map(|x| cumulative_clustering(node_count, &random_only_events(x, &classification)))
+        .par_iter()
+        .map(|x| cumulative_clustering_serial(node_count, &random_only_events(x, &classification)))
         .collect();
     let (random_only_random_mean, random_only_random_std) = mean_std(&random_only_series);
     RecastValidationOutput {
@@ -547,6 +701,34 @@ pub fn validate_recast(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rayon::ThreadPoolBuilder;
+
+    fn parallel_fixture() -> (Vec<u32>, Vec<u32>, Vec<i64>, Vec<i64>) {
+        (
+            vec![0, 1, 2, 0, 1, 3, 2, 3],
+            vec![0, 0, 0, 1, 1, 1, 0, 1],
+            vec![
+                0,
+                60_000,
+                120_000,
+                DAY_MS + 0,
+                DAY_MS + 60_000,
+                DAY_MS + 120_000,
+                2 * DAY_MS,
+                2 * DAY_MS + 60_000,
+            ],
+            vec![
+                300_000,
+                360_000,
+                420_000,
+                DAY_MS + 300_000,
+                DAY_MS + 360_000,
+                DAY_MS + 420_000,
+                2 * DAY_MS + 300_000,
+                2 * DAY_MS + 360_000,
+            ],
+        )
+    }
     #[test]
     fn interval_contacts_require_overlap() {
         let t = event_graphs(&[0, 1, 2], &[0, 0, 0], &[0, 5, 20], &[10, 15, 30], 1);
@@ -574,5 +756,65 @@ mod tests {
         assert_eq!(relationship_class(2.0, 1.0, 1.0, 1.0), 1);
         assert_eq!(relationship_class(1.0, 2.0, 1.0, 1.0), 2);
         assert_eq!(relationship_class(1.0, 1.0, 1.0, 1.0), 3);
+    }
+    #[test]
+    fn classifier_is_stable_across_rayon_thread_counts() {
+        let (users, locations, starts, ends) = parallel_fixture();
+        let single = ThreadPoolBuilder::new().num_threads(1).build().unwrap();
+        let many = ThreadPoolBuilder::new().num_threads(4).build().unwrap();
+        let one = single
+            .install(|| recast_classify(4, &users, &locations, &starts, &ends, 60_000, 0.5, 3, 9));
+        let four = many
+            .install(|| recast_classify(4, &users, &locations, &starts, &ends, 60_000, 0.5, 3, 9));
+        assert_eq!(one.edge_from, four.edge_from);
+        assert_eq!(one.edge_to, four.edge_to);
+        assert_eq!(one.persistence, four.persistence);
+        assert_eq!(one.topological_overlap, four.topological_overlap);
+        assert_eq!(one.classes, four.classes);
+        assert_eq!(one.persistence_threshold, four.persistence_threshold);
+        assert_eq!(one.overlap_threshold, four.overlap_threshold);
+    }
+    #[test]
+    fn temporal_randomization_is_stable_across_rayon_thread_counts() {
+        let (users, locations, starts, ends) = parallel_fixture();
+        let temporal = event_graphs(&users, &locations, &starts, &ends, 60_000);
+        let single = ThreadPoolBuilder::new().num_threads(1).build().unwrap();
+        let many = ThreadPoolBuilder::new().num_threads(4).build().unwrap();
+        let one = single.install(|| flatten_events(&t_rnd(4, &temporal, 2, 17)));
+        let four = many.install(|| flatten_events(&t_rnd(4, &temporal, 2, 17)));
+        assert_eq!(one.edge_offsets, four.edge_offsets);
+        assert_eq!(one.edge_from, four.edge_from);
+        assert_eq!(one.edge_to, four.edge_to);
+    }
+    #[test]
+    fn validation_keeps_classification_stable_across_rayon_thread_counts() {
+        let (users, locations, starts, ends) = parallel_fixture();
+        let single = ThreadPoolBuilder::new().num_threads(1).build().unwrap();
+        let many = ThreadPoolBuilder::new().num_threads(4).build().unwrap();
+        let one = single
+            .install(|| validate_recast(4, &users, &locations, &starts, &ends, 60_000, 0.5, 3, 23));
+        let four = many
+            .install(|| validate_recast(4, &users, &locations, &starts, &ends, 60_000, 0.5, 3, 23));
+        assert_eq!(one.classification.edge_from, four.classification.edge_from);
+        assert_eq!(one.classification.edge_to, four.classification.edge_to);
+        assert_eq!(one.classification.classes, four.classification.classes);
+        assert_eq!(
+            one.classification.persistence_threshold,
+            four.classification.persistence_threshold
+        );
+        assert_eq!(
+            one.classification.overlap_threshold,
+            four.classification.overlap_threshold
+        );
+        for (left, right) in one.full_random_mean.iter().zip(&four.full_random_mean) {
+            assert!((left - right).abs() < 1e-12);
+        }
+        for (left, right) in one
+            .random_only_random_std
+            .iter()
+            .zip(&four.random_only_random_std)
+        {
+            assert!((left - right).abs() < 1e-12);
+        }
     }
 }

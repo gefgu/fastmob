@@ -23,6 +23,11 @@ Every observed aggregate edge is returned as one of:
 The defaults reproduce the paper's five randomized replicas, while keeping
 the graph construction, randomization, and metric calculations in Rust.
 
+RECAST parallelizes independent `(day, location)` contact buckets and T-RND
+replica/window work through Rayon. The public API intentionally has no worker
+parameter: use the `RAYON_NUM_THREADS` environment variable to bound the
+process-wide Rayon pool when coordinating CPU use with other workloads.
+
 `validate_recast_from_staypoints` adds the validation artifacts from the paper
 without expanding into its application-specific routing experiments: pooled
 null distributions for the Figure 4 CCDFs, full cumulative clustering curves
