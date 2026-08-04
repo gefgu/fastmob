@@ -6,10 +6,30 @@ ties from mobility observations.  It is deliberately separate from
 home.
 """
 
-from .recast import RecastClass, RecastResult, recast_from_staypoints
+from .recast import (
+    RecastClass,
+    RecastClusteringComparison,
+    RecastEventGraph,
+    RecastResult,
+    RecastTemporalGraph,
+    RecastValidation,
+    recast_from_staypoints,
+    rnd,
+    t_rnd,
+    temporal_graph_from_staypoints,
+    validate_recast_from_staypoints,
+)
 
 __all__ = [
     "RecastClass",
+    "RecastClusteringComparison",
+    "RecastEventGraph",
     "RecastResult",
+    "RecastTemporalGraph",
+    "RecastValidation",
     "recast_from_staypoints",
+    "rnd",
+    "t_rnd",
+    "temporal_graph_from_staypoints",
+    "validate_recast_from_staypoints",
 ]

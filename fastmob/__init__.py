@@ -90,13 +90,29 @@ from .preprocessing import (
     trajectory_to_od,
 )
 from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
-from .social import RecastClass, RecastResult, recast_from_staypoints
+from .social import (
+    RecastClass,
+    RecastClusteringComparison,
+    RecastEventGraph,
+    RecastResult,
+    RecastTemporalGraph,
+    RecastValidation,
+    recast_from_staypoints,
+    rnd,
+    t_rnd,
+    temporal_graph_from_staypoints,
+    validate_recast_from_staypoints,
+)
 
 __all__ = [
     "FlowDataFrame",
     "Locations",
     "RecastClass",
+    "RecastClusteringComparison",
+    "RecastEventGraph",
     "RecastResult",
+    "RecastTemporalGraph",
+    "RecastValidation",
     "Positionfixes",
     "Staypoints",
     "Tours",
@@ -180,6 +196,10 @@ __all__ = [
     "stvd_emd",
     "time_bin_matrix_jensen_shannon_divergence",
     "recast_from_staypoints",
+    "rnd",
+    "t_rnd",
+    "temporal_graph_from_staypoints",
+    "validate_recast_from_staypoints",
     "trajectory",
     "trajectory_common_part_of_commuters",
     "trajectory_common_part_of_commuters_multi",

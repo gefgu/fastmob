@@ -7,9 +7,10 @@ for temporal physical contacts inferred from globally assigned staypoints.
 matches RECAST's human-mobility setting and avoids exposing an arbitrary time
 delta as a social parameter. A daily edge is created only when two users' stay
 intervals overlap at a shared global location for at least
-`min_minutes_for_encounter` (default: 5 minutes). It then uses T-RND: each
-daily event graph is independently randomized by exact degree-preserving
-double-edge swaps. The pooled randomized persistence and topological-overlap
+`min_minutes_for_encounter` (default: 5 minutes). It then uses the paper's
+T-RND: each daily event graph is independently sampled with the degree-product
+RND probability. This preserves degrees in expectation rather than exactly in
+every replica. The pooled randomized persistence and topological-overlap
 distributions define both thresholds at `p_rnd`.
 
 Every observed aggregate edge is returned as one of:
@@ -21,6 +22,13 @@ Every observed aggregate edge is returned as one of:
 
 The defaults reproduce the paper's five randomized replicas, while keeping
 the graph construction, randomization, and metric calculations in Rust.
+
+`validate_recast_from_staypoints` adds the validation artifacts from the paper
+without expanding into its application-specific routing experiments: pooled
+null distributions for the Figure 4 CCDFs, full cumulative clustering curves
+(Figure 3), and random-edge-only clustering curves (Figure 8).  The dedicated
+`temporal_graph_from_staypoints`, `rnd`, and `t_rnd` APIs expose the underlying
+Arrow-backed event graphs for independent inspection.
 
 ---
 
@@ -36,6 +44,24 @@ the graph construction, randomization, and metric calculations in Rust.
 
 ---
 
+::: fastmob.social.RecastTemporalGraph
+    options:
+      show_source: false
+
+---
+
+::: fastmob.social.RecastValidation
+    options:
+      show_source: false
+
+---
+
 ::: fastmob.social.recast_from_staypoints
+    options:
+      show_source: false
+
+---
+
+::: fastmob.social.validate_recast_from_staypoints
     options:
       show_source: false

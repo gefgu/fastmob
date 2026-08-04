@@ -16,10 +16,10 @@ use pyo3::prelude::*;
 
 use integration::events_py;
 use measures::collective::{square_displacement, visitation_law};
-use social::co_presence_network;
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{trajectory_cpc, wasserstein};
+use measures::fitting::daily_location_lognormal as fitting_daily_location_lognormal;
 use measures::fitting::truncated_powerlaw as fitting_truncated_powerlaw;
 use measures::individual::{
     activity, diversity, entropy, factorization, home_location, indexed_user_indices,
@@ -32,6 +32,7 @@ use preprocessing::{
     cdr, clustering, compress_traj_py, filter_traj_py, h3_py, outliers_traj_py, segment_traj_py,
     simplify_traj_py, stay_locations_py,
 };
+use social::co_presence_network;
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -201,12 +202,17 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        co_presence_network::build_co_presence_edges_py,
+        co_presence_network::recast_classify_py,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(co_presence_network::graph_metrics_py, m)?)?;
     m.add_function(wrap_pyfunction!(
-        co_presence_network::random_baseline_overlap_threshold_py,
+        co_presence_network::recast_event_graphs_py,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(co_presence_network::recast_rnd_py, m)?)?;
+    m.add_function(wrap_pyfunction!(co_presence_network::recast_t_rnd_py, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        co_presence_network::recast_validate_py,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(motifs::canonical_adjacency_form, m)?)?;

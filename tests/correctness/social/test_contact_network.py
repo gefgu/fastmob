@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob.core import Locations, Staypoints
-from fastmob.social import RecastClass, recast_from_staypoints
+from fastmob.social import (
+    RecastClass,
+    recast_from_staypoints,
+    rnd,
+    t_rnd,
+    temporal_graph_from_staypoints,
+    validate_recast_from_staypoints,
+)
 
 
 def _locations() -> Locations:
@@ -59,3 +65,29 @@ def test_recast_requires_global_locations_and_intervals():
 def test_recast_minimum_encounter_duration_filters_short_overlap():
     result = recast_from_staypoints(_staypoints(), _locations(), min_minutes_for_encounter=16, p_rnd=0.5)
     assert len(result.classes) == 0
+
+
+def test_temporal_graph_and_paper_random_generators_are_arrow_backed_and_seeded():
+    graph = temporal_graph_from_staypoints(_staypoints(), _locations(), min_minutes_for_encounter=5)
+    assert graph.time_steps == 1
+    assert graph.event(0).edge_from.to_pylist() == [0]
+    assert graph.node_ids.to_pylist() == ["alice", "bob", "carol"]
+    first = rnd(graph.event(0), seed=11)
+    second = rnd(graph.event(0), seed=11)
+    assert first.edge_from.equals(second.edge_from)
+    replicas = t_rnd(graph, random_replicates=2, seed=11)
+    assert len(replicas) == 2
+    assert all(replica.window_starts_ms.equals(graph.window_starts_ms) for replica in replicas)
+
+
+def test_validation_exposes_paper_ccdf_and_clustering_diagnostics():
+    validation = validate_recast_from_staypoints(
+        _staypoints(), _locations(), min_minutes_for_encounter=5, p_rnd=0.5, random_replicates=2, seed=3
+    )
+    assert validation.classification.time_steps == 1
+    assert validation.persistence_observed.equals(validation.classification.edge_persistence)
+    assert len(validation.persistence_null) >= 0
+    assert len(validation.full_clustering.observed) == validation.graph.time_steps
+    assert len(validation.full_clustering.random_mean) == validation.graph.time_steps
+    assert len(validation.full_clustering.random_std) == validation.graph.time_steps
+    assert len(validation.random_only_clustering.observed) == validation.graph.time_steps
