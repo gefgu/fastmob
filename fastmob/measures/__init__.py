@@ -1,5 +1,7 @@
 from .collective import (
+    build_stvd,
     homes_per_location,
+    mean_area_volume,
     mean_square_displacement,
     od_matrix,
     od_metrics_per_area,
@@ -51,7 +53,6 @@ from .individual import (
     location_frequency,
     max_distance_from_home,
     maximum_distance,
-    mean_area_volume,
     motif_distribution,
     number_of_locations,
     number_of_visits,
@@ -71,6 +72,7 @@ __all__ = [
     "ComparisonResult",
     "VisitationLawFit",
     "activity_transition_matrix",
+    "build_stvd",
     "common_part_of_commuters",
     "common_part_of_commuters_distance",
     "common_part_of_links",

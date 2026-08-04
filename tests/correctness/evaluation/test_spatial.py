@@ -14,8 +14,10 @@ def _skip_if_no_core():
     )
 
 
-def _dist_df(centroid: str, time_bin: str, mean_volume: float) -> pd.DataFrame:
-    return pd.DataFrame({"centroid": [centroid], "time_bin": [time_bin], "mean_volume": [mean_volume]})
+def _dist_df(lat: float, lng: float, time_bin: str, mean_volume: float) -> pd.DataFrame:
+    return pd.DataFrame(
+        {"center_lat": [lat], "center_lng": [lng], "time_bin": [time_bin], "mean_volume": [mean_volume]}
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -202,18 +204,18 @@ def test_identical_single_point_zero_distance():
     _skip_if_no_core()
     from fastmob.measures.evaluation import stvd_emd
 
-    df = _dist_df("POINT (0 0)", "12:00", 1.0)
+    df = _dist_df(0.0, 0.0, "12:00", 1.0)
     dist = stvd_emd(df, df.copy())
     assert dist == pytest.approx(0.0, abs=1e-3)
 
 
 def test_spatial_displacement_100m():
-    """Single-point distributions 100 m apart (same time) → positive distance."""
+    """Single-point distributions ~100 m apart (same time) → positive distance."""
     _skip_if_no_core()
     from fastmob.measures.evaluation import stvd_emd
 
-    df_a = _dist_df("POINT (0 0)", "12:00", 1.0)
-    df_b = _dist_df("POINT (100 0)", "12:00", 1.0)
+    df_a = _dist_df(0.0, 0.0, "12:00", 1.0)
+    df_b = _dist_df(0.0, 0.0009, "12:00", 1.0)  # ~100 m eastward at the equator
     dist_100 = stvd_emd(df_a, df_b, alpha=10.0)
     dist_0 = stvd_emd(df_a, df_a.copy(), alpha=10.0)
     assert dist_100 > dist_0
@@ -225,8 +227,8 @@ def test_temporal_displacement_with_alpha():
     _skip_if_no_core()
     from fastmob.measures.evaluation import stvd_emd
 
-    df_a = _dist_df("POINT (0 0)", "12:00", 1.0)
-    df_b = _dist_df("POINT (0 0)", "12:10", 1.0)
+    df_a = _dist_df(0.0, 0.0, "12:00", 1.0)
+    df_b = _dist_df(0.0, 0.0, "12:10", 1.0)
     dist = stvd_emd(df_a, df_b, alpha=10.0)
     assert dist > 0.0
 
@@ -236,10 +238,10 @@ def test_cyclical_time_wraps_around():
     _skip_if_no_core()
     from fastmob.measures.evaluation import stvd_emd
 
-    df_a_cyclic = _dist_df("POINT (0 0)", "23:55", 1.0)
-    df_b_cyclic = _dist_df("POINT (0 0)", "00:05", 1.0)
-    df_a_linear = _dist_df("POINT (0 0)", "00:00", 1.0)
-    df_b_linear = _dist_df("POINT (0 0)", "00:10", 1.0)
+    df_a_cyclic = _dist_df(0.0, 0.0, "23:55", 1.0)
+    df_b_cyclic = _dist_df(0.0, 0.0, "00:05", 1.0)
+    df_a_linear = _dist_df(0.0, 0.0, "00:00", 1.0)
+    df_b_linear = _dist_df(0.0, 0.0, "00:10", 1.0)
 
     dist_cyclic = stvd_emd(df_a_cyclic, df_b_cyclic, alpha=10.0, cyclical_period=1440.0)
     dist_linear = stvd_emd(df_a_linear, df_b_linear, alpha=10.0, cyclical_period=1440.0)
@@ -253,14 +255,16 @@ def test_symmetry():
 
     df_a = pd.DataFrame(
         {
-            "centroid": ["POINT (0 0)", "POINT (200 0)"],
+            "center_lat": [0.0, 0.0],
+            "center_lng": [0.0, 0.002],
             "time_bin": ["10:00", "14:00"],
             "mean_volume": [0.3, 0.7],
         }
     )
     df_b = pd.DataFrame(
         {
-            "centroid": ["POINT (100 0)", "POINT (300 0)"],
+            "center_lat": [0.0, 0.0],
+            "center_lng": [0.001, 0.003],
             "time_bin": ["11:00", "15:00"],
             "mean_volume": [0.5, 0.5],
         }
@@ -277,12 +281,13 @@ def test_explicit_column_names():
 
     df = pd.DataFrame(
         {
-            "geo": ["POINT (0 0)"],
+            "glat": [0.0],
+            "glng": [0.0],
             "ts": ["12:00"],
             "vol": [1.0],
         }
     )
-    dist = stvd_emd(df, df.copy(), centroid_col="geo", time_col="ts", weight_col="vol")
+    dist = stvd_emd(df, df.copy(), lat_col="glat", lng_col="glng", time_col="ts", weight_col="vol")
     assert dist == pytest.approx(0.0, abs=1e-3)
 
 
@@ -291,19 +296,19 @@ def test_returns_float():
     _skip_if_no_core()
     from fastmob.measures.evaluation import stvd_emd
 
-    df = _dist_df("POINT (0 0)", "12:00", 1.0)
+    df = _dist_df(0.0, 0.0, "12:00", 1.0)
     result = stvd_emd(df, df.copy())
     assert isinstance(result, float)
 
 
-def test_invalid_num_projections_raises():
-    """num_projections <= 0 must raise ValueError."""
+def test_invalid_cyclical_period_raises():
+    """cyclical_period <= 0 must raise ValueError."""
     _skip_if_no_core()
     from fastmob.measures.evaluation import stvd_emd
 
-    df = _dist_df("POINT (0 0)", "12:00", 1.0)
-    with pytest.raises(ValueError, match="num_projections must be positive"):
-        stvd_emd(df, df.copy(), num_projections=0)
+    df = _dist_df(0.0, 0.0, "12:00", 1.0)
+    with pytest.raises(ValueError, match="cyclical_period must be positive"):
+        stvd_emd(df, df.copy(), cyclical_period=0.0)
 
 
 def test_polars_parity():
@@ -314,32 +319,22 @@ def test_polars_parity():
 
     df_a_pd = pd.DataFrame(
         {
-            "centroid": ["POINT (0 0)", "POINT (200 0)"],
+            "center_lat": [0.0, 0.0],
+            "center_lng": [0.0, 0.002],
             "time_bin": ["10:00", "14:00"],
             "mean_volume": [0.3, 0.7],
         }
     )
     df_b_pd = pd.DataFrame(
         {
-            "centroid": ["POINT (100 0)", "POINT (300 0)"],
+            "center_lat": [0.0, 0.0],
+            "center_lng": [0.001, 0.003],
             "time_bin": ["11:00", "15:00"],
             "mean_volume": [0.5, 0.5],
         }
     )
-    df_a_pl = polars.DataFrame(
-        {
-            "centroid": ["POINT (0 0)", "POINT (200 0)"],
-            "time_bin": ["10:00", "14:00"],
-            "mean_volume": [0.3, 0.7],
-        }
-    )
-    df_b_pl = polars.DataFrame(
-        {
-            "centroid": ["POINT (100 0)", "POINT (300 0)"],
-            "time_bin": ["11:00", "15:00"],
-            "mean_volume": [0.5, 0.5],
-        }
-    )
+    df_a_pl = polars.from_pandas(df_a_pd)
+    df_b_pl = polars.from_pandas(df_b_pd)
 
     dist_pd = stvd_emd(df_a_pd, df_b_pd)
     dist_pl = stvd_emd(df_a_pl, df_b_pl)
@@ -373,15 +368,15 @@ def test_stvd_emd_helper_accepts_numpy():
     from fastmob._core import stvd_emd as stvd_emd_core
     from fastmob.measures.evaluation import stvd_emd
 
-    df = _dist_df("POINT (0 0)", "12:00", 1.0)
+    df = _dist_df(0.0, 0.0, "12:00", 1.0)
     expected = stvd_emd(df, df.copy())
 
-    xs = np.array([0.0], dtype=np.float64)
-    ys = np.array([0.0], dtype=np.float64)
+    lats = np.array([0.0], dtype=np.float64)
+    lngs = np.array([0.0], dtype=np.float64)
     ts = np.array([720.0], dtype=np.float64)
     ws = np.array([1.0], dtype=np.float64)
 
-    result = stvd_emd_core(xs, ys, ts, ws, xs, ys, ts, ws, 10.0, 1440.0, 50)
+    result = stvd_emd_core(lats, lngs, ts, ws, lats, lngs, ts, ws, 10.0, 1440.0)
     assert isinstance(result, float)
     assert result == pytest.approx(expected, abs=1e-10)
 
@@ -397,19 +392,19 @@ def test_stvd_emd_helper_accepts_arrow():
     pa = pytest.importorskip("pyarrow", reason="Install pyarrow to run this test")
     from fastmob._core import stvd_emd as stvd_emd_core
 
-    xs = pa.array([0.0], type=pa.float64())
-    ys = pa.array([0.0], type=pa.float64())
+    lats = pa.array([0.0], type=pa.float64())
+    lngs = pa.array([0.0], type=pa.float64())
     ts = pa.array([720.0], type=pa.float64())
     ws = pa.array([1.0], type=pa.float64())
 
-    result_arrow = stvd_emd_core(xs, ys, ts, ws, xs, ys, ts, ws, 10.0, 1440.0, 50)
+    result_arrow = stvd_emd_core(lats, lngs, ts, ws, lats, lngs, ts, ws, 10.0, 1440.0)
     assert isinstance(result_arrow, float)
 
-    xs_np = np.array([0.0], dtype=np.float64)
-    ys_np = np.array([0.0], dtype=np.float64)
+    lats_np = np.array([0.0], dtype=np.float64)
+    lngs_np = np.array([0.0], dtype=np.float64)
     ts_np = np.array([720.0], dtype=np.float64)
     ws_np = np.array([1.0], dtype=np.float64)
-    result_numpy = stvd_emd_core(xs_np, ys_np, ts_np, ws_np, xs_np, ys_np, ts_np, ws_np, 10.0, 1440.0, 50)
+    result_numpy = stvd_emd_core(lats_np, lngs_np, ts_np, ws_np, lats_np, lngs_np, ts_np, ws_np, 10.0, 1440.0)
 
     assert result_arrow == pytest.approx(result_numpy, abs=1e-10)
 
@@ -434,5 +429,4 @@ def test_stvd_emd_helper_non_contiguous_numpy_raises():
             non_contig,
             10.0,
             1440.0,
-            50,
         )

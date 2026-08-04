@@ -249,6 +249,15 @@ class Staypoints(BaseDataFrame):
             started_at_col=self.started_at_col, finished_at_col=self.finished_at_col, parameters=self.parameters,
         )
 
+    def build_stvd(self, locations: Locations, **kwargs: Any) -> Any:
+        """Aggregate these staypoints against a global Locations catalogue into an STVD frame.
+
+        See :func:`fastmob.measures.collective.build_stvd`.
+        """
+        from ..measures.collective.stvd import build_stvd as _build_stvd
+
+        return _build_stvd(self, locations, **kwargs)
+
     def generate_daily_motifs(
         self,
         locations: Locations,

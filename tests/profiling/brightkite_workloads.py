@@ -348,7 +348,7 @@ def _fastmob_workloads() -> dict[str, Workload]:
         "mean_area_volume": _make_workload(
             "mean_area_volume",
             "visits",
-            "fastmob.measures.individual.mean_area_volume.mean_area_volume",
+            "fastmob.measures.collective.stvd.mean_area_volume",
             "fastmob mean area volume",
         ),
         "daily_motifs": _make_workload(

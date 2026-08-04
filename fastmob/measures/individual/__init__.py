@@ -10,7 +10,6 @@ from .k_radius_of_gyration import k_radius_of_gyration
 from .location_frequency import location_frequency
 from .max_distance_from_home import max_distance_from_home
 from .maximum_distance import maximum_distance
-from .mean_area_volume import mean_area_volume
 from .mobility_profiling import exploration_profiling, intermittance_and_degree_of_return
 from .motifs import daily_motifs, motif_distribution
 from .network_distance import jump_lengths_km, radius_of_gyration_km
@@ -43,7 +42,6 @@ __all__ = [
     "location_frequency",
     "max_distance_from_home",
     "maximum_distance",
-    "mean_area_volume",
     "motif_distribution",
     "number_of_locations",
     "number_of_visits",

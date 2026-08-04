@@ -244,14 +244,6 @@ INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
         {},
         input_kind="visits",
     ),
-    BenchmarkSpec(
-        "mean_area_volume",
-        "fastmob.measures.individual.mean_area_volume",
-        "skmob.measures.individual",
-        "mean_area_volume",
-        {},
-        input_kind="visits",
-    ),
 )
 
 EXPENSIVE_INDIVIDUAL_METRICS: tuple[BenchmarkSpec, ...] = (
@@ -270,7 +262,6 @@ FASTMOB_ONLY_INDIVIDUAL_METRICS = {
     "trajectory_entropy",
     "trajectory_predictability",
     "regularity",
-    "mean_area_volume",
 }
 
 
@@ -345,7 +336,6 @@ def metric_kwargs_for_library(
         not in [
             "random_entropy",
             "uncorrelated_entropy",
-            "mean_area_volume",
             "trajectory_entropy",
             "trajectory_predictability",
         ]

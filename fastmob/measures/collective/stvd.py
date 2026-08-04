@@ -1,4 +1,13 @@
-"""Mean area volume measure for visit data."""
+"""Spatio-temporal volume distribution (STVD): mean area volume + Locations-joined builder.
+
+``mean_area_volume`` aggregates raw visit rows into a per-area, per-time-bin mean volume.
+``build_stvd`` wraps it for the `Staypoints`/`Locations` hierarchy: it aggregates a
+`Staypoints` table keyed on a global `Locations` catalogue's location IDs, then joins in
+each location's centroid, producing the exact ``(location_id, time_bin, mean_volume,
+center_lat, center_lng)`` shape :func:`fastmob.measures.evaluation.stvd_emd` expects. Call it
+once per side (e.g. two time periods, or observed vs. simulated) against the same `Locations`
+catalogue, then compare the two results with ``stvd_emd``.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +17,8 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.locations_dataframe import Locations
+from fastmob.core.staypoints_dataframe import Staypoints
 from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,
@@ -75,7 +86,7 @@ def mean_area_volume(
     Examples
     --------
     >>> import pandas as pd
-    >>> from fastmob.measures.individual import mean_area_volume
+    >>> from fastmob.measures.collective import mean_area_volume
     >>> visits = pd.DataFrame(
     ...     {
     ...         "user_id": ["u1", "u2", "u1"],
@@ -178,3 +189,90 @@ def mean_area_volume(
         },
         backend=nw_df.implementation,
     ).to_native()
+
+
+def build_stvd(
+    staypoints: Staypoints | Any,
+    locations: Locations,
+    *,
+    location_id_col: str = "location_id",
+) -> Any:
+    """Aggregate staypoints against a global Locations catalogue into an STVD frame.
+
+    Combines :func:`mean_area_volume` (per-location, per-time-bin mean visitor volume) with
+    each location's centroid from ``locations``, producing the ``(location_id, time_bin,
+    mean_volume, center_lat, center_lng)`` shape :func:`fastmob.measures.evaluation.stvd_emd`
+    consumes directly. Call this once per side against the *same* ``locations`` catalogue so
+    the two resulting distributions are defined over the same physical places, then compare
+    them with ``stvd_emd``.
+
+    Parameters
+    ----------
+    staypoints : Staypoints or DataFrame-like
+        Staypoints already assigned to ``locations`` (e.g. via
+        :meth:`Staypoints.generate_global_locations` or
+        :meth:`Staypoints.associate_global_locations`). Raw dataframes are wrapped in a
+        `Staypoints` instance with auto-detected columns.
+    locations : Locations
+        A global-scope `Locations` catalogue (see :meth:`Locations.require_global`).
+    location_id_col : str, optional
+        Column on ``staypoints`` holding each staypoint's assigned location ID. Default
+        ``"location_id"``.
+
+    Returns
+    -------
+    DataFrame-like
+        Same backend as ``staypoints``. Columns: ``location_id``, ``time_bin``,
+        ``mean_volume``, ``center_lat``, ``center_lng``.
+
+    Raises
+    ------
+    ValueError
+        If ``locations`` is not global-scoped, or ``staypoints`` references location IDs
+        absent from ``locations``.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from fastmob.core import Locations, Staypoints
+    >>> from fastmob.measures.collective import build_stvd
+    >>> staypoints = Staypoints(
+    ...     pd.DataFrame(
+    ...         {
+    ...             "uid": ["u1", "u2"],
+    ...             "lat": [0.0, 0.0],
+    ...             "lng": [0.0, 0.0],
+    ...             "started_at": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 08:00"]),
+    ...             "finished_at": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 08:00"]),
+    ...             "location_id": [1, 1],
+    ...         }
+    ...     )
+    ... )
+    >>> locations = Locations(
+    ...     pd.DataFrame({"location_id": [1], "center_lat": [0.0], "center_lng": [0.0]}),
+    ...     scope="global",
+    ... )
+    >>> build_stvd(staypoints, locations)
+       location_id time_bin  mean_volume  center_lat  center_lng
+    0            1    08:00     0.285714         0.0         0.0
+    """
+    sp = staypoints if isinstance(staypoints, Staypoints) else Staypoints(staypoints)
+    locations.require_global()
+    locations.validate_staypoint_assignments(sp.df, user_id_col=sp.uid_col, location_id_col=location_id_col)
+
+    volume = mean_area_volume(
+        sp.df,
+        area_col=location_id_col,
+        user_id_col=sp.uid_col,
+        start_col=sp.started_at_col,
+        end_col=sp.finished_at_col,
+    )
+    volume_nw = nw.from_native(volume, eager_only=True).rename({"area": "location_id"})
+
+    loc_nw = (
+        nw.from_native(locations.df, eager_only=True)
+        .select([locations.location_id_col, locations.center_lat_col, locations.center_lng_col])
+        .rename({locations.location_id_col: "location_id"})
+    )
+
+    return volume_nw.join(loc_nw, on="location_id", how="left").to_native()

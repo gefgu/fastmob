@@ -138,6 +138,14 @@ COLLECTIVE_METRICS: tuple[BenchmarkSpec, ...] = (
         {},
         input_kind="collective",
     ),
+    BenchmarkSpec(
+        "mean_area_volume",
+        "fastmob.measures.collective.stvd",
+        "skmob.measures.individual",
+        "mean_area_volume",
+        {},
+        input_kind="collective",
+    ),
 )
 
 
@@ -354,6 +362,7 @@ def make_collective_input(df: Any) -> Any:
     )
     visits["start_timestamp"] = pd.to_datetime(visits["start_timestamp"], errors="coerce")
     visits["datetime"] = visits["start_timestamp"]
+    visits["end_timestamp"] = visits["start_timestamp"] + pd.Timedelta(minutes=30)
     visits["area"] = visits["location_id"].astype(str)
     visits = visits.sort_values(["user_id", "start_timestamp"], kind="mergesort").reset_index(drop=True)
     if is_polars:

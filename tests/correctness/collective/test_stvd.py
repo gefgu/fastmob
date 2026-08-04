@@ -1,10 +1,11 @@
-"""Correctness tests for mean_area_volume."""
+"""Correctness tests for mean_area_volume and build_stvd."""
 
 from __future__ import annotations
 
 import pandas as pd
 import pytest
-from fastmob.measures.individual.mean_area_volume import mean_area_volume
+from fastmob.core import Locations, Staypoints
+from fastmob.measures.collective.stvd import build_stvd, mean_area_volume
 
 
 def _df(**kwargs):
@@ -265,3 +266,71 @@ def test_polars_backend():
     assert isinstance(result, pl.DataFrame)
     row = result.filter((pl.col("area") == "A") & (pl.col("time_bin") == "08:00"))
     assert row["mean_volume"][0] == pytest.approx(2.0 / 7.0)
+
+
+# ---------------------------------------------------------------------------
+# build_stvd
+# ---------------------------------------------------------------------------
+
+
+def _staypoints_and_locations():
+    staypoints = Staypoints(
+        _df(
+            uid=["u1", "u2"],
+            lat=[0.0, 0.0],
+            lng=[0.0, 0.0],
+            started_at=[pd.Timestamp("2020-01-06 08:00")] * 2,  # Monday
+            finished_at=[pd.Timestamp("2020-01-06 08:10")] * 2,
+            location_id=[1, 1],
+        )
+    )
+    locations = Locations(
+        _df(location_id=[1], center_lat=[10.5], center_lng=[-20.25]),
+        scope="global",
+    )
+    return staypoints, locations
+
+
+def test_build_stvd_joins_centroid_onto_mean_area_volume():
+    staypoints, locations = _staypoints_and_locations()
+    result = build_stvd(staypoints, locations)
+    assert set(result.columns) == {"location_id", "time_bin", "mean_volume", "center_lat", "center_lng"}
+    row = result[(result["location_id"] == 1) & (result["time_bin"] == "08:00")]
+    assert len(row) == 1
+    assert row["mean_volume"].iloc[0] == pytest.approx(2.0 / 7.0)
+    assert row["center_lat"].iloc[0] == pytest.approx(10.5)
+    assert row["center_lng"].iloc[0] == pytest.approx(-20.25)
+
+
+def test_build_stvd_accepts_raw_dataframe():
+    staypoints, locations = _staypoints_and_locations()
+    result = build_stvd(staypoints.df, locations)
+    assert set(result.columns) == {"location_id", "time_bin", "mean_volume", "center_lat", "center_lng"}
+
+
+def test_build_stvd_requires_global_locations():
+    staypoints, _ = _staypoints_and_locations()
+    user_locations = Locations(
+        _df(uid=["u1"], location_id=[1], center_lat=[0.0], center_lng=[0.0]),
+        uid_col="uid",
+        scope="user",
+    )
+    with pytest.raises(ValueError, match="global"):
+        build_stvd(staypoints, user_locations)
+
+
+def test_build_stvd_rejects_unknown_location_ids():
+    staypoints, _ = _staypoints_and_locations()
+    other_locations = Locations(
+        _df(location_id=[999], center_lat=[0.0], center_lng=[0.0]),
+        scope="global",
+    )
+    with pytest.raises(ValueError, match="Locations catalogue"):
+        build_stvd(staypoints, other_locations)
+
+
+def test_staypoints_build_stvd_delegates():
+    staypoints, locations = _staypoints_and_locations()
+    via_method = staypoints.build_stvd(locations)
+    via_function = build_stvd(staypoints, locations)
+    pd.testing.assert_frame_equal(via_method, via_function)

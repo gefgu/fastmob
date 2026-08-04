@@ -10,6 +10,8 @@
 | [`visits_per_time_unit`](#fastmob.measures.collective.visits_per_time_unit) | Return the number of trajectory points per time unit across all users. |
 | [`od_matrix`](#fastmob.measures.collective.od_matrix) | Compute an Origin-Destination matrix from a trips DataFrame. |
 | [`od_metrics_per_area`](#fastmob.measures.collective.od_metrics_per_area) | Compute per-area mobility metrics from a long-format OD DataFrame. |
+| [`mean_area_volume`](#fastmob.measures.collective.mean_area_volume) | Mean user volume per area and 10-minute time bin, averaged across days of the week. |
+| [`build_stvd`](#fastmob.measures.collective.build_stvd) | Aggregate staypoints against a global Locations catalogue into an STVD frame. |
 
 ::: fastmob.measures.collective.homes_per_location
     options:
@@ -54,5 +56,17 @@
 ---
 
 ::: fastmob.measures.collective.od_metrics_per_area
+    options:
+      show_source: false
+
+---
+
+::: fastmob.measures.collective.mean_area_volume
+    options:
+      show_source: false
+
+---
+
+::: fastmob.measures.collective.build_stvd
     options:
       show_source: false
