@@ -2,10 +2,9 @@ import math
 
 import numpy as np
 import pytest
-
 from fastmob_vis import (
-    EChartsFigure,
     PALETTES,
+    EChartsFigure,
     plot_distance_frequency_law,
     plot_lognormal_fits,
     plot_truncated_powerlaw_fits,

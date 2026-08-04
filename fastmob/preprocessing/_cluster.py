@@ -35,7 +35,7 @@ def _resolve_resolution(cluster_radius_km: float, h3_resolution: int | None) -> 
     if h3_resolution is None:
         return _auto_resolution(cluster_radius_km)
     if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, Integral):
-        raise ValueError("h3_resolution must be an integer between 0 and 15")
+        raise TypeError("h3_resolution must be an integer between 0 and 15")
     if not 0 <= int(h3_resolution) <= 15:
         raise ValueError("h3_resolution must be an integer between 0 and 15")
     return int(h3_resolution)

@@ -9,7 +9,6 @@ from .brand import FONT_SANS, FONT_SERIF, PALETTES
 from .common import norm_width
 from .figure import EChartsFigure
 
-
 DEFAULT_TILE_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
 DEFAULT_ATTRIBUTION = (
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> '
@@ -24,7 +23,7 @@ STVD_COLORS = [
 
 def _finite_number(value: Any, label: str) -> float:
     if isinstance(value, bool):
-        raise ValueError(f"{label} must be a finite number")
+        raise TypeError(f"{label} must be a finite number")
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
@@ -120,7 +119,7 @@ def _prepare_layers(
 
             properties = feature.get("properties")
             if not isinstance(properties, dict):
-                raise ValueError(f"{label} must contain a properties object")
+                raise TypeError(f"{label} must contain a properties object")
             for property_name in (area_property, volume_diff_property, peak_shift_property):
                 if property_name not in properties:
                     raise ValueError(f"{label} is missing property {property_name!r}")
@@ -219,7 +218,7 @@ def plot_stvd_comparison(
     if not isinstance(tile_url, str) or not tile_url:
         raise ValueError("tile_url must be a non-empty string")
     if not isinstance(attribution, str):
-        raise ValueError("attribution must be a string")
+        raise TypeError("attribution must be a string")
 
     prepared_layers, computed_center = _prepare_layers(
         layers,

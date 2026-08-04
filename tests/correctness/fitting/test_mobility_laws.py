@@ -118,7 +118,6 @@ def test_visitation_distance_core_helper_validation_errors():
 
 def test_visitation_law_arrow_binning_factorizes_string_ids_and_filters_invalid_rows():
     import pyarrow as pa
-
     from fastmob._core import bin_visitation_law_arrow
 
     rf, rho = bin_visitation_law_arrow(
@@ -136,7 +135,6 @@ def test_visitation_law_arrow_binning_factorizes_string_ids_and_filters_invalid_
 
 def test_visitation_law_arrow_binning_validates_arrow_column_lengths():
     import pyarrow as pa
-
     from fastmob._core import bin_visitation_law_arrow
 
     with pytest.raises(ValueError, match="same length"):

@@ -2,7 +2,6 @@
 
 import pandas as pd
 import pytest
-
 from fastmob.measures.individual.diversity import diversity
 
 

@@ -23,8 +23,8 @@ from .plots import (
 )
 
 __all__ = [
-    "EChartsFigure",
     "PALETTES",
+    "EChartsFigure",
     "get_resource_bundle",
     "plot_activity_transition_difference",
     "plot_activity_transition_matrix",

@@ -7,7 +7,6 @@ import re
 from markdown.extensions import Extension
 from markdown.preprocessors import Preprocessor
 
-
 INLINE_MATH_RE = re.compile(r":math:`([^`]+)`")
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
 

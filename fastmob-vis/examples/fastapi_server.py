@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-
 from fastmob_vis import plot_jump_lengths_ecdf
 
 app = FastAPI()

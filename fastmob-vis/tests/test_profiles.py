@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from fastmob_vis import (
     PALETTES,
     plot_mobility_profiles,

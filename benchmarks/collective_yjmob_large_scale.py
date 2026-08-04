@@ -50,8 +50,8 @@ H3_RESOLUTION = 9
 
 
 def benchmark_contact_network(data_path: Path, n_users: int) -> dict:
-    from fastmob.social import co_presence_graph_from_staypoints, infer_social_ties
     from fastmob.preprocessing import latlng_to_h3
+    from fastmob.social import co_presence_graph_from_staypoints, infer_social_ties
 
     df = load_yjmob(data_path, n_users=n_users)
     df = latlng_to_h3(df, resolution=H3_RESOLUTION, output_col="location_id")

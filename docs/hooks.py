@@ -8,6 +8,7 @@ mkdocs-bibtex's on_page_markdown hook cannot do.
 """
 
 import re
+
 import pybtex.database
 
 BIB_FILE = "docs/references.bib"
