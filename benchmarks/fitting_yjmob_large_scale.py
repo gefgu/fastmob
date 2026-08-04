@@ -2,7 +2,7 @@
 
 Two benchmarks, both against real YJMob100K-derived data:
 
-- `daily_lognormal`: times `daily_location_lognormal_fit`'s per-user-per-day
+- `daily_lognormal`: times `fit_daily_location_lognormal`'s per-user-per-day
   aggregation step (the only part of the fit with real data-scale cost --
   the lognormal parameters themselves are computed from the aggregated
   per-day counts, a small array regardless of input size). Locations are
@@ -43,7 +43,7 @@ H3_RESOLUTION = 9
 
 
 def benchmark_daily_lognormal(data_path: Path, n_users: int, iterations: int) -> dict:
-    from fastmob.measures.fitting import daily_location_lognormal_fit
+    from fastmob.measures.fitting import fit_daily_location_lognormal
     from fastmob.preprocessing import latlng_to_h3
 
     df = load_yjmob(data_path, n_users=None if n_users >= 100_000 else n_users)
@@ -53,7 +53,7 @@ def benchmark_daily_lognormal(data_path: Path, n_users: int, iterations: int) ->
     times: list[float] = []
     for _ in range(iterations):
         start = time.perf_counter()
-        x_points, _y_points, mu, sigma = daily_location_lognormal_fit(
+        x_points, _y_points, mu, sigma = fit_daily_location_lognormal(
             visits, user_id_col="uid", location_id_col="location_id", timestamp_col="timestamp"
         )
         elapsed = time.perf_counter() - start

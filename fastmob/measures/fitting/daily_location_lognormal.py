@@ -1,4 +1,4 @@
-"""Lognormal fit for the number of locations visited per day."""
+"""Lognormal fit for the number of global or user-scoped locations visited per day."""
 
 from __future__ import annotations
 
@@ -7,64 +7,67 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob._core import daily_unique_location_histogram_arrow
+from fastmob.core.locations_dataframe import Locations
+from fastmob.core.staypoints_dataframe import Staypoints
 from fastmob.utils._common import (
     LOCATION_CANDIDATES,
-    TIMESTAMP_CANDIDATES,
-    USER_ID_CANDIDATES,
     _detect_required_column,
+    _strip_time_zone,
+    _values_to_list,
+    _with_datetime_column,
 )
 
 
-def daily_location_lognormal_fit(
-    visits: Any,
+def fit_daily_location_lognormal(
+    staypoints: Any | Staypoints,
     *,
+    locations: Locations | None = None,
     user_id_col: str | None = None,
     location_id_col: str | None = None,
     timestamp_col: str | None = None,
 ) -> tuple[list[float], list[float], float, float]:
-    """Fit a lognormal distribution to daily distinct-location counts.
+    """Fit a lognormal distribution to per-user daily distinct-location counts.
 
-    For each user and calendar day, count distinct visited locations and fit
-    ``mu`` and ``sigma`` to the natural log of those counts.
+    ``staypoints`` may be a :class:`~fastmob.core.Staypoints` object or an
+    eager dataframe. When a :class:`~fastmob.core.Locations` catalogue is
+    supplied, its global or user-scoped location identities are validated
+    before fitting. Timezone-aware starts are bucketed by their local
+    wall-clock calendar day.
     """
-    df = nw.from_native(visits, eager_only=True)
-    user_id_col = _detect_required_column(df, user_id_col, USER_ID_CANDIDATES)
+    df, user_id_col, timestamp_col, _lat_col, _lng_col = Staypoints.resolve_dataframe(
+        staypoints,
+        user_id_col=user_id_col,
+        timestamp_col=timestamp_col,
+    )
     location_id_col = _detect_required_column(df, location_id_col, LOCATION_CANDIDATES)
-    timestamp_col = _detect_required_column(df, timestamp_col, TIMESTAMP_CANDIDATES)
+    if locations is not None:
+        locations.validate_staypoint_assignments(
+            df,
+            user_id_col=user_id_col,
+            location_id_col=location_id_col,
+        )
 
-    daily = (
-        df.with_columns(nw.col(timestamp_col).dt.truncate("1d").alias("__day__"))
-        .group_by([user_id_col, "__day__"])
-        .agg(nw.col(location_id_col).n_unique().alias("__count__"))
-        .filter(nw.col("__count__") > 0)
+    df = _strip_time_zone(_with_datetime_column(df, timestamp_col), timestamp_col).with_columns(
+        nw.col(timestamp_col).cast(nw.Datetime("us")).alias(timestamp_col)
     )
-
-    counts_df = (
-        daily.group_by("__count__")
-        .agg(nw.len().alias("freq"))
-        .sort("__count__")
+    counts_raw, frequencies_raw = daily_unique_location_histogram_arrow(
+        df.get_column(user_id_col).to_arrow(),
+        df.get_column(location_id_col).to_arrow(),
+        df.get_column(timestamp_col).to_arrow(),
     )
-
-    # Convert to pure Python lists instead of NumPy arrays
-    x_points_int = counts_df.get_column("__count__").to_list()
-    freqs = counts_df.get_column("freq").to_list()
-    
-    total_counts = sum(freqs)
+    counts = [float(value) for value in _values_to_list(counts_raw)]
+    frequencies = [int(value) for value in _values_to_list(frequencies_raw)]
+    total_counts = sum(frequencies)
     if total_counts < 2:
         raise ValueError("At least two daily location counts are required to fit.")
 
-    # Cast x_points to float to match the previous np.astype(float) behavior
-    x_points = [float(x) for x in x_points_int]
-    probs = [f / total_counts for f in freqs]
-
-    # Calculate mu and sigma using standard Python math
-    log_x = [math.log(x) for x in x_points]
-    
-    mu = sum(lx * f for lx, f in zip(log_x, freqs)) / total_counts
-    var = sum(f * (lx - mu) ** 2 for lx, f in zip(log_x, freqs)) / total_counts
+    probs = [frequency / total_counts for frequency in frequencies]
+    log_counts = [math.log(count) for count in counts]
+    mu = sum(log_count * frequency for log_count, frequency in zip(log_counts, frequencies)) / total_counts
+    var = sum(frequency * (log_count - mu) ** 2 for log_count, frequency in zip(log_counts, frequencies)) / total_counts
     sigma = math.sqrt(var)
-
     if not math.isfinite(sigma) or sigma <= 1e-12:
         raise ValueError("Daily location counts must have positive log variance.")
 
-    return x_points, probs, mu, sigma
+    return counts, probs, mu, sigma

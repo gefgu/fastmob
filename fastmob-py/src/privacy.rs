@@ -1,6 +1,6 @@
 use crate::utils::ArrowUsizeArrayExt;
-use fastmob_core::preprocessing::h3::{INVALID_CELL, batch_latlng_to_cells};
-use fastmob_core::privacy::{AttackKind, privacy_assess_risk_impl};
+use fastmob_core::preprocessing::h3::{batch_latlng_to_cells, INVALID_CELL};
+use fastmob_core::privacy::{privacy_assess_risk_impl, AttackKind};
 use h3o::Resolution;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -161,7 +161,9 @@ pub fn privacy_assess_risk<'py>(
             let valid: Vec<bool> = cells
                 .iter()
                 .enumerate()
-                .map(|(idx, &cell)| cell != INVALID_CELL && valid_rows.as_ref().is_none_or(|rows| rows[idx]))
+                .map(|(idx, &cell)| {
+                    cell != INVALID_CELL && valid_rows.as_ref().is_none_or(|rows| rows[idx])
+                })
                 .collect();
             (cells, valid)
         })

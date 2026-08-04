@@ -50,14 +50,14 @@ H3_RESOLUTION = 9
 
 
 def benchmark_contact_network(data_path: Path, n_users: int) -> dict:
-    from fastmob.social import co_presence_graph_from_visits, infer_social_ties
+    from fastmob.social import co_presence_graph_from_staypoints, infer_social_ties
     from fastmob.preprocessing import latlng_to_h3
 
     df = load_yjmob(data_path, n_users=n_users)
     df = latlng_to_h3(df, resolution=H3_RESOLUTION, output_col="location_id")
 
     build_start = time.perf_counter()
-    graph, persistence, time_steps, _skip_info = co_presence_graph_from_visits(
+    graph, persistence, time_steps, _skip_info = co_presence_graph_from_staypoints(
         df, user_id_col="uid", datetime_col="timestamp", location_id_col="location_id", max_group_size=200
     )
     build_seconds = time.perf_counter() - build_start
@@ -99,12 +99,12 @@ def main(argv: list[str] | None = None) -> int:
 
     results = []
     for n_users in sorted(args.n_users):
-        print(f"Benchmarking co_presence_graph_from_visits + infer_social_ties: n_users={n_users}...")
+        print(f"Benchmarking co_presence_graph_from_staypoints + infer_social_ties: n_users={n_users}...")
         results.append(benchmark_contact_network(data_path, n_users))
 
     payload = {
         "metadata": {
-            "benchmark": "collective.co_presence_graph_from_visits+infer_social_ties",
+            "benchmark": "social.co_presence_graph_from_staypoints+infer_social_ties",
             "dataset": "yjmob100k",
             "h3_resolution": H3_RESOLUTION,
             "data_path": str(data_path),

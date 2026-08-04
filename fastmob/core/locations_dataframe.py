@@ -76,3 +76,40 @@ class Locations(BaseDataFrame):
         from ..preprocessing import identify_locations
 
         return identify_locations(self, staypoints, method=method, **kwargs)
+
+    def validate_staypoint_assignments(
+        self,
+        staypoints: Any,
+        *,
+        user_id_col: str,
+        location_id_col: str,
+    ) -> None:
+        """Validate non-null staypoint location identities against this catalogue.
+
+        The validation runs as backend-native distinct/anti joins instead of
+        materializing Python sets. Global catalogues match ``location_id``;
+        user-scoped catalogues match ``(user_id, location_id)``.
+        """
+        visits = nw.from_native(staypoints, eager_only=True)
+        if location_id_col not in visits.columns:
+            raise ValueError(f"Staypoints is missing location-ID column {location_id_col!r}")
+        catalogue = nw.from_native(self.df, eager_only=True)
+        if self.scope == "global":
+            visit_keys = visits.select(location_id_col).drop_nulls().unique()
+            catalogue_keys = catalogue.select(self.location_id_col).rename({self.location_id_col: location_id_col})
+            unknown = visit_keys.join(catalogue_keys, on=location_id_col, how="anti")
+            if len(unknown) > 0:
+                raise ValueError("Staypoints contains location IDs absent from the global Locations catalogue")
+            return
+
+        if self.uid_col is None or self.uid_col not in catalogue.columns:
+            raise ValueError("User-scoped Locations requires its user-ID column in the catalogue")
+        if user_id_col not in visits.columns:
+            raise ValueError(f"Staypoints is missing user-ID column {user_id_col!r}")
+        visit_keys = visits.select([user_id_col, location_id_col]).drop_nulls().unique()
+        catalogue_keys = catalogue.select([self.uid_col, self.location_id_col]).rename(
+            {self.uid_col: user_id_col, self.location_id_col: location_id_col}
+        )
+        unknown = visit_keys.join(catalogue_keys, on=[user_id_col, location_id_col], how="anti")
+        if len(unknown) > 0:
+            raise ValueError("Staypoints contains (user, location) IDs absent from the user-scoped Locations catalogue")
