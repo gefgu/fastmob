@@ -181,16 +181,26 @@ mod tests {
         assert_eq!(cells, expected_cells);
         for index in 0..lats.len() {
             let (a, b) = (centered_lats[index], expected_lats[index]);
-            assert!(a == b || (a.is_nan() && b.is_nan()), "lat[{index}]: {a} vs {b}");
+            assert!(
+                a == b || (a.is_nan() && b.is_nan()),
+                "lat[{index}]: {a} vs {b}"
+            );
             let (a, b) = (centered_lngs[index], expected_lngs[index]);
-            assert!(a == b || (a.is_nan() && b.is_nan()), "lng[{index}]: {a} vs {b}");
+            assert!(
+                a == b || (a.is_nan() && b.is_nan()),
+                "lng[{index}]: {a} vs {b}"
+            );
         }
     }
 
     #[test]
     fn fused_encode_decode_honors_masked_rows() {
-        let (cells, lats, lngs) =
-            batch_latlng_to_h3_centered(&[37.769377], &[-122.388519], Resolution::Nine, Some(&[false]));
+        let (cells, lats, lngs) = batch_latlng_to_h3_centered(
+            &[37.769377],
+            &[-122.388519],
+            Resolution::Nine,
+            Some(&[false]),
+        );
         assert_eq!(cells, [INVALID_CELL]);
         assert!(lats[0].is_nan() && lngs[0].is_nan());
     }

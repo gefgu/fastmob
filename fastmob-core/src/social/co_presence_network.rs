@@ -15,11 +15,7 @@ type Edge = (u32, u32);
 const DAY_MS: i64 = 86_400_000;
 
 fn edge(a: u32, b: u32) -> Edge {
-    if a < b {
-        (a, b)
-    } else {
-        (b, a)
-    }
+    if a < b { (a, b) } else { (b, a) }
 }
 fn stream_seed(seed: u64, replica: usize, window: usize) -> u64 {
     seed ^ (replica as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)

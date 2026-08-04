@@ -157,22 +157,58 @@ mod tests {
 
     #[test]
     fn empty_distribution_is_rejected() {
-        assert!(stvd_emd_impl(&[], &[], &[], &[], &[0.0], &[0.0], &[0.0], &[1.0], 10.0, 1440.0).is_err());
+        assert!(
+            stvd_emd_impl(
+                &[],
+                &[],
+                &[],
+                &[],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0
+            )
+            .is_err()
+        );
     }
 
     #[test]
     fn non_positive_cyclical_period_is_rejected() {
-        assert!(stvd_emd_impl(
-            &[0.0], &[0.0], &[0.0], &[1.0], &[0.0], &[0.0], &[0.0], &[1.0], 10.0, 0.0,
-        )
-        .is_err());
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                0.0,
+            )
+            .is_err()
+        );
     }
 
     #[test]
     fn zero_weight_sum_is_rejected() {
-        assert!(stvd_emd_impl(
-            &[0.0], &[0.0], &[0.0], &[0.0], &[0.0], &[0.0], &[0.0], &[1.0], 10.0, 1440.0,
-        )
-        .is_err());
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+            )
+            .is_err()
+        );
     }
 }

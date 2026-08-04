@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, Float64Array, Int64Array, UInt32Array, UInt64Array, UInt8Array,
+    Array, ArrayRef, Float64Array, Int64Array, UInt8Array, UInt32Array, UInt64Array,
 };
 use fastmob_core::social::co_presence_network::{
     event_graphs, flatten_events, recast_classify, rnd_graph, t_rnd_graph, validate_recast,
@@ -239,7 +239,9 @@ pub fn recast_t_rnd_py(
         || offsets.last().copied() != Some(from.len() as u64)
         || offsets.windows(2).any(|x| x[0] > x[1])
     {
-        return Err(PyValueError::new_err("edge_offsets must start at 0, end at edge count, and have one entry per window plus one"));
+        return Err(PyValueError::new_err(
+            "edge_offsets must start at 0, end at edge count, and have one entry per window plus one",
+        ));
     }
     let graph =
         py.detach(|| t_rnd_graph(node_count, &windows, &offsets, &from, &to, replica, seed));
