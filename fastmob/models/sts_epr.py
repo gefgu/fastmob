@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-import numpy as np
+import secrets
+
+import narwhals as nw
+import pyarrow as pa
+import pyarrow.compute as pc
 
 from fastmob import _core
+from fastmob.core import Locations, TrajDataFrame
 
-from ._common import tessellation_lat_lngs, to_pandas_frame, trajectory_dataframe
 from .markov_diary_generator import MarkovDiaryGenerator
 
 
@@ -119,9 +123,6 @@ class STS_epr:
         dt_update_mobSim=24 * 7,
         indipendency_window=0.5,
         random_state=None,
-        log_file=None,
-        verbose=0,
-        show_progress=False,
     ):
         """Simulate a socially connected population from ``start_date`` to ``end_date``.
 
@@ -205,24 +206,30 @@ class STS_epr:
         if not hasattr(diary_generator, "_cdf_matrix_flat"):
             raise ValueError("diary_generator has not been fitted. Call fit() first.")
 
-        tessellation = to_pandas_frame(spatial_tessellation)
+        if not isinstance(spatial_tessellation, Locations):
+            raise TypeError("Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs")
+        prepared = spatial_tessellation.model_input()
+        tessellation = prepared.frame
         if len(tessellation) < 3:
             raise ValueError("Argument `spatial_tessellation` must contain at least 3 tiles.")
-        lats_lngs = tessellation_lat_lngs(tessellation)
-        lats = np.ascontiguousarray(lats_lngs[:, 0], dtype=np.float64)
-        lngs = np.ascontiguousarray(lats_lngs[:, 1], dtype=np.float64)
+        lats = prepared.latitudes
+        lngs = prepared.longitudes
 
         col = relevance_column if relevance_column is not None else "relevance"
         if col not in tessellation.columns:
             raise IndexError(f"Column '{col}' not found in spatial_tessellation.")
-        relevances = np.asarray(tessellation[col], dtype=np.float64)
-        relevances = np.where(relevances == 0, min_relevance, relevances)
-        relevances = np.ascontiguousarray(relevances)
+        relevances = pc.if_else(
+            pc.equal(prepared.values(col), 0.0),
+            pa.scalar(float(min_relevance)),
+            prepared.values(col),
+        )
 
         if distance_matrix is not None:
-            flat_distances = np.ascontiguousarray(np.asarray(distance_matrix, dtype=np.float64).ravel())
+            flat_distances = pa.array(
+                [distance for row in distance_matrix for distance in row], type=pa.float64()
+            )
         else:
-            flat_distances = np.empty(0, dtype=np.float64)
+            flat_distances = pa.array([], type=pa.float64())
 
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
@@ -237,10 +244,8 @@ class STS_epr:
         if isinstance(social_graph, str):
             if social_graph != "random":
                 raise ValueError("When `social_graph` is a str it must be 'random'.")
-            rng_seed = seed if seed is not None else int(np.random.randint(0, 2**31))
-            neighbor_starts, neighbors = _core.model_social_graph_random_geometric(n_agents, 0.5, rng_seed)
-            neighbor_starts = np.asarray(neighbor_starts, dtype=np.int64)
-            neighbors = np.asarray(neighbors, dtype=np.int64)
+            rng_seed = seed if seed is not None else secrets.randbits(31)
+            neighbor_starts, neighbors = _core.model_social_graph_random_geometric_arrow(n_agents, 0.5, rng_seed)
         elif isinstance(social_graph, list):
             if len(social_graph) == 0:
                 raise ValueError("Argument `social_graph` cannot be an empty list.")
@@ -249,38 +254,31 @@ class STS_epr:
             dict_gid_to_uid = {gid: uid for uid, gid in dict_uid_to_gid.items()}
             n_agents = len(user_ids)
             map_ids = True
-            srcs = np.asarray([dict_uid_to_gid[a] for a, _ in social_graph], dtype=np.int64)
-            dsts = np.asarray([dict_uid_to_gid[b] for _, b in social_graph], dtype=np.int64)
-            neighbor_starts, neighbors = _core.model_social_graph_edges_to_csr(srcs, dsts, n_agents)
-            neighbor_starts = np.asarray(neighbor_starts, dtype=np.int64)
-            neighbors = np.asarray(neighbors, dtype=np.int64)
+            srcs = pa.array([dict_uid_to_gid[a] for a, _ in social_graph], type=pa.int64())
+            dsts = pa.array([dict_uid_to_gid[b] for _, b in social_graph], type=pa.int64())
+            neighbor_starts, neighbors = _core.model_social_graph_edges_to_csr_arrow(srcs, dsts, n_agents)
         else:
             raise TypeError("Argument `social_graph` should be a string or a list.")
 
-        diary_seed = seed if seed is not None else int(np.random.randint(0, 2**31))
-        flat_ts, flat_locs, d_starts, d_ends = _core.markov_diary_batch_generate(
+        diary_seed = seed if seed is not None else secrets.randbits(31)
+        flat_ts, flat_locs, d_starts, d_ends = _core.markov_diary_batch_generate_arrow(
             diary_generator._cdf_matrix_flat,
             total_h,
             start_ts,
             n_agents,
             diary_seed,
         )
-        diary_timestamps = np.asarray(flat_ts, dtype=np.int64)
-        diary_abs_locs = np.asarray(flat_locs, dtype=np.int32)
-        diary_starts = np.asarray(d_starts, dtype=np.int64)
-        diary_ends = np.asarray(d_ends, dtype=np.int64)
-
-        agent_ids, lats_out, lngs_out, timestamps = _core.model_sts_epr_simulate_agents(
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_sts_epr_simulate_agents_arrow(
             lats,
             lngs,
             relevances,
             flat_distances,
             neighbor_starts,
             neighbors,
-            diary_timestamps,
-            diary_abs_locs,
-            diary_starts,
-            diary_ends,
+            flat_ts,
+            flat_locs,
+            pa.array(d_starts, type=pa.int64()),
+            pa.array(d_ends, type=pa.int64()),
             float(self.rho),
             float(self.gamma),
             float(self.alpha),
@@ -294,22 +292,14 @@ class STS_epr:
             rsl,
         )
 
+        agent_values = agent_ids.to_pylist()
         if map_ids:
-            uid_out = [dict_gid_to_uid[int(g) - 1] for g in agent_ids]
+            uid_out = [dict_gid_to_uid[int(g) - 1] for g in agent_values]
         else:
-            uid_out = list(agent_ids)
-
-        import datetime
-
-        traj = list(
-            zip(
-                uid_out,
-                lats_out,
-                lngs_out,
-                [
-                    datetime.datetime.fromtimestamp(int(t), tz=datetime.timezone.utc).replace(tzinfo=None)
-                    for t in timestamps
-                ],
-            )
+            uid_out = agent_values
+        return TrajDataFrame(
+            nw.from_dict(
+                {"uid": uid_out, "lat": lats_out, "lng": lngs_out, "datetime": pc.cast(timestamps, pa.timestamp("s"))},
+                backend=tessellation.implementation,
+            ).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native()
         )
-        return trajectory_dataframe(traj)

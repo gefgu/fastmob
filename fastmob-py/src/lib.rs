@@ -336,8 +336,17 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     m.add_function(wrap_pyfunction!(models::od::model_gravity_matrix_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(models::od::model_gravity_od_row_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(models::od::model_gravity_flows_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
         models::radiation::model_radiation_probabilities,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::radiation::model_radiation_flows_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::radiation::model_radiation_sample_flows_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -350,11 +359,23 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(models::epr::model_epr_simulate_agents, m)?)?;
     m.add_function(wrap_pyfunction!(
+        models::epr::model_epr_simulate_agents_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         models::social_graph::model_social_graph_edges_to_csr,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
         models::social_graph::model_social_graph_random_geometric,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::social_graph::model_social_graph_edges_to_csr_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::social_graph::model_social_graph_random_geometric_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -374,7 +395,15 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_fit_from_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         models::markov_diary::markov_diary_batch_generate,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::markov_diary::markov_diary_batch_generate_arrow,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -387,11 +416,23 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        models::geosim::model_geosim_simulate_agents_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         models::sts_epr::model_sts_epr_simulate_agents,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        models::sts_epr::model_sts_epr_simulate_agents_arrow,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         models::ditras::model_ditras_simulate_agents,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        models::ditras::model_ditras_simulate_agents_arrow,
         m
     )?)?;
     m.add_class::<privacy::PyPrivacyRiskResult>()?;

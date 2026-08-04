@@ -1,109 +1,45 @@
 from __future__ import annotations
 
+import secrets
 from typing import Any
 
 import narwhals as nw
-import numpy as np
+import pyarrow as pa
+import pyarrow.compute as pc
 
-from ._common import (
-    LATITUDE,
-    LONGITUDE,
-    RELEVANCE,
-    tessellation_lat_lngs,
-    to_pandas_frame,
-    trajectory_dataframe,
-)
+from fastmob.core import Locations, TrajDataFrame
+
 from .gravity import Gravity
 
-
-def _unwrap_native_frame(df: Any) -> Any:
-    return getattr(df, "df", df)
+LATITUDE = "lat"
+LONGITUDE = "lng"
+RELEVANCE = "relevance"
 
 
 def _tessellation_arrays(
-    spatial_tessellation: Any, relevance_column: str | None
-) -> tuple[Any, Any, np.ndarray, np.ndarray]:
-    native = _unwrap_native_frame(spatial_tessellation)
-    nw_df = nw.from_native(native, eager_only=True)
-    columns = set(nw_df.columns)
-    if "geometry" in columns:
-        pandas_frame = to_pandas_frame(spatial_tessellation)
-        lats_lngs = tessellation_lat_lngs(pandas_frame)
-        relevances = (
-            np.ones(len(pandas_frame), dtype=float)
-            if relevance_column is None
-            else pandas_frame[relevance_column].fillna(0).to_numpy(dtype=float)
-        )
-        return pandas_frame, nw.from_native(pandas_frame, eager_only=True).implementation, lats_lngs, relevances
-
-    if LATITUDE in columns and LONGITUDE in columns:
-        lat_col, lng_col = LATITUDE, LONGITUDE
-    elif "latitude" in columns and "longitude" in columns:
-        lat_col, lng_col = "latitude", "longitude"
-    elif "lat" in columns and "lon" in columns:
-        lat_col, lng_col = "lat", "lon"
-    else:
-        raise ValueError("spatial_tessellation must include a geometry column or latitude/longitude columns.")
-
-    lats = np.asarray(nw_df.get_column(lat_col).to_numpy(), dtype=float)
-    lngs = np.asarray(nw_df.get_column(lng_col).to_numpy(), dtype=float)
+    locations: Locations, relevance_column: str | None
+) -> tuple[Any, Any, pa.Array, pa.Array, pa.Array]:
+    if not isinstance(locations, Locations):
+        raise TypeError("Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs")
+    prepared = locations.model_input()
+    nw_df = prepared.frame
+    lats = prepared.latitudes
+    lngs = prepared.longitudes
     if relevance_column is None:
-        relevances = np.ones(len(nw_df), dtype=float)
+        relevances = pa.array([1.0] * len(nw_df), type=pa.float64())
     else:
-        relevances = np.asarray(nw_df.get_column(relevance_column).to_numpy(), dtype=float)
-        relevances = np.nan_to_num(relevances, nan=0.0)
-    return nw_df.to_native(), nw_df.implementation, np.column_stack((lats, lngs)), relevances
+        relevances = pc.fill_null(prepared.values(relevance_column), 0.0)
+    return nw_df.to_native(), nw_df.implementation, lats, lngs, relevances
 
 
 def _trajectory_native_frame(agent_ids: Any, lats: Any, lngs: Any, timestamps: Any, backend: Any) -> Any:
-    datetime_values = np.asarray(timestamps, dtype="datetime64[s]").astype("datetime64[ms]")
     values = {
         "uid": agent_ids,
         "lat": lats,
         "lng": lngs,
-        "datetime": datetime_values,
+        "datetime": pc.cast(timestamps, pa.timestamp("s")),
     }
     return nw.from_dict(values, backend=backend).to_native()
-
-
-def compute_od_matrix(
-    gravity_singly,
-    spatial_tessellation,
-    tile_id_column="tile_id",
-    relevance_column=RELEVANCE,
-):
-    """Compute an OD probability matrix from a singly constrained gravity model.
-
-    Returns a 2-D numpy array ``M`` where element ``M[i, j]`` is the probability
-    :math:`p_{ij}` of moving from location ``i`` to location ``j``, as predicted
-    by the singly constrained Gravity model applied to ``spatial_tessellation``.
-
-    Parameters
-    ----------
-    gravity_singly : Gravity
-        A :class:`Gravity` instance with ``gravity_type="singly constrained"``.
-    spatial_tessellation : DataFrame or GeoDataFrame
-        The spatial tessellation describing the division of the territory into
-        locations.
-    tile_id_column : str, optional
-        Name of the column containing the location identifier. The default is
-        ``"tile_id"``.
-    relevance_column : str, optional
-        Name of the column containing the location relevance. The default is
-        ``"relevance"``.
-
-    Returns
-    -------
-    numpy.ndarray
-        A ``(n_locs, n_locs)`` array of trip probabilities. Each row sums to 1.
-    """
-    return gravity_singly.generate(
-        spatial_tessellation,
-        tile_id_column=tile_id_column,
-        tot_outflows_column=None,
-        relevance_column=relevance_column,
-        out_format="probabilities",
-    ).to_matrix()
 
 
 class EPR:
@@ -201,7 +137,8 @@ class EPR:
         self._tau = tau
         self._beta = beta
         self._spatial_tessellation = None
-        self.lats_lngs = None
+        self.latitudes = None
+        self.longitudes = None
         self.relevances = None
         self.gravity_singly = None
         self._min_wait_time = min_wait_time_minutes / 60.0
@@ -249,8 +186,6 @@ class EPR:
         starting_locations=None,
         relevance_column=RELEVANCE,
         random_state=None,
-        log_file=None,
-        show_progress=False,
     ):
         """Simulate agents from ``start_date`` to ``end_date``.
 
@@ -328,7 +263,6 @@ class EPR:
                     "n_agents": n_agents,
                     "relevance_column": relevance_column,
                     "random_state": random_state,
-                    "show_progress": show_progress,
                 },
             }
         }
@@ -337,11 +271,11 @@ class EPR:
             raise ValueError("random_state must be a non-negative integer.")
 
         self._trajectories_ = []
-        self._spatial_tessellation, output_backend, self.lats_lngs, self.relevances = _tessellation_arrays(
+        self._spatial_tessellation, output_backend, self.latitudes, self.longitudes, self.relevances = _tessellation_arrays(
             spatial_tessellation, relevance_column
         )
 
-        start_values = None if starting_locations is None else np.asarray(starting_locations, dtype=np.int64)
+        start_values = None if starting_locations is None else pa.array(starting_locations, type=pa.int64())
 
         rows = self._epr_generate_parallel(
             start_date,
@@ -351,7 +285,10 @@ class EPR:
             starting_locations=start_values,
             output_backend=output_backend,
         )
-        return trajectory_dataframe(rows, parameters=parameters)
+        return TrajDataFrame(
+            nw.from_native(rows, eager_only=True).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native(),
+            parameters=parameters,
+        )
 
     def _epr_generate_parallel(
         self,
@@ -367,14 +304,10 @@ class EPR:
 
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
-        lats = np.ascontiguousarray(self.lats_lngs[:, 0], dtype=float)
-        lngs = np.ascontiguousarray(self.lats_lngs[:, 1], dtype=float)
-        relevances = np.ascontiguousarray(self.relevances, dtype=float)
-        starts = None if starting_locations is None else np.ascontiguousarray(starting_locations, dtype=np.int64)
-        agent_ids, lats_out, lngs_out, timestamps = _core.model_epr_simulate_agents(
-            lats,
-            lngs,
-            relevances,
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_epr_simulate_agents_arrow(
+            self.latitudes,
+            self.longitudes,
+            self.relevances,
             float(self._rho),
             float(self._gamma),
             float(self._beta),
@@ -388,7 +321,7 @@ class EPR:
             float(self.gravity_singly.destination_exp),
             int(n_agents),
             random_state,
-            starts,
+            starting_locations,
         )
         return _trajectory_native_frame(agent_ids, lats_out, lngs_out, timestamps, output_backend)
 
@@ -518,8 +451,6 @@ class DensityEPR(EPR):
         starting_locations=None,
         relevance_column=RELEVANCE,
         random_state=None,
-        log_file=None,
-        show_progress=False,
     ):
         """Simulate agents from ``start_date`` to ``end_date``.
 
@@ -566,8 +497,6 @@ class DensityEPR(EPR):
             starting_locations=starting_locations,
             relevance_column=relevance_column,
             random_state=random_state,
-            log_file=log_file,
-            show_progress=show_progress,
         )
 
 
@@ -692,8 +621,6 @@ class SpatialEPR(EPR):
         n_agents=1,
         starting_locations=None,
         random_state=None,
-        log_file=None,
-        show_progress=False,
     ):
         """Simulate agents from ``start_date`` to ``end_date``.
 
@@ -737,8 +664,6 @@ class SpatialEPR(EPR):
             starting_locations=starting_locations,
             relevance_column=None,
             random_state=random_state,
-            log_file=log_file,
-            show_progress=show_progress,
         )
 
 
@@ -834,8 +759,6 @@ class Ditras(EPR):
         starting_locations=None,
         relevance_column=RELEVANCE,
         random_state=None,
-        log_file=None,
-        show_progress=False,
     ):
         """Simulate agents from ``start_date`` to ``end_date``.
 
@@ -901,13 +824,12 @@ class Ditras(EPR):
                     "n_agents": n_agents,
                     "relevance_column": relevance_column,
                     "random_state": random_state,
-                    "show_progress": show_progress,
                 },
             }
         }
 
         self._trajectories_ = []
-        self._spatial_tessellation, output_backend, self.lats_lngs, self.relevances = _tessellation_arrays(
+        self._spatial_tessellation, output_backend, self.latitudes, self.longitudes, self.relevances = _tessellation_arrays(
             spatial_tessellation, relevance_column
         )
 
@@ -918,8 +840,8 @@ class Ditras(EPR):
         total_slots = (end_ts - start_ts) // slot_seconds
 
         # Batch-generate diaries — pass None if unfitted; Rust builds home-only CDF fallback
-        diary_seed = int(random_state) if random_state is not None else int(np.random.randint(0, 2**31))
-        flat_ts, flat_locs, d_starts, d_ends = _core.markov_diary_batch_generate(
+        diary_seed = int(random_state) if random_state is not None else secrets.randbits(31)
+        flat_ts, flat_locs, d_starts, d_ends = _core.markov_diary_batch_generate_arrow(
             self._diary_generator._cdf_matrix_flat,
             total_slots,
             start_ts,
@@ -927,26 +849,14 @@ class Ditras(EPR):
             diary_seed,
             slots_per_day,
         )
-        diary_timestamps = np.asarray(flat_ts, dtype=np.int64)
-        diary_abs_locs = np.asarray(flat_locs, dtype=np.int32)
-        diary_starts_arr = np.asarray(d_starts, dtype=np.int64)
-        diary_ends_arr = np.asarray(d_ends, dtype=np.int64)
-
-        lats = np.ascontiguousarray(self.lats_lngs[:, 0], dtype=float)
-        lngs = np.ascontiguousarray(self.lats_lngs[:, 1], dtype=float)
-        relevances = np.ascontiguousarray(self.relevances, dtype=float)
-        starts = (
-            None if starting_locations is None else np.ascontiguousarray(np.asarray(starting_locations, dtype=np.int64))
-        )
-
-        agent_ids, lats_out, lngs_out, timestamps = _core.model_ditras_simulate_agents(
-            lats,
-            lngs,
-            relevances,
-            diary_timestamps,
-            diary_abs_locs,
-            diary_starts_arr,
-            diary_ends_arr,
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_ditras_simulate_agents_arrow(
+            self.latitudes,
+            self.longitudes,
+            self.relevances,
+            flat_ts,
+            flat_locs,
+            pa.array(d_starts, type=pa.int64()),
+            pa.array(d_ends, type=pa.int64()),
             self.gravity_singly.deterrence_func_type,
             float(self.gravity_singly.deterrence_func_args[0]),
             float(self.gravity_singly.origin_exp),
@@ -957,8 +867,11 @@ class Ditras(EPR):
             end_ts,
             int(n_agents),
             None if random_state is None else int(random_state),
-            starts,
+            None if starting_locations is None else pa.array(starting_locations, type=pa.int64()),
         )
 
         rows = _trajectory_native_frame(agent_ids, lats_out, lngs_out, timestamps, output_backend)
-        return trajectory_dataframe(rows, parameters=parameters)
+        return TrajDataFrame(
+            nw.from_native(rows, eager_only=True).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native(),
+            parameters=parameters,
+        )

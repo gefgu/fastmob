@@ -1,21 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
-
+import narwhals as nw
 import numpy as np
 
 from fastmob import _core
+from fastmob.core import FlowDataFrame, Locations
 
-from ._common import (
-    FLOW,
-    RELEVANCE,
-    TILE_ID,
-    TOT_OUTFLOW,
-    flow_dataframe,
-    haversine_km,
-    tessellation_lat_lngs,
-    to_pandas_frame,
-)
+FLOW = "flow"
+RELEVANCE = "relevance"
+TILE_ID = "tile_id"
+TOT_OUTFLOW = "tot_outflow"
 
 
 def ci(i, number_locs):
@@ -42,72 +36,6 @@ def ci(i, number_locs):
     c = list(np.zeros(number_locs))
     c[i] = 1.0
     return c
-
-
-def exponential_deterrence_func(x, R):
-    """Compute the exponential deterrence :math:`e^{-xR}`.
-
-    Parameters
-    ----------
-    x : float or numpy.ndarray
-        Distance values.
-    R : float
-        Decay rate (positive). Larger values penalise longer distances more strongly.
-
-    Returns
-    -------
-    float or numpy.ndarray
-        Deterrence values in the range ``(0, 1]``.
-    """
-    return np.exp(-x * R)
-
-
-def powerlaw_deterrence_func(x, exponent):
-    """Compute the power-law deterrence :math:`x^{\\text{exponent}}`.
-
-    Parameters
-    ----------
-    x : float or numpy.ndarray
-        Distance values (in kilometres).
-    exponent : float
-        Power-law exponent. Typically a negative number (e.g. ``-2.0``) so that
-        the function decreases with distance.
-
-    Returns
-    -------
-    float or numpy.ndarray
-        Deterrence values.
-    """
-    with np.errstate(divide="ignore", invalid="ignore"):
-        return np.power(x, exponent)
-
-
-def compute_distance_matrix(spatial_tessellation: Any, origins):
-    """Compute pairwise Haversine distances for tessellation locations.
-
-    Parameters
-    ----------
-    spatial_tessellation : DataFrame or GeoDataFrame
-        The spatial tessellation. Must include either a ``geometry`` column or
-        explicit ``lat`` / ``lng`` columns so that tile centroids can be derived.
-    origins : list or array-like of int
-        Indices of the origin locations for which to populate the distance matrix.
-
-    Returns
-    -------
-    numpy.ndarray
-        Symmetric ``(n, n)`` matrix of Haversine distances in kilometres, where
-        ``n`` is the number of tiles in ``spatial_tessellation``.
-    """
-    coords = tessellation_lat_lngs(spatial_tessellation)
-    n = len(coords)
-    distance_matrix = np.zeros((n, n), dtype=float)
-    for id_i in origins:
-        for id_j in range(int(id_i) + 1, n):
-            distance = haversine_km(tuple(coords[int(id_i)]), tuple(coords[id_j]))
-            distance_matrix[int(id_i), id_j] = distance
-            distance_matrix[id_j, int(id_i)] = distance
-    return distance_matrix
 
 
 class Gravity:
@@ -280,11 +208,11 @@ class Gravity:
 
     def generate(
         self,
-        spatial_tessellation,
-        tile_id_column=TILE_ID,
+        locations: Locations,
         tot_outflows_column=TOT_OUTFLOW,
         relevance_column=RELEVANCE,
         out_format="flows",
+        random_state: int | None = None,
     ):
         """Generate synthetic flows with the Gravity model.
 
@@ -327,10 +255,12 @@ class Gravity:
             If ``out_format`` requires a total-outflow column but it is absent from
             ``spatial_tessellation``.
         """
-        spatial_tessellation = to_pandas_frame(spatial_tessellation)
-        n_locs = len(spatial_tessellation)
-        relevances = spatial_tessellation[relevance_column].fillna(0).to_numpy(dtype=float)
-        self._tile_id_column = tile_id_column
+        if not isinstance(locations, Locations):
+            raise TypeError(
+                "Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs"
+            )
+        prepared = locations.model_input()
+        n_locs = len(prepared.frame)
 
         if out_format not in ["flows", "flows_sample", "probabilities"]:
             print(
@@ -340,20 +270,25 @@ class Gravity:
             out_format = "flows"
 
         if "flows" in out_format:
-            if tot_outflows_column not in spatial_tessellation.columns:
-                raise KeyError("The column 'tot_outflows' must be present in the tessellation.")
-            tot_outflows = spatial_tessellation[tot_outflows_column].fillna(0).to_numpy(dtype=float)
+            if tot_outflows_column not in prepared.frame.columns:
+                raise KeyError(
+                    "The column 'tot_outflows' must be present in the tessellation."
+                )
+            tot_outflows = prepared.values(tot_outflows_column)
         else:
-            tot_outflows = np.zeros(n_locs, dtype=float)
+            tot_outflows = (
+                nw.new_series(
+                    "tot_outflow", [0.0] * n_locs, backend=prepared.frame.implementation
+                )
+                .cast(nw.Float64)
+                .to_arrow()
+            )
 
-        origins = np.arange(n_locs)
-        coords = tessellation_lat_lngs(spatial_tessellation)
-
-        flat = _core.model_gravity_matrix_numpy(
-            np.asarray(coords[:, 0], dtype=float),
-            np.asarray(coords[:, 1], dtype=float),
-            np.asarray(relevances, dtype=float),
-            np.asarray(tot_outflows, dtype=float),
+        origins, destinations, values = _core.model_gravity_flows_arrow(
+            prepared.latitudes,
+            prepared.longitudes,
+            prepared.values(relevance_column),
+            tot_outflows,
             self._deterrence_func_type,
             float(self._deterrence_func_args[0]),
             float(self._origin_exp),
@@ -361,18 +296,33 @@ class Gravity:
             self._gravity_type,
             out_format,
         )
-        od_matrix = np.asarray(flat, dtype=float).reshape((n_locs, n_locs))
-        return self._from_matrix_to_flowdf(od_matrix, origins, spatial_tessellation)
-
-    def _from_matrix_to_flowdf(self, flow_matrix, origins, spatial_tessellation):
-        index2tileid = dict(enumerate(spatial_tessellation[self._tile_id_column].values))
-        output_list = [
-            [index2tileid[int(i)], index2tileid[j], flow]
-            for i in origins
-            for j, flow in enumerate(flow_matrix[int(i)])
-            if flow > 0.0
-        ]
-        return flow_dataframe(output_list, tessellation=spatial_tessellation, tile_id=self._tile_id_column)
+        if out_format == "flows_sample":
+            rng = np.random.default_rng(random_state)
+            origin_values = np.asarray(origins, dtype=np.int64)
+            probability_values = np.asarray(values, dtype=float)
+            quantities = np.zeros_like(probability_values)
+            outflow_values = np.asarray(tot_outflows, dtype=np.int64)
+            for origin in np.unique(origin_values):
+                mask = origin_values == origin
+                quantities[mask] = rng.multinomial(
+                    int(outflow_values[origin]),
+                    probability_values[mask] / probability_values[mask].sum(),
+                )
+            values = nw.new_series(
+                "flow", quantities, backend=prepared.frame.implementation
+            ).to_arrow()
+        ids = prepared.location_ids().to_list()
+        frame = nw.from_dict(
+            {
+                "origin": [ids[int(i)] for i in np.asarray(origins)],
+                "destination": [ids[int(i)] for i in np.asarray(destinations)],
+                "flow": values,
+            },
+            backend=prepared.frame.implementation,
+        ).to_native()
+        return FlowDataFrame(
+            frame, locations=locations, tile_id=locations.location_id_col
+        )
 
     def fit(self, flow_df, relevance_column=RELEVANCE):
         """Fit the Gravity model parameters to observed flows via Poisson regression.
@@ -408,22 +358,35 @@ class Gravity:
             import statsmodels as sm
             from statsmodels.genmod.generalized_linear_model import GLM
         except ImportError as exc:
-            raise ImportError("statsmodels is required: pip install fastmob[generation]") from exc
+            raise ImportError(
+                "statsmodels is required: pip install fastmob[generation]"
+            ) from exc
 
-        if not hasattr(flow_df, "tessellation"):
-            raise AttributeError("flow_df must expose a tessellation attribute to fit Gravity.")
-
-        tessellation = to_pandas_frame(flow_df.tessellation)
-        self.lats_lngs = tessellation_lat_lngs(tessellation)
-        self.weights = tessellation[relevance_column].fillna(0).to_numpy(dtype=float)
-        self.tileid2index = {tileid: i for i, tileid in enumerate(tessellation[TILE_ID].values)}
+        if not hasattr(flow_df, "locations") or flow_df.locations is None:
+            raise AttributeError(
+                "flow_df must expose a Locations catalogue to fit Gravity."
+            )
+        prepared = flow_df.locations.model_input()
+        self.lats_lngs = np.column_stack(
+            (np.asarray(prepared.latitudes), np.asarray(prepared.longitudes))
+        )
+        self.weights = np.asarray(prepared.values(relevance_column), dtype=float)
+        self.tileid2index = {
+            tileid: i for i, tileid in enumerate(prepared.location_ids().to_list())
+        }
         self.X, self.y = [], []
 
-        for _, flow_example in to_pandas_frame(flow_df).iterrows():
+        for flow_example in nw.from_native(flow_df.df, eager_only=True).iter_rows(
+            named=True
+        ):
             self._update_training_set(flow_example)
 
         poisson_model = GLM(
-            self.y, self.X, family=sm.genmod.families.family.Poisson(link=sm.genmod.families.links.log())
+            self.y,
+            self.X,
+            family=sm.genmod.families.family.Poisson(
+                link=sm.genmod.families.links.log()
+            ),
         )
         poisson_results = poisson_model.fit()
         if self._gravity_type == "globally constrained":
@@ -452,7 +415,7 @@ class Gravity:
             return
         if weight_destination <= 0:
             return
-        dist = haversine_km(tuple(coords_origin), tuple(coords_destination))
+        dist = float(_core.haversine_km(*coords_origin, *coords_destination))
         sc_vars = (
             [np.log(weight_origin)]
             if self._gravity_type == "globally constrained"

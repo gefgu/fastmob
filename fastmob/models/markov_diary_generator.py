@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import datetime
+import secrets
 
-import numpy as np
-import pandas as pd
+import narwhals as nw
+import pyarrow as pa
+import pyarrow.compute as pc
 
 from fastmob import _core
 
-from ._common import DATETIME, UID, to_pandas_frame
+DATETIME = "datetime"
+UID = "uid"
 
 _N_STATES = 48  # 24 hours × 2 typicality values
 
@@ -79,7 +82,7 @@ class MarkovDiaryGenerator:
     def __init__(self, name="Markov diary", granularity_minutes=60):
         if granularity_minutes <= 0 or 1440 % granularity_minutes != 0:
             raise ValueError("granularity_minutes must be a positive divisor of 1440")
-        self._cdf_matrix_flat: np.ndarray | None = None
+        self._cdf_matrix_flat: pa.Array | None = None
         self._name = name
         self._granularity_minutes = int(granularity_minutes)
         self._slots_per_day = 1440 // int(granularity_minutes)
@@ -88,35 +91,6 @@ class MarkovDiaryGenerator:
     @property
     def name(self):
         return self._name
-
-    @staticmethod
-    def _create_time_series(traj, lid="location", time_slot_length="1h"):
-        """Return (values_array, shift) for one individual's trajectory.
-
-        values_array: numpy int64 array of hourly location ranks (rank 1 = home).
-        shift: int — starting hour of the first slot.
-        """
-        dt_series = traj[DATETIME]
-        loc_series = traj[lid].astype("str")
-        shift = int(dt_series.min().hour)
-
-        loc2freq = loc_series.value_counts().to_dict()
-        loc2rank = {loc: i + 1 for i, (loc, _) in enumerate(sorted(loc2freq.items(), key=lambda x: -x[1]))}
-
-        bins = dt_series.dt.floor(time_slot_length)
-        counts = pd.DataFrame({"bin": bins, "loc": loc_series}).groupby(["bin", "loc"]).size().reset_index(name="n")
-        counts["tiebreak"] = counts["loc"].map(loc2freq).fillna(0)
-        counts.sort_values(["bin", "n", "tiebreak"], ascending=[True, False, False], inplace=True)
-        best = counts.groupby("bin")["loc"].first()
-
-        full_idx = pd.date_range(
-            dt_series.min().floor(time_slot_length),
-            dt_series.max().floor(time_slot_length),
-            freq=time_slot_length,
-        )
-        time_series = best.reindex(full_idx).ffill().bfill().map(loc2rank)
-        values = np.array([v if not pd.isna(v) else 0 for v in time_series.values], dtype=np.uint64)
-        return values, shift
 
     def fit(self, traj, n_individuals, lid="location"):
         """Learn the Markov mobility diary from real trajectories.
@@ -145,27 +119,28 @@ class MarkovDiaryGenerator:
         if n_individuals < 0:
             raise ValueError("n_individuals must be greater than or equal to zero")
 
-        traj = to_pandas_frame(traj)
-        missing = [column for column in (UID, DATETIME, lid) if column not in traj.columns]
+        frame = nw.from_native(getattr(traj, "df", traj), eager_only=True)
+        missing = [column for column in (UID, DATETIME, lid) if column not in frame.columns]
         if missing:
             raise ValueError(f"trajectory is missing required columns: {missing}")
 
-        uid_codes, _ = pd.factorize(traj[UID], sort=False)
-        if np.any(uid_codes < 0):
+        uid_values = frame.get_column(UID).cast(nw.String).to_arrow()
+        location_values = frame.get_column(lid).cast(nw.String).to_arrow()
+        timestamps = frame.get_column(DATETIME).cast(nw.Datetime("ns")).to_arrow()
+        if uid_values.null_count:
             raise ValueError(f"trajectory column {UID!r} must not contain null values")
-
-        dt_series = pd.to_datetime(traj[DATETIME])
-        if dt_series.isna().any():
+        if timestamps.null_count:
             raise ValueError(f"trajectory column {DATETIME!r} must not contain null values")
-        timestamps_ns = np.ascontiguousarray(
-            dt_series.to_numpy(dtype="datetime64[ns]").astype(np.int64), dtype=np.int64
-        )
+        if location_values.null_count:
+            raise ValueError(f"trajectory column {lid!r} must not contain null values")
 
-        loc_codes, _ = pd.factorize(traj[lid].astype("str"), sort=False)
-        self._cdf_matrix_flat = _core.markov_diary_fit_from_arrays(
-            np.ascontiguousarray(uid_codes, dtype=np.int64),
+        uid_codes = pc.cast(pc.dictionary_encode(uid_values).indices, pa.int64())
+        location_codes = pc.cast(pc.dictionary_encode(location_values).indices, pa.int64())
+        timestamps_ns = pc.cast(timestamps, pa.int64())
+        self._cdf_matrix_flat = _core.markov_diary_fit_from_arrow(
+            uid_codes,
             timestamps_ns,
-            np.ascontiguousarray(loc_codes, dtype=np.int64),
+            location_codes,
             int(n_individuals),
             self._slots_per_day,
         )
@@ -205,19 +180,24 @@ class MarkovDiaryGenerator:
         """
         # When unfitted, pass cdf_matrix=None so the Rust core builds a home-only
         # CDF sized for this generator's granularity (agent stays home all day).
-        seed = int(random_state) if random_state is not None else int(np.random.randint(0, 2**31))
+        seed = int(random_state) if random_state is not None else secrets.randbits(31)
         start_ts = int(start_date.timestamp())
-        ts_arr, locs_arr, starts, ends = _core.markov_diary_batch_generate(
+        ts_arr, locs_arr, starts, ends = _core.markov_diary_batch_generate_arrow(
             self._cdf_matrix_flat, diary_length, start_ts, 1, seed, self._slots_per_day
         )
-        timestamps = [
-            datetime.datetime.fromtimestamp(t, tz=datetime.timezone.utc).replace(tzinfo=None)
-            for t in ts_arr[starts[0] : ends[0]]
-        ]
-        locs = list(locs_arr[starts[0] : ends[0]])
-        return pd.DataFrame({DATETIME: timestamps, "abstract_location": locs})
+        start, end = starts[0], ends[0]
+        timestamps = pa.array(
+            [
+                datetime.datetime.fromtimestamp(t, tz=datetime.timezone.utc).replace(tzinfo=None)
+                for t in ts_arr.slice(start, end - start).to_pylist()
+            ],
+            type=pa.timestamp("s"),
+        )
+        return pa.table({DATETIME: timestamps, "abstract_location": locs_arr.slice(start, end - start)})
 
     def _generate_list(self, diary_length, start_date, random_state=None):
         """Compatibility shim used by STS_epr — returns list of [datetime, abstract_location]."""
-        df = self.generate(diary_length, start_date, random_state=random_state)
-        return [[row[DATETIME], row["abstract_location"]] for _, row in df.iterrows()]
+        return [
+            [row[DATETIME], row["abstract_location"]]
+            for row in self.generate(diary_length, start_date, random_state=random_state).to_pylist()
+        ]

@@ -178,6 +178,21 @@ pub fn as_i64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Int64Ty
     Ok(array)
 }
 
+pub fn as_i32_array(arr: PyArray, name: &str) -> PyResult<Int32Array> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected int32 Arrow array for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow array for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
 pub fn as_nullable_i64_array(arr: PyArray, name: &str) -> PyResult<Int64Array> {
     let (array_ref, _field) = arr.into_inner();
     array_ref
@@ -235,6 +250,12 @@ pub fn as_bool_array(arr: PyArray, name: &str) -> PyResult<BooleanArray> {
 }
 
 pub fn arrow_u64_values(array: &PrimitiveArray<UInt64Type>) -> &[u64] {
+    let start = array.offset();
+    let end = start + array.len();
+    &array.values()[start..end]
+}
+
+pub fn arrow_i32_values(array: &Int32Array) -> &[i32] {
     let start = array.offset();
     let end = start + array.len();
     &array.values()[start..end]

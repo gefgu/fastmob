@@ -1,11 +1,14 @@
-use crate::utils::ArrowUsizeArrayExt;
-use fastmob_core::models::next_location::{
-    markov_fit_indexed, markov_predict_batch, MarkovLocationModel,
-    NextLocationConfig as CoreNextLocationConfig,
+use crate::utils::{
+    ArrowUsizeArrayExt, arrow_u64_values, as_u64_array, f64_results_into_arrow,
+    u64_results_into_arrow,
 };
-use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
+use fastmob_core::models::next_location::{
+    MarkovLocationModel, NextLocationConfig as CoreNextLocationConfig, markov_fit_indexed,
+    markov_predict_batch,
+};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
 
 /// An order-k (+ backoff) Markov next-location model, fit once per user and
 /// reused for many `predict_batch` calls -- fitting (building the
@@ -22,18 +25,18 @@ impl PyNextLocationModels {
     #[new]
     #[pyo3(signature = (location_codes, sorted_indices, ends, order=1, backoff=true))]
     fn new(
-        location_codes: PyReadonlyArray1<'_, u64>,
-        sorted_indices: pyo3_arrow::PyArray,
-        ends: pyo3_arrow::PyArray,
+        location_codes: ArrowPyArray,
+        sorted_indices: ArrowPyArray,
+        ends: ArrowPyArray,
         order: usize,
         backoff: bool,
     ) -> PyResult<Self> {
-        let codes = location_codes.as_slice()?;
+        let codes = as_u64_array(location_codes, "location_codes")?;
         let indices = sorted_indices.as_slice()?;
         let ends = ends.as_slice()?;
         let config = CoreNextLocationConfig::new(order, backoff);
-        let models =
-            markov_fit_indexed(codes, indices, ends, &config).map_err(PyValueError::new_err)?;
+        let models = markov_fit_indexed(arrow_u64_values(&codes), indices, ends, &config)
+            .map_err(PyValueError::new_err)?;
         Ok(Self { models })
     }
 
@@ -48,27 +51,30 @@ impl PyNextLocationModels {
     fn predict_batch<'py>(
         &self,
         py: Python<'py>,
-        context_codes: PyReadonlyArray1<'py, u64>,
-        context_starts: pyo3_arrow::PyArray,
-        context_ends: pyo3_arrow::PyArray,
+        context_codes: ArrowPyArray,
+        context_starts: ArrowPyArray,
+        context_ends: ArrowPyArray,
         top_k: usize,
-    ) -> PyResult<(
-        Bound<'py, PyArray1<u64>>,
-        Bound<'py, PyArray1<f64>>,
-        Bound<'py, PyArray1<usize>>,
-        Bound<'py, PyArray1<usize>>,
-    )> {
-        let codes = context_codes.as_slice()?;
+    ) -> PyResult<(Py<PyAny>, Py<PyAny>, Py<PyAny>, Py<PyAny>)> {
+        let codes = as_u64_array(context_codes, "context_codes")?;
         let starts = context_starts.as_slice()?;
         let ends = context_ends.as_slice()?;
         let (out_codes, out_probs, out_starts, out_ends) =
-            markov_predict_batch(&self.models, codes, starts, ends, top_k)
+            markov_predict_batch(&self.models, arrow_u64_values(&codes), starts, ends, top_k)
                 .map_err(PyValueError::new_err)?;
         Ok((
-            out_codes.into_pyarray(py),
-            out_probs.into_pyarray(py),
-            out_starts.into_pyarray(py),
-            out_ends.into_pyarray(py),
+            Py::new(py, u64_results_into_arrow(out_codes))?.into_any(),
+            Py::new(py, f64_results_into_arrow(out_probs))?.into_any(),
+            Py::new(
+                py,
+                u64_results_into_arrow(out_starts.into_iter().map(|v| v as u64).collect()),
+            )?
+            .into_any(),
+            Py::new(
+                py,
+                u64_results_into_arrow(out_ends.into_iter().map(|v| v as u64).collect()),
+            )?
+            .into_any(),
         ))
     }
 

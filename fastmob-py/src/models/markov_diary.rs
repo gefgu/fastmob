@@ -6,6 +6,12 @@ use fastmob_core::models::markov_diary::{
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3_arrow::PyArray as ArrowPyArray;
+
+use crate::utils::{
+    arrow_i64_values, arrow_values, as_f64_array, as_i64_array, f64_results_into_arrow,
+    i32_results_into_arrow, i64_results_into_arrow,
+};
 
 const SECONDS_PER_DAY: i64 = 86_400;
 
@@ -72,6 +78,61 @@ pub fn markov_diary_fit_from_arrays<'py>(
     )
     .map_err(PyValueError::new_err)?;
     Ok(cdf.into_pyarray(py))
+}
+
+#[pyfunction]
+#[pyo3(signature = (uids, timestamps_ns, loc_codes, n_individuals, slots_per_day=24))]
+pub fn markov_diary_fit_from_arrow<'py>(
+    py: Python<'py>,
+    uids: ArrowPyArray,
+    timestamps_ns: ArrowPyArray,
+    loc_codes: ArrowPyArray,
+    n_individuals: usize,
+    slots_per_day: usize,
+) -> PyResult<Py<PyAny>> {
+    let uids = as_i64_array(uids, "uids")?;
+    let timestamps = as_i64_array(timestamps_ns, "timestamps_ns")?;
+    let locations = as_i64_array(loc_codes, "loc_codes")?;
+    let cdf = markov_diary_fit_from_arrays_impl(
+        arrow_i64_values(&uids),
+        arrow_i64_values(&timestamps),
+        arrow_i64_values(&locations),
+        n_individuals,
+        slots_per_day,
+    )
+    .map_err(PyValueError::new_err)?;
+    Ok(Py::new(py, f64_results_into_arrow(cdf))?.into_any())
+}
+
+#[pyfunction]
+#[pyo3(signature = (cdf_matrix, diary_length, start_ts, n_agents, master_seed, slots_per_day=24))]
+pub fn markov_diary_batch_generate_arrow<'py>(
+    py: Python<'py>,
+    cdf_matrix: Option<ArrowPyArray>,
+    diary_length: usize,
+    start_ts: i64,
+    n_agents: usize,
+    master_seed: u64,
+    slots_per_day: usize,
+) -> PyResult<(Py<PyAny>, Py<PyAny>, Vec<usize>, Vec<usize>)> {
+    let cdf = cdf_matrix
+        .map(|values| as_f64_array(values, "cdf_matrix"))
+        .transpose()?;
+    let (timestamps, locations, starts, ends) = markov_diary_batch_generate_impl(
+        cdf.as_ref().map(arrow_values),
+        diary_length,
+        start_ts,
+        n_agents,
+        master_seed,
+        slots_per_day,
+        slot_seconds_for(slots_per_day),
+    );
+    Ok((
+        Py::new(py, i64_results_into_arrow(timestamps))?.into_any(),
+        Py::new(py, i32_results_into_arrow(locations))?.into_any(),
+        starts,
+        ends,
+    ))
 }
 
 #[pyfunction]

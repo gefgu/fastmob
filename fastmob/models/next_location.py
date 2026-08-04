@@ -19,7 +19,6 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 
@@ -119,7 +118,14 @@ class NextLocationPredictor:
             uid_col = _pick_existing_column(df.columns, UID_CANDIDATES)
 
         df = df.filter(~nw.col(location_col).is_null())
-        location_codes, code_to_label = _factorize_column(df, location_col)
+        location_values = df.get_column(location_col).to_arrow()
+        location_codes_arrow, representatives = _factorize_arrow_values(
+            location_values, sort=False
+        )
+        code_to_label = dict(
+            enumerate(pc.take(location_values, representatives).to_pylist())
+        )
+        location_codes = _uint64_series(df, location_codes_arrow)
         df = df.with_columns(location_codes.alias("__location_code__"))
 
         if started_at_col is not None:
@@ -131,8 +137,7 @@ class NextLocationPredictor:
 
             indices = pa.array(range(len(df)), type=pa.uint64())
 
-        codes_array = df.get_column("__location_code__").to_numpy().astype(np.uint64)
-        index_values = indices.to_pylist()
+        codes_array = df.get_column("__location_code__").to_arrow()
         end_values = ends.to_pylist()
 
         self._models = NextLocationModels(codes_array, indices, ends, self.order, self.backoff)
@@ -140,7 +145,7 @@ class NextLocationPredictor:
         self._code_to_label = code_to_label
         self._backend = df.implementation
         self._sequences = {
-            uid: codes_array[index_values[start:end]].tolist()
+            uid: pc.take(codes_array, indices.slice(start, end - start)).to_pylist()
             for uid, (start, end) in zip(self._uid_values, zip([0, *end_values[:-1]], end_values), strict=True)
         }
         self.uid_col = uid_col
@@ -182,7 +187,7 @@ class NextLocationPredictor:
             context_ends.append(cursor)
 
         pred_codes, pred_probs, out_starts, out_ends = self._models.predict_batch(
-            np.asarray(context_flat, dtype=np.uint64),
+            pa.array(context_flat, type=pa.uint64()),
             pa.array(context_starts, type=pa.uint64()),
             pa.array(context_ends, type=pa.uint64()),
             top_k,
@@ -192,9 +197,13 @@ class NextLocationPredictor:
         out_rank: list[int] = []
         out_label: list[Any] = []
         out_prob: list[float] = []
+        pred_code_values = pred_codes.to_pylist()
+        pred_prob_values = pred_probs.to_pylist()
+        output_starts = out_starts.to_pylist()
+        output_ends = out_ends.to_pylist()
         for i, uid in enumerate(self._uid_values):
-            start, end = out_starts[i], out_ends[i]
-            for rank, (code, prob) in enumerate(zip(pred_codes[start:end], pred_probs[start:end]), start=1):
+            start, end = output_starts[i], output_ends[i]
+            for rank, (code, prob) in enumerate(zip(pred_code_values[start:end], pred_prob_values[start:end]), start=1):
                 out_rank.append(rank)
                 out_label.append(self._code_to_label[code])
                 out_prob.append(float(prob))
@@ -294,31 +303,26 @@ class NextLocationPredictor:
 
             indices = pa.array(range(len(codes_flat)), type=pa.uint64())
             models = NextLocationModels(
-                np.asarray(codes_flat, dtype=np.uint64),
+                pa.array(codes_flat, type=pa.uint64()),
                 indices,
                 pa.array(ends, type=pa.uint64()),
                 self.order,
                 self.backoff,
             )
             pred_codes, _pred_probs, out_starts, out_ends = models.predict_batch(
-                np.asarray(context_flat, dtype=np.uint64),
+                pa.array(context_flat, type=pa.uint64()),
                 pa.array(context_starts, type=pa.uint64()),
                 pa.array(context_ends, type=pa.uint64()),
                 top_k,
             )
 
+            prediction_values = pred_codes.to_pylist()
+            output_starts = out_starts.to_pylist()
+            output_ends = out_ends.to_pylist()
             for i in range(len(eligible)):
-                preds = pred_codes[out_starts[i] : out_ends[i]]
+                preds = prediction_values[output_starts[i] : output_ends[i]]
                 if truths[i] in preds:
                     correct += 1
                 total += 1
 
         return correct / total if total else float("nan")
-
-
-def _factorize_column(df: nw.DataFrame, col: str) -> tuple[nw.Series, dict[int, Any]]:
-    """Dense uint64-code a column, returning (codes, {code: original_label})."""
-    values = df.get_column(col).to_arrow()
-    codes, representatives = _factorize_arrow_values(values, sort=False)
-    labels = pc.take(values, representatives).to_pylist()
-    return _uint64_series(df, codes), dict(enumerate(labels))

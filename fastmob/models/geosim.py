@@ -1,31 +1,13 @@
 from __future__ import annotations
 
-import numpy as np
+import secrets
+
+import narwhals as nw
+import pyarrow as pa
+import pyarrow.compute as pc
 
 from fastmob import _core
-
-from ._common import tessellation_lat_lngs, to_pandas_frame, trajectory_dataframe
-
-
-def _igraph_to_csr(
-    social_graph,
-    n_agents: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Extract a CSR adjacency list from an igraph Graph object."""
-    srcs, dsts = [], []
-    for edge in social_graph.es:
-        srcs.append(edge.source)
-        dsts.append(edge.target)
-    if srcs:
-        ns, nb = _core.model_social_graph_edges_to_csr(
-            np.asarray(srcs, dtype=np.int64),
-            np.asarray(dsts, dtype=np.int64),
-            n_agents,
-        )
-    else:
-        ns = list(range(n_agents + 1))
-        nb = []
-    return np.asarray(ns, dtype=np.int64), np.asarray(nb, dtype=np.int64)
+from fastmob.core import Locations, TrajDataFrame
 
 
 class GeoSim:
@@ -159,9 +141,6 @@ class GeoSim:
         dt_update_mobSim=24 * 7,
         indipendency_window=0.5,
         random_state=None,
-        log_file=None,
-        verbose=0,
-        show_progress=False,
     ):
         """Simulate a socially connected population from ``start_date`` to ``end_date``.
 
@@ -221,12 +200,14 @@ class GeoSim:
         if start_date > end_date:
             raise ValueError("Argument 'start_date' must be prior to 'end_date'.")
 
-        tessellation = to_pandas_frame(spatial_tessellation)
+        if not isinstance(spatial_tessellation, Locations):
+            raise TypeError("Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs")
+        prepared = spatial_tessellation.model_input()
+        tessellation = prepared.frame
         if len(tessellation) < 2:
             raise ValueError("Argument `spatial_tessellation` must contain at least 2 tiles.")
-        lats_lngs = tessellation_lat_lngs(tessellation)
-        lats = np.ascontiguousarray(lats_lngs[:, 0], dtype=np.float64)
-        lngs = np.ascontiguousarray(lats_lngs[:, 1], dtype=np.float64)
+        lats = prepared.latitudes
+        lngs = prepared.longitudes
 
         start_ts = int(start_date.timestamp())
         end_ts = int(end_date.timestamp())
@@ -240,10 +221,8 @@ class GeoSim:
         if isinstance(social_graph, str):
             if social_graph != "random":
                 raise ValueError("When `social_graph` is a str it must be 'random'.")
-            rng_seed = seed if seed is not None else int(np.random.randint(0, 2**31))
-            neighbor_starts, neighbors = _core.model_social_graph_random_geometric(n_agents, 0.5, rng_seed)
-            neighbor_starts = np.asarray(neighbor_starts, dtype=np.int64)
-            neighbors = np.asarray(neighbors, dtype=np.int64)
+            rng_seed = seed if seed is not None else secrets.randbits(31)
+            neighbor_starts, neighbors = _core.model_social_graph_random_geometric_arrow(n_agents, 0.5, rng_seed)
         elif isinstance(social_graph, list):
             if len(social_graph) == 0:
                 raise ValueError("Argument `social_graph` cannot be an empty list.")
@@ -252,15 +231,13 @@ class GeoSim:
             dict_gid_to_uid = {gid: uid for uid, gid in dict_uid_to_gid.items()}
             n_agents = len(user_ids)
             map_ids = True
-            srcs = np.asarray([dict_uid_to_gid[a] for a, _ in social_graph], dtype=np.int64)
-            dsts = np.asarray([dict_uid_to_gid[b] for _, b in social_graph], dtype=np.int64)
-            neighbor_starts, neighbors = _core.model_social_graph_edges_to_csr(srcs, dsts, n_agents)
-            neighbor_starts = np.asarray(neighbor_starts, dtype=np.int64)
-            neighbors = np.asarray(neighbors, dtype=np.int64)
+            srcs = pa.array([dict_uid_to_gid[a] for a, _ in social_graph], type=pa.int64())
+            dsts = pa.array([dict_uid_to_gid[b] for _, b in social_graph], type=pa.int64())
+            neighbor_starts, neighbors = _core.model_social_graph_edges_to_csr_arrow(srcs, dsts, n_agents)
         else:
             raise TypeError("Argument `social_graph` should be a string or a list.")
 
-        agent_ids, lats_out, lngs_out, timestamps = _core.model_geosim_simulate_agents(
+        agent_ids, lats_out, lngs_out, timestamps = _core.model_geosim_simulate_agents_arrow(
             lats,
             lngs,
             neighbor_starts,
@@ -279,22 +256,14 @@ class GeoSim:
             seed,
         )
 
+        agent_values = agent_ids.to_pylist()
         if map_ids:
-            uid_out = [dict_gid_to_uid[int(g) - 1] for g in agent_ids]
+            uid_out = [dict_gid_to_uid[int(g) - 1] for g in agent_values]
         else:
-            uid_out = list(agent_ids)
-
-        import datetime
-
-        traj = list(
-            zip(
-                uid_out,
-                lats_out,
-                lngs_out,
-                [
-                    datetime.datetime.fromtimestamp(int(t), tz=datetime.timezone.utc).replace(tzinfo=None)
-                    for t in timestamps
-                ],
-            )
+            uid_out = agent_values
+        return TrajDataFrame(
+            nw.from_dict(
+                {"uid": uid_out, "lat": lats_out, "lng": lngs_out, "datetime": pc.cast(timestamps, pa.timestamp("s"))},
+                backend=tessellation.implementation,
+            ).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native()
         )
-        return trajectory_dataframe(traj)

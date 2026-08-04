@@ -65,18 +65,21 @@ class FlowDataFrame(BaseDataFrame):
         flow: str = FLOW,
         tile_id: str = TILE_ID,
         tessellation: Any | None = None,
+        locations: Any | None = None,
         parameters: dict | None = None,
         **kwargs,
     ):
         if isinstance(df, FlowDataFrame):
             super().__init__(df.df)
             self.tessellation = getattr(df, "tessellation", tessellation)
+            self.locations = getattr(df, "locations", locations)
             self.tile_id = getattr(df, "tile_id", tile_id)
             self.parameters = getattr(df, "parameters", {})
             self._info = getattr(df, "_info", None)
             return
 
-        self.tessellation = tessellation
+        self.locations = locations
+        self.tessellation = locations if locations is not None else tessellation
         self.tile_id = tile_id
         self.parameters = {} if parameters is None else parameters
         self._info = None
