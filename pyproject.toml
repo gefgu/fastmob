@@ -15,7 +15,6 @@ dependencies = [
     "narwhals>=1.0",
     "pandas>=1.5",
     "pyarrow>=14",
-    "simsimd>=5.3",
 ]
 
 classifiers = [

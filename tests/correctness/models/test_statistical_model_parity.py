@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
-from fastmob.measures.evaluation import visits_per_user_wasserstein_distance, wasserstein_distance
+from fastmob.measures.evaluation import wasserstein_distance
 from fastmob.measures.individual import jump_lengths, radius_of_gyration, waiting_times
 from fastmob.models import EPR, DensityEPR, GeoSim, Gravity, MarkovDiaryGenerator, Radiation, SpatialEPR, STS_epr
 from tests.shared.skmob_cache import _REFERENCE_DIR, SkmobReferenceDataset
@@ -129,8 +129,9 @@ def _compute_trajectory_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[st
     metrics: dict[str, float] = {}
 
     try:
-        val, _ = visits_per_user_wasserstein_distance(df1, df2)
-        metrics["visits_per_user_wasserstein"] = float(val)
+        counts1 = df1["uid"].value_counts().to_numpy()
+        counts2 = df2["uid"].value_counts().to_numpy()
+        metrics["visits_per_user_wasserstein"] = float(wasserstein_distance(counts1, counts2))
     except Exception:  # noqa: BLE001, S110
         pass
 
@@ -319,9 +320,7 @@ def test_flow_sample_statistical_parity(
 ):
     if name == "gravity_flows_sample":
         pytest.skip("gravity_flows_sample under revision")
-    from fastmob.measures.evaluation import od_matrix_common_part_of_commuters
-
-    skmob_mat = _flow_to_od_matrix(_expected_df(models_reference, name))
+    import fastmob
 
     _reset_rng()
     fastmob_df = model_cls().generate(
@@ -331,7 +330,8 @@ def test_flow_sample_statistical_parity(
         relevance_column="population",
         out_format="flows_sample",
     )
-    fastmob_mat = _flow_to_od_matrix(fastmob_df)
-
-    cpc = od_matrix_common_part_of_commuters(fastmob_mat, skmob_mat)
+    cpc = fastmob.common_part_of_commuters(
+        fastmob.FlowDataFrame(fastmob_df),
+        fastmob.FlowDataFrame(_expected_df(models_reference, name)),
+    )
     _assert_cpc_within_baseline(cpc, skmob_baseline, name)

@@ -35,3 +35,12 @@ class BaseDataFrame:
 
     def to_native(self):
         return self.df
+
+    def compare_to(self, other, value_col, *, group_col=None, metric=None):
+        """Compare ``value_col`` against ``other``, optionally grouped by ``group_col``.
+
+        See :func:`fastmob.measures.evaluation.compare.compare_to`.
+        """
+        from fastmob.measures.evaluation.compare import compare_to as _compare_to
+
+        return _compare_to(self.df, other.df, value_col, group_col=group_col, metric=metric)

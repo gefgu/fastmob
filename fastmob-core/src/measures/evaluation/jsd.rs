@@ -1,11 +1,9 @@
 //! Jensen-Shannon divergence.
 //!
-//! This is the reference formula the Python layer validates its SIMD path
-//! against (`fastmob/measures/evaluation/metrics.py::_reference_js_divergence`).
-//! Python tries `simsimd.jensenshannon` first and accepts its result only when
-//! it agrees with this formula to within `rtol=1e-10`, falling back to this
-//! formula otherwise -- so callers of this kernel agree with Python to at least
-//! that tolerance, though not necessarily bit-for-bit.
+//! `jensen_shannon_divergence_impl` is the sole implementation backing
+//! `fastmob.measures.evaluation.jensen_shannon_divergence` (see
+//! `fastmob/measures/evaluation/metrics.py`), exposed to Python via the
+//! `jensen_shannon` PyO3 binding in `fastmob-py/src/measures/evaluation/jsd.rs`.
 
 /// Normalise a distribution to sum to 1, treating non-finite entries as zero.
 ///

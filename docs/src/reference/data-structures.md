@@ -77,6 +77,22 @@
 
 ---
 
+### Comparison methods
+
+`compare_to` is defined once on `BaseDataFrame` and inherited by every hierarchy
+class (`TrajDataFrame`, `FlowDataFrame`, `Staypoints`, `Trips`, `Triplegs`,
+`Locations`, `Tours`).
+
+| API | Description |
+| --- | --- |
+| [`TrajDataFrame.compare_to`](#fastmob.core.base.BaseDataFrame.compare_to) | Compare a value column against another instance, optionally grouped by an existing column. |
+
+::: fastmob.core.base.BaseDataFrame.compare_to
+    options:
+      show_source: false
+
+---
+
 ### Utility methods
 
 | API | Description |
@@ -148,6 +164,7 @@ pip install "fastmob[vis]"
 | [`FlowDataFrame.get_flow`](#fastmob.core.flow_dataframe.FlowDataFrame.get_flow) | Return the flow between two tile IDs (0 if absent). |
 | [`FlowDataFrame.get_geometry`](#fastmob.core.flow_dataframe.FlowDataFrame.get_geometry) | Return the geometry of a tessellation tile. |
 | [`FlowDataFrame.settings_from`](#fastmob.core.flow_dataframe.FlowDataFrame.settings_from) | Copy metadata attributes from another `FlowDataFrame`. |
+| [`FlowDataFrame.compare_to`](#fastmob.core.base.BaseDataFrame.compare_to) | Compare a value column against another instance, optionally grouped by an existing column (inherited from `BaseDataFrame`, documented above). |
 
 ::: fastmob.core.flow_dataframe.FlowDataFrame.get_flow
     options:

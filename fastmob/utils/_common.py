@@ -19,6 +19,7 @@ def require_optional(module_name: str, extra: str):
     except ImportError as exc:
         raise ImportError(f"{module_name} is required: pip install fastmob[{extra}]") from exc
 
+
 # ---------------------------------------------------------------------------
 # Authoritative candidate lists for column auto-detection.
 # All measure files should import from here rather than defining their own.
@@ -107,6 +108,12 @@ def _as_arrow(values: Any) -> pa.Array | pa.ChunkedArray:
     if isinstance(values, (pa.Array, pa.ChunkedArray)):
         return values
     return pa.array(values)
+
+
+def _finite_arrow_array(values: Any) -> pa.Array | pa.ChunkedArray:
+    """Cast to a float64 Arrow array and drop non-finite entries."""
+    arr = pc.cast(_as_arrow(values), pa.float64())
+    return pc.filter(arr, pc.is_finite(arr))
 
 
 def _values_to_list(values: Any) -> list[Any]:
@@ -198,6 +205,28 @@ def _factorize_arrow_values(values: Any, *, sort: bool) -> tuple[Any, Any]:
         values = values.combine_chunks()
     raw_codes, raw_representatives = factorize_arrow(values, sort)
     return _as_arrow(raw_codes), _as_arrow(raw_representatives)
+
+
+def _joint_factorize_arrow_values(*values: Any) -> tuple[pa.Array, ...]:
+    """Factorize Arrow-compatible columns with one shared codebook.
+
+    Nulls retain their validity bitmap so callers can pass the resulting codes
+    directly to a kernel that skips missing values.
+    """
+    arrays = []
+    for value in values:
+        array = _as_arrow(value)
+        arrays.append(array.combine_chunks() if isinstance(array, pa.ChunkedArray) else array)
+    if len({array.type for array in arrays}) != 1:
+        raise ValueError("jointly factorized columns must use the same Arrow data type")
+    codes, _ = _factorize_arrow_values(pa.concat_arrays(arrays), sort=False)
+    offset = 0
+    results = []
+    for array in arrays:
+        encoded = codes.slice(offset, len(array))
+        results.append(pc.if_else(pc.is_valid(array), encoded, pa.scalar(None, type=pa.uint64())))
+        offset += len(array)
+    return tuple(results)
 
 
 def _factorize_uids_uint64(
@@ -395,6 +424,31 @@ def _detect_trajectory_columns(
         return nw_df, datetime_col, lat_col, lng_col, uid_col
 
     return datetime_col, lat_col, lng_col, uid_col
+
+
+def _trajectory_input(
+    traj: Any,
+    *,
+    datetime_col: str | None,
+    lat_col: str | None,
+    lng_col: str | None,
+    uid_col: str | None,
+) -> tuple[nw.DataFrame, str, str, str, str | None]:
+    """Normalize a TrajDataFrame or dataframe-like trajectory input."""
+    native = getattr(traj, "df", traj)
+    datetime_col = datetime_col or getattr(traj, "datetime_col", None)
+    lat_col = lat_col or getattr(traj, "lat_col", None)
+    lng_col = lng_col or getattr(traj, "lng_col", None)
+    uid_col = uid_col or getattr(traj, "uid_col", None)
+    df = nw.from_native(native, eager_only=True)
+    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+        df, datetime_col=datetime_col, lat_col=lat_col, lng_col=lng_col, uid_col=uid_col
+    )
+    df = _with_datetime_column(df, datetime_col)
+    if df.schema[lat_col] != nw.Float64 or df.schema[lng_col] != nw.Float64:
+        df = df.with_columns(nw.col(lat_col).cast(nw.Float64), nw.col(lng_col).cast(nw.Float64))
+    required = [datetime_col, lat_col, lng_col] + ([uid_col] if uid_col is not None else [])
+    return df.drop_nulls(subset=required), datetime_col, lat_col, lng_col, uid_col
 
 
 def _prepare_trajectory(

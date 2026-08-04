@@ -337,8 +337,9 @@ def compute_trajectory_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dic
 
     # visits per user
     try:
-        val, _ = cmp.visits_per_user_wasserstein_distance(df1, df2)
-        out["visits_per_user_wasserstein"] = float(val)
+        counts1 = df1["uid"].value_counts().to_numpy()
+        counts2 = df2["uid"].value_counts().to_numpy()
+        out["visits_per_user_wasserstein"] = float(cmp.wasserstein_distance(counts1, counts2))
     except Exception:  # noqa: BLE001, S110
         pass
 
@@ -380,18 +381,7 @@ def compute_flow_pair_metrics(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[str,
 
     try:
 
-        def to_od_matrix(df: pd.DataFrame) -> pd.DataFrame:
-            if hasattr(df, "df"):
-                df = df.df
-            d = pd.DataFrame(df)[["origin", "destination", "flow"]].copy()
-            d["origin"] = d["origin"].astype(str)
-            d["destination"] = d["destination"].astype(str)
-            d["flow"] = pd.to_numeric(d["flow"], errors="coerce").fillna(0.0)
-            return d.pivot_table(index="origin", columns="destination", values="flow", aggfunc="sum").fillna(0.0)
-
-        mat1 = to_od_matrix(df1)
-        mat2 = to_od_matrix(df2)
-        out["od_matrix_cpc"] = float(cmp.od_matrix_common_part_of_commuters(mat1, mat2))
+        out["od_matrix_cpc"] = float(cmp.common_part_of_commuters(df1, df2))
     except Exception:  # noqa: BLE001, S110
         pass
 

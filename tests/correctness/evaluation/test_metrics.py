@@ -4,11 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from fastmob.measures.evaluation import (
-    histogram_jensen_shannon_divergence,
-    jensen_shannon_divergence,
-    wasserstein_distance,
-)
+from fastmob.measures.evaluation import jensen_shannon_divergence, wasserstein_distance
 
 try:
     from scipy.spatial.distance import jensenshannon as _scipy_jensenshannon
@@ -30,11 +26,6 @@ def test_jensen_shannon_matches_old_scipy_squared_semantics():
 
 def test_jensen_shannon_identical_distribution_is_zero():
     assert jensen_shannon_divergence([1, 2, 3], [1, 2, 3]) == pytest.approx(0.0)
-
-
-def test_histogram_jensen_shannon_identical_and_partial_overlap():
-    assert histogram_jensen_shannon_divergence([1, 2, 3], [1, 2, 3]) == pytest.approx(0.0)
-    assert histogram_jensen_shannon_divergence([1, 2, 3], [3, 4, 5]) > 0.0
 
 
 @requires_scipy
