@@ -2,23 +2,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
+import narwhals as nw
 
 from fastmob.core import TrajDataFrame
+from fastmob.utils import _arrow_io
 
 
 def read(filename, **kwargs):
     """Read a trajectory table from disk and return a `TrajDataFrame`.
 
-    CSV and delimited text files are read with `pandas.read_csv`; parquet files
-    are read with `pandas.read_parquet`.
+    CSV and delimited text files are read with `pyarrow.csv.read_csv`; parquet
+    files are read with `pyarrow.parquet.read_table`.
 
     Parameters
     ----------
     filename : str
         path and name of the file to read.
     **kwargs : dict
-        Additional keyword arguments passed to `pandas.read_csv` or `pandas.read_parquet`.
+        For parquet files, passed to `pyarrow.parquet.read_table`. For CSV/
+        delimited files, passed to `fastmob.utils._arrow_io.read_delimited`
+        (accepts ``delimiter``, ``encoding``, ``header``, ``column_names``,
+        plus any `pyarrow.csv.ConvertOptions` keyword).
 
     Returns
     -------
@@ -27,36 +31,42 @@ def read(filename, **kwargs):
     """
     path = Path(filename)
     if path.suffix.lower() == ".parquet":
-        frame = pd.read_parquet(path, **kwargs)
+        table = _arrow_io.read_parquet(path, **kwargs)
     else:
-        frame = pd.read_csv(path, **kwargs)
-    return TrajDataFrame(frame)
+        table = _arrow_io.read_delimited(path, **kwargs)
+    return TrajDataFrame(table)
 
 
 def write(tdf, filename, **kwargs):
     """Write a trajectory dataframe to disk.
 
-    CSV and delimited text files are written with `DataFrame.to_csv`; parquet
-    files are written with `DataFrame.to_parquet`.
+    CSV and delimited text files are written with `pyarrow.csv.write_csv`;
+    parquet files are written with `pyarrow.parquet.write_table`. The input
+    is materialized as a pyarrow.Table via Narwhals first, so any
+    Narwhals-compatible backend (pandas, polars, pyarrow, ...) is accepted
+    regardless of `tdf`'s own backend.
 
     Parameters
     ----------
-    tdf : TrajDataFrame or pandas.DataFrame
-        TrajDataFrame object that will be saved.
+    tdf : TrajDataFrame or DataFrame-like
+        TrajDataFrame object (or any Narwhals-compatible dataframe) that
+        will be saved.
     filename : str
         path and name of the output file.
     **kwargs : dict
-        Additional keyword arguments passed to `DataFrame.to_csv` or `DataFrame.to_parquet`.
+        For parquet files, passed to `pyarrow.parquet.write_table`. For CSV/
+        delimited files, passed to `pyarrow.csv.WriteOptions`.
 
     Returns
     -------
     None
     """
     path = Path(filename)
-    frame = tdf.df if isinstance(tdf, TrajDataFrame) else tdf
+    native = tdf.df if isinstance(tdf, TrajDataFrame) else tdf
+    table = nw.from_native(native, eager_only=True).to_arrow()
     if path.suffix.lower() == ".parquet":
-        return frame.to_parquet(path, **kwargs)
-    return frame.to_csv(path, index=kwargs.pop("index", False), **kwargs)
+        return _arrow_io.write_parquet(table, path, **kwargs)
+    return _arrow_io.write_delimited(table, path, **kwargs)
 
 
 def load_geolife_trajectories(path, user_ids=None, **kwargs):
@@ -99,4 +109,4 @@ def load_geolife_trajectories(path, user_ids=None, **kwargs):
                         "datetime": f"{fields[5]} {fields[6]}",
                     }
                 )
-    return TrajDataFrame(pd.DataFrame(rows), **kwargs)
+    return TrajDataFrame(_arrow_io.table_from_pylist(rows), **kwargs)

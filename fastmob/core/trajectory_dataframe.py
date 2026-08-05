@@ -152,13 +152,19 @@ class TrajDataFrame(BaseDataFrame):
         super().__init__(df)
 
         self.sorted = False
-        datetime_col = DATETIME if datetime_col is None and DATETIME in self.df else datetime_col
-        lat_col = LATITUDE if lat_col is None and LATITUDE in self.df else lat_col
-        lng_col = LONGITUDE if lng_col is None and LONGITUDE in self.df else lng_col
-        uid_col = UID if uid_col is None and UID in self.df else uid_col
-        self.trajectory_id_col = TID if TID in self.df else None
+        # `in`/`.columns` on the raw native object is only reliable for
+        # pandas/polars (whose `.columns` happen to be name strings); a raw
+        # pyarrow.Table's `.columns` is a list of ChunkedArrays and `in`
+        # doesn't check column names at all. Go through Narwhals so column
+        # detection works uniformly across every accepted backend.
+        nw_columns = nw.from_native(self.df, eager_only=True).columns
+        datetime_col = DATETIME if datetime_col is None and DATETIME in nw_columns else datetime_col
+        lat_col = LATITUDE if lat_col is None and LATITUDE in nw_columns else lat_col
+        lng_col = LONGITUDE if lng_col is None and LONGITUDE in nw_columns else lng_col
+        uid_col = UID if uid_col is None and UID in nw_columns else uid_col
+        self.trajectory_id_col = TID if TID in nw_columns else None
         self.datetime_col, self.lat_col, self.lng_col, self.uid_col = _detect_trajectory_columns(
-            self.df, datetime_col, lat_col, lng_col, uid_col
+            nw.from_native(self.df, eager_only=True), datetime_col, lat_col, lng_col, uid_col
         )
 
         if timestamp and self.datetime_col is not None:

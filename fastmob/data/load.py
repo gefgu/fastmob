@@ -12,9 +12,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from pathlib import Path
 
-import pandas as pd
-
-from fastmob.data._frames import FlowDataFrame, TrajDataFrame
+from fastmob.data._frames import TrajDataFrame
 
 DATASETS_DIR = Path(__file__).parent / "datasets"
 
@@ -111,13 +109,10 @@ def load_dataset(name, drop_columns=False, auth=None, show_progress=False):
             parameters=getattr(dataset, "parameters", None),
         )
 
-    if isinstance(dataset, (TrajDataFrame, FlowDataFrame, pd.DataFrame)):
+    try:
         dataset._info = dataset_info
-    else:
-        try:
-            dataset._info = dataset_info
-        except Exception:  # noqa: BLE001, S110
-            pass
+    except Exception:  # noqa: BLE001, S110
+        pass
 
     return dataset
 
