@@ -16,8 +16,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from .speeds import (
     CAR_SPEED_FACTOR,
@@ -33,16 +33,18 @@ _MPH_TO_KMH = 1.609344
 
 
 def _is_missing_or_empty(value) -> bool:
-    """True for None/NaN/pd.NA and for empty lists/arrays.
+    """True for None/NaN and for empty lists/arrays.
 
-    DuckDB NULL LIST columns can surface as ``None``, ``float('nan')``, or
-    ``pd.NA`` depending on the pandas conversion path, none of which are
-    safely truthy-checkable directly (``bool(pd.NA)`` raises).
+    DuckDB NULL LIST columns surface as plain Python ``None`` when read via
+    ``.arrow()`` + ``to_pylist()``. The ``float('nan')`` branch is kept
+    defensively for any other scalar missing-value sentinel a caller might
+    pass in directly (``bool(float('nan'))`` is truthy, so it can't be
+    truthy-checked without this).
     """
     if value is None:
         return True
     if not isinstance(value, (list, tuple)):
-        return True  # a scalar missing-value sentinel (NaN/pd.NA), not a real list
+        return True  # a scalar missing-value sentinel (e.g. NaN), not a real list
     return len(value) == 0
 
 
@@ -113,13 +115,47 @@ def _require_duckdb():
     return duckdb
 
 
+def _nodes_table(node_coords: dict[str, tuple[float, float]]) -> tuple[pa.Table, dict[str, int]]:
+    """Build the ``nodes_df`` table plus a connector-id -> dense-node-idx map."""
+    connector_ids = sorted(node_coords)
+    connector_to_idx = {cid: i for i, cid in enumerate(connector_ids)}
+    nodes_df = pa.table(
+        {
+            "node_idx": pa.array(range(len(connector_ids)), type=pa.int64()),
+            "connector_id": pa.array(connector_ids, type=pa.string()),
+            "lat": pa.array([node_coords[c][0] for c in connector_ids], type=pa.float64()),
+            "lng": pa.array([node_coords[c][1] for c in connector_ids], type=pa.float64()),
+        }
+    )
+    return nodes_df, connector_to_idx
+
+
+def _edges_table(
+    records: list[tuple[str, str, float, float, int, str]],
+    connector_to_idx: dict[str, int],
+) -> pa.Table:
+    """Build the ``edges_df`` table from ``(from_connector, to_connector, length_m,
+    speed_kmh, weight_ds, class)`` records, resolving connector ids to dense node ids.
+    """
+    return pa.table(
+        {
+            "from_node": pa.array([connector_to_idx[r[0]] for r in records], type=pa.int64()),
+            "to_node": pa.array([connector_to_idx[r[1]] for r in records], type=pa.int64()),
+            "length_m": pa.array([r[2] for r in records], type=pa.float64()),
+            "speed_kmh": pa.array([r[3] for r in records], type=pa.float64()),
+            "weight_ds": pa.array([r[4] for r in records], type=pa.int64()),
+            "class": pa.array([r[5] for r in records], type=pa.string()),
+        }
+    )
+
+
 def fetch_road_network(
     min_lon: float,
     min_lat: float,
     max_lon: float,
     max_lat: float,
     overture_release: str,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pa.Table, pa.Table]:
     """Fetch and build a car-routable graph from Overture road segments.
 
     Returns
@@ -189,46 +225,34 @@ def fetch_road_network(
                 POWER(SIN(RADIANS((to_lng - from_lng) / 2)), 2)
             )) AS length_m
         FROM pairs
-    """).df()
+    """).arrow()
 
-    logger.info("Fetched %d road segment pieces; deriving speeds/direction ...", len(df))
+    logger.info("Fetched %d road segment pieces; deriving speeds/direction ...", df.num_rows)
 
     node_coords: dict[str, tuple[float, float]] = {}
     records: list[tuple[str, str, float, float, int, str]] = []
 
-    for row in df.itertuples(index=False):
-        speed_kmh = _speed_kmh_for_pair(row.speed_limits, row.road_class, row.from_at, row.to_at)
-        direction = _direction_for_pair(row.access_restrictions)
+    for row in df.to_pylist():
+        speed_kmh = _speed_kmh_for_pair(row["speed_limits"], row["road_class"], row["from_at"], row["to_at"])
+        direction = _direction_for_pair(row["access_restrictions"])
         if direction is None or speed_kmh <= 0:
             continue
-        length_m = float(row.length_m) if row.length_m and row.length_m > 0 else 0.1
+        length_m = float(row["length_m"]) if row["length_m"] and row["length_m"] > 0 else 0.1
         speed_mps = (speed_kmh * CAR_SPEED_FACTOR) / 3.6
         weight_ds = max(1, round(length_m / speed_mps * 10))
-        node_coords[row.from_connector] = (row.from_lat, row.from_lng)
-        node_coords[row.to_connector] = (row.to_lat, row.to_lng)
+        node_coords[row["from_connector"]] = (row["from_lat"], row["from_lng"])
+        node_coords[row["to_connector"]] = (row["to_lat"], row["to_lng"])
         if direction in ("both", "forward"):
-            records.append((row.from_connector, row.to_connector, length_m, speed_kmh, weight_ds, row.road_class))
+            records.append(
+                (row["from_connector"], row["to_connector"], length_m, speed_kmh, weight_ds, row["road_class"])
+            )
         if direction in ("both", "backward"):
-            records.append((row.to_connector, row.from_connector, length_m, speed_kmh, weight_ds, row.road_class))
+            records.append(
+                (row["to_connector"], row["from_connector"], length_m, speed_kmh, weight_ds, row["road_class"])
+            )
 
-    connector_ids = sorted(node_coords)
-    connector_to_idx = {cid: i for i, cid in enumerate(connector_ids)}
-    nodes_df = pd.DataFrame(
-        {
-            "node_idx": np.arange(len(connector_ids), dtype=np.int64),
-            "connector_id": connector_ids,
-            "lat": [node_coords[c][0] for c in connector_ids],
-            "lng": [node_coords[c][1] for c in connector_ids],
-        }
-    )
-
-    edges_df = pd.DataFrame(
-        records,
-        columns=["from_connector", "to_connector", "length_m", "speed_kmh", "weight_ds", "class"],
-    )
-    edges_df["from_node"] = edges_df["from_connector"].map(connector_to_idx).astype(np.int64)
-    edges_df["to_node"] = edges_df["to_connector"].map(connector_to_idx).astype(np.int64)
-    edges_df = edges_df[["from_node", "to_node", "length_m", "speed_kmh", "weight_ds", "class"]]
+    nodes_df, connector_to_idx = _nodes_table(node_coords)
+    edges_df = _edges_table(records, connector_to_idx)
 
     return nodes_df, edges_df
 
@@ -241,21 +265,21 @@ def build_road_graph(
     overture_release: str,
     nodes_output: str,
     edges_output: str,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pa.Table, pa.Table]:
     """Load a cached road graph from disk, or fetch and cache it."""
     if Path(nodes_output).exists() and Path(edges_output).exists():
         logger.info("Loading cached road graph from %s / %s ...", nodes_output, edges_output)
-        return pd.read_parquet(nodes_output), pd.read_parquet(edges_output)
+        return pq.read_table(nodes_output), pq.read_table(edges_output)
 
     nodes_df, edges_df = fetch_road_network(min_lon, min_lat, max_lon, max_lat, overture_release)
     Path(nodes_output).parent.mkdir(parents=True, exist_ok=True)
     Path(edges_output).parent.mkdir(parents=True, exist_ok=True)
-    nodes_df.to_parquet(nodes_output, index=False)
-    edges_df.to_parquet(edges_output, index=False)
+    pq.write_table(nodes_df, nodes_output)
+    pq.write_table(edges_df, edges_output)
     logger.info(
         "Saved road graph: %d nodes, %d directed edges -> %s, %s",
-        len(nodes_df),
-        len(edges_df),
+        nodes_df.num_rows,
+        edges_df.num_rows,
         nodes_output,
         edges_output,
     )
@@ -271,7 +295,7 @@ def fetch_rail_network(
     classes: list[str] | None = None,
     speed_kmh_by_class: dict[str, float] | None = None,
     default_speed_kmh: float = 35.0,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pa.Table, pa.Table]:
     """Fetch and build a simple bidirectional rail graph from Overture segments."""
     duckdb = _require_duckdb()
 
@@ -330,43 +354,25 @@ def fetch_rail_network(
                 POWER(SIN(RADIANS((to_lng - from_lng) / 2)), 2)
             )) AS length_m
         FROM pairs
-    """).df()
+    """).arrow()
 
-    logger.info("Fetched %d rail segment pieces; deriving weights ...", len(df))
+    logger.info("Fetched %d rail segment pieces; deriving weights ...", df.num_rows)
     node_coords: dict[str, tuple[float, float]] = {}
     records: list[tuple[str, str, float, float, int, str]] = []
-    for row in df.itertuples(index=False):
-        speed_kmh = float(speed_by_class.get(row.rail_class, default_speed_kmh))
+    for row in df.to_pylist():
+        speed_kmh = float(speed_by_class.get(row["rail_class"], default_speed_kmh))
         if speed_kmh <= 0:
             continue
-        length_m = float(row.length_m) if row.length_m and row.length_m > 0 else 0.1
+        length_m = float(row["length_m"]) if row["length_m"] and row["length_m"] > 0 else 0.1
         speed_mps = speed_kmh / 3.6
         weight_ds = max(1, round(length_m / speed_mps * 10))
-        node_coords[row.from_connector] = (row.from_lat, row.from_lng)
-        node_coords[row.to_connector] = (row.to_lat, row.to_lng)
-        records.append((row.from_connector, row.to_connector, length_m, speed_kmh, weight_ds, row.rail_class))
-        records.append((row.to_connector, row.from_connector, length_m, speed_kmh, weight_ds, row.rail_class))
+        node_coords[row["from_connector"]] = (row["from_lat"], row["from_lng"])
+        node_coords[row["to_connector"]] = (row["to_lat"], row["to_lng"])
+        records.append((row["from_connector"], row["to_connector"], length_m, speed_kmh, weight_ds, row["rail_class"]))
+        records.append((row["to_connector"], row["from_connector"], length_m, speed_kmh, weight_ds, row["rail_class"]))
 
-    connector_ids = sorted(node_coords)
-    connector_to_idx = {cid: i for i, cid in enumerate(connector_ids)}
-    nodes_df = pd.DataFrame(
-        {
-            "node_idx": np.arange(len(connector_ids), dtype=np.int64),
-            "connector_id": connector_ids,
-            "lat": [node_coords[c][0] for c in connector_ids],
-            "lng": [node_coords[c][1] for c in connector_ids],
-        }
-    )
-    edges_df = pd.DataFrame(
-        records,
-        columns=["from_connector", "to_connector", "length_m", "speed_kmh", "weight_ds", "class"],
-    )
-    if len(edges_df) == 0:
-        edges_df = pd.DataFrame(columns=["from_node", "to_node", "length_m", "speed_kmh", "weight_ds", "class"])
-    else:
-        edges_df["from_node"] = edges_df["from_connector"].map(connector_to_idx).astype(np.int64)
-        edges_df["to_node"] = edges_df["to_connector"].map(connector_to_idx).astype(np.int64)
-        edges_df = edges_df[["from_node", "to_node", "length_m", "speed_kmh", "weight_ds", "class"]]
+    nodes_df, connector_to_idx = _nodes_table(node_coords)
+    edges_df = _edges_table(records, connector_to_idx)
     return nodes_df, edges_df
 
 
@@ -381,11 +387,11 @@ def build_rail_graph(
     classes: list[str] | None = None,
     speed_kmh_by_class: dict[str, float] | None = None,
     default_speed_kmh: float = 35.0,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pa.Table, pa.Table]:
     """Load a cached rail graph from disk, or fetch and cache it."""
     if Path(nodes_output).exists() and Path(edges_output).exists():
         logger.info("Loading cached rail graph from %s / %s ...", nodes_output, edges_output)
-        return pd.read_parquet(nodes_output), pd.read_parquet(edges_output)
+        return pq.read_table(nodes_output), pq.read_table(edges_output)
 
     nodes_df, edges_df = fetch_rail_network(
         min_lon,
@@ -399,12 +405,12 @@ def build_rail_graph(
     )
     Path(nodes_output).parent.mkdir(parents=True, exist_ok=True)
     Path(edges_output).parent.mkdir(parents=True, exist_ok=True)
-    nodes_df.to_parquet(nodes_output, index=False)
-    edges_df.to_parquet(edges_output, index=False)
+    pq.write_table(nodes_df, nodes_output)
+    pq.write_table(edges_df, edges_output)
     logger.info(
         "Saved rail graph: %d nodes, %d directed edges -> %s, %s",
-        len(nodes_df),
-        len(edges_df),
+        nodes_df.num_rows,
+        edges_df.num_rows,
         nodes_output,
         edges_output,
     )

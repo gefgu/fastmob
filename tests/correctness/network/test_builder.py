@@ -30,17 +30,18 @@ _OVERTURE_RELEASE = "2026-05-20.0"
 
 
 def test_fetch_road_network_returns_connected_graph():
+    import pyarrow.compute as pc
     from fastmob.network import fetch_road_network
 
     nodes_df, edges_df = fetch_road_network(_MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE)
-    assert len(nodes_df) > 0
-    assert len(edges_df) > 0
-    assert set(nodes_df.columns) == {"node_idx", "connector_id", "lat", "lng"}
-    assert set(edges_df.columns) == {"from_node", "to_node", "length_m", "speed_kmh", "weight_ds", "class"}
-    assert (edges_df["from_node"] < len(nodes_df)).all()
-    assert (edges_df["to_node"] < len(nodes_df)).all()
-    assert (edges_df["length_m"] > 0).all()
-    assert (edges_df["speed_kmh"] > 0).all()
+    assert nodes_df.num_rows > 0
+    assert edges_df.num_rows > 0
+    assert set(nodes_df.column_names) == {"node_idx", "connector_id", "lat", "lng"}
+    assert set(edges_df.column_names) == {"from_node", "to_node", "length_m", "speed_kmh", "weight_ds", "class"}
+    assert pc.all(pc.less(edges_df["from_node"], nodes_df.num_rows)).as_py()
+    assert pc.all(pc.less(edges_df["to_node"], nodes_df.num_rows)).as_py()
+    assert pc.all(pc.greater(edges_df["length_m"], 0)).as_py()
+    assert pc.all(pc.greater(edges_df["speed_kmh"], 0)).as_py()
 
 
 def test_fetch_road_network_builds_a_routable_network():
@@ -54,8 +55,9 @@ def test_fetch_road_network_builds_a_routable_network():
     # Route between the first and last node -- not guaranteed connected in
     # general, but plausible for a small, dense central-Paris bbox; if not
     # connected, batch_distances must still report False rather than raising.
-    from_idx = np.array([int(nodes_df["node_idx"].iloc[0])])
-    to_idx = np.array([int(nodes_df["node_idx"].iloc[-1])])
+    node_ids = nodes_df["node_idx"].to_pylist()
+    from_idx = np.array([node_ids[0]])
+    to_idx = np.array([node_ids[-1]])
     distances, connected = network.batch_distances(from_idx, to_idx)
     assert distances.shape == (1,)
     assert connected.shape == (1,)

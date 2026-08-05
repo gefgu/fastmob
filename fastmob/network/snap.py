@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import narwhals as nw
 import numpy as np
-import pandas as pd
 
 from ._nearest import nearest_candidate
 
 
 def snap_locations_to_graph(
-    tessellation_df: pd.DataFrame,
-    nodes_df: pd.DataFrame,
+    tessellation_df,
+    nodes_df,
     max_distance_m: float,
     lat_col: str = "lat",
     lng_col: str = "lng",
@@ -34,14 +34,16 @@ def snap_locations_to_graph(
         the nearest node is farther than ``max_distance_m`` (unsnapped).
     """
     n = len(tessellation_df)
-    if len(nodes_df) == 0 or n == 0:
+    nodes = nw.from_native(nodes_df, eager_only=True)
+    if len(nodes) == 0 or n == 0:
         return np.full(n, -1, dtype=np.int64)
 
-    node_lat = nodes_df["lat"].to_numpy(dtype=float)
-    node_lng = nodes_df["lng"].to_numpy(dtype=float)
-    loc_lat = tessellation_df[lat_col].to_numpy(dtype=float)
-    loc_lng = tessellation_df[lng_col].to_numpy(dtype=float)
+    tess = nw.from_native(tessellation_df, eager_only=True)
+    node_lat = nodes.get_column("lat").to_numpy().astype(np.float64, copy=False)
+    node_lng = nodes.get_column("lng").to_numpy().astype(np.float64, copy=False)
+    loc_lat = tess.get_column(lat_col).to_numpy().astype(np.float64, copy=False)
+    loc_lng = tess.get_column(lng_col).to_numpy().astype(np.float64, copy=False)
 
     nearest_idx, dist_m = nearest_candidate(loc_lat, loc_lng, node_lat, node_lng)
-    node_idx = nodes_df["node_idx"].to_numpy(dtype=np.int64)[nearest_idx]
+    node_idx = nodes.get_column("node_idx").to_numpy().astype(np.int64, copy=False)[nearest_idx]
     return np.where(dist_m <= max_distance_m, node_idx, -1).astype(np.int64)

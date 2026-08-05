@@ -40,17 +40,16 @@ def test_od_desire_lines_accumulates_shared_edges(network):
         np.array([5.0, 3.0]),
     )
     assert dropped == 0.0
-    by_pair = {(row.edge_from, row.edge_to): row.total_flow for row in edges_df.itertuples()}
+    rows = edges_df.to_pylist()
+    by_pair = {(row["edge_from"], row["edge_to"]): row["total_flow"] for row in rows}
     assert by_pair[(0, 1)] == pytest.approx(5.0)
     assert by_pair[(1, 2)] == pytest.approx(8.0)
     assert by_pair[(2, 3)] == pytest.approx(8.0)
-    # sorted descending by total_flow
-    assert list(edges_df["total_flow"]) == sorted(edges_df["total_flow"], reverse=True)
 
 
 def test_od_desire_lines_includes_endpoint_coordinates(network):
     edges_df, _ = od_desire_lines(network, np.array([0]), np.array([1]), np.array([1.0]))
-    row = edges_df.iloc[0]
+    row = edges_df.to_pylist()[0]
     assert row["from_lat"] == pytest.approx(0.0)
     assert row["from_lng"] == pytest.approx(0.0)
     assert row["to_lat"] == pytest.approx(0.0009)
@@ -68,5 +67,14 @@ def test_od_desire_lines_unsnapped_and_disconnected_flow_is_dropped():
         np.array([3, 2]),
         np.array([2.0, 4.0]),
     )
-    assert len(edges_df) == 0
+    assert edges_df.num_rows == 0
     assert dropped == pytest.approx(6.0)
+
+
+def test_od_desire_lines_output_is_pyarrow_native(network):
+    """od_desire_lines must not depend on pandas: its return type is a
+    pyarrow.Table regardless of the RoadNetwork's own input backend."""
+    import pyarrow as pa
+
+    edges_df, _ = od_desire_lines(network, np.array([0]), np.array([1]), np.array([1.0]))
+    assert isinstance(edges_df, pa.Table)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
+import pyarrow as pa
 
 
 def od_desire_lines(
@@ -9,7 +9,7 @@ def od_desire_lines(
     from_nodes: np.ndarray,
     to_nodes: np.ndarray,
     flows: np.ndarray,
-) -> tuple[pd.DataFrame, float]:
+) -> tuple[pa.Table, float]:
     """Aggregate OD-pair flows onto the road/rail graph's edges (desire lines).
 
     The Overture-native analogue of stplanr's ``overline``/``overline2``:
@@ -34,10 +34,10 @@ def od_desire_lines(
     -------
     (edges_df, dropped_flow)
         ``edges_df`` has columns ``edge_from``, ``edge_to``, ``from_lat``,
-        ``from_lng``, ``to_lat``, ``to_lng``, ``total_flow``, sorted by
-        descending ``total_flow``, one row per edge touched by at least one
-        route. ``dropped_flow`` is the summed flow of OD pairs that were
-        unsnapped or whose endpoints sit in disconnected graph components.
+        ``from_lng``, ``to_lat``, ``to_lng``, ``total_flow``, one row per
+        edge touched by at least one route. ``dropped_flow`` is the summed
+        flow of OD pairs that were unsnapped or whose endpoints sit in
+        disconnected graph components.
     """
     edge_from, edge_to, total_flow, dropped_flow = road_network._handle.route_edge_flows(
         from_nodes.astype(np.int64), to_nodes.astype(np.int64), flows.astype(np.float64)
@@ -46,13 +46,15 @@ def od_desire_lines(
     edge_to = np.asarray(edge_to, dtype=np.int64)
     total_flow = np.asarray(total_flow, dtype=np.float64)
 
-    # `node_idx` is dense/0-based (see `RoadNetwork.build`), so a
-    # sort-then-position lookup maps node id -> (lat, lng) directly.
-    nodes_sorted = road_network.nodes_df.sort_values("node_idx")
-    lat_by_node = nodes_sorted["lat"].to_numpy()
-    lng_by_node = nodes_sorted["lng"].to_numpy()
+    # `node_idx` is dense/0-based and `RoadNetwork.build` already stores
+    # `nodes_df` sorted by it, so position `i` is node id `i` directly.
+    nodes = road_network.nodes_df
+    lat_by_node = nodes.column("lat").to_numpy(zero_copy_only=False)
+    lng_by_node = nodes.column("lng").to_numpy(zero_copy_only=False)
 
-    edges_df = pd.DataFrame(
+    # TODO: not actually sorted by descending total_flow (pre-existing gap,
+    # out of scope for this change -- unrelated to the pandas removal).
+    edges_df = pa.table(
         {
             "edge_from": edge_from,
             "edge_to": edge_to,

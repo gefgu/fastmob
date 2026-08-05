@@ -144,18 +144,19 @@ def test_road_network_batch_routes_returns_full_chain_geometry(network):
     import numpy as np
 
     routes = network.batch_routes(np.array([0]), np.array([3]), max_waypoints=10)
-    assert list(routes["query_id"]) == [0, 0, 0, 0]
-    assert routes["lat"].tolist() == pytest.approx([0.0, 0.0009, 0.0018, 0.0027])
-    assert routes["cum_weight_ds"].tolist() == [0, 10, 20, 30]
+    assert routes["query_id"].to_pylist() == [0, 0, 0, 0]
+    assert routes["lat"].to_pylist() == pytest.approx([0.0, 0.0009, 0.0018, 0.0027])
+    assert routes["cum_weight_ds"].to_pylist() == [0, 10, 20, 30]
 
 
 def test_road_network_batch_routes_decimates_to_max_waypoints(network):
     import numpy as np
 
     routes = network.batch_routes(np.array([0]), np.array([3]), max_waypoints=2)
-    assert len(routes) == 2
-    assert routes["lat"].iloc[0] == pytest.approx(0.0)
-    assert routes["lat"].iloc[-1] == pytest.approx(0.0027)
+    assert routes.num_rows == 2
+    lat = routes["lat"].to_pylist()
+    assert lat[0] == pytest.approx(0.0)
+    assert lat[-1] == pytest.approx(0.0027)
 
 
 def test_road_network_batch_routes_disconnected_query_contributes_no_rows():
@@ -165,5 +166,29 @@ def test_road_network_batch_routes_disconnected_query_contributes_no_rows():
     import numpy as np
 
     routes = network.batch_routes(np.array([0, -1]), np.array([3, 2]), max_waypoints=10)
-    assert len(routes) == 0
-    assert list(routes.columns) == ["query_id", "lat", "lng", "cum_weight_ds"]
+    assert routes.num_rows == 0
+    assert routes.column_names == ["query_id", "lat", "lng", "cum_weight_ds"]
+
+
+def test_road_network_build_and_batch_routes_accept_pyarrow_tables():
+    """fastmob.network must not require pandas: build a network and query it
+    from raw pyarrow.Table inputs, and confirm both nodes_df and batch_routes
+    output are pyarrow-native (not coerced to pandas internally)."""
+    import numpy as np
+    import pyarrow as pa
+
+    nodes = pa.table({"node_idx": [0, 1, 2, 3], "lat": [0.0, 0.0009, 0.0018, 0.0027], "lng": [0.0, 0.0, 0.0, 0.0]})
+    edges = pa.table(
+        {
+            "from_node": [0, 1, 2, 1, 2, 3],
+            "to_node": [1, 2, 3, 0, 1, 2],
+            "length_m": [100.0] * 6,
+            "weight_ds": [10] * 6,
+        }
+    )
+    arrow_network = RoadNetwork.build(edges, nodes)
+    assert isinstance(arrow_network.nodes_df, pa.Table)
+
+    routes = arrow_network.batch_routes(np.array([0]), np.array([3]), max_waypoints=10)
+    assert isinstance(routes, pa.Table)
+    assert routes["lat"].to_pylist() == pytest.approx([0.0, 0.0009, 0.0018, 0.0027])
