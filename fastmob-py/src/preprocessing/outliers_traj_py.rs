@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::preprocessing::outliers::{
-    outlier_trajectory_impl, outlier_trajectory_indexed_impl, OutlierConfig as CoreOutlierConfig,
-    OutlierMethod,
+    OutlierConfig as CoreOutlierConfig, OutlierMethod, outlier_trajectory_impl,
+    outlier_trajectory_indexed_impl,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -75,7 +75,7 @@ fn arrow_bool_output(py: Python<'_>, values: Vec<bool>) -> PyResult<Py<PyAny>> {
 }
 
 #[pyfunction]
-pub fn outlier_trajectory_sorted(
+pub fn outlier_trajectory_presorted(
     py: Python<'_>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,

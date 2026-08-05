@@ -20,10 +20,13 @@ impl Weights {
 
     fn value(&self, index: usize) -> f64 {
         match self {
-            Self::Values(values) => values
-                .is_valid(index)
-                .then(|| values.value(index))
-                .unwrap_or(0.0),
+            Self::Values(values) => {
+                if values.is_valid(index) {
+                    values.value(index)
+                } else {
+                    0.0
+                }
+            }
             Self::Ones => 1.0,
         }
     }

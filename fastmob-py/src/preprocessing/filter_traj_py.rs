@@ -1,5 +1,5 @@
 use fastmob_core::preprocessing::filter_traj::{
-    filter_trajectory_impl, filter_trajectory_indexed_impl, FilterConfig as CoreFilterConfig,
+    FilterConfig as CoreFilterConfig, filter_trajectory_impl, filter_trajectory_indexed_impl,
 };
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -95,7 +95,7 @@ pub fn filter_trajectory(
 }
 
 #[pyfunction]
-pub fn filter_trajectory_sorted(
+pub fn filter_trajectory_presorted(
     py: Python<'_>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,

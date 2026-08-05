@@ -48,7 +48,7 @@ pub fn compress_trajectory_batch(
 }
 
 #[pyfunction]
-pub fn compress_trajectory_representatives(
+pub fn compress_trajectory_representatives_presorted(
     py: Python<'_>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,

@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::preprocessing::segment::{
-    segment_trajectory_impl, segment_trajectory_indexed_impl, SegmentConfig as CoreSegmentConfig,
-    SegmentMethod,
+    SegmentConfig as CoreSegmentConfig, SegmentMethod, segment_trajectory_impl,
+    segment_trajectory_indexed_impl,
 };
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::PyValueError;
@@ -150,7 +150,7 @@ fn arrow_u32_output(py: Python<'_>, values: Vec<u32>) -> PyResult<Py<PyAny>> {
 
 #[pyfunction]
 #[pyo3(signature = (latitudes, longitudes, timestamps_s, ranges, config, bucket_ids=None))]
-pub fn segment_trajectory_sorted<'py>(
+pub fn segment_trajectory_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,

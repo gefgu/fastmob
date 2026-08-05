@@ -67,14 +67,13 @@ pub fn visitation_distances(
 /// callers (e.g. label reconstruction via `pc.take`) do rely on the dense
 /// property, which raw non-factorized UInt64 values would not have.
 fn codes_for_grouping(array: ArrayRef) -> Result<Vec<u64>, String> {
-    if *array.data_type() == DataType::UInt64 {
-        if let Some(typed) = array.as_any().downcast_ref::<UInt64Array>() {
-            if typed.null_count() == 0 {
-                let start = typed.offset();
-                let end = start + typed.len();
-                return Ok(typed.values()[start..end].to_vec());
-            }
-        }
+    if *array.data_type() == DataType::UInt64
+        && let Some(typed) = array.as_any().downcast_ref::<UInt64Array>()
+        && typed.null_count() == 0
+    {
+        let start = typed.offset();
+        let end = start + typed.len();
+        return Ok(typed.values()[start..end].to_vec());
     }
     factorize_array(array.as_ref(), false)
         .map(|(codes, _)| codes.into_iter().map(u64::from).collect())

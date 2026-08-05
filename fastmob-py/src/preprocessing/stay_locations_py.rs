@@ -32,7 +32,7 @@ fn arrow_ms_output(py: Python<'_>, seconds: Vec<f64>) -> PyResult<Py<PyAny>> {
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-pub fn detect_stay_locations_batch<'py>(
+pub fn detect_stay_locations_batch_presorted<'py>(
     py: Python<'py>,
     latitudes: ArrowPyArray,
     longitudes: ArrowPyArray,

@@ -239,12 +239,28 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<preprocessing::filter_traj_py::PyFilterConfig>()?;
     m.add_function(wrap_pyfunction!(filter_traj_py::filter_trajectory, m)?)?;
     m.add_function(wrap_pyfunction!(
+        filter_traj_py::filter_trajectory_presorted,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         filter_traj_py::filter_trajectory_indexed,
         m
     )?)?;
     m.add_class::<preprocessing::outliers_traj_py::PyOutlierConfig>()?;
     m.add_function(wrap_pyfunction!(
+        outliers_traj_py::outlier_trajectory_presorted,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         outliers_traj_py::outlier_trajectory_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        compress_traj_py::compress_trajectory_batch,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        compress_traj_py::compress_trajectory_representatives_presorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -253,10 +269,18 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_class::<preprocessing::simplify_traj_py::PySimplifyConfig>()?;
     m.add_function(wrap_pyfunction!(
+        simplify_traj_py::simplify_trajectory_presorted,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         simplify_traj_py::simplify_trajectory_indexed,
         m
     )?)?;
     m.add_class::<preprocessing::segment_traj_py::PySegmentConfig>()?;
+    m.add_function(wrap_pyfunction!(
+        segment_traj_py::segment_trajectory_presorted,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         segment_traj_py::segment_trajectory_indexed,
         m
@@ -319,6 +343,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
     m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed, m)?)?;
     m.add_function(wrap_pyfunction!(diversity::diversity_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        stay_locations_py::detect_stay_locations_batch_presorted,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_py::detect_stay_locations_batch_indexed,
         m

@@ -368,7 +368,6 @@ pub fn markov_predict_batch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     fn fit(seq: &[u64], config: &NextLocationConfig) -> MarkovLocationModel {
         fit_one_user(seq, config).expect("test sequences never exceed the u16 dense-coding limit")
@@ -479,12 +478,9 @@ mod tests {
     // passing the hand-picked cases above.
     // -----------------------------------------------------------------
 
-    fn naive_fit(
-        seq: &[u64],
-        order: usize,
-    ) -> Vec<HashMap<Vec<u64>, HashMap<u64, u32>>> {
-        let mut tables: Vec<HashMap<Vec<u64>, HashMap<u64, u32>>> =
-            (0..=order).map(|_| HashMap::new()).collect();
+    fn naive_fit(seq: &[u64], order: usize) -> Vec<FxHashMap<Vec<u64>, FxHashMap<u64, u32>>> {
+        let mut tables: Vec<FxHashMap<Vec<u64>, FxHashMap<u64, u32>>> =
+            (0..=order).map(|_| FxHashMap::default()).collect();
         let n = seq.len();
         for (k, table) in tables.iter_mut().enumerate() {
             for i in k..n {
@@ -498,13 +494,13 @@ mod tests {
     /// Returns the full (code, count) set HuMobi/the old implementation
     /// would predict from, at whatever order backoff settles on -- same
     /// semantics as `predict_one`, but built independently from a plain
-    /// `HashMap`, for differential comparison.
+    /// `FxHashMap`, for differential comparison.
     fn naive_predict_set(
-        tables: &[HashMap<Vec<u64>, HashMap<u64, u32>>],
+        tables: &[FxHashMap<Vec<u64>, FxHashMap<u64, u32>>],
         context: &[u64],
         order: usize,
         backoff: bool,
-    ) -> Option<HashMap<u64, u32>> {
+    ) -> Option<FxHashMap<u64, u32>> {
         let max_k = order.min(context.len());
         let mut k = max_k;
         loop {
@@ -559,9 +555,8 @@ mod tests {
             // Try every suffix of the sequence as a context, plus a couple
             // of never-seen contexts, so both known and unknown contexts
             // get exercised.
-            let mut contexts: Vec<Vec<u64>> = (0..=seq_len)
-                .map(|i| seq[seq_len - i..].to_vec())
-                .collect();
+            let mut contexts: Vec<Vec<u64>> =
+                (0..=seq_len).map(|i| seq[seq_len - i..].to_vec()).collect();
             contexts.push(vec![999_999_999, 999_999_998]);
 
             for context in contexts {

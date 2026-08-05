@@ -28,8 +28,7 @@ pub mod prepare;
 pub use error::FastmobRsError;
 pub use expressions::haversine_km_expr;
 pub use measures::evaluation::{
-    common_part_of_commuters, common_part_of_commuters_multi, jensen_shannon_divergence,
-    time_bin_matrix_jsd, wasserstein_distance,
+    jensen_shannon_divergence, time_bin_matrix_jsd, wasserstein_distance,
 };
 pub use measures::fitting::{
     bin_visitation_law_data, fit_visitation_law, fit_visitation_law_in_range,
