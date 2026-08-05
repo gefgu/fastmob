@@ -1,6 +1,7 @@
 from .collective import (
     build_stvd,
     homes_per_location,
+    interest_network,
     mean_area_volume,
     mean_square_displacement,
     od_matrix,
@@ -91,6 +92,7 @@ __all__ = [
     "homes_per_location",
     "individual_mobility_network",
     "information_gain",
+    "interest_network",
     "intermittance_and_degree_of_return",
     "jensen_shannon_divergence",
     "jump_lengths",

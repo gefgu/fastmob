@@ -15,7 +15,7 @@ mod utils;
 use pyo3::prelude::*;
 
 use integration::events_py;
-use measures::collective::{square_displacement, visitation_law};
+use measures::collective::{interest_network, square_displacement, visitation_law};
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{cpc, jsd, wasserstein};
@@ -37,6 +37,7 @@ use social::co_presence_network;
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(activity::activity_counts, m)?)?;
+    m.add_function(wrap_pyfunction!(interest_network::interest_network, m)?)?;
     m.add_function(wrap_pyfunction!(factorization::factorize_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(activity::activity_transition_counts, m)?)?;
     m.add_function(wrap_pyfunction!(activity::daily_activity_percentages, m)?)?;

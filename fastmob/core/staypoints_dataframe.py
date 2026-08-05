@@ -76,6 +76,21 @@ class Staypoints(BaseDataFrame):
         if validate:
             self.validate(nw_df, started_at_col, finished_at_col)
 
+    @classmethod
+    def coerce(cls, value: Any | Staypoints, **column_overrides: Any) -> Staypoints:
+        """Return a validated Staypoints wrapper for ``value``.
+
+        Existing instances are returned unchanged. Raw dataframe-like inputs
+        are constructed with the same column detection and validation as
+        :class:`Staypoints`, so measures can share one explicit boundary for
+        accepting raw staypoint data.
+        """
+        if isinstance(value, cls):
+            if column_overrides:
+                raise ValueError("column overrides are only valid when coercing a raw dataframe")
+            return value
+        return cls(value, **column_overrides)
+
     @staticmethod
     def validate(df: Any, started_at_col: str, finished_at_col: str | None = None) -> None:
         """Check the start column and, when present, interval ordering."""
@@ -273,6 +288,15 @@ class Staypoints(BaseDataFrame):
         from ..measures.collective.stvd import build_stvd as _build_stvd
 
         return _build_stvd(self, locations, **kwargs)
+
+    def interest_network(self, locations: Locations) -> Any:
+        """Return the collective interest network over global ``locations``.
+
+        See :func:`fastmob.measures.collective.interest_network`.
+        """
+        from ..measures.collective.interest_network import interest_network
+
+        return interest_network(self, locations)
 
     def generate_daily_motifs(
         self,
