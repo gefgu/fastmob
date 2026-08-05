@@ -53,9 +53,8 @@ tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
 # Road/rail network fetch+snap also needs `ai` (scikit-learn, for
 # snap_locations_to_graph's NearestNeighbors) -- install both extras.
 network = ["duckdb", "requests"]
-# `vis` is the separate fastmob-vis package, which also owns the legacy
-# Folium/Matplotlib visualizations.
-vis = ["fastmob-vis[legacy]"]
+# `vis` is the separate ECharts/Leaflet visualization package.
+vis = ["fastmob-vis"]
 dev = [
     "pre-commit",
     "maturin>=1.13,<2.0",
@@ -63,6 +62,7 @@ dev = [
     "pytest-cov",
     "pyarrow",
     "polars",
+    "pandas",
     "ruff",
     "scalene",
     "memray",

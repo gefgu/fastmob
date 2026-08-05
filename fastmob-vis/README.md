@@ -1,6 +1,6 @@
 # fastmob-vis
 
-Rust-backed ECharts/Leaflet visualizations for [fastmob](https://github.com/gefgu/fastmob)
+Narwhals-native ECharts visualizations for [fastmob](https://github.com/gefgu/fastmob)
 mobility-analysis results.
 
 This is an optional add-on to `fastmob`: it lives in the same repository and
@@ -19,13 +19,6 @@ or standalone:
 pip install fastmob-vis
 ```
 
-The legacy Folium/Matplotlib maps exposed by ``TrajDataFrame.plot_*`` and
-``FlowDataFrame.plot_*`` additionally require:
-
-```bash
-pip install "fastmob-vis[legacy]"
-```
-
 For development from source (as a workspace member of `fastmob`):
 
 ```bash
@@ -39,24 +32,31 @@ env -u CONDA_PREFIX uv run maturin develop
 Directly:
 
 ```python
-from fastmob_vis import plot_jump_lengths_ecdf
-
-fig = plot_jump_lengths_ecdf([2.0, 1.0, 1.0], [3.0, 1.5], labels=("observed", "synthetic"))
-fig
-```
-
-Or through the main `fastmob` package (requires `fastmob[vis]` to be installed):
-
-```python
+import pyarrow as pa
 from fastmob import vis
 
-fig = vis.plot_jump_lengths_ecdf([2.0, 1.0, 1.0], [3.0, 1.5], labels=("observed", "synthetic"))
-fig
+first = pa.table({"jump_lengths": [[0.8, 1.2], [2.4]]})
+second = pa.table({"jump_lengths": [[0.7, 1.4], [2.1]]})
+chart = vis.ecdf(first, value_col="jump_lengths", second=second)
+chart
 ```
 
-In Jupyter, the returned figure renders with ECharts. For web servers, use
-`fig.to_dict()`. To write full, non-truncated artifacts, use
-`fig.to_json("chart.json")` or `fig.to_html("chart.html")`.
+Generic constructors are available as `ecdf`, `bar`, `heatmap`, `scatter`, and
+`boxplot`. They accept any Narwhals-compatible eager dataframe and explicit
+field mappings. The result is an immutable `Chart`, which can be rendered or
+exported:
+
+```python
+chart.to_html("chart.html")
+chart.to_svg("chart.svg")
+```
+
+In Jupyter, `Chart` renders with ECharts. For web servers, use `chart.to_dict()`.
+`Chart.render()` returns the lower-level `EChartsFigure` when needed.
+
+`fastmob-vis` is a clean break from its former legacy API: Folium and
+Matplotlib maps, their dependencies, and the old measure-specific `plot_*`
+functions are not provided.
 
 ## Development Checks
 

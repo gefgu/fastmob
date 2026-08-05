@@ -222,7 +222,7 @@ class TrajDataFrame(BaseDataFrame):
         subclasses pandas.DataFrame, so real pandas is unavoidable there) --
         pandas is imported locally since every caller already sits behind
         an optional extra that transitively requires it (`data`/
-        `tessellation` via geopandas, or `vis` via fastmob-vis[legacy]).
+        `tessellation` via geopandas).
         """
         return nw.from_native(self.df, eager_only=True).to_pandas()
 
@@ -891,7 +891,7 @@ class TrajDataFrame(BaseDataFrame):
     # Visualization methods  (require fastmob[vis])
     # ------------------------------------------------------------------
 
-    def plot_trajectory(
+    def _legacy_plot_trajectory(
         self,
         map_f=None,
         max_users=None,
@@ -975,7 +975,7 @@ class TrajDataFrame(BaseDataFrame):
             kwargs["style_function"] = style_function
         return plot.plot_trajectory(self._to_pandas(), **kwargs)
 
-    def plot_stops(
+    def _legacy_plot_stops(
         self,
         map_f=None,
         max_users=None,
@@ -1052,7 +1052,7 @@ class TrajDataFrame(BaseDataFrame):
             control_scale=control_scale,
         )
 
-    def plot_diary(
+    def _legacy_plot_diary(
         self,
         user,
         start_datetime=None,

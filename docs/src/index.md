@@ -79,6 +79,12 @@ print(result)
     pip install "fastmob[generation]"
     ```
 
+=== "visualization extra"
+
+    ```bash
+    pip install "fastmob[vis]"
+    ```
+
 ## Install for Development (from source)
 
 === "Initial setup"
@@ -167,6 +173,7 @@ result = jump_lengths(df)  # returns a polars DataFrame
 | `fitting` | `scipy` | `kullback_leibler_divergence`, `pearson_correlation`, `spearman_correlation`, contact-network Wasserstein comparisons |
 | `generation` | `scipy`, `powerlaw`, `statsmodels`, `python-igraph`, `tqdm` | `fastmob.models` generation APIs |
 | `docs` | `mkdocs`, `mkdocs-material`, `mkdocstrings[python]` | documentation build |
+| `vis` | `fastmob-vis` | `fastmob.vis` generic ECharts visualization |
 
 Install an extra with:
 

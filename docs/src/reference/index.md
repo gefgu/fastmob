@@ -11,3 +11,4 @@ The public API follows the original scikit-mobility reference layout.
 - [Input/Output](io.md)
 - [Privacy](privacy.md)
 - [Data](data.md)
+- [Visualization](visualization.md)

@@ -44,3 +44,45 @@ class BaseDataFrame:
         from fastmob.measures.evaluation.compare import compare_to as _compare_to
 
         return _compare_to(self.df, other.df, value_col, group_col=group_col, metric=metric)
+
+    def plot_ecdf(self, value_col, *, second=None, **kwargs):
+        """Build an ECDF chart for an existing numeric or list-valued column.
+
+        Requires the optional ``fastmob[vis]`` extra.  ``second`` may be another
+        Fastmob dataframe wrapper or an eager dataframe with the same column.
+        """
+        from fastmob.utils._common import require_optional
+
+        vis = require_optional("fastmob.vis", "vis")
+        other = getattr(second, "df", second)
+        return vis.ecdf(self.df, value_col=value_col, second=other, **kwargs)
+
+    def plot_bar(self, *, category_col, value_col, **kwargs):
+        """Build a categorical bar chart from existing columns."""
+        from fastmob.utils._common import require_optional
+
+        return require_optional("fastmob.vis", "vis").bar(
+            self.df, category_col=category_col, value_col=value_col, **kwargs
+        )
+
+    def plot_heatmap(self, *, x_col, y_col, value_col, **kwargs):
+        """Build a long-form heatmap from existing columns."""
+        from fastmob.utils._common import require_optional
+
+        return require_optional("fastmob.vis", "vis").heatmap(
+            self.df, x_col=x_col, y_col=y_col, value_col=value_col, **kwargs
+        )
+
+    def plot_scatter(self, *, x_col, y_col, **kwargs):
+        """Build a scatter chart from existing columns."""
+        from fastmob.utils._common import require_optional
+
+        return require_optional("fastmob.vis", "vis").scatter(self.df, x_col=x_col, y_col=y_col, **kwargs)
+
+    def plot_boxplot(self, *, category_col, value_col, **kwargs):
+        """Build a box plot from existing long-form columns."""
+        from fastmob.utils._common import require_optional
+
+        return require_optional("fastmob.vis", "vis").boxplot(
+            self.df, category_col=category_col, value_col=value_col, **kwargs
+        )

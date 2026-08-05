@@ -11,12 +11,19 @@ High-performance mobility analysis with backend-agnostic dataframe support and R
 - **Modeling and generation**: build gravity, radiation, EPR, DITRAS, Markov diary, GeoSim, and spatial-temporal social trajectory models.
 - **Privacy analysis**: evaluate mobility-data privacy risk with location, frequency, dataframe, and attack-oriented utilities.
 - **Tessellation and IO helpers**: work with spatial tiles, trajectory dataframes, flow dataframes, datasets, and file-based mobility inputs.
+- **Optional visualization**: build backend-neutral, portable ECharts charts through `fastmob.vis`.
 - **Validation-focused development**: maintain correctness tests, benchmark outputs, profiling support, and compatibility checks for performance-sensitive workflows.
 
 ## Installation
 
 ```bash
 pip install fastmob
+```
+
+For charts and HTML/SVG export:
+
+```bash
+pip install "fastmob[vis]"
 ```
 
 For development from source:

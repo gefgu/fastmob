@@ -6,7 +6,7 @@ import importlib.resources
 import json
 import uuid
 from dataclasses import dataclass, field
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from string import Template
 from typing import Any
@@ -35,10 +35,12 @@ _FORMATTER_RESOURCES: dict[str, tuple[str, ...]] = {
 
 _BROWSER_JS_RESOURCES: dict[str, tuple[str, ...]] = {
     "stvd_comparison": ("leaflet.js", "echarts-extension-leaflet.js"),
+    "map": ("leaflet.js", "echarts-extension-leaflet.js"),
 }
 
 _CSS_RESOURCES: dict[str, tuple[str, ...]] = {
     "stvd_comparison": ("leaflet.css", "stvd_comparison.css"),
+    "map": ("leaflet.css",),
 }
 
 # Resources provided by the shared bundle (get_resource_bundle) — skip per-chart when bundle_libs=False.
@@ -47,7 +49,7 @@ _BUNDLED_RESOURCES: frozenset[str] = frozenset(
 )
 
 _DISPLAY_MODES = {"html", "svg"}
-_UNSUPPORTED_SVG_CHART_TYPES = {"stvd_comparison"}
+_UNSUPPORTED_SVG_CHART_TYPES = {"map", "stvd_comparison"}
 
 _ECHARTS_HTML_TEMPLATE = Template(
     """<!doctype html>
@@ -105,7 +107,7 @@ $formatter_js  const chart = echarts.init(document.getElementById("$element_id")
 )
 
 
-@lru_cache(maxsize=None)
+@cache
 def _static_js(filename: str) -> str:
     with importlib.resources.open_text("fastmob_vis.static", filename, encoding="utf-8") as resource:
         return resource.read()
@@ -268,8 +270,7 @@ class EChartsFigure:
 
 
 def _pixel_size(value: str, name: str) -> int:
-    if value.endswith("px"):
-        value = value[:-2]
+    value = value.removesuffix("px")
     try:
         pixels = int(value)
     except ValueError as exc:

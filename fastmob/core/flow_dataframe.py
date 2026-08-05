@@ -282,7 +282,7 @@ class FlowDataFrame(BaseDataFrame):
     # Visualization methods  (require fastmob[vis])
     # ------------------------------------------------------------------
 
-    def plot_flows(
+    def _legacy_plot_flows(
         self,
         map_f=None,
         min_flow: float = 0,
@@ -379,7 +379,7 @@ class FlowDataFrame(BaseDataFrame):
             kwargs["style_function"] = style_function
         return plot.plot_flows(self, **kwargs)
 
-    def plot_tessellation(
+    def _legacy_plot_tessellation(
         self,
         map_f=None,
         maxitems: int = -1,
