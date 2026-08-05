@@ -197,23 +197,20 @@ def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
     ).get_column("__fastmob_uid_codes__")
 
 
-def _factorize_arrow_values(values: Any, *, sort: bool, parallel: bool = False) -> tuple[Any, Any]:
+def _factorize_arrow_values(values: Any, *, sort: bool) -> tuple[Any, Any]:
     """Dense-code an Arrow array's values.
 
-    ``parallel`` selects the Rust kernel's order-independent, two-pass
-    parallel build+merge+remap path over its default sequential one (see
-    ``fastmob-py/src/measures/individual/factorization.rs``'s
-    ``factorize_values_parallel`` docs) -- only the generic hashable-key
-    path (integers with a too-large-to-densify span, floats, dates,
-    timestamps) is affected; dense small-span integers, booleans, strings,
-    and dictionary-encoded strings stay sequential regardless of this flag.
+    The Rust kernel (``fastmob-py/src/measures/individual/factorization.rs``)
+    automatically dispatches to its parallel implementation once the input
+    clears an internal row-count threshold -- there is no caller-facing
+    parallel switch to set here.
     """
     from fastmob._core import factorize_arrow
 
     values = _as_arrow(values)
     if isinstance(values, pa.ChunkedArray):
         values = values.combine_chunks()
-    raw_codes, raw_representatives = factorize_arrow(values, sort, parallel)
+    raw_codes, raw_representatives = factorize_arrow(values, sort)
     return _as_arrow(raw_codes), _as_arrow(raw_representatives)
 
 

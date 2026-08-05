@@ -19,6 +19,7 @@ arrow-array = "58.1.0"
 arrow-buffer = "58.1.0"
 arrow-schema = "58.1.0"
 rustc-hash = "2.1.1"
+ahash = "0.8"
 rayon = "1.12"
 h3o = "0.10"
 

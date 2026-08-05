@@ -26,6 +26,7 @@ class TestArrowCoercion:
         values = pa.chunked_array([["a"], ["b"]])
         assert _as_arrow(values) is values
 
+
 # ---------------------------------------------------------------------------
 # _pick_existing_column
 # ---------------------------------------------------------------------------
@@ -62,6 +63,7 @@ class TestArrowFactorization:
     @staticmethod
     def _reference(values, sort):
         """Reference the documented first-seen/null-last factorization contract."""
+
         def key(value):
             if value is None:
                 return (2, None)
@@ -97,6 +99,19 @@ class TestArrowFactorization:
 
         assert pa.array(codes).to_pylist() == [0, 1, 2, 0, 1]
         assert pa.array(representatives).to_pylist() == [0, 1, 2]
+
+    def test_codes_dtype_is_always_uint64(self):
+        # The Rust kernel narrows `codes` to u32 internally for performance,
+        # but widens back to u64 at the PyO3 boundary -- several downstream
+        # callers (visitation_law, privacy._engine, motifs) consume this
+        # array uncast and require it to stay UInt64.
+        import pyarrow as pa
+        from fastmob._core import factorize_arrow
+
+        codes, representatives = factorize_arrow(pa.array(["b", None, "a", "b", None]))
+
+        assert pa.array(codes).type == pa.uint64()
+        assert pa.array(representatives).type == pa.uint64()
 
     def test_sorted_values_put_null_last(self):
         import pyarrow as pa
@@ -147,7 +162,11 @@ class TestArrowFactorization:
         import pyarrow as pa
         from fastmob._core import factorize_arrow
 
-        array = pa.array(values, type=pa.float64()) if not values or all(value is None for value in values) else pa.array(values)
+        array = (
+            pa.array(values, type=pa.float64())
+            if not values or all(value is None for value in values)
+            else pa.array(values)
+        )
         codes, representatives = factorize_arrow(array, sort)
         expected_codes, expected_representatives = self._reference(values, sort)
         assert pa.array(codes).to_pylist() == expected_codes
@@ -486,9 +505,7 @@ class TestBuildTimeOrderedUserRanges:
         df = pd.DataFrame(
             {
                 "uid": ["b", "a", "b", "a"],
-                "datetime": pd.to_datetime(
-                    ["2020-01-01 00:00:00"] * 4
-                ),
+                "datetime": pd.to_datetime(["2020-01-01 00:00:00"] * 4),
             }
         )
         nw_df = nw.from_native(df, eager_only=True)

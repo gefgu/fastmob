@@ -34,8 +34,8 @@ pub fn daily_unique_location_histogram_arrow(
     let (timestamps, days) = timestamp_days(timestamps)?;
     let (counts, frequencies) = py
         .detach(|| {
-            let (user_codes, _) = factorize_array(user_ids.as_ref(), false, false)?;
-            let (location_codes, _) = factorize_array(location_ids.as_ref(), false, false)?;
+            let (user_codes, _) = factorize_array(user_ids.as_ref(), false)?;
+            let (location_codes, _) = factorize_array(location_ids.as_ref(), false)?;
             let valid = (0..days.len())
                 .map(|index| {
                     user_ids.is_valid(index)

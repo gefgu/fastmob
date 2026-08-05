@@ -1032,6 +1032,7 @@ dependencies = [
 name = "fastmob-py"
 version = "0.1.1"
 dependencies = [
+ "ahash",
  "arrow-array",
  "arrow-buffer",
  "arrow-schema",

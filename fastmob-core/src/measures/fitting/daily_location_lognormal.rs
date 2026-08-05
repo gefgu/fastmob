@@ -9,8 +9,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 /// contains local calendar-day buckets, computed at the Arrow boundary after
 /// timezone metadata has been stripped.
 pub fn daily_unique_location_histogram_impl(
-    user_codes: &[u64],
-    location_codes: &[u64],
+    user_codes: &[u32],
+    location_codes: &[u32],
     days: &[i64],
     valid: &[bool],
 ) -> Result<(Vec<u64>, Vec<u64>), String> {

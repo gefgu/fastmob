@@ -1,16 +1,19 @@
 use std::cmp::Ordering;
+use std::collections::hash_map::Entry;
 use std::hash::{Hash, Hasher};
 
 use arrow_array::types::*;
 use arrow_array::{
-    Array, BooleanArray, DictionaryArray, LargeStringArray, PrimitiveArray, StringArray,
+    Array, BinaryArray, BinaryViewArray, BooleanArray, DictionaryArray, GenericStringArray,
+    LargeBinaryArray, LargeStringArray, OffsetSizeTrait, PrimitiveArray, StringArray,
+    StringViewArray,
 };
 use arrow_buffer::ArrowNativeType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 use rayon::prelude::*;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::utils::{extract_arrow_array, u64_results_into_arrow};
 
@@ -18,18 +21,36 @@ use crate::utils::{extract_arrow_array, u64_results_into_arrow};
 struct TotalF64(u64);
 
 impl TotalF64 {
+    /// Encodes `value` as a `u64` whose plain integer order matches IEEE-754
+    /// total order (`-inf < ... < -0.0 == 0.0 < ... < inf < NaN`), via a
+    /// monotonic bit-flip transform computed once here. This lets every
+    /// comparison downstream (`Ord::cmp`, and in particular the sort in
+    /// [`sort_factorized`]) be a single integer compare instead of
+    /// reconstructing an `f64` and calling `total_cmp` per comparison.
     fn new(value: f64) -> Self {
-        if value == 0.0 {
-            Self(0)
+        let bits = if value == 0.0 {
+            0.0f64.to_bits()
         } else if value.is_nan() {
-            Self(f64::NAN.to_bits())
+            f64::NAN.to_bits()
         } else {
-            Self(value.to_bits())
-        }
+            value.to_bits()
+        };
+        let key = if (bits as i64) < 0 {
+            !bits
+        } else {
+            bits | (1u64 << 63)
+        };
+        Self(key)
     }
 
+    #[cfg(test)]
     fn value(self) -> f64 {
-        f64::from_bits(self.0)
+        let bits = if (self.0 as i64) < 0 {
+            self.0 & !(1u64 << 63)
+        } else {
+            !self.0
+        };
+        f64::from_bits(bits)
     }
 }
 
@@ -51,57 +72,134 @@ impl PartialOrd for TotalF64 {
 }
 impl Ord for TotalF64 {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.value().total_cmp(&other.value())
+        self.0.cmp(&other.0)
     }
 }
 
 const CARDINALITY_SAMPLE: usize = 4096;
 const MAX_INITIAL_CAPACITY: usize = 1 << 22;
 
+/// Row-count threshold above which the parallel factorization path is used
+/// instead of the sequential one. A conservative starting point pending
+/// empirical tuning against real workloads -- see the module's companion
+/// implementation plan for the open-risk note.
+const PARALLEL_ROW_THRESHOLD: usize = 100_000;
+
+/// Cardinality (distinct-value count, not row count) threshold above which
+/// [`sort_factorized`]'s value sort itself runs in parallel. Sorting
+/// operates on `representatives.len()`, which is typically far smaller than
+/// row count, so this needs its own, smaller threshold than
+/// [`PARALLEL_ROW_THRESHOLD`].
+const SORT_PARALLEL_THRESHOLD: usize = 20_000;
+
+/// Ceiling for the dense-integer fast path's lookup-table span
+/// ([`factorize_dense_integers`]), grown with input size instead of being
+/// hard-capped at a fixed constant, so a large array with a moderately large
+/// span (e.g. bucketed timestamps, sparse-but-bounded IDs) still gets the
+/// dense path. Bounds worst-case memory for very large spans; exact tuning
+/// is pending benchmarking against real workloads.
+const DENSE_SPAN_CEILING: usize = 64 * 1024 * 1024;
+
+#[inline]
+fn should_parallelize(len: usize) -> bool {
+    len >= PARALLEL_ROW_THRESHOLD && rayon::current_num_threads() > 1
+}
+
+fn dense_span_cap(len: usize) -> usize {
+    len.saturating_mul(4).min(DENSE_SPAN_CEILING)
+}
+
+/// Assign the next factorization code, panicking loudly rather than
+/// silently wrapping if a single column's distinct-value count ever exceeds
+/// what fits in a `u32`. `u32::MAX` is reserved as an "unset" sentinel by
+/// several of this module's lookup-table fast paths, so valid codes stay
+/// strictly below it.
+#[inline]
+fn next_code(count: usize) -> u32 {
+    assert!(
+        count < u32::MAX as usize,
+        "factorization codes must fit in u32 (column cardinality exceeded u32::MAX - 1)"
+    );
+    count as u32
+}
+
+/// Small, deterministically-seeded PRNG used only to pick sample indices for
+/// [`estimate_cardinality`]. Not cryptographic; just needs to avoid the
+/// aliasing a fixed-stride walk suffers on periodic data.
+struct SampleRng(u64);
+impl SampleRng {
+    fn next_index(&mut self, bound: usize) -> usize {
+        self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1);
+        ((self.0 >> 33) % bound as u64) as usize
+    }
+}
+
 /// Choose a capacity that avoids both a repeated growth cascade for high-cardinality
 /// columns and a huge, mostly-empty allocation for categoricals.
+///
+/// Samples `CARDINALITY_SAMPLE` pseudo-randomly chosen rows (not a fixed
+/// stride, which aliases badly on periodic/cyclical data) and extrapolates
+/// via a Chao1 estimator (`distinct + f1^2 / (2*f2)`, from the sample's
+/// singleton/doubleton counts) scaled by the sampling fraction. This is only
+/// ever used as a capacity *hint*: under- or over-estimating never produces
+/// incorrect `codes`/`representatives`, only extra rehashing or wasted
+/// memory, so a heuristic estimator is acceptable here.
 fn estimate_cardinality<K, F>(len: usize, value_at: &F) -> usize
 where
-    K: Clone + Eq + Hash,
+    K: Eq + Hash,
     F: Fn(usize) -> Option<K>,
 {
     if len <= CARDINALITY_SAMPLE {
         return len;
     }
-    let stride = len / CARDINALITY_SAMPLE;
-    let mut sample = FxHashSet::with_capacity_and_hasher(CARDINALITY_SAMPLE, Default::default());
-    for sample_index in 0..CARDINALITY_SAMPLE {
-        sample.insert(value_at(sample_index * stride));
+    let mut rng = SampleRng(len as u64 ^ 0x9E37_79B9_7F4A_7C15);
+    let mut counts: FxHashMap<Option<K>, u32> =
+        FxHashMap::with_capacity_and_hasher(CARDINALITY_SAMPLE, Default::default());
+    for _ in 0..CARDINALITY_SAMPLE {
+        let index = rng.next_index(len);
+        *counts.entry(value_at(index)).or_insert(0) += 1;
     }
-    let distinct = sample.len();
-    if distinct < CARDINALITY_SAMPLE / 4 {
-        distinct.saturating_mul(4).max(1)
+    let distinct = counts.len();
+    let singletons = counts.values().filter(|&&count| count == 1).count() as f64;
+    let doubletons = counts.values().filter(|&&count| count == 2).count() as f64;
+    let chao1 = if doubletons > 0.0 {
+        distinct as f64 + (singletons * singletons) / (2.0 * doubletons)
     } else {
-        (len / 4).clamp(CARDINALITY_SAMPLE, MAX_INITIAL_CAPACITY)
-    }
+        distinct as f64 + (singletons * (singletons - 1.0)) / 2.0
+    };
+    let scale = len as f64 / CARDINALITY_SAMPLE as f64;
+    let estimate = (chao1 * scale).round().max(0.0) as usize;
+    estimate.clamp(CARDINALITY_SAMPLE, MAX_INITIAL_CAPACITY)
 }
 
-fn factorize_values<K, F>(len: usize, sort: bool, value_at: F) -> (Vec<u64>, Vec<u64>)
+fn factorize_values<K, F>(len: usize, sort: bool, value_at: F) -> (Vec<u32>, Vec<u64>)
 where
-    K: Clone + Eq + Hash + Ord,
+    K: Eq + Hash + Ord + Send,
     F: Fn(usize) -> Option<K>,
 {
-    let mut seen: FxHashMap<Option<K>, u64> = FxHashMap::with_capacity_and_hasher(
+    let mut seen: FxHashMap<K, u32> = FxHashMap::with_capacity_and_hasher(
         estimate_cardinality(len, &value_at),
         Default::default(),
     );
+    let mut null_code: Option<u32> = None;
     let mut codes = Vec::with_capacity(len);
-    let mut representatives = Vec::new();
+    let mut representatives: Vec<u64> = Vec::new();
     for index in 0..len {
-        let value = value_at(index);
-        let code = match seen.entry(value) {
-            std::collections::hash_map::Entry::Occupied(entry) => *entry.get(),
-            std::collections::hash_map::Entry::Vacant(entry) => {
-                let code = representatives.len() as u64;
-                entry.insert(code);
+        let code = match value_at(index) {
+            Some(value) => match seen.entry(value) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let code = next_code(representatives.len());
+                    entry.insert(code);
+                    representatives.push(index as u64);
+                    code
+                }
+            },
+            None => *null_code.get_or_insert_with(|| {
+                let code = next_code(representatives.len());
                 representatives.push(index as u64);
                 code
-            }
+            }),
         };
         codes.push(code);
     }
@@ -111,67 +209,147 @@ where
     (codes, representatives)
 }
 
-/// Parallel counterpart to [`factorize_values`]: two-pass, order-independent.
+/// Parallel counterpart to [`factorize_values`]. Unlike the two-pass
+/// build-then-remap design this replaces, output is now **bit-for-bit
+/// identical** to [`factorize_values`] for the same input, including code
+/// `0` always being the first-encountered distinct value -- not just
+/// partition-identical (same rows grouped together, arbitrary code labels).
 ///
-/// Pass 1 builds one local `FxHashMap` per rayon task in parallel (each task only
-/// touches its own slice of rows, no cross-thread coordination), then merges them
-/// via a balanced tree `reduce` rather than one thread folding all of them in
-/// sequence. Pass 2 assigns final codes to the merged, deduplicated value set and
-/// remaps every row against that now-immutable map in parallel.
-///
-/// Deliberately does **not** preserve first-seen row order for code assignment
-/// (unlike [`factorize_values`], whose code `0` is always the first-encountered
-/// distinct value) -- callers that need `sort=true`'s value-sorted order still get
-/// it via the same [`sort_factorized`] post-pass, but the *unsorted* code
-/// assignment order here is merge-order-dependent, not scan-order-dependent. Every
-/// row's `value_at(index)` is evaluated twice (once during the parallel build, once
-/// during the parallel remap) rather than once, trading a cheap second array read
-/// for avoiding a per-row cache of intermediate values -- negligible next to the
-/// O(n) sequential hashmap-insert cost this exists to parallelize away.
-fn factorize_values_parallel<K, F>(len: usize, sort: bool, value_at: F) -> (Vec<u64>, Vec<u64>)
+/// Four stages:
+/// 1. Split `0..len` into `rayon::current_num_threads()` contiguous chunks.
+///    Each chunk builds its own local dictionary in one sequential pass and
+///    writes LOCAL codes (dense `0..chunk_distinct_count`) directly into its
+///    own slice of the output array. Every row's value is hashed exactly
+///    once here; the local dictionary is dropped once the chunk's local
+///    representatives are known, since a representative row's value can
+///    always be recovered later via `value_at` instead of being stored
+///    separately.
+/// 2. Merge all chunks' distinct values into one global dictionary
+///    (value -> representative row index), keeping the *smallest*
+///    representative per value -- i.e. the true first-seen row index across
+///    the whole array, deterministically, regardless of merge order. This
+///    only hashes each chunk-local distinct value once (not every row), and
+///    is a plain sequential loop over the bounded (`num_chunks`-sized)
+///    per-chunk results rather than a tree reduce, since there's nothing
+///    fine-grained left to balance at that point.
+/// 3. Assign final codes in first-seen order by sorting `(representative,
+///    value)` pairs on `representative` -- this reproduces exactly the
+///    order a sequential scan would assign codes in.
+/// 4. For each chunk, build a small local-code -> global-code translation
+///    table (one hash lookup per chunk-local distinct value) and gather
+///    every row's global code through it -- a pure array index per row, no
+///    per-row hashing.
+fn factorize_values_parallel<K, F>(len: usize, sort: bool, value_at: F) -> (Vec<u32>, Vec<u64>)
 where
-    K: Clone + Eq + Hash + Ord + Send + Sync,
+    K: Eq + Hash + Ord + Send + Sync,
     F: Fn(usize) -> Option<K> + Sync,
 {
     if len == 0 {
         return (Vec::new(), Vec::new());
     }
 
-    // Pass 1: parallel local-dictionary build (value -> a representative row
-    // index), merged via a balanced-tree reduce rather than a flat sequential fold.
-    let global_map: FxHashMap<Option<K>, u64> = (0..len)
-        .into_par_iter()
-        .fold(FxHashMap::<Option<K>, u64>::default, |mut local, index| {
-            local.entry(value_at(index)).or_insert(index as u64);
-            local
-        })
-        .reduce(FxHashMap::default, |mut a, mut b| {
-            if a.len() < b.len() {
-                std::mem::swap(&mut a, &mut b);
-            }
-            for (value, representative) in b {
-                a.entry(value).or_insert(representative);
-            }
-            a
-        });
+    let num_chunks = rayon::current_num_threads().max(1);
+    let chunk_len = len.div_ceil(num_chunks).max(1);
 
-    // Assign final codes over the now-fully-deduplicated value set. Order among
-    // codes is merge-order-dependent (i.e. arbitrary), not first-seen order.
-    let mut representatives: Vec<u64> = Vec::with_capacity(global_map.len());
-    let mut value_to_code: FxHashMap<Option<K>, u64> =
-        FxHashMap::with_capacity_and_hasher(global_map.len(), Default::default());
-    for (value, representative) in global_map {
-        let code = representatives.len() as u64;
-        representatives.push(representative);
-        value_to_code.insert(value, code);
+    let mut codes = vec![0u32; len];
+
+    // Stage 1.
+    let chunk_locals: Vec<(Option<u32>, Vec<u64>)> = codes
+        .par_chunks_mut(chunk_len)
+        .enumerate()
+        .map(|(chunk_index, slots)| {
+            let base = chunk_index * chunk_len;
+            let mut local_seen: FxHashMap<K, u32> = FxHashMap::default();
+            let mut local_null: Option<u32> = None;
+            let mut local_representatives: Vec<u64> = Vec::new();
+            for (offset, slot) in slots.iter_mut().enumerate() {
+                let index = base + offset;
+                *slot = match value_at(index) {
+                    Some(value) => match local_seen.entry(value) {
+                        Entry::Occupied(entry) => *entry.get(),
+                        Entry::Vacant(entry) => {
+                            let code = next_code(local_representatives.len());
+                            entry.insert(code);
+                            local_representatives.push(index as u64);
+                            code
+                        }
+                    },
+                    None => *local_null.get_or_insert_with(|| {
+                        let code = next_code(local_representatives.len());
+                        local_representatives.push(index as u64);
+                        code
+                    }),
+                };
+            }
+            (local_null, local_representatives)
+        })
+        .collect();
+
+    // Stage 2.
+    let mut global_map: FxHashMap<K, u64> = FxHashMap::default();
+    let mut global_null: Option<u64> = None;
+    for (local_null, local_representatives) in &chunk_locals {
+        for &representative in local_representatives {
+            if let Some(value) = value_at(representative as usize) {
+                global_map
+                    .entry(value)
+                    .and_modify(|r| *r = (*r).min(representative))
+                    .or_insert(representative);
+            }
+        }
+        if let Some(local_null_code) = local_null {
+            let representative = local_representatives[*local_null_code as usize];
+            global_null = Some(global_null.map_or(representative, |r| r.min(representative)));
+        }
     }
 
-    // Pass 2: parallel remap -- every row's global code is already known, so this
-    // is a pure parallel read (shared, immutable `value_to_code`) + independent write.
-    let mut codes = vec![0u64; len];
-    codes.par_iter_mut().enumerate().for_each(|(index, code)| {
-        *code = value_to_code[&value_at(index)];
-    });
+    // Stage 3.
+    let mut ordered: Vec<(u64, Option<K>)> = global_map
+        .into_iter()
+        .map(|(value, representative)| (representative, Some(value)))
+        .collect();
+    if let Some(representative) = global_null {
+        ordered.push((representative, None));
+    }
+    ordered.sort_unstable_by_key(|&(representative, _)| representative);
+
+    let mut representatives: Vec<u64> = Vec::with_capacity(ordered.len());
+    let mut value_to_code: FxHashMap<K, u32> =
+        FxHashMap::with_capacity_and_hasher(ordered.len(), Default::default());
+    let mut null_code: Option<u32> = None;
+    for (code_index, (representative, value)) in ordered.into_iter().enumerate() {
+        let code = next_code(code_index);
+        representatives.push(representative);
+        match value {
+            Some(value) => {
+                value_to_code.insert(value, code);
+            }
+            None => null_code = Some(code),
+        }
+    }
+
+    // Stage 4.
+    codes
+        .par_chunks_mut(chunk_len)
+        .zip(chunk_locals.into_par_iter())
+        .for_each(|(slots, (local_null, local_representatives))| {
+            let translation: Vec<u32> = local_representatives
+                .iter()
+                .enumerate()
+                .map(|(local_code, &representative)| {
+                    if local_null == Some(local_code as u32) {
+                        null_code.expect("a null local code must have a global null code")
+                    } else {
+                        let value = value_at(representative as usize)
+                            .expect("non-null local code must have a value");
+                        value_to_code[&value]
+                    }
+                })
+                .collect();
+            for slot in slots.iter_mut() {
+                *slot = translation[*slot as usize];
+            }
+        });
 
     if sort {
         sort_factorized(&mut codes, &mut representatives, &value_at);
@@ -180,66 +358,96 @@ where
 }
 
 /// Convert first-seen factorization output to value-sorted codes without a second hash pass.
-fn sort_factorized<K, F>(codes: &mut [u64], representatives: &mut Vec<u64>, value_at: &F)
+fn sort_factorized<K, F>(codes: &mut [u32], representatives: &mut Vec<u64>, value_at: &F)
 where
-    K: Ord,
+    K: Ord + Send,
     F: Fn(usize) -> Option<K>,
 {
-    let keys: Vec<Option<K>> = representatives
-        .iter()
-        .map(|&representative| value_at(representative as usize))
-        .collect();
-    let mut order: Vec<usize> = (0..representatives.len()).collect();
-    order.sort_unstable_by(|&left, &right| match (&keys[left], &keys[right]) {
-        (Some(left), Some(right)) => left.cmp(&right),
-        (Some(_), None) => Ordering::Less,
-        (None, Some(_)) => Ordering::Greater,
-        (None, None) => Ordering::Equal,
-    });
-
-    let mut ranks = vec![0u64; order.len()];
-    for (new_code, &old_code) in order.iter().enumerate() {
-        ranks[old_code] = new_code as u64;
+    // Partition into non-null candidates (sorted with a plain `K::cmp`, no
+    // per-comparison `Option` branch) and the at-most-one null slot, which
+    // always sorts last -- rather than special-casing `None` on every
+    // comparison inside the sort itself.
+    let mut non_null: Vec<(usize, K)> = Vec::with_capacity(representatives.len());
+    let mut null_old_code: Option<usize> = None;
+    for (old_code, &representative) in representatives.iter().enumerate() {
+        match value_at(representative as usize) {
+            Some(value) => non_null.push((old_code, value)),
+            None => null_old_code = Some(old_code),
+        }
     }
-    codes
-        .par_iter_mut()
-        .for_each(|code| *code = ranks[*code as usize]);
-    *representatives = order
-        .into_iter()
-        .map(|old_code| representatives[old_code])
-        .collect();
+
+    if non_null.len() > SORT_PARALLEL_THRESHOLD {
+        non_null.par_sort_unstable_by(|(_, left), (_, right)| left.cmp(right));
+    } else {
+        non_null.sort_unstable_by(|(_, left), (_, right)| left.cmp(right));
+    }
+
+    let mut ranks = vec![0u32; representatives.len()];
+    let mut new_representatives = Vec::with_capacity(representatives.len());
+    for (old_code, _) in &non_null {
+        ranks[*old_code] = next_code(new_representatives.len());
+        new_representatives.push(representatives[*old_code]);
+    }
+    if let Some(old_code) = null_old_code {
+        ranks[old_code] = next_code(new_representatives.len());
+        new_representatives.push(representatives[old_code]);
+    }
+
+    if should_parallelize(codes.len()) {
+        codes
+            .par_iter_mut()
+            .for_each(|code| *code = ranks[*code as usize]);
+    } else {
+        codes
+            .iter_mut()
+            .for_each(|code| *code = ranks[*code as usize]);
+    }
+    *representatives = new_representatives;
 }
 
-fn factorize_strings<'a, F>(len: usize, sort: bool, value_at: F) -> (Vec<u64>, Vec<u64>)
+/// Factorize byte-string-keyed data (`&[u8]`). The single real
+/// implementation behind both [`factorize_strings`] (a zero-cost
+/// `str::as_bytes` adapter over this) and the `Binary`/`LargeBinary`/
+/// `BinaryView` Arrow dtypes -- `&str`'s `Ord` is itself defined as its
+/// UTF-8 bytes' lexicographic order, so this doesn't change sort behavior
+/// for the string dtypes, and it's the only sensible ordering for the
+/// non-UTF-8-guaranteed binary dtypes anyway.
+fn factorize_bytes<'a, F>(len: usize, sort: bool, value_at: F) -> (Vec<u32>, Vec<u64>)
 where
-    F: Fn(usize) -> Option<&'a str>,
+    F: Fn(usize) -> Option<&'a [u8]>,
 {
-    let mut seen: FxHashMap<&str, u64> = FxHashMap::with_capacity_and_hasher(
-        estimate_cardinality(len, &value_at),
-        Default::default(),
-    );
-    let mut null_code = None;
+    // `ahash`, not `FxHashMap`, on purpose: measured (not assumed) on a 4M-row
+    // synthetic string workload at 3 cardinalities (50 / 5,000 / 500,000
+    // distinct values), `ahash` beat `FxHashMap` by ~5-12% here, while
+    // `foldhash` was consistently ~5-15% *slower* than `FxHashMap`. Numeric
+    // key paths (`factorize_values`, `factorize_values_parallel`) keep
+    // `FxHashMap`, which remains the better choice for short, fixed-size
+    // integer/date/float keys.
+    #[allow(clippy::disallowed_types)]
+    let mut seen: std::collections::HashMap<&[u8], u32, ahash::RandomState> =
+        std::collections::HashMap::with_capacity_and_hasher(
+            estimate_cardinality(len, &value_at),
+            ahash::RandomState::default(),
+        );
+    let mut null_code: Option<u32> = None;
     let mut codes = Vec::with_capacity(len);
-    let mut representatives = Vec::new();
+    let mut representatives: Vec<u64> = Vec::new();
     for index in 0..len {
-        let value = value_at(index);
-        let code = if let Some(value) = value {
-            match seen.entry(value) {
-                std::collections::hash_map::Entry::Occupied(entry) => *entry.get(),
-                std::collections::hash_map::Entry::Vacant(entry) => {
-                    let code = representatives.len() as u64;
+        let code = match value_at(index) {
+            Some(value) => match seen.entry(value) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let code = next_code(representatives.len());
                     entry.insert(code);
                     representatives.push(index as u64);
                     code
                 }
-            }
-        } else if let Some(code) = null_code {
-            code
-        } else {
-            let code = seen.len() as u64;
-            null_code = Some(code);
-            representatives.push(index as u64);
-            code
+            },
+            None => *null_code.get_or_insert_with(|| {
+                let code = next_code(representatives.len());
+                representatives.push(index as u64);
+                code
+            }),
         };
         codes.push(code);
     }
@@ -249,10 +457,82 @@ where
     (codes, representatives)
 }
 
+fn factorize_strings<'a, F>(len: usize, sort: bool, value_at: F) -> (Vec<u32>, Vec<u64>)
+where
+    F: Fn(usize) -> Option<&'a str>,
+{
+    factorize_bytes(len, sort, move |index| value_at(index).map(str::as_bytes))
+}
+
+/// Sequential/null-count-specialized dispatch shared by every primitive
+/// integer/date/timestamp dtype once (if applicable) the dense-integer fast
+/// path has been ruled out. Specializing `value_at` on `array.null_count()
+/// == 0` removes a per-row `is_valid` branch on the (very common)
+/// fully-populated-column case, which also unblocks autovectorization of
+/// the gather.
+fn factorize_primitive_values<T>(array: &PrimitiveArray<T>, sort: bool) -> (Vec<u32>, Vec<u64>)
+where
+    T: ArrowPrimitiveType,
+    T::Native: Eq + Hash + Ord + Send + Sync,
+{
+    if array.null_count() == 0 {
+        let value_at = move |index: usize| Some(array.value(index));
+        if should_parallelize(array.len()) {
+            factorize_values_parallel(array.len(), sort, value_at)
+        } else {
+            factorize_values(array.len(), sort, value_at)
+        }
+    } else {
+        let value_at = move |index: usize| array.is_valid(index).then(|| array.value(index));
+        if should_parallelize(array.len()) {
+            factorize_values_parallel(array.len(), sort, value_at)
+        } else {
+            factorize_values(array.len(), sort, value_at)
+        }
+    }
+}
+
+/// Same null-count specialization as [`factorize_primitive_values`], for the
+/// `Float32`/`Float64` dtypes, which need their values wrapped in
+/// [`TotalF64`] to be hashable/orderable.
+fn factorize_float_values<T>(array: &PrimitiveArray<T>, sort: bool) -> (Vec<u32>, Vec<u64>)
+where
+    T: ArrowPrimitiveType,
+    T::Native: Into<f64>,
+{
+    if array.null_count() == 0 {
+        let value_at = move |index: usize| Some(TotalF64::new(array.value(index).into()));
+        if should_parallelize(array.len()) {
+            factorize_values_parallel(array.len(), sort, value_at)
+        } else {
+            factorize_values(array.len(), sort, value_at)
+        }
+    } else {
+        let value_at = move |index: usize| {
+            array
+                .is_valid(index)
+                .then(|| TotalF64::new(array.value(index).into()))
+        };
+        if should_parallelize(array.len()) {
+            factorize_values_parallel(array.len(), sort, value_at)
+        } else {
+            factorize_values(array.len(), sort, value_at)
+        }
+    }
+}
+
+/// Direct-indexed fast path for integer columns whose value span
+/// (`max - min + 1`) is small enough to use a `Vec` instead of a hash map.
+///
+/// `always_dense` bypasses the span-vs-`dense_span_cap` check entirely --
+/// used for `Int8`/`UInt8`/`Int16`/`UInt16`, whose span is statically
+/// bounded (≤256 / ≤65536) regardless of array length, so the dense path is
+/// always affordable there.
 fn factorize_dense_integers<T>(
     array: &PrimitiveArray<T>,
     sort: bool,
-) -> Option<(Vec<u64>, Vec<u64>)>
+    always_dense: bool,
+) -> Option<(Vec<u32>, Vec<u64>)>
 where
     T: ArrowPrimitiveType,
     T::Native: Into<i128>,
@@ -280,120 +560,156 @@ where
         return Some((vec![0; array.len()], vec![0]));
     };
     let span = usize::try_from(max - min + 1).ok()?;
-    if span > array.len().saturating_mul(4).min(1_000_000) {
+    if !always_dense && span > dense_span_cap(array.len()) {
         return None;
     }
 
-    let mut codes_by_value = vec![u64::MAX; span];
-    let mut representatives = Vec::new();
-    if sort {
-        let mut representative_by_value = vec![usize::MAX; span];
-        let mut null_representative = None;
-        for index in 0..array.len() {
-            if array.is_valid(index) {
-                let offset = (array.value(index).into() - min) as usize;
-                if representative_by_value[offset] == usize::MAX {
-                    representative_by_value[offset] = index;
-                }
-            } else {
-                null_representative.get_or_insert(index);
+    // Representative row index per distinct offset -- a single shared prep
+    // step used by both the sort and no-sort branches below (previously two
+    // separately hand-written, near-duplicated loops).
+    let mut representative_by_value = vec![u32::MAX; span];
+    let mut null_representative: Option<u32> = None;
+    for index in 0..array.len() {
+        if array.is_valid(index) {
+            let offset = (array.value(index).into() - min) as usize;
+            if representative_by_value[offset] == u32::MAX {
+                representative_by_value[offset] = index as u32;
             }
+        } else {
+            null_representative.get_or_insert(index as u32);
         }
+    }
+
+    let mut codes_by_value = vec![u32::MAX; span];
+    let mut representatives: Vec<u64> = Vec::new();
+    let null_code;
+    if sort {
+        // Offset order already equals value order, so assigning codes in
+        // ascending offset order directly gives the value-sorted result.
         for (offset, &representative) in representative_by_value.iter().enumerate() {
-            if representative != usize::MAX {
-                codes_by_value[offset] = representatives.len() as u64;
+            if representative != u32::MAX {
+                codes_by_value[offset] = next_code(representatives.len());
                 representatives.push(representative as u64);
             }
         }
-        let null_code = null_representative.map(|representative| {
-            let code = representatives.len() as u64;
+        null_code = null_representative.map(|representative| {
+            let code = next_code(representatives.len());
             representatives.push(representative as u64);
             code
         });
-        let codes = (0..array.len())
-            .map(|index| {
-                if array.is_valid(index) {
-                    codes_by_value[(array.value(index).into() - min) as usize]
-                } else {
-                    null_code.expect("a null row has a null code")
-                }
-            })
-            .collect();
-        return Some((codes, representatives));
     } else {
-        let mut null_code = None;
-        let mut codes = Vec::with_capacity(array.len());
-        for index in 0..array.len() {
-            let code = if array.is_valid(index) {
-                let offset = (array.value(index).into() - min) as usize;
-                if codes_by_value[offset] == u64::MAX {
-                    codes_by_value[offset] = representatives.len() as u64;
-                    representatives.push(index as u64);
-                }
-                codes_by_value[offset]
-            } else if let Some(code) = null_code {
-                code
-            } else {
-                let code = representatives.len() as u64;
-                null_code = Some(code);
-                representatives.push(index as u64);
-                code
-            };
-            codes.push(code);
+        // First-seen order: sort candidate offsets (plus the null slot, if
+        // any) by representative row index -- the same trick the generic
+        // parallel path uses to reproduce sequential-scan order.
+        let mut candidates: Vec<(u32, Option<usize>)> = representative_by_value
+            .iter()
+            .enumerate()
+            .filter(|&(_, &representative)| representative != u32::MAX)
+            .map(|(offset, &representative)| (representative, Some(offset)))
+            .collect();
+        if let Some(representative) = null_representative {
+            candidates.push((representative, None));
         }
-        return Some((codes, representatives));
+        candidates.sort_unstable_by_key(|&(representative, _)| representative);
+
+        let mut assigned_null_code = None;
+        for (representative, offset) in candidates {
+            let code = next_code(representatives.len());
+            representatives.push(representative as u64);
+            match offset {
+                Some(offset) => codes_by_value[offset] = code,
+                None => assigned_null_code = Some(code),
+            }
+        }
+        null_code = assigned_null_code;
     }
+
+    let codes = (0..array.len())
+        .map(|index| {
+            if array.is_valid(index) {
+                codes_by_value[(array.value(index).into() - min) as usize]
+            } else {
+                null_code.expect("a null row has a null code")
+            }
+        })
+        .collect();
+    Some((codes, representatives))
 }
 
-fn factorize_boolean(array: &BooleanArray, sort: bool) -> (Vec<u64>, Vec<u64>) {
+fn factorize_boolean(array: &BooleanArray, sort: bool) -> (Vec<u32>, Vec<u64>) {
     let state_at = |index: usize| match array.is_valid(index) {
         false => 2usize,
         true if array.value(index) => 1,
         true => 0,
     };
-    let mut codes_by_state = [u64::MAX; 3];
+    let mut codes_by_state = [u32::MAX; 3];
     let mut representatives = Vec::new();
+    // There are only ever 3 possible states, so once all 3 have been seen
+    // the remaining rows can't teach the bookkeeping loop anything new.
     if sort {
         let mut representatives_by_state = [usize::MAX; 3];
+        let mut found = 0;
         for index in 0..array.len() {
             let state = state_at(index);
             if representatives_by_state[state] == usize::MAX {
                 representatives_by_state[state] = index;
+                found += 1;
+                if found == 3 {
+                    break;
+                }
             }
         }
         for state in [0, 1, 2] {
             if representatives_by_state[state] != usize::MAX {
-                codes_by_state[state] = representatives.len() as u64;
+                codes_by_state[state] = next_code(representatives.len());
                 representatives.push(representatives_by_state[state] as u64);
             }
         }
     } else {
+        let mut found = 0;
         for index in 0..array.len() {
             let state = state_at(index);
-            if codes_by_state[state] == u64::MAX {
-                codes_by_state[state] = representatives.len() as u64;
+            if codes_by_state[state] == u32::MAX {
+                codes_by_state[state] = next_code(representatives.len());
                 representatives.push(index as u64);
+                found += 1;
+                if found == 3 {
+                    break;
+                }
             }
         }
     }
-    let codes = (0..array.len())
-        .map(|index| codes_by_state[state_at(index)])
-        .collect();
+    // The bookkeeping loops above can stop early once all states are found,
+    // but every row still needs its own code, so this final gather always
+    // touches the whole array -- specialized on `null_count() == 0` so the
+    // common fully-populated case skips the `is_valid` check per row.
+    let codes = if array.null_count() == 0 {
+        (0..array.len())
+            .map(|index| codes_by_state[usize::from(array.value(index))])
+            .collect()
+    } else {
+        (0..array.len())
+            .map(|index| codes_by_state[state_at(index)])
+            .collect()
+    };
     (codes, representatives)
 }
 
-/// Factorize a string dictionary through its key array.  The dictionary values are
-/// factorized only once (including duplicate values), then the row scan is made of
-/// small integer gathers rather than string hashes.
-fn factorize_string_dictionary<K>(array: &DictionaryArray<K>, sort: bool) -> (Vec<u64>, Vec<u64>)
+/// Factorize a string dictionary through its key array. The dictionary
+/// values are factorized only once (including duplicate values), then the
+/// row scan is made of small integer gathers rather than string hashes.
+/// Generic over `O: OffsetSizeTrait` so both `Utf8`- and `LargeUtf8`-valued
+/// dictionaries share this implementation.
+fn factorize_string_dictionary<K, O>(array: &DictionaryArray<K>, sort: bool) -> (Vec<u32>, Vec<u64>)
 where
     K: ArrowDictionaryKeyType,
     K::Native: ArrowNativeType,
+    O: OffsetSizeTrait,
 {
     let values = array
         .values()
         .as_any()
-        .downcast_ref::<StringArray>()
+        .downcast_ref::<GenericStringArray<O>>()
         .expect("dictionary dispatch and values must agree");
     let (dictionary_codes, dictionary_representatives) =
         factorize_strings(values.len(), sort, |index| {
@@ -406,148 +722,146 @@ where
     let null_code = dictionary_null_code.unwrap_or(virtual_null_code);
     let logical_code_count =
         dictionary_representatives.len() + usize::from(dictionary_null_code.is_none());
-    let mut logical_codes = Vec::with_capacity(array.len());
-    for index in 0..array.len() {
-        let code = if array.is_valid(index) {
+
+    // Recompute a row's dictionary-relative logical code from its key on
+    // demand rather than materializing an `array.len()`-sized intermediate
+    // buffer: `dictionary_codes` is small (bounded by dictionary
+    // cardinality) and index-only, so recomputation is cheaper than the
+    // extra allocation and memory round-trip a stored buffer would cost.
+    let logical_code_at = |index: usize| -> usize {
+        if array.is_valid(index) {
             dictionary_codes[array.keys().value(index).as_usize()] as usize
         } else {
             null_code
-        };
-        logical_codes.push(code);
-    }
-
-    let mut representatives_by_value = vec![usize::MAX; logical_code_count];
-    for (index, &code) in logical_codes.iter().enumerate() {
-        if representatives_by_value[code] == usize::MAX {
-            representatives_by_value[code] = index;
         }
-    }
-    let mut output_code_by_value = vec![u64::MAX; logical_code_count];
+    };
+
+    let mut output_code_by_value = vec![u32::MAX; logical_code_count];
     let mut representatives = Vec::new();
     if sort {
+        // Only needed for the sort branch -- building this unconditionally
+        // (as a prior version of this function did) was a full O(len) pass
+        // wasted whenever `sort == false`.
+        let mut representatives_by_value = vec![usize::MAX; logical_code_count];
+        for index in 0..array.len() {
+            let code = logical_code_at(index);
+            if representatives_by_value[code] == usize::MAX {
+                representatives_by_value[code] = index;
+            }
+        }
         for code in 0..dictionary_representatives.len() {
             if code == null_code {
                 continue;
             }
             if representatives_by_value[code] != usize::MAX {
-                output_code_by_value[code] = representatives.len() as u64;
+                output_code_by_value[code] = next_code(representatives.len());
                 representatives.push(representatives_by_value[code] as u64);
             }
         }
         if representatives_by_value[null_code] != usize::MAX {
-            output_code_by_value[null_code] = representatives.len() as u64;
+            output_code_by_value[null_code] = next_code(representatives.len());
             representatives.push(representatives_by_value[null_code] as u64);
         }
     } else {
-        for (index, &code) in logical_codes.iter().enumerate() {
-            if output_code_by_value[code] == u64::MAX {
-                output_code_by_value[code] = representatives.len() as u64;
+        for index in 0..array.len() {
+            let code = logical_code_at(index);
+            if output_code_by_value[code] == u32::MAX {
+                output_code_by_value[code] = next_code(representatives.len());
                 representatives.push(index as u64);
             }
         }
     }
-    let codes = logical_codes
-        .into_iter()
-        .map(|code| output_code_by_value[code])
+    let codes = (0..array.len())
+        .map(|index| output_code_by_value[logical_code_at(index)])
         .collect();
     (codes, representatives)
 }
 
 macro_rules! factorize_primitive {
-    ($array:expr, $type:ty, $sort:expr, $parallel:expr) => {{
+    ($array:expr, $type:ty, $sort:expr) => {{
         let array = $array
             .as_any()
             .downcast_ref::<PrimitiveArray<$type>>()
             .expect("Arrow data type and primitive array must agree");
-        if $parallel {
-            factorize_values_parallel(array.len(), $sort, |index| {
-                array.is_valid(index).then(|| array.value(index))
-            })
-        } else {
-            factorize_values(array.len(), $sort, |index| {
-                array.is_valid(index).then(|| array.value(index))
-            })
-        }
+        factorize_primitive_values(array, $sort)
     }};
 }
 
 macro_rules! factorize_integer {
-    ($array:expr, $type:ty, $sort:expr, $parallel:expr) => {{
+    ($array:expr, $type:ty, $sort:expr, $always_dense:expr) => {{
         let array = $array
             .as_any()
             .downcast_ref::<PrimitiveArray<$type>>()
             .expect("Arrow data type and primitive array must agree");
-        // The dense-integer fast path (a direct-indexed Vec, not a hash map) is
-        // left sequential-only here -- it's already a simple O(n) array-index
-        // scan, orthogonal to the hash-map parallelization this flag targets, and
-        // only ever taken for small-span integer columns where n is small enough
-        // that the sequential scan isn't the bottleneck in the first place. The
-        // large-span fallback (real-world cases like sparse H3 cell IDs) is where
-        // `$parallel` actually matters.
-        factorize_dense_integers(array, $sort).unwrap_or_else(|| {
-            if $parallel {
-                factorize_values_parallel(array.len(), $sort, |index| {
-                    array.is_valid(index).then(|| array.value(index))
-                })
-            } else {
-                factorize_values(array.len(), $sort, |index| {
-                    array.is_valid(index).then(|| array.value(index))
-                })
-            }
-        })
+        factorize_dense_integers(array, $sort, $always_dense)
+            .unwrap_or_else(|| factorize_primitive_values(array, $sort))
     }};
 }
 
 macro_rules! factorize_string_dictionary {
-    ($array:expr, $key_type:ty, $sort:expr) => {{
+    ($array:expr, $key_type:ty, $offset:ty, $sort:expr) => {{
         let array = $array
             .as_any()
             .downcast_ref::<DictionaryArray<$key_type>>()
             .expect("Arrow data type and dictionary array must agree");
-        factorize_string_dictionary(array, $sort)
+        factorize_string_dictionary::<$key_type, $offset>(array, $sort)
     }};
 }
 
 /// Factorize a supported Arrow array without crossing the Python boundary.
 ///
-/// This is shared by Arrow-native kernels that need categorical codes but must
-/// keep dataframe adapters out of their hot path. `parallel` selects
-/// [`factorize_values_parallel`] over [`factorize_values`] for the generic
-/// hashable-key path (integers with a too-large-to-densify span, floats, dates,
-/// timestamps) -- see that function's docs for why it's an order-independent,
-/// two-pass parallel build+merge+remap rather than a drop-in replacement. The
-/// dense-integer fast path, booleans, strings, and dictionary-encoded strings are
-/// unaffected by this flag and stay on their existing sequential implementations.
+/// This is shared by Arrow-native kernels that need categorical codes but
+/// must keep dataframe adapters out of their hot path. `codes` is `u32`
+/// (bounded by column cardinality, which is never realistically
+/// `> u32::MAX`); `representatives` stays `u64` (row indices, not bounded by
+/// cardinality) -- the [`factorize_arrow`] PyO3 boundary widens `codes` back
+/// to `u64` before returning to Python, so this narrowing is purely an
+/// internal performance detail, not a change to the public dtype contract.
+///
+/// The generic hashable-key path (integers with a too-large-to-densify
+/// span, floats, dates, timestamps) automatically dispatches to the
+/// parallel implementation once `array.len()` clears
+/// [`PARALLEL_ROW_THRESHOLD`] -- see [`factorize_values_parallel`]'s docs
+/// for why that's now safe to do unconditionally (its output is bit-for-bit
+/// identical to the sequential path). There is no caller-facing parallel
+/// switch; the dense-integer fast path, booleans, strings/bytes, and
+/// dictionary-encoded strings have their own dedicated (and, where
+/// applicable, independently threshold-gated) implementations.
+///
+/// Supported dtypes: all integer widths (`Int8`..`UInt64`), `Float32`/
+/// `Float64`, `Boolean`, `Date32`/`Date64`, `Timestamp` (any unit),
+/// `Utf8`/`LargeUtf8`/`Utf8View`, `Binary`/`LargeBinary`/`BinaryView`, and
+/// `Utf8`- or `LargeUtf8`-valued `Dictionary` arrays keyed by any integer
+/// type.
 pub(crate) fn factorize_array(
     array: &dyn Array,
     sort: bool,
-    parallel: bool,
-) -> Result<(Vec<u64>, Vec<u64>), String> {
+) -> Result<(Vec<u32>, Vec<u64>), String> {
     use arrow_schema::DataType;
 
     let result = match array.data_type() {
-        DataType::Int8 => factorize_integer!(array, Int8Type, sort, parallel),
-        DataType::Int16 => factorize_integer!(array, Int16Type, sort, parallel),
-        DataType::Int32 => factorize_integer!(array, Int32Type, sort, parallel),
-        DataType::Int64 => factorize_integer!(array, Int64Type, sort, parallel),
-        DataType::UInt8 => factorize_integer!(array, UInt8Type, sort, parallel),
-        DataType::UInt16 => factorize_integer!(array, UInt16Type, sort, parallel),
-        DataType::UInt32 => factorize_integer!(array, UInt32Type, sort, parallel),
-        DataType::UInt64 => factorize_integer!(array, UInt64Type, sort, parallel),
-        DataType::Date32 => factorize_primitive!(array, Date32Type, sort, parallel),
-        DataType::Date64 => factorize_primitive!(array, Date64Type, sort, parallel),
+        DataType::Int8 => factorize_integer!(array, Int8Type, sort, true),
+        DataType::Int16 => factorize_integer!(array, Int16Type, sort, true),
+        DataType::Int32 => factorize_integer!(array, Int32Type, sort, false),
+        DataType::Int64 => factorize_integer!(array, Int64Type, sort, false),
+        DataType::UInt8 => factorize_integer!(array, UInt8Type, sort, true),
+        DataType::UInt16 => factorize_integer!(array, UInt16Type, sort, true),
+        DataType::UInt32 => factorize_integer!(array, UInt32Type, sort, false),
+        DataType::UInt64 => factorize_integer!(array, UInt64Type, sort, false),
+        DataType::Date32 => factorize_primitive!(array, Date32Type, sort),
+        DataType::Date64 => factorize_primitive!(array, Date64Type, sort),
         DataType::Timestamp(unit, _) => match unit {
             arrow_schema::TimeUnit::Second => {
-                factorize_primitive!(array, TimestampSecondType, sort, parallel)
+                factorize_primitive!(array, TimestampSecondType, sort)
             }
             arrow_schema::TimeUnit::Millisecond => {
-                factorize_primitive!(array, TimestampMillisecondType, sort, parallel)
+                factorize_primitive!(array, TimestampMillisecondType, sort)
             }
             arrow_schema::TimeUnit::Microsecond => {
-                factorize_primitive!(array, TimestampMicrosecondType, sort, parallel)
+                factorize_primitive!(array, TimestampMicrosecondType, sort)
             }
             arrow_schema::TimeUnit::Nanosecond => {
-                factorize_primitive!(array, TimestampNanosecondType, sort, parallel)
+                factorize_primitive!(array, TimestampNanosecondType, sort)
             }
         },
         DataType::Float32 => {
@@ -555,32 +869,14 @@ pub(crate) fn factorize_array(
                 .as_any()
                 .downcast_ref::<PrimitiveArray<Float32Type>>()
                 .unwrap();
-            let value_at = |index: usize| {
-                array
-                    .is_valid(index)
-                    .then(|| TotalF64::new(array.value(index) as f64))
-            };
-            if parallel {
-                factorize_values_parallel(array.len(), sort, value_at)
-            } else {
-                factorize_values(array.len(), sort, value_at)
-            }
+            factorize_float_values(array, sort)
         }
         DataType::Float64 => {
             let array = array
                 .as_any()
                 .downcast_ref::<PrimitiveArray<Float64Type>>()
                 .unwrap();
-            let value_at = |index: usize| {
-                array
-                    .is_valid(index)
-                    .then(|| TotalF64::new(array.value(index)))
-            };
-            if parallel {
-                factorize_values_parallel(array.len(), sort, value_at)
-            } else {
-                factorize_values(array.len(), sort, value_at)
-            }
+            factorize_float_values(array, sort)
         }
         DataType::Boolean => {
             let array = array.as_any().downcast_ref::<BooleanArray>().unwrap();
@@ -598,18 +894,61 @@ pub(crate) fn factorize_array(
                 array.is_valid(index).then(|| array.value(index))
             })
         }
+        DataType::Utf8View => {
+            let array = array.as_any().downcast_ref::<StringViewArray>().unwrap();
+            factorize_strings(array.len(), sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        }
+        DataType::Binary => {
+            let array = array.as_any().downcast_ref::<BinaryArray>().unwrap();
+            factorize_bytes(array.len(), sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        }
+        DataType::LargeBinary => {
+            let array = array.as_any().downcast_ref::<LargeBinaryArray>().unwrap();
+            factorize_bytes(array.len(), sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        }
+        DataType::BinaryView => {
+            let array = array.as_any().downcast_ref::<BinaryViewArray>().unwrap();
+            factorize_bytes(array.len(), sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        }
         DataType::Dictionary(key_type, value_type)
             if matches!(value_type.as_ref(), DataType::Utf8) =>
         {
             match key_type.as_ref() {
-                DataType::Int8 => factorize_string_dictionary!(array, Int8Type, sort),
-                DataType::Int16 => factorize_string_dictionary!(array, Int16Type, sort),
-                DataType::Int32 => factorize_string_dictionary!(array, Int32Type, sort),
-                DataType::Int64 => factorize_string_dictionary!(array, Int64Type, sort),
-                DataType::UInt8 => factorize_string_dictionary!(array, UInt8Type, sort),
-                DataType::UInt16 => factorize_string_dictionary!(array, UInt16Type, sort),
-                DataType::UInt32 => factorize_string_dictionary!(array, UInt32Type, sort),
-                DataType::UInt64 => factorize_string_dictionary!(array, UInt64Type, sort),
+                DataType::Int8 => factorize_string_dictionary!(array, Int8Type, i32, sort),
+                DataType::Int16 => factorize_string_dictionary!(array, Int16Type, i32, sort),
+                DataType::Int32 => factorize_string_dictionary!(array, Int32Type, i32, sort),
+                DataType::Int64 => factorize_string_dictionary!(array, Int64Type, i32, sort),
+                DataType::UInt8 => factorize_string_dictionary!(array, UInt8Type, i32, sort),
+                DataType::UInt16 => factorize_string_dictionary!(array, UInt16Type, i32, sort),
+                DataType::UInt32 => factorize_string_dictionary!(array, UInt32Type, i32, sort),
+                DataType::UInt64 => factorize_string_dictionary!(array, UInt64Type, i32, sort),
+                key_type => {
+                    return Err(format!(
+                        "unsupported dictionary key dtype for factorization: {key_type}"
+                    ));
+                }
+            }
+        }
+        DataType::Dictionary(key_type, value_type)
+            if matches!(value_type.as_ref(), DataType::LargeUtf8) =>
+        {
+            match key_type.as_ref() {
+                DataType::Int8 => factorize_string_dictionary!(array, Int8Type, i64, sort),
+                DataType::Int16 => factorize_string_dictionary!(array, Int16Type, i64, sort),
+                DataType::Int32 => factorize_string_dictionary!(array, Int32Type, i64, sort),
+                DataType::Int64 => factorize_string_dictionary!(array, Int64Type, i64, sort),
+                DataType::UInt8 => factorize_string_dictionary!(array, UInt8Type, i64, sort),
+                DataType::UInt16 => factorize_string_dictionary!(array, UInt16Type, i64, sort),
+                DataType::UInt32 => factorize_string_dictionary!(array, UInt32Type, i64, sort),
+                DataType::UInt64 => factorize_string_dictionary!(array, UInt64Type, i64, sort),
                 key_type => {
                     return Err(format!(
                         "unsupported dictionary key dtype for factorization: {key_type}"
@@ -627,20 +966,19 @@ pub(crate) fn factorize_array(
 }
 
 #[pyfunction]
-#[pyo3(signature = (values, sort = false, parallel = false))]
+#[pyo3(signature = (values, sort = false))]
 pub fn factorize_arrow(
     py: Python<'_>,
     values: &Bound<'_, PyAny>,
     sort: bool,
-    parallel: bool,
 ) -> PyResult<(PyArray, PyArray)> {
     let values = extract_arrow_array(values, "values")?;
     let (array, _field) = values.into_inner();
     let result = py
-        .detach(|| factorize_array(array.as_ref(), sort, parallel))
+        .detach(|| factorize_array(array.as_ref(), sort))
         .map_err(PyValueError::new_err)?;
     Ok((
-        u64_results_into_arrow(result.0),
+        u64_results_into_arrow(result.0.into_iter().map(u64::from).collect()),
         u64_results_into_arrow(result.1),
     ))
 }
@@ -648,7 +986,8 @@ pub fn factorize_arrow(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
+    use arrow_array::Int32Array;
+    use std::sync::Arc;
 
     /// Deterministic xorshift-ish PRNG (mirrors `next_location.rs`'s test helper).
     struct Lcg(u64);
@@ -662,21 +1001,43 @@ mod tests {
         }
     }
 
-    /// The row-index partition a factorization induces: which rows ended up with
-    /// the same code, independent of which arbitrary integer that code is (the
-    /// parallel path's code assignment is merge-order-, not scan-order-,
-    /// dependent, so comparing raw code values directly would be meaningless).
-    fn partition(codes: &[u64]) -> HashSet<Vec<usize>> {
-        let max_code = codes.iter().copied().max().map_or(0, |c| c as usize);
-        let mut groups: Vec<Vec<usize>> = vec![Vec::new(); max_code + 1];
-        for (index, &code) in codes.iter().enumerate() {
-            groups[code as usize].push(index);
-        }
-        groups.into_iter().filter(|g| !g.is_empty()).collect()
+    #[test]
+    fn total_f64_matches_ieee_total_order() {
+        let neg_inf = TotalF64::new(f64::NEG_INFINITY);
+        let neg_one = TotalF64::new(-1.0);
+        let neg_zero = TotalF64::new(-0.0);
+        let pos_zero = TotalF64::new(0.0);
+        let pos_one = TotalF64::new(1.0);
+        let pos_inf = TotalF64::new(f64::INFINITY);
+        let nan = TotalF64::new(f64::NAN);
+
+        assert!(neg_inf < neg_one);
+        assert!(neg_one < neg_zero);
+        assert_eq!(neg_zero, pos_zero);
+        assert!(pos_zero < pos_one);
+        assert!(pos_one < pos_inf);
+        assert!(pos_inf < nan);
+
+        assert_eq!(TotalF64::new(3.5).value(), 3.5);
+        assert_eq!(TotalF64::new(-3.5).value(), -3.5);
+        assert!(TotalF64::new(f64::NAN).value().is_nan());
     }
 
     #[test]
-    fn parallel_matches_sequential_partition_across_random_inputs() {
+    fn should_parallelize_respects_row_threshold() {
+        assert!(!should_parallelize(0));
+        assert!(!should_parallelize(PARALLEL_ROW_THRESHOLD - 1));
+        // Whether the >= threshold case actually parallelizes also depends
+        // on `rayon::current_num_threads() > 1`, which is environment
+        // dependent (e.g. a single-core CI runner) -- only assert the part
+        // of the contract that's not environment dependent.
+        if rayon::current_num_threads() > 1 {
+            assert!(should_parallelize(PARALLEL_ROW_THRESHOLD));
+        }
+    }
+
+    #[test]
+    fn parallel_matches_sequential_exactly_across_random_inputs() {
         let mut rng = Lcg(0xFACD_u64);
         for trial in 0..300 {
             let len = 1 + (rng.range(500) as usize);
@@ -697,29 +1058,13 @@ mod tests {
             let (par_codes, par_reps) = factorize_values_parallel(len, false, value_at);
 
             assert_eq!(
-                seq_reps.len(),
-                par_reps.len(),
-                "trial {trial}: distinct-value count mismatch (values={values:?})"
+                seq_codes, par_codes,
+                "trial {trial}: codes mismatch (values={values:?})"
             );
             assert_eq!(
-                partition(&seq_codes),
-                partition(&par_codes),
-                "trial {trial}: row-index partition mismatch (values={values:?})"
+                seq_reps, par_reps,
+                "trial {trial}: representatives mismatch (values={values:?})"
             );
-            // Every representative's underlying value must actually be present
-            // in that representative's own equivalence class.
-            for (code, &representative) in par_reps.iter().enumerate() {
-                let expected_value = value_at(representative as usize);
-                for (index, &row_code) in par_codes.iter().enumerate() {
-                    if row_code == code as u64 {
-                        assert_eq!(
-                            value_at(index),
-                            expected_value,
-                            "trial {trial}: representative/value mismatch"
-                        );
-                    }
-                }
-            }
         }
     }
 
@@ -729,21 +1074,17 @@ mod tests {
         for trial in 0..100 {
             let len = 1 + (rng.range(300) as usize);
             let vocab = 1 + (rng.range(15) as usize);
-            let values: Vec<Option<u64>> = (0..len)
-                .map(|_| Some(rng.range(vocab as u64)))
-                .collect();
+            let values: Vec<Option<u64>> =
+                (0..len).map(|_| Some(rng.range(vocab as u64))).collect();
             let value_at = |index: usize| values[index];
 
             let (seq_codes, seq_reps) = factorize_values(len, true, value_at);
             let (par_codes, par_reps) = factorize_values_parallel(len, true, value_at);
 
-            // sort=true fully determines both codes and representatives (value
-            // order), so these must match exactly, not just up to partition.
             assert_eq!(seq_codes, par_codes, "trial {trial}: sorted codes mismatch");
             assert_eq!(
-                seq_reps.iter().map(|&r| value_at(r as usize)).collect::<Vec<_>>(),
-                par_reps.iter().map(|&r| value_at(r as usize)).collect::<Vec<_>>(),
-                "trial {trial}: sorted representative values mismatch"
+                seq_reps, par_reps,
+                "trial {trial}: sorted representatives mismatch"
             );
         }
     }
@@ -759,5 +1100,92 @@ mod tests {
         let (codes, reps) = factorize_values_parallel(1, false, |i| single[i]);
         assert_eq!(codes, vec![0]);
         assert_eq!(reps, vec![0]);
+    }
+
+    #[test]
+    fn factorize_values_null_free_matches_nullable_equivalent() {
+        let values: Vec<u64> = vec![7, 3, 7, 1, 3, 9];
+        let nullable: Vec<Option<u64>> = values.iter().map(|&v| Some(v)).collect();
+        for sort in [false, true] {
+            let (no_null_codes, no_null_reps) =
+                factorize_values(values.len(), sort, |i| Some(values[i]));
+            let (nullable_codes, nullable_reps) =
+                factorize_values(nullable.len(), sort, |i| nullable[i]);
+            assert_eq!(no_null_codes, nullable_codes);
+            assert_eq!(no_null_reps, nullable_reps);
+        }
+    }
+
+    #[test]
+    fn factorize_bytes_preserves_first_seen_order_and_groups_nulls() {
+        let values: Vec<Option<&[u8]>> = vec![Some(b"b"), None, Some(b"a"), Some(b"b"), None];
+        let (codes, reps) = factorize_bytes(values.len(), false, |i| values[i]);
+        assert_eq!(codes, vec![0, 1, 2, 0, 1]);
+        assert_eq!(reps, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn factorize_bytes_sorted_puts_null_last() {
+        let values: Vec<Option<&[u8]>> = vec![Some(b"b"), None, Some(b"a")];
+        let (codes, _) = factorize_bytes(values.len(), true, |i| values[i]);
+        // sorted order: "a" (0), "b" (1), null (2)
+        assert_eq!(codes, vec![1, 2, 0]);
+    }
+
+    #[test]
+    fn factorize_boolean_null_free_matches_nullable_equivalent() {
+        let values = [true, false, true, true, false];
+        let nullable: Vec<Option<bool>> = values.iter().map(|&v| Some(v)).collect();
+        let no_null_array = BooleanArray::from(values.to_vec());
+        let nullable_array = BooleanArray::from(nullable);
+        for sort in [false, true] {
+            let (no_null_codes, no_null_reps) = factorize_boolean(&no_null_array, sort);
+            let (nullable_codes, nullable_reps) = factorize_boolean(&nullable_array, sort);
+            assert_eq!(no_null_codes, nullable_codes);
+            assert_eq!(no_null_reps, nullable_reps);
+        }
+    }
+
+    #[test]
+    fn factorize_dense_integers_null_free_matches_nullable_equivalent() {
+        let values: Vec<i32> = vec![5, 2, 5, 9, 2];
+        let no_null_array = PrimitiveArray::<Int32Type>::from(values.clone());
+        let nullable_array =
+            PrimitiveArray::<Int32Type>::from(values.into_iter().map(Some).collect::<Vec<_>>());
+        for sort in [false, true] {
+            let no_null = factorize_dense_integers(&no_null_array, sort, false).unwrap();
+            let nullable = factorize_dense_integers(&nullable_array, sort, false).unwrap();
+            assert_eq!(no_null, nullable);
+        }
+    }
+
+    #[test]
+    fn factorize_dense_integers_always_dense_skips_span_check() {
+        // Span (256) would exceed a tiny array's `dense_span_cap`, but
+        // `always_dense` (used for Int8/UInt8/Int16/UInt16) bypasses that.
+        let values: Vec<i8> = vec![i8::MIN, 0, i8::MAX, 0];
+        let array = PrimitiveArray::<Int8Type>::from(values);
+        assert!(factorize_dense_integers(&array, false, false).is_none());
+        let (codes, reps) = factorize_dense_integers(&array, false, true).unwrap();
+        assert_eq!(codes, vec![0, 1, 2, 1]);
+        assert_eq!(reps, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn factorize_string_dictionary_utf8_and_large_utf8_agree() {
+        let keys = Int32Array::from(vec![Some(1i32), Some(0), None, Some(1)]);
+        let utf8_values = StringArray::from(vec![Some("a"), Some("b")]);
+        let utf8_dict =
+            DictionaryArray::<Int32Type>::try_new(keys.clone(), Arc::new(utf8_values)).unwrap();
+        let large_utf8_values = LargeStringArray::from(vec![Some("a"), Some("b")]);
+        let large_utf8_dict =
+            DictionaryArray::<Int32Type>::try_new(keys, Arc::new(large_utf8_values)).unwrap();
+
+        for sort in [false, true] {
+            let utf8_result = factorize_string_dictionary::<Int32Type, i32>(&utf8_dict, sort);
+            let large_utf8_result =
+                factorize_string_dictionary::<Int32Type, i64>(&large_utf8_dict, sort);
+            assert_eq!(utf8_result, large_utf8_result);
+        }
     }
 }

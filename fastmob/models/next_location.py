@@ -127,8 +127,6 @@ class NextLocationPredictor:
         location_col: str | None = None,
         uid_col: str | None = None,
         started_at_col: str | None = None,
-        *,
-        parallel_factorize: bool = False,
     ) -> NextLocationPredictor:
         """Fit one Markov model per user from each user's location-id sequence.
 
@@ -148,15 +146,6 @@ class NextLocationPredictor:
             rows are assumed already in chronological order per user
             (matching `Staypoints`' own ``started_at_col``, when ``traj``
             is a `Staypoints` instance).
-        parallel_factorize : bool, optional
-            Use the Rust factorization kernel's parallel (order-independent,
-            two-pass build+merge+remap) path for dense-coding
-            ``location_col`` instead of its default sequential scan --
-            experimental, exposed for benchmarking (see
-            ``_factorize_arrow_values``); only affects columns that hit the
-            generic hashable-key factorization path (not small-span dense
-            integers, booleans, or plain/dictionary-encoded strings).
-            Default ``False``.
 
         Returns
         -------
@@ -181,12 +170,8 @@ class NextLocationPredictor:
 
         df = df.filter(~nw.col(location_col).is_null())
         location_values = df.get_column(location_col).to_arrow()
-        location_codes_arrow, representatives = _factorize_arrow_values(
-            location_values, sort=False, parallel=parallel_factorize
-        )
-        code_to_label = dict(
-            enumerate(pc.take(location_values, representatives).to_pylist())
-        )
+        location_codes_arrow, representatives = _factorize_arrow_values(location_values, sort=False)
+        code_to_label = dict(enumerate(pc.take(location_values, representatives).to_pylist()))
         location_codes = _uint64_series(df, location_codes_arrow)
         df = df.with_columns(location_codes.alias("__location_code__"))
 
