@@ -1,10 +1,10 @@
 use crate::utils::{
-    ArrowUsizeArrayExt, arrow_u64_values, as_u64_array, f64_results_into_arrow,
-    u64_results_into_arrow,
+    arrow_u64_values, as_u64_array, f64_results_into_arrow, u64_results_into_arrow,
+    ArrowUsizeArrayExt,
 };
 use fastmob_core::models::next_location::{
-    MarkovLocationModel, NextLocationConfig as CoreNextLocationConfig, markov_fit_indexed,
-    markov_predict_batch,
+    markov_fit_indexed, markov_predict_batch, MarkovLocationModel,
+    NextLocationConfig as CoreNextLocationConfig,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

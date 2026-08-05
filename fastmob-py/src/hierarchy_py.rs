@@ -1,6 +1,6 @@
 use fastmob_core::hierarchy::trips::{
-    ToursResult, TriplegLengthsResult, TripsResult, tours_from_trips_impl,
-    tripleg_lengths_attributed_impl, trips_from_timeline_impl,
+    tours_from_trips_impl, tripleg_lengths_attributed_impl, trips_from_timeline_impl, ToursResult,
+    TriplegLengthsResult, TripsResult,
 };
 use numpy::IntoPyArray;
 use pyo3::exceptions::PyValueError;
@@ -8,8 +8,8 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
-    arrow_bool_values, arrow_i64_values, arrow_u8_values, arrow_u64_values, arrow_values,
-    as_bool_array, as_f64_array, as_i64_array, as_u8_array, as_u64_array, f64_results_into_arrow,
+    arrow_bool_values, arrow_i64_values, arrow_u64_values, arrow_u8_values, arrow_values,
+    as_bool_array, as_f64_array, as_i64_array, as_u64_array, as_u8_array, f64_results_into_arrow,
     i64_results_into_arrow, u64_results_into_arrow,
 };
 
