@@ -62,9 +62,7 @@ def load_brightkite(rows: int) -> pl.DataFrame:
     # polars refuses to infer a format when the data carries a zone. Parsing to
     # a naive microsecond datetime matches what the Rust side produces.
     return df.with_columns(
-        pl.col("datetime").str.to_datetime(
-            format="%Y-%m-%dT%H:%M:%SZ", time_unit="us", strict=False
-        )
+        pl.col("datetime").str.to_datetime(format="%Y-%m-%dT%H:%M:%SZ", time_unit="us", strict=False)
     ).drop_nulls("datetime")
 
 
@@ -151,9 +149,7 @@ def main() -> int:
             python = run_python(df)
 
             checks.append(f"[{rows:,} rows] " + compare("jump_lengths", rust["jumps"], python["jumps"]))
-            checks.append(
-                f"[{rows:,} rows] " + compare("radius_of_gyration", rust["rog"], python["rog"])
-            )
+            checks.append(f"[{rows:,} rows] " + compare("radius_of_gyration", rust["rog"], python["rog"]))
             table.append(
                 (
                     rows,

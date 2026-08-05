@@ -271,15 +271,11 @@ class Gravity:
 
         if "flows" in out_format:
             if tot_outflows_column not in prepared.frame.columns:
-                raise KeyError(
-                    "The column 'tot_outflows' must be present in the tessellation."
-                )
+                raise KeyError("The column 'tot_outflows' must be present in the tessellation.")
             tot_outflows = prepared.values(tot_outflows_column)
         else:
             tot_outflows = (
-                nw.new_series(
-                    "tot_outflow", [0.0] * n_locs, backend=prepared.frame.implementation
-                )
+                nw.new_series("tot_outflow", [0.0] * n_locs, backend=prepared.frame.implementation)
                 .cast(nw.Float64)
                 .to_arrow()
             )
@@ -308,9 +304,7 @@ class Gravity:
                     int(outflow_values[origin]),
                     probability_values[mask] / probability_values[mask].sum(),
                 )
-            values = nw.new_series(
-                "flow", quantities, backend=prepared.frame.implementation
-            ).to_arrow()
+            values = nw.new_series("flow", quantities, backend=prepared.frame.implementation).to_arrow()
         ids = prepared.location_ids().to_list()
         frame = nw.from_dict(
             {
@@ -320,9 +314,7 @@ class Gravity:
             },
             backend=prepared.frame.implementation,
         ).to_native()
-        return FlowDataFrame(
-            frame, locations=locations, tile_id=locations.location_id_col
-        )
+        return FlowDataFrame(frame, locations=locations, tile_id=locations.location_id_col)
 
     def fit(self, flow_df, relevance_column=RELEVANCE):
         """Fit the Gravity model parameters to observed flows via Poisson regression.
@@ -358,35 +350,23 @@ class Gravity:
             import statsmodels as sm
             from statsmodels.genmod.generalized_linear_model import GLM
         except ImportError as exc:
-            raise ImportError(
-                "statsmodels is required: pip install fastmob[generation]"
-            ) from exc
+            raise ImportError("statsmodels is required: pip install fastmob[generation]") from exc
 
         if not hasattr(flow_df, "locations") or flow_df.locations is None:
-            raise AttributeError(
-                "flow_df must expose a Locations catalogue to fit Gravity."
-            )
+            raise AttributeError("flow_df must expose a Locations catalogue to fit Gravity.")
         prepared = flow_df.locations.model_input()
-        self.lats_lngs = np.column_stack(
-            (np.asarray(prepared.latitudes), np.asarray(prepared.longitudes))
-        )
+        self.lats_lngs = np.column_stack((np.asarray(prepared.latitudes), np.asarray(prepared.longitudes)))
         self.weights = np.asarray(prepared.values(relevance_column), dtype=float)
-        self.tileid2index = {
-            tileid: i for i, tileid in enumerate(prepared.location_ids().to_list())
-        }
+        self.tileid2index = {tileid: i for i, tileid in enumerate(prepared.location_ids().to_list())}
         self.X, self.y = [], []
 
-        for flow_example in nw.from_native(flow_df.df, eager_only=True).iter_rows(
-            named=True
-        ):
+        for flow_example in nw.from_native(flow_df.df, eager_only=True).iter_rows(named=True):
             self._update_training_set(flow_example)
 
         poisson_model = GLM(
             self.y,
             self.X,
-            family=sm.genmod.families.family.Poisson(
-                link=sm.genmod.families.links.log()
-            ),
+            family=sm.genmod.families.family.Poisson(link=sm.genmod.families.links.log()),
         )
         poisson_results = poisson_model.fit()
         if self._gravity_type == "globally constrained":

@@ -68,35 +68,29 @@ def build_case(name: str, records: list[tuple[str, str, str, str]], *, string_ui
         for uid, dt, lat, lng in records:
             handle.write(f"{uid}\t{dt}\t{lat}\t{lng}\n")
 
-    df = pl.DataFrame(
-        {
-            "uid": [r[0] for r in records] if string_uids else [int(r[0]) for r in records],
-            "datetime": [r[1] for r in records],
-            "lat": [float(r[2]) for r in records],
-            "lng": [float(r[3]) for r in records],
-        }
-    ).with_columns(
-        pl.col("datetime").str.to_datetime(format="%Y-%m-%dT%H:%M:%SZ", time_unit="us", strict=False)
-    ).drop_nulls("datetime")
+    df = (
+        pl.DataFrame(
+            {
+                "uid": [r[0] for r in records] if string_uids else [int(r[0]) for r in records],
+                "datetime": [r[1] for r in records],
+                "lat": [float(r[2]) for r in records],
+                "lng": [float(r[3]) for r in records],
+            }
+        )
+        .with_columns(pl.col("datetime").str.to_datetime(format="%Y-%m-%dT%H:%M:%SZ", time_unit="us", strict=False))
+        .drop_nulls("datetime")
+    )
 
     arranged = df.sort(["uid", "datetime"], maintain_order=True)
     jumps = np.asarray(jump_lengths(arranged, merge=True, presorted=True), dtype="<f8")
-    rog = (
-        radius_of_gyration(arranged, presorted=True)["radius_of_gyration"]
-        .drop_nulls()
-        .to_numpy()
-        .astype("<f8")
-    )
+    rog = radius_of_gyration(arranged, presorted=True)["radius_of_gyration"].drop_nulls().to_numpy().astype("<f8")
 
     waits = np.asarray(waiting_times(arranged, merge=True, presorted=True), dtype="<f8")
 
     jumps.tofile(case_dir / "jump_lengths.f64")
     rog.tofile(case_dir / "radius_of_gyration.f64")
     waits.tofile(case_dir / "waiting_times.f64")
-    print(
-        f"{name}: {len(arranged)} rows, {len(jumps)} jumps, "
-        f"{len(rog)} radii, {len(waits)} waits"
-    )
+    print(f"{name}: {len(arranged)} rows, {len(jumps)} jumps, {len(rog)} radii, {len(waits)} waits")
 
 
 def main() -> int:

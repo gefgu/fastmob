@@ -197,7 +197,9 @@ def test_short_non_activity_stop_merges_two_triplegs_into_one_trip():
 
 def _build_tours(rows: pd.DataFrame, **location_kwargs):
     _pf, _sp, _tl, sp_act, trips = _build_trips(rows)
-    locations, sp_with_location = sp_act.generate_user_locations(**{"epsilon_km": 0.15, "min_samples": 1, **location_kwargs})
+    locations, sp_with_location = sp_act.generate_user_locations(
+        **{"epsilon_km": 0.15, "min_samples": 1, **location_kwargs}
+    )
     tours = trips.generate_tours(sp_with_location)
     return locations, sp_with_location, trips, tours
 

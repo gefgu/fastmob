@@ -135,7 +135,9 @@ class Radiation:
             If ``out_format`` is not one of the accepted values.
         """
         if not isinstance(locations, Locations):
-            raise TypeError("Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs")
+            raise TypeError(
+                "Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs"
+            )
         prepared = locations.model_input()
 
         if out_format not in ["flows", "flows_sample", "probabilities"]:
@@ -151,7 +153,11 @@ class Radiation:
                 )
             outflows = prepared.values(tot_outflows_column)
         else:
-            outflows = nw.new_series("tot_outflow", [1.0] * len(prepared.frame), backend=prepared.frame.implementation).cast(nw.Float64).to_arrow()
+            outflows = (
+                nw.new_series("tot_outflow", [1.0] * len(prepared.frame), backend=prepared.frame.implementation)
+                .cast(nw.Float64)
+                .to_arrow()
+            )
         if out_format == "flows_sample":
             origins, destinations, values = _core.model_radiation_sample_flows_arrow(
                 prepared.latitudes,
@@ -172,7 +178,11 @@ class Radiation:
         origin_values = origins.to_pylist()
         destination_values = destinations.to_pylist()
         frame = nw.from_dict(
-            {"origin": [ids[int(i)] for i in origin_values], "destination": [ids[int(i)] for i in destination_values], "flow": values},
+            {
+                "origin": [ids[int(i)] for i in origin_values],
+                "destination": [ids[int(i)] for i in destination_values],
+                "flow": values,
+            },
             backend=prepared.frame.implementation,
         ).to_native()
         return FlowDataFrame(frame, locations=locations, tile_id=locations.location_id_col)

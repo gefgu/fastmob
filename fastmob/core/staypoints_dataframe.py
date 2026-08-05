@@ -88,7 +88,9 @@ class Staypoints(BaseDataFrame):
             return
         bad_rows = nw_df.filter(nw.col(finished_at_col) < nw.col(started_at_col))
         if len(bad_rows) > 0:
-            raise ValueError(f"Staypoints requires finished_at >= started_at for every row ({len(bad_rows)} violating row(s))")
+            raise ValueError(
+                f"Staypoints requires finished_at >= started_at for every row ({len(bad_rows)} violating row(s))"
+            )
 
     @staticmethod
     def resolve_dataframe(
@@ -218,16 +220,25 @@ class Staypoints(BaseDataFrame):
             arrow.get_column("__center_lat__").alias("__center_lat__"),
             arrow.get_column("__center_lng__").alias("__center_lng__"),
         )
-        locations_df = assigned.drop_nulls(subset=["location_id"]).group_by("location_id").agg(
-            nw.col("__center_lat__").first().alias("center_lat"),
-            nw.col("__center_lng__").first().alias("center_lng"),
-            nw.len().alias("n_staypoints"),
+        locations_df = (
+            assigned.drop_nulls(subset=["location_id"])
+            .group_by("location_id")
+            .agg(
+                nw.col("__center_lat__").first().alias("center_lat"),
+                nw.col("__center_lng__").first().alias("center_lng"),
+                nw.len().alias("n_staypoints"),
+            )
         )
         assigned = assigned.drop("__center_lat__", "__center_lng__")
         locations = Locations(locations_df.to_native(), scope="global", scheme="h3")
         return locations, Staypoints(
-            assigned.to_native(), uid_col=self.uid_col, lat_col=self.lat_col, lng_col=self.lng_col,
-            started_at_col=self.started_at_col, finished_at_col=self.finished_at_col, parameters=self.parameters,
+            assigned.to_native(),
+            uid_col=self.uid_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            started_at_col=self.started_at_col,
+            finished_at_col=self.finished_at_col,
+            parameters=self.parameters,
         )
 
     def associate_global_locations(self, locations: Locations, location_id_col: str = "location_id") -> Staypoints:
@@ -245,8 +256,13 @@ class Staypoints(BaseDataFrame):
         if location_id_col != "location_id":
             df = df.rename({location_id_col: "location_id"})
         return Staypoints(
-            df.to_native(), uid_col=self.uid_col, lat_col=self.lat_col, lng_col=self.lng_col,
-            started_at_col=self.started_at_col, finished_at_col=self.finished_at_col, parameters=self.parameters,
+            df.to_native(),
+            uid_col=self.uid_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            started_at_col=self.started_at_col,
+            finished_at_col=self.finished_at_col,
+            parameters=self.parameters,
         )
 
     def build_stvd(self, locations: Locations, **kwargs: Any) -> Any:

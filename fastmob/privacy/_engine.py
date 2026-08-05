@@ -34,11 +34,20 @@ def _target_indices(df: nw.DataFrame, uid_col: str | None, uid_values: Any, targ
 
 
 def _time_keys(df: nw.DataFrame, datetime_col: str, precision: str) -> Any:
-    formats = {"year": "%Y", "month": "%Y%m", "day": "%Y%m%d", "hour": "%Y%m%d%H", "minute": "%Y%m%d%H%M", "second": "%Y%m%d%H%M%S"}
+    formats = {
+        "year": "%Y",
+        "month": "%Y%m",
+        "day": "%Y%m%d",
+        "hour": "%Y%m%d%H",
+        "minute": "%Y%m%d%H%M",
+        "second": "%Y%m%d%H%M%S",
+    }
     normalized = precision.lower()
     if normalized not in formats:
         raise ValueError("time_precision must be one of: Year, Month, Day, Hour, Minute, Second")
-    values = df.with_columns(nw.col(datetime_col).dt.to_string(formats[normalized]).alias("__privacy_time_key__")).get_column("__privacy_time_key__")
+    values = df.with_columns(
+        nw.col(datetime_col).dt.to_string(formats[normalized]).alias("__privacy_time_key__")
+    ).get_column("__privacy_time_key__")
     codes, _ = _factorize_arrow_values(values, sort=False)
     return codes
 
@@ -65,10 +74,14 @@ def _result(
 ) -> Any:
     output_uid = uid_col or "uid"
     if not force_instances:
-        return nw.from_dict(
-            {output_uid: _uids(uid_values, result.user_indices), "risk": result.risks},
-            backend=df.implementation,
-        ).sort(output_uid).to_native()
+        return (
+            nw.from_dict(
+                {output_uid: _uids(uid_values, result.user_indices), "risk": result.risks},
+                backend=df.implementation,
+            )
+            .sort(output_uid)
+            .to_native()
+        )
 
     columns: dict[str, Any] = {
         lat_col: result.force_lats,

@@ -37,7 +37,9 @@ def common_part_of_commuters(observed: Any, predicted: Any) -> float:
         weights_a = pc.cast(_as_arrow(observed_df.get_column(FLOW)), pa.float64())
         weights_b = pc.cast(_as_arrow(predicted_df.get_column(FLOW)), pa.float64())
     else:
-        raise TypeError("CPC compares two Trips or two FlowDataFrame instances; convert Trips explicitly to FlowDataFrame to mix them.")
+        raise TypeError(
+            "CPC compares two Trips or two FlowDataFrame instances; convert Trips explicitly to FlowDataFrame to mix them."
+        )
 
     origin_a, destination_a, origin_b, destination_b = _joint_factorize_arrow_values(
         origin_a, destination_a, origin_b, destination_b
@@ -53,6 +55,7 @@ def common_part_of_links(observed: Any, predicted: Any) -> float:
     # its prepared inputs through this intentionally parallel dispatch.
     from fastmob.core.flow_dataframe import DESTINATION, FLOW, ORIGIN, FlowDataFrame
     from fastmob.core.trips_dataframe import Trips
+
     if isinstance(observed, Trips) and isinstance(predicted, Trips):
         a, b = nw.from_native(observed.df, eager_only=True), nw.from_native(predicted.df, eager_only=True)
         origin_a, destination_a = a.get_column("origin_location_id"), a.get_column("destination_location_id")
@@ -62,10 +65,15 @@ def common_part_of_links(observed: Any, predicted: Any) -> float:
         a, b = nw.from_native(observed.df, eager_only=True), nw.from_native(predicted.df, eager_only=True)
         origin_a, destination_a = a.get_column(ORIGIN), a.get_column(DESTINATION)
         origin_b, destination_b = b.get_column(ORIGIN), b.get_column(DESTINATION)
-        weights_a, weights_b = pc.cast(_as_arrow(a.get_column(FLOW)), pa.float64()), pc.cast(_as_arrow(b.get_column(FLOW)), pa.float64())
+        weights_a, weights_b = (
+            pc.cast(_as_arrow(a.get_column(FLOW)), pa.float64()),
+            pc.cast(_as_arrow(b.get_column(FLOW)), pa.float64()),
+        )
     else:
         raise TypeError("CPL compares two Trips or two FlowDataFrame instances")
-    origin_a, destination_a, origin_b, destination_b = _joint_factorize_arrow_values(origin_a, destination_a, origin_b, destination_b)
+    origin_a, destination_a, origin_b, destination_b = _joint_factorize_arrow_values(
+        origin_a, destination_a, origin_b, destination_b
+    )
     return float(_cpl(origin_a, destination_a, weights_a, origin_b, destination_b, weights_b))
 
 
@@ -73,6 +81,7 @@ def common_part_of_commuters_distance(observed: Any, predicted: Any) -> float:
     """Compare ``distance_km`` distributions in two Trips using Rust CPCD."""
     from fastmob._core import common_part_of_commuters_distance as _cpcd
     from fastmob.core.trips_dataframe import Trips
+
     if not isinstance(observed, Trips) or not isinstance(predicted, Trips):
         raise TypeError("CPCD compares two Trips with distance_km columns")
     values = []

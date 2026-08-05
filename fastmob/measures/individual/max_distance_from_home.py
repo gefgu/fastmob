@@ -140,9 +140,7 @@ def max_distance_from_home(
         home_lats, home_lngs = home_location_presorted(
             lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night)
         )
-        max_distances = _as_arrow(
-            max_distance_from_point_presorted(home_lats, home_lngs, lats_data, lngs_data, ends)
-        )
+        max_distances = _as_arrow(max_distance_from_point_presorted(home_lats, home_lngs, lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)

@@ -57,7 +57,9 @@ def test_sequence_and_time_risks_require_datetime(trajectory):
 
 
 def test_custom_columns_targets_and_force_instances(trajectory):
-    renamed = trajectory.rename(columns={"uid": "user_id", "lat": "latitude", "lng": "longitude", "datetime": "timestamp"})
+    renamed = trajectory.rename(
+        columns={"uid": "user_id", "lat": "latitude", "lng": "longitude", "datetime": "timestamp"}
+    )
     result = privacy.location_risk(renamed.drop(columns="timestamp"), 1, targets=[1], force_instances=True)
     assert list(result.columns) == ["latitude", "longitude", "user_id", "instance", "instance_elem", "prob"]
     assert set(result["user_id"]) == {1}
@@ -71,7 +73,9 @@ def test_invalid_knowledge_length(function, trajectory):
         function(trajectory, 0)
 
 
-@pytest.mark.parametrize("function", [privacy.location_frequency_risk, privacy.location_probability_risk, privacy.location_proportion_risk])
+@pytest.mark.parametrize(
+    "function", [privacy.location_frequency_risk, privacy.location_probability_risk, privacy.location_proportion_risk]
+)
 def test_invalid_tolerance(function, trajectory):
     with pytest.raises(ValueError, match="tolerance"):
         function(trajectory, 1, tolerance=1.1)

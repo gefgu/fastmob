@@ -6,13 +6,20 @@ import pytest
 
 
 def _trips(rows):
-    return fastmob.Trips(pd.DataFrame({
-        "trip_id": range(len(rows)), "started_at": pd.Timestamp("2026-01-01"),
-        "finished_at": pd.Timestamp("2026-01-01 01:00"),
-        "origin_staypoint_id": [None] * len(rows), "destination_staypoint_id": [None] * len(rows),
-        "tripleg_ids": [[] for _ in rows], "origin_location_id": [row[0] for row in rows],
-        "destination_location_id": [row[1] for row in rows],
-    }))
+    return fastmob.Trips(
+        pd.DataFrame(
+            {
+                "trip_id": range(len(rows)),
+                "started_at": pd.Timestamp("2026-01-01"),
+                "finished_at": pd.Timestamp("2026-01-01 01:00"),
+                "origin_staypoint_id": [None] * len(rows),
+                "destination_staypoint_id": [None] * len(rows),
+                "tripleg_ids": [[] for _ in rows],
+                "origin_location_id": [row[0] for row in rows],
+                "destination_location_id": [row[1] for row in rows],
+            }
+        )
+    )
 
 
 def test_trip_cpc_uses_global_location_ids():

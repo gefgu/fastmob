@@ -207,7 +207,9 @@ class STS_epr:
             raise ValueError("diary_generator has not been fitted. Call fit() first.")
 
         if not isinstance(spatial_tessellation, Locations):
-            raise TypeError("Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs")
+            raise TypeError(
+                "Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs"
+            )
         prepared = spatial_tessellation.model_input()
         tessellation = prepared.frame
         if len(tessellation) < 3:
@@ -225,9 +227,7 @@ class STS_epr:
         )
 
         if distance_matrix is not None:
-            flat_distances = pa.array(
-                [distance for row in distance_matrix for distance in row], type=pa.float64()
-            )
+            flat_distances = pa.array([distance for row in distance_matrix for distance in row], type=pa.float64())
         else:
             flat_distances = pa.array([], type=pa.float64())
 
@@ -299,7 +299,15 @@ class STS_epr:
             uid_out = agent_values
         return TrajDataFrame(
             nw.from_dict(
-                {"uid": uid_out, "lat": pa.array(lats_out), "lng": pa.array(lngs_out), "datetime": pc.cast(pa.array(timestamps), pa.timestamp("s"))},
+                {
+                    "uid": uid_out,
+                    "lat": pa.array(lats_out),
+                    "lng": pa.array(lngs_out),
+                    "datetime": pc.cast(pa.array(timestamps), pa.timestamp("s")),
+                },
                 backend=tessellation.implementation,
-            ).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native()
+            )
+            .sort(["uid", "datetime"])
+            .select(["uid", "datetime", "lat", "lng"])
+            .to_native()
         )

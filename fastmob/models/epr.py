@@ -20,7 +20,9 @@ def _tessellation_arrays(
     locations: Locations, relevance_column: str | None
 ) -> tuple[Any, Any, pa.Array, pa.Array, pa.Array]:
     if not isinstance(locations, Locations):
-        raise TypeError("Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs")
+        raise TypeError(
+            "Spatial generation models require Locations(scope='global'); use Locations.from_tessellation(...) for legacy inputs"
+        )
     prepared = locations.model_input()
     nw_df = prepared.frame
     lats = prepared.latitudes
@@ -271,8 +273,8 @@ class EPR:
             raise ValueError("random_state must be a non-negative integer.")
 
         self._trajectories_ = []
-        self._spatial_tessellation, output_backend, self.latitudes, self.longitudes, self.relevances = _tessellation_arrays(
-            spatial_tessellation, relevance_column
+        self._spatial_tessellation, output_backend, self.latitudes, self.longitudes, self.relevances = (
+            _tessellation_arrays(spatial_tessellation, relevance_column)
         )
 
         start_values = None if starting_locations is None else pa.array(starting_locations, type=pa.int64())
@@ -286,7 +288,10 @@ class EPR:
             output_backend=output_backend,
         )
         return TrajDataFrame(
-            nw.from_native(rows, eager_only=True).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native(),
+            nw.from_native(rows, eager_only=True)
+            .sort(["uid", "datetime"])
+            .select(["uid", "datetime", "lat", "lng"])
+            .to_native(),
             parameters=parameters,
         )
 
@@ -829,8 +834,8 @@ class Ditras(EPR):
         }
 
         self._trajectories_ = []
-        self._spatial_tessellation, output_backend, self.latitudes, self.longitudes, self.relevances = _tessellation_arrays(
-            spatial_tessellation, relevance_column
+        self._spatial_tessellation, output_backend, self.latitudes, self.longitudes, self.relevances = (
+            _tessellation_arrays(spatial_tessellation, relevance_column)
         )
 
         start_ts = int(start_date.timestamp())
@@ -872,6 +877,9 @@ class Ditras(EPR):
 
         rows = _trajectory_native_frame(agent_ids, lats_out, lngs_out, timestamps, output_backend)
         return TrajDataFrame(
-            nw.from_native(rows, eager_only=True).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native(),
+            nw.from_native(rows, eager_only=True)
+            .sort(["uid", "datetime"])
+            .select(["uid", "datetime", "lat", "lng"])
+            .to_native(),
             parameters=parameters,
         )

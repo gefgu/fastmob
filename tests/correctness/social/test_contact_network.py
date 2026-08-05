@@ -29,8 +29,22 @@ def _staypoints() -> Staypoints:
             "uid": ["alice", "bob", "alice", "bob", "carol", "carol"],
             "lat": [0.0, 0.0, 0.0, 0.0, 1.0, 1.0],
             "lng": [0.0, 0.0, 0.0, 0.0, 1.0, 1.0],
-            "started_at": [base, base + pd.Timedelta(minutes=5), base + pd.Timedelta(hours=1), base + pd.Timedelta(hours=1, minutes=5), base, base + pd.Timedelta(hours=1)],
-            "finished_at": [base + pd.Timedelta(minutes=20), base + pd.Timedelta(minutes=25), base + pd.Timedelta(hours=1, minutes=20), base + pd.Timedelta(hours=1, minutes=25), base + pd.Timedelta(minutes=20), base + pd.Timedelta(hours=1, minutes=20)],
+            "started_at": [
+                base,
+                base + pd.Timedelta(minutes=5),
+                base + pd.Timedelta(hours=1),
+                base + pd.Timedelta(hours=1, minutes=5),
+                base,
+                base + pd.Timedelta(hours=1),
+            ],
+            "finished_at": [
+                base + pd.Timedelta(minutes=20),
+                base + pd.Timedelta(minutes=25),
+                base + pd.Timedelta(hours=1, minutes=20),
+                base + pd.Timedelta(hours=1, minutes=25),
+                base + pd.Timedelta(minutes=20),
+                base + pd.Timedelta(hours=1, minutes=20),
+            ],
             "location_id": ["A", "A", "A", "A", "B", "B"],
         }
     )

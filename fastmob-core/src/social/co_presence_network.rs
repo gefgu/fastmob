@@ -707,7 +707,7 @@ mod tests {
                 0,
                 60_000,
                 120_000,
-                DAY_MS + 0,
+                DAY_MS,
                 DAY_MS + 60_000,
                 DAY_MS + 120_000,
                 2 * DAY_MS,

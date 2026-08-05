@@ -145,14 +145,20 @@ def _prepare_visitation_law_data(
         location_id_col = locations.location_id_col
         if location_id_col not in df.columns:
             raise ValueError(f"Staypoints is missing global location-ID column {location_id_col!r}")
-        catalogue = nw.from_native(locations.df, eager_only=True).select(
-            [location_id_col, locations.center_lat_col, locations.center_lng_col]
-        ).rename({
-            location_id_col: _H3_CELL_COL,
-            locations.center_lat_col: lat_col,
-            locations.center_lng_col: lng_col,
-        })
-        centered = df.drop(lat_col, lng_col).join(catalogue, left_on=location_id_col, right_on=_H3_CELL_COL, how="inner")
+        catalogue = (
+            nw.from_native(locations.df, eager_only=True)
+            .select([location_id_col, locations.center_lat_col, locations.center_lng_col])
+            .rename(
+                {
+                    location_id_col: _H3_CELL_COL,
+                    locations.center_lat_col: lat_col,
+                    locations.center_lng_col: lng_col,
+                }
+            )
+        )
+        centered = df.drop(lat_col, lng_col).join(
+            catalogue, left_on=location_id_col, right_on=_H3_CELL_COL, how="inner"
+        )
     centered = centered.drop_nulls(subset=[user_id_col, timestamp_col, lat_col, lng_col])
     if len(centered) == 0:
         return _empty_visitation_law_data(df, user_id_col)
@@ -280,7 +286,9 @@ def _bin_visitation_law(
     # non-null UInt64 array, so passing these codes instead of raw
     # `user_id_col` values avoids factorizing the same column a second time.
     user_id_values = (
-        df.get_column(_USER_CODE_COL).to_arrow() if _USER_CODE_COL in df.columns else df.get_column(user_id_col).to_arrow()
+        df.get_column(_USER_CODE_COL).to_arrow()
+        if _USER_CODE_COL in df.columns
+        else df.get_column(user_id_col).to_arrow()
     )
     rf_values, rho_values = bin_visitation_law_arrow(
         user_id_values,
