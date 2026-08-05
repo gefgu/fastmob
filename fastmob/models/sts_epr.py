@@ -299,7 +299,7 @@ class STS_epr:
             uid_out = agent_values
         return TrajDataFrame(
             nw.from_dict(
-                {"uid": uid_out, "lat": lats_out, "lng": lngs_out, "datetime": pc.cast(timestamps, pa.timestamp("s"))},
+                {"uid": uid_out, "lat": pa.array(lats_out), "lng": pa.array(lngs_out), "datetime": pc.cast(pa.array(timestamps), pa.timestamp("s"))},
                 backend=tessellation.implementation,
             ).sort(["uid", "datetime"]).select(["uid", "datetime", "lat", "lng"]).to_native()
         )

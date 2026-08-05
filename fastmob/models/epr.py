@@ -34,10 +34,10 @@ def _tessellation_arrays(
 
 def _trajectory_native_frame(agent_ids: Any, lats: Any, lngs: Any, timestamps: Any, backend: Any) -> Any:
     values = {
-        "uid": agent_ids,
-        "lat": lats,
-        "lng": lngs,
-        "datetime": pc.cast(timestamps, pa.timestamp("s")),
+        "uid": pa.array(agent_ids),
+        "lat": pa.array(lats),
+        "lng": pa.array(lngs),
+        "datetime": pc.cast(pa.array(timestamps), pa.timestamp("s")),
     }
     return nw.from_dict(values, backend=backend).to_native()
 
