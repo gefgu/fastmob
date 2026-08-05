@@ -6,7 +6,7 @@ from typing import Any
 
 import narwhals as nw
 import numpy as np
-import pandas as pd
+import pyarrow as pa
 
 from fastmob.core.base import BaseDataFrame
 from fastmob.measures.individual import jump_lengths
@@ -131,23 +131,21 @@ class TrajDataFrame(BaseDataFrame):
         self.parameters = {} if parameters is None else parameters
         self._info = None
 
-        if (
-            latitude != LATITUDE
-            or longitude != LONGITUDE
-            or datetime != DATETIME
-            or user_id != UID
-            or trajectory_id != TID
-        ):
-            df = self._rename_columns(
-                df,
-                {
-                    latitude: LATITUDE,
-                    longitude: LONGITUDE,
-                    datetime: DATETIME,
-                    user_id: UID,
-                    trajectory_id: TID,
-                },
-            )
+        # Always routed through _rename_columns, even when no renaming is
+        # needed: dict/list/ndarray inputs must still be coerced into a real
+        # table (Narwhals can't wrap a bare dict/list), while an
+        # already-Narwhals-native `df` with nothing to rename short-circuits
+        # inside _rename_columns without any extra work.
+        df = self._rename_columns(
+            df,
+            {
+                latitude: LATITUDE,
+                longitude: LONGITUDE,
+                datetime: DATETIME,
+                user_id: UID,
+                trajectory_id: TID,
+            },
+        )
 
         super().__init__(df)
 
@@ -197,22 +195,35 @@ class TrajDataFrame(BaseDataFrame):
     @staticmethod
     def _rename_columns(df, mapping):
         mapping = {source: target for source, target in mapping.items() if source != target}
+        # dict/list/ndarray inputs are coerced into a pyarrow.Table
+        # unconditionally, even with an empty `mapping` -- Narwhals can't
+        # wrap a bare dict/list, so this coercion must not be skipped just
+        # because there's nothing to rename.
+        if isinstance(df, dict):
+            table = pa.table(df)
+            filtered = {source: target for source, target in mapping.items() if source in table.column_names}
+            return table.rename_columns(filtered) if filtered else table
+        if isinstance(df, (list, np.ndarray)) and len(df) > 0:
+            n_cols = len(df[0])
+            columns = [str(mapping.get(idx, idx)) for idx in range(n_cols)]
+            arrays = [pa.array([row[i] for row in df]) for i in range(n_cols)]
+            return pa.table(dict(zip(columns, arrays)))
         if not mapping:
             return df
-        if isinstance(df, pd.DataFrame):
-            return df.copy().rename(columns=mapping)
-        if isinstance(df, dict):
-            return pd.DataFrame.from_dict(df).rename(columns=mapping)
-        if isinstance(df, (list, np.ndarray)) and len(df) > 0:
-            columns = [mapping.get(idx, idx) for idx in range(len(df[0]))]
-            return pd.DataFrame(df, columns=columns)
         try:
             return nw.from_native(df, eager_only=True).rename(mapping).to_native()
         except Exception:  # noqa: BLE001
             return df
 
-    def _to_pandas(self) -> pd.DataFrame:
-        """Return a pandas DataFrame regardless of the backing store."""
+    def _to_pandas(self):
+        """Return a pandas DataFrame regardless of the backing store.
+
+        Only used by the geopandas-bridging methods below (geopandas
+        subclasses pandas.DataFrame, so real pandas is unavoidable there) --
+        pandas is imported locally since every caller already sits behind
+        an optional extra that transitively requires it (`data`/
+        `tessellation` via geopandas, or `vis` via fastmob-vis[legacy]).
+        """
         return nw.from_native(self.df, eager_only=True).to_pandas()
 
     # ------------------------------------------------------------------
@@ -624,9 +635,7 @@ class TrajDataFrame(BaseDataFrame):
         except ImportError as exc:
             raise ImportError("geopandas is required for flow datasets: pip install fastmob[data]") from exc
 
-        frame = self.df
-        if not isinstance(frame, pd.DataFrame):
-            frame = nw.from_native(frame, eager_only=True).to_pandas()
+        frame = self._to_pandas()
         frame = frame.sort_values([self.uid_col, self.datetime_col], kind="mergesort").reset_index(drop=True)
         points = gpd.GeoDataFrame(
             frame.copy(),
@@ -725,6 +734,7 @@ class TrajDataFrame(BaseDataFrame):
         """
         try:
             import geopandas as gpd
+            import pandas as pd
             from shapely.geometry import Point, Polygon
         except ImportError as exc:
             raise ImportError('geopandas and shapely are required: pip install "fastmob[data]"') from exc

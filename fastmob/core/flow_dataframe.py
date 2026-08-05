@@ -6,7 +6,7 @@ from typing import Any
 
 import narwhals as nw
 import numpy as np
-import pandas as pd
+import pyarrow as pa
 
 from fastmob.core.base import BaseDataFrame
 from fastmob.utils._common import require_optional
@@ -95,13 +95,16 @@ class FlowDataFrame(BaseDataFrame):
     @staticmethod
     def _coerce_frame(df, kwargs):
         if df is None:
-            return pd.DataFrame(**kwargs)
-        if isinstance(df, pd.DataFrame):
-            return df.copy()
+            return pa.table({})
         if isinstance(df, dict):
-            return pd.DataFrame.from_dict(df, **kwargs)
+            return pa.table(df)
         if isinstance(df, (list, np.ndarray)):
-            return pd.DataFrame(df, **kwargs)
+            if len(df) == 0:
+                return pa.table({})
+            n_cols = len(df[0])
+            names = kwargs.get("columns") or [str(i) for i in range(n_cols)]
+            arrays = [pa.array([row[i] for row in df]) for i in range(n_cols)]
+            return pa.table(dict(zip(names, arrays)))
         return df
 
     @staticmethod
@@ -109,8 +112,6 @@ class FlowDataFrame(BaseDataFrame):
         mapping = {source: target for source, target in mapping.items() if source != target}
         if not mapping:
             return df
-        if isinstance(df, pd.DataFrame):
-            return df.rename(columns=mapping)
         try:
             return nw.from_native(df, eager_only=True).rename(mapping).to_native()
         except Exception:  # noqa: BLE001
@@ -150,12 +151,11 @@ class FlowDataFrame(BaseDataFrame):
         >>> fdf.get_flow("B", "C")
         0
         """
-        frame = self.df if isinstance(self.df, pd.DataFrame) else nw.from_native(self.df, eager_only=True).to_pandas()
-        mask = (frame[ORIGIN] == origin_id) & (frame[DESTINATION] == destination_id)
-        tmp = frame[mask]
-        if len(tmp) == 0:
+        nw_df = nw.from_native(self.df, eager_only=True)
+        matches = nw_df.filter((nw.col(ORIGIN) == origin_id) & (nw.col(DESTINATION) == destination_id))
+        if len(matches) == 0:
             return 0
-        return tmp[FLOW].iloc[0]
+        return matches.get_column(FLOW).to_list()[0]
 
     def common_part_of_commuters(self, other: FlowDataFrame) -> float:
         """Compare sparse OD flows with another FlowDataFrame using Rust CPC."""
@@ -257,18 +257,19 @@ class FlowDataFrame(BaseDataFrame):
         if len(self.df) == 0:
             return np.zeros((0, 0))
 
-        frame = self.df if isinstance(self.df, pd.DataFrame) else nw.from_native(self.df, eager_only=True).to_pandas()
+        nw_df = nw.from_native(self.df, eager_only=True)
+        origins = nw_df.get_column(ORIGIN).to_list()
+        destinations = nw_df.get_column(DESTINATION).to_list()
         if self.tessellation is not None and self.tile_id in self.tessellation:
             tile_ids = [self._key(value) for value in self.tessellation[self.tile_id].values]
         else:
-            tile_ids = sorted(
-                {self._key(value) for value in frame[ORIGIN]} | {self._key(value) for value in frame[DESTINATION]}
-            )
+            tile_ids = sorted({self._key(value) for value in origins} | {self._key(value) for value in destinations})
 
         index = {tile_id: i for i, tile_id in enumerate(tile_ids)}
         matrix = np.zeros((len(tile_ids), len(tile_ids)), dtype=float)
-        for _, row in frame.iterrows():
-            matrix[index[self._key(row[ORIGIN])], index[self._key(row[DESTINATION])]] = row[FLOW]
+        flows = nw_df.get_column(FLOW).to_list()
+        for origin, destination, flow in zip(origins, destinations, flows):
+            matrix[index[self._key(origin)], index[self._key(destination)]] = flow
         return matrix
 
     @staticmethod
