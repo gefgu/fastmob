@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import warnings
+from datetime import datetime, timezone
 from typing import Any
 
 import narwhals as nw
 import numpy as np
-import pandas as pd
 
 from fastmob._core import (
     activity_counts,
@@ -76,15 +76,13 @@ def _with_activity_fallback(
         values = [unknown_label] * len(df)
         return df.with_columns(nw.new_series(fallback_col, values, backend=df.implementation)), fallback_col
 
-    values = df.get_column(activity_col).to_list()
-    if any(pd.isna(value) for value in values):
+    if df.get_column(activity_col).is_null().any():
         warnings.warn(
             f"null activity values found; replacing them with {unknown_label!r}",
             UserWarning,
             stacklevel=2,
         )
-        values = [unknown_label if pd.isna(value) else value for value in values]
-        df = df.with_columns(nw.new_series(activity_col, values, backend=df.implementation))
+        df = df.with_columns(nw.col(activity_col).fill_null(unknown_label))
     return df, activity_col
 
 
@@ -131,7 +129,6 @@ def visit_purpose_distribution(
     affected visits are labelled with ``unknown_label`` and a warning is emitted.
     """
     nw_df = nw.from_native(visits, eager_only=True)
-    is_pandas_input = isinstance(nw_df.to_native(), pd.DataFrame)
 
     if activity_col is None:
         activity_col = _pick_existing_column(nw_df.columns, ACTIVITY_CANDIDATES)
@@ -167,8 +164,6 @@ def visit_purpose_distribution(
         "count": counts,
         "percentage": percentages,
     }
-    if is_pandas_input:
-        return pd.DataFrame(output)
     return nw.from_dict(output, backend=nw_df.implementation).to_native()
 
 
@@ -214,13 +209,9 @@ def daily_activity_distribution(
 
     categories, codes = _factorize_activities(df, resolved_activity_col)
     n_bins = 1440 // bin_size_minutes
-    starts = pd.to_datetime(df.get_column(start_time_col).to_list(), errors="coerce")
-    valid_rows = np.asarray(~pd.isna(starts), dtype=bool)
-    start_minutes = np.where(valid_rows, starts.hour * 60 + starts.minute, 0).astype(np.int64)
+    start_minutes, valid_rows = _minute_of_day_and_validity(df, start_time_col, default_minute=0)
     if end_time_col and end_time_col in df.columns:
-        ends = pd.to_datetime(df.get_column(end_time_col).to_list(), errors="coerce")
-        end_valid = np.asarray(~pd.isna(ends), dtype=bool)
-        end_minutes = np.where(end_valid, ends.hour * 60 + ends.minute, 1439).astype(np.int64)
+        end_minutes, _ = _minute_of_day_and_validity(df, end_time_col, default_minute=1439)
     else:
         end_minutes = np.full(len(df), 1439, dtype=np.int64)
 
@@ -242,6 +233,32 @@ def daily_activity_distribution(
     return activity_matrix_pct, categories, n_bins
 
 
+def _minute_of_day_and_validity(df: nw.DataFrame, column: str, default_minute: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return (minute-of-day, is_valid) arrays for a timestamp column.
+
+    Unparseable/null timestamps get ``default_minute`` and are marked invalid,
+    mirroring ``pandas.to_datetime(..., errors="coerce")`` without depending on
+    pandas: cast to a Narwhals datetime dtype (falling back to a permissive
+    string parse), then treat nulls left after that cast as invalid.
+    """
+    try:
+        parsed = df.with_columns(nw.col(column).cast(nw.Datetime))
+    except Exception:  # noqa: BLE001
+        parsed = df.with_columns(nw.col(column).str.to_datetime())
+
+    dtype = parsed.schema[column]
+    time_zone = dtype.time_zone if isinstance(dtype, nw.Datetime) else None
+    sentinel = datetime(1970, 1, 1, tzinfo=timezone.utc if time_zone else None)
+
+    series = parsed.get_column(column)
+    valid = ~np.asarray(series.is_null().to_list(), dtype=bool)
+    filled_series = parsed.with_columns(nw.col(column).fill_null(sentinel)).get_column(column)
+    hours = np.asarray(filled_series.dt.hour().to_list(), dtype=np.int64)
+    minutes = np.asarray(filled_series.dt.minute().to_list(), dtype=np.int64)
+    minute_of_day = np.where(valid, hours * 60 + minutes, default_minute).astype(np.int64)
+    return minute_of_day, valid
+
+
 def activity_transition_matrix(
     visits: Any,
     activity_col: str | None = None,
@@ -254,8 +271,8 @@ def activity_transition_matrix(
     """Compute the activity transition matrix for a visits DataFrame.
 
     Counts how often each activity-type transition (from -> to) occurs across
-    all users, then normalises to percentages. Returns a square DataFrame with
-    activity labels as both index and columns.
+    all users, then normalises to percentages. Returns a DataFrame with an
+    ``activity`` label column plus one column per target activity.
 
     Parameters
     ----------
@@ -278,11 +295,9 @@ def activity_transition_matrix(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
-        Transition matrix as percentages. Pandas inputs return a pandas matrix
-        with activity labels as index/columns; other backends return a native
-        dataframe with an ``activity`` label column plus one column per target
-        activity.
+    DataFrame
+        Transition matrix as percentages, in the same backend as ``visits``,
+        with an ``activity`` label column plus one column per target activity.
 
     Raises
     ------
@@ -310,11 +325,12 @@ def activity_transition_matrix(
     ...     }
     ... )
     >>> result = activity_transition_matrix(visits)
-    >>> print(result.round(1).to_string())
-          HOME  SHOP  WORK
-    HOME   0.0  25.0  25.0
-    SHOP  25.0   0.0   0.0
-    WORK  25.0   0.0   0.0
+    >>> print(result.set_index("activity").round(1).to_string())
+              HOME  SHOP  WORK
+    activity
+    HOME       0.0  25.0  25.0
+    SHOP      25.0   0.0   0.0
+    WORK      25.0   0.0   0.0
     """
     nw_df = nw.from_native(visits, eager_only=True)
 
@@ -326,8 +342,6 @@ def activity_transition_matrix(
         timestamp_col = _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
     if day_col is None:
         day_col = _pick_existing_column(nw_df.columns, DAY_CANDIDATES)
-
-    is_pandas_input = isinstance(nw_df.to_native(), pd.DataFrame)
 
     work_cols = [activity_col] if activity_col else []
     if user_id_col:
@@ -356,8 +370,6 @@ def activity_transition_matrix(
         df = df.sort(sort_cols)
 
     if len(df) == 0 or activity_col is None:
-        if is_pandas_input:
-            return pd.DataFrame()
         return nw.from_dict({"activity": []}, backend=nw_df.implementation).to_native()
 
     activities, codes = _factorize_activities(df, activity_col)
@@ -368,9 +380,6 @@ def activity_transition_matrix(
     total = transition_matrix.sum()
     if total > 0:
         transition_matrix = (transition_matrix / total) * 100.0
-
-    if is_pandas_input:
-        return pd.DataFrame(transition_matrix, index=activities, columns=activities)
 
     output: dict[str, list[Any]] = {"activity": activities}
     for idx, activity in enumerate(activities):
