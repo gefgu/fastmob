@@ -111,6 +111,74 @@ where
     (codes, representatives)
 }
 
+/// Parallel counterpart to [`factorize_values`]: two-pass, order-independent.
+///
+/// Pass 1 builds one local `FxHashMap` per rayon task in parallel (each task only
+/// touches its own slice of rows, no cross-thread coordination), then merges them
+/// via a balanced tree `reduce` rather than one thread folding all of them in
+/// sequence. Pass 2 assigns final codes to the merged, deduplicated value set and
+/// remaps every row against that now-immutable map in parallel.
+///
+/// Deliberately does **not** preserve first-seen row order for code assignment
+/// (unlike [`factorize_values`], whose code `0` is always the first-encountered
+/// distinct value) -- callers that need `sort=true`'s value-sorted order still get
+/// it via the same [`sort_factorized`] post-pass, but the *unsorted* code
+/// assignment order here is merge-order-dependent, not scan-order-dependent. Every
+/// row's `value_at(index)` is evaluated twice (once during the parallel build, once
+/// during the parallel remap) rather than once, trading a cheap second array read
+/// for avoiding a per-row cache of intermediate values -- negligible next to the
+/// O(n) sequential hashmap-insert cost this exists to parallelize away.
+fn factorize_values_parallel<K, F>(len: usize, sort: bool, value_at: F) -> (Vec<u64>, Vec<u64>)
+where
+    K: Clone + Eq + Hash + Ord + Send + Sync,
+    F: Fn(usize) -> Option<K> + Sync,
+{
+    if len == 0 {
+        return (Vec::new(), Vec::new());
+    }
+
+    // Pass 1: parallel local-dictionary build (value -> a representative row
+    // index), merged via a balanced-tree reduce rather than a flat sequential fold.
+    let global_map: FxHashMap<Option<K>, u64> = (0..len)
+        .into_par_iter()
+        .fold(FxHashMap::<Option<K>, u64>::default, |mut local, index| {
+            local.entry(value_at(index)).or_insert(index as u64);
+            local
+        })
+        .reduce(FxHashMap::default, |mut a, mut b| {
+            if a.len() < b.len() {
+                std::mem::swap(&mut a, &mut b);
+            }
+            for (value, representative) in b {
+                a.entry(value).or_insert(representative);
+            }
+            a
+        });
+
+    // Assign final codes over the now-fully-deduplicated value set. Order among
+    // codes is merge-order-dependent (i.e. arbitrary), not first-seen order.
+    let mut representatives: Vec<u64> = Vec::with_capacity(global_map.len());
+    let mut value_to_code: FxHashMap<Option<K>, u64> =
+        FxHashMap::with_capacity_and_hasher(global_map.len(), Default::default());
+    for (value, representative) in global_map {
+        let code = representatives.len() as u64;
+        representatives.push(representative);
+        value_to_code.insert(value, code);
+    }
+
+    // Pass 2: parallel remap -- every row's global code is already known, so this
+    // is a pure parallel read (shared, immutable `value_to_code`) + independent write.
+    let mut codes = vec![0u64; len];
+    codes.par_iter_mut().enumerate().for_each(|(index, code)| {
+        *code = value_to_code[&value_at(index)];
+    });
+
+    if sort {
+        sort_factorized(&mut codes, &mut representatives, &value_at);
+    }
+    (codes, representatives)
+}
+
 /// Convert first-seen factorization output to value-sorted codes without a second hash pass.
 fn sort_factorized<K, F>(codes: &mut [u64], representatives: &mut Vec<u64>, value_at: &F)
 where
@@ -386,27 +454,46 @@ where
 }
 
 macro_rules! factorize_primitive {
-    ($array:expr, $type:ty, $sort:expr) => {{
+    ($array:expr, $type:ty, $sort:expr, $parallel:expr) => {{
         let array = $array
             .as_any()
             .downcast_ref::<PrimitiveArray<$type>>()
             .expect("Arrow data type and primitive array must agree");
-        factorize_values(array.len(), $sort, |index| {
-            array.is_valid(index).then(|| array.value(index))
-        })
+        if $parallel {
+            factorize_values_parallel(array.len(), $sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        } else {
+            factorize_values(array.len(), $sort, |index| {
+                array.is_valid(index).then(|| array.value(index))
+            })
+        }
     }};
 }
 
 macro_rules! factorize_integer {
-    ($array:expr, $type:ty, $sort:expr) => {{
+    ($array:expr, $type:ty, $sort:expr, $parallel:expr) => {{
         let array = $array
             .as_any()
             .downcast_ref::<PrimitiveArray<$type>>()
             .expect("Arrow data type and primitive array must agree");
+        // The dense-integer fast path (a direct-indexed Vec, not a hash map) is
+        // left sequential-only here -- it's already a simple O(n) array-index
+        // scan, orthogonal to the hash-map parallelization this flag targets, and
+        // only ever taken for small-span integer columns where n is small enough
+        // that the sequential scan isn't the bottleneck in the first place. The
+        // large-span fallback (real-world cases like sparse H3 cell IDs) is where
+        // `$parallel` actually matters.
         factorize_dense_integers(array, $sort).unwrap_or_else(|| {
-            factorize_values(array.len(), $sort, |index| {
-                array.is_valid(index).then(|| array.value(index))
-            })
+            if $parallel {
+                factorize_values_parallel(array.len(), $sort, |index| {
+                    array.is_valid(index).then(|| array.value(index))
+                })
+            } else {
+                factorize_values(array.len(), $sort, |index| {
+                    array.is_valid(index).then(|| array.value(index))
+                })
+            }
         })
     }};
 }
@@ -424,36 +511,43 @@ macro_rules! factorize_string_dictionary {
 /// Factorize a supported Arrow array without crossing the Python boundary.
 ///
 /// This is shared by Arrow-native kernels that need categorical codes but must
-/// keep dataframe adapters out of their hot path.
+/// keep dataframe adapters out of their hot path. `parallel` selects
+/// [`factorize_values_parallel`] over [`factorize_values`] for the generic
+/// hashable-key path (integers with a too-large-to-densify span, floats, dates,
+/// timestamps) -- see that function's docs for why it's an order-independent,
+/// two-pass parallel build+merge+remap rather than a drop-in replacement. The
+/// dense-integer fast path, booleans, strings, and dictionary-encoded strings are
+/// unaffected by this flag and stay on their existing sequential implementations.
 pub(crate) fn factorize_array(
     array: &dyn Array,
     sort: bool,
+    parallel: bool,
 ) -> Result<(Vec<u64>, Vec<u64>), String> {
     use arrow_schema::DataType;
 
     let result = match array.data_type() {
-        DataType::Int8 => factorize_integer!(array, Int8Type, sort),
-        DataType::Int16 => factorize_integer!(array, Int16Type, sort),
-        DataType::Int32 => factorize_integer!(array, Int32Type, sort),
-        DataType::Int64 => factorize_integer!(array, Int64Type, sort),
-        DataType::UInt8 => factorize_integer!(array, UInt8Type, sort),
-        DataType::UInt16 => factorize_integer!(array, UInt16Type, sort),
-        DataType::UInt32 => factorize_integer!(array, UInt32Type, sort),
-        DataType::UInt64 => factorize_integer!(array, UInt64Type, sort),
-        DataType::Date32 => factorize_primitive!(array, Date32Type, sort),
-        DataType::Date64 => factorize_primitive!(array, Date64Type, sort),
+        DataType::Int8 => factorize_integer!(array, Int8Type, sort, parallel),
+        DataType::Int16 => factorize_integer!(array, Int16Type, sort, parallel),
+        DataType::Int32 => factorize_integer!(array, Int32Type, sort, parallel),
+        DataType::Int64 => factorize_integer!(array, Int64Type, sort, parallel),
+        DataType::UInt8 => factorize_integer!(array, UInt8Type, sort, parallel),
+        DataType::UInt16 => factorize_integer!(array, UInt16Type, sort, parallel),
+        DataType::UInt32 => factorize_integer!(array, UInt32Type, sort, parallel),
+        DataType::UInt64 => factorize_integer!(array, UInt64Type, sort, parallel),
+        DataType::Date32 => factorize_primitive!(array, Date32Type, sort, parallel),
+        DataType::Date64 => factorize_primitive!(array, Date64Type, sort, parallel),
         DataType::Timestamp(unit, _) => match unit {
             arrow_schema::TimeUnit::Second => {
-                factorize_primitive!(array, TimestampSecondType, sort)
+                factorize_primitive!(array, TimestampSecondType, sort, parallel)
             }
             arrow_schema::TimeUnit::Millisecond => {
-                factorize_primitive!(array, TimestampMillisecondType, sort)
+                factorize_primitive!(array, TimestampMillisecondType, sort, parallel)
             }
             arrow_schema::TimeUnit::Microsecond => {
-                factorize_primitive!(array, TimestampMicrosecondType, sort)
+                factorize_primitive!(array, TimestampMicrosecondType, sort, parallel)
             }
             arrow_schema::TimeUnit::Nanosecond => {
-                factorize_primitive!(array, TimestampNanosecondType, sort)
+                factorize_primitive!(array, TimestampNanosecondType, sort, parallel)
             }
         },
         DataType::Float32 => {
@@ -461,22 +555,32 @@ pub(crate) fn factorize_array(
                 .as_any()
                 .downcast_ref::<PrimitiveArray<Float32Type>>()
                 .unwrap();
-            factorize_values(array.len(), sort, |index| {
+            let value_at = |index: usize| {
                 array
                     .is_valid(index)
                     .then(|| TotalF64::new(array.value(index) as f64))
-            })
+            };
+            if parallel {
+                factorize_values_parallel(array.len(), sort, value_at)
+            } else {
+                factorize_values(array.len(), sort, value_at)
+            }
         }
         DataType::Float64 => {
             let array = array
                 .as_any()
                 .downcast_ref::<PrimitiveArray<Float64Type>>()
                 .unwrap();
-            factorize_values(array.len(), sort, |index| {
+            let value_at = |index: usize| {
                 array
                     .is_valid(index)
                     .then(|| TotalF64::new(array.value(index)))
-            })
+            };
+            if parallel {
+                factorize_values_parallel(array.len(), sort, value_at)
+            } else {
+                factorize_values(array.len(), sort, value_at)
+            }
         }
         DataType::Boolean => {
             let array = array.as_any().downcast_ref::<BooleanArray>().unwrap();
@@ -523,19 +627,137 @@ pub(crate) fn factorize_array(
 }
 
 #[pyfunction]
-#[pyo3(signature = (values, sort = false))]
+#[pyo3(signature = (values, sort = false, parallel = false))]
 pub fn factorize_arrow(
     py: Python<'_>,
     values: &Bound<'_, PyAny>,
     sort: bool,
+    parallel: bool,
 ) -> PyResult<(PyArray, PyArray)> {
     let values = extract_arrow_array(values, "values")?;
     let (array, _field) = values.into_inner();
     let result = py
-        .detach(|| factorize_array(array.as_ref(), sort))
+        .detach(|| factorize_array(array.as_ref(), sort, parallel))
         .map_err(PyValueError::new_err)?;
     Ok((
         u64_results_into_arrow(result.0),
         u64_results_into_arrow(result.1),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    /// Deterministic xorshift-ish PRNG (mirrors `next_location.rs`'s test helper).
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1);
+            self.0 >> 33
+        }
+        fn range(&mut self, n: u64) -> u64 {
+            self.next() % n
+        }
+    }
+
+    /// The row-index partition a factorization induces: which rows ended up with
+    /// the same code, independent of which arbitrary integer that code is (the
+    /// parallel path's code assignment is merge-order-, not scan-order-,
+    /// dependent, so comparing raw code values directly would be meaningless).
+    fn partition(codes: &[u64]) -> HashSet<Vec<usize>> {
+        let max_code = codes.iter().copied().max().map_or(0, |c| c as usize);
+        let mut groups: Vec<Vec<usize>> = vec![Vec::new(); max_code + 1];
+        for (index, &code) in codes.iter().enumerate() {
+            groups[code as usize].push(index);
+        }
+        groups.into_iter().filter(|g| !g.is_empty()).collect()
+    }
+
+    #[test]
+    fn parallel_matches_sequential_partition_across_random_inputs() {
+        let mut rng = Lcg(0xFACD_u64);
+        for trial in 0..300 {
+            let len = 1 + (rng.range(500) as usize);
+            let vocab = 1 + (rng.range(20) as usize); // low-to-moderate cardinality
+            let null_rate_pct = rng.range(4); // 0 => no nulls, else ~1-in-N nulls
+            let values: Vec<Option<u64>> = (0..len)
+                .map(|_| {
+                    if null_rate_pct > 0 && rng.range(null_rate_pct * 5 + 1) == 0 {
+                        None
+                    } else {
+                        Some(1_000_000 + rng.range(vocab as u64))
+                    }
+                })
+                .collect();
+            let value_at = |index: usize| values[index];
+
+            let (seq_codes, seq_reps) = factorize_values(len, false, value_at);
+            let (par_codes, par_reps) = factorize_values_parallel(len, false, value_at);
+
+            assert_eq!(
+                seq_reps.len(),
+                par_reps.len(),
+                "trial {trial}: distinct-value count mismatch (values={values:?})"
+            );
+            assert_eq!(
+                partition(&seq_codes),
+                partition(&par_codes),
+                "trial {trial}: row-index partition mismatch (values={values:?})"
+            );
+            // Every representative's underlying value must actually be present
+            // in that representative's own equivalence class.
+            for (code, &representative) in par_reps.iter().enumerate() {
+                let expected_value = value_at(representative as usize);
+                for (index, &row_code) in par_codes.iter().enumerate() {
+                    if row_code == code as u64 {
+                        assert_eq!(
+                            value_at(index),
+                            expected_value,
+                            "trial {trial}: representative/value mismatch"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn parallel_matches_sequential_with_sort_enabled() {
+        let mut rng = Lcg(0xB0BA_u64);
+        for trial in 0..100 {
+            let len = 1 + (rng.range(300) as usize);
+            let vocab = 1 + (rng.range(15) as usize);
+            let values: Vec<Option<u64>> = (0..len)
+                .map(|_| Some(rng.range(vocab as u64)))
+                .collect();
+            let value_at = |index: usize| values[index];
+
+            let (seq_codes, seq_reps) = factorize_values(len, true, value_at);
+            let (par_codes, par_reps) = factorize_values_parallel(len, true, value_at);
+
+            // sort=true fully determines both codes and representatives (value
+            // order), so these must match exactly, not just up to partition.
+            assert_eq!(seq_codes, par_codes, "trial {trial}: sorted codes mismatch");
+            assert_eq!(
+                seq_reps.iter().map(|&r| value_at(r as usize)).collect::<Vec<_>>(),
+                par_reps.iter().map(|&r| value_at(r as usize)).collect::<Vec<_>>(),
+                "trial {trial}: sorted representative values mismatch"
+            );
+        }
+    }
+
+    #[test]
+    fn parallel_handles_empty_and_single_element_input() {
+        let empty: Vec<Option<u64>> = Vec::new();
+        let (codes, reps) = factorize_values_parallel(0, false, |i| empty[i]);
+        assert!(codes.is_empty());
+        assert!(reps.is_empty());
+
+        let single = [Some(42u64)];
+        let (codes, reps) = factorize_values_parallel(1, false, |i| single[i]);
+        assert_eq!(codes, vec![0]);
+        assert_eq!(reps, vec![0]);
+    }
 }

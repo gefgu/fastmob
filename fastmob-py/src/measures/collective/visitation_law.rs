@@ -76,7 +76,7 @@ fn codes_for_grouping(array: ArrayRef) -> Result<Vec<u64>, String> {
             }
         }
     }
-    factorize_array(array.as_ref(), false).map(|(codes, _)| codes)
+    factorize_array(array.as_ref(), false, false).map(|(codes, _)| codes)
 }
 
 /// Bin visitation-law observations directly from Arrow columns.

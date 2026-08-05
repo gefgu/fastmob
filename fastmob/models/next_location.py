@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 
@@ -33,6 +34,56 @@ from fastmob.utils._common import (
     _pick_existing_column,
     _uint64_series,
 )
+
+
+def _batched_tail_contexts(
+    codes_array: pa.Array, indices: pa.Array, ends: pa.Array, order: int
+) -> tuple[pa.Array, pa.Array, pa.Array]:
+    """Vectorized equivalent of ``[seq[-order:] for seq in per_user_sequences]``.
+
+    Extracts every user's trailing ``order`` location codes directly from
+    the flat ``(codes_array, indices, ends)`` triple :meth:`NextLocationPredictor.fit`
+    already builds, without ever materializing a full per-user Python list.
+    The whole computation is `numpy` array arithmetic plus a single batched
+    `pyarrow.compute.take`, so its cost is ``O(n_users * order)`` rather
+    than ``O(total_rows)`` -- unlike building the full per-user sequence
+    dict (see `NextLocationPredictor._sequences`), which used to be done
+    eagerly in `fit()` purely to serve this one small-context need.
+    """
+    ends_np = np.asarray(ends.to_numpy(zero_copy_only=False), dtype=np.int64)
+    n_users = len(ends_np)
+    starts_np = np.empty(n_users, dtype=np.int64)
+    if n_users:
+        starts_np[0] = 0
+        starts_np[1:] = ends_np[:-1]
+
+    ctx_starts = np.maximum(starts_np, ends_np - order) if order > 0 else ends_np.copy()
+    ctx_lengths = ends_np - ctx_starts
+
+    context_ends_cum = np.cumsum(ctx_lengths)
+    context_starts_cum = context_ends_cum - ctx_lengths
+    total = int(ctx_lengths.sum())
+
+    if total == 0:
+        context_codes = pa.array([], type=pa.uint64())
+    else:
+        within_offset = np.arange(total, dtype=np.int64) - np.repeat(context_starts_cum, ctx_lengths)
+        flat_positions = np.repeat(ctx_starts, ctx_lengths) + within_offset
+        # Gather via pc.take (Arrow-native, O(total) in the *small* context
+        # size) rather than `indices.to_numpy()`, which would materialize
+        # the full O(total_rows)-sized `indices` array on every call --
+        # exactly the eager-materialization cost this function exists to
+        # avoid (see docstring). `indices`/`codes_array` stay Arrow arrays
+        # throughout; only the tiny gathered result ever touches Python.
+        flat_positions_arr = pa.array(flat_positions, type=pa.uint64())
+        context_row_indices = pc.take(indices, flat_positions_arr)
+        context_codes = pc.take(codes_array, context_row_indices)
+
+    return (
+        context_codes,
+        pa.array(context_starts_cum, type=pa.uint64()),
+        pa.array(context_ends_cum, type=pa.uint64()),
+    )
 
 
 class NextLocationPredictor:
@@ -76,6 +127,8 @@ class NextLocationPredictor:
         location_col: str | None = None,
         uid_col: str | None = None,
         started_at_col: str | None = None,
+        *,
+        parallel_factorize: bool = False,
     ) -> NextLocationPredictor:
         """Fit one Markov model per user from each user's location-id sequence.
 
@@ -95,6 +148,15 @@ class NextLocationPredictor:
             rows are assumed already in chronological order per user
             (matching `Staypoints`' own ``started_at_col``, when ``traj``
             is a `Staypoints` instance).
+        parallel_factorize : bool, optional
+            Use the Rust factorization kernel's parallel (order-independent,
+            two-pass build+merge+remap) path for dense-coding
+            ``location_col`` instead of its default sequential scan --
+            experimental, exposed for benchmarking (see
+            ``_factorize_arrow_values``); only affects columns that hit the
+            generic hashable-key factorization path (not small-span dense
+            integers, booleans, or plain/dictionary-encoded strings).
+            Default ``False``.
 
         Returns
         -------
@@ -120,7 +182,7 @@ class NextLocationPredictor:
         df = df.filter(~nw.col(location_col).is_null())
         location_values = df.get_column(location_col).to_arrow()
         location_codes_arrow, representatives = _factorize_arrow_values(
-            location_values, sort=False
+            location_values, sort=False, parallel=parallel_factorize
         )
         code_to_label = dict(
             enumerate(pc.take(location_values, representatives).to_pylist())
@@ -138,20 +200,41 @@ class NextLocationPredictor:
             indices = pa.array(range(len(df)), type=pa.uint64())
 
         codes_array = df.get_column("__location_code__").to_arrow()
-        end_values = ends.to_pylist()
 
         self._models = NextLocationModels(codes_array, indices, ends, self.order, self.backoff)
         self._uid_values = uid_values.to_pylist() if uid_values is not None else [None]
         self._code_to_label = code_to_label
         self._backend = df.implementation
-        self._sequences = {
-            uid: pc.take(codes_array, indices.slice(start, end - start)).to_pylist()
-            for uid, (start, end) in zip(self._uid_values, zip([0, *end_values[:-1]], end_values), strict=True)
-        }
+        self._codes_array = codes_array
+        self._indices = indices
+        self._ends = ends
+        self._sequences_cache: dict[Any, list[int]] | None = None
         self.uid_col = uid_col
         self.location_col = location_col
         self._fitted = True
         return self
+
+    @property
+    def _sequences(self) -> dict[Any, list[int]]:
+        """Full per-user location-code sequences, lazily materialized.
+
+        Only :meth:`evaluate` needs each user's *entire* history (to slice
+        progressively longer training windows across holdout steps);
+        :meth:`predict_proba` only needs each user's short context tail and
+        gets it from :func:`_batched_tail_contexts` instead, without ever
+        touching this property. Building this dict eagerly in :meth:`fit`
+        used to dominate its wall time -- one `pyarrow.compute.take(...).
+        to_pylist()` call per user, proportional to total row count -- for
+        the common case where `evaluate()` is never called.
+        """
+        if self._sequences_cache is None:
+            end_values = self._ends.to_pylist()
+            starts = [0, *end_values[:-1]]
+            self._sequences_cache = {
+                uid: pc.take(self._codes_array, self._indices.slice(start, end - start)).to_pylist()
+                for uid, start, end in zip(self._uid_values, starts, end_values, strict=True)
+            }
+        return self._sequences_cache
 
     def _require_fitted(self) -> None:
         if not self._fitted:
@@ -174,23 +257,12 @@ class NextLocationPredictor:
             ``top_k`` observed candidates contributes fewer rows.
         """
         self._require_fitted()
-        context_flat: list[int] = []
-        context_starts: list[int] = []
-        context_ends: list[int] = []
-        cursor = 0
-        for uid in self._uid_values:
-            seq = self._sequences[uid]
-            ctx = seq[-self.order :] if self.order > 0 else []
-            context_starts.append(cursor)
-            context_flat.extend(ctx)
-            cursor += len(ctx)
-            context_ends.append(cursor)
+        context_codes, context_starts, context_ends = _batched_tail_contexts(
+            self._codes_array, self._indices, self._ends, self.order
+        )
 
         pred_codes, pred_probs, out_starts, out_ends = self._models.predict_batch(
-            pa.array(context_flat, type=pa.uint64()),
-            pa.array(context_starts, type=pa.uint64()),
-            pa.array(context_ends, type=pa.uint64()),
-            top_k,
+            context_codes, context_starts, context_ends, top_k
         )
 
         out_uid: list[Any] = []
