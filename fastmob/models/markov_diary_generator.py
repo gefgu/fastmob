@@ -189,11 +189,11 @@ class MarkovDiaryGenerator:
         timestamps = pa.array(
             [
                 datetime.datetime.fromtimestamp(t, tz=datetime.timezone.utc).replace(tzinfo=None)
-                for t in ts_arr.slice(start, end - start).to_pylist()
+                for t in pa.array(ts_arr).slice(start, end - start).to_pylist()
             ],
             type=pa.timestamp("s"),
         )
-        return pa.table({DATETIME: timestamps, "abstract_location": locs_arr.slice(start, end - start)})
+        return pa.table({DATETIME: timestamps, "abstract_location": pa.array(locs_arr).slice(start, end - start)})
 
     def _generate_list(self, diary_length, start_date, random_state=None):
         """Compatibility shim used by STS_epr — returns list of [datetime, abstract_location]."""

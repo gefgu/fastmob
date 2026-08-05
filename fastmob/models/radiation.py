@@ -3,6 +3,7 @@ from __future__ import annotations
 import secrets
 
 import narwhals as nw
+import pyarrow as pa
 
 from fastmob import _core
 from fastmob.core import FlowDataFrame, Locations
@@ -181,7 +182,7 @@ class Radiation:
             {
                 "origin": [ids[int(i)] for i in origin_values],
                 "destination": [ids[int(i)] for i in destination_values],
-                "flow": values,
+                "flow": pa.array(values),
             },
             backend=prepared.frame.implementation,
         ).to_native()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import narwhals as nw
 import numpy as np
+import pyarrow as pa
 
 from fastmob import _core
 from fastmob.core import FlowDataFrame, Locations
@@ -310,7 +311,7 @@ class Gravity:
             {
                 "origin": [ids[int(i)] for i in np.asarray(origins)],
                 "destination": [ids[int(i)] for i in np.asarray(destinations)],
-                "flow": values,
+                "flow": pa.array(values),
             },
             backend=prepared.frame.implementation,
         ).to_native()
