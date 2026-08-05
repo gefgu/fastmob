@@ -13,7 +13,7 @@ authors = [
 ]
 dependencies = [
     "narwhals>=1.0",
-    "pandas>=1.5",
+    "numpy",
     "pyarrow>=14",
 ]
 
