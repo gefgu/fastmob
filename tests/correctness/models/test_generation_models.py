@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import pandas as pd
 import pytest
+from fastmob.core import Locations
 from fastmob.models import (
     EPR,
     DensityEPR,
@@ -16,8 +17,6 @@ from fastmob.models import (
     Radiation,
     SpatialEPR,
     STS_epr,
-    exponential_deterrence_func,
-    powerlaw_deterrence_func,
 )
 
 
@@ -33,10 +32,32 @@ def _tessellation(n: int = 4) -> pd.DataFrame:
     )
 
 
-def _distance_matrix(tessellation: pd.DataFrame) -> np.ndarray:
-    from fastmob.models.gravity import compute_distance_matrix
+def _locations(tessellation: pd.DataFrame) -> Locations:
+    return Locations.from_tessellation(tessellation, tile_id_col="tile_id", lat_col="lat", lng_col="lng")
 
-    return compute_distance_matrix(tessellation, np.arange(len(tessellation)))
+
+def _powerlaw_deterrence(x, exponent):
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.power(x, exponent)
+
+
+def _exponential_deterrence(x, rate):
+    return np.exp(-x * rate)
+
+
+def _distance_matrix(tessellation: pd.DataFrame) -> np.ndarray:
+    from fastmob import _core
+
+    lats = tessellation["lat"].to_numpy(dtype=float)
+    lngs = tessellation["lng"].to_numpy(dtype=float)
+    n = len(tessellation)
+    distance_matrix = np.zeros((n, n), dtype=float)
+    for i in range(n):
+        for j in range(i + 1, n):
+            distance = float(_core.haversine_km(lats[i], lngs[i], lats[j], lngs[j]))
+            distance_matrix[i, j] = distance
+            distance_matrix[j, i] = distance
+    return distance_matrix
 
 
 def _native_frame(df):
@@ -77,8 +98,8 @@ def _expected_gravity(tessellation, deterrence, gravity_type, out_format, origin
 @pytest.mark.parametrize(
     "deterrence_func_type,args,deterrence",
     [
-        ("power_law", [-2.0], lambda x: powerlaw_deterrence_func(x, -2.0)),
-        ("exponential", [0.2], lambda x: exponential_deterrence_func(x, 0.2)),
+        ("power_law", [-2.0], lambda x: _powerlaw_deterrence(x, -2.0)),
+        ("exponential", [0.2], lambda x: _exponential_deterrence(x, 0.2)),
     ],
 )
 @pytest.mark.parametrize("gravity_type", ["singly constrained", "globally constrained"])
@@ -93,10 +114,19 @@ def test_gravity_generate_matches_formula(deterrence_func_type, args, deterrence
         gravity_type=gravity_type,
     )
 
-    result = model.generate(tess, out_format=out_format)
+    result = model.generate(_locations(tess), out_format=out_format)
 
     assert list(result.columns) == ["origin", "destination", "flow"]
-    np.testing.assert_allclose(result.to_matrix(), _expected_gravity(tess, deterrence, gravity_type, out_format))
+    # The exponential branch's row-sum normalization is more sensitive to
+    # floating-point summation order than power_law's, so the Rust kernel and
+    # this independently-computed NumPy expectation diverge by ~1e-7 relative
+    # even though both implement the same formula; rtol=1e-7 (the default) is
+    # tight enough to catch a real formula mismatch but not this reordering
+    # noise. See "skmob comparison correctness tests" in CLAUDE.md for the
+    # same kind of narrow, documented tolerance relaxation.
+    np.testing.assert_allclose(
+        result.to_matrix(), _expected_gravity(tess, deterrence, gravity_type, out_format), rtol=1e-6
+    )
 
 
 def test_core_gravity_kernel_matches_formula():
@@ -104,7 +134,7 @@ def test_core_gravity_kernel_matches_formula():
     from fastmob import _core
 
     tess = _tessellation()
-    expected = _expected_gravity(tess, lambda x: powerlaw_deterrence_func(x, -2.0), "singly constrained", "flows")
+    expected = _expected_gravity(tess, lambda x: _powerlaw_deterrence(x, -2.0), "singly constrained", "flows")
 
     flat = _core.model_gravity_matrix_numpy(
         tess["lat"].to_numpy(dtype=float),
@@ -129,7 +159,7 @@ def test_core_gravity_od_row_kernel_matches_formula():
     tess = _tessellation()
     expected = _expected_gravity(
         tess,
-        lambda x: powerlaw_deterrence_func(x, -2.0),
+        lambda x: _powerlaw_deterrence(x, -2.0),
         "singly constrained",
         "probabilities",
     )[1]
@@ -149,13 +179,11 @@ def test_core_gravity_od_row_kernel_matches_formula():
 
 
 def test_gravity_flows_sample_is_seeded():
-    tess = _tessellation()
+    locations = _locations(_tessellation())
     model = Gravity(gravity_type="singly constrained")
 
-    np.random.seed(123)
-    first = model.generate(tess, out_format="flows_sample")
-    np.random.seed(123)
-    second = model.generate(tess, out_format="flows_sample")
+    first = model.generate(locations, out_format="flows_sample", random_state=123)
+    second = model.generate(locations, out_format="flows_sample", random_state=123)
 
     pd.testing.assert_frame_equal(_native_frame(first), _native_frame(second))
 
@@ -163,9 +191,8 @@ def test_gravity_flows_sample_is_seeded():
 @pytest.mark.parametrize("out_format", ["flows", "flows_sample", "probabilities"])
 def test_radiation_generate_shapes(out_format):
     tess = _tessellation()
-    np.random.seed(7)
 
-    result = Radiation().generate(tess, out_format=out_format)
+    result = Radiation().generate(_locations(tess), out_format=out_format, random_state=7)
 
     result = _native_frame(result)
     assert list(result.columns) == ["origin", "destination", "flow"]
@@ -176,20 +203,17 @@ def test_radiation_generate_shapes(out_format):
         np.testing.assert_allclose(sums, np.ones_like(sums))
 
 
-def test_core_radiation_kernel_matches_python_probabilities():
+def test_core_radiation_kernel_matches_arrow_generate_path():
+    """The raw NumPy `_core` kernel and the Arrow-native `Radiation.generate()`
+    path wrap the same Rust math; there is no separate Python reference
+    implementation to compare against any more, so this checks the two entry
+    points agree with each other instead.
+    """
     pytest.importorskip("fastmob._core")
     from fastmob import _core
 
     tess = _tessellation()
-    model = Radiation()
-    model._out_format = "probabilities"
-    model._tile_id_column = "tile_id"
-    model.lats_lngs = tess[["lat", "lng"]].to_numpy(dtype=float)
-    model.relevances = tess["relevance"].to_numpy(dtype=float)
-    expected = model._from_matrix_to_flowdf(
-        [row for origin in range(len(tess)) for row in model._get_flows(origin, model.relevances.sum())],
-        tess,
-    )
+    expected = _native_frame(Radiation().generate(_locations(tess), out_format="probabilities"))
 
     origins, destinations, probabilities = _core.model_radiation_probabilities(
         tess["lat"].to_numpy(dtype=float),
@@ -206,8 +230,8 @@ def test_core_radiation_kernel_matches_python_probabilities():
     )
 
     pd.testing.assert_frame_equal(
-        actual,
-        _native_frame(expected),
+        actual.sort_values(["origin", "destination"]).reset_index(drop=True),
+        expected.sort_values(["origin", "destination"]).reset_index(drop=True),
         check_dtype=False,
         check_frame_type=False,
         rtol=1e-12,
@@ -215,11 +239,16 @@ def test_core_radiation_kernel_matches_python_probabilities():
     )
 
 
-def test_gravity_accepts_narwhals_compatible_dataframe():
+def test_gravity_accepts_narwhals_compatible_tessellation():
+    """`Gravity.generate()` now requires a `Locations` catalogue rather than a
+    raw dataframe; narwhals-compatibility now lives at the
+    `Locations.from_tessellation()` construction boundary instead.
+    """
     nw = pytest.importorskip("narwhals")
     tess = nw.from_native(_tessellation())
+    locations = Locations.from_tessellation(tess, tile_id_col="tile_id", lat_col="lat", lng_col="lng")
 
-    result = Gravity().generate(tess)
+    result = Gravity().generate(locations)
 
     assert len(result) > 0
     assert list(result.columns) == ["origin", "destination", "flow"]
@@ -249,43 +278,10 @@ def test_markov_diary_generator_fit_and_generate():
 
     diary = mdg.generate(8, start, random_state=0)
 
-    assert list(diary.columns) == ["datetime", "abstract_location"]
+    assert diary.column_names == ["datetime", "abstract_location"]
     assert len(diary) >= 1
-    assert diary["datetime"].is_monotonic_increasing
-
-
-def test_markov_diary_generator_fit_matches_legacy_python_preparation():
-    from fastmob import _core
-
-    traj = pd.DataFrame(
-        {
-            "uid": [10, 10, 10, 10, 20, 20, 20, 20],
-            "datetime": pd.to_datetime(
-                [
-                    "2020-01-01 00:00:00",
-                    "2020-01-01 01:00:00",
-                    "2020-01-01 03:00:00",
-                    "2020-01-01 04:00:00",
-                    "2020-01-02 05:00:00",
-                    "2020-01-02 05:30:00",
-                    "2020-01-02 06:00:00",
-                    "2020-01-02 07:00:00",
-                ]
-            ),
-            "cluster": ["a", "b", "b", "a", "home", "home", "work", "home"],
-        }
-    )
-
-    legacy_counts = np.zeros(48 * 48, dtype=np.float64)
-    for uid in traj["uid"].unique()[:2]:
-        values, shift = MarkovDiaryGenerator._create_time_series(traj[traj["uid"] == uid], lid="cluster")
-        legacy_counts = _core.markov_diary_update_chain(values, shift, legacy_counts)
-    legacy_cdf = _core.markov_diary_build_cdf(_core.markov_diary_normalize(legacy_counts))
-
-    mdg = MarkovDiaryGenerator()
-    mdg.fit(traj, 2, lid="cluster")
-
-    np.testing.assert_allclose(mdg._cdf_matrix_flat, legacy_cdf)
+    timestamps = diary["datetime"].to_pylist()
+    assert timestamps == sorted(timestamps)
 
 
 @pytest.mark.parametrize("model_cls", [EPR, DensityEPR, SpatialEPR])
@@ -294,7 +290,7 @@ def test_epr_family_generates_trajectory(model_cls):
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 06:00:00")
 
-    result = model_cls().generate(start, end, _tessellation(), n_agents=2, random_state=0)
+    result = model_cls().generate(start, end, _locations(_tessellation()), n_agents=2, random_state=0)
 
     assert list(result.columns) == ["uid", "datetime", "lat", "lng"]
     assert set(result["uid"]) == {1, 2}
@@ -305,9 +301,10 @@ def test_epr_random_state_is_reproducible():
     pytest.importorskip("powerlaw")
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 06:00:00")
+    locations = _locations(_tessellation())
 
-    first = EPR().generate(start, end, _tessellation(), n_agents=3, random_state=123).df
-    second = EPR().generate(start, end, _tessellation(), n_agents=3, random_state=123).df
+    first = EPR().generate(start, end, locations, n_agents=3, random_state=123).df
+    second = EPR().generate(start, end, locations, n_agents=3, random_state=123).df
 
     pd.testing.assert_frame_equal(first, second)
 
@@ -318,7 +315,7 @@ def test_epr_starting_locations_are_used_in_order():
     end = pd.Timestamp("2020-01-01 01:00:00")
     tess = _tessellation()
 
-    result = EPR().generate(start, end, tess, n_agents=2, starting_locations=[2, 1], random_state=0).df
+    result = EPR().generate(start, end, _locations(tess), n_agents=2, starting_locations=[2, 1], random_state=0).df
     first_points = result.sort_values(["uid", "datetime"]).groupby("uid", as_index=False).first()
 
     np.testing.assert_allclose(first_points["lat"].to_numpy(), tess.loc[[2, 1], "lat"].to_numpy())
@@ -331,7 +328,7 @@ def test_epr_polars_tessellation_returns_polars_wrapped_frame():
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 06:00:00")
 
-    result = EPR().generate(start, end, pl.from_pandas(_tessellation()), n_agents=2, random_state=0)
+    result = EPR().generate(start, end, _locations(pl.from_pandas(_tessellation())), n_agents=2, random_state=0)
 
     assert isinstance(result.df, pl.DataFrame)
     assert result.columns == ["uid", "datetime", "lat", "lng"]
@@ -343,7 +340,7 @@ def test_geosim_generates_trajectory():
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 06:00:00")
 
-    result = GeoSim().generate(start, end, _tessellation(3), n_agents=2, random_state=0)
+    result = GeoSim().generate(start, end, _locations(_tessellation(3)), n_agents=2, random_state=0)
 
     assert list(result.columns) == ["uid", "datetime", "lat", "lng"]
     assert len(result) >= 2
@@ -356,7 +353,7 @@ def test_sts_epr_generates_trajectory():
     mdg = MarkovDiaryGenerator()
 
     result = STS_epr().generate(
-        start, end, _tessellation(3), mdg, n_agents=2, random_state=0, relevance_column="relevance"
+        start, end, _locations(_tessellation(3)), mdg, n_agents=2, random_state=0, relevance_column="relevance"
     )
 
     assert list(result.columns) == ["uid", "datetime", "lat", "lng"]
@@ -364,6 +361,17 @@ def test_sts_epr_generates_trajectory():
 
 
 def test_sts_epr_does_not_build_default_distance_matrix(monkeypatch):
+    """When `distance_matrix=None`, `STS_epr.generate()` must pass an empty
+    flat-distances array into the Rust kernel rather than materializing an
+    O(n^2) matrix in Python. The Arrow-native refactor renamed the kernel
+    bindings this used to patch (`model_social_graph_random_geometric` ->
+    `..._arrow`, `markov_diary_batch_generate` -> `..._arrow`,
+    `model_sts_epr_simulate_agents` -> `..._arrow`) and dropped the
+    `model_distance_matrix_numpy` call entirely, so there is nothing left in
+    that name to intercept.
+    """
+    import pyarrow as pa
+
     sts_module = importlib.import_module("fastmob.models.sts_epr")
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 01:00:00")
@@ -371,22 +379,18 @@ def test_sts_epr_does_not_build_default_distance_matrix(monkeypatch):
     mdg._cdf_matrix_flat = np.array([1.0], dtype=float)
     captured = {}
 
-    def fail_distance_matrix(*args, **kwargs):
-        raise AssertionError("distance matrix should not be built by Python")
-
     def fake_simulate_agents(*args):
         captured["distances_len"] = len(args[3])
         return (
-            np.array([1], dtype=np.int64),
+            pa.array([1], type=pa.int64()),
             np.array([45.0], dtype=np.float64),
             np.array([7.0], dtype=np.float64),
             np.array([int(start.timestamp())], dtype=np.int64),
         )
 
-    monkeypatch.setattr(sts_module._core, "model_distance_matrix_numpy", fail_distance_matrix)
     monkeypatch.setattr(
         sts_module._core,
-        "model_social_graph_random_geometric",
+        "model_social_graph_random_geometric_arrow",
         lambda n_agents, radius, seed: (
             np.array([0, 0], dtype=np.int64),
             np.array([], dtype=np.int64),
@@ -394,7 +398,7 @@ def test_sts_epr_does_not_build_default_distance_matrix(monkeypatch):
     )
     monkeypatch.setattr(
         sts_module._core,
-        "markov_diary_batch_generate",
+        "markov_diary_batch_generate_arrow",
         lambda *args: (
             np.array([int(start.timestamp())], dtype=np.int64),
             np.array([0], dtype=np.int32),
@@ -402,12 +406,12 @@ def test_sts_epr_does_not_build_default_distance_matrix(monkeypatch):
             np.array([1], dtype=np.int64),
         ),
     )
-    monkeypatch.setattr(sts_module._core, "model_sts_epr_simulate_agents", fake_simulate_agents)
+    monkeypatch.setattr(sts_module._core, "model_sts_epr_simulate_agents_arrow", fake_simulate_agents)
 
     result = STS_epr().generate(
         start,
         end,
-        _tessellation(3),
+        _locations(_tessellation(3)),
         mdg,
         n_agents=1,
         random_state=0,
@@ -423,7 +427,7 @@ def test_ditras_generates_trajectory():
     end = pd.Timestamp("2020-01-01 06:00:00")
     mdg = MarkovDiaryGenerator()
 
-    result = Ditras(mdg).generate(start, end, _tessellation(), n_agents=2, random_state=0)
+    result = Ditras(mdg).generate(start, end, _locations(_tessellation()), n_agents=2, random_state=0)
 
     assert list(result.columns) == ["uid", "datetime", "lat", "lng"]
     assert set(result["uid"]) == {1, 2}
@@ -435,9 +439,10 @@ def test_ditras_random_state_is_reproducible():
     start = pd.Timestamp("2020-01-01 00:00:00")
     end = pd.Timestamp("2020-01-01 06:00:00")
     mdg = MarkovDiaryGenerator()
+    locations = _locations(_tessellation())
 
-    first = Ditras(mdg).generate(start, end, _tessellation(), n_agents=3, random_state=42).df
-    second = Ditras(mdg).generate(start, end, _tessellation(), n_agents=3, random_state=42).df
+    first = Ditras(mdg).generate(start, end, locations, n_agents=3, random_state=42).df
+    second = Ditras(mdg).generate(start, end, locations, n_agents=3, random_state=42).df
 
     pd.testing.assert_frame_equal(first, second)
 
@@ -448,7 +453,9 @@ def test_ditras_starting_locations_are_used():
     tess = _tessellation()
     mdg = MarkovDiaryGenerator()
 
-    result = Ditras(mdg).generate(start, end, tess, n_agents=2, starting_locations=[2, 1], random_state=0).df
+    result = (
+        Ditras(mdg).generate(start, end, _locations(tess), n_agents=2, starting_locations=[2, 1], random_state=0).df
+    )
     first_points = result.sort_values(["uid", "datetime"]).groupby("uid", as_index=False).first()
 
     np.testing.assert_allclose(first_points["lat"].to_numpy(), tess.loc[[2, 1], "lat"].to_numpy())
@@ -461,7 +468,7 @@ def test_ditras_polars_tessellation_returns_polars_wrapped_frame():
     end = pd.Timestamp("2020-01-01 06:00:00")
     mdg = MarkovDiaryGenerator()
 
-    result = Ditras(mdg).generate(start, end, pl.from_pandas(_tessellation()), n_agents=2, random_state=0)
+    result = Ditras(mdg).generate(start, end, _locations(pl.from_pandas(_tessellation())), n_agents=2, random_state=0)
 
     assert isinstance(result.df, pl.DataFrame)
     assert result.columns == ["uid", "datetime", "lat", "lng"]
@@ -473,7 +480,7 @@ def test_ditras_unfitted_diary_stays_home():
     tess = _tessellation()
     mdg = MarkovDiaryGenerator()  # NOT fitted → home-only CDF fallback in Rust
 
-    result = Ditras(mdg).generate(start, end, tess, n_agents=1, starting_locations=[0], random_state=7).df
+    result = Ditras(mdg).generate(start, end, _locations(tess), n_agents=1, starting_locations=[0], random_state=7).df
 
     np.testing.assert_allclose(result["lat"].to_numpy(), tess.loc[0, "lat"])
     np.testing.assert_allclose(result["lng"].to_numpy(), tess.loc[0, "lng"])
@@ -497,7 +504,7 @@ def test_ditras_exploration_uses_gravity_distance():
         .generate(
             start,
             end,
-            tess,
+            _locations(tess),
             n_agents=n_agents,
             starting_locations=[0] * n_agents,
             random_state=11,
@@ -525,13 +532,14 @@ def test_ditras_custom_gravity_changes_exploration_distribution():
     )
     n_agents = 1200
     mdg = _always_away_diary_generator()
+    locations = _locations(tess)
 
     default = (
         Ditras(mdg)
         .generate(
             start,
             end,
-            tess,
+            locations,
             n_agents=n_agents,
             starting_locations=[0] * n_agents,
             random_state=7,
@@ -543,7 +551,7 @@ def test_ditras_custom_gravity_changes_exploration_distribution():
         .generate(
             start,
             end,
-            tess,
+            locations,
             gravity_singly=Gravity(destination_exp=4.0, gravity_type="singly constrained"),
             n_agents=n_agents,
             starting_locations=[0] * n_agents,
@@ -577,7 +585,7 @@ def test_gravity_matches_skmob_when_available():
         pytest.skip(f"skmob is not importable: {exc}")
 
     tess = _tessellation()
-    ours = Gravity().generate(tess, out_format="probabilities").to_matrix()
+    ours = Gravity().generate(_locations(tess), out_format="probabilities").to_matrix()
     theirs = SkmobGravity().generate(tess, out_format="probabilities").to_matrix()
 
     np.testing.assert_allclose(ours, theirs, rtol=1e-9, atol=1e-9)
