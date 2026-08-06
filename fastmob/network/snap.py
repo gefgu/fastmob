@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import narwhals as nw
-import numpy as np
-
-from ._nearest import nearest_candidate
-
+import pyarrow as pa
 
 def snap_locations_to_graph(
     tessellation_df,
@@ -12,7 +9,7 @@ def snap_locations_to_graph(
     max_distance_m: float,
     lat_col: str = "lat",
     lng_col: str = "lng",
-) -> np.ndarray:
+) -> pa.Array:
     """Snap each tessellation row to its nearest road/rail graph node.
 
     Parameters
@@ -29,21 +26,29 @@ def snap_locations_to_graph(
 
     Returns
     -------
-    numpy.ndarray
+    pyarrow.Int64Array
         int64 array aligned 1:1 with ``tessellation_df`` rows; ``-1`` when
         the nearest node is farther than ``max_distance_m`` (unsnapped).
     """
-    n = len(tessellation_df)
     nodes = nw.from_native(nodes_df, eager_only=True)
-    if len(nodes) == 0 or n == 0:
-        return np.full(n, -1, dtype=np.int64)
-
     tess = nw.from_native(tessellation_df, eager_only=True)
-    node_lat = nodes.get_column("lat").to_numpy().astype(np.float64, copy=False)
-    node_lng = nodes.get_column("lng").to_numpy().astype(np.float64, copy=False)
-    loc_lat = tess.get_column(lat_col).to_numpy().astype(np.float64, copy=False)
-    loc_lng = tess.get_column(lng_col).to_numpy().astype(np.float64, copy=False)
+    if len(tess) == 0:
+        return pa.array([], type=pa.int64())
+    if len(nodes) == 0:
+        return pa.array([-1] * len(tess), type=pa.int64())
 
-    nearest_idx, dist_m = nearest_candidate(loc_lat, loc_lng, node_lat, node_lng)
-    node_idx = nodes.get_column("node_idx").to_numpy().astype(np.int64, copy=False)[nearest_idx]
-    return np.where(dist_m <= max_distance_m, node_idx, -1).astype(np.int64)
+    from fastmob._core import nearest_nodes_arrow
+
+    nearest_row, _distance_m = nearest_nodes_arrow(
+        tess.get_column(lat_col).to_arrow(),
+        tess.get_column(lng_col).to_arrow(),
+        nodes.get_column("lat").to_arrow(),
+        nodes.get_column("lng").to_arrow(),
+        max_distance_m,
+    )
+    node_ids = nodes.get_column("node_idx").to_arrow()
+    # Rust returns positions into `nodes`; node_idx need not be row order.
+    return pa.array(
+        [node_ids[row].as_py() if row >= 0 else -1 for row in nearest_row.to_pylist()],
+        type=pa.int64(),
+    )

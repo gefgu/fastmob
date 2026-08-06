@@ -230,9 +230,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(hierarchy_py::tours_from_trips, m)?)?;
     m.add_class::<road_graph_py::RoadNetworkHandle>()?;
     m.add_function(wrap_pyfunction!(
-        road_graph_py::subsample_waypoints_numpy,
+        road_graph_py::subsample_waypoints_arrow,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(road_graph_py::nearest_nodes_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(
         events_py::nearest_event_within_window_numpy,
         m

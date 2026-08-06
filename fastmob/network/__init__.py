@@ -4,6 +4,7 @@ from fastmob._core import haversine_m_batch
 
 from .builder import build_rail_graph, build_road_graph, fetch_rail_network, fetch_road_network
 from .od_flow import od_desire_lines
+from .match import match_trajectory
 from .road_graph import RoadNetwork
 from .snap import snap_locations_to_graph
 from .speeds import (
@@ -26,6 +27,7 @@ __all__ = [
     "fetch_rail_network",
     "fetch_road_network",
     "haversine_m_batch",
+    "match_trajectory",
     "od_desire_lines",
     "snap_locations_to_graph",
 ]

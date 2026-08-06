@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import narwhals as nw
-import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 
 
 class RoadNetwork:
@@ -14,8 +14,9 @@ class RoadNetwork:
     needs both to go from raw lat/lng to a routed distance.
     """
 
-    def __init__(self, nodes_df: pa.Table, handle: object) -> None:
+    def __init__(self, nodes_df: pa.Table, edges_df: pa.Table, handle: object) -> None:
         self.nodes_df = nodes_df
+        self.edges_df = edges_df
         self._handle = handle
 
     @classmethod
@@ -42,26 +43,28 @@ class RoadNetwork:
         nodes_sorted = nw.from_native(nodes_df, eager_only=True).sort("node_idx")
         edges = nw.from_native(edges_df, eager_only=True)
         handle = RoadNetworkHandle(
-            edges.get_column("from_node").to_numpy().astype(np.int64, copy=False),
-            edges.get_column("to_node").to_numpy().astype(np.int64, copy=False),
-            edges.get_column("weight_ds").to_numpy().astype(np.int64, copy=False),
-            edges.get_column("length_m").to_numpy().astype(np.float64, copy=False),
-            nodes_sorted.get_column("lat").to_numpy().astype(np.float64, copy=False),
-            nodes_sorted.get_column("lng").to_numpy().astype(np.float64, copy=False),
+            edges.get_column("from_node").to_arrow(),
+            edges.get_column("to_node").to_arrow(),
+            edges.get_column("weight_ds").to_arrow(),
+            edges.get_column("length_m").to_arrow(),
+            nodes_sorted.get_column("lat").to_arrow(),
+            nodes_sorted.get_column("lng").to_arrow(),
         )
-        return cls(nodes_sorted.to_arrow(), handle)
+        return cls(nodes_sorted.to_arrow(), edges.to_arrow(), handle)
 
-    def batch_distances(self, from_nodes: np.ndarray, to_nodes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def batch_distances(self, from_nodes, to_nodes) -> tuple[pa.Array, pa.Array]:
         """Batch physical-distance (metres) query for `(from_node, to_node)` pairs.
 
         Returns ``(distances_m, connected)``, ``connected`` as a bool array;
         `False` for negative/unsnapped node ids or a disconnected graph
         component (fall back to straight-line Haversine in that case).
         """
-        distances_m, connected = self._handle.batch_distances(from_nodes.astype(np.int64), to_nodes.astype(np.int64))
-        return np.asarray(distances_m, dtype=np.float64), np.asarray(connected, dtype=bool)
+        distances, connected = self._handle.batch_distances(
+            pa.array(from_nodes, type=pa.int64()), pa.array(to_nodes, type=pa.int64())
+        )
+        return pa.array(distances), pa.array(connected)
 
-    def batch_routes(self, from_nodes: np.ndarray, to_nodes: np.ndarray, max_waypoints: int = 50) -> pa.Table:
+    def batch_routes(self, from_nodes, to_nodes, max_waypoints: int = 50) -> pa.Table:
         """Batch route-geometry query for `(from_node, to_node)` pairs.
 
         Returns a flat pyarrow.Table with one row per waypoint: columns
@@ -81,17 +84,17 @@ class RoadNetwork:
         undecimated node path should pass a large `max_waypoints`.
         """
         lats, lngs, cum_weight_ds, _connected, starts, ends = self._handle.batch_routes(
-            from_nodes.astype(np.int64), to_nodes.astype(np.int64), max_waypoints
+            pa.array(from_nodes, type=pa.int64()), pa.array(to_nodes, type=pa.int64()), max_waypoints
         )
-        starts = np.asarray(starts, dtype=np.int64)
-        ends = np.asarray(ends, dtype=np.int64)
-        counts = ends - starts
-        query_id = np.repeat(np.arange(len(counts), dtype=np.int64), counts)
+        lats, lngs, cum_weight_ds = pa.array(lats), pa.array(lngs), pa.array(cum_weight_ds)
+        starts, ends = pa.array(starts), pa.array(ends)
+        counts = pc.subtract(ends, starts).to_pylist()
+        query_id = pa.array([query for query, count in enumerate(counts) for _ in range(count)], type=pa.int64())
         return pa.table(
             {
                 "query_id": query_id,
-                "lat": np.asarray(lats, dtype=np.float64),
-                "lng": np.asarray(lngs, dtype=np.float64),
-                "cum_weight_ds": np.asarray(cum_weight_ds, dtype=np.int64),
+                "lat": lats,
+                "lng": lngs,
+                "cum_weight_ds": cum_weight_ds,
             }
         )

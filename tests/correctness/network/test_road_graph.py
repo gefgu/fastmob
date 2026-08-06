@@ -136,8 +136,8 @@ def test_road_network_batch_distances_disconnected_reports_not_connected():
     import numpy as np
 
     distances, connected = network.batch_distances(np.array([0]), np.array([3]))
-    assert not connected[0]
-    assert distances[0] == 0.0
+    assert connected[0].as_py() is False
+    assert distances[0].as_py() == 0.0
 
 
 def test_road_network_batch_routes_returns_full_chain_geometry(network):

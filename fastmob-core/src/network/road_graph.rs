@@ -3,6 +3,7 @@
 //! shortest-path query is a fast bidirectional search instead of a fresh
 //! Dijkstra.
 
+use crate::utils::haversine::haversine_km;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
@@ -12,6 +13,40 @@ pub struct RoadGraph {
     edge_length_m: FxHashMap<(usize, usize), f64>,
     node_lat: Vec<f64>,
     node_lng: Vec<f64>,
+}
+
+/// Arrow bindings use this for standalone snapping when callers have a node
+/// table but have not prepared a full routing graph yet.
+pub fn batch_nearest_coordinates(
+    query_lat: &[f64],
+    query_lng: &[f64],
+    reference_lat: &[f64],
+    reference_lng: &[f64],
+) -> (Vec<i64>, Vec<f64>) {
+    if reference_lat.is_empty() {
+        return (
+            vec![-1; query_lat.len()],
+            vec![f64::INFINITY; query_lat.len()],
+        );
+    }
+    query_lat
+        .par_iter()
+        .zip(query_lng.par_iter())
+        .map(|(&lat, &lng)| {
+            if !lat.is_finite() || !lng.is_finite() {
+                return (-1, f64::INFINITY);
+            }
+            reference_lat
+                .iter()
+                .zip(reference_lng.iter())
+                .enumerate()
+                .map(|(idx, (&r_lat, &r_lng))| {
+                    (idx as i64, haversine_km(lat, lng, r_lat, r_lng) * 1000.0)
+                })
+                .min_by(|a, b| a.1.total_cmp(&b.1))
+                .expect("non-empty references")
+        })
+        .unzip()
 }
 
 impl RoadGraph {
@@ -137,6 +172,44 @@ impl RoadGraph {
         } else {
             None
         }
+    }
+
+    /// Find the nearest prepared graph node for every coordinate.  This is
+    /// deliberately kept on the prepared graph so Python callers do not have
+    /// to rebuild a sklearn index for every snap operation.  Queries are
+    /// independent and therefore parallelised with Rayon.  The exact
+    /// Haversine score is used for both selection and the returned distance.
+    pub fn batch_nearest_nodes(
+        &self,
+        latitudes: &[f64],
+        longitudes: &[f64],
+    ) -> (Vec<i64>, Vec<f64>) {
+        if self.node_lat.is_empty() {
+            return (
+                vec![-1; latitudes.len()],
+                vec![f64::INFINITY; latitudes.len()],
+            );
+        }
+        latitudes
+            .par_iter()
+            .zip(longitudes.par_iter())
+            .map(|(&lat, &lng)| {
+                if !lat.is_finite() || !lng.is_finite() {
+                    return (-1, f64::INFINITY);
+                }
+                let (idx, distance_m) = self
+                    .node_lat
+                    .iter()
+                    .zip(self.node_lng.iter())
+                    .enumerate()
+                    .map(|(idx, (&node_lat, &node_lng))| {
+                        (idx, haversine_km(lat, lng, node_lat, node_lng) * 1000.0)
+                    })
+                    .min_by(|a, b| a.1.total_cmp(&b.1))
+                    .expect("non-empty node coordinates");
+                (idx as i64, distance_m)
+            })
+            .unzip()
     }
 }
 
