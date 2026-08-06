@@ -4,6 +4,7 @@ import secrets
 
 import narwhals as nw
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from fastmob import _core
 from fastmob.core import FlowDataFrame, Locations
@@ -175,13 +176,11 @@ class Radiation:
                 outflows,
                 "flows" if out_format == "flows" else "probabilities",
             )
-        ids = prepared.location_ids().to_list()
-        origin_values = origins.to_pylist()
-        destination_values = destinations.to_pylist()
+        ids_arrow = pa.array(prepared.location_ids().to_arrow())
         frame = nw.from_dict(
             {
-                "origin": [ids[int(i)] for i in origin_values],
-                "destination": [ids[int(i)] for i in destination_values],
+                "origin": pc.take(ids_arrow, pa.array(origins)),
+                "destination": pc.take(ids_arrow, pa.array(destinations)),
                 "flow": pa.array(values),
             },
             backend=prepared.frame.implementation,

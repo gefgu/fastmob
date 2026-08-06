@@ -3,6 +3,7 @@ from __future__ import annotations
 import narwhals as nw
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from fastmob import _core
 from fastmob.core import FlowDataFrame, Locations
@@ -306,11 +307,11 @@ class Gravity:
                     probability_values[mask] / probability_values[mask].sum(),
                 )
             values = nw.new_series("flow", quantities, backend=prepared.frame.implementation).to_arrow()
-        ids = prepared.location_ids().to_list()
+        ids_arrow = pa.array(prepared.location_ids().to_arrow())
         frame = nw.from_dict(
             {
-                "origin": [ids[int(i)] for i in np.asarray(origins)],
-                "destination": [ids[int(i)] for i in np.asarray(destinations)],
+                "origin": pc.take(ids_arrow, pa.array(origins)),
+                "destination": pc.take(ids_arrow, pa.array(destinations)),
                 "flow": pa.array(values),
             },
             backend=prepared.frame.implementation,
