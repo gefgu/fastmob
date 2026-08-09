@@ -87,18 +87,6 @@ LEGACY_EVALUATION_METRICS: tuple[BenchmarkSpec, ...] = (
         "information_gain",
     ),
     BenchmarkSpec(
-        "pearson_correlation",
-        "fastmob.measures.evaluation",
-        "skmob.measures.evaluation",
-        "pearson_correlation",
-    ),
-    BenchmarkSpec(
-        "spearman_correlation",
-        "fastmob.measures.evaluation",
-        "skmob.measures.evaluation",
-        "spearman_correlation",
-    ),
-    BenchmarkSpec(
         "kullback_leibler_divergence",
         "fastmob.measures.evaluation",
         "skmob.measures.evaluation",

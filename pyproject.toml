@@ -49,12 +49,7 @@ Issues = "https://github.com/gefgu/fastmob/issues"
 # documentation, and third-party comparison stacks live in dependency groups or
 # dedicated benchmark environments below; they are intentionally not published
 # as installable package extras.
-ml = ["scikit-learn>=1.3.2"]
-evaluation = ["scipy"]
-generation = ["statsmodels"]
 geo = ["geopandas", "shapely", "pyproj"]
-# Overture road/rail fetching is implemented with DuckDB's spatial extension.
-network = ["duckdb"]
 # `vis` is the separate ECharts/Leaflet visualization package.
 vis = ["fastmob-vis"]
 
@@ -82,7 +77,6 @@ dev = [
 docs = [
     "zensical>=0.0.41; python_version >= '3.10'",
     "mkdocstrings[python]>=0.25",
-    "scipy>=1.13,<1.16; python_version >= '3.10'",
 ]
 
 [tool.uv.sources]

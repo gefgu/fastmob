@@ -7,7 +7,6 @@ grouping around these primitives.
 """
 
 from .compare import ComparisonResult, compare_to
-from .correlation import pearson_correlation, spearman_correlation
 from .cpc import common_part_of_commuters, common_part_of_commuters_distance, common_part_of_links
 from .information import information_gain, kullback_leibler_divergence
 from .metrics import jensen_shannon_divergence, wasserstein_distance
@@ -26,10 +25,8 @@ __all__ = [
     "max_error",
     "mse",
     "nrmse",
-    "pearson_correlation",
     "r_squared",
     "rmse",
-    "spearman_correlation",
     "stvd_emd",
     "wasserstein_distance",
 ]

@@ -110,7 +110,7 @@ def _require_duckdb():
         import duckdb
     except ImportError as exc:  # pragma: no cover - exercised only without duckdb installed
         raise ImportError(
-            "fetching a road/rail network requires duckdb. Install it with `pip install fastmob[network]`."
+            "fetching a road/rail network requires duckdb. Install it with `pip install duckdb`."
         ) from exc
     return duckdb
 

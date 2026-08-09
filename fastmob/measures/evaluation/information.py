@@ -1,18 +1,11 @@
-"""Information-theoretic metrics for comparing predicted vs. true mobility flows.
-
-``information_gain`` uses only numpy. ``kullback_leibler_divergence`` requires
-scipy.stats; if scipy is absent the module still imports cleanly and an error
-is raised only when that function is called.
-"""
+"""Information-theoretic metrics for comparing predicted and true mobility flows."""
 
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
 
-try:
-    from scipy import stats as _scipy_stats
-except ImportError:
-    _scipy_stats = None
+from fastmob._core import kullback_leibler_divergence as _kullback_leibler_divergence
 
 
 def information_gain(true, pred) -> float:
@@ -59,7 +52,8 @@ def kullback_leibler_divergence(true, pred) -> float:
     D_\\mathrm{KL}(P \\,\\|\\, Q) = \\sum_k p_k \\log\\left(\\frac{p_k}{q_k}\\right)
     \\]
 
-    Computed via scipy.stats.entropy.
+    Inputs are normalized to probability distributions before evaluation,
+    matching the historical ``scipy.stats.entropy(true, pred)`` behavior.
 
     Parameters
     ----------
@@ -73,11 +67,6 @@ def kullback_leibler_divergence(true, pred) -> float:
     float
         KL divergence; 0.0 when the distributions are identical.
 
-    Raises
-    ------
-    ImportError
-        When scipy is not installed.
-
     Examples
     --------
     >>> from fastmob import kullback_leibler_divergence
@@ -86,6 +75,6 @@ def kullback_leibler_divergence(true, pred) -> float:
     >>> print(round(kullback_leibler_divergence(observed, predicted), 3))
     0.005
     """
-    if _scipy_stats is None:
-        raise ImportError("scipy is required for kullback_leibler_divergence: pip install fastmob[fitting]")
-    return float(_scipy_stats.entropy(true, pred))
+    p = pa.array(true, type=pa.float64())
+    q = pa.array(pred, type=pa.float64())
+    return float(_kullback_leibler_divergence(p, q))

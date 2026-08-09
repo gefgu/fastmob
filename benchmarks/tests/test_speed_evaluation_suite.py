@@ -17,8 +17,6 @@ def test_evaluation_registry_starts_with_legacy_metrics():
         "rmse",
         "nrmse",
         "information_gain",
-        "pearson_correlation",
-        "spearman_correlation",
         "kullback_leibler_divergence",
         "max_error",
     ]

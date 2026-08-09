@@ -352,7 +352,7 @@ class Gravity:
             import statsmodels as sm
             from statsmodels.genmod.generalized_linear_model import GLM
         except ImportError as exc:
-            raise ImportError("statsmodels is required: pip install fastmob[generation]") from exc
+            raise ImportError("Gravity.fit requires statsmodels. Install it with `pip install statsmodels`.") from exc
 
         if not hasattr(flow_df, "locations") or flow_df.locations is None:
             raise AttributeError("flow_df must expose a Locations catalogue to fit Gravity.")

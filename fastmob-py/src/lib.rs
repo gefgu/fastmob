@@ -18,7 +18,7 @@ use integration::events_py;
 use measures::collective::{interest_network, square_displacement, visitation_law};
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
-use measures::evaluation::{cpc, jsd, wasserstein};
+use measures::evaluation::{cpc, jsd, kl_divergence, wasserstein};
 use measures::fitting::daily_location_lognormal as fitting_daily_location_lognormal;
 use measures::fitting::truncated_powerlaw as fitting_truncated_powerlaw;
 use measures::individual::{
@@ -372,6 +372,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cpc::common_part_of_commuters_distance, m)?)?;
     m.add_function(wrap_pyfunction!(wasserstein::wasserstein, m)?)?;
     m.add_function(wrap_pyfunction!(jsd::jensen_shannon, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        kl_divergence::kullback_leibler_divergence,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     m.add_function(wrap_pyfunction!(models::od::model_gravity_matrix_numpy, m)?)?;
