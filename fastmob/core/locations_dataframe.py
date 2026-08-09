@@ -117,6 +117,22 @@ class Locations(BaseDataFrame):
         Numeric coordinates take precedence over geometry. When they are absent,
         point or polygon geometry is used solely to derive location centres; the
         original geometry column is retained as metadata.
+
+        Parameters
+        ----------
+        tessellation : DataFrame-like
+            Tile table with IDs and centres or geometries.
+        tile_id_col, lat_col, lng_col, geometry_col : str, optional
+            Source column names.
+
+        Returns
+        -------
+        Locations
+            Global location catalogue.
+
+        Examples
+        --------
+        >>> locations = Locations.from_tessellation(tessellation)  # doctest: +SKIP
         """
         df = nw.from_native(getattr(tessellation, "df", tessellation), eager_only=True)
         if tile_id_col not in df.columns:
@@ -146,19 +162,57 @@ class Locations(BaseDataFrame):
         return cls(converted.to_native(), scope="global")
 
     def require_global(self) -> nw.DataFrame:
-        """Return validated global locations as a Narwhals eager dataframe."""
+        """Return validated global locations as a Narwhals eager dataframe.
+
+        Raises
+        ------
+        ValueError
+            If this is a user-scoped catalogue.
+
+        Examples
+        --------
+        >>> frame = global_locations.require_global()  # doctest: +SKIP
+        """
         if self.scope != "global":
             raise ValueError("A global Locations catalogue is required for spatial generation models")
         return nw.from_native(self.df, eager_only=True)
 
     def model_input(self) -> ModelLocations:
-        """Return the validated Arrow-ready input used by spatial models."""
+        """Return the validated Arrow-ready input used by spatial models.
+
+        Returns
+        -------
+        ModelLocations
+            Typed view exposing Arrow-ready location columns.
+
+        Examples
+        --------
+        >>> model_locations = global_locations.model_input()  # doctest: +SKIP
+        """
         return ModelLocations(self, self.require_global())
 
     def identify(self, staypoints: Any, method: str = "freq", **kwargs: Any) -> Locations:
         """Label each location as ``"home"``, ``"work"``, or ``"other"``.
 
         See :func:`fastmob.preprocessing.identify_locations`.
+
+        Parameters
+        ----------
+        staypoints : DataFrame-like or Staypoints
+            Location-assigned visits.
+        method : str, optional
+            Purpose-identification method. Default is ``"freq"``.
+        **kwargs
+            Forwarded to the identification function.
+
+        Returns
+        -------
+        Locations
+            User-scoped catalogue with purpose labels.
+
+        Examples
+        --------
+        >>> labelled = user_locations.identify(assigned_staypoints)  # doctest: +SKIP
         """
         if self.scope != "user":
             raise ValueError("identify is only defined for user-scoped Locations; home/work purposes are user-specific")

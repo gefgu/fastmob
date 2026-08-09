@@ -158,12 +158,43 @@ class FlowDataFrame(BaseDataFrame):
         return matches.get_column(FLOW).to_list()[0]
 
     def common_part_of_commuters(self, other: FlowDataFrame) -> float:
-        """Compare sparse OD flows with another FlowDataFrame using Rust CPC."""
+        """Compare sparse OD flows with another FlowDataFrame using Rust CPC.
+
+        Parameters
+        ----------
+        other : FlowDataFrame
+            Reference sparse OD flows with the same location identity scheme.
+
+        Returns
+        -------
+        float
+            Common part of commuters score.
+
+        Examples
+        --------
+        >>> score = flows.common_part_of_commuters(reference_flows)  # doctest: +SKIP
+        """
         from fastmob.measures.evaluation.cpc import common_part_of_commuters
 
         return common_part_of_commuters(self, other)
 
     def common_part_of_links(self, other: FlowDataFrame) -> float:
+        """Return the common part of links score against another flow table.
+
+        Parameters
+        ----------
+        other : FlowDataFrame
+            Reference sparse OD flows.
+
+        Returns
+        -------
+        float
+            Common part of links score.
+
+        Examples
+        --------
+        >>> score = flows.common_part_of_links(reference_flows)  # doctest: +SKIP
+        """
         from fastmob.measures.evaluation.cpc import common_part_of_links
 
         return common_part_of_links(self, other)

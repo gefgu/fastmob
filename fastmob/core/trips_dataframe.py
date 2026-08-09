@@ -70,6 +70,24 @@ class Trips(BaseDataFrame):
         """Derive trips from triplegs + activity-flagged staypoints.
 
         See :meth:`fastmob.core.triplegs_dataframe.Triplegs.generate_trips`.
+
+        Parameters
+        ----------
+        triplegs : Triplegs
+            Movement segments to aggregate.
+        staypoints : Staypoints
+            Staypoints with an ``activity`` column.
+        gap_threshold_min : float, optional
+            Reserved compatibility parameter.
+
+        Returns
+        -------
+        Trips
+            Activity-to-activity trip summaries.
+
+        Examples
+        --------
+        >>> trips = Trips.from_triplegs(triplegs, activity_staypoints)  # doctest: +SKIP
         """
         del gap_threshold_min  # reserved; the current method needs only the activity flag
 
@@ -206,17 +224,36 @@ class Trips(BaseDataFrame):
         return Trips(out.select(column_order).to_native(), uid_col=uid_col)
 
     def common_part_of_commuters(self, other: Trips) -> float:
-        """Compare trips using globally comparable endpoint location IDs."""
+        """Compare trips using globally comparable endpoint location IDs.
+
+        Returns the common part of commuters (CPC) score.
+
+        Examples
+        --------
+        >>> score = trips.common_part_of_commuters(reference_trips)  # doctest: +SKIP
+        """
         from fastmob.measures.evaluation.cpc import common_part_of_commuters
 
         return common_part_of_commuters(self, other)
 
     def common_part_of_links(self, other: Trips) -> float:
+        """Return the common part of links score against another trip set.
+
+        Examples
+        --------
+        >>> score = trips.common_part_of_links(reference_trips)  # doctest: +SKIP
+        """
         from fastmob.measures.evaluation.cpc import common_part_of_links
 
         return common_part_of_links(self, other)
 
     def common_part_of_commuters_distance(self, other: Trips) -> float:
+        """Return the distance-weighted CPC score against another trip set.
+
+        Examples
+        --------
+        >>> score = trips.common_part_of_commuters_distance(reference_trips)  # doctest: +SKIP
+        """
         from fastmob.measures.evaluation.cpc import common_part_of_commuters_distance
 
         return common_part_of_commuters_distance(self, other)
@@ -226,6 +263,15 @@ class Trips(BaseDataFrame):
 
         CPC does not call this method: it streams endpoint IDs straight to the
         Rust kernel. Use it only when an explicit FlowDataFrame is required.
+
+        Returns
+        -------
+        FlowDataFrame
+            Sparse OD flows aggregated from endpoint location IDs.
+
+        Examples
+        --------
+        >>> flows = trips.to_flow_dataframe()  # doctest: +SKIP
         """
         from .flow_dataframe import FlowDataFrame
 
@@ -248,6 +294,10 @@ class Trips(BaseDataFrame):
         """Group consecutive trips into tours (round trips back to the same location).
 
         See :meth:`fastmob.core.tours_dataframe.Tours.from_trips`.
+
+        Examples
+        --------
+        >>> tours = trips.generate_tours(staypoints_with_location)  # doctest: +SKIP
         """
         from .tours_dataframe import Tours
 

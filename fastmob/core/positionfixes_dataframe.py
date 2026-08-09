@@ -42,6 +42,26 @@ class Positionfixes(TrajDataFrame):
         Returns
         -------
         Staypoints
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from fastmob import Positionfixes
+        >>> base = pd.Timestamp("2024-01-01")
+        >>> rows = [
+        ...     {"uid": "u1", "datetime": base + pd.Timedelta(minutes=m), "lat": 0.0, "lng": 0.0}
+        ...     for m in range(0, 31, 5)
+        ... ] + [
+        ...     {"uid": "u1", "datetime": base + pd.Timedelta(minutes=30 + i), "lat": 0.0, "lng": 0.01 * i}
+        ...     for i in range(1, 11)
+        ... ] + [
+        ...     {"uid": "u1", "datetime": base + pd.Timedelta(minutes=41 + m), "lat": 0.0, "lng": 0.1}
+        ...     for m in range(0, 31, 5)
+        ... ]
+        >>> fixes = Positionfixes(pd.DataFrame(rows))
+        >>> stays = fixes.generate_staypoints(minutes_for_a_stop=20, spatial_radius_km=0.2)
+        >>> stays.df[["staypoint_id", "lng"]].to_dict("records")
+        [{'staypoint_id': 0, 'lng': 0.0}, {'staypoint_id': 1, 'lng': 0.1}]
         """
         from ..preprocessing import stay_locations
         from .staypoints_dataframe import Staypoints
@@ -101,6 +121,13 @@ class Positionfixes(TrajDataFrame):
         Returns
         -------
         Triplegs
+
+        Examples
+        --------
+        >>> staypoints = fixes.generate_staypoints(minutes_for_a_stop=20, spatial_radius_km=0.2)
+        >>> triplegs = fixes.generate_triplegs(staypoints)
+        >>> triplegs.df[["tripleg_id", "duration_s"]].to_dict("records")
+        [{'tripleg_id': 1, 'duration_s': 540.0}]
         """
         from .triplegs_dataframe import Triplegs
 

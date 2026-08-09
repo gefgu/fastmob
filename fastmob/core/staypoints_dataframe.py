@@ -84,6 +84,26 @@ class Staypoints(BaseDataFrame):
         are constructed with the same column detection and validation as
         :class:`Staypoints`, so measures can share one explicit boundary for
         accepting raw staypoint data.
+
+        Parameters
+        ----------
+        value : Staypoints or DataFrame-like
+            Existing wrapper or raw interval table.
+        **column_overrides
+            Explicit column names, accepted only for a raw table.
+
+        Returns
+        -------
+        Staypoints
+            A validated wrapper.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from fastmob import Staypoints
+        >>> raw = pd.DataFrame({"started_at": [pd.Timestamp("2024-01-01")],
+        ...                     "finished_at": [pd.Timestamp("2024-01-01 01:00")]})
+        >>> Staypoints.coerce(raw)
         """
         if isinstance(value, cls):
             if column_overrides:
@@ -93,7 +113,30 @@ class Staypoints(BaseDataFrame):
 
     @staticmethod
     def validate(df: Any, started_at_col: str, finished_at_col: str | None = None) -> None:
-        """Check the start column and, when present, interval ordering."""
+        """Check required interval columns and chronological ordering.
+
+        Parameters
+        ----------
+        df : DataFrame-like
+            Staypoint interval table.
+        started_at_col : str
+            Start-time column.
+        finished_at_col : str or None, optional
+            End-time column to validate.
+
+        Raises
+        ------
+        ValueError
+            If a required column is missing or an interval ends before it starts.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from fastmob import Staypoints
+        >>> frame = pd.DataFrame({"started_at": [pd.Timestamp("2024-01-01")],
+        ...                       "finished_at": [pd.Timestamp("2024-01-01 01:00")]})
+        >>> Staypoints.validate(frame, "started_at", "finished_at")
+        """
         nw_df = nw.from_native(df, eager_only=True) if not isinstance(df, nw.DataFrame) else df
         columns = [started_at_col] if finished_at_col is None else [started_at_col, finished_at_col]
         for col in columns:
@@ -122,6 +165,15 @@ class Staypoints(BaseDataFrame):
         ``Staypoints`` metadata takes precedence over candidate detection. Raw
         dataframe inputs stay supported for measures whose historical API did
         not require an interval end column.
+
+        Returns
+        -------
+        tuple
+            Normalized Narwhals frame and resolved user, time, and coordinate names.
+
+        Examples
+        --------
+        >>> frame, uid, started_at, lat, lng = Staypoints.resolve_dataframe(staypoints)  # doctest: +SKIP
         """
         if isinstance(staypoints, Staypoints):
             user_id_col = user_id_col or staypoints.uid_col
@@ -143,6 +195,22 @@ class Staypoints(BaseDataFrame):
         """Flag each staypoint as a genuine "activity" by dwell time.
 
         See :func:`fastmob.preprocessing.create_activity_flag`.
+
+        Parameters
+        ----------
+        method : str, optional
+            Activity-classification method. Default is ``"time_threshold"``.
+        time_threshold_min : float, optional
+            Minimum dwell duration in minutes. Default is 15.
+
+        Returns
+        -------
+        Staypoints
+            Copy with a boolean ``activity`` column.
+
+        Examples
+        --------
+        >>> active = staypoints.create_activity_flag(time_threshold_min=20)  # doctest: +SKIP
         """
         from ..preprocessing import create_activity_flag
 
@@ -169,6 +237,10 @@ class Staypoints(BaseDataFrame):
             The detected locations, and a copy of ``self`` with a new
             ``location_id`` column (null where a staypoint didn't join any
             recurring location).
+
+        Examples
+        --------
+        >>> locations, assigned = staypoints.generate_user_locations(epsilon_km=0.1)  # doctest: +SKIP
         """
         from ..preprocessing import cluster
         from .locations_dataframe import Locations
@@ -212,6 +284,20 @@ class Staypoints(BaseDataFrame):
 
         The returned ``Locations`` has global scope and one row per occupied
         H3 cell; the returned staypoints carry that cell as ``location_id``.
+
+        Parameters
+        ----------
+        h3_resolution : int, optional
+            H3 resolution from 0 through 15. Default is 9.
+
+        Returns
+        -------
+        tuple[Locations, Staypoints]
+            Shared H3 catalogue and its assigned staypoints.
+
+        Examples
+        --------
+        >>> locations, assigned = staypoints.generate_global_locations(h3_resolution=9)  # doctest: +SKIP
         """
         if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, int) or not 0 <= h3_resolution <= 15:
             raise ValueError("h3_resolution must be an integer between 0 and 15")
@@ -257,7 +343,29 @@ class Staypoints(BaseDataFrame):
         )
 
     def associate_global_locations(self, locations: Locations, location_id_col: str = "location_id") -> Staypoints:
-        """Validate preassigned exact global IDs against a location catalogue."""
+        """Validate preassigned exact global IDs against a location catalogue.
+
+        Parameters
+        ----------
+        locations : Locations
+            Global catalogue containing every permitted location ID.
+        location_id_col : str, optional
+            Assignment column in this table. Default is ``"location_id"``.
+
+        Returns
+        -------
+        Staypoints
+            Copy whose assignment column is named ``location_id``.
+
+        Raises
+        ------
+        ValueError
+            If the catalogue is not global or an assigned ID is unknown.
+
+        Examples
+        --------
+        >>> assigned = staypoints.associate_global_locations(global_locations)  # doctest: +SKIP
+        """
         if locations.scope != "global":
             raise ValueError("associate_global_locations requires global Locations")
         df = nw.from_native(self.df, eager_only=True)
@@ -284,6 +392,22 @@ class Staypoints(BaseDataFrame):
         """Aggregate these staypoints against a global Locations catalogue into an STVD frame.
 
         See :func:`fastmob.measures.collective.build_stvd`.
+
+        Parameters
+        ----------
+        locations : Locations
+            Global location catalogue.
+        **kwargs
+            Forwarded to :func:`fastmob.measures.collective.build_stvd`.
+
+        Returns
+        -------
+        DataFrame
+            Spatio-temporal visitation distribution.
+
+        Examples
+        --------
+        >>> stvd = assigned_staypoints.build_stvd(global_locations)  # doctest: +SKIP
         """
         from ..measures.collective.stvd import build_stvd as _build_stvd
 
@@ -293,6 +417,15 @@ class Staypoints(BaseDataFrame):
         """Return the collective interest network over global ``locations``.
 
         See :func:`fastmob.measures.collective.interest_network`.
+
+        Returns
+        -------
+        DataFrame
+            Weighted interest-network edge list.
+
+        Examples
+        --------
+        >>> network = assigned_staypoints.interest_network(global_locations)  # doctest: +SKIP
         """
         from ..measures.collective.interest_network import interest_network
 
@@ -307,6 +440,22 @@ class Staypoints(BaseDataFrame):
         """Compute one home-anchored mobility motif per user and day.
 
         See :func:`fastmob.measures.individual.motifs.daily_motifs_from_staypoints`.
+
+        Parameters
+        ----------
+        locations : Locations
+            Global catalogue with home-location labels available to the motif method.
+        presorted : bool, optional
+            Whether rows are already user/time ordered.
+
+        Returns
+        -------
+        DataFrame
+            One motif result per user and day.
+
+        Examples
+        --------
+        >>> motifs = assigned_staypoints.generate_daily_motifs(global_locations)  # doctest: +SKIP
         """
         from ..measures.individual.motifs import daily_motifs_from_staypoints
 

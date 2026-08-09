@@ -76,6 +76,22 @@ class Triplegs(BaseDataFrame):
         """Classify each tripleg's transport mode from its average speed.
 
         See :func:`fastmob.preprocessing.predict_transport_mode`.
+
+        Parameters
+        ----------
+        method : str, optional
+            Classification method. Default is ``"simple-coarse"``.
+        categories : dict or None, optional
+            Custom speed-to-mode categories.
+
+        Returns
+        -------
+        Triplegs
+            Copy with a ``mode`` column.
+
+        Examples
+        --------
+        >>> classified = triplegs.predict_transport_mode()  # doctest: +SKIP
         """
         from ..preprocessing import predict_transport_mode
 
@@ -91,6 +107,15 @@ class Triplegs(BaseDataFrame):
         """Aggregate this ``mode``-labeled table into a modal-split table.
 
         See :func:`fastmob.preprocessing.calculate_modal_split`.
+
+        Returns
+        -------
+        DataFrame
+            Modal split aggregated by the requested frequency and metric.
+
+        Examples
+        --------
+        >>> modal_split = classified_triplegs.calculate_modal_split(metric="count")  # doctest: +SKIP
         """
         from ..preprocessing import calculate_modal_split
 
@@ -100,6 +125,10 @@ class Triplegs(BaseDataFrame):
         """Group consecutive triplegs into trips.
 
         See :meth:`fastmob.core.trips_dataframe.Trips.from_triplegs`.
+
+        Examples
+        --------
+        >>> trips = triplegs.generate_trips(activity_staypoints)  # doctest: +SKIP
         """
         from .trips_dataframe import Trips
 
@@ -115,6 +144,15 @@ class Triplegs(BaseDataFrame):
         """Derive triplegs from positionfixes + already-generated staypoints.
 
         See :meth:`fastmob.core.positionfixes_dataframe.Positionfixes.generate_triplegs`.
+
+        Returns
+        -------
+        Triplegs
+            Movement segments derived from the raw fixes and stops.
+
+        Examples
+        --------
+        >>> triplegs = Triplegs.from_positionfixes(positionfixes, staypoints)  # doctest: +SKIP
         """
         from ..preprocessing import segment
 

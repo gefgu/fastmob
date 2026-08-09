@@ -60,6 +60,27 @@ class Tours(BaseDataFrame):
         """Group consecutive trips into tours.
 
         See :meth:`fastmob.core.trips_dataframe.Trips.generate_tours`.
+
+        Parameters
+        ----------
+        trips : Trips
+            Trip summaries to scan chronologically.
+        staypoints_with_location : Staypoints
+            Staypoints carrying ``staypoint_id`` and ``location_id`` columns.
+
+        Returns
+        -------
+        Tours
+            Round-trip summaries with an anchor location and journey IDs.
+
+        Raises
+        ------
+        ValueError
+            If staypoint location assignments are unavailable.
+
+        Examples
+        --------
+        >>> tours = Tours.from_trips(trips, staypoints_with_location)  # doctest: +SKIP
         """
         sp_nw = nw.from_native(staypoints_with_location.df, eager_only=True)
         if "location_id" not in sp_nw.columns:
