@@ -29,8 +29,8 @@ use measures::individual::{
 };
 use network::road_graph_py;
 use preprocessing::{
-    cdr, clustering, compress_traj_py, filter_traj_py, h3_py, outliers_traj_py, segment_traj_py,
-    simplify_traj_py, stay_locations_py,
+    cdr, clustering, compress_traj_py, expand_trajectory_py, filter_traj_py, h3_py,
+    outliers_traj_py, segment_traj_py, simplify_traj_py, stay_locations_py,
 };
 use social::co_presence_network;
 
@@ -333,6 +333,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(h3_py::latlng_to_h3_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(h3_py::h3_to_latlng_arrow, m)?)?;
     m.add_function(wrap_pyfunction!(h3_py::latlng_to_h3_centered_arrow, m)?)?;
+    m.add_function(wrap_pyfunction!(h3_py::h3_polygons_to_cells, m)?)?;
+    m.add_function(wrap_pyfunction!(h3_py::h3_cells_to_boundaries, m)?)?;
     m.add_function(wrap_pyfunction!(
         preprocessing::h3_cluster_py::h3_cluster_labels_arrow,
         m
@@ -351,6 +353,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_py::detect_stay_locations_batch_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        expand_trajectory_py::expand_5min_trajectory_batch_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        expand_trajectory_py::expand_5min_trajectory_with_imputation_batch_indexed,
         m
     )?)?;
     #[cfg(feature = "stvd-emd")]

@@ -21,16 +21,8 @@ def _require_shapely():
     try:
         from shapely import geometry, ops
     except ImportError as exc:  # pragma: no cover - exercised when optional deps are missing.
-        raise ImportError("shapely is required for tessellation: pip install fastmob[tessellation]") from exc
+        raise ImportError("shapely is required for tessellation: pip install fastmob[geo]") from exc
     return geometry, ops
-
-
-def _require_h3():
-    try:
-        import h3.api.numpy_int as h3
-    except ImportError as exc:  # pragma: no cover - exercised when optional deps are missing.
-        raise ImportError("h3 is required for H3 tessellation: pip install fastmob[tessellation]") from exc
-    return h3
 
 
 def _union_geometries(geometries):
@@ -271,29 +263,29 @@ class H3TessellationTiler(TessellationTiler):
         return base_shape.geometry.__geo_interface__["features"][0]["geometry"]
 
     def _get_hexagons(self, x, resolution):
-        h3 = _require_h3()
-        if hasattr(h3, "polyfill"):
-            hexagons = h3.polyfill(x.__geo_interface__, resolution, geo_json_conformant=True)
+        from fastmob._core import h3_polygons_to_cells
+
+        interface = x.__geo_interface__
+        geometry_type = interface["type"]
+        coordinates = interface["coordinates"]
+        if geometry_type == "Polygon":
+            polygons = [coordinates]
+        elif geometry_type == "MultiPolygon":
+            polygons = coordinates
         else:
-            hexagons = h3.geo_to_cells(x.__geo_interface__, resolution)
-        return list(hexagons)
+            raise TypeError(f"H3 tessellation requires a Polygon or MultiPolygon, got {geometry_type}")
+        return h3_polygons_to_cells(polygons, resolution)
 
     def _create_hexagon_polygons(self, hexagon_ids):
         gpd = _require_geopandas()
         geometry, _ops = _require_shapely()
-        h3 = _require_h3()
-        if hasattr(h3, "h3_to_geo_boundary"):
+        from fastmob._core import h3_cells_to_boundaries
 
-            def boundary(hexagon_id):
-                return h3.h3_to_geo_boundary(hexagon_id, geo_json=True)
-        else:
-
-            def boundary(hexagon_id):
-                return [(lng, lat) for lat, lng in h3.cell_to_boundary(hexagon_id)]
+        boundaries = h3_cells_to_boundaries(hexagon_ids)
 
         return gpd.GeoDataFrame(
             {
-                "geometry": [geometry.Polygon(boundary(hexagon_id)) for hexagon_id in hexagon_ids],
+                "geometry": [geometry.Polygon(boundary) for boundary in boundaries],
                 "H3_INDEX": hexagon_ids,
             },
             crs=constants.DEFAULT_CRS,

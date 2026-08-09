@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import math
-
 import numpy as np
-
-from fastmob._core import haversine_m_batch
 
 
 def nearest_candidate(
@@ -15,11 +11,9 @@ def nearest_candidate(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Find each query point's nearest reference point by exact Haversine distance.
 
-    Builds a longitude-scaled (by ``cos(mean reference latitude)``) KD-tree
-    for an approximate nearest-neighbor candidate, then re-scores that single
-    candidate with an exact Haversine distance -- the approximate-then-exact
-    pattern shared by :func:`fastmob.network.snap.snap_locations_to_graph`
-    and the PyMove-style POI/event join functions.
+    The spatial index and queries execute in Rust on Arrow arrays. The public
+    NumPy-shaped helper remains for the integration module's existing adapter
+    contract.
 
     Parameters
     ----------
@@ -35,27 +29,18 @@ def nearest_candidate(
         `ref_lat`/`ref_lng`), ``-1`` if `ref_lat` is empty; ``distances_m``
         is its exact Haversine distance, ``inf`` in that same case.
     """
-    from sklearn.neighbors import NearestNeighbors
+    import pyarrow as pa
+    from fastmob._core import nearest_nodes_arrow
 
     n = len(query_lat)
     if len(ref_lat) == 0 or n == 0:
         return np.full(n, -1, dtype=np.int64), np.full(n, np.inf, dtype=np.float64)
 
-    mean_lat = float(np.mean(ref_lat))
-    scale = math.cos(math.radians(mean_lat))
-
-    ref_xy = np.column_stack([ref_lat, ref_lng * scale])
-    tree = NearestNeighbors(n_neighbors=1, algorithm="kd_tree", n_jobs=-1)
-    tree.fit(ref_xy)
-
-    query_xy = np.column_stack([query_lat, query_lng * scale])
-    _, indices = tree.kneighbors(query_xy)
-    nearest_idx = indices[:, 0]
-
-    dist_m = haversine_m_batch(
-        np.ascontiguousarray(query_lat, dtype=np.float64),
-        np.ascontiguousarray(query_lng, dtype=np.float64),
-        np.ascontiguousarray(ref_lat[nearest_idx], dtype=np.float64),
-        np.ascontiguousarray(ref_lng[nearest_idx], dtype=np.float64),
+    indices, distances_m = nearest_nodes_arrow(
+        pa.array(query_lat, type=pa.float64()),
+        pa.array(query_lng, type=pa.float64()),
+        pa.array(ref_lat, type=pa.float64()),
+        pa.array(ref_lng, type=pa.float64()),
+        float("inf"),
     )
-    return nearest_idx.astype(np.int64), dist_m
+    return np.asarray(indices, dtype=np.int64), np.asarray(distances_m, dtype=np.float64)

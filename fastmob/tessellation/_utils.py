@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 import numpy as np
 
@@ -13,25 +16,15 @@ def _require_geopandas():
     try:
         import geopandas as gpd
     except ImportError as exc:  # pragma: no cover - exercised when optional deps are missing.
-        raise ImportError("geopandas is required for tessellation: pip install fastmob[tessellation]") from exc
+        raise ImportError("geopandas is required for tessellation: pip install fastmob[geo]") from exc
     return gpd
-
-
-def _require_requests():
-    try:
-        import requests
-    except ImportError as exc:  # pragma: no cover - exercised when optional deps are missing.
-        raise ImportError(
-            "requests is required for string place tessellation: pip install fastmob[tessellation]"
-        ) from exc
-    return requests
 
 
 def _require_shapely_geometry():
     try:
         from shapely import geometry
     except ImportError as exc:  # pragma: no cover - exercised when optional deps are missing.
-        raise ImportError("shapely is required for tessellation: pip install fastmob[tessellation]") from exc
+        raise ImportError("shapely is required for tessellation: pip install fastmob[geo]") from exc
     return geometry
 
 
@@ -56,12 +49,10 @@ def bbox_from_name(query: str, which_osm_result: int = 0, crs=None):
     """Create a GeoDataFrame from an OpenStreetMap place-name query."""
     gpd = _require_geopandas()
     geometry = _require_shapely_geometry()
-    requests = _require_requests()
-
-    nominatim_url = f"https://nominatim.openstreetmap.org/search.php?q={query}&polygon_geojson=1&format=json"
-    response = requests.get(nominatim_url, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+    query_string = urlencode({"q": query, "polygon_geojson": 1, "format": "json"})
+    nominatim_url = f"https://nominatim.openstreetmap.org/search.php?{query_string}"
+    with urlopen(nominatim_url, timeout=30) as response:  # noqa: S310 - fixed public Nominatim endpoint
+        data = json.load(response)
 
     features = []
     for result in data:

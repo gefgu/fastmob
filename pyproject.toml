@@ -45,16 +45,20 @@ Repository = "https://github.com/gefgu/fastmob"
 Issues = "https://github.com/gefgu/fastmob/issues"
 
 [project.optional-dependencies]
-ai = ["scikit-learn>=1.3.2"]
-fitting = ["scipy"]
-generation = ["scipy", "powerlaw", "statsmodels", "python-igraph", "tqdm"]
-data = ["geopandas", "shapely", "pyproj", "requests"]
-tessellation = ["geopandas", "shapely", "pyproj", "h3", "requests"]
-# Road/rail network fetch+snap also needs `ai` (scikit-learn, for
-# snap_locations_to_graph's NearestNeighbors) -- install both extras.
-network = ["duckdb", "requests"]
+# Public extras are organised around user-facing capabilities. Development,
+# documentation, and third-party comparison stacks live in dependency groups or
+# dedicated benchmark environments below; they are intentionally not published
+# as installable package extras.
+ml = ["scikit-learn>=1.3.2"]
+evaluation = ["scipy"]
+generation = ["statsmodels"]
+geo = ["geopandas", "shapely", "pyproj"]
+# Overture road/rail fetching is implemented with DuckDB's spatial extension.
+network = ["duckdb"]
 # `vis` is the separate ECharts/Leaflet visualization package.
 vis = ["fastmob-vis"]
+
+[dependency-groups]
 dev = [
     "pre-commit",
     "maturin>=1.13,<2.0",
@@ -67,82 +71,22 @@ dev = [
     "scalene",
     "memray",
     "scikit-learn>=1.3.2",
-    "tqdm",
     "scipy",
-    "powerlaw",
     "statsmodels",
-    "python-igraph",
     "geopandas",
     "shapely",
     "pyproj",
-    "h3",
-    "requests",
     "psutil",
     "similaritymeasures",
-]
-dev-skmob = [
-    "fiona",
-    "h3",
-    "scikit-mobility",
-]
-dev-movingpandas = [
-    "movingpandas",
-    "geopandas",
-]
-dev-ptrail = [
-    "ptrail",
-    "ipython<8",
-    # PTRAIL 1.0's Filters.hampel_outlier_detection uses the `hampel` package's
-    # return value directly as a list of outlier indices, which only works
-    # with hampel<1.0 (hampel>=1.0 returns a Result namedtuple instead and
-    # crashes that call with an IndexError). Pin to a version PTRAIL's own
-    # "hampel>=0.0.5" requirement already allows.
-    "hampel==0.0.5",
-    "pyarrow",
-]
-dev-transbigdata = [
-    "transbigdata",
-    # traj_mapmatch takes "a networkx multidigraph, created by osmnx" --
-    # osmnx/networkx are only ever used inside this comparison test harness
-    # to build that input graph, never by fastmob's own code.
-    "networkx",
-    "osmnx",
-]
-# TransBigData's own pinned stack (geopandas/shapely/pandas/numpy/networkx/
-# osmnx) is individually compatible with this project's normal .venv, but
-# installing it via `uv pip install -e ".[dev-transbigdata]"` into an
-# *already-populated* .venv can still trigger a full dependency
-# re-resolution -- transbigdata pulls in pykalman (which allows
-# numpy<3 but also ships a numpy<2 "numpy1" extra) and scikit-base, and uv
-# resolving the whole project + this extra together landed on numpy 1.26
-# instead of the numpy>=2 already installed, silently breaking unrelated
-# fastmob code compiled/tested against numpy 2.x. A dedicated venv, resolved
-# from scratch, does not hit this: bash scripts/setup_env.sh --venv
-# .venv-transbigdata --transbigdata. Never install dev-transbigdata into an
-# existing .venv in place.
-dev-pymove = [
-    "pymove",
-    # pymove 3.0.0's own metadata just says "pandas>=1.1.0" (no upper
-    # bound), so uv resolves it against this project's own "pandas>=1.5"
-    # base dependency without complaint -- but pymove's actual *code*
-    # (pymove/utils/trajectories.py) imports `pandas._typing.FilePathOrBuffer`,
-    # which pandas removed in 1.4. A real "pandas<1.4" pin here would
-    # directly conflict with the base "pandas>=1.5" dependency at resolve
-    # time, so it can't be expressed as an extra; scripts/setup_env.sh's
-    # --pymove branch force-reinstalls pandas (and a matching old dask,
-    # whose newer releases refuse to import under pandas<2.0) as a separate
-    # step after this extra installs. numpy must also be re-pinned: uv
-    # otherwise resolves numpy>=2, which pandas 1.3.x's compiled ABI can't
-    # load. See fastmob_benchmarks/pymove's README "Known issues" for the
-    # original failure mode. Needs Python <=3.10 (no prebuilt pandas 1.3.5
-    # wheel past that) and a dedicated .venv-pymove:
-    #   bash scripts/setup_env.sh --venv .venv-pymove --python 3.9 --pymove
-    "numpy>=1.23,<2",
 ]
 docs = [
     "zensical>=0.0.41; python_version >= '3.10'",
     "mkdocstrings[python]>=0.25",
+    "scipy>=1.13,<1.16; python_version >= '3.10'",
 ]
+
+[tool.uv.sources]
+fastmob-vis = { path = "fastmob-vis" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "benchmarks/tests"]

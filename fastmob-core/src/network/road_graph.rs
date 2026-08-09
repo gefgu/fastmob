@@ -7,6 +7,72 @@ use crate::utils::haversine::haversine_km;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
+#[derive(Clone, Copy)]
+struct SpherePoint {
+    xyz: [f64; 3],
+    index: usize,
+}
+
+struct KdNode {
+    point: SpherePoint,
+    axis: usize,
+    left: Option<Box<KdNode>>,
+    right: Option<Box<KdNode>>,
+}
+
+fn unit_sphere(lat: f64, lng: f64) -> [f64; 3] {
+    let lat = lat.to_radians();
+    let lng = lng.to_radians();
+    let cos_lat = lat.cos();
+    [cos_lat * lng.cos(), cos_lat * lng.sin(), lat.sin()]
+}
+
+fn build_kd_tree(points: &mut [SpherePoint], depth: usize) -> Option<Box<KdNode>> {
+    if points.is_empty() {
+        return None;
+    }
+    let axis = depth % 3;
+    let mid = points.len() / 2;
+    points.select_nth_unstable_by(mid, |left, right| {
+        left.xyz[axis]
+            .total_cmp(&right.xyz[axis])
+            .then_with(|| left.index.cmp(&right.index))
+    });
+    let (left, middle_and_right) = points.split_at_mut(mid);
+    let (point, right) = middle_and_right.split_first_mut().expect("non-empty midpoint");
+    Some(Box::new(KdNode {
+        point: *point,
+        axis,
+        left: build_kd_tree(left, depth + 1),
+        right: build_kd_tree(right, depth + 1),
+    }))
+}
+
+fn squared_distance(left: [f64; 3], right: [f64; 3]) -> f64 {
+    (left[0] - right[0]).mul_add(left[0] - right[0], (left[1] - right[1]).mul_add(left[1] - right[1], (left[2] - right[2]) * (left[2] - right[2])))
+}
+
+fn nearest_kd(node: &KdNode, query: [f64; 3], best: &mut (usize, f64)) {
+    let distance = squared_distance(query, node.point.xyz);
+    if distance < best.1 || (distance == best.1 && node.point.index < best.0) {
+        *best = (node.point.index, distance);
+    }
+    let delta = query[node.axis] - node.point.xyz[node.axis];
+    let (near, far) = if delta <= 0.0 {
+        (&node.left, &node.right)
+    } else {
+        (&node.right, &node.left)
+    };
+    if let Some(child) = near {
+        nearest_kd(child, query, best);
+    }
+    if delta * delta <= best.1 {
+        if let Some(child) = far {
+            nearest_kd(child, query, best);
+        }
+    }
+}
+
 pub struct RoadGraph {
     fast_graph: fast_paths::FastGraph,
     edge_weight_ds: FxHashMap<(usize, usize), i64>,
@@ -23,12 +89,23 @@ pub fn batch_nearest_coordinates(
     reference_lat: &[f64],
     reference_lng: &[f64],
 ) -> (Vec<i64>, Vec<f64>) {
-    if reference_lat.is_empty() {
+    let mut reference_points: Vec<SpherePoint> = reference_lat
+        .iter()
+        .zip(reference_lng.iter())
+        .enumerate()
+        .filter_map(|(index, (&lat, &lng))| {
+            (lat.is_finite() && lng.is_finite()).then(|| SpherePoint {
+                xyz: unit_sphere(lat, lng),
+                index,
+            })
+        })
+        .collect();
+    let Some(tree) = build_kd_tree(&mut reference_points, 0) else {
         return (
             vec![-1; query_lat.len()],
             vec![f64::INFINITY; query_lat.len()],
         );
-    }
+    };
     query_lat
         .par_iter()
         .zip(query_lng.par_iter())
@@ -36,15 +113,10 @@ pub fn batch_nearest_coordinates(
             if !lat.is_finite() || !lng.is_finite() {
                 return (-1, f64::INFINITY);
             }
-            reference_lat
-                .iter()
-                .zip(reference_lng.iter())
-                .enumerate()
-                .map(|(idx, (&r_lat, &r_lng))| {
-                    (idx as i64, haversine_km(lat, lng, r_lat, r_lng) * 1000.0)
-                })
-                .min_by(|a, b| a.1.total_cmp(&b.1))
-                .expect("non-empty references")
+            let mut best = (usize::MAX, f64::INFINITY);
+            nearest_kd(&tree, unit_sphere(lat, lng), &mut best);
+            let distance_m = haversine_km(lat, lng, reference_lat[best.0], reference_lng[best.0]) * 1000.0;
+            (best.0 as i64, distance_m)
         })
         .unzip()
 }
@@ -184,32 +256,7 @@ impl RoadGraph {
         latitudes: &[f64],
         longitudes: &[f64],
     ) -> (Vec<i64>, Vec<f64>) {
-        if self.node_lat.is_empty() {
-            return (
-                vec![-1; latitudes.len()],
-                vec![f64::INFINITY; latitudes.len()],
-            );
-        }
-        latitudes
-            .par_iter()
-            .zip(longitudes.par_iter())
-            .map(|(&lat, &lng)| {
-                if !lat.is_finite() || !lng.is_finite() {
-                    return (-1, f64::INFINITY);
-                }
-                let (idx, distance_m) = self
-                    .node_lat
-                    .iter()
-                    .zip(self.node_lng.iter())
-                    .enumerate()
-                    .map(|(idx, (&node_lat, &node_lng))| {
-                        (idx, haversine_km(lat, lng, node_lat, node_lng) * 1000.0)
-                    })
-                    .min_by(|a, b| a.1.total_cmp(&b.1))
-                    .expect("non-empty node coordinates");
-                (idx as i64, distance_m)
-            })
-            .unzip()
+        batch_nearest_coordinates(latitudes, longitudes, &self.node_lat, &self.node_lng)
     }
 }
 

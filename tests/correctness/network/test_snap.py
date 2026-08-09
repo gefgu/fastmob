@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-sklearn = pytest.importorskip("sklearn", reason="scikit-learn not installed (fastmob[ai])")
-
 from fastmob.network import snap_locations_to_graph
 
 _NODES = pd.DataFrame({"node_idx": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lng": [0.0, 0.0, 0.0]})
@@ -42,3 +40,10 @@ def test_snap_custom_column_names():
     points = pd.DataFrame({"latitude": [0.05], "longitude": [0.0]})
     result = snap_locations_to_graph(points, _NODES, max_distance_m=50_000.0, lat_col="latitude", lng_col="longitude")
     assert result[0].as_py() == 0
+
+
+def test_snap_uses_great_circle_distance_across_antimeridian():
+    nodes = pd.DataFrame({"node_idx": [10, 20], "lat": [0.0, 0.0], "lng": [179.9, -170.0]})
+    points = pd.DataFrame({"lat": [0.0], "lng": [-179.95]})
+    result = snap_locations_to_graph(points, nodes, max_distance_m=50_000.0)
+    assert result[0].as_py() == 10
