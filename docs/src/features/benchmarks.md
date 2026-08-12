@@ -54,7 +54,7 @@ The numbers are environment-specific, so they should be read as benchmark eviden
 
 ## Measures - Evaluation
 
-#### Measures - Evaluation - (Speed) - Mostly numpy/scipy wrappers
+#### Measures - Evaluation - (Speed) - NumPy and Rust kernels
 ![measures evaluation speed benchmark](../assets/benchmarks/fastmob_vs_skmob_evaluation_4M.png)
 <!-- 
 #### Measures - Evaluation - (Memory) (Still needs adjusts)
@@ -138,4 +138,3 @@ These refer to special metrics which benefit from sorted paths.
 
 <!-- #### Measures - Collective - Polars (Memory) (Still needs adjusts)
 ![4M-row polars measures collective memory benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_polars_4M_memory.png) -->
-

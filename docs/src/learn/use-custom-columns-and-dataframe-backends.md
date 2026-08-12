@@ -2,7 +2,9 @@
 
 This guide shows you how to run fastmob measures when your trajectory dataframe uses nonstandard column names or a dataframe backend such as Polars.
 
-<!-- For a beginner-friendly walkthrough with the default column names, start with [Analyze a simple trajectory](../tutorials/analyze-a-simple-trajectory.md). For complete function details, refer to the [API reference](../api/index.md). -->
+For a beginner-friendly walkthrough with default column names, start with
+[Analyze a simple trajectory](analyze-a-simple-trajectory.md). For complete
+function details, refer to the [API reference](../reference/index.md).
 
 ## Before you start
 
@@ -108,4 +110,3 @@ Check these points before using the result downstream:
 - The result contains one row per user when `uid_col` is provided.
 - Distances are expressed in kilometers.
 - If a required column is missing, pass its name explicitly with the matching `*_col` argument.
-

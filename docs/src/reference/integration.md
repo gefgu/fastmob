@@ -11,8 +11,8 @@ summary like the measures under `fastmob.measures`.
 | [`join_with_pois_by_category`](#fastmob.integration.join_with_pois_by_category) | Join each trajectory point with its nearest POI in each category. |
 | [`join_with_events`](#fastmob.integration.join_with_events) | Join each trajectory point with the nearest event within a time window. |
 
-Requires the `ai` extra (`pip install fastmob[ai]`, needs `scikit-learn`)
-for the POI/event nearest-neighbor lookup.
+POI/event nearest-neighbor lookup runs through FastMOB's native Rust spatial
+kernel; no additional installation is required.
 
 ```python
 import pandas as pd

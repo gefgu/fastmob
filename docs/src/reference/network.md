@@ -16,13 +16,13 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 | [`od_desire_lines`](#fastmob.network.od_desire_lines) | Aggregate OD-pair flows onto graph edges (desire lines). |
 | [`haversine_m_batch`](#fastmob.network.haversine_m_batch) | Vectorized Haversine distance (metres) between two arrays of points. |
 
-Requires the `network` extra (`pip install fastmob[network]`) for
-`fetch_road_network`/`fetch_rail_network` (needs `duckdb`) and the `ai`
-extra for `snap_locations_to_graph` (needs `scikit-learn`).
+`fetch_road_network` and `fetch_rail_network` require DuckDB: install it with
+`pip install duckdb`. Snapping uses Fastmob's native Rust spatial index and
+has no additional Python dependency.
 
 ## Network-aware distance measures
 
-`fastmob.measures.individual.jump_lengths_km`/`radius_of_gyration_km` mirror
+`fastmob.measures.individual.jump_lengths_road`/`radius_of_gyration_road` mirror
 `jump_lengths`/`radius_of_gyration` but measure distance along a prepared
 `RoadNetwork` instead of straight-line, falling back to Haversine per-pair
 wherever a point is unsnapped or the graph is disconnected between the two
@@ -31,14 +31,14 @@ points:
 ```python
 import pandas as pd
 from fastmob.network import RoadNetwork, fetch_road_network
-from fastmob.measures.individual import jump_lengths_km, radius_of_gyration_km
+from fastmob.measures.individual import jump_lengths_road, radius_of_gyration_road
 
 nodes_df, edges_df = fetch_road_network(2.34, 48.85, 2.36, 48.86, "2026-05-20.0")
 network = RoadNetwork.build(edges_df, nodes_df)
 
 traj = pd.DataFrame(...)  # uid, datetime, lat, lng columns
-jumps_km = jump_lengths_km(traj, network=network)
-rg_km = radius_of_gyration_km(traj, network=network)
+jumps_km = jump_lengths_road(traj, network=network)
+rg_km = radius_of_gyration_road(traj, network=network)
 ```
 
 ## Route geometry and OD desire lines
@@ -121,12 +121,12 @@ instead of any edge.
 
 ---
 
-::: fastmob.measures.individual.network_distance.jump_lengths_km
+::: fastmob.measures.individual.network_distance.jump_lengths_road
     options:
       show_source: false
 
 ---
 
-::: fastmob.measures.individual.network_distance.radius_of_gyration_km
+::: fastmob.measures.individual.network_distance.radius_of_gyration_road
     options:
       show_source: false

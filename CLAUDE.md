@@ -59,7 +59,7 @@ bash scripts/setup_env.sh
 source .venv/bin/activate
 ```
 
-Dev dependencies (`pytest`, `pytest-benchmark`, `skmob`, `polars`, `tqdm`) are declared under `[project.optional-dependencies] dev` in `pyproject.toml` and are not required to use the library.
+Dev dependencies are declared in the `dev` dependency group in `pyproject.toml` and are not required to use the library. External-library comparison stacks live under `benchmarks/environments/` and must stay isolated from the normal development environment.
 
 ## Tests
 
@@ -108,18 +108,24 @@ The skmob comparison tests should usually be strict, but the Brightkite tests fo
 
 ```bash
 # Install docs toolchain
-uv sync --extra docs
+uv sync --group docs
 
 # Serve locally with live reload
-uv run zensical serve
+uv run --group docs zensical serve
 
 # Build
-uv run zensical build
+uv run --group docs zensical build
 ```
 
 Documentation source pages live in `docs/src/`. The `docs/features/` subdirectory holds internal planning files and is intentionally excluded from the published site nav. `docs/DESIGN.md` is the Zensical design system reference.
 
 API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
+
+### Measures sidebar
+
+The Measures dropdown uses Zensical's native nested `nav` list plus the `navigation.indexes` theme feature. Keep the overview page first in the section so it becomes the clickable index; do not use the unsupported `children = [...]` field. Measure category icons come from each page's `icon: lucide/...` front matter.
+
+Do not replace this with a client-side DOM rewrite: external scripts miss Zensical's initial navigation event and are unreliable with instant navigation. `mkdocs-awesome-nav`/`.nav.yml` was tested and ignored by Zensical. Validate any change with `uv run --group docs zensical build --strict` and `uv run --group docs --with pytest pytest tests/docs -q`.
 
 ## Benchmarks
 

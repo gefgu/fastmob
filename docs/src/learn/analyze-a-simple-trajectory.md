@@ -2,8 +2,9 @@
 
 In this tutorial, we will create a small trajectory dataset, compute two mobility measures, and inspect the results.
 
-We will use pandas so the example is easy to read. fastmob can also work with other eager dataframe backends; when you are ready to adapt this example to your own column names or backend, see TODO.
-<!-- [Use custom columns and dataframe backends](../how-to-guides/use-custom-columns-and-dataframe-backends.md). -->
+We use pandas so the example is easy to read. Fastmob also accepts other eager
+dataframe backends; see [Columns and backends](use-custom-columns-and-dataframe-backends.md)
+when adapting this to your data.
 
 ## Before we start
 
@@ -126,4 +127,3 @@ You should see two small result dataframes, both grouped by user.
 ## What we have made
 
 You have created a minimal trajectory dataset and used fastmob to compute two user-level mobility measures. The same pattern works for larger trajectory dataframes: build a dataframe with time, latitude, longitude, and user columns, then pass it to the measure you want to compute.
-

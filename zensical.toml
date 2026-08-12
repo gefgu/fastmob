@@ -19,21 +19,40 @@ nav = [
     { "Optimizations" = "features/optimizations.md" },
     { "Motifs" = "features/motifs.md" },
   ] },
-  { "Learn" = "learn/index.md" },
+  { "Learn" = "learn/index.md", children = [
+    { "Start with a trajectory" = "learn/analyze-a-simple-trajectory.md" },
+    { "Columns and backends" = "learn/use-custom-columns-and-dataframe-backends.md" },
+    { "Clean and segment trajectories" = "learn/clean-and-segment.md" },
+    { "Create staypoints and locations" = "learn/staypoints-and-locations.md" },
+    { "Measure people and populations" = "learn/individual-and-collective-measures.md" },
+    { "Route and map-match trajectories" = "learn/network-analysis.md" },
+    { "Fit and evaluate mobility results" = "learn/fit-and-evaluate.md" },
+  ] },
   { "Reference" = [
     { "Overview" = "reference/index.md" },
-    { "Data Structures" = "reference/data-structures.md" },
+    { "Data Structures" = [
+      { "Overview" = "reference/data-structures.md" },
+      { "TrajDataFrame" = "reference/data-structures/traj-dataframe.md" },
+      { "Positionfixes" = "reference/data-structures/positionfixes.md" },
+      { "Staypoints" = "reference/data-structures/staypoints.md" },
+      { "Locations" = "reference/data-structures/locations.md" },
+      { "Triplegs" = "reference/data-structures/triplegs.md" },
+      { "Trips" = "reference/data-structures/trips.md" },
+      { "Tours" = "reference/data-structures/tours.md" },
+      { "FlowDataFrame" = "reference/data-structures/flow-dataframe.md" },
+    ] },
     { "Preprocessing" = "reference/preprocessing.md" },
     { "Trajectory" = "reference/trajectory.md" },
     { "Network" = "reference/network.md" },
     { "Integration" = "reference/integration.md" },
-    { "Measures" = "reference/measures/index.md", children = [
+    { "Measures" = [
       { "Overview" = "reference/measures/index.md" },
       { "Individual" = "reference/measures/individual.md" },
       { "Collective" = "reference/measures/collective.md" },
       { "Contact Network" = "reference/social/contact-network.md" },
       { "Evaluation" = "reference/measures/evaluation.md" },
     ] },
+    { "Fitting" = "reference/fitting.md" },
     { "Models" = "reference/models.md" },
     { "Input/Output" = "reference/io.md" },
     { "Privacy" = "reference/privacy.md" },
@@ -41,16 +60,22 @@ nav = [
   ] },
   {"Resources" = "resource/index.md"},
   { "About" = "about/index.md" },
-  { "Release Notes" = "release_notes/index.md" },
+  { "Release Notes" = "release_notes/index.md", children = [
+    { "v0.1.3" = "release_notes/v0.1.3.md" },
+    { "v0.1.2" = "release_notes/v0.1.2.md" },
+    { "v0.1.1" = "release_notes/v0.1.1.md" },
+    { "v0.1.0" = "release_notes/v0.1.0.md" },
+  ] },
 ]
 
 [project.theme]
-logo = "assets/logo.svg"
+logo = "assets/logo_filled.svg"
 favicon = "assets/icon.svg"
 variant = "modern"
 features = [
   "content.code.copy",
   "content.tabs.link",
+  "navigation.indexes",
   "navigation.sections",
   "navigation.tabs",
   "navigation.tabs.sticky",

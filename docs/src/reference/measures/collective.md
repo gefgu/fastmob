@@ -1,3 +1,7 @@
+---
+icon: lucide/users-round
+---
+
 # Collective Measures
 
 | API | Description |

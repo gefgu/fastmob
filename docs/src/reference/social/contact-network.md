@@ -1,3 +1,7 @@
+---
+icon: lucide/network
+---
+
 # RECAST Social Relationships
 
 `fastmob.social` implements RECAST (Random rElationship ClASsifier sTrategy)

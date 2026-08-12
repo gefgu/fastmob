@@ -14,10 +14,10 @@
 
 The `fastmob.models` package mirrors the original scikit-mobility generation API. Model implementations accept pandas or Narwhals-compatible eager dataframes and may convert inputs to pandas internally.
 
-Install the generation dependencies with:
+Only `Gravity.fit()` needs Statsmodels for Poisson-GLM fitting:
 
 ```bash
-pip install "fastmob[generation]"
+pip install statsmodels
 ```
 
 ## Flow Models

@@ -1,24 +1,36 @@
 # fastmob
 
 <p align="center">
-  <img src="assets/logo.svg" alt="fastmob logo" width="280">
+  <img src="assets/logo_filled.svg" alt="fastmob logo" width="280">
 </p>
 
-**fastmob** is a high-performance reimplementation of the [skmob](https://github.com/scikit-mobility/scikit-mobility) mobility-analysis library.
+**fastmob** is the fast mobility-analysis library for Python: a Rust-accelerated,
+backend-agnostic toolkit for preparing trajectories, modelling movement, and
+measuring individual and collective mobility.
 
-It exposes the same measure API but replaces the Python/pandas internals with a Rust extension (via PyO3) for compute-heavy kernels, and wraps the Python layer with [Narwhals](https://narwhals-dev.github.io/narwhals/) so any eager dataframe (pandas, polars, …) is accepted as input.
+It combines native Rust kernels with a Python API and
+[Narwhals](https://narwhals-dev.github.io/narwhals/) dataframe support, so the
+same workflow works with pandas, Polars, and other eager dataframe backends.
+Fastmob includes trajectory processing, the Positionfixes → Staypoints →
+Triplegs → Trips → Tours hierarchy, networks, privacy, fitting, and mobility
+generation models. Compatibility with [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility)
+is supported where it helps teams migrate, but it is not the library's scope or
+identity.
 
 # Key Features
 
 - **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — fastmob works without changes.
 
-- **Rust-accelerated core**:  500x median speedup due to rust parallelized and zero-copy operations.
+- **Rust-accelerated core**: parallel, zero-copy kernels for compute-heavy mobility workloads.
     
-- **Drop-in API**: function signatures mirror the original skmob library so migration is straightforward.
+- **Mobility-native toolkit**: work from raw position fixes through stays,
+  locations, trips, tours, flows, networks, privacy, fitting, and generation.
     
-- **Measured validation**: correctness tests, Python coverage, profiling, and standalone speed benchmarks make compatibility and performance claims reproducible.
+- **Migration-friendly**: familiar scikit-mobility APIs and reproducible parity
+  checks make adoption straightforward when compatibility matters.
 
-- **Zero-Copy**: Fastkit-Mobility process the data where it lives. Instead of copying, it directly access your dataframe in the memory, saving memory and making the processing faster.
+- **Zero-copy by design**: fastmob processes data where it lives, avoiding
+  unnecessary dataframe copies and memory pressure.
 
 - **Lightweight**: Python wheels ship compact, release-ready binaries.
 
@@ -31,9 +43,14 @@ pip install fastmob
 
 ## Validation and Performance
 
-fastmob is tested as both a compatibility project and a performance project. The correctness suite covers the Python package, exercises pandas and Polars inputs, and includes optional comparisons with skmob where those dependencies are installed. The benchmark suite uses standalone perf-counter scripts on representative mobility workloads, including Brightkite-derived data slices.
+fastmob is tested as a mobility library and a performance project. The
+correctness suite covers its native APIs across pandas and Polars, while optional
+scikit-mobility comparisons verify compatibility where the projects overlap. The
+benchmark suite uses standalone perf-counter scripts on representative mobility
+workloads, including Brightkite-derived data slices.
 
-<!-- For the reasoning behind this validation model and the commands used to reproduce it, see [Correctness, coverage, and benchmarking](explanations/correctness-coverage-and-benchmarking.md). -->
+For reproducible benchmark commands and methodology, see the
+[benchmarks page](features/benchmarks.md).
 
 ## Quick Example
 
@@ -73,10 +90,10 @@ print(result)
     uv add fastmob
     ```
 
-=== "generation extra"
+=== "generation fitting"
 
     ```bash
-    pip install "fastmob[generation]"
+    pip install statsmodels
     ```
 
 === "visualization extra"
@@ -105,9 +122,9 @@ print(result)
 === "Docs"
 
     ```bash
-    uv sync --extra docs
-    uv run --extra docs zensical serve
-    uv run --extra docs zensical build
+    uv sync --group docs
+    uv run --group docs zensical serve
+    uv run --group docs zensical build
     ```
 
 Development requires `uv` and a Rust toolchain. After setup the compiled Rust extension (`.so`) is placed directly in `fastmob/`, so the package is importable from the repo root without a separate pip install.
@@ -170,17 +187,15 @@ result = jump_lengths(df)  # returns a polars DataFrame
 
 | Extra | Installs | Used by |
 |---|---|---|
-| `fitting` | `scipy` | `kullback_leibler_divergence`, `pearson_correlation`, `spearman_correlation`, contact-network Wasserstein comparisons |
-| `generation` | `scipy`, `powerlaw`, `statsmodels`, `python-igraph`, `tqdm` | `fastmob.models` generation APIs |
-| `docs` | `mkdocs`, `mkdocs-material`, `mkdocstrings[python]` | documentation build |
+| `geo` | GeoPandas, Shapely, PyProj | geospatial data conversion and tessellation; H3 is native Rust |
 | `vis` | `fastmob-vis` | `fastmob.vis` generic ECharts visualization |
 
 Install an extra with:
 
 ```bash
-pip install "fastmob[fitting]"
+pip install "fastmob[geo]"
 # or with uv:
-uv sync --extra fitting
+uv sync --extra geo
 ```
 
 ## Generation Models

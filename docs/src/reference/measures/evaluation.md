@@ -1,3 +1,7 @@
+---
+icon: lucide/chart-line
+---
+
 # Evaluation Measures
 
 | API | Description |
@@ -10,8 +14,6 @@
 | [`rmse`](#fastmob.measures.evaluation.rmse) | Return the root mean squared error between true and predicted values. |
 | [`nrmse`](#fastmob.measures.evaluation.nrmse) | Return the normalized root mean squared error (RMSE / sum(true)). |
 | [`information_gain`](#fastmob.measures.evaluation.information_gain) | Return the information gain of true over predicted values. |
-| [`pearson_correlation`](#fastmob.measures.evaluation.pearson_correlation) | Return the Pearson correlation coefficient and its two-tailed p-value. |
-| [`spearman_correlation`](#fastmob.measures.evaluation.spearman_correlation) | Return the Spearman rank-order correlation coefficient and its p-value. |
 | [`kullback_leibler_divergence`](#fastmob.measures.evaluation.kullback_leibler_divergence) | Return the Kullback-Leibler divergence between true and predicted values. |
 | [`max_error`](#fastmob.measures.evaluation.max_error) | Return the maximum signed error max(true_i - pred_i). |
 | [`mse`](#fastmob.measures.evaluation.mse) | Return the mean squared error between true and predicted values. |
