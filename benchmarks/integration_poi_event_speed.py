@@ -4,7 +4,7 @@ Exercises `fastmob.integration.join_with_pois`, `join_with_pois_by_category`,
 and `join_with_events` -- capabilities with no fastmob-internal precedent to
 benchmark against and whose real-library comparison (PyMove) needs a
 dedicated, old-pandas `.venv-pymove` unsuitable for routine benchmark runs
-(see pyproject.toml's `dev-pymove` comment). Uses synthetic trajectory/POI/
+(see `benchmarks/environments/pymove.txt`). Uses synthetic trajectory/POI/
 event data (no external download) at a few sizes to report fastmob's own
 scaling.
 

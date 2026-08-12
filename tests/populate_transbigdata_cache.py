@@ -8,9 +8,8 @@ harness; fastmob's own code never imports them (see CLAUDE.md).
 
 Run inside .venv-transbigdata (a dedicated venv: installing transbigdata's
 extras into an already-populated .venv can silently downgrade unrelated
-packages like numpy via a full dependency re-resolution -- see
-pyproject.toml's dev-transbigdata comment):
-    bash scripts/setup_env.sh --venv .venv-transbigdata --transbigdata
+packages like numpy via a full dependency re-resolution):
+    bash scripts/setup_benchmark_env.sh transbigdata
     .venv-transbigdata/bin/python tests/populate_transbigdata_cache.py
 
 Or via the shell wrapper:

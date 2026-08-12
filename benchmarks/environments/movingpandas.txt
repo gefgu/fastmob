@@ -1,0 +1,3 @@
+# MovingPandas comparison environment
+movingpandas
+geopandas

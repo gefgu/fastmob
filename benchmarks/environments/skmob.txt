@@ -1,0 +1,6 @@
+# scikit-mobility comparison environment
+fiona
+h3
+scikit-mobility
+powerlaw
+python-igraph

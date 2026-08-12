@@ -61,12 +61,11 @@ if not hasattr(ops, 'cascaded_union') and hasattr(ops, 'unary_union'):
     ops.cascaded_union = ops.unary_union
 import skmob.measures.individual"
         if ! python -c "$SKMOB_IMPORT_CHECK" >/dev/null 2>&1; then
-            echo "==> Installing scikit-mobility comparison extra into .venv ..."
-            uv pip install -e ".[dev-skmob]"
+            echo "ERROR: run this profile from the dedicated scikit-mobility environment."
         fi
         python -c "$SKMOB_IMPORT_CHECK" >/dev/null 2>&1 || {
             echo "ERROR: scikit-mobility is required for --implementation $REQUESTED_IMPLEMENTATION."
-            echo "       Install it with: uv pip install -e '.[dev-skmob]'"
+            echo "       Create it with: bash scripts/setup_benchmark_env.sh skmob"
             exit 1
         }
     fi

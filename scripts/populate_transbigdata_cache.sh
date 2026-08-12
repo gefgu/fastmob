@@ -11,7 +11,7 @@
 # without transbigdata installed.
 #
 # First-time setup of .venv-transbigdata:
-#   bash scripts/setup_env.sh --venv .venv-transbigdata --transbigdata
+#   bash scripts/setup_benchmark_env.sh transbigdata
 #
 # Usage:
 #   bash scripts/populate_transbigdata_cache.sh
@@ -23,7 +23,7 @@ cd "$REPO_ROOT"
 
 if [ ! -d ".venv-transbigdata" ]; then
     echo "ERROR: .venv-transbigdata not found."
-    echo "  Set it up first: bash scripts/setup_env.sh --venv .venv-transbigdata --transbigdata"
+    echo "  Set it up first: bash scripts/setup_benchmark_env.sh transbigdata"
     exit 1
 fi
 

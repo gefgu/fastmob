@@ -6,7 +6,7 @@
 # the normal .venv can run comparison tests without ptrail installed.
 #
 # First-time setup of .venv-ptrail:
-#   bash scripts/setup_env.sh --venv .venv-ptrail --ptrail
+#   bash scripts/setup_benchmark_env.sh ptrail
 #
 # Usage:
 #   bash scripts/populate_ptrail_cache.sh
@@ -18,7 +18,7 @@ cd "$REPO_ROOT"
 
 if [ ! -d ".venv-ptrail" ]; then
     echo "ERROR: .venv-ptrail not found."
-    echo "  Set it up first: bash scripts/setup_env.sh --venv .venv-ptrail --ptrail"
+    echo "  Set it up first: bash scripts/setup_benchmark_env.sh ptrail"
     exit 1
 fi
 

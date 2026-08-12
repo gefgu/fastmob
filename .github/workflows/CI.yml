@@ -32,10 +32,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Ruff
-        run: uv run --extra dev ruff check
+        run: uv run --group dev ruff check
 
       - name: Tests
-        run: uv run --extra dev pytest
+        run: uv run --group dev pytest
 
   linux-wheels:
     name: Linux wheels (${{ matrix.target }})

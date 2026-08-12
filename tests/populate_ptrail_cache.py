@@ -21,8 +21,8 @@ the separate ``hampel`` PyPI package and uses the return value directly as a
 list of outlier indices (``df.drop(df.index[outlier_indices])``). This is
 only valid for ``hampel<1.0`` (which returned a plain list); ``hampel>=1.0``
 returns a ``Result`` namedtuple instead, which crashes that line with an
-``IndexError``. ``pyproject.toml``'s ``dev-ptrail`` extra pins
-``hampel==0.0.5`` (a version PTRAIL's own ``hampel>=0.0.5`` requirement
+``IndexError``. The ``ptrail`` benchmark environment pins ``hampel==0.0.5``
+(a version PTRAIL's own ``hampel>=0.0.5`` requirement
 already allows) so the real, unmodified ``Filters.hampel_outlier_detection``
 runs successfully — this script never patches or reimplements PTRAIL's own
 code.

@@ -7,7 +7,7 @@
 # installed.
 #
 # First-time setup of .venv-movingpandas:
-#   bash scripts/setup_env.sh --venv .venv-movingpandas --movingpandas
+#   bash scripts/setup_benchmark_env.sh movingpandas
 #
 # Usage:
 #   bash scripts/populate_movingpandas_cache.sh
@@ -19,7 +19,7 @@ cd "$REPO_ROOT"
 
 if [ ! -d ".venv-movingpandas" ]; then
     echo "ERROR: .venv-movingpandas not found."
-    echo "  Set it up first: bash scripts/setup_env.sh --venv .venv-movingpandas --movingpandas"
+    echo "  Set it up first: bash scripts/setup_benchmark_env.sh movingpandas"
     exit 1
 fi
 

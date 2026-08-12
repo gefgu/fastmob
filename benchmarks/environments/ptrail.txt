@@ -1,0 +1,5 @@
+# PTRAIL 1.0 expects hampel's pre-1.0 list return value.
+ptrail
+ipython<8
+hampel==0.0.5
+pyarrow

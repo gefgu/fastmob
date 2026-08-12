@@ -29,13 +29,16 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install docs dependencies
-        run: uv sync --extra docs
+        run: uv sync --group docs
 
       - name: Build Rust extension
         run: uv run --with maturin maturin develop --no-default-features --features stvd-emd
 
-      - name: Build docs
-        run: uv run zensical build
+      - name: Validate documentation links and conventions
+        run: uv run --group docs --with pytest pytest tests/docs
+
+      - name: Build docs strictly
+        run: uv run --group docs zensical build --strict
 
       - name: Upload GitHub Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

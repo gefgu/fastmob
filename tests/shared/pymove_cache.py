@@ -10,7 +10,7 @@ The resulting parquet files are committed here; fastmob's normal test
 suite never invokes pymove itself at test time, only the committed cache
 -- unlike TransBigData, PyMove needs Python <=3.10 and a pandas<1.4 pin
 incompatible with fastmob's normal .venv (see CLAUDE.md and this repo's
-``dev-pymove`` comment in pyproject.toml).
+``benchmarks/environments/pymove.txt``).
 
 Cache schema (``tests/shared/pymove_reference/<dataset>/``):
     doc_example_poi/

@@ -44,8 +44,7 @@ def select_workloads(
     if implementation == "skmob" and not registry:
         raise SystemExit(
             "No skmob workloads are available because scikit-mobility is not importable. "
-            "Install the comparison extra with `uv pip install -e '.[dev-skmob]'` "
-            "or run `bash scripts/setup_env.sh --skmob`, then rerun this profile."
+            "Create it with `bash scripts/setup_benchmark_env.sh skmob`, then rerun this profile."
         )
     workloads = requested or default_workloads
     if workloads is None:

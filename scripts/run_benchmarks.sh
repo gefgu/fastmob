@@ -245,7 +245,7 @@ if [ -x "$MOVINGPANDAS_VENV/bin/python" ] && can_import "$MOVINGPANDAS_VENV" mov
     done
 else
     echo "WARNING: movingpandas is not importable in ${MOVINGPANDAS_VENV#$REPO_ROOT/}; skipping MovingPandas benchmarks."
-    echo "         Install it with: source .venv/bin/activate && uv pip install -e '.[dev-movingpandas]'"
+    echo "         Create it with: bash scripts/setup_benchmark_env.sh movingpandas"
 fi
 
 if [ -x "$PTRAIL_VENV/bin/python" ] && can_import "$PTRAIL_VENV" ptrail; then
@@ -263,7 +263,7 @@ if [ -x "$PTRAIL_VENV/bin/python" ] && can_import "$PTRAIL_VENV" ptrail; then
     done
 else
     echo "WARNING: ptrail is not importable in ${PTRAIL_VENV#$REPO_ROOT/}; skipping PTRAIL benchmarks."
-    echo "         Create it with: bash scripts/setup_env.sh --venv .venv-ptrail --ptrail"
+    echo "         Create it with: bash scripts/setup_benchmark_env.sh ptrail"
 fi
 
 echo

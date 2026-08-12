@@ -1,0 +1,5 @@
+# PyMove needs an old pandas stack and therefore Python <=3.10.
+pymove
+numpy>=1.23,<2
+pandas>=1.1.0,<1.4.0
+dask[dataframe]<2022.2

@@ -17,7 +17,7 @@ installing it there anyway triggers a dedicated ``.venv-transbigdata``:
 installing transbigdata's extras (transitively: pykalman, scikit-base) into
 an *already-populated* .venv can trigger a full dependency re-resolution
 that silently downgrades unrelated packages (numpy in particular) --
-see pyproject.toml's ``dev-transbigdata`` comment.
+see ``benchmarks/environments/transbigdata.txt``.
 
 Cache schema (``tests/shared/transbigdata_reference/<dataset>/``):
     nodes.parquet:   node_idx, lat, lng          (fastmob RoadNetwork input)
