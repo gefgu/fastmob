@@ -300,6 +300,38 @@ class TrajDataFrame(BaseDataFrame):
             uid_col=self.uid_col,
         )
 
+    def work_location(self, **kwargs):
+        """Infer the most-visited weekday daytime location for each user.
+
+        Delegates to :func:`fastmob.measures.individual.work_location` using
+        this dataframe's resolved column metadata and sorted fast path.
+
+        Parameters
+        ----------
+        **kwargs
+            Forwarded to :func:`fastmob.measures.individual.work_location`.
+
+        Returns
+        -------
+        DataFrame
+            Inferred weekday daytime location for each user.
+
+        Examples
+        --------
+        >>> workplaces = tdf.work_location()  # doctest: +SKIP
+        """
+        from fastmob.measures.individual import work_location
+
+        return work_location(
+            self.df,
+            datetime_col=self.datetime_col,
+            lat_col=self.lat_col,
+            lng_col=self.lng_col,
+            uid_col=self.uid_col,
+            presorted=self.sorted,
+            **kwargs,
+        )
+
     def interpolate(self, method: str = "linear", sampling_rate_s: float = 3600.0, **method_kwargs) -> TrajDataFrame:
         """Fill gaps in the trajectory using a named interpolation algorithm.
 
@@ -616,9 +648,9 @@ class TrajDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[data]``::
+        Requires ``fastmob[geo]``::
 
-            pip install "fastmob[data]"
+            pip install "fastmob[geo]"
 
         Examples
         --------
@@ -633,7 +665,7 @@ class TrajDataFrame(BaseDataFrame):
         try:
             import geopandas as gpd
         except ImportError as exc:
-            raise ImportError("geopandas is required for flow datasets: pip install fastmob[data]") from exc
+            raise ImportError("geopandas is required for flow datasets: pip install fastmob[geo]") from exc
 
         frame = self._to_pandas()
         frame = frame.sort_values([self.uid_col, self.datetime_col], kind="mergesort").reset_index(drop=True)
@@ -670,9 +702,9 @@ class TrajDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[data]``::
+        Requires ``fastmob[geo]``::
 
-            pip install "fastmob[data]"
+            pip install "fastmob[geo]"
 
         Examples
         --------
@@ -690,7 +722,7 @@ class TrajDataFrame(BaseDataFrame):
         try:
             import geopandas as gpd
         except ImportError as exc:
-            raise ImportError('geopandas is required: pip install "fastmob[data]"') from exc
+            raise ImportError('geopandas is required: pip install "fastmob[geo]"') from exc
 
         native_df = self._to_pandas()
         return gpd.GeoDataFrame(
@@ -720,9 +752,9 @@ class TrajDataFrame(BaseDataFrame):
 
         Notes
         -----
-        Requires ``fastmob[data]``::
+        Requires ``fastmob[geo]``::
 
-            pip install "fastmob[data]"
+            pip install "fastmob[geo]"
 
         Examples
         --------
@@ -737,7 +769,7 @@ class TrajDataFrame(BaseDataFrame):
             import pandas as pd
             from shapely.geometry import Point, Polygon
         except ImportError as exc:
-            raise ImportError('geopandas and shapely are required: pip install "fastmob[data]"') from exc
+            raise ImportError('geopandas and shapely are required: pip install "fastmob[geo]"') from exc
 
         gdf = self.to_geodataframe()
 

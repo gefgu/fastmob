@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from datetime import timedelta
 from typing import Any, Literal, get_args
 
 import narwhals as nw
@@ -12,30 +11,31 @@ from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
+    _as_arrow,
+    _build_indexed_user_ranges,
+    _empty_like,
+    _extract_timestamps,
     _pick_existing_column,
+    _take_uid_values,
+    _timestamps_ms_to_datetime_ns,
+    _to_native,
 )
 
 COLD_START_STRATEGIES = Literal["frequency", "baseline", "max_frequency", "suffix", "none"]
 CLUSTERING_METHODS = Literal["kmeans", "gmm"]
 _END_TIMESTAMP_CANDIDATES: list[str] = ["end_timestamp", "end_time"]
-_FIVE_MINUTES = timedelta(minutes=5)
 _TIMESTAMP_CANDIDATES: list[str] = TIMESTAMP_CANDIDATES + [
     col for col in DATETIME_CANDIDATES if col not in TIMESTAMP_CANDIDATES
 ]
 _TRAJECTORY_TIMESTAMP_COL = "__fastmob_trajectory_timestamp__"
-
-
-def _floor_5min(dt: Any) -> Any:
-    if hasattr(dt, "floor"):
-        return dt.floor("5min")
-    return dt.replace(minute=(dt.minute // 5) * 5, second=0, microsecond=0)
-
-
-def _ceil_5min(dt: Any) -> Any:
-    if hasattr(dt, "ceil"):
-        return dt.ceil("5min")
-    floored = _floor_5min(dt)
-    return floored if floored == dt else floored + _FIVE_MINUTES
+#: How many original 5-minute slices a row stands for. Always 1 except for
+#: `_expand_to_5min_trajectory`'s `impute_gaps=True` output, where a row can
+#: represent a whole run-length-compressed stretch of identical consecutive
+#: slices (see that function's docstring). Every place that used to
+#: `.count()` rows to get a slice count now `.sum()`s this column instead,
+#: so compression changes memory/row-count but never changes a single
+#: reported number.
+_RUN_LENGTH_COL = "__fastmob_run_length__"
 
 
 def _expand_to_5min_trajectory(
@@ -47,94 +47,90 @@ def _expand_to_5min_trajectory(
     *,
     impute_gaps: bool = False,
 ) -> Any:
-    user_values = nw_df.get_column(user_id_col).to_list()
-    location_values = nw_df.get_column(location_id_col).to_list()
-    start_values = nw_df.get_column(start_col).to_list()
-    end_values = nw_df.get_column(end_col).to_list()
+    """Expand each row's ``[start, end]`` interval into 5-minute-aligned slices.
 
-    rows: list[tuple[Any, Any, Any]] = []
-    seen: set[tuple[Any, Any]] = set()
+    Routes through Rust kernels in ``fastmob._core``, parallelized per user
+    via rayon (``fastmob-core/src/preprocessing/expand_trajectory.rs``):
+    send start/end timestamps and the per-user grouping to Rust, get back
+    per-slice results, and reconstruct the location column in Python via
+    ``pc.take``. Replaces what used to be a pure-Python loop (``.to_list()``
+    then a nested ``for``/``while``) that didn't scale -- at 4M input rows it
+    produced ~24M expanded rows and made
+    ``intermittance_and_degree_of_return``/``exploration_profiling``
+    pandas-backend calls run roughly 9x slower than polars at that size, and
+    left ``compute_profiles`` (which always calls with ``impute_gaps=True``)
+    unusable at that scale.
 
-    for uid, location, start, end in zip(user_values, location_values, start_values, end_values):
-        if start is None or end is None:
-            continue
+    ``impute_gaps=False`` (the common case) calls
+    ``expand_5min_trajectory_batch_indexed``, which only touches timestamps
+    and hands back ``source_row_idx`` for the caller to ``pc.take`` any
+    per-row column from the *original* row -- one output row per slice,
+    ``_RUN_LENGTH_COL`` is always 1. ``impute_gaps=True`` calls
+    ``expand_5min_trajectory_with_imputation_batch_indexed``, which also
+    fills gaps between a user's first and last observed slice using
+    hour-of-day "anchor" locations; since anchor selection needs location
+    values, this variant takes dense-factorized location codes. Its output is
+    **run-length-compressed**: one row per maximal run of consecutive
+    same-location slices (observed and/or imputed) rather than one row per
+    slice, with ``_RUN_LENGTH_COL`` giving each row's real slice count. A
+    years-long sparse check-in history can otherwise materialize hundreds of
+    thousands of near-identical nightly/workday rows per user; compressed,
+    it's one row per run. Every downstream consumer of this output
+    (``intermittance_and_degree_of_return``'s block aggregation,
+    ``_apply_cold_start_strategy``'s frequency-based branches) sums
+    ``_RUN_LENGTH_COL`` instead of counting rows, so compression changes row
+    count and memory, never a single reported number -- except
+    ``cold_start_strategy="baseline"``, which needs real per-day timestamps
+    and can undercount distinct active days for a run that spans multiple
+    calendar days; not exercised by any current caller (``compute_profiles``
+    always uses the default ``"frequency"``), flagged here rather than
+    silently risked.
+    """
+    import pyarrow.compute as pc
 
-        timestamp = _ceil_5min(start)
-        last_timestamp = _floor_5min(end)
-        while timestamp <= last_timestamp:
-            key = (uid, timestamp)
-            if key not in seen:
-                rows.append((uid, timestamp, location))
-                seen.add(key)
-            timestamp = timestamp + _FIVE_MINUTES
+    start_ms = _extract_timestamps(nw_df, start_col)
+    end_ms = _extract_timestamps(nw_df, end_col)
+    uid_values, sorted_indices, ends = _build_indexed_user_ranges(nw_df, user_id_col, timestamps=start_ms)
 
     if impute_gaps:
-        rows = _impute_5min_gaps(rows)
+        from fastmob._core import expand_5min_trajectory_with_imputation_batch_indexed
+        from fastmob.utils._common import _factorize_arrow_values
 
-    rows.sort(key=lambda row: (str(row[0]), row[1]))
-    return nw.from_dict(
-        {
-            user_id_col: [row[0] for row in rows],
-            _TRAJECTORY_TIMESTAMP_COL: [row[1] for row in rows],
-            location_id_col: [row[2] for row in rows],
-        },
-        backend=nw_df.implementation,
-    )
+        location_array = _as_arrow(nw_df.get_column(location_id_col))
+        location_codes, representative_indices = _factorize_arrow_values(location_array, sort=False)
+        # `representative_indices` are row indices into `location_array` (one
+        # per unique code), not resolved values -- see `_build_indexed_user_ranges`
+        # for the same `pc.take(original_array, representatives)` pattern.
+        location_representatives = pc.take(location_array, representative_indices)
+        user_range_idx, timestamps_ms, location_codes_out, run_lengths = (
+            expand_5min_trajectory_with_imputation_batch_indexed(
+                _as_arrow(start_ms), _as_arrow(end_ms), location_codes, sorted_indices, ends
+            )
+        )
+        if len(user_range_idx) == 0:
+            empty = _empty_like(nw_df, [user_id_col, _TRAJECTORY_TIMESTAMP_COL, location_id_col, _RUN_LENGTH_COL])
+            return nw.from_native(empty, eager_only=True)
+        location_values = pc.take(location_representatives, _as_arrow(location_codes_out))
+        run_length_values = _as_arrow(run_lengths)
+    else:
+        from fastmob._core import expand_5min_trajectory_batch_indexed
 
+        user_range_idx, timestamps_ms, source_row_idx = expand_5min_trajectory_batch_indexed(
+            _as_arrow(start_ms), _as_arrow(end_ms), sorted_indices, ends
+        )
+        if len(user_range_idx) == 0:
+            empty = _empty_like(nw_df, [user_id_col, _TRAJECTORY_TIMESTAMP_COL, location_id_col, _RUN_LENGTH_COL])
+            return nw.from_native(empty, eager_only=True)
+        location_values = pc.take(_as_arrow(nw_df.get_column(location_id_col)), _as_arrow(source_row_idx))
+        run_length_values = np.ones(len(user_range_idx), dtype=np.uint32)
 
-def _impute_5min_gaps(rows: list[tuple[Any, Any, Any]]) -> list[tuple[Any, Any, Any]]:
-    if not rows:
-        return rows
-
-    rows_by_user: dict[Any, list[tuple[Any, Any, Any]]] = {}
-    for row in rows:
-        rows_by_user.setdefault(row[0], []).append(row)
-
-    imputed_rows: list[tuple[Any, Any, Any]] = []
-    for uid, user_rows in rows_by_user.items():
-        user_rows.sort(key=lambda row: row[1])
-        anchors = _gap_imputation_anchors(user_rows)
-        observed_by_timestamp = {timestamp: location for _, timestamp, location in user_rows}
-
-        timestamp = user_rows[0][1]
-        last_timestamp = user_rows[-1][1]
-        while timestamp <= last_timestamp:
-            location = observed_by_timestamp.get(timestamp)
-            if location is None:
-                location = _anchor_for_hour(anchors, timestamp.hour)
-            if location is not None:
-                imputed_rows.append((uid, timestamp, location))
-            timestamp = timestamp + _FIVE_MINUTES
-
-    return imputed_rows
-
-
-def _gap_imputation_anchors(user_rows: list[tuple[Any, Any, Any]]) -> dict[str, Any]:
-    windows = {
-        "home": {2, 3, 4, 5},
-        "work_a": {10},
-        "work_b": {14, 15, 16},
+    out_dict = {
+        user_id_col: _take_uid_values(uid_values, user_range_idx),
+        _TRAJECTORY_TIMESTAMP_COL: _timestamps_ms_to_datetime_ns(timestamps_ms),
+        location_id_col: location_values,
+        _RUN_LENGTH_COL: run_length_values,
     }
-
-    anchors: dict[str, Any] = {}
-    for name, hours in windows.items():
-        counts: dict[Any, int] = {}
-        for _, timestamp, location in user_rows:
-            if timestamp.hour in hours:
-                counts[location] = counts.get(location, 0) + 1
-        if counts:
-            anchors[name] = max(counts, key=counts.get)
-    return anchors
-
-
-def _anchor_for_hour(anchors: dict[str, Any], hour: int) -> Any:
-    if hour in {2, 3, 4, 5}:
-        return anchors.get("home")
-    if hour == 10:
-        return anchors.get("work_a")
-    if hour in {14, 15, 16}:
-        return anchors.get("work_b")
-    return None
+    return nw.from_native(_to_native(out_dict, nw_df), eager_only=True)
 
 
 def _apply_cold_start_strategy(
@@ -148,9 +144,12 @@ def _apply_cold_start_strategy(
     """Apply cold-start logic and return updated dataframe + known-location expression."""
 
     if cold_start_strategy == "frequency":
-        # Paper's Algorithm 2: Visitation-frequency-based identification
+        # Paper's Algorithm 2: Visitation-frequency-based identification.
+        # Sums `_RUN_LENGTH_COL` (real slice count per row) rather than
+        # counting rows, so run-length-compressed input (impute_gaps=True)
+        # yields the same visit frequencies as uncompressed input would.
         loc_counts = nw_df.group_by([user_id_col, "location_key"]).agg(
-            nw.col("location_key").count().alias("_visit_count")
+            nw.col(_RUN_LENGTH_COL).sum().alias("_visit_count")
         )
 
         # Find the average visitation frequency per user
@@ -239,9 +238,10 @@ def _apply_cold_start_strategy(
         is_known_expr = nw.col("_is_cold_start").fill_null(False)
 
     elif cold_start_strategy == "max_frequency":
-        # Your original 90% of max implementation
+        # Your original 90% of max implementation. Sums `_RUN_LENGTH_COL`
+        # for the same reason the "frequency" branch above does.
         loc_counts = nw_df.group_by([user_id_col, "location_key"]).agg(
-            nw.col("location_key").count().alias("_visit_count")
+            nw.col(_RUN_LENGTH_COL).sum().alias("_visit_count")
         )
 
         max_counts = loc_counts.group_by(user_id_col).agg(nw.col("_visit_count").max().alias("_max_count"))
@@ -387,6 +387,14 @@ def intermittance_and_degree_of_return(
             )
             timestamp_col = _TRAJECTORY_TIMESTAMP_COL
 
+    # Only `_expand_to_5min_trajectory`'s impute_gaps=True output carries a
+    # real (possibly >1) `_RUN_LENGTH_COL`; every other path (no trajectory
+    # expansion, or impute_gaps=False) is one row per slice, so default it
+    # to a literal 1 here rather than duplicating that default at every
+    # `.sum(_RUN_LENGTH_COL)` call site below.
+    if _RUN_LENGTH_COL not in nw_df.columns:
+        nw_df = nw_df.with_columns(nw.lit(1).alias(_RUN_LENGTH_COL))
+
     # 1. Build the unique location key
     location_expr = nw.col(location_id_col).cast(nw.String).fill_null("unknown")
     nw_df = nw_df.with_columns(location_key=location_expr)
@@ -429,8 +437,12 @@ def intermittance_and_degree_of_return(
     # Generate isolated block IDs
     nw_df = nw_df.with_columns(block_id=nw.col("block_change").cum_sum())
 
-    # 8. Aggregate block volumes (counting pure visits as per the paper, discarding duration)
-    blocks = nw_df.group_by([user_id_col, "block_id", "is_known"]).agg(nw.col("block_id").count().alias("block_length"))
+    # 8. Aggregate block volumes (counting pure visits as per the paper, discarding duration).
+    # Sums `_RUN_LENGTH_COL` rather than counting rows so run-length-compressed
+    # blocks (impute_gaps=True) report the same lengths uncompressed rows would.
+    blocks = nw_df.group_by([user_id_col, "block_id", "is_known"]).agg(
+        nw.col(_RUN_LENGTH_COL).sum().alias("block_length")
+    )
 
     # 9. Compute the mean sequential lengths (#U and #R)
     explorations = (

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use arrow_array::{
+    types::{Float64Type, Int64Type, UInt64Type, UInt8Type},
     Array, ArrayRef, BooleanArray, Float64Array, Int32Array, Int64Array, PrimitiveArray,
-    UInt8Array, UInt32Array, UInt64Array,
-    types::{Float64Type, Int64Type, UInt8Type, UInt64Type},
+    UInt32Array, UInt64Array, UInt8Array,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -60,11 +60,13 @@ pub fn u32_results_into_arrow(results: Vec<u32>) -> PyArray {
 /// Arrow null slot instead of a valid-looking sentinel integer -- for kernels
 /// (e.g. H3 cell conversion) that use a reserved value to mean "invalid".
 pub fn u64_results_into_arrow_nullable(results: Vec<u64>, sentinel: u64) -> PyArray {
-    let array: ArrayRef = Arc::new(UInt64Array::from_iter(
-        results
-            .into_iter()
-            .map(|v| if v == sentinel { None } else { Some(v) }),
-    ));
+    let array: ArrayRef = Arc::new(UInt64Array::from_iter(results.into_iter().map(|v| {
+        if v == sentinel {
+            None
+        } else {
+            Some(v)
+        }
+    })));
     PyArray::from_array_ref(array)
 }
 

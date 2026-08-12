@@ -225,7 +225,7 @@ def fetch_road_network(
                 POWER(SIN(RADIANS((to_lng - from_lng) / 2)), 2)
             )) AS length_m
         FROM pairs
-    """).arrow()
+    """).to_arrow_table()
 
     logger.info("Fetched %d road segment pieces; deriving speeds/direction ...", df.num_rows)
 
@@ -354,7 +354,7 @@ def fetch_rail_network(
                 POWER(SIN(RADIANS((to_lng - from_lng) / 2)), 2)
             )) AS length_m
         FROM pairs
-    """).arrow()
+    """).to_arrow_table()
 
     logger.info("Fetched %d rail segment pieces; deriving weights ...", df.num_rows)
     node_coords: dict[str, tuple[float, float]] = {}

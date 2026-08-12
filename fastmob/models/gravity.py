@@ -220,13 +220,10 @@ class Gravity:
 
         Parameters
         ----------
-        spatial_tessellation : DataFrame or GeoDataFrame
-            The spatial tessellation on which to run the model. Must include a tile
-            identifier column, a relevance column, and (for ``"flows"`` and
-            ``"flows_sample"`` output) a total-outflow column.
-        tile_id_column : str, optional
-            Name of the column containing the location identifier. The default is
-            ``"tile_id"``.
+        locations : Locations
+            Global locations on which to run the model. They must provide a
+            relevance column and, for ``"flows"`` and ``"flows_sample"`` output,
+            a total-outflow column.
         tot_outflows_column : str, optional
             Name of the column containing the total outflow per location. Required
             when ``out_format`` is ``"flows"`` or ``"flows_sample"``. The default is

@@ -5,7 +5,7 @@ from __future__ import annotations
 try:
     from pyproj import CRS
 except ImportError as exc:  # pragma: no cover - exercised when optional deps are missing.
-    raise ImportError("pyproj is required for tessellation: pip install fastmob[tessellation]") from exc
+    raise ImportError("pyproj is required for tessellation: pip install fastmob[geo]") from exc
 
 UNIVERSAL_CRS = CRS.from_epsg(3857)
 DEFAULT_CRS = CRS.from_epsg(4326)

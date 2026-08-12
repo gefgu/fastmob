@@ -217,13 +217,6 @@ class EPR:
         random_state : int or None, optional
             Seed for the random number generator, enabling reproducible results.
             The default is ``None`` (non-deterministic).
-        log_file : str or None, optional
-            Unused in fastmob (retained for API compatibility). The default is
-            ``None``.
-        show_progress : bool, optional
-            Unused in fastmob (retained for API compatibility). The default is
-            ``False``.
-
         Returns
         -------
         DataFrame
@@ -482,11 +475,6 @@ class DensityEPR(EPR):
             gravity model. The default is ``"relevance"``.
         random_state : int or None, optional
             Random seed for reproducibility. The default is ``None``.
-        log_file : str or None, optional
-            Unused (retained for API compatibility). The default is ``None``.
-        show_progress : bool, optional
-            Unused (retained for API compatibility). The default is ``False``.
-
         Returns
         -------
         DataFrame
@@ -649,11 +637,6 @@ class SpatialEPR(EPR):
             is ``None`` (chosen uniformly at random).
         random_state : int or None, optional
             Random seed for reproducibility. The default is ``None``.
-        log_file : str or None, optional
-            Unused (retained for API compatibility). The default is ``None``.
-        show_progress : bool, optional
-            Unused (retained for API compatibility). The default is ``False``.
-
         Returns
         -------
         DataFrame
@@ -790,11 +773,6 @@ class Ditras(EPR):
             gravity exploration phase. The default is ``"relevance"``.
         random_state : int or None, optional
             Random seed for reproducibility. The default is ``None``.
-        log_file : str or None, optional
-            Unused (retained for API compatibility). The default is ``None``.
-        show_progress : bool, optional
-            Unused (retained for API compatibility). The default is ``False``.
-
         Returns
         -------
         DataFrame

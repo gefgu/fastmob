@@ -27,6 +27,7 @@ from .measures import (
     intermittance_and_degree_of_return,
     jensen_shannon_divergence,
     jump_lengths,
+    jump_lengths_road,
     k_radius_of_gyration,
     kullback_leibler_divergence,
     location_frequency,
@@ -45,6 +46,7 @@ from .measures import (
     od_metrics_per_area,
     r_squared,
     radius_of_gyration,
+    radius_of_gyration_road,
     random_entropy,
     random_location_entropy,
     real_entropy,
@@ -60,6 +62,7 @@ from .measures import (
     visits_per_location,
     visits_per_time_unit,
     waiting_times,
+    work_location,
     wasserstein_distance,
 )
 from .preprocessing import (
@@ -142,6 +145,7 @@ __all__ = [
     "io",
     "jensen_shannon_divergence",
     "jump_lengths",
+    "jump_lengths_road",
     "k_radius_of_gyration",
     "kullback_leibler_divergence",
     "latlng_to_h3",
@@ -163,6 +167,7 @@ __all__ = [
     "privacy",
     "r_squared",
     "radius_of_gyration",
+    "radius_of_gyration_road",
     "random_entropy",
     "random_location_entropy",
     "real_entropy",
@@ -189,5 +194,6 @@ __all__ = [
     "visits_per_location",
     "visits_per_time_unit",
     "waiting_times",
+    "work_location",
     "wasserstein_distance",
 ]

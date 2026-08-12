@@ -377,6 +377,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_kmeans, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        clustering::cluster_standardized_kmeans_arrow,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(clustering::cluster_gmm, m)?)?;
     m.add_function(wrap_pyfunction!(models::od::model_gravity_matrix_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(models::od::model_gravity_od_row_numpy, m)?)?;

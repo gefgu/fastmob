@@ -1,6 +1,7 @@
 pub mod cdr;
 pub mod clustering;
 pub mod compress_traj;
+pub mod expand_trajectory;
 pub mod filter_traj;
 pub mod h3;
 pub mod h3_cluster;

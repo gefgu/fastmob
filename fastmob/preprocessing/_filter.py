@@ -157,8 +157,10 @@ def filter(
         every other method. See the ``method="speed"`` description below.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    is_sorted: Whether the trajectory is already sorted by user and time; And Nulls/NaNs have been dropped.
-    Setting this to True can speed up processing but may lead to incorrect results if the data is not properly preprocessed.
+    is_sorted:
+        Whether the trajectory is already sorted by user and time, with nulls
+        and NaNs removed. Setting this to ``True`` can speed up processing but
+        may lead to incorrect results if the data is not properly preprocessed.
     method:
         Name of the outlier-detection algorithm to run. One of ``"speed"``
         (default, backward-compatible with every prior ``filter()`` call

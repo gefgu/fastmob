@@ -171,13 +171,6 @@ class STS_epr:
             The default is ``0.5``.
         random_state : int or None, optional
             Random seed for reproducibility. The default is ``None``.
-        log_file : str or None, optional
-            Unused (retained for API compatibility). The default is ``None``.
-        verbose : int, optional
-            Unused (retained for API compatibility). The default is ``0``.
-        show_progress : bool, optional
-            Unused (retained for API compatibility). The default is ``False``.
-
         Returns
         -------
         DataFrame

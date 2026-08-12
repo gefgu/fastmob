@@ -47,7 +47,7 @@ def _road_or_haversine_km(
     return np.where(connected, road_km, fallback_km)
 
 
-def jump_lengths_km(
+def jump_lengths_road(
     traj: Any,
     *,
     network: RoadNetwork,
@@ -122,7 +122,7 @@ def jump_lengths_km(
     )
 
 
-def radius_of_gyration_km(
+def radius_of_gyration_road(
     traj: Any,
     *,
     network: RoadNetwork,
@@ -222,5 +222,12 @@ def radius_of_gyration_km(
     return result.to_native()
 
 
+# Compatibility aliases retained for callers that adopted the first network
+# API.  The public names make the distance mode explicit rather than merely
+# changing the unit suffix.
+jump_lengths_km = jump_lengths_road
+radius_of_gyration_km = radius_of_gyration_road
+jump_lengths_road.__module__ = "fastmob.measures.individual"
+radius_of_gyration_road.__module__ = "fastmob.measures.individual"
 jump_lengths_km.__module__ = "fastmob.measures.individual"
 radius_of_gyration_km.__module__ = "fastmob.measures.individual"

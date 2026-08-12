@@ -32,8 +32,8 @@ def test_foursquare_nyc_prepare_parses_tab_separated_checkins(tmp_path: Path):
 def test_flow_foursquare_nyc_prepare_builds_flowdataframe(tmp_path: Path, monkeypatch):
     """A GeoDataFrame `base_shape` skips tilers.py's Nominatim geocoding call
     (only a bare place-name string triggers it), so this stays offline."""
-    gpd = pytest.importorskip("geopandas", reason="geopandas not installed (fastmob[tessellation])")
-    shapely_geometry = pytest.importorskip("shapely.geometry", reason="shapely not installed (fastmob[tessellation])")
+    gpd = pytest.importorskip("geopandas", reason="geopandas not installed (fastmob[geo])")
+    shapely_geometry = pytest.importorskip("shapely.geometry", reason="shapely not installed (fastmob[geo])")
     import importlib
 
     module = importlib.import_module("fastmob.data.datasets.flow_foursquare_nyc.flow_foursquare_nyc")

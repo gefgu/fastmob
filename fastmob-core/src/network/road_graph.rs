@@ -39,7 +39,9 @@ fn build_kd_tree(points: &mut [SpherePoint], depth: usize) -> Option<Box<KdNode>
             .then_with(|| left.index.cmp(&right.index))
     });
     let (left, middle_and_right) = points.split_at_mut(mid);
-    let (point, right) = middle_and_right.split_first_mut().expect("non-empty midpoint");
+    let (point, right) = middle_and_right
+        .split_first_mut()
+        .expect("non-empty midpoint");
     Some(Box::new(KdNode {
         point: *point,
         axis,
@@ -49,7 +51,13 @@ fn build_kd_tree(points: &mut [SpherePoint], depth: usize) -> Option<Box<KdNode>
 }
 
 fn squared_distance(left: [f64; 3], right: [f64; 3]) -> f64 {
-    (left[0] - right[0]).mul_add(left[0] - right[0], (left[1] - right[1]).mul_add(left[1] - right[1], (left[2] - right[2]) * (left[2] - right[2])))
+    (left[0] - right[0]).mul_add(
+        left[0] - right[0],
+        (left[1] - right[1]).mul_add(
+            left[1] - right[1],
+            (left[2] - right[2]) * (left[2] - right[2]),
+        ),
+    )
 }
 
 fn nearest_kd(node: &KdNode, query: [f64; 3], best: &mut (usize, f64)) {
@@ -115,7 +123,8 @@ pub fn batch_nearest_coordinates(
             }
             let mut best = (usize::MAX, f64::INFINITY);
             nearest_kd(&tree, unit_sphere(lat, lng), &mut best);
-            let distance_m = haversine_km(lat, lng, reference_lat[best.0], reference_lng[best.0]) * 1000.0;
+            let distance_m =
+                haversine_km(lat, lng, reference_lat[best.0], reference_lng[best.0]) * 1000.0;
             (best.0 as i64, distance_m)
         })
         .unzip()

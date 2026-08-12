@@ -8,7 +8,7 @@ class nyc_boundaries(DatasetBuilder):
         try:
             import geopandas as gpd
         except ImportError as exc:
-            raise ImportError("geopandas is required to load shape datasets: pip install fastmob[data]") from exc
+            raise ImportError("geopandas is required to load shape datasets: pip install fastmob[geo]") from exc
 
         fs = [path for path in f_names if path.endswith(".shp")]
         return gpd.read_file(fs[0])

@@ -9,10 +9,6 @@ from fastmob.measures.individual.profile_classification import compute_profiles
 VALID_PROFILES = {"routiners", "regulars", "scouters"}
 
 
-def _skip_if_no_sklearn():
-    pytest.importorskip("sklearn", reason="scikit-learn not installed (fastmob[ai])")
-
-
 def _make_visits(n_each: int = 4, visits_per_user: int = 12) -> pd.DataFrame:
     """Synthetic stay-level visits with three clearly-separated mobility types.
 
@@ -55,7 +51,6 @@ def _make_visits(n_each: int = 4, visits_per_user: int = 12) -> pd.DataFrame:
 
 
 def test_output_columns_and_profile_labels():
-    _skip_if_no_sklearn()
     visits = _make_visits()
     result = compute_profiles(visits, n_clusters=3, random_state=0)
     expected_cols = {
@@ -73,8 +68,18 @@ def test_output_columns_and_profile_labels():
     assert len(result) == 12
 
 
+def test_is_deterministic_without_sklearn(monkeypatch):
+    """Profile classification is a native kernel, not an optional ML extra."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "sklearn", None)
+    visits = _make_visits()
+    first = compute_profiles(visits, n_clusters=3, random_state=17).sort_values("uid").reset_index(drop=True)
+    second = compute_profiles(visits, n_clusters=3, random_state=17).sort_values("uid").reset_index(drop=True)
+    pd.testing.assert_frame_equal(first, second, check_dtype=False, atol=1e-9)
+
+
 def test_routiners_and_scouters_correctly_separated():
-    _skip_if_no_sklearn()
     visits = _make_visits()
     result = compute_profiles(visits, n_clusters=3, random_state=0)
     by_uid = result.set_index("uid")["profile"]
@@ -86,7 +91,6 @@ def test_routiners_and_scouters_correctly_separated():
 
 
 def test_pandas_polars_agree():
-    _skip_if_no_sklearn()
     pl = pytest.importorskip("polars", reason="Polars not installed")
     visits = _make_visits()
     pandas_result = compute_profiles(visits, n_clusters=3, random_state=0).sort_values("uid").reset_index(drop=True)
@@ -100,7 +104,6 @@ def test_pandas_polars_agree():
 
 
 def test_works_without_purpose_column():
-    _skip_if_no_sklearn()
     visits = _make_visits().drop(columns=["purpose"])
     result = compute_profiles(visits, n_clusters=3, random_state=0)
     assert len(result) == 12
@@ -108,7 +111,6 @@ def test_works_without_purpose_column():
 
 
 def test_explicit_column_overrides():
-    _skip_if_no_sklearn()
     visits = _make_visits().rename(
         columns={"uid": "user", "start_timestamp": "start", "end_timestamp": "end", "location_id": "loc"}
     )
@@ -126,7 +128,6 @@ def test_explicit_column_overrides():
 
 
 def test_too_few_users_raises():
-    _skip_if_no_sklearn()
     base = pd.Timestamp("2020-01-01")
     rows = [
         {
@@ -148,7 +149,6 @@ def test_too_few_users_raises():
 
 
 def test_missing_required_column_raises():
-    _skip_if_no_sklearn()
     df = pd.DataFrame({"foo": [1, 2], "bar": [3, 4]})
     with pytest.raises(ValueError):
         compute_profiles(df, n_clusters=3)

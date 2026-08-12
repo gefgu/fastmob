@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, Float64Array, Int64Array, UInt8Array, UInt32Array, UInt64Array,
+    Array, ArrayRef, Float64Array, Int64Array, UInt32Array, UInt64Array, UInt8Array,
 };
 use fastmob_core::social::co_presence_network::{
     event_graphs, flatten_events, recast_classify, rnd_graph, t_rnd_graph, validate_recast,

@@ -12,7 +12,7 @@ from .max_distance_from_home import max_distance_from_home
 from .maximum_distance import maximum_distance
 from .mobility_profiling import exploration_profiling, intermittance_and_degree_of_return
 from .motifs import daily_motifs, motif_distribution
-from .network_distance import jump_lengths_km, radius_of_gyration_km
+from .network_distance import jump_lengths_road, radius_of_gyration_road
 from .number_of_locations import number_of_locations
 from .number_of_visits import number_of_visits
 from .profile_classification import compute_profiles
@@ -23,6 +23,7 @@ from .recency_rank import recency_rank
 from .regularity import regularity
 from .uncorrelated_entropy import uncorrelated_entropy
 from .waiting_times import waiting_times
+from .work_location import work_location
 
 __all__ = [
     "activity_transition_matrix",
@@ -37,7 +38,7 @@ __all__ = [
     "individual_mobility_network",
     "intermittance_and_degree_of_return",
     "jump_lengths",
-    "jump_lengths_km",
+    "jump_lengths_road",
     "k_radius_of_gyration",
     "location_frequency",
     "max_distance_from_home",
@@ -46,7 +47,7 @@ __all__ = [
     "number_of_locations",
     "number_of_visits",
     "radius_of_gyration",
-    "radius_of_gyration_km",
+    "radius_of_gyration_road",
     "random_entropy",
     "real_entropy",
     "recency_rank",
@@ -56,4 +57,5 @@ __all__ = [
     "uncorrelated_entropy",
     "visit_purpose_distribution",
     "waiting_times",
+    "work_location",
 ]

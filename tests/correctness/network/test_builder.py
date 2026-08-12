@@ -11,7 +11,7 @@ import socket
 
 import pytest
 
-pytest.importorskip("duckdb", reason="duckdb not installed (fastmob[network])")
+pytest.importorskip("duckdb", reason="duckdb not installed")
 
 
 def _has_network() -> bool:

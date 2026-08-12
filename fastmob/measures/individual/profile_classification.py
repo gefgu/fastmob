@@ -3,8 +3,8 @@
 Distinct from this package's :func:`~fastmob.measures.individual.mobility_profiling.exploration_profiling`:
 that function clusters on a single feature (``degree_of_return``) via a
 dependency-free Rust KMeans/GMM kernel. This module clusters on **two**
-standardized features (``[intermittency, degree_of_return]``) via
-scikit-learn, alongside additional per-user descriptive metrics (regularity,
+standardized features (``[intermittency, degree_of_return]``) via a native
+Rust K-Means kernel, alongside additional per-user descriptive metrics (regularity,
 diversity, entropy, stationarity) useful for reporting. The two clusterings
 are not expected to produce identical cluster assignments.
 """
@@ -33,17 +33,6 @@ PROFILE_METRICS = ("regularity", "diversity", "stationarity", "entropy")
 
 _CLUSTER_FEATURES = ["intermittency", "degree_of_return"]
 _PROFILE_NAMES = ("routiners", "regulars", "scouters")
-
-
-def _kmeans_cls():
-    try:
-        from sklearn.cluster import KMeans
-        from sklearn.preprocessing import StandardScaler
-    except ImportError as exc:  # pragma: no cover - exercised only without sklearn installed
-        raise ImportError(
-            "profile classification requires scikit-learn. Install it with `pip install fastmob[ai]`."
-        ) from exc
-    return KMeans, StandardScaler
 
 
 def _stationarity(
@@ -97,16 +86,19 @@ def _cluster_and_label(
     :func:`~fastmob.measures.individual.mobility_profiling.exploration_profiling`'s
     naming convention.
     """
-    KMeans, StandardScaler = _kmeans_cls()
+    import pyarrow as pa
 
-    features = profiles.select(_CLUSTER_FEATURES).to_numpy()
-    scaler = StandardScaler()
-    kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
-    labels = kmeans.fit_predict(scaler.fit_transform(features))
+    from fastmob._core import cluster_standardized_kmeans_arrow
+    from fastmob.utils._common import _as_arrow
+
+    first = pa.array(_as_arrow(profiles.get_column(_CLUSTER_FEATURES[0])), type=pa.float64())
+    second = pa.array(_as_arrow(profiles.get_column(_CLUSTER_FEATURES[1])), type=pa.float64())
+    labels = cluster_standardized_kmeans_arrow(first, second, n_clusters=n_clusters, seed=random_state)
+    labels = labels.to_pylist()
 
     profiles = profiles.with_columns(nw.new_series("__cluster__", labels, backend=profiles.implementation))
 
-    cluster_ids = sorted(set(labels.tolist()))
+    cluster_ids = sorted(set(labels))
     means = {
         cluster_id: float(profiles.filter(nw.col("__cluster__") == cluster_id).get_column("degree_of_return").mean())
         for cluster_id in cluster_ids
@@ -119,7 +111,7 @@ def _cluster_and_label(
     )
     mapping = {cluster_id: names[rank] for rank, (cluster_id, _mean) in enumerate(ranked)}
 
-    profile_values = [mapping[label] for label in labels.tolist()]
+    profile_values = [mapping[label] for label in labels]
     profiles = profiles.with_columns(
         nw.new_series("profile", profile_values, backend=profiles.implementation).alias("profile")
     )
@@ -172,9 +164,6 @@ def compute_profiles(
     ------
     ValueError
         If fewer than ``n_clusters`` users have finite profiling metrics.
-    ImportError
-        If scikit-learn is not installed.
-
     Examples
     --------
     >>> import pandas as pd

@@ -6,7 +6,7 @@ Compares against ``pymove.utils.integration.join_with_pois`` /
 PyMove's own docstring examples. fastmob's test suite never imports pymove
 itself at test time, only the committed parquet cache -- pymove needs a
 dedicated, Python<=3.10, pandas<1.4 ``.venv-pymove`` incompatible with the
-normal ``.venv`` (see pyproject.toml's ``dev-pymove`` comment).
+normal ``.venv`` (see ``benchmarks/environments/pymove.txt``).
 """
 
 from __future__ import annotations

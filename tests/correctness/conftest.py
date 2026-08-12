@@ -315,8 +315,7 @@ def transbigdata_reference():
     tests/shared/transbigdata_reference/ to git. After that, these tests
     run in the normal .venv without transbigdata installed -- installing
     transbigdata's extras into an already-populated .venv can silently
-    downgrade unrelated packages (see pyproject.toml's dev-transbigdata
-    comment), so it gets its own dedicated venv like pymove, even though
+    downgrade unrelated packages, so it gets its own dedicated venv like pymove, even though
     its own pinned stack is otherwise compatible with the normal .venv.
     """
     from tests.shared.transbigdata_cache import _REFERENCE_DIR, TransBigDataReferenceDataset

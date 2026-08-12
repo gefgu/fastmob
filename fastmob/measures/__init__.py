@@ -48,6 +48,7 @@ from .individual import (
     individual_mobility_network,
     intermittance_and_degree_of_return,
     jump_lengths,
+    jump_lengths_road,
     k_radius_of_gyration,
     location_frequency,
     max_distance_from_home,
@@ -56,6 +57,7 @@ from .individual import (
     number_of_locations,
     number_of_visits,
     radius_of_gyration,
+    radius_of_gyration_road,
     random_entropy,
     real_entropy,
     recency_rank,
@@ -65,6 +67,7 @@ from .individual import (
     uncorrelated_entropy,
     visit_purpose_distribution,
     waiting_times,
+    work_location,
 )
 
 __all__ = [
@@ -94,6 +97,7 @@ __all__ = [
     "intermittance_and_degree_of_return",
     "jensen_shannon_divergence",
     "jump_lengths",
+    "jump_lengths_road",
     "k_radius_of_gyration",
     "kullback_leibler_divergence",
     "location_frequency",
@@ -112,6 +116,7 @@ __all__ = [
     "od_metrics_per_area",
     "r_squared",
     "radius_of_gyration",
+    "radius_of_gyration_road",
     "random_entropy",
     "random_location_entropy",
     "real_entropy",
@@ -127,5 +132,6 @@ __all__ = [
     "visits_per_location",
     "visits_per_time_unit",
     "waiting_times",
+    "work_location",
     "wasserstein_distance",
 ]
