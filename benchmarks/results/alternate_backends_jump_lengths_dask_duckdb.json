@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "backends": [
+      "dask",
+      "duckdb"
+    ],
+    "dataset_path": "/mnt/raid5/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "iterations": 3,
+    "modin_engine": "python",
+    "native_input_direct": true,
+    "platform": "Linux-5.15.0-181-generic-x86_64-with-glibc2.35",
+    "python_version": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:09:02) [GCC 11.2.0]",
+    "suite": "alternate_backends_jump_lengths",
+    "timestamp_utc": "2026-08-13T13:32:27.081716+00:00"
+  },
+  "results": [
+    {
+      "backends": {
+        "dask": {
+          "average_seconds": 0.15198678197339177,
+          "minimum_seconds": 0.04879589192569256,
+          "output_type": "pandas.core.frame.DataFrame",
+          "rows": 100000,
+          "samples_seconds": [
+            0.3536410569213331,
+            0.04879589192569256,
+            0.05352339707314968
+          ],
+          "status": "ok"
+        },
+        "duckdb": {
+          "average_seconds": 0.036417750952144466,
+          "minimum_seconds": 0.020896789152175188,
+          "output_type": "pyarrow.lib.Table",
+          "rows": 100000,
+          "samples_seconds": [
+            0.06676238682121038,
+            0.02159407688304782,
+            0.020896789152175188
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 100000
+    },
+    {
+      "backends": {
+        "dask": {
+          "average_seconds": 1.7044986399511497,
+          "minimum_seconds": 1.6121779447421432,
+          "output_type": "pandas.core.frame.DataFrame",
+          "rows": 1000000,
+          "samples_seconds": [
+            1.8396524940617383,
+            1.6616654810495675,
+            1.6121779447421432
+          ],
+          "status": "ok"
+        },
+        "duckdb": {
+          "average_seconds": 0.1163737381187578,
+          "minimum_seconds": 0.11043792124837637,
+          "output_type": "pyarrow.lib.Table",
+          "rows": 1000000,
+          "samples_seconds": [
+            0.12410290585830808,
+            0.11043792124837637,
+            0.11458038724958897
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 1000000
+    },
+    {
+      "backends": {
+        "dask": {
+          "average_seconds": 5.747557762389381,
+          "minimum_seconds": 4.953395450953394,
+          "output_type": "pandas.core.frame.DataFrame",
+          "rows": 4000000,
+          "samples_seconds": [
+            6.974694216158241,
+            4.953395450953394,
+            5.31458362005651
+          ],
+          "status": "ok"
+        },
+        "duckdb": {
+          "average_seconds": 0.42783512904619175,
+          "minimum_seconds": 0.3693192549981177,
+          "output_type": "pyarrow.lib.Table",
+          "rows": 4000000,
+          "samples_seconds": [
+            0.4051515432074666,
+            0.3693192549981177,
+            0.509034588932991
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 4000000
+    }
+  ]
+}

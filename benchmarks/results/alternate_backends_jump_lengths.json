@@ -1,0 +1,143 @@
+{
+  "metadata": {
+    "backends": [
+      "pyarrow",
+      "modin",
+      "dask",
+      "duckdb"
+    ],
+    "dataset_path": "/mnt/raid5/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "iterations": 3,
+    "modin_engine": "python",
+    "native_input_direct": true,
+    "platform": "Linux-5.15.0-181-generic-x86_64-with-glibc2.35",
+    "python_version": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:09:02) [GCC 11.2.0]",
+    "suite": "alternate_backends_jump_lengths",
+    "timestamp_utc": "2026-08-13T13:24:00.180139+00:00"
+  },
+  "results": [
+    {
+      "backends": {
+        "dask": {
+          "error": "Cannot only use `eager_only` or `eager_or_interchange_only` with dask DataFrame",
+          "error_type": "TypeError",
+          "rows": 100000,
+          "status": "error"
+        },
+        "duckdb": {
+          "error": "Cannot only use `series_only=True` or `eager_only=False` with DuckDBPyRelation",
+          "error_type": "TypeError",
+          "rows": 100000,
+          "status": "error"
+        },
+        "modin": {
+          "average_seconds": 0.6817666596422592,
+          "minimum_seconds": 0.6594691229984164,
+          "output_type": "modin.pandas.dataframe.DataFrame",
+          "rows": 100000,
+          "samples_seconds": [
+            0.6920021330006421,
+            0.6938287229277194,
+            0.6594691229984164
+          ],
+          "status": "ok"
+        },
+        "pyarrow": {
+          "average_seconds": 0.07571801822632551,
+          "minimum_seconds": 0.007904817815870047,
+          "output_type": "pyarrow.lib.Table",
+          "rows": 100000,
+          "samples_seconds": [
+            0.2112095090560615,
+            0.008039727807044983,
+            0.007904817815870047
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 100000
+    },
+    {
+      "backends": {
+        "dask": {
+          "error": "Cannot only use `eager_only` or `eager_or_interchange_only` with dask DataFrame",
+          "error_type": "TypeError",
+          "rows": 1000000,
+          "status": "error"
+        },
+        "duckdb": {
+          "error": "Cannot only use `series_only=True` or `eager_only=False` with DuckDBPyRelation",
+          "error_type": "TypeError",
+          "rows": 1000000,
+          "status": "error"
+        },
+        "modin": {
+          "average_seconds": 1.20670348762845,
+          "minimum_seconds": 1.1380053358152509,
+          "output_type": "modin.pandas.dataframe.DataFrame",
+          "rows": 1000000,
+          "samples_seconds": [
+            1.3014665371738374,
+            1.1380053358152509,
+            1.1806385898962617
+          ],
+          "status": "ok"
+        },
+        "pyarrow": {
+          "average_seconds": 0.05885451193898916,
+          "minimum_seconds": 0.04888515826314688,
+          "output_type": "pyarrow.lib.Table",
+          "rows": 1000000,
+          "samples_seconds": [
+            0.07632884429767728,
+            0.05134953325614333,
+            0.04888515826314688
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 1000000
+    },
+    {
+      "backends": {
+        "dask": {
+          "error": "Cannot only use `eager_only` or `eager_or_interchange_only` with dask DataFrame",
+          "error_type": "TypeError",
+          "rows": 4000000,
+          "status": "error"
+        },
+        "duckdb": {
+          "error": "Cannot only use `series_only=True` or `eager_only=False` with DuckDBPyRelation",
+          "error_type": "TypeError",
+          "rows": 4000000,
+          "status": "error"
+        },
+        "modin": {
+          "average_seconds": 2.43440624140203,
+          "minimum_seconds": 2.2856402420438826,
+          "output_type": "modin.pandas.dataframe.DataFrame",
+          "rows": 4000000,
+          "samples_seconds": [
+            2.718964062165469,
+            2.2986144199967384,
+            2.2856402420438826
+          ],
+          "status": "ok"
+        },
+        "pyarrow": {
+          "average_seconds": 0.262405954922239,
+          "minimum_seconds": 0.23480355879291892,
+          "output_type": "pyarrow.lib.Table",
+          "rows": 4000000,
+          "samples_seconds": [
+            0.30452202586457133,
+            0.2478922801092267,
+            0.23480355879291892
+          ],
+          "status": "ok"
+        }
+      },
+      "size": 4000000
+    }
+  ]
+}

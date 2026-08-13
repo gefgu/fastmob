@@ -111,7 +111,10 @@ def jump_lengths(
     maximum_distance : Largest single jump length per user.
     distance_straight_line : Sum of all jump lengths per user.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(traj)
+    if isinstance(df, nw.LazyFrame):
+        df = df.collect()
+
     df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
