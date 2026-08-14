@@ -16,7 +16,7 @@ import narwhals as nw
 from fastmob._core import tours_from_trips
 from fastmob.utils._common import (
     _as_arrow,
-    _factorize_uids_uint64,
+    _factorize_uids_uint32,
     _list_column_from_offsets,
     _narwhals_safe_value,
     _values_to_list,
@@ -125,7 +125,7 @@ class Tours(BaseDataFrame):
             nw.col("__destination_location_id__").fill_null(_NULL_I64).cast(nw.Int64),
         )
         if uid_col:
-            uid_codes, _num_groups = _factorize_uids_uint64(tl_nw, group_key, sort=False)
+            uid_codes, _num_groups = _factorize_uids_uint32(tl_nw, group_key, sort=False)
             tl_nw = tl_nw.with_columns(uid_codes)
             uid_code_col = "__fastmob_uid_codes__"
             code_to_uid = dict(

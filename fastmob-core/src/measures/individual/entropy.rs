@@ -4,7 +4,7 @@ use rustc_hash::FxHashSet;
 type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 
 pub fn real_entropy_users(
-    location_ids: Vec<u64>,
+    location_ids: Vec<u32>,
     ranges: Vec<(usize, usize)>,
     normalized: bool,
 ) -> Result<Vec<f64>, String> {
@@ -45,18 +45,20 @@ fn kontoyiannis_entropy<T: PartialEq>(sequence: &[T]) -> f64 {
 
     let mut col_max = vec![1_usize; n];
     let mut prev_row = vec![1_usize; n];
+    let mut curr_row = vec![1_usize; n];
 
     for i in 1..n {
-        let mut curr_row = vec![1_usize; n];
         for j in (i + 1)..n {
             if sequence[i - 1] == sequence[j - 1] {
                 curr_row[j] = prev_row[j - 1] + 1;
+            } else {
+                curr_row[j] = 1;
             }
             if curr_row[j] > col_max[j] {
                 col_max[j] = curr_row[j];
             }
         }
-        prev_row = curr_row;
+        std::mem::swap(&mut prev_row, &mut curr_row);
     }
 
     let lambdas: usize = col_max.iter().sum();
@@ -114,7 +116,7 @@ fn solve_max_predictability_with_fano(real_entropy: f64, n_unique: usize) -> f64
 }
 
 pub fn trajectory_predictability_batch(
-    location_ids: Vec<u64>,
+    location_ids: Vec<u32>,
     ranges: Vec<(usize, usize)>,
 ) -> Result<PredictabilityBatchResult, String> {
     validate_ranges(location_ids.len(), &ranges)?;

@@ -1,6 +1,6 @@
 use crate::utils::validate_indexed_ends;
 
-pub fn activity_counts(codes: &[u64], n_activities: usize) -> Result<Vec<u64>, String> {
+pub fn activity_counts(codes: &[u32], n_activities: usize) -> Result<Vec<u64>, String> {
     let mut counts = vec![0u64; n_activities];
     for &code in codes {
         let idx = usize::try_from(code).map_err(|_| "activity code is out of range")?;
@@ -13,7 +13,7 @@ pub fn activity_counts(codes: &[u64], n_activities: usize) -> Result<Vec<u64>, S
 }
 
 pub fn activity_transition_counts(
-    codes: &[u64],
+    codes: &[u32],
     indices: &[usize],
     ends: &[usize],
     n_activities: usize,
@@ -38,7 +38,7 @@ pub fn activity_transition_counts(
 }
 
 pub fn daily_activity_percentages(
-    codes: &[u64],
+    codes: &[u32],
     start_minutes: &[i64],
     end_minutes: &[i64],
     valid_rows: &[bool],

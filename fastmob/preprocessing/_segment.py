@@ -16,7 +16,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _detect_trajectory_columns,
     _extract_timestamps,
-    _factorize_uids_uint64,
+    _factorize_uids_uint32,
 )
 
 # nw.col(...).dt.truncate() bucket-length strings for each TemporalSplitter mode.
@@ -154,7 +154,7 @@ def _build_bucket_ids(df: nw.DataFrame, datetime_col: str, params: dict) -> np.n
     extraction and index-building use).
 
     ``value_change`` factorizes an arbitrary named column via
-    `_factorize_uids_uint64` (a generic dense-code factorizer despite its
+    `_factorize_uids_uint32` (a generic dense-code factorizer despite its
     "uid" name — see that helper's docstring). ``temporal`` truncates the
     datetime column (`nw.col(...).dt.truncate()`) to the requested bucket
     length and uses the truncated Unix-ms timestamp directly as the bucket
@@ -173,7 +173,7 @@ def _build_bucket_ids(df: nw.DataFrame, datetime_col: str, params: dict) -> np.n
     """
     if "__bucket_col__" in params:
         bucket_col = params.pop("__bucket_col__")
-        bucket_series, _ = _factorize_uids_uint64(df, bucket_col, sort=False)
+        bucket_series, _ = _factorize_uids_uint32(df, bucket_col, sort=False)
         return bucket_series.to_numpy().astype(np.int64)
 
     if "__temporal_mode__" in params:

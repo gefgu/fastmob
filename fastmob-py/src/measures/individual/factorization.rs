@@ -814,9 +814,8 @@ macro_rules! factorize_string_dictionary {
 /// must keep dataframe adapters out of their hot path. `codes` is `u32`
 /// (bounded by column cardinality, which is never realistically
 /// `> u32::MAX`); `representatives` stays `u64` (row indices, not bounded by
-/// cardinality) -- the [`factorize_arrow`] PyO3 boundary widens `codes` back
-/// to `u64` before returning to Python, so this narrowing is purely an
-/// internal performance detail, not a change to the public dtype contract.
+/// cardinality). `codes` remain `u32` at the [`factorize_arrow`] Python
+/// boundary; `representatives` remain `u64` because they are row indices.
 ///
 /// The generic hashable-key path (integers with a too-large-to-densify
 /// span, floats, dates, timestamps) automatically dispatches to the
@@ -978,7 +977,7 @@ pub fn factorize_arrow(
         .detach(|| factorize_array(array.as_ref(), sort))
         .map_err(PyValueError::new_err)?;
     Ok((
-        u64_results_into_arrow(result.0.into_iter().map(u64::from).collect()),
+        crate::utils::u32_results_into_arrow(result.0),
         u64_results_into_arrow(result.1),
     ))
 }

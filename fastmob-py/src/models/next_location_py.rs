@@ -1,6 +1,6 @@
 use crate::utils::{
-    ArrowUsizeArrayExt, arrow_u64_values, as_u64_array, f64_results_into_arrow,
-    u64_results_into_arrow,
+    ArrowUsizeArrayExt, arrow_u32_values, as_u32_array, f64_results_into_arrow,
+    u32_results_into_arrow, u64_results_into_arrow,
 };
 use fastmob_core::models::next_location::{
     MarkovLocationModel, NextLocationConfig as CoreNextLocationConfig, markov_fit_indexed,
@@ -31,11 +31,11 @@ impl PyNextLocationModels {
         order: usize,
         backoff: bool,
     ) -> PyResult<Self> {
-        let codes = as_u64_array(location_codes, "location_codes")?;
+        let codes = as_u32_array(location_codes, "location_codes")?;
         let indices = sorted_indices.as_slice()?;
         let ends = ends.as_slice()?;
         let config = CoreNextLocationConfig::new(order, backoff);
-        let models = markov_fit_indexed(arrow_u64_values(&codes), indices, ends, &config)
+        let models = markov_fit_indexed(arrow_u32_values(&codes), indices, ends, &config)
             .map_err(PyValueError::new_err)?;
         Ok(Self { models })
     }
@@ -56,14 +56,14 @@ impl PyNextLocationModels {
         context_ends: ArrowPyArray,
         top_k: usize,
     ) -> PyResult<(Py<PyAny>, Py<PyAny>, Py<PyAny>, Py<PyAny>)> {
-        let codes = as_u64_array(context_codes, "context_codes")?;
+        let codes = as_u32_array(context_codes, "context_codes")?;
         let starts = context_starts.as_slice()?;
         let ends = context_ends.as_slice()?;
         let (out_codes, out_probs, out_starts, out_ends) =
-            markov_predict_batch(&self.models, arrow_u64_values(&codes), starts, ends, top_k)
+            markov_predict_batch(&self.models, arrow_u32_values(&codes), starts, ends, top_k)
                 .map_err(PyValueError::new_err)?;
         Ok((
-            Py::new(py, u64_results_into_arrow(out_codes))?.into_any(),
+            Py::new(py, u32_results_into_arrow(out_codes))?.into_any(),
             Py::new(py, f64_results_into_arrow(out_probs))?.into_any(),
             Py::new(
                 py,

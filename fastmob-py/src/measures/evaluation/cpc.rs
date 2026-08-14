@@ -1,9 +1,9 @@
-use arrow_array::{Array, Float64Array, UInt64Array};
+use arrow_array::{Array, Float64Array, UInt32Array};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 
-use crate::utils::as_nullable_u64_array;
+use crate::utils::as_nullable_u32_array;
 
 enum Weights {
     Values(Float64Array),
@@ -46,10 +46,10 @@ fn weights(array: Option<PyArray>, name: &str) -> PyResult<Weights> {
 }
 
 fn encoded_rows<'a>(
-    origin: &'a UInt64Array,
-    destination: &'a UInt64Array,
+    origin: &'a UInt32Array,
+    destination: &'a UInt32Array,
     weights: &'a Weights,
-) -> impl Iterator<Item = (Option<u64>, Option<u64>, f64)> + 'a {
+) -> impl Iterator<Item = (Option<u32>, Option<u32>, f64)> + 'a {
     (0..origin.len()).map(move |index| {
         (
             origin.is_valid(index).then(|| origin.value(index)),
@@ -72,10 +72,10 @@ pub fn common_part_of_commuters(
     destination_b: PyArray,
     weight_b: Option<PyArray>,
 ) -> PyResult<f64> {
-    let origin_a = as_nullable_u64_array(origin_a, "origin_a")?;
-    let destination_a = as_nullable_u64_array(destination_a, "destination_a")?;
-    let origin_b = as_nullable_u64_array(origin_b, "origin_b")?;
-    let destination_b = as_nullable_u64_array(destination_b, "destination_b")?;
+    let origin_a = as_nullable_u32_array(origin_a, "origin_a")?;
+    let destination_a = as_nullable_u32_array(destination_a, "destination_a")?;
+    let origin_b = as_nullable_u32_array(origin_b, "origin_b")?;
+    let destination_b = as_nullable_u32_array(destination_b, "destination_b")?;
     let weight_a = weights(weight_a, "weight_a")?;
     let weight_b = weights(weight_b, "weight_b")?;
     for (origin, destination, weight, name) in [
@@ -115,10 +115,10 @@ pub fn common_part_of_links(
     destination_b: PyArray,
     weight_b: Option<PyArray>,
 ) -> PyResult<f64> {
-    let origin_a = as_nullable_u64_array(origin_a, "origin_a")?;
-    let destination_a = as_nullable_u64_array(destination_a, "destination_a")?;
-    let origin_b = as_nullable_u64_array(origin_b, "origin_b")?;
-    let destination_b = as_nullable_u64_array(destination_b, "destination_b")?;
+    let origin_a = as_nullable_u32_array(origin_a, "origin_a")?;
+    let destination_a = as_nullable_u32_array(destination_a, "destination_a")?;
+    let origin_b = as_nullable_u32_array(origin_b, "origin_b")?;
+    let destination_b = as_nullable_u32_array(destination_b, "destination_b")?;
     let weight_a = weights(weight_a, "weight_a")?;
     let weight_b = weights(weight_b, "weight_b")?;
     let (counts_a, _) = fastmob_core::measures::evaluation::cpc::sparse_edge_counts(encoded_rows(

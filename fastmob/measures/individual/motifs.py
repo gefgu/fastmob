@@ -102,8 +102,8 @@ def _encode_locations_pair(visits_series: nw.Series, locations_series: nw.Series
     locations_values = _arrow_array(locations_series)
     if dtype.is_integer() and visits_series.null_count() == 0 and locations_series.null_count() == 0:
         return (
-            pc.cast(visits_values, pa.uint64(), safe=False),
-            pc.cast(locations_values, pa.uint64(), safe=False),
+            pc.cast(visits_values, pa.uint32(), safe=False),
+            pc.cast(locations_values, pa.uint32(), safe=False),
         )
     if visits_values.type != locations_values.type:
         visits_values = pc.cast(visits_values, pa.string())

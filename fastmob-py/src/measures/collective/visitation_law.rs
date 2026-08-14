@@ -1,5 +1,4 @@
-use arrow_array::{Array, ArrayRef, UInt64Array};
-use arrow_schema::DataType;
+use arrow_array::ArrayRef;
 use fastmob_core::measures::{
     collective::visitation_law::visitation_distances_km as core_visitation_distances_km,
     fitting::visitation_law::{aggregate_visitation_cells_impl, bin_visitation_law_impl},
@@ -11,8 +10,9 @@ use pyo3_arrow::PyArray as ArrowPyArray;
 use crate::{
     measures::individual::factorization::factorize_array,
     utils::{
-        arrow_i64_values, arrow_u64_values, arrow_values, as_f64_array, as_i64_array, as_u64_array,
-        f64_results_into_arrow, u64_results_into_arrow,
+        arrow_i64_values, arrow_u32_values, arrow_u64_values, arrow_values, as_f64_array,
+        as_i64_array, as_u32_array, as_u64_array, f64_results_into_arrow, u32_results_into_arrow,
+        u64_results_into_arrow,
     },
 };
 
@@ -54,37 +54,21 @@ pub fn visitation_distances(
     .map_err(PyValueError::new_err)
 }
 
-/// Return grouping codes for `array`, skipping factorization when it is
-/// already a non-null UInt64 array.
+/// Return dense UInt32 grouping codes for an Arrow identifier array.
 ///
-/// `bin_visitation_law_impl` only uses these codes as `HashMap` key
-/// components -- it never needs the dense `0..n_unique` property
-/// `factorize_array`'s codes have, just *some* hashable u64 per distinct
-/// value. A non-null UInt64 array (H3 cell indices, or user codes a caller
-/// already factorized upstream) already satisfies that, so re-running
-/// `factorize_array` on it is pure duplicate work. This is scoped to this
-/// one call site rather than a change to `factorize_array` itself: other
-/// callers (e.g. label reconstruction via `pc.take`) do rely on the dense
-/// property, which raw non-factorized UInt64 values would not have.
-fn codes_for_grouping(array: ArrayRef) -> Result<Vec<u64>, String> {
-    if *array.data_type() == DataType::UInt64
-        && let Some(typed) = array.as_any().downcast_ref::<UInt64Array>()
-        && typed.null_count() == 0
-    {
-        let start = typed.offset();
-        let end = start + typed.len();
-        return Ok(typed.values()[start..end].to_vec());
-    }
+/// H3 cell values are kept separate as UInt64 data; only the user/location
+/// grouping keys are factorized into the compact representation consumed by
+/// the Rust kernel.
+fn codes_for_grouping(array: ArrayRef) -> Result<Vec<u32>, String> {
     factorize_array(array.as_ref(), false)
-        .map(|(codes, _)| codes.into_iter().map(u64::from).collect())
+        .map(|(codes, _)| codes)
 }
 
 /// Bin visitation-law observations directly from Arrow columns.
 ///
-/// Identifier arrays that are not already a non-null UInt64 array are
-/// factorized inside the extension so callers do not need dataframe-specific
-/// categorical conversions. Numeric arrays must be non-null float64 Arrow
-/// arrays.
+/// Identifier arrays are factorized inside the extension so callers do not
+/// need dataframe-specific categorical conversions. Numeric arrays must be
+/// non-null float64 Arrow arrays.
 #[pyfunction]
 pub fn bin_visitation_law_arrow(
     py: Python<'_>,
@@ -119,7 +103,7 @@ pub fn bin_visitation_law_arrow(
 /// Aggregate raw staypoints into one row per `(user, h3 cell)` pair directly
 /// from Arrow columns.
 ///
-/// `user_codes` are dense UInt64 codes the caller has already factorized (the
+/// `user_codes` are dense UInt32 codes the caller has already factorized (the
 /// per-group codes are echoed back so the caller can map them to labels via
 /// the same factorization's representatives), `h3_cells` are UInt64 H3 cell
 /// indices, `timestamps_ms` are non-null Int64 Unix milliseconds bucketed
@@ -142,7 +126,7 @@ pub fn aggregate_visitation_cells_arrow(
     ArrowPyArray,
     ArrowPyArray,
 )> {
-    let user_codes = as_u64_array(user_codes, "user_codes")?;
+    let user_codes = as_u32_array(user_codes, "user_codes")?;
     let h3_cells = as_u64_array(h3_cells, "h3_cells")?;
     let timestamps_ms = as_i64_array(timestamps_ms, "timestamps_ms")?;
     let lats = as_f64_array(lats, "lats")?;
@@ -154,7 +138,7 @@ pub fn aggregate_visitation_cells_arrow(
                 .map(|ms| ms.div_euclid(MILLISECONDS_PER_DAY))
                 .collect();
             aggregate_visitation_cells_impl(
-                arrow_u64_values(&user_codes),
+                arrow_u32_values(&user_codes),
                 arrow_u64_values(&h3_cells),
                 &days,
                 arrow_values(&lats),
@@ -163,7 +147,7 @@ pub fn aggregate_visitation_cells_arrow(
         })
         .map_err(PyValueError::new_err)?;
     Ok((
-        u64_results_into_arrow(out_users),
+        u32_results_into_arrow(out_users),
         u64_results_into_arrow(out_cells),
         u64_results_into_arrow(out_counts),
         f64_results_into_arrow(out_f),

@@ -75,7 +75,7 @@ def interest_network(staypoints: Staypoints | Any, locations: Locations) -> Any:
     ranks = pc.index_in(pa.array(memberships.get_column("location_id").to_arrow()), value_set=catalogue_ids)
     if ranks.null_count:
         raise ValueError("Staypoints contains location IDs absent from the global Locations catalogue")
-    rank_values = pc.cast(ranks, pa.uint64())
+    rank_values = pc.cast(ranks, pa.uint32())
     raw_a, raw_b, raw_counts = _interest_network(user_codes, rank_values)
     rank_a = _as_arrow(raw_a)
     rank_b = _as_arrow(raw_b)

@@ -5,7 +5,7 @@
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-type VisitationCellAggregate = (Vec<u64>, Vec<u64>, Vec<u64>, Vec<f64>, Vec<f64>, Vec<f64>);
+type VisitationCellAggregate = (Vec<u32>, Vec<u64>, Vec<u64>, Vec<f64>, Vec<f64>, Vec<f64>);
 
 struct CellAccumulator {
     count: u64,
@@ -24,7 +24,7 @@ struct CellAccumulator {
 /// Narwhals `.first()` aggregation this replaces. Rows with a non-finite
 /// latitude or longitude are skipped.
 pub fn aggregate_visitation_cells_impl(
-    user_codes: &[u64],
+    user_codes: &[u32],
     h3_cells: &[u64],
     days: &[i64],
     lats: &[f64],
@@ -39,7 +39,7 @@ pub fn aggregate_visitation_cells_impl(
         .into_par_iter()
         .fold(
             FxHashMap::default,
-            |mut groups: FxHashMap<(u64, u64), CellAccumulator>, index| {
+            |mut groups: FxHashMap<(u32, u64), CellAccumulator>, index| {
                 let (lat, lng) = (lats[index], lngs[index]);
                 if !lat.is_finite() || !lng.is_finite() {
                     return groups;
@@ -73,7 +73,7 @@ pub fn aggregate_visitation_cells_impl(
             left
         });
 
-    let mut rows: Vec<((u64, u64), CellAccumulator)> = groups.into_iter().collect();
+    let mut rows: Vec<((u32, u64), CellAccumulator)> = groups.into_iter().collect();
     rows.sort_unstable_by_key(|(key, _)| *key);
 
     let mut out_user = Vec::with_capacity(rows.len());
@@ -103,8 +103,8 @@ pub fn aggregate_visitation_cells_impl(
 /// Rows with non-positive or non-finite `r_km`/`f` are skipped, matching the
 /// Python implementation.
 pub fn bin_visitation_law_impl(
-    user_codes: &[u64],
-    location_codes: &[u64],
+    user_codes: &[u32],
+    location_codes: &[u32],
     r_km: &[f64],
     f: &[f64],
     n_bins: usize,
@@ -123,7 +123,7 @@ pub fn bin_visitation_law_impl(
 
     // Key on the bit patterns so the radial-bin centre and frequency compare
     // exactly; they are derived deterministically from the inputs.
-    let mut groups: FxHashMap<(u64, u64, u64), FxHashSet<u64>> = FxHashMap::default();
+    let mut groups: FxHashMap<(u32, u64, u64), FxHashSet<u32>> = FxHashMap::default();
     for index in 0..len {
         let (radius, frequency) = (r_km[index], f[index]);
         if !(radius.is_finite() && radius > 0.0 && frequency.is_finite() && frequency > 0.0) {
@@ -449,14 +449,14 @@ mod tests {
 
     #[test]
     fn binning_is_independent_of_row_order() {
-        let users = [1u64, 2, 3, 4, 5, 6];
-        let locations = [1u64, 2, 3, 1, 2, 3];
+        let users = [1u32, 2, 3, 4, 5, 6];
+        let locations = [1u32, 2, 3, 1, 2, 3];
         let radii = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
         let freqs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let forward = bin_visitation_law_impl(&users, &locations, &radii, &freqs, 4, 1.0).unwrap();
 
         let rev = |v: &[f64]| v.iter().rev().copied().collect::<Vec<_>>();
-        let rev_u = |v: &[u64]| v.iter().rev().copied().collect::<Vec<_>>();
+        let rev_u = |v: &[u32]| v.iter().rev().copied().collect::<Vec<_>>();
         let backward = bin_visitation_law_impl(
             &rev_u(&users),
             &rev_u(&locations),

@@ -1,13 +1,14 @@
 use crate::utils::ArrowUsizeArrayExt;
-use fastmob_core::preprocessing::h3::{batch_latlng_to_cells, INVALID_CELL};
-use fastmob_core::privacy::{privacy_assess_risk_impl, AttackKind};
+use fastmob_core::preprocessing::h3::{INVALID_CELL, batch_latlng_to_cells};
+use fastmob_core::privacy::{AttackKind, privacy_assess_risk_impl};
 use h3o::Resolution;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
-    arrow_u64_values, arrow_valid_rows, arrow_values, as_nullable_f64_array, as_u64_array,
+    arrow_u32_values, arrow_u64_values, arrow_valid_rows, arrow_values, as_nullable_f64_array,
+    as_u32_array, as_u64_array,
 };
 
 #[pyclass(name = "PrivacyRiskResult")]
@@ -124,9 +125,9 @@ pub fn privacy_assess_risk<'py>(
     location_ids: Option<ArrowPyArray>,
 ) -> PyResult<Py<PyPrivacyRiskResult>> {
     let time_keys = time_keys
-        .map(|values| as_u64_array(values, "time_keys"))
+        .map(|values| as_u32_array(values, "time_keys"))
         .transpose()?;
-    let time_keys_slice = time_keys.as_ref().map(arrow_u64_values);
+    let time_keys_slice = time_keys.as_ref().map(arrow_u32_values);
     let indices = match indices.as_ref() {
         Some(values) => Some(values.as_slice()?),
         None => None,

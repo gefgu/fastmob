@@ -190,9 +190,9 @@ def _take_uid_values(uid_values: Any | None, user_indices: Any) -> Any:
     return pc.take(_as_arrow(uid_values), _as_arrow(user_indices))
 
 
-def _uint64_series(df: nw.DataFrame, values: Any) -> nw.Series:
+def _uint32_series(df: nw.DataFrame, values: Any) -> nw.Series:
     return nw.from_arrow(
-        pa.table({"__fastmob_uid_codes__": pa.array(_as_arrow(values), type=pa.uint64())}),
+        pa.table({"__fastmob_uid_codes__": pa.array(_as_arrow(values), type=pa.uint32())}),
         backend=df.implementation,
     ).get_column("__fastmob_uid_codes__")
 
@@ -231,23 +231,23 @@ def _joint_factorize_arrow_values(*values: Any) -> tuple[pa.Array, ...]:
     results = []
     for array in arrays:
         encoded = codes.slice(offset, len(array))
-        results.append(pc.if_else(pc.is_valid(array), encoded, pa.scalar(None, type=pa.uint64())))
+        results.append(pc.if_else(pc.is_valid(array), encoded, pa.scalar(None, type=pa.uint32())))
         offset += len(array)
     return tuple(results)
 
 
-def _factorize_uids_uint64(
+def _factorize_uids_uint32(
     df: nw.DataFrame,
     uid_col: str | None,
     *,
     sort: bool = False,
 ) -> tuple[nw.Series, int] | None:
-    """Return dense UInt64 UID codes and group count while preserving original UID labels separately."""
+    """Return dense UInt32 UID codes and group count while preserving original UID labels separately."""
     if uid_col is None:
         return None
 
     codes, representatives = _factorize_arrow_values(df.get_column(uid_col), sort=sort)
-    return _uint64_series(df, codes), len(representatives)
+    return _uint32_series(df, codes), len(representatives)
 
 
 _NULL_TIMESTAMP_SENTINEL_MS = -(2**63)  # i64::MIN; never a real Unix-ms timestamp
@@ -544,6 +544,37 @@ def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[A
     uid_values = pa.array(df.get_column(uid_col).to_arrow())
     encoded = pc.run_end_encode(uid_values)
     return encoded.values, pc.cast(encoded.run_ends, pa.uint64())
+
+
+def _build_presorted_indices_and_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[Any | None, Any, Any]:
+    """Cheap presorted-mode drop-in for `_build_indexed_user_ranges`.
+
+    `_build_indexed_user_ranges` (used unconditionally by compress/filter/
+    stay_locations, even in their ``presorted=True`` branch) always pays for
+    a hash-based factorize plus the ``indexed_user_indices``/
+    ``time_ordered_user_indices`` Rust kernels -- work that makes sense when
+    the caller's ordering can't be trusted, but is pure waste when the
+    caller has already promised the data is grouped by user (and, within
+    each user, already in the desired order): the "sorted indices" the
+    kernel needs are then just the identity permutation, and the only real
+    work left is finding each user's contiguous run boundary, which
+    `_build_presorted_user_ends` already does via a single `pyarrow`
+    `run_end_encode` scan -- no hashing, no Rust factorize call.
+
+    ``cluster()`` already relies on this cheap path (after physically
+    sorting the frame via ``_prepare_trajectory(sort=not presorted)`` and
+    then calling `_build_presorted_user_ends` directly, since its kernel
+    only needs boundaries, not an indices array). This mirrors that same
+    "boundaries are cheap, trust the caller's order" idea for the
+    indices-based (non-physically-resorted) compress/filter/stay_locations
+    call sites, which still need an explicit ``sorted_indices`` array to
+    hand the kernel.
+    """
+    from fastmob._core import single_user_indices
+
+    labels, ends = _build_presorted_user_ends(df, uid_col)
+    identity_indices, _ = single_user_indices(len(df))
+    return labels, pa.array(_as_arrow(identity_indices)), ends
 
 
 def _value_offsets_from_index_ranges(

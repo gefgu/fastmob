@@ -23,7 +23,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _factorize_arrow_values,
     _pick_existing_column,
-    _uint64_series,
+    _uint32_series,
 )
 
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday"}
@@ -104,7 +104,7 @@ def _factorize_activities(df: nw.DataFrame, activity_col: str) -> tuple[list[Any
     values = df.get_column(activity_col).to_arrow()
     codes, representatives = _factorize_arrow_values(values, sort=True)
     categories = pc.take(values, representatives).to_pylist()
-    return categories, _uint64_series(df, codes)
+    return categories, _uint32_series(df, codes)
 
 
 def _kernel_result(values: Any) -> np.ndarray:

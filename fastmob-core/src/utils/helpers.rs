@@ -175,8 +175,8 @@ pub fn split_user_index_ranges((indices, ranges): UserIndexRanges) -> (Vec<usize
     (indices, ends_from_ranges(&ranges))
 }
 
-pub fn user_indices_for_u64_codes(
-    codes: &[u64],
+pub fn user_indices_for_u32_codes(
+    codes: &[u32],
     num_groups: usize,
 ) -> Result<UserIndexRanges, String> {
     if codes.is_empty() {

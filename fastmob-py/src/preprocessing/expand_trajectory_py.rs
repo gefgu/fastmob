@@ -8,8 +8,8 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
-    arrow_i64_values, arrow_u64_values, as_i64_array, as_u64_array, i64_results_into_arrow,
-    u32_results_into_arrow, u64_results_into_arrow, validate_indexed_ends, ArrowUsizeArrayExt,
+    ArrowUsizeArrayExt, arrow_i64_values, arrow_u32_values, as_i64_array, as_u32_array,
+    i64_results_into_arrow, u32_results_into_arrow, validate_indexed_ends,
 };
 
 type ExpandTrajectoryBatchResult<'py> = (
@@ -93,7 +93,7 @@ pub fn expand_5min_trajectory_with_imputation_batch_indexed<'py>(
 ) -> PyResult<ExpandTrajectoryWithImputationBatchResult<'py>> {
     let start = as_i64_array(start_timestamps_ms, "start_timestamps_ms")?;
     let end = as_i64_array(end_timestamps_ms, "end_timestamps_ms")?;
-    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let location_codes = as_u32_array(location_codes, "location_codes")?;
     if start.len() != end.len() {
         return Err(PyValueError::new_err(
             "start_timestamps_ms and end_timestamps_ms must have the same length",
@@ -110,7 +110,7 @@ pub fn expand_5min_trajectory_with_imputation_batch_indexed<'py>(
 
     let start_vals = arrow_i64_values(&start);
     let end_vals = arrow_i64_values(&end);
-    let location_vals = arrow_u64_values(&location_codes);
+    let location_vals = arrow_u32_values(&location_codes);
     let (user_range_idx, timestamps_ms, location_out, run_length_out) = py.detach(|| {
         expand_5min_trajectory_with_imputation_batch_indexed_impl(
             start_vals,
@@ -124,7 +124,7 @@ pub fn expand_5min_trajectory_with_imputation_batch_indexed<'py>(
     Ok((
         user_range_idx.into_pyarray(py),
         Py::new(py, i64_results_into_arrow(timestamps_ms))?.into_any(),
-        Py::new(py, u64_results_into_arrow(location_out))?.into_any(),
+        Py::new(py, u32_results_into_arrow(location_out))?.into_any(),
         Py::new(py, u32_results_into_arrow(run_length_out))?.into_any(),
     ))
 }

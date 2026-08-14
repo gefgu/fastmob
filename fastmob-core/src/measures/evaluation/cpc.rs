@@ -2,11 +2,11 @@
 
 use rustc_hash::FxHashMap;
 
-type Edge = (u64, u64);
+type Edge = (u32, u32);
 pub type EdgeCounts = FxHashMap<Edge, f64>;
 
 pub fn sparse_edge_counts(
-    edges: impl IntoIterator<Item = (Option<u64>, Option<u64>, f64)>,
+    edges: impl IntoIterator<Item = (Option<u32>, Option<u32>, f64)>,
 ) -> Result<(EdgeCounts, f64), String> {
     let mut counts = EdgeCounts::default();
     let mut total = 0.0;
@@ -92,8 +92,8 @@ pub fn common_part_of_commuters_distance(values_a: &[f64], values_b: &[f64]) -> 
 /// non-negative; zero-weight edges are ignored. The kernel stores only edges
 /// that occur in either input, never a dense location-by-location matrix.
 pub fn common_part_of_commuters(
-    edges_a: impl IntoIterator<Item = (Option<u64>, Option<u64>, f64)>,
-    edges_b: impl IntoIterator<Item = (Option<u64>, Option<u64>, f64)>,
+    edges_a: impl IntoIterator<Item = (Option<u32>, Option<u32>, f64)>,
+    edges_b: impl IntoIterator<Item = (Option<u32>, Option<u32>, f64)>,
 ) -> Result<f64, String> {
     let (counts_a, total_a) = sparse_edge_counts(edges_a)?;
     let (counts_b, total_b) = sparse_edge_counts(edges_b)?;

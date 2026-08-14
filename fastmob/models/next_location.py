@@ -32,7 +32,7 @@ from fastmob.utils._common import (
     _extract_timestamps,
     _factorize_arrow_values,
     _pick_existing_column,
-    _uint64_series,
+    _uint32_series,
 )
 
 
@@ -65,7 +65,7 @@ def _batched_tail_contexts(
     total = int(ctx_lengths.sum())
 
     if total == 0:
-        context_codes = pa.array([], type=pa.uint64())
+        context_codes = pa.array([], type=pa.uint32())
     else:
         within_offset = np.arange(total, dtype=np.int64) - np.repeat(context_starts_cum, ctx_lengths)
         flat_positions = np.repeat(ctx_starts, ctx_lengths) + within_offset
@@ -172,7 +172,7 @@ class NextLocationPredictor:
         location_values = df.get_column(location_col).to_arrow()
         location_codes_arrow, representatives = _factorize_arrow_values(location_values, sort=False)
         code_to_label = dict(enumerate(pc.take(location_values, representatives).to_pylist()))
-        location_codes = _uint64_series(df, location_codes_arrow)
+        location_codes = _uint32_series(df, location_codes_arrow)
         df = df.with_columns(location_codes.alias("__location_code__"))
 
         if started_at_col is not None:
@@ -360,14 +360,14 @@ class NextLocationPredictor:
 
             indices = pa.array(range(len(codes_flat)), type=pa.uint64())
             models = NextLocationModels(
-                pa.array(codes_flat, type=pa.uint64()),
+                pa.array(codes_flat, type=pa.uint32()),
                 indices,
                 pa.array(ends, type=pa.uint64()),
                 self.order,
                 self.backoff,
             )
             pred_codes, _pred_probs, out_starts, out_ends = models.predict_batch(
-                pa.array(context_flat, type=pa.uint64()),
+                pa.array(context_flat, type=pa.uint32()),
                 pa.array(context_starts, type=pa.uint64()),
                 pa.array(context_ends, type=pa.uint64()),
                 top_k,

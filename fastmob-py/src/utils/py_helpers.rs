@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    types::{Float64Type, Int64Type, UInt64Type, UInt8Type},
     Array, ArrayRef, BooleanArray, Float64Array, Int32Array, Int64Array, PrimitiveArray,
-    UInt32Array, UInt64Array, UInt8Array,
+    UInt8Array, UInt32Array, UInt64Array,
+    types::{Float64Type, Int64Type, UInt8Type, UInt32Type, UInt64Type},
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -60,13 +60,11 @@ pub fn u32_results_into_arrow(results: Vec<u32>) -> PyArray {
 /// Arrow null slot instead of a valid-looking sentinel integer -- for kernels
 /// (e.g. H3 cell conversion) that use a reserved value to mean "invalid".
 pub fn u64_results_into_arrow_nullable(results: Vec<u64>, sentinel: u64) -> PyArray {
-    let array: ArrayRef = Arc::new(UInt64Array::from_iter(results.into_iter().map(|v| {
-        if v == sentinel {
-            None
-        } else {
-            Some(v)
-        }
-    })));
+    let array: ArrayRef = Arc::new(UInt64Array::from_iter(
+        results
+            .into_iter()
+            .map(|v| if v == sentinel { None } else { Some(v) }),
+    ));
     PyArray::from_array_ref(array)
 }
 
@@ -163,6 +161,30 @@ pub fn as_u64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<UInt64T
     Ok(array)
 }
 
+pub fn as_u32_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<UInt32Type>> {
+    let (array_ref, _field) = arr.into_inner();
+    let array = array_ref
+        .as_any()
+        .downcast_ref::<UInt32Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint32 Arrow array for {name}")))?;
+    if array.null_count() > 0 {
+        return Err(PyValueError::new_err(format!(
+            "Arrow array for {name} must not contain nulls"
+        )));
+    }
+    Ok(array)
+}
+
+pub fn as_nullable_u32_array(arr: PyArray, name: &str) -> PyResult<UInt32Array> {
+    let (array_ref, _field) = arr.into_inner();
+    array_ref
+        .as_any()
+        .downcast_ref::<UInt32Array>()
+        .cloned()
+        .ok_or_else(|| PyValueError::new_err(format!("expected uint32 Arrow array for {name}")))
+}
+
 pub fn as_i64_array(arr: PyArray, name: &str) -> PyResult<PrimitiveArray<Int64Type>> {
     let (array_ref, _field) = arr.into_inner();
     let array = array_ref
@@ -250,6 +272,12 @@ pub fn as_bool_array(arr: PyArray, name: &str) -> PyResult<BooleanArray> {
 }
 
 pub fn arrow_u64_values(array: &PrimitiveArray<UInt64Type>) -> &[u64] {
+    let start = array.offset();
+    let end = start + array.len();
+    &array.values()[start..end]
+}
+
+pub fn arrow_u32_values(array: &PrimitiveArray<UInt32Type>) -> &[u32] {
     let start = array.offset();
     let end = start + array.len();
     &array.values()[start..end]

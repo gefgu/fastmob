@@ -146,7 +146,12 @@ def assess_risk(
         present = set(df.get_column(location_id_col).drop_nulls().to_list())
         if present - known:
             raise ValueError("Input contains location IDs absent from the global Locations catalogue")
-        location_ids, _ = _factorize_arrow_values(df.get_column(location_id_col), sort=False)
+        # Global privacy locations are H3 cells, not dense factorized codes.
+        # Keep this true UInt64 domain intact; only optional time keys use the
+        # factorizer's UInt32 representation.
+        import pyarrow as pa
+
+        location_ids = pa.array(df.get_column(location_id_col).to_list(), type=pa.uint64())
         if force_instances:
             raise ValueError("force_instances is not supported with externally assigned global locations")
     time_keys = _time_keys(df, datetime_col, time_precision) if time_precision is not None else None

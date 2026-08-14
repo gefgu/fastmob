@@ -19,7 +19,7 @@ struct DailyMotifResult {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 struct NodeCode {
-    location: u64,
+    location: u32,
     purpose: u16,
 }
 
@@ -39,13 +39,13 @@ struct Scratch {
 enum PurposeSource<'a> {
     Flat(&'a [u16]),
     Lookup {
-        table: &'a FxHashMap<(u32, u64), u16>,
+    table: &'a FxHashMap<(u32, u32), u16>,
         unmatched_code: u16,
     },
 }
 
 struct MotifColumns<'a> {
-    location_codes: &'a [u64],
+    location_codes: &'a [u32],
     purpose_source: PurposeSource<'a>,
     start_timestamps_us: &'a [i64],
     end_timestamps_us: &'a [i64],
@@ -440,7 +440,7 @@ fn compute_daily_motifs_impl(
 
 #[allow(clippy::too_many_arguments)]
 pub fn compute_daily_motifs_indexed(
-    location_codes: &[u64],
+    location_codes: &[u32],
     purpose_codes: &[u16],
     start_timestamps_us: &[i64],
     end_timestamps_us: &[i64],
@@ -465,7 +465,7 @@ pub fn compute_daily_motifs_indexed(
 
 #[allow(clippy::too_many_arguments)]
 pub fn compute_daily_motifs_presorted(
-    location_codes: &[u64],
+    location_codes: &[u32],
     purpose_codes: &[u16],
     start_timestamps_us: &[i64],
     end_timestamps_us: &[i64],
@@ -496,14 +496,14 @@ pub fn compute_daily_motifs_presorted(
 /// the same never-error null-purpose convention as the flat path.
 #[allow(clippy::too_many_arguments)]
 pub fn compute_daily_motifs_indexed_joined(
-    location_codes: &[u64],
+    location_codes: &[u32],
     start_timestamps_us: &[i64],
     end_timestamps_us: &[i64],
     durations: Option<&[f64]>,
     indices: &[usize],
     ends: &[usize],
     home_purpose_code: u16,
-    lookup: &FxHashMap<(u32, u64), u16>,
+        lookup: &FxHashMap<(u32, u32), u16>,
     unmatched_purpose_code: u16,
 ) -> DailyMotifsResult {
     compute_daily_motifs_impl(
@@ -527,13 +527,13 @@ pub fn compute_daily_motifs_indexed_joined(
 /// [`compute_daily_motifs_indexed_joined`].
 #[allow(clippy::too_many_arguments)]
 pub fn compute_daily_motifs_presorted_joined(
-    location_codes: &[u64],
+    location_codes: &[u32],
     start_timestamps_us: &[i64],
     end_timestamps_us: &[i64],
     durations: Option<&[f64]>,
     ends: &[usize],
     home_purpose_code: u16,
-    lookup: &FxHashMap<(u32, u64), u16>,
+        lookup: &FxHashMap<(u32, u32), u16>,
     unmatched_purpose_code: u16,
 ) -> DailyMotifsResult {
     compute_daily_motifs_impl(
@@ -558,7 +558,7 @@ mod tests {
     use super::*;
 
     fn test_columns<'a>(
-        location_codes: &'a [u64],
+        location_codes: &'a [u32],
         purpose_codes: &'a [u16],
         start: &'a [i64],
         end: &'a [i64],
@@ -614,7 +614,7 @@ mod tests {
     #[test]
     fn flat_and_lookup_purpose_sources_produce_identical_results() {
         // 2 users, 4 rows each: home overnight, work daytime, repeated for 2 days.
-        let location_codes: Vec<u64> = vec![
+        let location_codes: Vec<u32> = vec![
             10, 11, 10, 11, // user 0: home, work, home, work
             20, 21, 20, 21, // user 1: home, work, home, work
         ];
@@ -651,7 +651,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut lookup: FxHashMap<(u32, u64), u16> = FxHashMap::default();
+        let mut lookup: FxHashMap<(u32, u32), u16> = FxHashMap::default();
         lookup.insert((0, 10), 0);
         lookup.insert((0, 11), 1);
         lookup.insert((1, 20), 0);

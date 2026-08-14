@@ -18,7 +18,8 @@ use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 use crate::utils::{
-    arrow_u64_values, arrow_usize_values, arrow_values, as_f64_array, as_u64_array,
+    arrow_u32_values, arrow_usize_values, arrow_values, as_f64_array,
+    as_u64_array,
     i32_results_into_arrow, i64_results_into_arrow, u64_results_into_arrow,
 };
 
@@ -317,7 +318,7 @@ pub fn daily_motifs_indexed<'py>(
     ends: ArrowPyArray,
     home_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let location_codes = as_u32_array(location_codes, "location_codes")?;
     let purpose_codes = as_u16_array(purpose_codes, "purpose_codes")?;
     let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
     let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
@@ -329,7 +330,7 @@ pub fn daily_motifs_indexed<'py>(
     let end_values = arrow_usize_values(&ends);
     let result = py.detach(|| {
         core_compute_daily_motifs_indexed(
-            arrow_u64_values(&location_codes),
+            arrow_u32_values(&location_codes),
             u16_values(&purpose_codes),
             timestamp_values(&starts),
             timestamp_values(&ends_ts),
@@ -354,7 +355,7 @@ pub fn daily_motifs_presorted<'py>(
     ends: ArrowPyArray,
     home_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let location_codes = as_u32_array(location_codes, "location_codes")?;
     let purpose_codes = as_u16_array(purpose_codes, "purpose_codes")?;
     let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
     let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
@@ -364,7 +365,7 @@ pub fn daily_motifs_presorted<'py>(
     let end_values = arrow_usize_values(&ends);
     let result = py.detach(|| {
         core_compute_daily_motifs_presorted(
-            arrow_u64_values(&location_codes),
+            arrow_u32_values(&location_codes),
             u16_values(&purpose_codes),
             timestamp_values(&starts),
             timestamp_values(&ends_ts),
@@ -388,14 +389,14 @@ fn build_purpose_lookup(
     user_idx: ArrowPyArray,
     location_code: ArrowPyArray,
     purpose_code: ArrowPyArray,
-) -> PyResult<FxHashMap<(u32, u64), u16>> {
+        ) -> PyResult<FxHashMap<(u32, u32), u16>> {
     let user_idx = as_u32_array(user_idx, "user_idx")?;
-    let location_code = as_u64_array(location_code, "location_code")?;
+    let location_code = as_u32_array(location_code, "location_code")?;
     let purpose_code = as_u16_array(purpose_code, "purpose_code")?;
     let user_idx_values = u32_values(&user_idx);
-    let location_code_values = arrow_u64_values(&location_code);
+    let location_code_values = arrow_u32_values(&location_code);
     let purpose_code_values = u16_values(&purpose_code);
-    let mut lookup: FxHashMap<(u32, u64), u16> =
+    let mut lookup: FxHashMap<(u32, u32), u16> =
         FxHashMap::with_capacity_and_hasher(user_idx_values.len(), Default::default());
     for i in 0..user_idx_values.len() {
         lookup.insert(
@@ -427,7 +428,7 @@ pub fn daily_motifs_indexed_joined<'py>(
     home_purpose_code: u16,
     unmatched_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let location_codes = as_u32_array(location_codes, "location_codes")?;
     let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
     let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
     let durations = optional_duration_array(durations)?;
@@ -439,7 +440,7 @@ pub fn daily_motifs_indexed_joined<'py>(
     let lookup = build_purpose_lookup(lookup_user_idx, lookup_location_code, lookup_purpose_code)?;
     let result = py.detach(|| {
         core_compute_daily_motifs_indexed_joined(
-            arrow_u64_values(&location_codes),
+            arrow_u32_values(&location_codes),
             timestamp_values(&starts),
             timestamp_values(&ends_ts),
             duration_values,
@@ -470,7 +471,7 @@ pub fn daily_motifs_presorted_joined<'py>(
     home_purpose_code: u16,
     unmatched_purpose_code: u16,
 ) -> PyResult<DailyMotifsPy> {
-    let location_codes = as_u64_array(location_codes, "location_codes")?;
+    let location_codes = as_u32_array(location_codes, "location_codes")?;
     let starts = as_timestamp_us_array(start_timestamps, "start_timestamps")?;
     let ends_ts = as_timestamp_us_array(end_timestamps, "end_timestamps")?;
     let durations = optional_duration_array(durations)?;
@@ -480,7 +481,7 @@ pub fn daily_motifs_presorted_joined<'py>(
     let lookup = build_purpose_lookup(lookup_user_idx, lookup_location_code, lookup_purpose_code)?;
     let result = py.detach(|| {
         core_compute_daily_motifs_presorted_joined(
-            arrow_u64_values(&location_codes),
+            arrow_u32_values(&location_codes),
             timestamp_values(&starts),
             timestamp_values(&ends_ts),
             duration_values,

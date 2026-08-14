@@ -8,7 +8,7 @@ const NO_ROW: usize = usize::MAX;
 #[derive(Clone, Copy, Debug)]
 struct Obs {
     location: u64,
-    time_key: u64,
+    time_key: u32,
     row_idx: usize,
 }
 
@@ -28,7 +28,7 @@ enum PreparedCandidate<'a> {
     Observations {
         values: &'a [Obs],
         locations: FxHashMap<u64, usize>,
-        location_times: FxHashMap<(u64, u64), usize>,
+        location_times: FxHashMap<(u64, u32), usize>,
     },
     Metrics {
         locations: FxHashSet<u64>,
@@ -40,7 +40,7 @@ enum PreparedInstance<'a> {
     Observations {
         values: &'a [Obs],
         locations: FxHashMap<u64, usize>,
-        location_times: FxHashMap<(u64, u64), usize>,
+        location_times: FxHashMap<(u64, u32), usize>,
     },
     Metrics {
         values: &'a [MetricObs],
@@ -100,7 +100,7 @@ impl TryFrom<&str> for AttackKind {
     }
 }
 
-fn loc_time_key(obs: Obs) -> (u64, u64) {
+fn loc_time_key(obs: Obs) -> (u64, u32) {
     (obs.location, obs.time_key)
 }
 
@@ -117,7 +117,7 @@ fn starts_from_ends(ends: &[usize]) -> Vec<usize> {
 fn validate_inputs(
     latitudes: &[f64],
     longitudes: &[f64],
-    time_keys: Option<&[u64]>,
+    time_keys: Option<&[u32]>,
     indices: Option<&[usize]>,
     ends: &[usize],
     valid_rows: Option<&[bool]>,
@@ -175,7 +175,7 @@ fn row_is_valid(
 fn build_observation_users(
     latitudes: &[f64],
     longitudes: &[f64],
-    time_keys: Option<&[u64]>,
+    time_keys: Option<&[u32]>,
     indices: Option<&[usize]>,
     ends: &[usize],
     valid_rows: Option<&[bool]>,
@@ -311,7 +311,7 @@ fn loc_multiset(obs: &[Obs]) -> FxHashMap<u64, usize> {
     counts
 }
 
-fn loc_time_multiset(obs: &[Obs]) -> FxHashMap<(u64, u64), usize> {
+fn loc_time_multiset(obs: &[Obs]) -> FxHashMap<(u64, u32), usize> {
     let mut counts = FxHashMap::default();
     for item in obs {
         *counts.entry(loc_time_key(*item)).or_insert(0) += 1;
@@ -365,8 +365,8 @@ fn matches_location(required: &FxHashMap<u64, usize>, available: &FxHashMap<u64,
 }
 
 fn matches_time(
-    required: &FxHashMap<(u64, u64), usize>,
-    available: &FxHashMap<(u64, u64), usize>,
+    required: &FxHashMap<(u64, u32), usize>,
+    available: &FxHashMap<(u64, u32), usize>,
 ) -> bool {
     required
         .iter()
@@ -607,7 +607,7 @@ fn flatten_result(
 pub fn privacy_assess_risk_impl(
     latitudes: &[f64],
     longitudes: &[f64],
-    time_keys: Option<&[u64]>,
+    time_keys: Option<&[u32]>,
     indices: Option<&[usize]>,
     ends: &[usize],
     target_user_indices: &[usize],

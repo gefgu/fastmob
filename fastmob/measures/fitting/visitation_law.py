@@ -29,7 +29,7 @@ from fastmob.utils._common import (
 
 _VISITATION_YLABEL = r"$\rho_i(r,f)$ (visitors km$^{-2}$)"
 _H3_CELL_COL = "h3_cell"
-# Internal-only: the dense UInt64 user codes `_prepare_visitation_law_data`
+# Internal-only: the dense UInt32 user codes `_prepare_visitation_law_data`
 # already factorizes once, carried through so `_bin_visitation_law` can reuse
 # them instead of factorizing `user_id_col` a second time. Dropped before
 # `data` is returned to callers, so it never appears in the public schema.
@@ -283,7 +283,7 @@ def _bin_visitation_law(
 
     # Reuse `_prepare_visitation_law_data`'s user-id factorization when it's
     # present: `bin_visitation_law_arrow` skips its own factorization for a
-    # non-null UInt64 array, so passing these codes instead of raw
+    # already-factorized UInt32 array, so passing these codes instead of raw
     # `user_id_col` values avoids factorizing the same column a second time.
     user_id_values = (
         df.get_column(_USER_CODE_COL).to_arrow()

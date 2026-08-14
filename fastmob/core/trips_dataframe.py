@@ -21,7 +21,7 @@ import narwhals as nw
 from fastmob._core import trips_from_timeline
 from fastmob.utils._common import (
     _as_arrow,
-    _factorize_uids_uint64,
+    _factorize_uids_uint32,
     _list_column_from_offsets,
     _narwhals_safe_value,
     _null_sentinel_to_none,
@@ -152,7 +152,7 @@ class Trips(BaseDataFrame):
             nw.col("finished_at").dt.timestamp("us").cast(nw.Int64).alias("__finished_at_us__"),
         )
         if uid_col:
-            uid_codes, _num_groups = _factorize_uids_uint64(timeline, group_key, sort=False)
+            uid_codes, _num_groups = _factorize_uids_uint32(timeline, group_key, sort=False)
             timeline = timeline.with_columns(uid_codes)
             uid_code_col = "__fastmob_uid_codes__"
             code_to_uid = dict(

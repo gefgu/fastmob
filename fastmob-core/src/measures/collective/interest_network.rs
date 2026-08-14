@@ -9,19 +9,19 @@ use rustc_hash::FxHashMap;
 /// caller's global location catalogue, which gives edges a stable orientation
 /// without imposing an order on the location IDs themselves.
 pub fn interest_network_impl(
-    user_codes: &[u64],
-    location_ranks: &[u64],
-) -> Result<Vec<(u64, u64, u64)>, String> {
+    user_codes: &[u32],
+    location_ranks: &[u32],
+) -> Result<Vec<(u32, u32, u64)>, String> {
     if user_codes.len() != location_ranks.len() {
         return Err("user_codes and location_ranks must have the same length".to_string());
     }
 
-    let mut locations_by_user: FxHashMap<u64, Vec<u64>> = FxHashMap::default();
+    let mut locations_by_user: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
     for (&user, &location) in user_codes.iter().zip(location_ranks) {
         locations_by_user.entry(user).or_default().push(location);
     }
 
-    let mut counts: FxHashMap<(u64, u64), u64> = FxHashMap::default();
+    let mut counts: FxHashMap<(u32, u32), u64> = FxHashMap::default();
     for locations in locations_by_user.values_mut() {
         locations.sort_unstable();
         locations.dedup();

@@ -93,7 +93,7 @@ pub struct MarkovLocationModel {
     /// prediction context into this user's local codes: a linear scan over
     /// this array, not a second hash map, per the same small-N bet the trie
     /// itself makes (at most `order` such lookups per `predict_one` call).
-    local_to_global: Vec<u64>,
+    local_to_global: Vec<u32>,
     /// Flat node storage; index 0 is always the root (order-0 context).
     /// Child/parent links are plain `u32` indices into this `Vec`, not
     /// pointers -- keeps every node contiguous and cheaply relocatable, and
@@ -141,9 +141,9 @@ fn child_or_insert(arena: &mut Vec<TrieNode>, node_idx: u32, loc: u16) -> u32 {
 /// descending/creating one trie node per step and recording a transition
 /// at each depth reached -- no `Vec` is allocated per (position, order)
 /// pair the way the old `seq[i - k..i].to_vec()` context key was.
-fn fit_one_user(seq: &[u64], config: &NextLocationConfig) -> Result<MarkovLocationModel, String> {
-    let mut global_to_local: FxHashMap<u64, u16> = FxHashMap::default();
-    let mut local_to_global: Vec<u64> = Vec::new();
+fn fit_one_user(seq: &[u32], config: &NextLocationConfig) -> Result<MarkovLocationModel, String> {
+    let mut global_to_local: FxHashMap<u32, u16> = FxHashMap::default();
+    let mut local_to_global: Vec<u32> = Vec::new();
     let mut local_seq: Vec<u16> = Vec::with_capacity(seq.len());
     for &global in seq {
         let local = match global_to_local.get(&global) {
@@ -193,7 +193,7 @@ fn fit_one_user(seq: &[u64], config: &NextLocationConfig) -> Result<MarkovLocati
 /// chronologically-sorted location-code sequence
 /// (`location_codes[sorted_indices[start..end]]`), in parallel via rayon.
 pub fn markov_fit_indexed(
-    location_codes: &[u64],
+    location_codes: &[u32],
     sorted_indices: &[usize],
     ends: &[usize],
     config: &NextLocationConfig,
@@ -208,7 +208,7 @@ pub fn markov_fit_indexed(
         .map(|i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
             let end = ends[i];
-            let seq: Vec<u64> = sorted_indices[start..end]
+            let seq: Vec<u32> = sorted_indices[start..end]
                 .iter()
                 .map(|&idx| location_codes[idx])
                 .collect();
@@ -218,7 +218,7 @@ pub fn markov_fit_indexed(
 }
 
 struct PredictionResult {
-    codes: Vec<u64>,
+    codes: Vec<u32>,
     probs: Vec<f64>,
 }
 
@@ -232,7 +232,7 @@ struct PredictionResult {
 /// relative to the original implementation -- caught by
 /// `differential_matches_naive_nested_hashmap_reference` before this
 /// comment existed.
-fn by_count_desc(a: &(u64, u32), b: &(u64, u32)) -> std::cmp::Ordering {
+fn by_count_desc(a: &(u32, u32), b: &(u32, u32)) -> std::cmp::Ordering {
     b.1.cmp(&a.1).then(a.0.cmp(&b.0))
 }
 
@@ -242,7 +242,7 @@ fn by_count_desc(a: &(u64, u32), b: &(u64, u32)) -> std::cmp::Ordering {
 /// larger than `top_k`, rather than an O(N log N) full sort -- only the
 /// resulting (small, <= `top_k`-sized) slice is fully sorted afterward, for
 /// a deterministic final order.
-fn select_top_k(items: &mut Vec<(u64, u32)>, top_k: usize) {
+fn select_top_k(items: &mut Vec<(u32, u32)>, top_k: usize) {
     if items.len() > top_k {
         if top_k == 0 {
             items.clear();
@@ -254,7 +254,7 @@ fn select_top_k(items: &mut Vec<(u64, u32)>, top_k: usize) {
     items.sort_by(by_count_desc);
 }
 
-fn predict_one(model: &MarkovLocationModel, context: &[u64], top_k: usize) -> PredictionResult {
+fn predict_one(model: &MarkovLocationModel, context: &[u32], top_k: usize) -> PredictionResult {
     let max_k = model.order.min(context.len());
 
     // Walk backward from the most recent context element, descending the
@@ -308,7 +308,7 @@ fn predict_one(model: &MarkovLocationModel, context: &[u64], top_k: usize) -> Pr
     }
 
     let total: u32 = node.transitions.iter().map(|&(_, count)| count).sum();
-    let mut items: Vec<(u64, u32)> = node
+    let mut items: Vec<(u32, u32)> = node
         .transitions
         .iter()
         .map(|&(local, count)| (model.local_to_global[local as usize], count))
@@ -332,11 +332,11 @@ fn predict_one(model: &MarkovLocationModel, context: &[u64], top_k: usize) -> Pr
 /// `recency_rank.rs`) since the candidate count varies per user.
 pub fn markov_predict_batch(
     models: &[MarkovLocationModel],
-    context_codes: &[u64],
+    context_codes: &[u32],
     context_starts: &[usize],
     context_ends: &[usize],
     top_k: usize,
-) -> Result<(Vec<u64>, Vec<f64>, Vec<usize>, Vec<usize>), String> {
+) -> Result<(Vec<u32>, Vec<f64>, Vec<usize>, Vec<usize>), String> {
     if models.len() != context_starts.len() || models.len() != context_ends.len() {
         return Err(
             "models, context_starts, and context_ends must have the same length".to_string(),
@@ -369,7 +369,7 @@ pub fn markov_predict_batch(
 mod tests {
     use super::*;
 
-    fn fit(seq: &[u64], config: &NextLocationConfig) -> MarkovLocationModel {
+    fn fit(seq: &[u32], config: &NextLocationConfig) -> MarkovLocationModel {
         fit_one_user(seq, config).expect("test sequences never exceed the u16 dense-coding limit")
     }
 
@@ -377,7 +377,7 @@ mod tests {
     fn order_1_predicts_deterministic_cycle_perfectly() {
         // A->B->C->A->B->C->... : order-1 Markov chain should predict the
         // next element with 100% confidence from any single-element context.
-        let seq: Vec<u64> = (0..12).map(|i| i % 3).collect();
+        let seq: Vec<u32> = (0..12).map(|i| i % 3).collect();
         let config = NextLocationConfig::new(1, true);
         let model = fit(&seq, &config);
 
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn order_0_is_most_frequent_location_baseline() {
-        let seq = vec![5u64, 5, 5, 7, 9];
+        let seq = vec![5u32, 5, 5, 7, 9];
         let config = NextLocationConfig::new(0, true);
         let model = fit(&seq, &config);
         let pred = predict_one(&model, &[], 1);
@@ -406,7 +406,7 @@ mod tests {
         // Order-2 context [9, 9] never appears in the fitted sequence, so
         // with backoff=true it should fall back down to order-0 (most
         // frequent location overall) instead of returning nothing.
-        let seq = vec![1u64, 2, 1, 2, 1, 2, 3];
+        let seq = vec![1u32, 2, 1, 2, 1, 2, 3];
         let config = NextLocationConfig::new(2, true);
         let model = fit(&seq, &config);
         let pred = predict_one(&model, &[9, 9], 1);
@@ -415,7 +415,7 @@ mod tests {
 
     #[test]
     fn no_backoff_returns_empty_on_unseen_context() {
-        let seq = vec![1u64, 2, 1, 2];
+        let seq = vec![1u32, 2, 1, 2];
         let config = NextLocationConfig::new(2, false);
         let model = fit(&seq, &config);
         let pred = predict_one(&model, &[9, 9], 1);
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn top_k_returns_multiple_candidates_sorted_by_count_desc() {
-        let seq = vec![0u64, 1, 0, 2, 0, 1, 0, 1];
+        let seq = vec![0u32, 1, 0, 2, 0, 1, 0, 1];
         let config = NextLocationConfig::new(1, true);
         let model = fit(&seq, &config);
         let pred = predict_one(&model, &[0], 2);
@@ -437,7 +437,7 @@ mod tests {
         // Regression guard for the reached_depth < max_k check: a *known*
         // full-length context with backoff disabled must still predict
         // (only an *unreached* full-length context should return empty).
-        let seq = vec![1u64, 2, 3, 1, 2, 3, 1, 2, 3];
+        let seq = vec![1u32, 2, 3, 1, 2, 3, 1, 2, 3];
         let config = NextLocationConfig::new(2, false);
         let model = fit(&seq, &config);
         let pred = predict_one(&model, &[1, 2], 1);
@@ -450,7 +450,7 @@ mod tests {
         // element (1) is known, but the one before it (42) isn't, so the
         // walk should reach depth 1 (context=[1]) rather than falling all
         // the way to depth 0 (root).
-        let seq = vec![1u64, 2, 1, 2, 1, 2, 1, 9];
+        let seq = vec![1u32, 2, 1, 2, 1, 2, 1, 9];
         let config = NextLocationConfig::new(2, true);
         let model = fit(&seq, &config);
         let pred = predict_one(&model, &[42, 1], 1);
@@ -464,7 +464,7 @@ mod tests {
         // Global codes are sparse/arbitrary (as real location-id codes
         // are), not small contiguous integers like the other tests happen
         // to use -- exercise that explicitly.
-        let seq = vec![900_001u64, 42, 900_001, 42, 900_001, 7];
+        let seq = vec![900_001u32, 42, 900_001, 42, 900_001, 7];
         let config = NextLocationConfig::new(1, true);
         let model = fit(&seq, &config);
         let pred = predict_one(&model, &[900_001], 1);
@@ -478,8 +478,8 @@ mod tests {
     // passing the hand-picked cases above.
     // -----------------------------------------------------------------
 
-    fn naive_fit(seq: &[u64], order: usize) -> Vec<FxHashMap<Vec<u64>, FxHashMap<u64, u32>>> {
-        let mut tables: Vec<FxHashMap<Vec<u64>, FxHashMap<u64, u32>>> =
+    fn naive_fit(seq: &[u32], order: usize) -> Vec<FxHashMap<Vec<u32>, FxHashMap<u32, u32>>> {
+        let mut tables: Vec<FxHashMap<Vec<u32>, FxHashMap<u32, u32>>> =
             (0..=order).map(|_| FxHashMap::default()).collect();
         let n = seq.len();
         for (k, table) in tables.iter_mut().enumerate() {
@@ -496,15 +496,15 @@ mod tests {
     /// semantics as `predict_one`, but built independently from a plain
     /// `FxHashMap`, for differential comparison.
     fn naive_predict_set(
-        tables: &[FxHashMap<Vec<u64>, FxHashMap<u64, u32>>],
-        context: &[u64],
+        tables: &[FxHashMap<Vec<u32>, FxHashMap<u32, u32>>],
+        context: &[u32],
         order: usize,
         backoff: bool,
-    ) -> Option<FxHashMap<u64, u32>> {
+    ) -> Option<FxHashMap<u32, u32>> {
         let max_k = order.min(context.len());
         let mut k = max_k;
         loop {
-            let ctx_key: Vec<u64> = if k == 0 {
+            let ctx_key: Vec<u32> = if k == 0 {
                 Vec::new()
             } else {
                 context[context.len() - k..].to_vec()
@@ -544,8 +544,8 @@ mod tests {
             let backoff = rng.range(2) == 0;
             let top_k = 1 + (rng.range(3) as usize);
 
-            let seq: Vec<u64> = (0..seq_len)
-                .map(|_| 1_000_000 + rng.range(vocab as u64)) // sparse-looking global codes
+            let seq: Vec<u32> = (0..seq_len)
+                .map(|_| (1_000_000 + rng.range(vocab as u64)) as u32) // sparse-looking global codes
                 .collect();
 
             let config = NextLocationConfig::new(order, backoff);
@@ -555,9 +555,9 @@ mod tests {
             // Try every suffix of the sequence as a context, plus a couple
             // of never-seen contexts, so both known and unknown contexts
             // get exercised.
-            let mut contexts: Vec<Vec<u64>> =
+            let mut contexts: Vec<Vec<u32>> =
                 (0..=seq_len).map(|i| seq[seq_len - i..].to_vec()).collect();
-            contexts.push(vec![999_999_999, 999_999_998]);
+            contexts.push(vec![999_999_999u32, 999_999_998u32]);
 
             for context in contexts {
                 let trie_pred = predict_one(&trie_model, &context, top_k);
@@ -584,7 +584,7 @@ mod tests {
                         // reference's full transition set, with matching
                         // probabilities, and must be truly the top-k by
                         // count (descending, ties broken by code).
-                        let mut expected_sorted: Vec<(u64, u32)> =
+                        let mut expected_sorted: Vec<(u32, u32)> =
                             expected_counts.iter().map(|(&c, &n)| (c, n)).collect();
                         expected_sorted.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
                         expected_sorted.truncate(top_k);

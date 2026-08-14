@@ -119,7 +119,7 @@ pub fn expand_5min_trajectory_batch_indexed_impl(
 /// otherwise-unbounded memory growth for users with a long, sparse
 /// check-in history (see `measures_notes.md` in fastmob_benchmarks for the
 /// concrete before/after).
-pub type ExpandTrajectoryWithImputationBatchResult = (Vec<usize>, Vec<i64>, Vec<u64>, Vec<u32>);
+pub type ExpandTrajectoryWithImputationBatchResult = (Vec<usize>, Vec<i64>, Vec<u32>, Vec<u32>);
 
 const HOUR_MS: i64 = 60 * 60 * 1000;
 
@@ -153,12 +153,12 @@ fn anchor_window_for_hour(hour: u32) -> Option<AnchorWindow> {
 /// wins among equally-frequent candidates.
 #[derive(Default)]
 struct AnchorTally {
-    counts: HashMap<u64, (u64, usize)>,
+    counts: HashMap<u32, (u64, usize)>,
     next_position: usize,
 }
 
 impl AnchorTally {
-    fn record(&mut self, location_code: u64) {
+    fn record(&mut self, location_code: u32) {
         let next_position = self.next_position;
         let entry = self
             .counts
@@ -168,7 +168,7 @@ impl AnchorTally {
         self.next_position += 1;
     }
 
-    fn winner(&self) -> Option<u64> {
+    fn winner(&self) -> Option<u32> {
         self.counts
             .iter()
             .max_by(|(_, (count_a, pos_a)), (_, (count_b, pos_b))| {
@@ -188,15 +188,15 @@ impl AnchorTally {
 fn expand_5min_with_imputation_for_user(
     start_ms: &[i64],
     end_ms: &[i64],
-    location_codes: &[u64],
+    location_codes: &[u32],
     user_indices: &[usize],
-) -> Vec<(i64, u64, u32)> {
+) -> Vec<(i64, u32, u32)> {
     let observed_rows = expand_5min_for_user(start_ms, end_ms, user_indices);
     if observed_rows.is_empty() {
         return Vec::new();
     }
 
-    let mut observed: Vec<(i64, u64)> = observed_rows
+    let mut observed: Vec<(i64, u32)> = observed_rows
         .into_iter()
         .map(|row| (row.timestamp_ms, location_codes[row.source_row_idx]))
         .collect();
@@ -208,14 +208,14 @@ fn expand_5min_with_imputation_for_user(
             tallies.entry(window).or_default().record(location_code);
         }
     }
-    let anchor_for = |window: AnchorWindow| -> Option<u64> {
+    let anchor_for = |window: AnchorWindow| -> Option<u32> {
         tallies.get(&window).and_then(AnchorTally::winner)
     };
     let home_anchor = anchor_for(AnchorWindow::Home);
     let work_a_anchor = anchor_for(AnchorWindow::WorkA);
     let work_b_anchor = anchor_for(AnchorWindow::WorkB);
 
-    let observed_by_timestamp: HashMap<i64, u64> = observed.iter().copied().collect();
+    let observed_by_timestamp: HashMap<i64, u32> = observed.iter().copied().collect();
     let first_timestamp = observed.first().unwrap().0;
     let last_timestamp = observed.last().unwrap().0;
 
@@ -229,9 +229,9 @@ fn expand_5min_with_imputation_for_user(
     // exploration block, every subsequent `home` slice is one return
     // block) -- so a run may only absorb a slice when *both* the location
     // and this explore/return state match the run's, not location alone.
-    let mut seen: HashSet<u64> = HashSet::new();
-    let mut result: Vec<(i64, u64, u32)> = Vec::new();
-    let mut current_run: Option<(i64, u64, u32, bool)> = None; // (run_start_ms, location_code, run_length, is_known)
+    let mut seen: HashSet<u32> = HashSet::new();
+    let mut result: Vec<(i64, u32, u32)> = Vec::new();
+    let mut current_run: Option<(i64, u32, u32, bool)> = None; // (run_start_ms, location_code, run_length, is_known)
 
     let mut t = first_timestamp;
     while t <= last_timestamp {
@@ -273,11 +273,11 @@ fn expand_5min_with_imputation_for_user(
 pub fn expand_5min_trajectory_with_imputation_batch_indexed_impl(
     start_ms: &[i64],
     end_ms: &[i64],
-    location_codes: &[u64],
+    location_codes: &[u32],
     sorted_indices: &[usize],
     ends: &[usize],
 ) -> ExpandTrajectoryWithImputationBatchResult {
-    let per_user_runs: Vec<Vec<(i64, u64, u32)>> = (0..ends.len())
+    let per_user_runs: Vec<Vec<(i64, u32, u32)>> = (0..ends.len())
         .into_par_iter()
         .map(|i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
@@ -372,8 +372,8 @@ mod tests {
     // `test_impute_gaps_fills_missing_nighttime_slice_with_home_anchor` /
     // `test_impute_gaps_leaves_missing_slice_absent_without_anchor` in
     // tests/correctness/individual/test_intermittance.py).
-    const HOME: u64 = 0;
-    const SHOP: u64 = 1;
+    const HOME: u32 = 0;
+    const SHOP: u32 = 1;
 
     fn ms(hour: i64, minute: i64) -> i64 {
         hour * HOUR_MS + minute * 60_000

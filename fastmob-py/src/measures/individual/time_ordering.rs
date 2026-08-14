@@ -1,5 +1,5 @@
 use fastmob_core::measures::individual::time_ordering::{
-    presorted_ranges_for_u64_codes, split_ordered_index_ranges, time_ordered_indices_for_u64_codes,
+    presorted_ranges_for_u32_codes, split_ordered_index_ranges, time_ordered_indices_for_u32_codes,
     time_ordered_indices_single_user,
 };
 use pyo3::exceptions::PyValueError;
@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 
 use crate::utils::{
-    arrow_u64_values, arrow_values, as_nullable_f64_array, as_u64_array, extract_arrow_array,
+    arrow_u32_values, arrow_values, as_nullable_f64_array, as_u32_array, extract_arrow_array,
     u64_results_into_arrow,
 };
 
@@ -20,8 +20,8 @@ pub fn presorted_user_starts_ends(
     py: Python<'_>,
     uids: &Bound<'_, PyAny>,
 ) -> PyResult<(PyArray, PyArray)> {
-    let uids = as_u64_array(extract_arrow_array(uids, "uids")?, "uids")?;
-    let (starts, ends) = py.detach(|| presorted_ranges_for_u64_codes(arrow_u64_values(&uids)));
+    let uids = as_u32_array(extract_arrow_array(uids, "uids")?, "uids")?;
+    let (starts, ends) = py.detach(|| presorted_ranges_for_u32_codes(arrow_u32_values(&uids)));
     Ok((index_results(starts), index_results(ends)))
 }
 
@@ -36,13 +36,13 @@ pub fn time_ordered_user_indices(
     let timestamps =
         as_nullable_f64_array(extract_arrow_array(timestamps, "timestamps")?, "timestamps")?;
     let ordered = if let Some(uids) = uids {
-        let uids = as_u64_array(extract_arrow_array(uids, "uids")?, "uids")?;
+        let uids = as_u32_array(extract_arrow_array(uids, "uids")?, "uids")?;
         let num_groups = num_groups.ok_or_else(|| {
             PyValueError::new_err("num_groups is required when uids are provided")
         })?;
         py.detach(|| {
-            time_ordered_indices_for_u64_codes(
-                arrow_u64_values(&uids),
+            time_ordered_indices_for_u32_codes(
+                arrow_u32_values(&uids),
                 arrow_values(&timestamps),
                 num_groups,
             )

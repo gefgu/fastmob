@@ -1,9 +1,9 @@
-use fastmob_core::utils::{split_user_index_ranges, user_indices_for_u64_codes};
+use fastmob_core::utils::{split_user_index_ranges, user_indices_for_u32_codes};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 
-use crate::utils::{arrow_u64_values, as_u64_array, extract_arrow_array, u64_results_into_arrow};
+use crate::utils::{arrow_u32_values, as_u32_array, extract_arrow_array, u64_results_into_arrow};
 
 #[pyfunction]
 pub fn single_user_indices(length: usize) -> (PyArray, PyArray) {
@@ -25,9 +25,9 @@ pub fn indexed_user_indices(
     uids: &Bound<'_, PyAny>,
     num_groups: usize,
 ) -> PyResult<(PyArray, PyArray)> {
-    let uids = as_u64_array(extract_arrow_array(uids, "uids")?, "uids")?;
+    let uids = as_u32_array(extract_arrow_array(uids, "uids")?, "uids")?;
     let grouped = py
-        .detach(|| user_indices_for_u64_codes(arrow_u64_values(&uids), num_groups))
+        .detach(|| user_indices_for_u32_codes(arrow_u32_values(&uids), num_groups))
         .map_err(PyValueError::new_err)?;
     let (indices, ends) = split_user_index_ranges(grouped);
     Ok((

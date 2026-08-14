@@ -5,13 +5,13 @@ use crate::utils::haversine::haversine_km;
 pub const NULL_I64: i64 = i64::MIN;
 
 pub struct TriplegLengthsResult {
-    pub uid_codes: Vec<u64>,
+    pub uid_codes: Vec<u32>,
     pub segment_ids: Vec<i64>,
     pub lengths_km: Vec<f64>,
 }
 
 pub struct TripsResult {
-    pub uid_codes: Vec<u64>,
+    pub uid_codes: Vec<u32>,
     pub started_at_us: Vec<i64>,
     pub finished_at_us: Vec<i64>,
     pub origin_staypoint_ids: Vec<i64>,
@@ -21,7 +21,7 @@ pub struct TripsResult {
 }
 
 pub struct ToursResult {
-    pub uid_codes: Vec<u64>,
+    pub uid_codes: Vec<u32>,
     pub started_at_us: Vec<i64>,
     pub finished_at_us: Vec<i64>,
     pub location_ids: Vec<i64>,
@@ -31,7 +31,7 @@ pub struct ToursResult {
 
 #[allow(clippy::too_many_arguments)]
 pub fn tripleg_lengths_attributed_impl(
-    uid_codes: &[u64],
+    uid_codes: &[u32],
     segment_ids: &[i64],
     is_stop: &[bool],
     latitudes: &[f64],
@@ -43,7 +43,7 @@ pub fn tripleg_lengths_attributed_impl(
         return Err("tripleg length input arrays must have the same length".to_string());
     }
 
-    let mut lengths: BTreeMap<(u64, i64), f64> = BTreeMap::new();
+    let mut lengths: BTreeMap<(u32, i64), f64> = BTreeMap::new();
     for i in 0..n {
         let first_of_user = i == 0 || uid_codes[i] != uid_codes[i - 1];
         if first_of_user {
@@ -85,7 +85,7 @@ pub fn tripleg_lengths_attributed_impl(
 
 #[allow(clippy::too_many_arguments)]
 pub fn trips_from_timeline_impl(
-    uid_codes: &[u64],
+    uid_codes: &[u32],
     kind_codes: &[u8],
     activity: &[bool],
     staypoint_ids: &[i64],
@@ -143,7 +143,7 @@ pub fn trips_from_timeline_impl(
 
     #[derive(Clone)]
     struct TripAccumulator {
-        uid_code: u64,
+        uid_code: u32,
         started_at_us: i64,
         finished_at_us: i64,
         origin_staypoint_id: i64,
@@ -151,8 +151,8 @@ pub fn trips_from_timeline_impl(
         tripleg_ids: Vec<i64>,
     }
 
-    let mut trips: BTreeMap<(u64, i64), usize> = BTreeMap::new();
-    let mut order: Vec<(u64, i64)> = Vec::new();
+    let mut trips: BTreeMap<(u32, i64), usize> = BTreeMap::new();
+    let mut order: Vec<(u32, i64)> = Vec::new();
     let mut acc: Vec<TripAccumulator> = Vec::new();
     for i in 0..n {
         if kind_codes[i] != 1 {
@@ -213,7 +213,7 @@ pub fn trips_from_timeline_impl(
 
 #[allow(clippy::too_many_arguments)]
 pub fn tours_from_trips_impl(
-    uid_codes: &[u64],
+    uid_codes: &[u32],
     trip_ids: &[i64],
     started_at_us: &[i64],
     finished_at_us: &[i64],

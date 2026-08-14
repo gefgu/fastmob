@@ -38,7 +38,7 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import tripleg_lengths_attributed
-from fastmob.utils._common import _as_arrow, _factorize_uids_uint64, _narwhals_safe_value
+from fastmob.utils._common import _as_arrow, _factorize_uids_uint32, _narwhals_safe_value
 
 from .base import BaseDataFrame
 
@@ -188,7 +188,7 @@ class Triplegs(BaseDataFrame):
         sort_cols = ([uid_col] if uid_col else []) + [datetime_col]
         seg_nw = seg_nw.sort(sort_cols)
         if uid_col:
-            uid_codes, _num_groups = _factorize_uids_uint64(seg_nw, uid_col, sort=False)
+            uid_codes, _num_groups = _factorize_uids_uint32(seg_nw, uid_col, sort=False)
             seg_nw = seg_nw.with_columns(uid_codes)
             uid_code_col = "__fastmob_uid_codes__"
         else:

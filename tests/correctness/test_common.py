@@ -100,17 +100,15 @@ class TestArrowFactorization:
         assert pa.array(codes).to_pylist() == [0, 1, 2, 0, 1]
         assert pa.array(representatives).to_pylist() == [0, 1, 2]
 
-    def test_codes_dtype_is_always_uint64(self):
-        # The Rust kernel narrows `codes` to u32 internally for performance,
-        # but widens back to u64 at the PyO3 boundary -- several downstream
-        # callers (visitation_law, privacy._engine, motifs) consume this
-        # array uncast and require it to stay UInt64.
+    def test_codes_dtype_is_uint32_and_representatives_uint64(self):
+        # Dense categorical codes stay narrow at the Arrow boundary; row
+        # representatives remain UInt64 because they are positional indices.
         import pyarrow as pa
         from fastmob._core import factorize_arrow
 
         codes, representatives = factorize_arrow(pa.array(["b", None, "a", "b", None]))
 
-        assert pa.array(codes).type == pa.uint64()
+        assert pa.array(codes).type == pa.uint32()
         assert pa.array(representatives).type == pa.uint64()
 
     def test_sorted_values_put_null_last(self):

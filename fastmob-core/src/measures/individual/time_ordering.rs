@@ -11,7 +11,7 @@ pub fn split_ordered_index_ranges(
     (indices, ends_from_ranges(&ranges))
 }
 
-pub fn presorted_ranges_for_u64_codes(codes: &[u64]) -> (Vec<usize>, Vec<usize>) {
+pub fn presorted_ranges_for_u32_codes(codes: &[u32]) -> (Vec<usize>, Vec<usize>) {
     let n = codes.len();
     if n == 0 {
         return (Vec::new(), Vec::new());
@@ -47,8 +47,8 @@ pub fn time_ordered_indices_single_user(timestamps: &[f64]) -> OrderedIndexRange
     (indices, vec![(0, n)])
 }
 
-pub fn time_ordered_indices_for_u64_codes(
-    codes: &[u64],
+pub fn time_ordered_indices_for_u32_codes(
+    codes: &[u32],
     timestamps: &[f64],
     num_groups: usize,
 ) -> Result<OrderedIndexRanges, String> {
