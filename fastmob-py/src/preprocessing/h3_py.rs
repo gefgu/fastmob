@@ -1,6 +1,6 @@
 use arrow_array::Array;
 use fastmob_core::preprocessing::h3::{
-    batch_cells_to_latlng, batch_latlng_to_cells, batch_latlng_to_h3_centered, INVALID_CELL,
+    INVALID_CELL, batch_cells_to_latlng, batch_latlng_to_cells, batch_latlng_to_h3_centered,
 };
 use geo::{LineString, Polygon};
 use h3o::geom::TilerBuilder;

@@ -29,8 +29,8 @@ use measures::individual::{
 };
 use network::road_graph_py;
 use preprocessing::{
-    cdr, clustering, compress_traj_py, filter_traj_py, h3_py,
-    outliers_traj_py, segment_traj_py, simplify_traj_py, stay_locations_py,
+    cdr, clustering, compress_traj_py, filter_traj_py, h3_py, outliers_traj_py, segment_traj_py,
+    simplify_traj_py, stay_locations_py,
 };
 use social::co_presence_network;
 
