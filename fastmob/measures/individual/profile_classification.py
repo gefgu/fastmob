@@ -246,7 +246,6 @@ def compute_profiles(
             df.to_native(),
             user_id_col=user_id_col,
             location_id_col=location_id_col,
-            location_type_col=purpose_col,
             normalized=True,
         ),
         _stationarity(df, user_id_col=user_id_col, start_col=start_col, end_col=end_col).to_native(),

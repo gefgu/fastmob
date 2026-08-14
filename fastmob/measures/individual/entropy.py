@@ -5,136 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-import numpy as np
+import pyarrow as pa
 
-from fastmob._core import trajectory_entropy_batch as _trajectory_entropy_batch_rust
+from fastmob._core import real_entropy_users as _real_entropy_users_rust
 from fastmob._core import trajectory_predictability_batch as _trajectory_predictability_batch_rust
 from fastmob.utils._common import (
     LOCATION_CANDIDATES,
-    LOCATION_TYPE_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
     _build_presorted_user_ends,
+    _factorize_arrow_values,
     _pick_existing_column,
 )
-
-# ---------------------------------------------------------------------------
-# Private helpers — entropy subsystem
-# ---------------------------------------------------------------------------
-
-
-def _kontoyiannis_entropy(sequence: list) -> float:
-    """Kontoyiannis (1998) entropy estimator on a pre-tokenized sequence.
-
-    Computes the Lempel-Ziv entropy rate estimate using the DP-based
-    longest-match algorithm from Kontoyiannis et al. (1998).
-
-    Parameters
-    ----------
-    sequence:
-        A list of hashable tokens (strings or integers).
-
-    Returns
-    -------
-    float
-        Entropy in bits. Returns 0.0 for sequences of length <= 1 or
-        constant sequences.
-
-    Implementation notes
-    --------------------
-    The DP transition is ``dp[i][j] = dp[i-1][j-1] + 1`` when
-    ``sequence[i-1] == sequence[j-1]``, else 1.  The full n×n table is not
-    needed at once: only the previous row is required to compute the current
-    row.  We therefore keep two 1D arrays (``prev_row`` and ``curr_row``) and
-    accumulate the per-column maximum incrementally, reducing memory from
-    O(n²) to O(n).
-    """
-    sequence = [str(elem) for elem in sequence]
-    n = len(sequence)
-
-    if n <= 1:
-        return 0.0
-
-    # col_max[j] tracks max(dp[0..i][j]) as we advance i.
-    # Initialised to 1 because dp[0][j] == 1 for all j (base row).
-    col_max = [1] * n
-    prev_row = [1] * n
-
-    for i in range(1, n):
-        curr_row = [1] * n
-        for j in range(i + 1, n):
-            if sequence[i - 1] == sequence[j - 1]:
-                curr_row[j] = prev_row[j - 1] + 1
-            # else curr_row[j] remains 1 (initialised above)
-            col_max[j] = max(col_max[j], curr_row[j])
-        prev_row = curr_row
-
-    lambdas = sum(col_max)
-
-    if lambdas == 0:
-        return 0.0
-
-    return float((n / lambdas) * np.log2(n))
-
-
-def _fano_equation_term(predictability: float, real_entropy: float, n_unique: int) -> float:
-    """Fano inequality residual."""
-    p = float(np.clip(predictability, 1e-12, 1 - 1e-12))
-    binary_entropy = -(p * np.log2(p) + (1 - p) * np.log2(1 - p))
-    return binary_entropy + (1 - p) * np.log2(n_unique - 1) - real_entropy
-
-
-def _solve_max_predictability_with_fano(
-    real_entropy: float,
-    n_unique: int,
-    max_iter: int = 100,
-    tol: float = 1e-8,
-) -> float:
-    """Solve Fano's inequality for max predictability via bisection.
-
-    Parameters
-    ----------
-    real_entropy:
-        Estimated entropy in bits.
-    n_unique:
-        Number of distinct location tokens in the user's trajectory.
-    max_iter:
-        Maximum bisection iterations.
-    tol:
-        Convergence tolerance.
-
-    Returns
-    -------
-    float
-        Maximum predictability in ``[1/n_unique, 1]``.
-    """
-    if n_unique <= 1:
-        return 1.0
-
-    entropy_upper_bound = float(np.log2(n_unique))
-    bounded_entropy = float(np.clip(real_entropy, 0.0, entropy_upper_bound))
-
-    if np.isclose(bounded_entropy, 0.0):
-        return 1.0
-    if np.isclose(bounded_entropy, entropy_upper_bound):
-        return float(1.0 / n_unique)
-
-    low = 1.0 / n_unique
-    high = 1.0
-
-    for _ in range(max_iter):
-        mid = 0.5 * (low + high)
-        value = _fano_equation_term(mid, bounded_entropy, n_unique)
-
-        if abs(value) < tol:
-            return float(mid)
-
-        if value > 0:
-            low = mid
-        else:
-            high = mid
-
-    return float(0.5 * (low + high))
 
 
 def _sort_visits(
@@ -150,25 +32,6 @@ def _sort_visits(
     return df
 
 
-def _with_location_key(
-    df: nw.DataFrame,
-    location_id_col: str | None,
-    location_type_col: str | None,
-    location_key_col: str,
-) -> nw.DataFrame:
-    """Add the token column consumed by the trajectory entropy estimator."""
-    if location_id_col and location_type_col:
-        df = df.with_columns(
-            (nw.col(location_id_col).cast(nw.String) + nw.lit("_") + nw.col(location_type_col).cast(nw.String)).alias(
-                location_key_col
-            )
-        )
-        return df.filter(~nw.col(location_key_col).is_null())
-    if location_id_col:
-        df = df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
-        return df.filter(~nw.col(location_key_col).is_null())
-    return df
-
 
 # ---------------------------------------------------------------------------
 # Public measures
@@ -179,7 +42,6 @@ def trajectory_entropy(
     visits: Any,
     user_id_col: str | None = None,
     location_id_col: str | None = None,
-    location_type_col: str | None = None,
     timestamp_col: str | None = None,
     normalized: bool = True,
 ) -> Any:
@@ -193,9 +55,6 @@ def trajectory_entropy(
         Column name for the user ID. Auto-detected if None.
     location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if None.
-    location_type_col : str or None, optional
-        Column name for the location type / activity purpose. Auto-detected
-        if None; set explicitly to ``None`` to disable.
     timestamp_col : str or None, optional
         Column name for ordering visits. Auto-detected if None; when no
         timestamp column is found the row order is preserved.
@@ -238,32 +97,30 @@ def trajectory_entropy(
     """
     nw_df = nw.from_native(visits, eager_only=True)
 
-    if user_id_col is None:
-        user_id_col = _pick_existing_column(nw_df.columns, USER_ID_CANDIDATES)
-    if location_id_col is None:
-        location_id_col = _pick_existing_column(nw_df.columns, LOCATION_CANDIDATES)
-    if location_type_col is None:
-        location_type_col = _pick_existing_column(nw_df.columns, LOCATION_TYPE_CANDIDATES)
-    if timestamp_col is None:
-        timestamp_col = _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
+    user_id_col = user_id_col or _pick_existing_column(nw_df.columns, USER_ID_CANDIDATES)
+    location_id_col = location_id_col or _pick_existing_column(nw_df.columns, LOCATION_CANDIDATES)
+    timestamp_col = timestamp_col or _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
 
-    location_key_col = "__fastmob_location_key__"
-    has_location_key = bool(location_id_col)
     df = _sort_visits(nw_df, user_id_col, timestamp_col)
-    df = _with_location_key(df, location_id_col, location_type_col, location_key_col)
+    if location_id_col:
+        df = df.filter(~nw.col(location_id_col).is_null())
 
-    tokens = df.get_column(location_key_col).to_list() if has_location_key else []
+    location_ids = (
+        _factorize_arrow_values(df.get_column(location_id_col).to_arrow(), sort=False)[0]
+        if location_id_col
+        else pa.array([], type=pa.uint64())
+    )
 
     if user_id_col:
         uid_values, ends = _build_presorted_user_ends(df, user_id_col)
-        entropies = _trajectory_entropy_batch_rust(tokens, ends, normalized)
+        entropies = _real_entropy_users_rust(location_ids, ends, normalized)
         return nw.from_dict(
             {user_id_col: uid_values.to_pylist(), "entropy": entropies},
             backend=df.implementation,
         ).to_native()
 
     _, ends = _build_presorted_user_ends(df, None)
-    entropies = _trajectory_entropy_batch_rust(tokens, ends, normalized)
+    entropies = _real_entropy_users_rust(location_ids, ends, normalized)
     return nw.from_dict(
         {"entropy": entropies},
         backend=df.implementation,
@@ -274,7 +131,6 @@ def trajectory_predictability(
     visits: Any,
     user_id_col: str | None = None,
     location_id_col: str | None = None,
-    location_type_col: str | None = None,
     timestamp_col: str | None = None,
 ) -> Any:
     """Compute per-user maximum predictability via Fano's inequality.
@@ -291,9 +147,6 @@ def trajectory_predictability(
         Column name for the user ID. Auto-detected if None.
     location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if None.
-    location_type_col : str or None, optional
-        Column name for the location type / activity purpose. Auto-detected
-        if None; set explicitly to ``None`` to disable.
     timestamp_col : str or None, optional
         Column name for ordering visits. Auto-detected if None.
 
@@ -334,26 +187,24 @@ def trajectory_predictability(
     """
     nw_df = nw.from_native(visits, eager_only=True)
 
-    if user_id_col is None:
-        user_id_col = _pick_existing_column(nw_df.columns, USER_ID_CANDIDATES)
-    if location_id_col is None:
-        location_id_col = _pick_existing_column(nw_df.columns, LOCATION_CANDIDATES)
-    if location_type_col is None:
-        location_type_col = _pick_existing_column(nw_df.columns, LOCATION_TYPE_CANDIDATES)
-    if timestamp_col is None:
-        timestamp_col = _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
+    user_id_col = user_id_col or _pick_existing_column(nw_df.columns, USER_ID_CANDIDATES)
+    location_id_col = location_id_col or _pick_existing_column(nw_df.columns, LOCATION_CANDIDATES)
+    timestamp_col = timestamp_col or _pick_existing_column(nw_df.columns, TIMESTAMP_CANDIDATES)
 
-    location_key_col = "__fastmob_location_key__"
-    has_location_key = bool(location_id_col)
     df = _sort_visits(nw_df, user_id_col, timestamp_col)
-    df = _with_location_key(df, location_id_col, location_type_col, location_key_col)
+    if location_id_col:
+        df = df.filter(~nw.col(location_id_col).is_null())
 
-    tokens = df.get_column(location_key_col).to_list() if has_location_key else []
+    location_ids = (
+        _factorize_arrow_values(df.get_column(location_id_col).to_arrow(), sort=False)[0]
+        if location_id_col
+        else pa.array([], type=pa.uint64())
+    )
 
     if user_id_col:
         uid_values, ends = _build_presorted_user_ends(df, user_id_col)
         real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(
-            tokens,
+            location_ids,
             ends,
         )
         return nw.from_dict(
@@ -368,7 +219,9 @@ def trajectory_predictability(
         ).to_native()
 
     _, ends = _build_presorted_user_ends(df, None)
-    real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(tokens, ends)
+    real_entropies, predictabilities, n_unique_locations, n_steps = _trajectory_predictability_batch_rust(
+        location_ids, ends
+    )
     return nw.from_dict(
         {
             "real_entropy": real_entropies,

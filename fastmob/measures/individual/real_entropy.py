@@ -5,34 +5,33 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+import pyarrow.compute as pc
 
-from fastmob._core import real_entropy_indexed
-from fastmob.core.dispatch import TrajectoryDispatcher
+from fastmob._core import real_entropy_users as _real_entropy_users_rust
 from fastmob.utils._common import (
     _build_indexed_user_ranges,
-    _detect_trajectory_columns,
     _extract_timestamps,
-    _values_to_list,
+    _factorize_arrow_values,
+    _pick_existing_column,
     _with_datetime_column,
+    LOCATION_CANDIDATES,
+    TIMESTAMP_CANDIDATES,
+    USER_ID_CANDIDATES,
 )
-
-_TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
 def real_entropy(
     traj: Any,
     *,
     datetime_col: str | None = None,
-    lat_col: str | None = None,
-    lng_col: str | None = None,
+    location_id_col: str | None = None,
     uid_col: str | None = None,
 ) -> Any:
     """Return the real (true) entropy of mobility for each user.
 
     Real entropy is estimated using the Kontoyiannis (1998) Lempel-Ziv
     entropy rate estimator applied to the sequence of visited locations.
-    Each location is encoded as the exact ``(lat, lng)`` float pair using
-    bitwise equality — matching the skmob convention (no spatial clustering).
+    Each location is represented by its exact ``location_id`` value.
 
     The estimator captures both the frequency and the order of visits,
     unlike random entropy (which ignores order) and uncorrelated entropy
@@ -42,15 +41,13 @@ def real_entropy(
     ----------
     traj : DataFrame-like
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
-        polars, …).  Must have datetime, latitude, and longitude columns.
+        polars, …).  Must have datetime and location-ID columns.
         A user-ID column is optional; when absent the whole frame is treated
         as a single individual.
     datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
-    lat_col : str or None, optional
-        Explicit latitude column name.  Auto-detected when None.
-    lng_col : str or None, optional
-        Explicit longitude column name.  Auto-detected when None.
+    location_id_col : str or None, optional
+        Explicit location-ID column name.  Auto-detected when None.
     uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
 
@@ -103,29 +100,20 @@ def real_entropy(
     uncorrelated_entropy : Entropy weighted by visit frequency (ignores temporal order).
     """
     df = nw.from_native(traj, eager_only=True)
-    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-    )
+    datetime_col = datetime_col or _pick_existing_column(df.columns, TIMESTAMP_CANDIDATES)
+    location_id_col = location_id_col or _pick_existing_column(df.columns, LOCATION_CANDIDATES)
+    uid_col = uid_col or _pick_existing_column(df.columns, USER_ID_CANDIDATES)
+    if datetime_col is None or location_id_col is None:
+        raise ValueError("real_entropy requires datetime and location_id columns")
     df = _with_datetime_column(df, datetime_col)
-    df = df.drop_nulls(subset=[datetime_col]).with_columns(
-        nw.col(lat_col).cast(nw.Float64),
-        nw.col(lng_col).cast(nw.Float64),
-    )
+    df = df.drop_nulls(subset=[datetime_col, location_id_col])
 
     timestamps = _extract_timestamps(df, datetime_col)
     uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
 
-    raw = real_entropy_indexed(
-        df.get_column(lat_col).to_arrow(),
-        df.get_column(lng_col).to_arrow(),
-        indices,
-        ends,
-    )
-    entropies = _values_to_list(raw)
+    location_codes, _ = _factorize_arrow_values(df.get_column(location_id_col).to_arrow(), sort=False)
+    ordered_location_codes = pc.take(location_codes, indices)
+    entropies = _real_entropy_users_rust(ordered_location_codes, ends, False)
 
     result_dict: dict[str, Any] = {"real_entropy": entropies}
     if uid_col is not None:

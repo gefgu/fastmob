@@ -6,47 +6,43 @@ import math
 
 import narwhals as nw
 import pandas as pd
-import pytest
+
+
+def _with_location_ids(df):
+    """Add the explicit location IDs consumed by real_entropy."""
+    nw_df = nw.from_native(df, eager_only=True)
+    return nw_df.with_columns(
+        (nw.col("lat").cast(nw.String) + nw.lit("_") + nw.col("lng").cast(nw.String)).alias("location_id")
+    ).to_native()
+
 
 # ---------------------------------------------------------------------------
 # Known-value assertions.
 #
 # The synthetic fixture has 3 users, 5 GPS points each. All 5 locations per
-# user are distinct and visited exactly once. The value below matches
-# scikit-mobility's private _true_entropy estimator for length-5 sequences.
+# user are distinct and visited exactly once.
 # ---------------------------------------------------------------------------
 
-EXPECTED_ENTROPY: float = 5 * math.log2(5) / 6
+EXPECTED_ENTROPY: float = math.log2(5)
 
 
-def _skmob_true_entropy(sequence: list) -> float:
-    """Match scikit-mobility's private _true_entropy estimator (LZ77 scan).
-
-    Kept as a public function for test compatibility and as a reference
-    implementation.  The measure itself uses the Rust batch kernel which
-    implements the same algorithm.
-    """
+def _kontoyiannis_entropy(sequence: list) -> float:
+    """Reference implementation of the Kontoyiannis estimator."""
     n = len(sequence)
     if n <= 1:
         return 0.0
 
-    sum_lambda = 3.0
+    col_max = [1] * n
+    prev_row = [1] * n
+    for i in range(1, n):
+        curr_row = [1] * n
+        for j in range(i + 1, n):
+            if sequence[i - 1] == sequence[j - 1]:
+                curr_row[j] = prev_row[j - 1] + 1
+            col_max[j] = max(col_max[j], curr_row[j])
+        prev_row = curr_row
 
-    def in_seq(prefix: list, candidate: list) -> bool:
-        for i in range(len(prefix) - len(candidate) + 1):
-            if prefix[i : i + len(candidate)] == candidate:
-                return True
-        return False
-
-    for i in range(1, n - 1):
-        j = i + 1
-        while j < n and in_seq(sequence[:i], sequence[i:j]):
-            j += 1
-        if j == n:
-            j += 1
-        sum_lambda += j - i
-
-    return float(n * math.log2(n) / sum_lambda)
+    return float((n / sum(col_max)) * math.log2(n))
 
 
 def _to_dict(df) -> dict:
@@ -68,7 +64,7 @@ def test_real_entropy_known_values(synthetic_tdf):
     """Five distinct locations visited once each gives real_entropy == log2(5)."""
     from fastmob.measures.individual.real_entropy import real_entropy
 
-    result = real_entropy(synthetic_tdf)
+    result = real_entropy(_with_location_ids(synthetic_tdf))
     mapping = _to_dict(result)
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
@@ -89,11 +85,11 @@ def test_real_entropy_repeated_location():
             "lng": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         }
     )
-    result = real_entropy(df)
+    result = real_entropy(_with_location_ids(df))
     mapping = _to_dict(result)
 
     seq = ["1.0_0.0", "2.0_0.0", "1.0_0.0", "2.0_0.0", "1.0_0.0", "2.0_0.0"]
-    expected = _skmob_true_entropy(seq)
+    expected = _kontoyiannis_entropy(seq)
     assert math.isclose(mapping["a"], expected, rel_tol=1e-9)
 
 
@@ -111,7 +107,7 @@ def test_real_entropy_single_location():
             "lng": [2.0],
         }
     )
-    result = real_entropy(df)
+    result = real_entropy(_with_location_ids(df))
     mapping = _to_dict(result)
     assert mapping["a"] == 0.0
 
@@ -127,13 +123,13 @@ def test_real_entropy_no_uid():
             "lng": [0.0, 0.0, 0.0, 0.0],
         }
     )
-    result = real_entropy(df)
+    result = real_entropy(_with_location_ids(df))
     nw_result = nw.from_native(result, eager_only=True)
     assert "real_entropy" in nw_result.columns
     assert len(nw_result) == 1
 
     seq = ["1.0_0.0", "2.0_0.0", "3.0_0.0", "4.0_0.0"]
-    expected = _skmob_true_entropy(seq)
+    expected = _kontoyiannis_entropy(seq)
     row = nw_result.rows(named=True)[0]
     assert math.isclose(row["real_entropy"], expected, rel_tol=1e-9)
 
@@ -150,12 +146,11 @@ def test_real_entropy_multiple_users_independent():
             "lng": [0.0, 0.0, 0.0, 0.0, 0.0],
         }
     )
-    result = real_entropy(df)
+    result = real_entropy(_with_location_ids(df))
     mapping = _to_dict(result)
 
-    # Expected values from the skmob-compatible estimator applied per-user.
-    expected_a = _skmob_true_entropy(["1.0_0.0", "2.0_0.0"])
-    expected_b = _skmob_true_entropy(["10.0_0.0", "10.0_0.0", "10.0_0.0"])
+    expected_a = _kontoyiannis_entropy(["1.0_0.0", "2.0_0.0"])
+    expected_b = _kontoyiannis_entropy(["10.0_0.0", "10.0_0.0", "10.0_0.0"])
 
     assert math.isclose(mapping["a"], expected_a, rel_tol=1e-9)
     assert math.isclose(mapping["b"], expected_b, rel_tol=1e-9)
@@ -165,7 +160,7 @@ def test_real_entropy_polars_known_values(synthetic_tdf_polars):
     """Polars input yields the same result as pandas."""
     from fastmob.measures.individual.real_entropy import real_entropy
 
-    result = real_entropy(synthetic_tdf_polars)
+    result = real_entropy(_with_location_ids(synthetic_tdf_polars))
     mapping = _to_dict(result)
 
     assert set(mapping.keys()) == {"user_a", "user_b", "user_c"}
@@ -179,51 +174,5 @@ def test_real_entropy_output_backend_matches_input(synthetic_tdf):
     """Result backend matches the input backend (pandas in, pandas out)."""
     from fastmob.measures.individual.real_entropy import real_entropy
 
-    result = real_entropy(synthetic_tdf)
+    result = real_entropy(_with_location_ids(synthetic_tdf))
     assert isinstance(result, pd.DataFrame), f"Expected pandas DataFrame, got {type(result)}"
-
-
-@pytest.mark.skmob
-def test_real_entropy_matches_skmob(comparison_skmob):
-    """fastmob result matches skmob on each comparison dataset."""
-    import pandas as pd
-    from fastmob.measures.individual.real_entropy import real_entropy as fastmob_re
-    from skmob.measures.individual import real_entropy as skmob_re
-
-    skmob_result = skmob_re(comparison_skmob)
-    fastmob_input = pd.DataFrame(comparison_skmob).copy()
-    fastmob_result = fastmob_re(fastmob_input)
-
-    skmob_dict = dict(
-        zip(
-            skmob_result["uid"].tolist(),
-            skmob_result["real_entropy"].tolist(),
-        )
-    )
-    fastmob_dict = _to_dict(fastmob_result)
-
-    common = set(skmob_dict) & set(fastmob_dict)
-    assert len(common) > 0
-    for uid in common:
-        assert math.isclose(skmob_dict[uid], fastmob_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: skmob={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
-        )
-
-
-def test_real_entropy_matches_cached_reference(comparison_skmob_reference):
-    """real_entropy matches the cached skmob baseline without requiring the skmob environment."""
-    from fastmob.measures.individual.real_entropy import real_entropy as fastmob_re
-
-    ref = comparison_skmob_reference
-    skmob_result = ref.result("real_entropy")
-    fastmob_result = fastmob_re(ref.input_df)
-
-    skmob_dict = dict(zip(skmob_result["uid"].tolist(), skmob_result["real_entropy"].tolist()))
-    fastmob_dict = _to_dict(fastmob_result)
-
-    common = set(skmob_dict) & set(fastmob_dict)
-    assert len(common) > 0
-    for uid in common:
-        assert math.isclose(skmob_dict[uid], fastmob_dict[uid], rel_tol=1e-5), (
-            f"uid={uid}: cached={skmob_dict[uid]}, fastmob={fastmob_dict[uid]}"
-        )

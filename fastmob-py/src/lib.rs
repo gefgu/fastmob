@@ -339,13 +339,11 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         preprocessing::h3_cluster_py::h3_cluster_labels_arrow,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(entropy::trajectory_entropy_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
         entropy::trajectory_predictability_batch,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(entropy::real_entropy_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(entropy::real_entropy_indexed, m)?)?;
+    m.add_function(wrap_pyfunction!(entropy::real_entropy_users, m)?)?;
     m.add_function(wrap_pyfunction!(diversity::diversity_batch, m)?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_py::detect_stay_locations_batch_presorted,
