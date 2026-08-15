@@ -11,7 +11,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps,
+    _extract_timestamp_arrow,
     _factorize_arrow_values,
 )
 
@@ -159,7 +159,7 @@ def assess_risk(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         indices = None
     else:
-        timestamps = _extract_timestamps(df, datetime_col) if attack == "sequence" else None
+        timestamps = _extract_timestamp_arrow(df, datetime_col) if attack == "sequence" else None
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     result = privacy_assess_risk(
         df.get_column(lat_col).to_arrow(),

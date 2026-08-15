@@ -14,7 +14,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps,
+    _extract_timestamp_arrow,
     _take_uid_values,
     _to_native,
     _with_datetime_column,
@@ -153,7 +153,7 @@ def individual_mobility_network(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw = individual_mobility_network_presorted(lats_data, lngs_data, ends, self_loops)
     else:
-        timestamps = _extract_timestamps(df, datetime_col)
+        timestamps = _extract_timestamp_arrow(df, datetime_col)
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         raw = individual_mobility_network_indexed(lats_data, lngs_data, indices, ends, self_loops)
     lat_origins, lng_origins, lat_dests, lng_dests, n_trips, user_indices = _unpack_network(raw)

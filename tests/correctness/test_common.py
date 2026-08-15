@@ -27,6 +27,29 @@ class TestArrowCoercion:
         assert _as_arrow(values) is values
 
 
+class TestArrowTimestampOrdering:
+    @pytest.mark.parametrize("unit", ["s", "ms", "us", "ns"])
+    def test_time_ordering_accepts_native_arrow_timestamp_units(self, unit):
+        import pyarrow as pa
+        from fastmob._core import time_ordered_user_indices
+
+        timestamps = pa.array([2, 1, 1], type=pa.timestamp(unit))
+        indices, ends = time_ordered_user_indices(None, timestamps)
+
+        assert indices.to_pylist() == [1, 2, 0]
+        assert ends.to_pylist() == [3]
+
+    def test_time_ordering_places_null_timestamps_before_values(self):
+        import pyarrow as pa
+        from fastmob._core import time_ordered_user_indices
+
+        timestamps = pa.array([2, None, 1], type=pa.timestamp("us"))
+        indices, ends = time_ordered_user_indices(None, timestamps)
+
+        assert indices.to_pylist() == [1, 2, 0]
+        assert ends.to_pylist() == [3]
+
+
 # ---------------------------------------------------------------------------
 # _pick_existing_column
 # ---------------------------------------------------------------------------
@@ -435,7 +458,7 @@ class TestPrepareTrajectory:
 class TestBuildTimeOrderedUserRanges:
     def test_pandas_string_uids_use_arrow_rust_path(self):
         import narwhals as nw
-        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamp_arrow
 
         df = pd.DataFrame(
             {
@@ -453,12 +476,12 @@ class TestBuildTimeOrderedUserRanges:
             }
         )
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps(nw_df, "datetime")
+        timestamps = _extract_timestamp_arrow(nw_df, "datetime")
 
         uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
             "uid",
-            timestamps.to_arrow(),
+            timestamps,
         )
 
         assert uid_values.to_pylist() == ["b", "a"]
@@ -467,7 +490,7 @@ class TestBuildTimeOrderedUserRanges:
 
     def test_polars_string_uids_use_first_seen_arrow_rust_path(self):
         import narwhals as nw
-        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamp_arrow
 
         pl = pytest.importorskip("polars", reason="Polars not installed")
         df = pl.DataFrame(
@@ -484,12 +507,12 @@ class TestBuildTimeOrderedUserRanges:
             }
         ).with_columns(pl.col("datetime").str.to_datetime())
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps(nw_df, "datetime")
+        timestamps = _extract_timestamp_arrow(nw_df, "datetime")
 
         uid_values, indices, ends = _build_indexed_user_ranges(
             nw_df,
             "uid",
-            timestamps.to_arrow(),
+            timestamps,
         )
 
         assert uid_values.to_pylist() == ["b", "a"]
@@ -498,7 +521,7 @@ class TestBuildTimeOrderedUserRanges:
 
     def test_equal_timestamps_keep_original_row_order(self):
         import narwhals as nw
-        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamps
+        from fastmob.measures._common import _build_indexed_user_ranges, _extract_timestamp_arrow
 
         df = pd.DataFrame(
             {
@@ -507,9 +530,9 @@ class TestBuildTimeOrderedUserRanges:
             }
         )
         nw_df = nw.from_native(df, eager_only=True)
-        timestamps = _extract_timestamps(nw_df, "datetime")
+        timestamps = _extract_timestamp_arrow(nw_df, "datetime")
 
-        uid_values, indices, ends = _build_indexed_user_ranges(nw_df, "uid", timestamps.to_arrow())
+        uid_values, indices, ends = _build_indexed_user_ranges(nw_df, "uid", timestamps)
 
         assert uid_values.to_pylist() == ["b", "a"]
         assert indices.to_pylist() == [0, 2, 1, 3]

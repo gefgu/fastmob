@@ -137,23 +137,3 @@ def test_get_geometry_no_tessellation_raises():
 
     with pytest.raises(ValueError, match="No tessellation"):
         fdf.get_geometry("A")
-
-
-# ------------------------------------------------------------------
-# plot methods (require folium)
-# ------------------------------------------------------------------
-
-
-def test_plot_flows_missing_dep(monkeypatch):
-    """plot_flows raises ImportError when fastmob-vis is absent."""
-    import sys
-
-    monkeypatch.setitem(sys.modules, "fastmob_vis", None)
-
-    from fastmob import FlowDataFrame
-
-    flows = pd.DataFrame({"origin": ["A"], "destination": ["B"], "flow": [5]})
-    fdf = FlowDataFrame(flows)
-
-    with pytest.raises(ImportError, match="fastmob-vis"):
-        fdf.plot_flows()

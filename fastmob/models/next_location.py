@@ -29,7 +29,7 @@ from fastmob.utils._common import (
     UID_CANDIDATES,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
-    _extract_timestamps,
+    _extract_timestamp_arrow,
     _factorize_arrow_values,
     _pick_existing_column,
     _uint32_series,
@@ -176,8 +176,8 @@ class NextLocationPredictor:
         df = df.with_columns(location_codes.alias("__location_code__"))
 
         if started_at_col is not None:
-            timestamps = _extract_timestamps(df, started_at_col)
-            uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps.to_arrow())
+            timestamps = _extract_timestamp_arrow(df, started_at_col)
+            uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         else:
             uid_values, ends = _build_presorted_user_ends(df, uid_col)
             import pyarrow as pa

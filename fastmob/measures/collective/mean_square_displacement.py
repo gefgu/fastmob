@@ -10,6 +10,7 @@ from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _detect_trajectory_columns,
+    _extract_timestamp_arrow,
     _extract_timestamps,
 )
 
@@ -124,8 +125,9 @@ def mean_square_displacement(
         return 0.0
 
     timestamps = _extract_timestamps(df, datetime_col)
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
-    _uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
+    _uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamp_arrow)
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()

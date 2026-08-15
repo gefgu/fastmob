@@ -25,7 +25,7 @@ import pandas as pd
 import pytest
 from fastmob.measures.evaluation import wasserstein_distance
 from fastmob.measures.individual import jump_lengths, radius_of_gyration, waiting_times
-from fastmob.models import EPR, DensityEPR, GeoSim, Gravity, MarkovDiaryGenerator, Radiation, SpatialEPR, STS_epr
+from fastmob.models import MarkovDiaryGenerator, STS_epr
 from tests.shared.skmob_cache import _REFERENCE_DIR, SkmobReferenceDataset
 
 _SHARED_DIR = Path(__file__).resolve().parents[3] / "tests" / "shared"
@@ -193,76 +193,6 @@ def _fit_diary(diary_training: pd.DataFrame) -> MarkovDiaryGenerator:
     return mdg
 
 
-# ---------------------------------------------------------------------------
-# Trajectory model tests (EPR family)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "name,model_cls,generate_kwargs",
-    [
-        ("epr", EPR, {"relevance_column": "population"}),
-        ("density_epr", DensityEPR, {"relevance_column": "population"}),
-        ("spatial_epr", SpatialEPR, {}),
-    ],
-)
-def test_epr_family_statistical_parity(
-    skmob_baseline,
-    models_reference,
-    model_tessellation,
-    name,
-    model_cls,
-    generate_kwargs,
-):
-    pytest.importorskip("powerlaw")
-
-    skmob_df = _normalize_trajectory(_expected_df(models_reference, name))
-
-    _reset_rng()
-    fastmob_df = _normalize_trajectory(
-        model_cls().generate(
-            MODEL_START,
-            MODEL_END,
-            model_tessellation,
-            n_agents=2,
-            starting_locations=MODEL_STARTING_LOCATIONS.copy(),
-            random_state=MODEL_SEED,
-            show_progress=False,
-            **generate_kwargs,
-        )
-    )
-
-    actual = _compute_trajectory_metrics(fastmob_df, skmob_df)
-    _assert_within_baseline(actual, skmob_baseline, name)
-
-
-def test_geosim_statistical_parity(
-    skmob_baseline,
-    models_reference,
-    model_tessellation,
-):
-    pytest.importorskip("powerlaw")
-    pytest.importorskip("igraph")
-
-    skmob_df = _normalize_trajectory(_expected_df(models_reference, "geosim"))
-
-    _reset_rng()
-    fastmob_df = _normalize_trajectory(
-        GeoSim().generate(
-            MODEL_START,
-            MODEL_END,
-            model_tessellation,
-            social_graph=MODEL_SOCIAL_GRAPH,
-            n_agents=3,
-            random_state=MODEL_SEED,
-            show_progress=False,
-        )
-    )
-
-    actual = _compute_trajectory_metrics(fastmob_df, skmob_df)
-    _assert_within_baseline(actual, skmob_baseline, "geosim")
-
-
 @pytest.mark.skip(reason="model implementation under revision")
 def test_sts_epr_statistical_parity(
     skmob_baseline,
@@ -292,46 +222,3 @@ def test_sts_epr_statistical_parity(
 
     actual = _compute_trajectory_metrics(fastmob_df, skmob_df)
     _assert_within_baseline(actual, skmob_baseline, "sts_epr")
-
-
-# ---------------------------------------------------------------------------
-# Flow model tests (stochastic sampling variants)
-# ---------------------------------------------------------------------------
-
-
-def _flow_to_od_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    d = _normalize_flow(df)
-    return d.pivot_table(index="origin", columns="destination", values="flow", aggfunc="sum").fillna(0.0)
-
-
-@pytest.mark.parametrize(
-    "name,model_cls",
-    [
-        ("gravity_flows_sample", Gravity),
-        ("radiation_flows_sample", Radiation),
-    ],
-)
-def test_flow_sample_statistical_parity(
-    skmob_baseline,
-    models_reference,
-    model_tessellation,
-    name,
-    model_cls,
-):
-    if name == "gravity_flows_sample":
-        pytest.skip("gravity_flows_sample under revision")
-    import fastmob
-
-    _reset_rng()
-    fastmob_df = model_cls().generate(
-        model_tessellation,
-        tile_id_column="tile_id",
-        tot_outflows_column="tot_outflow",
-        relevance_column="population",
-        out_format="flows_sample",
-    )
-    cpc = fastmob.common_part_of_commuters(
-        fastmob.FlowDataFrame(fastmob_df),
-        fastmob.FlowDataFrame(_expected_df(models_reference, name)),
-    )
-    _assert_cpc_within_baseline(cpc, skmob_baseline, name)

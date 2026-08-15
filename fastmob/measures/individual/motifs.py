@@ -16,6 +16,7 @@ from fastmob.utils._common import (
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
+    _extract_timestamp_arrow,
     _factorize_arrow_values,
     _pick_existing_column,
     _strip_time_zone,
@@ -166,7 +167,7 @@ def daily_motifs(
         uid_labels, ends = _build_presorted_user_ends(df, uid_col)
         indices = None
     else:
-        timestamps = df.get_column(datetime_col).dt.timestamp("us").cast(nw.Float64)
+        timestamps = _extract_timestamp_arrow(df, datetime_col)
         uid_labels, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
 
     location_values = _encode_locations(df, location_col)
@@ -302,7 +303,7 @@ def daily_motifs_from_staypoints(
         uid_labels, ends = _build_presorted_user_ends(sp_nw, uid_col)
         indices = None
     else:
-        timestamps = sp_nw.get_column(started_at_col).dt.timestamp("us").cast(nw.Float64)
+        timestamps = _extract_timestamp_arrow(sp_nw, started_at_col)
         uid_labels, indices, ends = _build_indexed_user_ranges(sp_nw, uid_col, timestamps)
 
     location_dtype = sp_nw.schema["location_id"]

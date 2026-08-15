@@ -14,6 +14,7 @@ from fastmob.utils._common import (
     _as_arrow,
     _build_indexed_user_ranges,
     _empty_like,
+    _extract_timestamp_arrow,
     _extract_timestamps,
     _pick_existing_column,
     _take_uid_values,
@@ -90,7 +91,10 @@ def _expand_to_5min_trajectory(
 
     start_ms = _extract_timestamps(nw_df, start_col)
     end_ms = _extract_timestamps(nw_df, end_col)
-    uid_values, sorted_indices, ends = _build_indexed_user_ranges(nw_df, user_id_col, timestamps=start_ms)
+    start_timestamps = _extract_timestamp_arrow(nw_df, start_col)
+    uid_values, sorted_indices, ends = _build_indexed_user_ranges(
+        nw_df, user_id_col, timestamps=start_timestamps
+    )
 
     if impute_gaps:
         from fastmob._core import expand_5min_trajectory_with_imputation_batch_indexed

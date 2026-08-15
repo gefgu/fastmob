@@ -275,6 +275,11 @@ def _extract_timestamps(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     return df.with_columns(values.alias("__fastmob_timestamp__")).get_column("__fastmob_timestamp__")
 
 
+def _extract_timestamp_arrow(df: nw.DataFrame, datetime_col: str) -> pa.Array | pa.ChunkedArray:
+    """Return the native Arrow timestamp column without changing its unit."""
+    return _as_arrow(df.get_column(datetime_col).to_arrow())
+
+
 def _timestamps_ms_to_datetime_ns(values: Any) -> np.ndarray:
     """Convert flat milliseconds-since-epoch values (NumPy or Arrow) to a naive ``datetime64[ns]`` NumPy array.
 

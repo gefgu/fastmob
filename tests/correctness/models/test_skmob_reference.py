@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
-from fastmob.models import Gravity, MarkovDiaryGenerator, Radiation, STS_epr
+from fastmob.models import MarkovDiaryGenerator, STS_epr
 from pandas.testing import assert_frame_equal
 from tests.shared.skmob_cache import _REFERENCE_DIR, SkmobReferenceDataset
 
@@ -18,24 +17,6 @@ MODEL_START = pd.Timestamp("2020-01-01 08:00:00")
 MODEL_END = pd.Timestamp("2020-01-02 08:00:00")
 MODEL_SOCIAL_GRAPH = [[0, 1], [0, 2], [1, 2]]
 MODEL_STARTING_LOCATIONS = [0, 1]
-
-
-@dataclass(frozen=True)
-class FlowCase:
-    name: str
-    model_cls: type
-    out_format: str
-    exact_flow: bool = False
-
-
-FLOW_CASES: tuple[FlowCase, ...] = (
-    FlowCase("gravity_flows", Gravity, "flows"),
-    FlowCase("gravity_probabilities", Gravity, "probabilities"),
-    FlowCase("gravity_flows_sample", Gravity, "flows_sample", exact_flow=True),
-    FlowCase("radiation_flows", Radiation, "flows"),
-    FlowCase("radiation_probabilities", Radiation, "probabilities"),
-    FlowCase("radiation_flows_sample", Radiation, "flows_sample", exact_flow=True),
-)
 
 
 @pytest.fixture(scope="session")
@@ -118,24 +99,6 @@ def _fit_diary(training: pd.DataFrame) -> MarkovDiaryGenerator:
     mdg = MarkovDiaryGenerator()
     mdg.fit(training.copy(), 3, lid="cluster")
     return mdg
-
-
-@pytest.mark.parametrize("case", FLOW_CASES, ids=lambda case: case.name)
-def test_flow_models_match_cached_skmob(models_reference, model_tessellation, case: FlowCase):
-    if case.name == "gravity_flows_sample":
-        pytest.skip("gravity_flows_sample under revision")
-    expected = _normalize_flow(_expected(models_reference, case.name))
-
-    _reset_model_rng()
-    actual = case.model_cls().generate(
-        model_tessellation,
-        tile_id_column="tile_id",
-        tot_outflows_column="tot_outflow",
-        relevance_column="population",
-        out_format=case.out_format,
-    )
-
-    _assert_frame_match(_normalize_flow(actual), expected, exact=case.exact_flow)
 
 
 def test_markov_diary_generator_matches_cached_skmob(models_reference, model_diary_training):

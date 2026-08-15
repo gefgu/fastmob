@@ -16,6 +16,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_indices_and_ends,
     _detect_trajectory_columns,
+    _extract_timestamp_arrow,
     _extract_timestamps,
     _narwhals_safe_value,
 )
@@ -56,12 +57,11 @@ def _filter_speed(
     )
 
     timestamps = _extract_timestamps(df, datetime_col)
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    # Also feeds _build_indexed_user_ranges below, so its extraction must
-    # keep matching whatever backend that helper's own uid-code extraction
-    # picks internally (see waiting_times.py/mean_square_displacement.py for
-    # why this one can't be forced to Arrow independently).
+    # The elapsed-time kernel keeps its numeric input; ordering receives the
+    # original Arrow timestamp array separately below.
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = FilterConfig(
@@ -80,7 +80,7 @@ def _filter_speed(
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            timestamps=timestamps,
+            timestamps=timestamp_arrow,
         )
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 
@@ -274,6 +274,7 @@ def filter(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     timestamps = _extract_timestamps(df, datetime_col)
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = OutlierConfig(method=method_name, **params)
@@ -285,7 +286,7 @@ def filter(
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            timestamps=timestamps,
+            timestamps=timestamp_arrow,
         )
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
 

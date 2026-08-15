@@ -12,6 +12,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_indices_and_ends,
     _detect_trajectory_columns,
+    _extract_timestamp_arrow,
     _extract_timestamps,
     _take_uid_values,
     _timestamps_ms_to_datetime_ns,
@@ -29,9 +30,9 @@ def _unwrap_stay(_l: Any, _g: Any, _e: Any, _lv: Any, _r: Any) -> tuple:
     )
 
 
-# Bare extractor used only for `.get_ops(df)["extract_data"]` on the
-# timestamps column, which also feeds `_build_indexed_user_ranges` below
-# (Rule 1: never inline backend branching). lat/lng go to Arrow unconditionally.
+# Bare extractor supplies numeric timestamps to the stay-location kernel.
+# Ordering receives the original Arrow timestamp array separately. lat/lng go
+# to Arrow unconditionally.
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
@@ -133,6 +134,7 @@ def stay_locations(
     )
 
     timestamps = _extract_timestamps(df, datetime_col)
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
@@ -157,7 +159,7 @@ def stay_locations(
         uid_values, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
-            timestamps=timestamps,
+            timestamps=timestamp_arrow,
         )
         _result = detect_stay_locations_batch_indexed(
             lats_data,

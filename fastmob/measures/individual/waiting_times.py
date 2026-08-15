@@ -16,16 +16,15 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
+    _extract_timestamp_arrow,
     _extract_timestamps,
     _grouped_arrow_values,
     _to_native,
 )
 
-# Kept for two purposes: (a) timestamps_data extraction below must match
-# whatever backend _build_indexed_user_ranges' own uid-code extraction
-# picks internally (see jump_lengths.py/mean_square_displacement.py for why
-# that pairing can't be forced to Arrow independently), and (b) the merge=True
-# output-contract shim, matching jump_lengths.py's precedent.
+# Kept for the elapsed-time kernel input below and the merge=True output
+# contract shim, matching jump_lengths.py's precedent. Ordering receives the
+# original Arrow timestamp array separately.
 _DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
 
 
@@ -136,6 +135,7 @@ def waiting_times(
 
     ops = _DISPATCHER.get_ops(df)
     timestamps = _extract_timestamps(df, datetime_col)
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps)
     is_numpy_backend = _DISPATCHER.get_backend_key(df) == "numpy"
     if presorted:
@@ -150,7 +150,7 @@ def waiting_times(
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
-    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
+    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamp_arrow)
     if merge:
         flat = _as_arrow(waiting_times_indexed_flat(timestamps_data, indices, ends))
         return flat.to_numpy(zero_copy_only=False) if is_numpy_backend else flat

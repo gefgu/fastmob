@@ -11,7 +11,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps,
+    _extract_timestamp_arrow,
     _to_native,
 )
 
@@ -131,7 +131,7 @@ def maximum_distance(
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         max_distances = _as_arrow(maximum_distance_presorted(lats_data, lngs_data, ends))
     else:
-        timestamps = _extract_timestamps(df, datetime_col)
+        timestamps = _extract_timestamp_arrow(df, datetime_col)
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         max_distances = _as_arrow(maximum_distance_indexed(lats_data, lngs_data, indices, ends))
 

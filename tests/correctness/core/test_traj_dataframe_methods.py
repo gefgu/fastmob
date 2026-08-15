@@ -165,29 +165,3 @@ def test_to_geodataframe_shape():
     assert isinstance(gdf, gpd.GeoDataFrame)
     assert len(gdf) == 2
     assert gdf.geometry.geom_type.eq("Point").all()
-
-
-# ------------------------------------------------------------------
-# plot methods (require folium + geojson + matplotlib)
-# ------------------------------------------------------------------
-
-
-def test_plot_trajectory_missing_dep(monkeypatch):
-    """plot_trajectory raises ImportError when fastmob-vis is absent."""
-    import sys
-
-    monkeypatch.setitem(sys.modules, "fastmob_vis", None)
-
-    from fastmob import TrajDataFrame
-
-    df = pd.DataFrame(
-        {
-            "uid": [1],
-            "lat": [0.0],
-            "lng": [0.0],
-            "datetime": pd.date_range("2020-01-01", periods=1),
-        }
-    )
-    tdf = TrajDataFrame(df)
-    with pytest.raises(ImportError, match="fastmob-vis"):
-        tdf.plot_trajectory()

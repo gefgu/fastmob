@@ -11,7 +11,7 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps,
+    _extract_timestamp_arrow,
     _to_native,
 )
 
@@ -131,7 +131,7 @@ def distance_straight_line(
             return _to_native({"distance_straight_line": distances}, df)
         return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)
 
-    timestamps = _extract_timestamps(df, datetime_col)
+    timestamps = _extract_timestamp_arrow(df, datetime_col)
     uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     distances = _as_arrow(total_distance_indexed(lats_data, lngs_data, indices, ends))
 

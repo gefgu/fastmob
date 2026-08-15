@@ -10,7 +10,7 @@ import pyarrow.compute as pc
 from fastmob._core import real_entropy_users as _real_entropy_users_rust
 from fastmob.utils._common import (
     _build_indexed_user_ranges,
-    _extract_timestamps,
+    _extract_timestamp_arrow,
     _factorize_arrow_values,
     _pick_existing_column,
     _with_datetime_column,
@@ -108,7 +108,7 @@ def real_entropy(
     df = _with_datetime_column(df, datetime_col)
     df = df.drop_nulls(subset=[datetime_col, location_id_col])
 
-    timestamps = _extract_timestamps(df, datetime_col)
+    timestamps = _extract_timestamp_arrow(df, datetime_col)
     uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
 
     location_codes, _ = _factorize_arrow_values(df.get_column(location_id_col).to_arrow(), sort=False)
