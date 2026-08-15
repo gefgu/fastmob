@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from importlib import import_module
+import os
+import time
 from typing import Any
 
 import narwhals as nw
@@ -306,6 +308,8 @@ def _build_indexed_user_ranges(
 
     from fastmob._core import indexed_user_indices, single_user_indices, time_ordered_user_indices
 
+    profile = os.environ.get("FASTMOB_PROFILE_JUMP_LENGTHS") == "1"
+
     if uid_col is None:
         if timestamps is None:
             raw_indices, raw_ends = single_user_indices(len(df))
@@ -322,7 +326,16 @@ def _build_indexed_user_ranges(
         return None, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
     uid_values = pa.array(df.get_column(uid_col).to_arrow())
+    factorize_started = time.perf_counter()
     codes, representatives = _factorize_arrow_values(uid_values, sort=False)
+    if profile:
+        print(
+            f"[jump_lengths] user-ID factorization: "
+            f"{time.perf_counter() - factorize_started:.6f}s "
+            f"({len(representatives):,} groups)",
+            flush=True,
+        )
+    ordering_started = time.perf_counter()
     if timestamps is None:
         raw_indices, raw_ends = indexed_user_indices(codes, len(representatives))
     else:
@@ -330,7 +343,20 @@ def _build_indexed_user_ranges(
         raw_indices, raw_ends = time_ordered_user_indices(
             codes, pc.cast(pa.array(timestamp_values), pa.float64(), safe=False), len(representatives)
         )
+    if profile:
+        print(
+            f"[jump_lengths] user/time ordering and range construction: "
+            f"{time.perf_counter() - ordering_started:.6f}s",
+            flush=True,
+        )
+    labels_started = time.perf_counter()
     labels = pc.take(uid_values, representatives)
+    if profile:
+        print(
+            f"[jump_lengths] representative label extraction: "
+            f"{time.perf_counter() - labels_started:.6f}s",
+            flush=True,
+        )
     return labels, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
 
@@ -586,10 +612,10 @@ def _value_offsets_from_index_ranges(
     For a group of n rows, the kernel produces n-1 jump values.  This converts
     the per-user row-index spans into half-open slices into the flat output array.
     """
-    starts = np.asarray(index_starts, dtype=np.uintp)
-    ends = np.asarray(index_ends, dtype=np.uintp)
+    starts = np.asarray(index_starts, dtype=np.uint64)
+    ends = np.asarray(index_ends, dtype=np.uint64)
     lengths = np.maximum(ends - starts, 1) - 1
-    value_ends = np.cumsum(lengths, dtype=np.uintp)
+    value_ends = np.cumsum(lengths, dtype=np.uint64)
     value_starts = value_ends - lengths
     return value_starts, value_ends
 
@@ -605,11 +631,13 @@ def _grouped_arrow_values(
     import pyarrow as pa
 
     if value_offsets:
-        starts = np.asarray(starts, dtype=np.uintp)
-        ends = np.asarray(ends, dtype=np.uintp)
+        starts = np.asarray(starts, dtype=np.uint64)
+        ends = np.asarray(ends, dtype=np.uint64)
     else:
         starts, ends = _value_offsets_from_index_ranges(starts, ends)
-    offsets = np.empty(len(starts) + 1, dtype=np.int32)
+    # PyArrow's ListArray constructor accepts int64 offsets; semantic row and
+    # value offsets remain UInt64 throughout this path.
+    offsets = np.empty(len(starts) + 1, dtype=np.int64)
     offsets[:-1] = starts
     offsets[-1] = ends[-1] if len(ends) else 0
     return pa.ListArray.from_arrays(offsets, _as_arrow(values))

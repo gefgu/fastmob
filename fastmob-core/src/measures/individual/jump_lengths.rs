@@ -1,7 +1,8 @@
 use rayon::prelude::*;
+use std::time::Instant;
 
 use crate::utils::haversine::{adjacent_haversine_distances_into_km, haversine_km};
-use crate::utils::{ranges_from_ends, validate_coord_ranges, validate_indexed_coord_ends};
+use crate::utils::{ranges_from_ends, validate_coord_ranges, validate_indexed_coord_ends_u64};
 
 type JumpLengthsPresortedResult = Result<(Vec<usize>, Vec<usize>, Vec<f64>), String>;
 
@@ -22,34 +23,31 @@ pub fn write_jump_lengths_presorted_range(
 pub fn jump_lengths_for_indexed_range(
     latitudes: &[f64],
     longitudes: &[f64],
-    indices: &[usize],
-    start: usize,
-    end: usize,
+    indices: &[u64],
+    start: u64,
+    end: u64,
     valid_rows: Option<&[bool]>,
 ) -> Vec<f64> {
-    let valid: Vec<usize> = indices[start..end]
-        .iter()
-        .copied()
-        .filter(|&idx| {
-            valid_rows.is_none_or(|v| v[idx])
-                && latitudes[idx].is_finite()
-                && longitudes[idx].is_finite()
-        })
-        .collect();
+    let start = usize::try_from(start).expect("jump range start must fit usize");
+    let end = usize::try_from(end).expect("jump range end must fit usize");
+    let mut valid = Vec::with_capacity(end.saturating_sub(start));
+    for &idx in &indices[start..end] {
+        let row = usize::try_from(idx).expect("row index must fit usize");
+        if valid_rows.is_none_or(|v| v[row])
+            && latitudes[row].is_finite()
+            && longitudes[row].is_finite()
+        {
+            valid.push((latitudes[row], longitudes[row]));
+        }
+    }
 
     if valid.len() < 2 {
         return Vec::new();
     }
 
-    (1..valid.len())
-        .map(|pos| {
-            haversine_km(
-                latitudes[valid[pos - 1]],
-                longitudes[valid[pos - 1]],
-                latitudes[valid[pos]],
-                longitudes[valid[pos]],
-            )
-        })
+    valid
+        .windows(2)
+        .map(|pair| haversine_km(pair[0].0, pair[0].1, pair[1].0, pair[1].1))
         .collect()
 }
 
@@ -95,17 +93,27 @@ pub fn jump_lengths_presorted_impl(
 pub fn jump_lengths_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
-    indices: &[usize],
-    ends: &[usize],
+    indices: &[u64],
+    ends: &[u64],
     valid_rows: Option<&[bool]>,
 ) -> JumpLengthsPresortedResult {
-    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
+    let profile = std::env::var_os("FASTMOB_PROFILE_JUMP_LENGTHS").is_some();
+    let total_started = Instant::now();
+    let validation_started = Instant::now();
+    validate_indexed_coord_ends_u64(latitudes, longitudes, indices, ends)?;
     if let Some(valid_rows) = valid_rows
         && valid_rows.len() != latitudes.len()
     {
         return Err("valid_rows and coordinates must have the same length".to_string());
     }
+    if profile {
+        eprintln!(
+            "[jump_lengths::rust] validation: {:.6}s",
+            validation_started.elapsed().as_secs_f64()
+        );
+    }
 
+    let kernel_started = Instant::now();
     let grouped_values: Vec<Vec<f64>> = (0..ends.len())
         .into_par_iter()
         .map(|i| {
@@ -114,7 +122,14 @@ pub fn jump_lengths_indexed_impl(
             jump_lengths_for_indexed_range(latitudes, longitudes, indices, start, end, valid_rows)
         })
         .collect();
+    if profile {
+        eprintln!(
+            "[jump_lengths::rust] indexed kernel and per-user result allocation: {:.6}s",
+            kernel_started.elapsed().as_secs_f64()
+        );
+    }
 
+    let flatten_started = Instant::now();
     let mut value_starts = Vec::with_capacity(grouped_values.len());
     let mut value_ends = Vec::with_capacity(grouped_values.len());
     let total_len: usize = grouped_values.iter().map(Vec::len).sum();
@@ -125,6 +140,13 @@ pub fn jump_lengths_indexed_impl(
         value_ends.push(values.len());
     }
 
+    if profile {
+        eprintln!(
+            "[jump_lengths::rust] flattening: {:.6}s; total: {:.6}s",
+            flatten_started.elapsed().as_secs_f64(),
+            total_started.elapsed().as_secs_f64()
+        );
+    }
     Ok((value_starts, value_ends, values))
 }
 
