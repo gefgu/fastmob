@@ -120,7 +120,7 @@ pub fn smart_greedy_keep_mask(
     let mut tail_len: Vec<usize> = Vec::new();
     let mut pred: Vec<Option<usize>> = vec![None; n];
 
-    for i in 0..n {
+    for (i, pred_i) in pred.iter_mut().enumerate() {
         let mut best_len_here = 1usize;
         let mut best_pred: Option<usize> = None;
         let mut matched = vec![false; tails.len()];
@@ -137,7 +137,7 @@ pub fn smart_greedy_keep_mask(
                 }
             }
         }
-        pred[i] = best_pred;
+        *pred_i = best_pred;
 
         if any_matched {
             let mut survivors_tails = Vec::with_capacity(tails.len());

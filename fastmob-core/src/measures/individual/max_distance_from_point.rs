@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 
 use crate::utils::haversine::haversine_km;
-use crate::utils::{validate_coord_ends, validate_coord_ranges, validate_indexed_coord_ends};
+use crate::utils::{validate_coord_ends, validate_coord_ranges, validate_indexed_coord_ends_u64};
 
 pub fn max_distance_from_point_impl(
     home_lats: &[f64],
@@ -74,26 +74,33 @@ pub fn max_distance_from_point_indexed_impl(
     home_lngs: &[f64],
     latitudes: &[f64],
     longitudes: &[f64],
-    indices: &[usize],
-    ends: &[usize],
+    indices: &[u64],
+    ends: &[u64],
     valid_rows: Option<&[bool]>,
 ) -> Result<Vec<f64>, String> {
     if home_lats.len() != home_lngs.len() || home_lats.len() != ends.len() {
         return Err("home coordinates and ranges must have the same length".to_string());
     }
-    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
+    validate_indexed_coord_ends_u64(latitudes, longitudes, indices, ends)?;
 
     Ok((0..ends.len())
         .into_par_iter()
         .map(|i| {
-            let start = if i == 0 { 0 } else { ends[i - 1] };
-            let end = ends[i];
+            let start = (if i == 0 { 0 } else { ends[i - 1] }) as usize;
+            let end = ends[i] as usize;
             let home_lat = home_lats[i];
             let home_lng = home_lngs[i];
             indices[start..end]
                 .iter()
-                .filter(|&&idx| valid_rows.is_none_or(|v| v[idx]))
-                .map(|&idx| haversine_km(home_lat, home_lng, latitudes[idx], longitudes[idx]))
+                .filter(|&&idx| valid_rows.is_none_or(|v| v[idx as usize]))
+                .map(|&idx| {
+                    haversine_km(
+                        home_lat,
+                        home_lng,
+                        latitudes[idx as usize],
+                        longitudes[idx as usize],
+                    )
+                })
                 .fold(0.0f64, f64::max)
         })
         .collect())

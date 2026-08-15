@@ -204,8 +204,8 @@ fn kmeans_two_dimensions(
             sums_y[label] += y;
         }
         let mut max_shift: f64 = 0.0;
-        for cluster in 0..n_clusters {
-            if counts[cluster] == 0 {
+        for (cluster, &count) in counts.iter().enumerate().take(n_clusters) {
+            if count == 0 {
                 continue;
             }
             let start = cluster * 2;
@@ -291,14 +291,14 @@ fn kmeans_plus_plus_generic(
             }
         }
         let mut max_shift: f64 = 0.0;
-        for cluster in 0..n_clusters {
-            if counts[cluster] == 0 {
+        for (cluster, &count) in counts.iter().enumerate().take(n_clusters) {
+            if count == 0 {
                 continue;
             }
             let start = cluster * n_features;
             let previous = centroids[start..start + n_features].to_vec();
             for feature in 0..n_features {
-                centroids[start + feature] = sums[start + feature] / counts[cluster] as f64;
+                centroids[start + feature] = sums[start + feature] / count as f64;
             }
             max_shift = max_shift.max(squared_distance(
                 &previous,

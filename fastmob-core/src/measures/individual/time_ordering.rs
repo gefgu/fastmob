@@ -1,55 +1,50 @@
 use rayon::prelude::*;
 
-use crate::utils::ends_from_ranges;
+pub type IndexRanges = Vec<(u64, u64)>;
+pub type OrderedIndexRanges = (Vec<u64>, IndexRanges);
 
-pub type IndexRanges = Vec<(usize, usize)>;
-pub type OrderedIndexRanges = (Vec<usize>, IndexRanges);
-
-pub fn split_ordered_index_ranges(
-    (indices, ranges): OrderedIndexRanges,
-) -> (Vec<usize>, Vec<usize>) {
-    (indices, ends_from_ranges(&ranges))
+pub fn split_ordered_index_ranges((indices, ranges): OrderedIndexRanges) -> (Vec<u64>, Vec<u64>) {
+    (indices, ranges.into_iter().map(|(_, end)| end).collect())
 }
 
-pub fn presorted_ranges_for_u32_codes(codes: &[u32]) -> (Vec<usize>, Vec<usize>) {
+pub fn presorted_ranges_for_u32_codes(codes: &[u32]) -> (Vec<u64>, Vec<u64>) {
     let n = codes.len();
     if n == 0 {
         return (Vec::new(), Vec::new());
     }
 
-    let mut boundaries: Vec<usize> = codes
+    let boundaries: Vec<u64> = codes
         .par_windows(2)
         .enumerate()
-        .filter_map(|(idx, window)| (window[0] != window[1]).then_some(idx + 1))
+        .filter_map(|(idx, window)| (window[0] != window[1]).then_some((idx + 1) as u64))
         .collect();
-    boundaries.sort_unstable();
 
     let mut starts = Vec::with_capacity(boundaries.len() + 1);
     starts.push(0);
     starts.extend_from_slice(&boundaries);
 
     let mut ends = boundaries;
-    ends.push(n);
+    ends.push(n as u64);
     (starts, ends)
 }
 
-pub fn time_ordered_indices_single_user(timestamps: &[f64]) -> OrderedIndexRanges {
-    let mut indices: Vec<usize> = (0..timestamps.len()).collect();
+pub fn time_ordered_indices_single_user(timestamps: &[i64]) -> OrderedIndexRanges {
+    let mut indices: Vec<u64> = (0..timestamps.len()).map(|value| value as u64).collect();
     indices.par_sort_by(|&left, &right| {
-        timestamps[left]
-            .total_cmp(&timestamps[right])
+        timestamps[left as usize]
+            .cmp(&timestamps[right as usize])
             .then(left.cmp(&right))
     });
     let n = indices.len();
     if n == 0 {
         return (indices, Vec::new());
     }
-    (indices, vec![(0, n)])
+    (indices, vec![(0, n as u64)])
 }
 
 pub fn time_ordered_indices_for_u32_codes(
     codes: &[u32],
-    timestamps: &[f64],
+    timestamps: &[i64],
     num_groups: usize,
 ) -> Result<OrderedIndexRanges, String> {
     let n = codes.len();
@@ -80,16 +75,16 @@ pub fn time_ordered_indices_for_u32_codes(
         }
         let start = current_offset;
         let end = current_offset + *count;
-        ranges.push((start, end));
+        ranges.push((start as u64, end as u64));
         *count = start;
         current_offset = end;
     }
 
-    let mut indices = vec![0usize; n];
+    let mut indices = vec![0u64; n];
     for (row_idx, &code) in codes.iter().enumerate() {
         let group_id = code as usize;
         let pos = offsets[group_id];
-        indices[pos] = row_idx;
+        indices[pos] = row_idx as u64;
         offsets[group_id] += 1;
     }
 
@@ -98,12 +93,15 @@ pub fn time_ordered_indices_for_u32_codes(
         // SAFETY: `ranges` is built from monotonically increasing group boundaries, so each
         // parallel task writes to a unique, non-overlapping slice of `indices`.
         let out_slice = unsafe {
-            std::slice::from_raw_parts_mut((indices_ptr as *mut usize).add(start), end - start)
+            std::slice::from_raw_parts_mut(
+                (indices_ptr as *mut u64).add(start as usize),
+                (end - start) as usize,
+            )
         };
 
         out_slice.sort_unstable_by(|&left, &right| {
-            timestamps[left]
-                .total_cmp(&timestamps[right])
+            timestamps[left as usize]
+                .cmp(&timestamps[right as usize])
                 .then(left.cmp(&right))
         });
     });

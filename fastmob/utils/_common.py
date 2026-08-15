@@ -314,14 +314,8 @@ def _build_indexed_user_ranges(
         if timestamps is None:
             raw_indices, raw_ends = single_user_indices(len(df))
         else:
-            timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
-            # unsafe: only ordering matters here, and the ms i64 -> f64 cast is otherwise
-            # lossless within the ~285000-year range a real Unix-ms timestamp falls in --
-            # this only needs `safe=False` to tolerate `_extract_timestamps`'
-            # out-of-float64-exact-range null sentinel (i64::MIN), which just needs to sort
-            # to one end, not round-trip exactly.
             raw_indices, raw_ends = time_ordered_user_indices(
-                None, pc.cast(pa.array(timestamp_values), pa.float64(), safe=False)
+                None, timestamps
             )
         return None, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
@@ -339,9 +333,8 @@ def _build_indexed_user_ranges(
     if timestamps is None:
         raw_indices, raw_ends = indexed_user_indices(codes, len(representatives))
     else:
-        timestamp_values = timestamps.to_arrow() if hasattr(timestamps, "to_arrow") else timestamps
         raw_indices, raw_ends = time_ordered_user_indices(
-            codes, pc.cast(pa.array(timestamp_values), pa.float64(), safe=False), len(representatives)
+            codes, timestamps, len(representatives)
         )
     if profile:
         print(

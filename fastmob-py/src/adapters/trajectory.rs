@@ -1,4 +1,4 @@
-use crate::utils::ArrowUsizeArrayExt;
+use crate::utils::{ArrowU64ArrayExt, ArrowUsizeArrayExt};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -8,7 +8,7 @@ use fastmob_core::utils::validate_ends;
 use crate::utils::{
     arrow_i64_values, arrow_valid_rows, arrow_valid_rows_f64_i64, arrow_values, as_f64_array,
     as_i64_array, as_nullable_f64_array, as_nullable_i64_array, ms_to_seconds,
-    validate_indexed_ends,
+    validate_indexed_ends_u64,
 };
 
 pub struct CoordinateView<'a> {
@@ -18,8 +18,8 @@ pub struct CoordinateView<'a> {
 
 pub struct IndexedCoordinateView<'a> {
     pub coordinates: CoordinateView<'a>,
-    pub indices: &'a [usize],
-    pub ends: &'a [usize],
+    pub indices: &'a [u64],
+    pub ends: &'a [u64],
     pub valid_rows: Option<&'a [bool]>,
 }
 
@@ -31,8 +31,8 @@ pub struct TimedCoordinateView<'a> {
 
 pub struct IndexedTimedCoordinateView<'a> {
     pub coordinates: TimedCoordinateView<'a>,
-    pub indices: &'a [usize],
-    pub ends: &'a [usize],
+    pub indices: &'a [u64],
+    pub ends: &'a [u64],
     pub valid_rows: Option<&'a [bool]>,
 }
 
@@ -46,8 +46,8 @@ pub struct GroupCoordinateView<'a> {
 
 pub struct IndexedGroupCoordinateView<'a> {
     pub coordinates: GroupCoordinateView<'a>,
-    pub indices: &'a [usize],
-    pub ends: &'a [usize],
+    pub indices: &'a [u64],
+    pub ends: &'a [u64],
     pub valid_rows: Option<&'a [bool]>,
 }
 
@@ -112,14 +112,14 @@ where
     let lats = arrow_values(&latitudes);
     let lngs = arrow_values(&longitudes);
     let ends = ends.as_slice()?;
-    validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
+    validate_ends(lats.len(), &ends).map_err(PyValueError::new_err)?;
     Ok(py.detach(|| {
         operation(
             CoordinateView {
                 latitudes: lats,
                 longitudes: lngs,
             },
-            ends,
+            &ends,
         )
     }))
 }
@@ -143,9 +143,9 @@ where
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
     validate_coordinate_lengths(latitudes.len(), longitudes.len())?;
-    let indices = indices.as_slice()?;
-    let ends = ends.as_slice()?;
-    validate_indexed_ends(latitudes.len(), indices, ends)?;
+    let indices = indices.as_u64_slice()?;
+    let ends = ends.as_u64_slice()?;
+    validate_indexed_ends_u64(latitudes.len(), indices, ends)?;
 
     let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
     let lats = arrow_values(&latitudes);
@@ -185,7 +185,7 @@ where
     let lngs = arrow_values(&longitudes);
     let times = arrow_values(&times);
     let ends = ends.as_slice()?;
-    validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
+    validate_ends(lats.len(), &ends).map_err(PyValueError::new_err)?;
     Ok(py.detach(|| {
         operation(
             TimedCoordinateView {
@@ -193,7 +193,7 @@ where
                 longitudes: lngs,
                 times,
             },
-            ends,
+            &ends,
         )
     }))
 }
@@ -218,9 +218,9 @@ where
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
     let times = as_nullable_f64_array(times, "times")?;
     validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), times.len())?;
-    let indices = indices.as_slice()?;
-    let ends = ends.as_slice()?;
-    validate_indexed_ends(latitudes.len(), indices, ends)?;
+    let indices = indices.as_u64_slice()?;
+    let ends = ends.as_u64_slice()?;
+    validate_indexed_ends_u64(latitudes.len(), indices, ends)?;
 
     let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes, &times]);
     let lats = arrow_values(&latitudes);
@@ -266,7 +266,7 @@ where
     let lngs = arrow_values(&longitudes);
     let times_s: Vec<f64> = ms_to_seconds(arrow_i64_values(&timestamps_ms));
     let ends = ends.as_slice()?;
-    validate_ends(lats.len(), ends).map_err(PyValueError::new_err)?;
+    validate_ends(lats.len(), &ends).map_err(PyValueError::new_err)?;
     Ok(py.detach(|| {
         operation(
             TimedCoordinateView {
@@ -274,7 +274,7 @@ where
                 longitudes: lngs,
                 times: &times_s,
             },
-            ends,
+            &ends,
         )
     }))
 }
@@ -299,9 +299,9 @@ where
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
     let timestamps_ms = as_nullable_i64_array(timestamps_ms, "timestamps_ms")?;
     validate_timed_coordinate_lengths(latitudes.len(), longitudes.len(), timestamps_ms.len())?;
-    let indices = indices.as_slice()?;
-    let ends = ends.as_slice()?;
-    validate_indexed_ends(latitudes.len(), indices, ends)?;
+    let indices = indices.as_u64_slice()?;
+    let ends = ends.as_u64_slice()?;
+    validate_indexed_ends_u64(latitudes.len(), indices, ends)?;
 
     let valid_rows = arrow_valid_rows_f64_i64(&[&latitudes, &longitudes], &timestamps_ms);
     let lats = arrow_values(&latitudes);
@@ -354,7 +354,7 @@ where
         row_lngs.len(),
         ends.len(),
     )?;
-    validate_ends(row_lats.len(), ends).map_err(PyValueError::new_err)?;
+    validate_ends(row_lats.len(), &ends).map_err(PyValueError::new_err)?;
     let valid_rows = arrow_valid_rows(&[&row_latitudes, &row_longitudes]);
     Ok(py.detach(|| {
         operation(
@@ -365,7 +365,7 @@ where
                 row_longitudes: row_lngs,
                 valid_rows: valid_rows.as_deref(),
             },
-            ends,
+            &ends,
         )
     }))
 }
@@ -386,8 +386,8 @@ where
     F: FnOnce(IndexedGroupCoordinateView<'_>) -> T + Send,
     T: Send,
 {
-    let indices = indices.as_slice()?;
-    let ends = ends.as_slice()?;
+    let indices = indices.as_u64_slice()?;
+    let ends = ends.as_u64_slice()?;
 
     let group_latitudes = as_f64_array(group_latitudes, "group_latitudes")?;
     let group_longitudes = as_f64_array(group_longitudes, "group_longitudes")?;
@@ -404,7 +404,7 @@ where
         row_lngs.len(),
         ends.len(),
     )?;
-    validate_indexed_ends(row_lats.len(), indices, ends)?;
+    validate_indexed_ends_u64(row_lats.len(), indices, ends)?;
     let valid_rows = arrow_valid_rows(&[&row_latitudes, &row_longitudes]);
     Ok(py.detach(|| {
         operation(IndexedGroupCoordinateView {

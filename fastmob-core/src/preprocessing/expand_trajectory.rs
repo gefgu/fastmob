@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 /// (user_range_idx, timestamp_ms, source_row_idx) -- one triple per emitted
 /// 5-minute slice. `source_row_idx` is the original input row that produced
@@ -41,7 +41,7 @@ fn expand_5min_for_user(
     user_indices: &[usize],
 ) -> Vec<ExpandedRow> {
     let mut rows: Vec<ExpandedRow> = Vec::new();
-    let mut seen: HashSet<i64> = HashSet::new();
+    let mut seen: HashSet<i64> = HashSet::default();
     for &idx in user_indices {
         let start = start_ms[idx];
         let end = end_ms[idx];
@@ -202,7 +202,7 @@ fn expand_5min_with_imputation_for_user(
         .collect();
     observed.sort_unstable_by_key(|&(timestamp_ms, _)| timestamp_ms);
 
-    let mut tallies: HashMap<AnchorWindow, AnchorTally> = HashMap::new();
+    let mut tallies: HashMap<AnchorWindow, AnchorTally> = HashMap::default();
     for &(timestamp_ms, location_code) in &observed {
         if let Some(window) = anchor_window_for_hour(hour_of_day(timestamp_ms)) {
             tallies.entry(window).or_default().record(location_code);
@@ -229,7 +229,7 @@ fn expand_5min_with_imputation_for_user(
     // exploration block, every subsequent `home` slice is one return
     // block) -- so a run may only absorb a slice when *both* the location
     // and this explore/return state match the run's, not location alone.
-    let mut seen: HashSet<u32> = HashSet::new();
+    let mut seen: HashSet<u32> = HashSet::default();
     let mut result: Vec<(i64, u32, u32)> = Vec::new();
     let mut current_run: Option<(i64, u32, u32, bool)> = None; // (run_start_ms, location_code, run_length, is_known)
 

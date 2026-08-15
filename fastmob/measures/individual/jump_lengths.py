@@ -13,7 +13,6 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
-    _extract_timestamps,
     _grouped_arrow_values,
     _to_native,
 )
@@ -151,7 +150,7 @@ def jump_lengths(
         v_starts, v_ends, flat_values = jump_lengths_presorted(lats_data, lngs_data, ends)
     else:
         timestamp_started = time.perf_counter()
-        timestamps = _extract_timestamps(df, datetime_col)
+        timestamps = df.get_column(datetime_col).to_arrow()
         if profile:
             print(
                 f"[jump_lengths] timestamp extraction: {time.perf_counter() - timestamp_started:.6f}s",

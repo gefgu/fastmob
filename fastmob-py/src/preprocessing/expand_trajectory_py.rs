@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use fastmob_core::preprocessing::expand_trajectory::{
     expand_5min_trajectory_batch_indexed_impl,
     expand_5min_trajectory_with_imputation_batch_indexed_impl,
@@ -13,10 +15,14 @@ use crate::utils::{
 };
 
 type ExpandTrajectoryBatchResult<'py> = (
-    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<u64>>,
     Py<PyAny>,
-    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<u64>>,
 );
+
+fn u64_indices(values: Vec<usize>) -> Vec<u64> {
+    values.into_iter().map(|value| value as u64).collect()
+}
 
 /// Expands each user's `[start_timestamps_ms, end_timestamps_ms]` staypoint
 /// interval into inclusive 5-minute-aligned slices, parallelized per user via
@@ -44,23 +50,23 @@ pub fn expand_5min_trajectory_batch_indexed<'py>(
     }
     let indices = sorted_indices.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    validate_indexed_ends(start.len(), indices, ends_slice)?;
+    validate_indexed_ends(start.len(), &indices, &ends_slice)?;
 
     let start_vals = arrow_i64_values(&start);
     let end_vals = arrow_i64_values(&end);
     let (user_range_idx, timestamps_ms, source_row_idx) = py.detach(|| {
-        expand_5min_trajectory_batch_indexed_impl(start_vals, end_vals, indices, ends_slice)
+        expand_5min_trajectory_batch_indexed_impl(start_vals, end_vals, &indices, &ends_slice)
     });
 
     Ok((
-        user_range_idx.into_pyarray(py),
+        u64_indices(user_range_idx).into_pyarray(py),
         Py::new(py, i64_results_into_arrow(timestamps_ms))?.into_any(),
-        source_row_idx.into_pyarray(py),
+        u64_indices(source_row_idx).into_pyarray(py),
     ))
 }
 
 type ExpandTrajectoryWithImputationBatchResult<'py> =
-    (Bound<'py, PyArray1<usize>>, Py<PyAny>, Py<PyAny>, Py<PyAny>);
+    (Bound<'py, PyArray1<u64>>, Py<PyAny>, Py<PyAny>, Py<PyAny>);
 
 /// `impute_gaps=True` counterpart of [`expand_5min_trajectory_batch_indexed`]:
 /// also fills gaps between a user's first and last observed slice using
@@ -106,7 +112,7 @@ pub fn expand_5min_trajectory_with_imputation_batch_indexed<'py>(
     }
     let indices = sorted_indices.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    validate_indexed_ends(start.len(), indices, ends_slice)?;
+    validate_indexed_ends(start.len(), &indices, &ends_slice)?;
 
     let start_vals = arrow_i64_values(&start);
     let end_vals = arrow_i64_values(&end);
@@ -116,13 +122,13 @@ pub fn expand_5min_trajectory_with_imputation_batch_indexed<'py>(
             start_vals,
             end_vals,
             location_vals,
-            indices,
-            ends_slice,
+            &indices,
+            &ends_slice,
         )
     });
 
     Ok((
-        user_range_idx.into_pyarray(py),
+        u64_indices(user_range_idx).into_pyarray(py),
         Py::new(py, i64_results_into_arrow(timestamps_ms))?.into_any(),
         Py::new(py, u32_results_into_arrow(location_out))?.into_any(),
         Py::new(py, u32_results_into_arrow(run_length_out))?.into_any(),

@@ -74,10 +74,10 @@ fn nearest_kd(node: &KdNode, query: [f64; 3], best: &mut (usize, f64)) {
     if let Some(child) = near {
         nearest_kd(child, query, best);
     }
-    if delta * delta <= best.1 {
-        if let Some(child) = far {
-            nearest_kd(child, query, best);
-        }
+    if delta * delta <= best.1
+        && let Some(child) = far
+    {
+        nearest_kd(child, query, best);
     }
 }
 
@@ -101,11 +101,10 @@ pub fn batch_nearest_coordinates(
         .iter()
         .zip(reference_lng.iter())
         .enumerate()
-        .filter_map(|(index, (&lat, &lng))| {
-            (lat.is_finite() && lng.is_finite()).then(|| SpherePoint {
-                xyz: unit_sphere(lat, lng),
-                index,
-            })
+        .filter(|&(_, (&lat, &lng))| lat.is_finite() && lng.is_finite())
+        .map(|(index, (&lat, &lng))| SpherePoint {
+            xyz: unit_sphere(lat, lng),
+            index,
         })
         .collect();
     let Some(tree) = build_kd_tree(&mut reference_points, 0) else {
