@@ -20,7 +20,10 @@ pub fn real_entropy_users(
     let location_ids = as_u32_array(location_ids, "location_ids")?;
     let n_location_ids = location_ids.len();
     let location_ids = location_ids.values().to_vec();
-    let ranges = ranges_from_ends(ends, n_location_ids)?;
+    let ranges = ranges_from_ends(ends, n_location_ids)?
+        .into_iter()
+        .map(|(start, end)| (start as u64, end as u64))
+        .collect();
     let result = py.detach(move || core_real_entropy_users(location_ids, ranges, normalized));
     result.map_err(PyValueError::new_err)
 }
@@ -34,7 +37,10 @@ pub fn trajectory_predictability_batch(
     let location_ids = as_u32_array(location_ids, "location_ids")?;
     let n_location_ids = location_ids.len();
     let location_ids = location_ids.values().to_vec();
-    let ranges = ranges_from_ends(ends, n_location_ids)?;
+    let ranges = ranges_from_ends(ends, n_location_ids)?
+        .into_iter()
+        .map(|(start, end)| (start as u64, end as u64))
+        .collect();
     let result = py.detach(move || core_trajectory_predictability_batch(location_ids, ranges));
     result.map_err(PyValueError::new_err)
 }

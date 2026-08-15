@@ -131,6 +131,43 @@ pub fn validate_indexed_coord_ends(
     validate_indexed_ends(latitudes.len(), indices, ends)
 }
 
+pub fn validate_indexed_ends_u64(
+    value_len: usize,
+    indices: &[u64],
+    ends: &[u64],
+) -> Result<(), String> {
+    let n_indices = u64::try_from(indices.len())
+        .map_err(|_| "index array exceeds the UInt64 limit".to_string())?;
+    let value_len = u64::try_from(value_len)
+        .map_err(|_| "value array exceeds the UInt64 index limit".to_string())?;
+    let mut previous = 0u64;
+    for &end in ends {
+        if end < previous {
+            return Err("range ends must be monotonically non-decreasing".to_string());
+        }
+        if end > n_indices {
+            return Err("range end must be within index array bounds".to_string());
+        }
+        previous = end;
+    }
+    if indices.iter().any(|&idx| idx >= value_len) {
+        return Err("index must be within coordinate array bounds".to_string());
+    }
+    Ok(())
+}
+
+pub fn validate_indexed_coord_ends_u64(
+    latitudes: &[f64],
+    longitudes: &[f64],
+    indices: &[u64],
+    ends: &[u64],
+) -> Result<(), String> {
+    if latitudes.len() != longitudes.len() {
+        return Err("latitudes and longitudes must have the same length".to_string());
+    }
+    validate_indexed_ends_u64(latitudes.len(), indices, ends)
+}
+
 pub fn ranges_from_starts_ends(
     starts: &[usize],
     ends: &[usize],
@@ -169,10 +206,10 @@ pub fn ends_from_ranges(ranges: &[(usize, usize)]) -> Vec<usize> {
     ranges.iter().map(|&(_, end)| end).collect()
 }
 
-pub type UserIndexRanges = (Vec<usize>, Vec<(usize, usize)>);
+pub type UserIndexRanges = (Vec<u64>, Vec<(u64, u64)>);
 
-pub fn split_user_index_ranges((indices, ranges): UserIndexRanges) -> (Vec<usize>, Vec<usize>) {
-    (indices, ends_from_ranges(&ranges))
+pub fn split_user_index_ranges((indices, ranges): UserIndexRanges) -> (Vec<u64>, Vec<u64>) {
+    (indices, ranges.into_iter().map(|(_, end)| end).collect())
 }
 
 pub fn user_indices_for_u32_codes(
@@ -206,16 +243,16 @@ pub fn user_indices_for_u32_codes(
         }
         let start = current_offset;
         let end = current_offset + *count;
-        ranges.push((start, end));
+        ranges.push((start as u64, end as u64));
         *count = start;
         current_offset = end;
     }
 
-    let mut indices = vec![0usize; codes.len()];
+    let mut indices = vec![0u64; codes.len()];
     for (row_idx, &code) in codes.iter().enumerate() {
         let group_id = code as usize;
         let pos = offsets[group_id];
-        indices[pos] = row_idx;
+        indices[pos] = row_idx as u64;
         offsets[group_id] += 1;
     }
 

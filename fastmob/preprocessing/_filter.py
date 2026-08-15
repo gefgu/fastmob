@@ -14,6 +14,7 @@ from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,
     _build_indexed_user_ranges,
+    _build_presorted_indices_and_ends,
     _detect_trajectory_columns,
     _extract_timestamps,
     _narwhals_safe_value,
@@ -73,7 +74,7 @@ def _filter_speed(
 
     # 3. Build ranges and select the appropriate core function from the dictionary
     if is_sorted:
-        _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        _, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col)
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
     else:
         _, sorted_indices, ends = _build_indexed_user_ranges(
@@ -278,7 +279,7 @@ def filter(
     config = OutlierConfig(method=method_name, **params)
 
     if is_sorted:
-        _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        _, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col)
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
     else:
         _, sorted_indices, ends = _build_indexed_user_ranges(

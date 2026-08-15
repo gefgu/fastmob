@@ -18,8 +18,7 @@ use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 use crate::utils::{
-    arrow_u32_values, arrow_usize_values, arrow_values, as_f64_array,
-    as_u64_array,
+    arrow_u32_values, arrow_usize_values, arrow_values, as_f64_array, as_u64_array,
     i32_results_into_arrow, i64_results_into_arrow, u64_results_into_arrow,
 };
 
@@ -389,7 +388,7 @@ fn build_purpose_lookup(
     user_idx: ArrowPyArray,
     location_code: ArrowPyArray,
     purpose_code: ArrowPyArray,
-        ) -> PyResult<FxHashMap<(u32, u32), u16>> {
+) -> PyResult<FxHashMap<(u32, u32), u16>> {
     let user_idx = as_u32_array(user_idx, "user_idx")?;
     let location_code = as_u32_array(location_code, "location_code")?;
     let purpose_code = as_u16_array(purpose_code, "purpose_code")?;

@@ -8,11 +8,11 @@ use polars::prelude::*;
 
 use crate::error::FastmobRsError;
 
-/// Dense `u64` codes alongside the category each code indexes.
+/// Dense `u32` codes alongside the category each code indexes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Categorical {
     pub categories: Vec<String>,
-    pub codes: Vec<u64>,
+    pub codes: Vec<u32>,
 }
 
 /// The label given to null entries, matching citybehavex's prior behaviour and
@@ -34,10 +34,10 @@ pub fn factorize(series: &Series) -> Result<Categorical, FastmobRsError> {
     }
     categories.sort_unstable();
 
-    let ranks: rustc_hash::FxHashMap<&str, u64> = categories
+    let ranks: rustc_hash::FxHashMap<&str, u32> = categories
         .iter()
         .enumerate()
-        .map(|(rank, &value)| (value, rank as u64))
+        .map(|(rank, &value)| (value, rank as u32))
         .collect();
     let codes = values
         .into_iter()

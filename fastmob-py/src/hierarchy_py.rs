@@ -20,7 +20,7 @@ type TripsPyResult<'py> = (
     Py<PyAny>,
     Py<PyAny>,
     Py<PyAny>,
-    Bound<'py, numpy::PyArray1<usize>>,
+    Bound<'py, numpy::PyArray1<u64>>,
     Py<PyAny>,
 );
 type ToursPyResult<'py> = (
@@ -28,7 +28,7 @@ type ToursPyResult<'py> = (
     Py<PyAny>,
     Py<PyAny>,
     Py<PyAny>,
-    Bound<'py, numpy::PyArray1<usize>>,
+    Bound<'py, numpy::PyArray1<u64>>,
     Py<PyAny>,
 );
 
@@ -42,6 +42,10 @@ fn arrow_i64_output(py: Python<'_>, values: Vec<i64>) -> PyResult<Py<PyAny>> {
 
 fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
+}
+
+fn u64_offsets(values: Vec<usize>) -> Vec<u64> {
+    values.into_iter().map(|value| value as u64).collect()
 }
 
 #[pyfunction]
@@ -84,7 +88,7 @@ fn trips_output_arrow<'py>(py: Python<'py>, result: TripsResult) -> PyResult<Tri
         arrow_i64_output(py, result.finished_at_us)?,
         arrow_i64_output(py, result.origin_staypoint_ids)?,
         arrow_i64_output(py, result.destination_staypoint_ids)?,
-        result.tripleg_offsets.into_pyarray(py),
+        u64_offsets(result.tripleg_offsets).into_pyarray(py),
         arrow_i64_output(py, result.tripleg_ids)?,
     ))
 }
@@ -130,7 +134,7 @@ fn tours_output_arrow<'py>(py: Python<'py>, result: ToursResult) -> PyResult<Tou
         arrow_i64_output(py, result.started_at_us)?,
         arrow_i64_output(py, result.finished_at_us)?,
         arrow_i64_output(py, result.location_ids)?,
-        result.journey_offsets.into_pyarray(py),
+        u64_offsets(result.journey_offsets).into_pyarray(py),
         arrow_i64_output(py, result.journey_trip_ids)?,
     ))
 }

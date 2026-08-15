@@ -301,10 +301,12 @@ pub fn arrow_usize_values(array: &PrimitiveArray<UInt64Type>) -> &[usize] {
 /// Python callers keep group metadata in Arrow; older core algorithms still
 /// accept half-open ranges internally.
 pub fn ranges_from_ends(ends: PyArray, value_len: usize) -> PyResult<Vec<(usize, usize)>> {
-    let ends = as_u64_array(ends, "ends")?;
-    let mut start = 0;
+    let ends = ends.as_u64_slice()?;
+    let mut start = 0usize;
     let mut ranges = Vec::with_capacity(ends.len());
-    for &end in arrow_usize_values(&ends) {
+    for &end in ends {
+        let end = usize::try_from(end)
+            .map_err(|_| PyValueError::new_err("group end exceeds platform index range"))?;
         if end < start || end > value_len {
             return Err(PyValueError::new_err(
                 "group ends must be monotonic and within input bounds",
@@ -321,15 +323,20 @@ pub fn ranges_from_ends(ends: PyArray, value_len: usize) -> PyResult<Vec<(usize,
     Ok(ranges)
 }
 
+pub trait ArrowU64ArrayExt {
+    fn as_u64_slice(&self) -> PyResult<&[u64]>;
+}
+
+/// Adapter for non-indexed callers that use native Rust ranges internally.
 pub trait ArrowUsizeArrayExt {
-    fn as_slice(&self) -> PyResult<&[usize]>;
+    fn as_slice(&self) -> PyResult<Vec<usize>>;
 }
 
 #[cfg(target_pointer_width = "64")]
 impl ArrowUsizeArrayExt for PyArray {
-    fn as_slice(&self) -> PyResult<&[usize]> {
-        let array = self
-            .array()
+    fn as_slice(&self) -> PyResult<Vec<usize>> {
+        let array = self.array();
+        let array = array
             .as_any()
             .downcast_ref::<UInt64Array>()
             .ok_or_else(|| PyValueError::new_err("expected uint64 Arrow index array"))?;
@@ -338,7 +345,24 @@ impl ArrowUsizeArrayExt for PyArray {
                 "Arrow index arrays must not contain nulls",
             ));
         }
-        Ok(arrow_usize_values(array))
+        Ok(arrow_usize_values(array).to_vec())
+    }
+}
+
+#[cfg(target_pointer_width = "64")]
+impl ArrowU64ArrayExt for PyArray {
+    fn as_u64_slice(&self) -> PyResult<&[u64]> {
+        let array = self.array();
+        let array = array
+            .as_any()
+            .downcast_ref::<UInt64Array>()
+            .ok_or_else(|| PyValueError::new_err("expected uint64 Arrow index array"))?;
+        if array.null_count() > 0 {
+            return Err(PyValueError::new_err(
+                "Arrow index arrays must not contain nulls",
+            ));
+        }
+        Ok(arrow_u64_values(array))
     }
 }
 
@@ -382,6 +406,35 @@ pub fn validate_indexed_ends(value_len: usize, indices: &[usize], ends: &[usize]
         }
     }
 
+    Ok(())
+}
+
+pub fn validate_indexed_ends_u64(value_len: usize, indices: &[u64], ends: &[u64]) -> PyResult<()> {
+    let mut previous = 0u64;
+    for &end in ends {
+        if end < previous {
+            return Err(PyValueError::new_err(
+                "range ends must be monotonically non-decreasing",
+            ));
+        }
+        if usize::try_from(end)
+            .map_err(|_| PyValueError::new_err("range end exceeds platform index range"))?
+            > indices.len()
+        {
+            return Err(PyValueError::new_err(
+                "range end must be within index array bounds",
+            ));
+        }
+        previous = end;
+    }
+    if indices
+        .iter()
+        .any(|&idx| usize::try_from(idx).map_or(true, |idx| idx >= value_len))
+    {
+        return Err(PyValueError::new_err(
+            "index must be within coordinate array bounds",
+        ));
+    }
     Ok(())
 }
 

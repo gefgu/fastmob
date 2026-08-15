@@ -54,7 +54,11 @@ fn arrow_ms_output(py: Python<'_>, seconds: Vec<f64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, i64_results_into_arrow(ms))?.into_any())
 }
 
-type InterpolateOutput<'py> = (Py<PyAny>, Py<PyAny>, Py<PyAny>, Bound<'py, PyArray1<usize>>);
+type InterpolateOutput<'py> = (Py<PyAny>, Py<PyAny>, Py<PyAny>, Bound<'py, PyArray1<u64>>);
+
+fn u64_indices(values: Vec<usize>) -> Vec<u64> {
+    values.into_iter().map(|value| value as u64).collect()
+}
 
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
@@ -91,7 +95,7 @@ pub fn interpolate_trajectory_indexed<'py>(
         arrow_f64_output(py, out_lats)?,
         arrow_f64_output(py, out_lngs)?,
         arrow_ms_output(py, out_times)?,
-        out_user_indices.into_pyarray(py),
+        u64_indices(out_user_indices).into_pyarray(py),
     ))
 }
 
@@ -126,6 +130,6 @@ pub fn interpolate_trajectory_presorted<'py>(
         arrow_f64_output(py, out_lats)?,
         arrow_f64_output(py, out_lngs)?,
         arrow_ms_output(py, out_times)?,
-        out_user_indices.into_pyarray(py),
+        u64_indices(out_user_indices).into_pyarray(py),
     ))
 }

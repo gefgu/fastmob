@@ -4,7 +4,9 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray;
 
-use crate::utils::{arrow_u32_values, as_nullable_u32_array, u32_results_into_arrow, u64_results_into_arrow};
+use crate::utils::{
+    arrow_u32_values, as_nullable_u32_array, u32_results_into_arrow, u64_results_into_arrow,
+};
 
 /// Count distinct users shared by each unordered pair of catalogue locations.
 #[pyfunction]

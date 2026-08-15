@@ -417,12 +417,14 @@ def test_indexed_user_indices_returns_arrow_arrays():
     from fastmob._core import indexed_user_indices
 
     indices, ends = indexed_user_indices(
-        pa.array([0, 1, 0, 2, 1, 2], type=pa.uint64()),
+        pa.array([0, 1, 0, 2, 1, 2], type=pa.uint32()),
         3,
     )
 
     assert pa.array(indices).to_pylist() == [0, 2, 1, 4, 3, 5]
     assert pa.array(ends).to_pylist() == [2, 4, 6]
+    assert pa.array(indices).type == pa.uint64()
+    assert pa.array(ends).type == pa.uint64()
 
 
 def test_indexed_user_indices_rejects_numpy_codes():
@@ -439,7 +441,7 @@ def test_indexed_user_indices_rejects_out_of_range_codes():
     from fastmob._core import indexed_user_indices
 
     with pytest.raises(ValueError, match="less than num_groups"):
-        indexed_user_indices(pa.array([0, 2], type=pa.uint64()), 2)
+        indexed_user_indices(pa.array([0, 2], type=pa.uint32()), 2)
 
 
 def test_build_indexed_user_ranges_uses_arrow_for_polars_strings():

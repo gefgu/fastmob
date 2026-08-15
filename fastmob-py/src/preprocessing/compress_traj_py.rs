@@ -86,14 +86,14 @@ pub fn compress_trajectory_representatives_indexed<'py>(
 
     let latitudes = as_nullable_f64_array(latitudes, "latitudes")?;
     let longitudes = as_nullable_f64_array(longitudes, "longitudes")?;
-    validate_indexed_ends(latitudes.len(), sorted_indices, ends)?;
+    validate_indexed_ends(latitudes.len(), &sorted_indices, &ends)?;
     let valid_rows = arrow_valid_rows(&[&latitudes, &longitudes]);
     let (representative_indices, median_latitudes, median_longitudes) = py.detach(|| {
         compress_trajectory_representatives_indexed_impl(
             arrow_values(&latitudes),
             arrow_values(&longitudes),
-            sorted_indices,
-            ends,
+            &sorted_indices,
+            &ends,
             valid_rows.as_deref(),
             spatial_radius_km,
         )

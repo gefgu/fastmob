@@ -35,3 +35,7 @@ flate2 = "1"
 [[bench]]
 name = "jump_lengths"
 harness = false
+
+[[bench]]
+name = "entropy_width"
+harness = false

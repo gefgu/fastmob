@@ -5,7 +5,7 @@ type PredictabilityBatchResult = (Vec<f64>, Vec<f64>, Vec<usize>, Vec<usize>);
 
 pub fn real_entropy_users(
     location_ids: Vec<u32>,
-    ranges: Vec<(usize, usize)>,
+    ranges: Vec<(u64, u64)>,
     normalized: bool,
 ) -> Result<Vec<f64>, String> {
     validate_ranges(location_ids.len(), &ranges)?;
@@ -13,7 +13,7 @@ pub fn real_entropy_users(
     let entropies = ranges
         .par_iter()
         .map(|&(start, end)| {
-            let sequence = &location_ids[start..end];
+            let sequence = &location_ids[start as usize..end as usize];
             let raw = kontoyiannis_entropy(sequence);
             if normalized && sequence.len() > 1 {
                 (raw / (sequence.len() as f64).log2()).clamp(0.0, 1.0)
@@ -28,9 +28,9 @@ pub fn real_entropy_users(
     Ok(entropies)
 }
 
-fn validate_ranges(n_tokens: usize, ranges: &[(usize, usize)]) -> Result<(), String> {
+fn validate_ranges(n_tokens: usize, ranges: &[(u64, u64)]) -> Result<(), String> {
     for &(start, end) in ranges {
-        if start > end || end > n_tokens {
+        if start > end || end as usize > n_tokens {
             return Err("ranges must be valid half-open intervals into tokens".to_string());
         }
     }
@@ -117,14 +117,14 @@ fn solve_max_predictability_with_fano(real_entropy: f64, n_unique: usize) -> f64
 
 pub fn trajectory_predictability_batch(
     location_ids: Vec<u32>,
-    ranges: Vec<(usize, usize)>,
+    ranges: Vec<(u64, u64)>,
 ) -> Result<PredictabilityBatchResult, String> {
     validate_ranges(location_ids.len(), &ranges)?;
 
     let rows: Vec<(f64, f64, usize, usize)> = ranges
         .par_iter()
         .map(|&(start, end)| {
-            let sequence = &location_ids[start..end];
+            let sequence = &location_ids[start as usize..end as usize];
             let n_steps = sequence.len();
             let n_unique = sequence.iter().collect::<FxHashSet<_>>().len();
             let real_entropy = kontoyiannis_entropy(sequence);

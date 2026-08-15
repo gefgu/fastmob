@@ -35,7 +35,7 @@ impl PyNextLocationModels {
         let indices = sorted_indices.as_slice()?;
         let ends = ends.as_slice()?;
         let config = CoreNextLocationConfig::new(order, backoff);
-        let models = markov_fit_indexed(arrow_u32_values(&codes), indices, ends, &config)
+        let models = markov_fit_indexed(arrow_u32_values(&codes), &indices, &ends, &config)
             .map_err(PyValueError::new_err)?;
         Ok(Self { models })
     }
@@ -59,9 +59,14 @@ impl PyNextLocationModels {
         let codes = as_u32_array(context_codes, "context_codes")?;
         let starts = context_starts.as_slice()?;
         let ends = context_ends.as_slice()?;
-        let (out_codes, out_probs, out_starts, out_ends) =
-            markov_predict_batch(&self.models, arrow_u32_values(&codes), starts, ends, top_k)
-                .map_err(PyValueError::new_err)?;
+        let (out_codes, out_probs, out_starts, out_ends) = markov_predict_batch(
+            &self.models,
+            arrow_u32_values(&codes),
+            &starts,
+            &ends,
+            top_k,
+        )
+        .map_err(PyValueError::new_err)?;
         Ok((
             Py::new(py, u32_results_into_arrow(out_codes))?.into_any(),
             Py::new(py, f64_results_into_arrow(out_probs))?.into_any(),

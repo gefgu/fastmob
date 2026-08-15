@@ -20,14 +20,18 @@ fn timestamps_ms_to_seconds(timestamps_ms: &arrow_array::Int64Array) -> Vec<f64>
 }
 
 type PyGroupedF64<'py> = (
-    Bound<'py, PyArray1<usize>>,
-    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<u64>>,
+    Bound<'py, PyArray1<u64>>,
     Py<PyAny>,
 );
 type PyFlatF64 = Py<PyAny>;
 
 fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
+}
+
+fn u64_offsets(values: Vec<usize>) -> Vec<u64> {
+    values.into_iter().map(|value| value as u64).collect()
 }
 
 #[pyfunction]
@@ -39,10 +43,10 @@ pub fn waiting_times_presorted<'py>(
     let timestamps_ms = as_i64_array(timestamps_ms, "timestamps_ms")?;
     let timestamps_s = timestamps_ms_to_seconds(&timestamps_ms);
     let (starts, ends, values) =
-        waiting_times_impl(&timestamps_s, ends.as_slice()?).map_err(PyValueError::new_err)?;
+        waiting_times_impl(&timestamps_s, &ends.as_slice()?).map_err(PyValueError::new_err)?;
     Ok((
-        starts.into_pyarray(py),
-        ends.into_pyarray(py),
+        u64_offsets(starts).into_pyarray(py),
+        u64_offsets(ends).into_pyarray(py),
         arrow_f64_output(py, values)?,
     ))
 }
@@ -56,7 +60,7 @@ pub fn waiting_times_presorted_flat<'py>(
     let timestamps_ms = as_i64_array(timestamps_ms, "timestamps_ms")?;
     let timestamps_s = timestamps_ms_to_seconds(&timestamps_ms);
     let values =
-        waiting_times_flat_impl(&timestamps_s, ends.as_slice()?).map_err(PyValueError::new_err)?;
+        waiting_times_flat_impl(&timestamps_s, &ends.as_slice()?).map_err(PyValueError::new_err)?;
     arrow_f64_output(py, values)
 }
 
@@ -72,13 +76,13 @@ pub fn waiting_times_indexed<'py>(
     let timestamps_ms = as_nullable_i64_array(timestamps_ms, "timestamps_ms")?;
     let valid_rows = arrow_valid_rows_f64_i64(&[], &timestamps_ms);
     let timestamps_s = timestamps_ms_to_seconds(&timestamps_ms);
-    validate_indexed_ends(timestamps_s.len(), indices, ends)?;
+    validate_indexed_ends(timestamps_s.len(), &indices, &ends)?;
     let (starts, ends, waits) =
-        waiting_times_indexed_impl(&timestamps_s, indices, ends, valid_rows.as_deref())
+        waiting_times_indexed_impl(&timestamps_s, &indices, &ends, valid_rows.as_deref())
             .map_err(PyValueError::new_err)?;
     Ok((
-        starts.into_pyarray(py),
-        ends.into_pyarray(py),
+        u64_offsets(starts).into_pyarray(py),
+        u64_offsets(ends).into_pyarray(py),
         arrow_f64_output(py, waits)?,
     ))
 }
@@ -95,9 +99,9 @@ pub fn waiting_times_indexed_flat<'py>(
     let timestamps_ms = as_nullable_i64_array(timestamps_ms, "timestamps_ms")?;
     let valid_rows = arrow_valid_rows_f64_i64(&[], &timestamps_ms);
     let timestamps_s = timestamps_ms_to_seconds(&timestamps_ms);
-    validate_indexed_ends(timestamps_s.len(), indices, ends)?;
+    validate_indexed_ends(timestamps_s.len(), &indices, &ends)?;
     let waits =
-        waiting_times_indexed_flat_impl(&timestamps_s, indices, ends, valid_rows.as_deref())
+        waiting_times_indexed_flat_impl(&timestamps_s, &indices, &ends, valid_rows.as_deref())
             .map_err(PyValueError::new_err)?;
     arrow_f64_output(py, waits)
 }

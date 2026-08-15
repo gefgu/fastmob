@@ -6,17 +6,19 @@ use pyo3_arrow::PyArray;
 use crate::utils::{arrow_u32_values, as_u32_array, extract_arrow_array, u64_results_into_arrow};
 
 #[pyfunction]
-pub fn single_user_indices(length: usize) -> (PyArray, PyArray) {
-    let indices = (0..length as u64).collect();
+pub fn single_user_indices(length: usize) -> PyResult<(PyArray, PyArray)> {
+    let length_u64 = u64::try_from(length)
+        .map_err(|_| PyValueError::new_err("row count exceeds the UInt64 index limit"))?;
+    let indices = (0..length).map(|value| value as u64).collect();
     let ends = if length == 0 {
         Vec::new()
     } else {
-        vec![length as u64]
+        vec![length_u64]
     };
-    (
+    Ok((
         u64_results_into_arrow(indices),
         u64_results_into_arrow(ends),
-    )
+    ))
 }
 
 #[pyfunction]
@@ -31,7 +33,7 @@ pub fn indexed_user_indices(
         .map_err(PyValueError::new_err)?;
     let (indices, ends) = split_user_index_ranges(grouped);
     Ok((
-        u64_results_into_arrow(indices.into_iter().map(|value| value as u64).collect()),
-        u64_results_into_arrow(ends.into_iter().map(|value| value as u64).collect()),
+        u64_results_into_arrow(indices),
+        u64_results_into_arrow(ends),
     ))
 }

@@ -6,7 +6,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow, u64_results_into_arrow};
+use crate::utils::{arrow_values, as_f64_array, f64_results_into_arrow, u32_results_into_arrow};
 
 #[pyfunction]
 pub fn model_radiation_probabilities(
@@ -14,13 +14,26 @@ pub fn model_radiation_probabilities(
     longitudes: PyReadonlyArray1<f64>,
     relevances: PyReadonlyArray1<f64>,
     tot_outflows: PyReadonlyArray1<f64>,
-) -> PyResult<(Vec<usize>, Vec<usize>, Vec<f64>)> {
+) -> PyResult<(Vec<u32>, Vec<u32>, Vec<f64>)> {
     model_radiation_probabilities_impl(
         latitudes.as_slice()?,
         longitudes.as_slice()?,
         relevances.as_slice()?,
         tot_outflows.as_slice()?,
     )
+    .map(|(origins, destinations, values)| {
+        (
+            origins
+                .into_iter()
+                .map(|value| u32::try_from(value).expect("location index exceeds u32 range"))
+                .collect(),
+            destinations
+                .into_iter()
+                .map(|value| u32::try_from(value).expect("location index exceeds u32 range"))
+                .collect(),
+            values,
+        )
+    })
     .map_err(PyValueError::new_err)
 }
 
@@ -60,12 +73,12 @@ pub fn model_radiation_flows_arrow<'py>(
     Ok((
         Py::new(
             py,
-            u64_results_into_arrow(keep.iter().map(|&i| origins[i] as u64).collect()),
+            u32_results_into_arrow(keep.iter().map(|&i| origins[i] as u32).collect()),
         )?
         .into_any(),
         Py::new(
             py,
-            u64_results_into_arrow(keep.iter().map(|&i| destinations[i] as u64).collect()),
+            u32_results_into_arrow(keep.iter().map(|&i| destinations[i] as u32).collect()),
         )?
         .into_any(),
         Py::new(
@@ -103,12 +116,12 @@ pub fn model_radiation_sample_flows_arrow<'py>(
     Ok((
         Py::new(
             py,
-            u64_results_into_arrow(origins.into_iter().map(|value| value as u64).collect()),
+            u32_results_into_arrow(origins.into_iter().map(|value| value as u32).collect()),
         )?
         .into_any(),
         Py::new(
             py,
-            u64_results_into_arrow(destinations.into_iter().map(|value| value as u64).collect()),
+            u32_results_into_arrow(destinations.into_iter().map(|value| value as u32).collect()),
         )?
         .into_any(),
         Py::new(py, f64_results_into_arrow(values))?.into_any(),

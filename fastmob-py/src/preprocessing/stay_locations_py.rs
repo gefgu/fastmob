@@ -13,11 +13,15 @@ type StayLocationsBatchResult<'py> = (
     Py<PyAny>,
     Py<PyAny>,
     Py<PyAny>,
-    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<u64>>,
 );
 
 fn arrow_f64_output(py: Python<'_>, values: Vec<f64>) -> PyResult<Py<PyAny>> {
     Ok(Py::new(py, f64_results_into_arrow(values))?.into_any())
+}
+
+fn u64_indices(values: Vec<usize>) -> Vec<u64> {
+    values.into_iter().map(|value| value as u64).collect()
 }
 
 /// Converts kernel-internal seconds (`f64`) back to milliseconds (`i64`) at the
@@ -63,7 +67,7 @@ pub fn detect_stay_locations_batch_presorted<'py>(
         arrow_f64_output(py, out_lngs)?,
         arrow_f64_output(py, entry_times)?,
         arrow_f64_output(py, leaving_times)?,
-        user_range_idx.into_pyarray(py),
+        u64_indices(user_range_idx).into_pyarray(py),
     ))
 }
 
@@ -109,6 +113,6 @@ pub fn detect_stay_locations_batch_indexed<'py>(
         arrow_f64_output(py, out_lngs)?,
         arrow_ms_output(py, entry_times)?,
         arrow_ms_output(py, leaving_times)?,
-        user_range_idx.into_pyarray(py),
+        u64_indices(user_range_idx).into_pyarray(py),
     ))
 }

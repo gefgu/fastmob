@@ -10,6 +10,7 @@ from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,
     _build_indexed_user_ranges,
+    _build_presorted_indices_and_ends,
     _detect_trajectory_columns,
     _extract_timestamps,
 )
@@ -118,7 +119,7 @@ def compress(
     timestamps = _extract_timestamps(df, datetime_col)
 
     if presorted:
-        _, indices, ends = _build_indexed_user_ranges(df, uid_col)
+        _, indices, ends = _build_presorted_indices_and_ends(df, uid_col)
         result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, indices, ends, spatial_radius_km)
     else:
         _, sorted_indices, ends = _build_indexed_user_ranges(

@@ -114,7 +114,7 @@ pub fn markov_diary_batch_generate_arrow<'py>(
     n_agents: usize,
     master_seed: u64,
     slots_per_day: usize,
-) -> PyResult<(Py<PyAny>, Py<PyAny>, Vec<usize>, Vec<usize>)> {
+) -> PyResult<(Py<PyAny>, Py<PyAny>, Vec<u64>, Vec<u64>)> {
     let cdf = cdf_matrix
         .map(|values| as_f64_array(values, "cdf_matrix"))
         .transpose()?;
@@ -130,8 +130,8 @@ pub fn markov_diary_batch_generate_arrow<'py>(
     Ok((
         Py::new(py, i64_results_into_arrow(timestamps))?.into_any(),
         Py::new(py, i32_results_into_arrow(locations))?.into_any(),
-        starts,
-        ends,
+        starts.into_iter().map(|value| value as u64).collect(),
+        ends.into_iter().map(|value| value as u64).collect(),
     ))
 }
 
@@ -148,8 +148,8 @@ pub fn markov_diary_batch_generate<'py>(
 ) -> PyResult<(
     Bound<'py, PyArray1<i64>>,
     Bound<'py, PyArray1<i32>>,
-    Vec<usize>,
-    Vec<usize>,
+    Vec<u64>,
+    Vec<u64>,
 )> {
     let cdf_slice: Option<&[f64]> = match &cdf_matrix {
         Some(m) => Some(m.as_slice()?),
@@ -167,8 +167,8 @@ pub fn markov_diary_batch_generate<'py>(
     Ok((
         flat_ts.into_pyarray(py),
         flat_locs.into_pyarray(py),
-        starts,
-        ends,
+        starts.into_iter().map(|value| value as u64).collect(),
+        ends.into_iter().map(|value| value as u64).collect(),
     ))
 }
 

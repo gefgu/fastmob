@@ -16,7 +16,7 @@ type RecencyRankValues<'py> = (
     ArrowPyArray,
     ArrowPyArray,
     ArrowPyArray,
-    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<u64>>,
 );
 
 #[pyfunction]
@@ -33,8 +33,8 @@ pub fn recency_rank_values_indexed<'py>(
     let (out_lats, out_lngs, out_ranks, out_user_indices) = recency_rank_indexed_values_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
-        indices.as_slice()?,
-        ends.as_slice()?,
+        &indices.as_slice()?,
+        &ends.as_slice()?,
         valid_rows.as_deref(),
     )
     .map_err(PyValueError::new_err)?;
@@ -42,7 +42,11 @@ pub fn recency_rank_values_indexed<'py>(
         f64_results_into_arrow(out_lats),
         f64_results_into_arrow(out_lngs),
         u64_results_into_arrow(out_ranks),
-        out_user_indices.into_pyarray(py),
+        out_user_indices
+            .into_iter()
+            .map(|value| value as u64)
+            .collect::<Vec<_>>()
+            .into_pyarray(py),
     ))
 }
 
@@ -59,7 +63,7 @@ pub fn recency_rank_presorted<'py>(
     let (out_lats, out_lngs, out_ranks, out_user_indices) = recency_rank_presorted_impl(
         arrow_values(&latitudes),
         arrow_values(&longitudes),
-        ends.as_slice()?,
+        &ends.as_slice()?,
         valid_rows.as_deref(),
     )
     .map_err(PyValueError::new_err)?;
@@ -67,6 +71,10 @@ pub fn recency_rank_presorted<'py>(
         f64_results_into_arrow(out_lats),
         f64_results_into_arrow(out_lngs),
         u64_results_into_arrow(out_ranks),
-        out_user_indices.into_pyarray(py),
+        out_user_indices
+            .into_iter()
+            .map(|value| value as u64)
+            .collect::<Vec<_>>()
+            .into_pyarray(py),
     ))
 }

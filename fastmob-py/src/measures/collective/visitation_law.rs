@@ -60,8 +60,7 @@ pub fn visitation_distances(
 /// grouping keys are factorized into the compact representation consumed by
 /// the Rust kernel.
 fn codes_for_grouping(array: ArrayRef) -> Result<Vec<u32>, String> {
-    factorize_array(array.as_ref(), false)
-        .map(|(codes, _)| codes)
+    factorize_array(array.as_ref(), false).map(|(codes, _)| codes)
 }
 
 /// Bin visitation-law observations directly from Arrow columns.

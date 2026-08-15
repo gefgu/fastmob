@@ -6,3 +6,8 @@ resolver = "2"
 debug = "line-tables-only"
 lto = "fat"
 codegen-units = 1
+
+[profile.fast-release]
+inherits = "release"
+lto = "thin"
+codegen-units = 16

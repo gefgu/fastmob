@@ -10,6 +10,7 @@ from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,
     _build_indexed_user_ranges,
+    _build_presorted_indices_and_ends,
     _detect_trajectory_columns,
     _extract_timestamps,
     _take_uid_values,
@@ -122,16 +123,13 @@ def stay_locations(
 
     """
     df = nw.from_native(traj, eager_only=True)
-    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+    df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
-    )
-    df = df.with_columns(
-        nw.col(lat_col).cast(nw.Float64),
-        nw.col(lng_col).cast(nw.Float64),
+        cast_float_coordinates=True,
     )
 
     timestamps = _extract_timestamps(df, datetime_col)
@@ -142,7 +140,7 @@ def stay_locations(
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
 
     if presorted:
-        uid_values, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        uid_values, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col)
         _result = detect_stay_locations_batch_indexed(
             lats_data,
             lngs_data,

@@ -18,7 +18,7 @@ type MobilityNetwork<'py> = (
     ArrowPyArray,
     ArrowPyArray,
     ArrowPyArray,
-    Bound<'py, PyArray1<usize>>,
+    Bound<'py, PyArray1<u64>>,
 );
 
 #[pyfunction]
@@ -37,8 +37,8 @@ pub fn individual_mobility_network_indexed<'py>(
         individual_mobility_network_indexed_impl(
             arrow_values(&latitudes),
             arrow_values(&longitudes),
-            indices.as_slice()?,
-            ends.as_slice()?,
+            &indices.as_slice()?,
+            &ends.as_slice()?,
             self_loops,
             valid_rows.as_deref(),
         )
@@ -49,7 +49,11 @@ pub fn individual_mobility_network_indexed<'py>(
         f64_results_into_arrow(lat_dests),
         f64_results_into_arrow(lng_dests),
         u64_results_into_arrow(n_trips),
-        user_indices.into_pyarray(py),
+        user_indices
+            .into_iter()
+            .map(|value| value as u64)
+            .collect::<Vec<_>>()
+            .into_pyarray(py),
     ))
 }
 
@@ -68,7 +72,7 @@ pub fn individual_mobility_network_presorted<'py>(
         individual_mobility_network_presorted_impl(
             arrow_values(&latitudes),
             arrow_values(&longitudes),
-            ends.as_slice()?,
+            &ends.as_slice()?,
             self_loops,
             valid_rows.as_deref(),
         )
@@ -79,6 +83,10 @@ pub fn individual_mobility_network_presorted<'py>(
         f64_results_into_arrow(lat_dests),
         f64_results_into_arrow(lng_dests),
         u64_results_into_arrow(n_trips),
-        user_indices.into_pyarray(py),
+        user_indices
+            .into_iter()
+            .map(|value| value as u64)
+            .collect::<Vec<_>>()
+            .into_pyarray(py),
     ))
 }

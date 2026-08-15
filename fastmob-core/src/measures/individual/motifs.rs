@@ -39,7 +39,7 @@ struct Scratch {
 enum PurposeSource<'a> {
     Flat(&'a [u16]),
     Lookup {
-    table: &'a FxHashMap<(u32, u32), u16>,
+        table: &'a FxHashMap<(u32, u32), u16>,
         unmatched_code: u16,
     },
 }
@@ -503,7 +503,7 @@ pub fn compute_daily_motifs_indexed_joined(
     indices: &[usize],
     ends: &[usize],
     home_purpose_code: u16,
-        lookup: &FxHashMap<(u32, u32), u16>,
+    lookup: &FxHashMap<(u32, u32), u16>,
     unmatched_purpose_code: u16,
 ) -> DailyMotifsResult {
     compute_daily_motifs_impl(
@@ -533,7 +533,7 @@ pub fn compute_daily_motifs_presorted_joined(
     durations: Option<&[f64]>,
     ends: &[usize],
     home_purpose_code: u16,
-        lookup: &FxHashMap<(u32, u32), u16>,
+    lookup: &FxHashMap<(u32, u32), u16>,
     unmatched_purpose_code: u16,
 ) -> DailyMotifsResult {
     compute_daily_motifs_impl(
