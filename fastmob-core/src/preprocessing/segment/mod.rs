@@ -279,7 +279,8 @@ pub fn segment_trajectory_indexed_impl(
             bucket_buf.clear();
             let out_ptr = out_addr as *mut u32;
 
-            for &idx in user_indices {
+            for &idx_u32 in user_indices {
+                let idx = idx_u32;
                 let is_valid =
                     is_valid_segment_row(latitudes, longitudes, timestamps_s, valid_rows, idx);
                 valid_flags_buf.push(is_valid);
@@ -298,7 +299,8 @@ pub fn segment_trajectory_indexed_impl(
 
             let mut valid_pos = 0usize;
             let mut last_id = 0u32;
-            for (&idx, &is_valid) in user_indices.iter().zip(valid_flags_buf.iter()) {
+            for (&idx_u32, &is_valid) in user_indices.iter().zip(valid_flags_buf.iter()) {
+                let idx = idx_u32;
                 if is_valid {
                     last_id = valid_ids[valid_pos];
                     valid_pos += 1;

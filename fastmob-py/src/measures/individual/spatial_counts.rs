@@ -21,7 +21,7 @@ pub fn number_of_visits_presorted<'py>(
     n_values: usize,
     ends: pyo3_arrow::PyArray,
 ) -> PyResult<Bound<'py, PyArray1<u64>>> {
-    Ok(number_of_visits_from_ends_impl(n_values, ends.as_slice()?)
+    Ok(number_of_visits_from_ends_impl(n_values, &ends.as_slice()?)
         .map_err(PyValueError::new_err)?
         .into_pyarray(py))
 }
@@ -40,8 +40,10 @@ pub fn number_of_visits_indexed<'py>(
     } else {
         None
     };
+    let indices = indices.as_slice()?;
+    let ends = ends.as_slice()?;
     Ok(
-        number_of_visits_indexed_impl(n_values, indices.as_slice()?, ends.as_slice()?, valid_slice)
+        number_of_visits_indexed_impl(n_values, &indices, &ends, valid_slice)
             .map_err(PyValueError::new_err)?
             .into_pyarray(py),
     )

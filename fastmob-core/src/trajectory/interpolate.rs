@@ -22,7 +22,7 @@ use std::str::FromStr;
 use geo::{Destination, Haversine, Point};
 
 use crate::utils::haversine::haversine_km;
-use crate::utils::{validate_coord_ends, validate_indexed_coord_ends};
+use crate::utils::validate_coord_ends;
 
 /// The four shipped named interpolation algorithms.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -367,7 +367,7 @@ pub fn interpolate_trajectory_indexed_impl(
     valid_rows: Option<&[bool]>,
     config: &InterpolationConfig,
 ) -> InterpolationResult {
-    validate_indexed_coord_ends(latitudes, longitudes, sorted_indices, ends)?;
+    crate::utils::validate_indexed_coord_ends(latitudes, longitudes, sorted_indices, ends)?;
     if timestamps_s.len() != latitudes.len() {
         return Err(
             "latitudes, longitudes, and timestamps_s must have the same length".to_string(),
@@ -382,7 +382,8 @@ pub fn interpolate_trajectory_indexed_impl(
             let mut lats = Vec::with_capacity(end - start);
             let mut lngs = Vec::with_capacity(end - start);
             let mut times = Vec::with_capacity(end - start);
-            for &idx in &sorted_indices[start..end] {
+            for &idx_u32 in &sorted_indices[start..end] {
+                let idx = idx_u32;
                 if is_valid_row(latitudes, longitudes, timestamps_s, valid_rows, idx) {
                     lats.push(latitudes[idx]);
                     lngs.push(longitudes[idx]);

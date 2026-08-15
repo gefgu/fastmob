@@ -222,7 +222,8 @@ pub fn simplify_trajectory_indexed_impl(
             time_buf.clear();
             let mask_ptr = mask_addr as *mut bool;
 
-            for &idx in user_indices {
+            for &idx_u32 in user_indices {
+                let idx = idx_u32;
                 if is_valid_simplify_row(latitudes, longitudes, timestamps_s, valid_rows, idx) {
                     valid_indices_buf.push(idx);
                     lat_buf.push(latitudes[idx]);

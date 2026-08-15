@@ -1,10 +1,7 @@
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
-use crate::utils::{
-    validate_coord_ends, validate_coord_ranges, validate_ends, validate_indexed_coord_ends,
-    validate_indexed_ends, validate_ranges,
-};
+use crate::utils::{validate_coord_ends, validate_coord_ranges, validate_ends, validate_ranges};
 
 pub fn number_of_visits_impl(
     n_values: usize,
@@ -36,7 +33,7 @@ pub fn number_of_visits_indexed_impl(
     ends: &[usize],
     valid_rows: Option<&[bool]>,
 ) -> Result<Vec<u64>, String> {
-    validate_indexed_ends(n_values, indices, ends)?;
+    crate::utils::validate_indexed_ends(n_values, indices, ends)?;
     Ok((0..ends.len())
         .map(|i| {
             let start = if i == 0 { 0 } else { ends[i - 1] };
@@ -99,7 +96,7 @@ pub fn number_of_locations_indexed_impl(
     ends: &[usize],
     valid_rows: Option<&[bool]>,
 ) -> Result<Vec<u64>, String> {
-    validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
+    crate::utils::validate_indexed_coord_ends(latitudes, longitudes, indices, ends)?;
     Ok((0..ends.len())
         .into_par_iter()
         .map(|i| {

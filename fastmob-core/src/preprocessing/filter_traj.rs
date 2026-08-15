@@ -334,7 +334,8 @@ pub fn filter_trajectory_indexed_impl(
             valid_indices_buf.clear();
             let mask_ptr = mask_addr as *mut bool;
 
-            for &idx in user_indices {
+            for &idx_u32 in user_indices {
+                let idx = idx_u32;
                 if is_valid_indexed_filter_row(latitudes, longitudes, timestamps_s, valid_rows, idx)
                 {
                     valid_indices_buf.push(idx);

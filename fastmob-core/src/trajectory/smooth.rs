@@ -23,7 +23,7 @@ use rayon::prelude::*;
 use crate::utils::haversine::{
     local_planar_km_params, project_local_planar_km_with_params, unproject_local_planar_km,
 };
-use crate::utils::{validate_coord_ends, validate_indexed_coord_ends};
+use crate::utils::validate_coord_ends;
 
 /// The one shipped named smoothing algorithm (room to grow, matching
 /// `InterpolationMethod`'s enum-of-named-methods shape).
@@ -341,7 +341,7 @@ pub fn smooth_trajectory_indexed_impl(
     valid_rows: Option<&[bool]>,
     config: &SmoothConfig,
 ) -> SmoothResult {
-    validate_indexed_coord_ends(latitudes, longitudes, sorted_indices, ends)?;
+    crate::utils::validate_indexed_coord_ends(latitudes, longitudes, sorted_indices, ends)?;
     if timestamps_s.len() != latitudes.len() {
         return Err(
             "latitudes, longitudes, and timestamps_s must have the same length".to_string(),
@@ -358,9 +358,10 @@ pub fn smooth_trajectory_indexed_impl(
             let mut lats = Vec::with_capacity(end - start);
             let mut lngs = Vec::with_capacity(end - start);
             let mut times = Vec::with_capacity(end - start);
-            for &idx in &sorted_indices[start..end] {
+            for &idx_u32 in &sorted_indices[start..end] {
+                let idx = idx_u32;
                 if is_valid_indexed_row(latitudes, longitudes, timestamps_s, valid_rows, idx) {
-                    idxs.push(idx);
+                    idxs.push(idx_u32);
                     lats.push(latitudes[idx]);
                     lngs.push(longitudes[idx]);
                     times.push(timestamps_s[idx]);
