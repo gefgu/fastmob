@@ -193,7 +193,7 @@ class Triplegs(BaseDataFrame):
             uid_code_col = "__fastmob_uid_codes__"
         else:
             uid_code_col = "__fastmob_uid_codes__"
-            seg_nw = seg_nw.with_columns(nw.lit(0, dtype=nw.UInt64).alias(uid_code_col))
+            seg_nw = seg_nw.with_columns(nw.lit(0, dtype=nw.UInt32).alias(uid_code_col))
 
         group_cols = ([uid_col] if uid_col else []) + [uid_code_col, "segment_id"]
         summary = seg_nw.group_by(group_cols).agg(

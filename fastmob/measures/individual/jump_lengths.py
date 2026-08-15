@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import time
 from typing import Any
 
 import narwhals as nw
@@ -112,21 +110,6 @@ def jump_lengths(
     maximum_distance : Largest single jump length per user.
     distance_straight_line : Sum of all jump lengths per user.
     """
-    profile = os.environ.get("FASTMOB_PROFILE_JUMP_LENGTHS") == "1"
-    profile_started = time.perf_counter()
-    profile_previous = profile_started
-
-    def profile_stage(name: str) -> None:
-        nonlocal profile_previous
-        if profile:
-            now = time.perf_counter()
-            print(
-                f"[jump_lengths] {name}: {now - profile_previous:.6f}s "
-                f"(cumulative {now - profile_started:.6f}s)",
-                flush=True,
-            )
-            profile_previous = now
-
     df = nw.from_native(traj)
     if isinstance(df, nw.LazyFrame):
         df = df.collect()
@@ -139,29 +122,16 @@ def jump_lengths(
         uid_col=uid_col,
         cast_float_coordinates=True,
     )
-    profile_stage("input normalization and column detection")
-
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    profile_stage("coordinate Arrow extraction")
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         v_starts, v_ends, flat_values = jump_lengths_presorted(lats_data, lngs_data, ends)
     else:
-        timestamp_started = time.perf_counter()
         timestamps = df.get_column(datetime_col).to_arrow()
-        if profile:
-            print(
-                f"[jump_lengths] timestamp extraction: {time.perf_counter() - timestamp_started:.6f}s",
-                flush=True,
-            )
-        ranges_started = time.perf_counter()
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
-        profile_previous = ranges_started
-        profile_stage("indexed range construction")
         v_starts, v_ends, flat_values = jump_lengths_indexed(lats_data, lngs_data, indices, ends)
-        profile_stage("indexed Rust jump-length kernel and Arrow output")
 
     flat_values = _as_arrow(flat_values)
 
@@ -171,7 +141,6 @@ def jump_lengths(
         return flat_values
 
     jump_values = _grouped_arrow_values(v_starts, v_ends, flat_values, value_offsets=True)
-    profile_stage("per-user output grouping")
     if uid_col is None:
         return _to_native({"jump_lengths": jump_values}, df)
     return _to_native({uid_col: uid_values, "jump_lengths": jump_values}, df)

@@ -76,6 +76,8 @@ def _normalize_trajectory(df: Any) -> pd.DataFrame:
 
 
 def _normalize_diary(df: Any) -> pd.DataFrame:
+    if hasattr(df, "to_pandas"):
+        df = df.to_pandas()
     out = pd.DataFrame(df).copy()
     out = out[["datetime", "abstract_location"]]
     out["datetime"] = pd.to_datetime(out["datetime"])

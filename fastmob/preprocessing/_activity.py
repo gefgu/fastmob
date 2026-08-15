@@ -181,9 +181,11 @@ def identify_locations(
         .with_columns(
             nw.when(nw.col("location_id") == nw.col("home_location_id"))
             .then(nw.lit("home"))
-            .when(nw.col("location_id") == nw.col("work_location_id"))
-            .then(nw.lit("work"))
-            .otherwise(nw.lit("other"))
+            .otherwise(
+                nw.when(nw.col("location_id") == nw.col("work_location_id"))
+                .then(nw.lit("work"))
+                .otherwise(nw.lit("other"))
+            )
             .alias("purpose")
         )
         .drop("home_location_id", "work_location_id")

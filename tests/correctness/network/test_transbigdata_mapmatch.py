@@ -29,12 +29,13 @@ def test_fastmob_node_snap_distance_is_at_least_transbigdata_edge_snap(transbigd
     matched_df = transbigdata_reference.matched()
 
     node_idx = snap_locations_to_graph(input_df, nodes_df, max_distance_m=1_000_000.0)
-    assert (node_idx >= 0).all()
+    node_idx_values = node_idx.to_numpy(zero_copy_only=False)
+    assert (node_idx_values >= 0).all()
 
     from fastmob._core import haversine_m_batch
 
-    snapped_lat = nodes_df.set_index("node_idx").loc[node_idx, "lat"].to_numpy(dtype=float)
-    snapped_lng = nodes_df.set_index("node_idx").loc[node_idx, "lng"].to_numpy(dtype=float)
+    snapped_lat = nodes_df.set_index("node_idx").loc[node_idx_values, "lat"].to_numpy(dtype=float)
+    snapped_lng = nodes_df.set_index("node_idx").loc[node_idx_values, "lng"].to_numpy(dtype=float)
     fastmob_dist_m = haversine_m_batch(
         input_df["lat"].to_numpy(dtype=float), input_df["lng"].to_numpy(dtype=float), snapped_lat, snapped_lng
     )
@@ -53,5 +54,6 @@ def test_fastmob_snaps_to_an_endpoint_of_transbigdatas_matched_edge(transbigdata
     input_df = transbigdata_reference.input_traj()
 
     node_idx = snap_locations_to_graph(input_df, nodes_df, max_distance_m=1_000_000.0)
-    assert node_idx[0] in (0, 1)
-    assert node_idx[1] in (2, 3)
+    node_idx_values = node_idx.to_numpy(zero_copy_only=False)
+    assert node_idx_values[0] in (0, 1)
+    assert node_idx_values[1] in (2, 3)

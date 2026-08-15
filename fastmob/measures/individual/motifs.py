@@ -76,7 +76,7 @@ def _encode_locations(df: nw.DataFrame, column: str) -> Any:
         values = series.to_arrow()
         if isinstance(values, pa.ChunkedArray):
             values = values.combine_chunks()
-        return pc.cast(values, pa.uint64(), safe=False)
+        return pc.cast(values, pa.uint32(), safe=False)
     values = series.to_arrow()
     if isinstance(values, pa.ChunkedArray):
         values = values.combine_chunks()

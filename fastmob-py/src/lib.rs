@@ -29,8 +29,8 @@ use measures::individual::{
 };
 use network::road_graph_py;
 use preprocessing::{
-    cdr, clustering, compress_traj_py, filter_traj_py, h3_py, outliers_traj_py, segment_traj_py,
-    simplify_traj_py, stay_locations_py,
+    cdr, clustering, compress_traj_py, expand_trajectory_py, filter_traj_py, h3_py,
+    outliers_traj_py, segment_traj_py, simplify_traj_py, stay_locations_py,
 };
 use social::co_presence_network;
 
@@ -285,6 +285,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         segment_traj_py::segment_trajectory_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        expand_trajectory_py::expand_5min_trajectory_batch_indexed,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        expand_trajectory_py::expand_5min_trajectory_with_imputation_batch_indexed,
         m
     )?)?;
     m.add_class::<trajectory::interpolate_py::PyInterpolationConfig>()?;

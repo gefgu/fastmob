@@ -109,7 +109,7 @@ def _locations_for(sp_df):
 def test_identify_locations_labels_home_and_work():
     sp_df = _home_work_staypoints()
     sp = Staypoints(sp_df, started_at_col="started_at", finished_at_col="finished_at")
-    locations = Locations(_locations_for(sp_df))
+    locations = Locations(_locations_for(sp_df), uid_col="uid")
 
     labeled = identify_locations(locations, sp)
     purpose_by_location = dict(zip(labeled.df["location_id"], labeled.df["purpose"]))
@@ -121,7 +121,7 @@ def test_identify_locations_labels_home_and_work():
 def test_locations_identify_convenience_method():
     sp_df = _home_work_staypoints()
     sp = Staypoints(sp_df, started_at_col="started_at", finished_at_col="finished_at")
-    locations = Locations(_locations_for(sp_df))
+    locations = Locations(_locations_for(sp_df), uid_col="uid")
 
     labeled = locations.identify(sp)
     assert isinstance(labeled, Locations)
@@ -132,7 +132,7 @@ def test_locations_identify_convenience_method():
 def test_identify_locations_unknown_method_raises():
     sp_df = _home_work_staypoints()
     sp = Staypoints(sp_df, started_at_col="started_at", finished_at_col="finished_at")
-    locations = Locations(_locations_for(sp_df))
+    locations = Locations(_locations_for(sp_df), uid_col="uid")
     with pytest.raises(ValueError, match="unknown location-identification method"):
         identify_locations(locations, sp, method="bogus")
 
@@ -141,5 +141,5 @@ def test_identify_locations_requires_uid_column():
     sp_df = _home_work_staypoints().drop(columns=["uid"])
     sp = Staypoints(sp_df, started_at_col="started_at", finished_at_col="finished_at")
     locations = Locations(_locations_for(_home_work_staypoints()).drop(columns=["uid"]), uid_col=None)
-    with pytest.raises(ValueError, match="requires staypoints to have a uid column"):
+    with pytest.raises(ValueError, match="only supports user-scoped Locations"):
         identify_locations(locations, sp)

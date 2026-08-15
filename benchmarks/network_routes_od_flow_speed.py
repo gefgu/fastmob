@@ -113,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
 
         result = {
             "n_queries": n_queries,
-            "connected_fraction": float(connected.mean()),
+            "connected_fraction": float(connected.to_numpy(zero_copy_only=False).mean()),
             "batch_distances_seconds": distances_seconds,
             "batch_routes_seconds": routes_seconds,
             "batch_routes_rows": len(routes),

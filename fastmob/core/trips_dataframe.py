@@ -163,7 +163,7 @@ class Trips(BaseDataFrame):
             )
         else:
             uid_code_col = "__fastmob_uid_codes__"
-            timeline = timeline.with_columns(nw.lit(0, dtype=nw.UInt64).alias(uid_code_col))
+            timeline = timeline.with_columns(nw.lit(0, dtype=nw.UInt32).alias(uid_code_col))
             code_to_uid = {}
 
         (

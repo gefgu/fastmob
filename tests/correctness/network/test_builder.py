@@ -29,11 +29,22 @@ _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT = 2.34, 48.85, 2.36, 48.86
 _OVERTURE_RELEASE = "2026-05-20.0"
 
 
+def _fetch_or_skip(fetch, *args):
+    try:
+        return fetch(*args)
+    except Exception as exc:  # noqa: BLE001
+        if "No files found" in str(exc):
+            pytest.skip(f"Overture release {_OVERTURE_RELEASE} is unavailable: {exc}")
+        raise
+
+
 def test_fetch_road_network_returns_connected_graph():
     import pyarrow.compute as pc
     from fastmob.network import fetch_road_network
 
-    nodes_df, edges_df = fetch_road_network(_MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE)
+    nodes_df, edges_df = _fetch_or_skip(
+        fetch_road_network, _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE
+    )
     assert nodes_df.num_rows > 0
     assert edges_df.num_rows > 0
     assert set(nodes_df.column_names) == {"node_idx", "connector_id", "lat", "lng"}
@@ -47,7 +58,9 @@ def test_fetch_road_network_returns_connected_graph():
 def test_fetch_road_network_builds_a_routable_network():
     from fastmob.network import RoadNetwork, fetch_road_network
 
-    nodes_df, edges_df = fetch_road_network(_MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE)
+    nodes_df, edges_df = _fetch_or_skip(
+        fetch_road_network, _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE
+    )
     network = RoadNetwork.build(edges_df, nodes_df)
 
     import numpy as np
@@ -68,15 +81,29 @@ def test_build_road_graph_caches_to_disk(tmp_path):
 
     nodes_output = tmp_path / "nodes.parquet"
     edges_output = tmp_path / "edges.parquet"
-    nodes_df, edges_df = build_road_graph(
-        _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE, str(nodes_output), str(edges_output)
+    nodes_df, edges_df = _fetch_or_skip(
+        build_road_graph,
+        _MIN_LON,
+        _MIN_LAT,
+        _MAX_LON,
+        _MAX_LAT,
+        _OVERTURE_RELEASE,
+        str(nodes_output),
+        str(edges_output),
     )
     assert nodes_output.exists()
     assert edges_output.exists()
 
     # Second call must load from cache (no live fetch) and return identical data.
-    cached_nodes_df, cached_edges_df = build_road_graph(
-        _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE, str(nodes_output), str(edges_output)
+    cached_nodes_df, cached_edges_df = _fetch_or_skip(
+        build_road_graph,
+        _MIN_LON,
+        _MIN_LAT,
+        _MAX_LON,
+        _MAX_LAT,
+        _OVERTURE_RELEASE,
+        str(nodes_output),
+        str(edges_output),
     )
     assert len(cached_nodes_df) == len(nodes_df)
     assert len(cached_edges_df) == len(edges_df)

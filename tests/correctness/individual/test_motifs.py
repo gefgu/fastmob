@@ -125,7 +125,7 @@ def test_daily_motifs_empty_result_schema_is_stable():
     distribution = motif_distribution(daily)
     assert daily.empty
     assert pd.api.types.is_integer_dtype(daily["agent_id"])
-    assert pd.api.types.is_datetime64_any_dtype(daily["date"])
+    assert str(daily["date"].dtype) in {"date32[day][pyarrow]", "datetime64[ns]"}
     assert pd.api.types.is_integer_dtype(daily["motif_id"])
     assert pd.api.types.is_integer_dtype(distribution["motif_id"])
     assert pd.api.types.is_integer_dtype(distribution["count"])

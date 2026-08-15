@@ -98,7 +98,7 @@ class Locations(BaseDataFrame):
                 if ids.null_count() > 0:
                     raise ValueError("Global Locations requires non-null location IDs")
                 for column in (center_lat_col, center_lng_col):
-                    values = np.asarray(nw_df.get_column(column).cast(nw.Float64).to_numpy(), dtype=float)
+                    values = np.asarray(nw_df.get_column(column).cast(nw.Float64).to_arrow(), dtype=float)
                     if not np.isfinite(values).all():
                         raise ValueError(f"Global Locations requires finite {column!r} values")
 

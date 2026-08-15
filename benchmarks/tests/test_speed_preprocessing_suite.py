@@ -8,7 +8,8 @@ from benchmarks.preprocessing import speed_suite as suite
 def test_preprocessing_registry_contains_expected_functions():
     names = [spec.name for spec in suite.PREPROCESSING_METRICS]
 
-    assert names == ["filter", "compress", "stay_locations", "cluster"]
+    assert names[:4] == ["filter", "compress", "stay_locations", "cluster"]
+    assert len(names) > 4
 
 
 def test_output_path_uses_preprocessing_suite_name(tmp_path: Path):

@@ -48,19 +48,21 @@ LEGACY_EVALUATION_METRICS: tuple[BenchmarkSpec, ...] = (
         "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_commuters",
+        input_kind="flow_pair",
     ),
     BenchmarkSpec(
         "common_part_of_links",
         "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_links",
+        input_kind="flow_pair",
     ),
     BenchmarkSpec(
         "common_part_of_commuters_distance",
         "fastmob.measures.evaluation",
         "skmob.measures.evaluation",
         "common_part_of_commuters_distance",
-        input_kind="distance_pair",
+        input_kind="trips_pair",
     ),
     BenchmarkSpec(
         "r_squared",
@@ -199,10 +201,33 @@ def make_synthetic_pair(size: int, *, seed: int, input_kind: str = "array_pair")
     return observed.astype(float, copy=False), predicted.astype(float, copy=False)
 
 
-def make_inputs_for_size(size: int, *, seed: int) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+def make_inputs_for_size(size: int, *, seed: int) -> dict[str, Any]:
+    array_pair = make_synthetic_pair(size, seed=seed, input_kind="array_pair")
+    distance_pair = make_synthetic_pair(size, seed=seed, input_kind="distance_pair")
+    import pandas as pd
+
+    locations = np.arange(size, dtype=np.int64)
+    flow = {
+        "origin": locations,
+        "destination": np.roll(locations, -1),
+        "flow": np.maximum(array_pair[0], 0.001),
+    }
+    trips = {
+        "trip_id": locations,
+        "started_at": pd.date_range("2020-01-01", periods=size, freq="s"),
+        "finished_at": pd.date_range("2020-01-01", periods=size, freq="s") + pd.Timedelta(seconds=1),
+        "origin_location_id": locations,
+        "destination_location_id": np.roll(locations, -1),
+        "distance_km": distance_pair[0],
+    }
+    from fastmob.core.flow_dataframe import FlowDataFrame
+    from fastmob.core.trips_dataframe import Trips
+
     return {
-        "array_pair": make_synthetic_pair(size, seed=seed, input_kind="array_pair"),
-        "distance_pair": make_synthetic_pair(size, seed=seed, input_kind="distance_pair"),
+        "array_pair": array_pair,
+        "distance_pair": distance_pair,
+        "flow_pair": (FlowDataFrame(flow), FlowDataFrame({**flow, "flow": flow["flow"] * 1.01})),
+        "trips_pair": (Trips(pd.DataFrame(trips)), Trips(pd.DataFrame(trips))),
     }
 
 
