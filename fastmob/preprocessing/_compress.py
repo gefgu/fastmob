@@ -116,12 +116,12 @@ def compress(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
 
     if presorted:
         _, indices, ends = _build_presorted_indices_and_ends(df, uid_col)
         result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, indices, ends, spatial_radius_km)
     else:
+        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,

@@ -317,7 +317,6 @@ def segment(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     timestamps = _extract_timestamps(df, datetime_col)
-    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = SegmentConfig(method=method_name, **params)
@@ -326,6 +325,7 @@ def segment(
         _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
         raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
     else:
+        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,

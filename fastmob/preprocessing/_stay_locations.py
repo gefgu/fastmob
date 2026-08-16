@@ -134,7 +134,6 @@ def stay_locations(
     )
 
     timestamps = _extract_timestamps(df, datetime_col)
-    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
@@ -156,6 +155,7 @@ def stay_locations(
         )
         out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
     else:
+        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         uid_values, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,

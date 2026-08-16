@@ -10,8 +10,8 @@ use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
 use crate::utils::{
-    ArrowUsizeArrayExt, arrow_i64_values, arrow_u32_values, as_i64_array, as_u32_array,
-    i64_results_into_arrow, u32_results_into_arrow, validate_indexed_ends,
+    arrow_i64_values, arrow_u32_values, as_i64_array, as_u32_array, i64_results_into_arrow,
+    u32_results_into_arrow, validate_indexed_ends, ArrowUsizeArrayExt,
 };
 
 type ExpandTrajectoryBatchResult<'py> = (
