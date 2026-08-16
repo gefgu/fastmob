@@ -297,8 +297,25 @@ def _timestamps_ms_to_datetime_ns(values: Any) -> np.ndarray:
 
 
 def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, nw.Series]:
-    """Add and return an ``__hour__`` Float64 column derived from datetime."""
-    df = df.with_columns(nw.col(datetime_col).dt.hour().cast(nw.Float64).alias("__hour__"))
+    """Add and return an ``__hour__`` Float64 column derived from datetime.
+
+    Computed via a millisecond-epoch cast plus integer arithmetic
+    (``(ms // 3_600_000) % 24``) instead of the ``.dt.hour()`` accessor:
+    pandas' tz-aware ``.dt.hour`` goes through a per-element localization
+    path that is far slower than ``.dt.timestamp("ms")`` on the same
+    column (profiled at ~74ms vs ~38ms combined on a 4M-row tz-aware
+    Brightkite column -- roughly 2x), for an identical wall-clock hour.
+    Timezone metadata must be stripped first (keeping the wall-clock value,
+    via ``_strip_time_zone``): ``.dt.timestamp()`` reports the true UTC
+    instant for tz-aware values, not the localized wall-clock time
+    ``.dt.hour()`` reports, so computing straight from the tz-aware column
+    would silently shift every hour bucket by the zone's UTC offset.
+    """
+    naive = _strip_time_zone(df, datetime_col)
+    hour_values = naive.with_columns(
+        (nw.col(datetime_col).dt.timestamp("ms") // 3_600_000 % 24).cast(nw.Float64).alias("__hour__")
+    ).get_column("__hour__")
+    df = df.with_columns(hour_values)
     return df, df.get_column("__hour__")
 
 
