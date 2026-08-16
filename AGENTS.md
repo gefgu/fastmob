@@ -10,3 +10,10 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## Git operations
+
+The workspace permits edits to the working tree but exposes `.git` as read-only
+inside the sandbox. For user-requested staging, commits, or other Git metadata
+writes, request elevated permission directly before running the Git command;
+do not first attempt the command in the sandbox.
