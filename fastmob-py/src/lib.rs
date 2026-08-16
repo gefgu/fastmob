@@ -109,6 +109,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        time_ordering::validate_presorted_user_timestamps,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        time_ordering::validate_grouped_user_timestamps,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         total_distance::total_distance_presorted,
         m
     )?)?;

@@ -5,7 +5,7 @@ use arrow_array::{
 use arrow_schema::{DataType, TimeUnit};
 use fastmob_core::measures::individual::time_ordering::{
     presorted_ranges_for_u32_codes, split_ordered_index_ranges, time_ordered_indices_for_u32_codes,
-    time_ordered_indices_single_user,
+    time_ordered_indices_single_user, validate_grouped_u32_codes,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -85,6 +85,48 @@ pub fn presorted_user_starts_ends(
     let uids = as_u32_array(extract_arrow_array(uids, "uids")?, "uids")?;
     let (starts, ends) = py.detach(|| presorted_ranges_for_u32_codes(arrow_u32_values(&uids)));
     Ok((index_results(starts), index_results(ends)))
+}
+
+#[pyfunction]
+#[pyo3(signature = (uids, timestamps, check_timestamps = true))]
+pub fn validate_presorted_user_timestamps(
+    py: Python<'_>,
+    uids: &Bound<'_, PyAny>,
+    timestamps: Option<&Bound<'_, PyAny>>,
+    check_timestamps: bool,
+) -> PyResult<bool> {
+    let uids = as_u32_array(extract_arrow_array(uids, "uids")?, "uids")?;
+    let timestamps = timestamps
+        .map(|values| timestamp_values(extract_arrow_array(values, "timestamps")?, "timestamps"))
+        .transpose()?;
+    Ok(py.detach(|| {
+        validate_grouped_u32_codes(
+            arrow_u32_values(&uids),
+            timestamps.as_ref().map(TimestampValues::values),
+            check_timestamps,
+        )
+    }))
+}
+
+#[pyfunction]
+#[pyo3(signature = (uids, timestamps = None, check_timestamps = true))]
+pub fn validate_grouped_user_timestamps(
+    py: Python<'_>,
+    uids: &Bound<'_, PyAny>,
+    timestamps: Option<&Bound<'_, PyAny>>,
+    check_timestamps: bool,
+) -> PyResult<bool> {
+    let uids = as_u32_array(extract_arrow_array(uids, "uids")?, "uids")?;
+    let timestamps = timestamps
+        .map(|values| timestamp_values(extract_arrow_array(values, "timestamps")?, "timestamps"))
+        .transpose()?;
+    Ok(py.detach(|| {
+        validate_grouped_u32_codes(
+            arrow_u32_values(&uids),
+            timestamps.as_ref().map(TimestampValues::values),
+            check_timestamps,
+        )
+    }))
 }
 
 #[pyfunction]

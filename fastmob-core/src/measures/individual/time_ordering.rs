@@ -69,6 +69,338 @@ pub fn presorted_ranges_for_u32_codes(codes: &[u32]) -> (Vec<u64>, Vec<u64>) {
     (starts, ends)
 }
 
+use rustc_hash::FxHashSet;
+
+/// Row count below which validation stays on one thread: the rayon dispatch
+/// costs more than it saves until roughly this size.
+const VALIDATE_SEQUENTIAL_BELOW: usize = 1 << 15;
+
+/// Smallest validation chunk. Below this the per-chunk summary bookkeeping
+/// starts to show against the few rows it covers.
+const VALIDATE_MIN_CHUNK: usize = 1 << 13;
+
+/// Chunks handed to rayon per thread. Oversubscribing this way keeps the
+/// schedule's tail short without making the chunks so small that the reduce
+/// tree dominates; between 8 and 64 the difference measured as noise, so this
+/// is the middle of a flat region rather than a sharp optimum.
+const VALIDATE_CHUNKS_PER_THREAD: usize = 16;
+
+/// Validates that:
+///   1. every distinct code occupies exactly one contiguous run, and
+///   2. if `check_timestamps`, timestamps are non-decreasing *within* each run.
+///
+/// Timestamps across run boundaries are unconstrained.
+///
+/// Both properties are checked without ever walking the runs sequentially,
+/// which is what makes this parallel:
+///
+/// * (2) is a purely local predicate over adjacent rows -- `codes[i] !=
+///   codes[i - 1] || timestamps[i] >= timestamps[i - 1]` -- so it needs no run
+///   structure at all and vectorizes to an OR-reduction of compares.
+/// * (1) holds exactly when the sequence of *run leaders* (the code at each run
+///   start) has no duplicate. Run starts are themselves a local predicate, so
+///   every chunk can find its own leaders independently.
+///
+/// The leaders are then summarized rather than materialized: a strictly
+/// monotone leader sequence is duplicate-free by definition, and grouped
+/// trajectory data almost always is (factorizing uids in first-appearance order
+/// makes the leaders `0, 1, 2, …` by construction; a uid-sorted frame makes
+/// them ascending; a descending frame, descending). That collapses the common
+/// case to one allocation-free pass over the data. Only genuinely arbitrary
+/// group order falls through to [`leaders_unique`].
+pub fn validate_grouped_u32_codes(
+    codes: &[u32],
+    timestamps: Option<&[i64]>,
+    check_timestamps: bool,
+) -> bool {
+    // Hoist the Option/length check out of the hot path entirely.
+    let timestamps: Option<&[i64]> = if check_timestamps {
+        match timestamps {
+            Some(t) if t.len() == codes.len() => Some(t),
+            _ => return false,
+        }
+    } else {
+        None
+    };
+
+    let n = codes.len();
+    if n < 2 {
+        return true;
+    }
+    if n < VALIDATE_SEQUENTIAL_BELOW {
+        return validate_sequential(codes, timestamps);
+    }
+
+    let threads = rayon::current_num_threads().max(1);
+    let chunk = (n / (threads * VALIDATE_CHUNKS_PER_THREAD).max(1)).max(VALIDATE_MIN_CHUNK);
+
+    // `try_reduce` short-circuits the whole iterator on the first chunk that
+    // sees a backwards timestamp, so invalid input still costs a fraction of a
+    // pass rather than a full one.
+    let summary = (0..n.div_ceil(chunk))
+        .into_par_iter()
+        .map(|index| {
+            let (from, to) = validate_chunk_bounds(n, chunk, index);
+            if let Some(timestamps) = timestamps
+                && !chunk_timestamps_ok(codes, timestamps, from, to)
+            {
+                return None;
+            }
+            Some(chunk_leader_summary(codes, from, to))
+        })
+        .try_reduce(|| LeaderSummary::EMPTY, |a, b| Some(a.merge(b)));
+
+    match summary {
+        None => false,
+        Some(summary) => summary.monotone() || leaders_unique(codes, chunk, &summary),
+    }
+}
+
+/// Half-open row range covered by chunk `index`. Row 0 has no predecessor, so
+/// every chunk's scan starts at 1 at the earliest.
+#[inline]
+fn validate_chunk_bounds(n: usize, chunk: usize, index: usize) -> (usize, usize) {
+    ((index * chunk).max(1), ((index + 1) * chunk).min(n))
+}
+
+/// Are all adjacent pairs in `from..to` that stay inside one run in
+/// non-decreasing time order?
+///
+/// Deliberately branchless and kept separate from the leader scan below: fusing
+/// the two puts the leader push -- a real branch -- inside the loop and stops
+/// the comparison from vectorizing, which measured slower even though it halves
+/// the number of passes over data that is already in L2 by then.
+#[inline]
+fn chunk_timestamps_ok(codes: &[u32], timestamps: &[i64], from: usize, to: usize) -> bool {
+    if from >= to {
+        return true;
+    }
+    let (code_prev, code_next) = (&codes[from - 1..to - 1], &codes[from..to]);
+    let (time_prev, time_next) = (&timestamps[from - 1..to - 1], &timestamps[from..to]);
+    let mut bad = 0u8;
+    for (((&a, &b), &x), &y) in code_prev
+        .iter()
+        .zip(code_next)
+        .zip(time_prev)
+        .zip(time_next)
+    {
+        bad |= ((a == b) & (y < x)) as u8;
+    }
+    bad == 0
+}
+
+/// What one chunk needs to report about its run leaders: enough to decide
+/// monotonicity globally, plus the size and range needed to pick a duplicate
+/// test if it turns out not to be monotone.
+#[derive(Clone, Copy)]
+struct LeaderSummary {
+    first: u32,
+    last: u32,
+    max: u32,
+    count: usize,
+    any: bool,
+    increasing: bool,
+    decreasing: bool,
+}
+
+impl LeaderSummary {
+    const EMPTY: Self = Self {
+        first: 0,
+        last: 0,
+        max: 0,
+        count: 0,
+        any: false,
+        increasing: true,
+        decreasing: true,
+    };
+
+    #[inline]
+    fn push(&mut self, code: u32) {
+        if self.any {
+            self.increasing &= self.last < code;
+            self.decreasing &= self.last > code;
+            self.max = self.max.max(code);
+        } else {
+            self.first = code;
+            self.max = code;
+            self.any = true;
+        }
+        self.last = code;
+        self.count += 1;
+    }
+
+    /// Concatenates `other`'s leader sequence after `self`'s, so the join is
+    /// checked as well as each side.
+    #[inline]
+    fn merge(mut self, other: Self) -> Self {
+        if !other.any {
+            return self;
+        }
+        if !self.any {
+            return other;
+        }
+        self.increasing &= other.increasing && self.last < other.first;
+        self.decreasing &= other.decreasing && self.last > other.first;
+        self.last = other.last;
+        self.max = self.max.max(other.max);
+        self.count += other.count;
+        self
+    }
+
+    /// Strictly monotone in either direction implies all leaders are distinct.
+    #[inline]
+    fn monotone(&self) -> bool {
+        self.increasing || self.decreasing
+    }
+}
+
+#[inline]
+fn chunk_leader_summary(codes: &[u32], from: usize, to: usize) -> LeaderSummary {
+    let mut summary = LeaderSummary::EMPTY;
+    // Row 0 starts the first run, and only the chunk that owns it may say so.
+    if from == 1 {
+        summary.push(codes[0]);
+    }
+    for index in from..to {
+        let code = codes[index];
+        if code != codes[index - 1] {
+            summary.push(code);
+        }
+    }
+    summary
+}
+
+/// Is a dense bitset over `0..=max` a reasonable way to test `count` leaders
+/// for duplicates? It costs one bit per *possible* code, so it is only sane
+/// while the code space stays within a small multiple of the leaders in it.
+#[inline]
+fn bitset_is_worthwhile(max: u32, count: usize) -> bool {
+    (max as usize) / 8 <= count * 16 + (1 << 16)
+}
+
+/// Duplicate test for a leader sequence that is not monotone.
+///
+/// When the code space is dense the leaders never need to be materialized:
+/// a second parallel pass sets one bit per leader in a shared bitset and fails
+/// on the first bit that was already set. Every leader is visited exactly once
+/// across all chunks, so `Relaxed` is enough -- the atomics are here to make
+/// concurrent writes to the same word well defined, not to order anything.
+fn leaders_unique(codes: &[u32], chunk: usize, summary: &LeaderSummary) -> bool {
+    if !bitset_is_worthwhile(summary.max, summary.count) {
+        return leaders_unique_collected(codes, chunk, summary.count);
+    }
+
+    let n = codes.len();
+    let bits: Vec<AtomicU64> = (0..(summary.max as usize) / 64 + 1)
+        .map(|_| AtomicU64::new(0))
+        .collect();
+    let claim = |code: u32| -> bool {
+        let (word, bit) = ((code as usize) >> 6, 1u64 << (code & 63));
+        bits[word].fetch_or(bit, Ordering::Relaxed) & bit == 0
+    };
+
+    if !claim(codes[0]) {
+        return false;
+    }
+    (0..n.div_ceil(chunk)).into_par_iter().all(|index| {
+        let (from, to) = validate_chunk_bounds(n, chunk, index);
+        for index in from..to {
+            if codes[index] != codes[index - 1] && !claim(codes[index]) {
+                return false;
+            }
+        }
+        true
+    })
+}
+
+/// Fallback for a code space too sparse to bitset: gather the leaders, then
+/// test them directly.
+fn leaders_unique_collected(codes: &[u32], chunk: usize, count: usize) -> bool {
+    let n = codes.len();
+    let parts: Vec<Vec<u32>> = (0..n.div_ceil(chunk))
+        .into_par_iter()
+        .map(|index| {
+            let (from, to) = validate_chunk_bounds(n, chunk, index);
+            let mut leaders = Vec::new();
+            for index in from..to {
+                if codes[index] != codes[index - 1] {
+                    leaders.push(codes[index]);
+                }
+            }
+            leaders
+        })
+        .collect();
+
+    let mut leaders = Vec::with_capacity(count);
+    leaders.push(codes[0]);
+    for part in &parts {
+        leaders.extend_from_slice(part);
+    }
+    if leaders.len() > 1 << 16 {
+        leaders.par_sort_unstable();
+        return leaders.par_windows(2).all(|pair| pair[0] != pair[1]);
+    }
+    let mut seen = FxHashSet::with_capacity_and_hasher(leaders.len() * 2, Default::default());
+    leaders.iter().all(|&code| seen.insert(code))
+}
+
+/// Single-threaded path for inputs small enough that the parallel machinery is
+/// pure overhead. Fused, unlike the parallel path, because at this size the
+/// data is cache-resident and the extra pass costs more than the branch does.
+fn validate_sequential(codes: &[u32], timestamps: Option<&[i64]>) -> bool {
+    let n = codes.len();
+    let mut summary = LeaderSummary::EMPTY;
+    summary.push(codes[0]);
+
+    match timestamps {
+        None => {
+            for index in 1..n {
+                let code = codes[index];
+                if code != codes[index - 1] {
+                    summary.push(code);
+                }
+            }
+        }
+        Some(timestamps) => {
+            let mut bad = 0u8;
+            for index in 1..n {
+                let code = codes[index];
+                let same_run = code == codes[index - 1];
+                bad |= (same_run & (timestamps[index] < timestamps[index - 1])) as u8;
+                if !same_run {
+                    summary.push(code);
+                }
+            }
+            if bad != 0 {
+                return false;
+            }
+        }
+    }
+
+    if summary.monotone() {
+        return true;
+    }
+
+    let mut leaders = Vec::with_capacity(summary.count);
+    leaders.push(codes[0]);
+    for index in 1..n {
+        if codes[index] != codes[index - 1] {
+            leaders.push(codes[index]);
+        }
+    }
+    if bitset_is_worthwhile(summary.max, summary.count) {
+        let mut bits = vec![0u64; (summary.max as usize) / 64 + 1];
+        return leaders.iter().all(|&code| {
+            let (word, bit) = ((code as usize) >> 6, 1u64 << (code & 63));
+            let fresh = bits[word] & bit == 0;
+            bits[word] |= bit;
+            fresh
+        });
+    }
+    let mut seen = FxHashSet::with_capacity_and_hasher(leaders.len() * 2, Default::default());
+    leaders.iter().all(|&code| seen.insert(code))
+}
+
 // ---------------------------------------------------------------------------
 // Timestamp key planning
 // ---------------------------------------------------------------------------
@@ -197,7 +529,10 @@ fn plan_time_keys(timestamps: &[i64], n: usize) -> Option<(TimeKeyPlan, u64)> {
     if idx_bits >= u64::BITS {
         return None;
     }
-    let offset_limit = 1u64 << (u64::BITS - idx_bits);
+    // A single row needs no index bits at all, leaving the offset all 64 -- a
+    // bound no `u64` can hold, and a shift that is undefined rather than merely
+    // large. Saturating is exact here: nothing can exceed a 64-bit limit.
+    let offset_limit = 1u64.checked_shl(u64::BITS - idx_bits).unwrap_or(u64::MAX);
 
     let range = scan_time_range(timestamps);
     if range.is_empty() {
@@ -562,6 +897,152 @@ pub fn time_ordered_indices_for_u32_codes(
                 sort_group_indirect(group, timestamps, solo)
             });
             Ok((indices, ranges))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Straightforward restatement of the contract, used as the oracle below.
+    fn reference(codes: &[u32], timestamps: Option<&[i64]>, check_timestamps: bool) -> bool {
+        let timestamps = if check_timestamps {
+            match timestamps {
+                Some(values) if values.len() == codes.len() => Some(values),
+                _ => return false,
+            }
+        } else {
+            None
+        };
+        let mut seen = Vec::new();
+        let mut start = 0usize;
+        while start < codes.len() {
+            let leader = codes[start];
+            let mut end = start + 1;
+            while end < codes.len() && codes[end] == leader {
+                end += 1;
+            }
+            if let Some(timestamps) = timestamps
+                && timestamps[start..end].windows(2).any(|w| w[1] < w[0])
+            {
+                return false;
+            }
+            if seen.contains(&leader) {
+                return false;
+            }
+            seen.push(leader);
+            start = end;
+        }
+        true
+    }
+
+    fn assert_matches_reference(codes: &[u32], timestamps: &[i64]) {
+        for check in [false, true] {
+            assert_eq!(
+                validate_grouped_u32_codes(codes, Some(timestamps), check),
+                reference(codes, Some(timestamps), check),
+                "codes={:?} check_timestamps={check}",
+                &codes[..codes.len().min(16)]
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_empty_and_single_row_input() {
+        assert!(validate_grouped_u32_codes(&[], Some(&[]), true));
+        assert!(validate_grouped_u32_codes(&[7], Some(&[5]), true));
+    }
+
+    #[test]
+    fn rejects_missing_or_mismatched_timestamps_only_when_checking() {
+        assert!(!validate_grouped_u32_codes(&[1, 1], None, true));
+        assert!(!validate_grouped_u32_codes(&[1, 1], Some(&[0]), true));
+        assert!(validate_grouped_u32_codes(&[1, 1], None, false));
+    }
+
+    #[test]
+    fn accepts_contiguous_groups_with_rising_timestamps() {
+        assert_matches_reference(&[2, 2, 9, 9, 4], &[1, 2, 0, 5, 3]);
+    }
+
+    #[test]
+    fn rejects_a_group_that_reappears() {
+        assert!(!validate_grouped_u32_codes(
+            &[1, 2, 1],
+            Some(&[0, 0, 0]),
+            false
+        ));
+        // Non-monotone leaders that are still unique stay valid.
+        assert!(validate_grouped_u32_codes(
+            &[5, 1, 3],
+            Some(&[0, 0, 0]),
+            false
+        ));
+    }
+
+    #[test]
+    fn rejects_backwards_timestamps_only_inside_a_group() {
+        assert!(!validate_grouped_u32_codes(&[1, 1], Some(&[5, 4]), true));
+        // The drop happens across a group boundary, which is unconstrained.
+        assert!(validate_grouped_u32_codes(&[1, 2], Some(&[5, 4]), true));
+    }
+
+    #[test]
+    fn treats_null_timestamps_as_the_smallest_value() {
+        assert!(validate_grouped_u32_codes(
+            &[1, 1, 1],
+            Some(&[NULL_TIMESTAMP, 3, 4]),
+            true
+        ));
+        assert!(!validate_grouped_u32_codes(
+            &[1, 1, 1],
+            Some(&[3, 4, NULL_TIMESTAMP]),
+            true
+        ));
+    }
+
+    /// Every shape below is larger than `VALIDATE_SEQUENTIAL_BELOW`, so these
+    /// exercise the parallel path, its chunk boundaries, and both fallbacks.
+    #[test]
+    fn parallel_path_matches_reference_on_large_inputs() {
+        let n = 250_000usize;
+
+        let ascending: Vec<u32> = (0..n).map(|row| (row / 97) as u32).collect();
+        let descending: Vec<u32> = ascending.iter().map(|&code| u32::MAX - code).collect();
+        // Group order that is neither ascending nor descending: forces the
+        // non-monotone duplicate test.
+        let shuffled: Vec<u32> = ascending
+            .iter()
+            .map(|&code| (code.wrapping_mul(2_654_435_761)) >> 8)
+            .collect();
+        let single = vec![11u32; n];
+        let sparse: Vec<u32> = ascending
+            .iter()
+            .map(|&code| code.wrapping_mul(2_654_435_761))
+            .collect();
+        let mut repeated = ascending.clone();
+        repeated[n - 1] = repeated[0];
+
+        let rising: Vec<i64> = (0..n as i64).collect();
+        for codes in [
+            &ascending,
+            &descending,
+            &shuffled,
+            &single,
+            &sparse,
+            &repeated,
+        ] {
+            assert_matches_reference(codes, &rising);
+        }
+
+        // A single backwards step inside a group, at several offsets, including
+        // one straddling a chunk boundary.
+        for at in [1usize, VALIDATE_MIN_CHUNK, n / 2, n - 1] {
+            let mut broken = rising.clone();
+            broken[at] = -1;
+            assert_matches_reference(&ascending, &broken);
+            assert_matches_reference(&single, &broken);
         }
     }
 }
