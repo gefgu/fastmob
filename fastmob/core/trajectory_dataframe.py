@@ -264,7 +264,6 @@ class TrajDataFrame(BaseDataFrame):
             lat_col=self.lat_col,
             lng_col=self.lng_col,
             uid_col=self.uid_col,
-            presorted=self.sorted,
             merge=merge,
         )
 

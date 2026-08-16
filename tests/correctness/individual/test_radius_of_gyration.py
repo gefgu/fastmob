@@ -265,7 +265,7 @@ def test_radius_of_gyration_indexed_handles_interleaved_users():
 
 
 def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
-    """The presorted=True fast path computes on already grouped user slices."""
+    """Already-grouped input is detected and computed on contiguous user slices."""
     pytest.importorskip("fastmob._core", reason="Run maturin develop first")
     from fastmob.measures.individual.radius_of_gyration import radius_of_gyration
 
@@ -278,7 +278,7 @@ def test_radius_of_gyration_sorted_uses_contiguous_user_ranges():
         }
     )
 
-    result = radius_of_gyration(df, presorted=True)
+    result = radius_of_gyration(df)
     actual = _rog_map(result)
 
     assert list(result["uid"]) == ["a", "b", "c"]

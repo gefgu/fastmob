@@ -48,13 +48,19 @@ pub fn split_ordered_index_ranges((indices, ranges): OrderedIndexRanges) -> (Vec
     (indices, ranges.into_iter().map(|(_, end)| end).collect())
 }
 
-pub fn presorted_ranges_for_u32_codes(codes: &[u32]) -> (Vec<u64>, Vec<u64>) {
-    let n = codes.len();
+/// Start/end offsets of each maximal run of equal values.
+///
+/// Generic over the element type so a caller can find the run structure of a
+/// uid column directly, without dense-coding it first: `pyarrow`'s
+/// `run_end_encode` answers the same question but measured ~15ms per 4M rows
+/// against well under 1ms here.
+pub fn run_boundaries<T: PartialEq + Sync>(values: &[T]) -> (Vec<u64>, Vec<u64>) {
+    let n = values.len();
     if n == 0 {
         return (Vec::new(), Vec::new());
     }
 
-    let boundaries: Vec<u64> = codes
+    let boundaries: Vec<u64> = values
         .par_windows(2)
         .enumerate()
         .filter_map(|(idx, window)| (window[0] != window[1]).then_some((idx + 1) as u64))
@@ -67,6 +73,10 @@ pub fn presorted_ranges_for_u32_codes(codes: &[u32]) -> (Vec<u64>, Vec<u64>) {
     let mut ends = boundaries;
     ends.push(n as u64);
     (starts, ends)
+}
+
+pub fn presorted_ranges_for_u32_codes(codes: &[u32]) -> (Vec<u64>, Vec<u64>) {
+    run_boundaries(codes)
 }
 
 use rustc_hash::FxHashSet;
@@ -161,6 +171,61 @@ pub fn validate_grouped_u32_codes(
 #[inline]
 fn validate_chunk_bounds(n: usize, chunk: usize, index: usize) -> (usize, usize) {
     ((index * chunk).max(1), ((index + 1) * chunk).min(n))
+}
+
+/// The single-group form of [`validate_grouped_u32_codes`]: with no uid column
+/// every row is one individual, so contiguity is vacuous and only the timestamp
+/// order is left to check.
+pub fn validate_non_decreasing_timestamps(timestamps: &[i64]) -> bool {
+    let n = timestamps.len();
+    if n < 2 {
+        return true;
+    }
+    if n < VALIDATE_SEQUENTIAL_BELOW {
+        return non_decreasing(timestamps, 1, n);
+    }
+    let threads = rayon::current_num_threads().max(1);
+    let chunk = (n / (threads * VALIDATE_CHUNKS_PER_THREAD).max(1)).max(VALIDATE_MIN_CHUNK);
+    (0..n.div_ceil(chunk)).into_par_iter().all(|index| {
+        let (from, to) = validate_chunk_bounds(n, chunk, index);
+        non_decreasing(timestamps, from, to)
+    })
+}
+
+/// Are timestamps non-decreasing inside every run delimited by `ends`?
+///
+/// The same property [`validate_grouped_u32_codes`] checks, but for a caller
+/// that already holds the run boundaries and would rather not pay to dense-code
+/// the uid column just to re-derive them. Boundaries between runs are
+/// unconstrained, as ever.
+pub fn validate_non_decreasing_within_ends(timestamps: &[i64], ends: &[u64]) -> bool {
+    let n = timestamps.len();
+    if ends.last().is_some_and(|&last| last as usize > n) {
+        return false;
+    }
+    ends.par_iter().enumerate().all(|(position, &end)| {
+        let start = if position == 0 {
+            0
+        } else {
+            ends[position - 1] as usize
+        };
+        let end = end as usize;
+        start >= end || non_decreasing(timestamps, start + 1, end)
+    })
+}
+
+/// Branchless, so it vectorizes to an OR-reduction of compares.
+#[inline]
+fn non_decreasing(timestamps: &[i64], from: usize, to: usize) -> bool {
+    if from >= to {
+        return true;
+    }
+    let (previous, next) = (&timestamps[from - 1..to - 1], &timestamps[from..to]);
+    let mut bad = 0u8;
+    for (&a, &b) in previous.iter().zip(next) {
+        bad |= (b < a) as u8;
+    }
+    bad == 0
 }
 
 /// Are all adjacent pairs in `from..to` that stay inside one run in
@@ -986,6 +1051,37 @@ mod tests {
         assert!(!validate_grouped_u32_codes(&[1, 1], Some(&[5, 4]), true));
         // The drop happens across a group boundary, which is unconstrained.
         assert!(validate_grouped_u32_codes(&[1, 2], Some(&[5, 4]), true));
+    }
+
+    #[test]
+    fn validates_timestamps_against_supplied_run_ends() {
+        // Two runs: [0,2) and [2,4). The drop at index 2 is a run boundary.
+        assert!(validate_non_decreasing_within_ends(&[1, 2, 0, 5], &[2, 4]));
+        // The same drop inside a single run is a violation.
+        assert!(!validate_non_decreasing_within_ends(&[1, 2, 0, 5], &[4]));
+        assert!(validate_non_decreasing_within_ends(&[], &[]));
+        // Ends running past the timestamps are rejected rather than panicking.
+        assert!(!validate_non_decreasing_within_ends(&[1, 2], &[5]));
+    }
+
+    #[test]
+    fn validates_single_group_timestamps() {
+        assert!(validate_non_decreasing_timestamps(&[]));
+        assert!(validate_non_decreasing_timestamps(&[3]));
+        assert!(validate_non_decreasing_timestamps(&[1, 1, 2, 9]));
+        assert!(!validate_non_decreasing_timestamps(&[1, 0]));
+        // Long enough to cross into the parallel path and its chunk seams.
+        let mut rising: Vec<i64> = (0..(VALIDATE_SEQUENTIAL_BELOW as i64 * 4)).collect();
+        assert!(validate_non_decreasing_timestamps(&rising));
+        for at in [1usize, VALIDATE_MIN_CHUNK, rising.len() - 1] {
+            let saved = rising[at];
+            rising[at] = -1;
+            assert!(
+                !validate_non_decreasing_timestamps(&rising),
+                "break at {at}"
+            );
+            rising[at] = saved;
+        }
     }
 
     #[test]

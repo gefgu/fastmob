@@ -151,7 +151,7 @@ def _time_call(func: Callable[[], Any], iterations: int) -> dict[str, Any]:
     }
 
 
-def _metric_call(name: str, df: Any, *, presorted: bool) -> Any:
+def _metric_call(name: str, df: Any) -> Any:
     from fastmob.measures.individual.jump_lengths import jump_lengths
     from fastmob.measures.individual.radius_of_gyration import radius_of_gyration
 
@@ -160,7 +160,6 @@ def _metric_call(name: str, df: Any, *, presorted: bool) -> Any:
         "datetime_col": "check-in_time",
         "lat_col": "latitude",
         "lng_col": "longitude",
-        "presorted": presorted,
     }
     if name == "jump_lengths":
         return jump_lengths(df, merge=True, **kwargs)
@@ -173,9 +172,8 @@ def _kernel_only_checks(df: Any) -> tuple[Callable[[], bool], Callable[[], bool]
     ``check_users_*_rust_new`` re-extract and re-cast the uid and timestamp
     columns on every call, which at 4M rows costs 15-22 ms against a validator
     that costs well under 1 ms -- the harness would otherwise report almost
-    nothing but ``pa.array``/``cast``.  Real measure wrappers already hold these
-    buffers, so the kernel-only number is the one that says what a presortedness
-    check actually adds.
+    nothing but ``pa.array``/``cast``.  The measures hold these buffers already,
+    so the kernel-only number is what their dispatch decision actually adds.
     """
     from fastmob._core import validate_grouped_user_timestamps
 
@@ -188,97 +186,40 @@ def _kernel_only_checks(df: Any) -> tuple[Callable[[], bool], Callable[[], bool]
 
 
 def _timed_metrics(df: Any, backend: str, order: str, iterations: int) -> dict[str, Any]:
-    jump_check = check_users_and_timestamps_sorted_rust_new
-    user_check = check_users_contiguous_rust_new
+    """Time the dispatch decision and the measures that now make it themselves.
+
+    ``jump_lengths`` and ``radius_of_gyration`` detect an already-grouped frame
+    and route to their contiguous kernels without being told, so there is no
+    longer an indexed-vs-presorted pair to time here -- the interesting number
+    is the same measure call across input orderings, which is what the ``order``
+    dimension of this benchmark already varies.
+    """
     user_kernel, jump_kernel = _kernel_only_checks(df)
 
-    jump_sorted = order == "user_timestamp_sorted"
-    user_sorted = order in {"user_sorted", "user_timestamp_sorted"}
-
-    def auto_jump() -> Any:
-        return _metric_call("jump_lengths", df, presorted=jump_check(df))
-
-    def auto_radius() -> Any:
-        return _metric_call("radius_of_gyration", df, presorted=user_check(df))
-
-    def checked_indexed_jump() -> Any:
-        jump_check(df)
-        return _metric_call("jump_lengths", df, presorted=False)
-
-    def checked_indexed_radius() -> Any:
-        user_check(df)
-        return _metric_call("radius_of_gyration", df, presorted=False)
-
     metrics = {
-        "check_user_contiguous_rust": _time_call(lambda: user_check(df), iterations),
-        "check_user_timestamp_sorted_rust": _time_call(lambda: jump_check(df), iterations),
+        "check_user_contiguous_rust": _time_call(
+            lambda: check_users_contiguous_rust_new(df), iterations
+        ),
+        "check_user_timestamp_sorted_rust": _time_call(
+            lambda: check_users_and_timestamps_sorted_rust_new(df), iterations
+        ),
         "check_user_contiguous_kernel": _time_call(user_kernel, iterations),
         "check_user_timestamp_sorted_kernel": _time_call(jump_kernel, iterations),
-        "jump_lengths_indexed": _time_call(
-            lambda: _metric_call("jump_lengths", df, presorted=False), iterations
+        "jump_lengths": _time_call(lambda: _metric_call("jump_lengths", df), iterations),
+        "radius_of_gyration": _time_call(
+            lambda: _metric_call("radius_of_gyration", df), iterations
         ),
-        "jump_lengths_checked_indexed": _time_call(checked_indexed_jump, iterations),
-        "jump_lengths_presorted": _time_call(
-            lambda: _metric_call("jump_lengths", df, presorted=True), iterations
-        )
-        if jump_sorted
-        else None,
-        "jump_lengths_auto_dispatch": _time_call(auto_jump, iterations),
-        "radius_of_gyration_indexed": _time_call(
-            lambda: _metric_call("radius_of_gyration", df, presorted=False), iterations
-        ),
-        "radius_of_gyration_checked_indexed": _time_call(checked_indexed_radius, iterations),
-        "radius_of_gyration_presorted": _time_call(
-            lambda: _metric_call("radius_of_gyration", df, presorted=True), iterations
-        )
-        if user_sorted
-        else None,
-        "radius_of_gyration_auto_dispatch": _time_call(auto_radius, iterations),
     }
 
-    def average(key: str) -> float | None:
-        value = metrics.get(key)
-        return None if value is None else value["average_seconds"]
-
-    indexed_jump = average("jump_lengths_indexed")
-    checked_indexed_jump = average("jump_lengths_checked_indexed")
-    indexed_radius = average("radius_of_gyration_indexed")
-    checked_indexed_radius = average("radius_of_gyration_checked_indexed")
-    check_jump = average("check_user_timestamp_sorted_rust")
-    check_user = average("check_user_contiguous_rust")
-    kernel_jump = average("check_user_timestamp_sorted_kernel")
-    kernel_user = average("check_user_contiguous_kernel")
-    presorted_jump = average("jump_lengths_presorted")
-    presorted_radius = average("radius_of_gyration_presorted")
     metrics["derived"] = {
-        "jump_check_overhead_on_indexed": check_jump,
-        "radius_check_overhead_on_indexed": check_user,
-        "jump_checked_indexed_overhead_seconds": None
-        if checked_indexed_jump is None or indexed_jump is None
-        else checked_indexed_jump - indexed_jump,
-        "radius_checked_indexed_overhead_seconds": None
-        if checked_indexed_radius is None or indexed_radius is None
-        else checked_indexed_radius - indexed_radius,
-        "jump_presorted_savings_seconds": None
-        if presorted_jump is None or indexed_jump is None
-        else indexed_jump - presorted_jump,
-        "radius_presorted_savings_seconds": None
-        if presorted_radius is None or indexed_radius is None
-        else indexed_radius - presorted_radius,
-        "jump_net_savings_after_check_seconds": None
-        if presorted_jump is None or indexed_jump is None or check_jump is None
-        else indexed_jump - (check_jump + presorted_jump),
-        "radius_net_savings_after_check_seconds": None
-        if presorted_radius is None or indexed_radius is None or check_user is None
-        else indexed_radius - (check_user + presorted_radius),
-        # Same two figures against the kernel-only check cost, i.e. what a
-        # measure wrapper that already holds the uid/timestamp buffers would pay.
-        "jump_net_savings_after_kernel_check_seconds": None
-        if presorted_jump is None or indexed_jump is None or kernel_jump is None
-        else indexed_jump - (kernel_jump + presorted_jump),
-        "radius_net_savings_after_kernel_check_seconds": None
-        if presorted_radius is None or indexed_radius is None or kernel_user is None
-        else indexed_radius - (kernel_user + presorted_radius),
+        "jump_takes_contiguous_path": bool(jump_kernel()),
+        "radius_takes_contiguous_path": bool(user_kernel()),
+        "jump_dispatch_check_seconds": metrics["check_user_timestamp_sorted_kernel"][
+            "average_seconds"
+        ],
+        "radius_dispatch_check_seconds": metrics["check_user_contiguous_kernel"][
+            "average_seconds"
+        ],
     }
     return metrics
 

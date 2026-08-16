@@ -75,12 +75,12 @@ def run_python(df: pl.DataFrame) -> dict:
     prepare_secs = time.perf_counter() - started
 
     started = time.perf_counter()
-    jumps = np.asarray(jump_lengths(arranged, merge=True, presorted=True))
+    jumps = np.asarray(jump_lengths(arranged, merge=True))
     jumps = jumps[jumps > 0.0]
     jump_secs = time.perf_counter() - started
 
     started = time.perf_counter()
-    rog_frame = radius_of_gyration(arranged, presorted=True)
+    rog_frame = radius_of_gyration(arranged)
     rog = rog_frame["radius_of_gyration"].drop_nulls().to_numpy()
     rog_secs = time.perf_counter() - started
 

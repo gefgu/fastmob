@@ -1,3 +1,5 @@
+use rayon::prelude::*;
+
 pub fn validate_coord_ranges(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -317,4 +319,50 @@ pub fn validate_uid_len(n: usize, uid_len: usize) -> Result<(), String> {
         );
     }
     Ok(())
+}
+
+/// Are all values finite -- no NaN, no infinity?
+///
+/// This is the precondition the `presorted` kernels rely on. They sum
+/// coordinates directly, with no per-row validity test, so a single NaN
+/// silently poisons a whole group's result; the `indexed` kernels instead skip
+/// invalid rows. Callers choosing between the two must therefore establish this
+/// first, and it has to be cheap enough not to eat the fast path's winnings:
+/// `pyarrow`'s `any(is_nan(...))` materializes an `n`-element boolean array and
+/// measured ~11ms across two 4M-row columns, against ~0.3ms here.
+///
+/// Branchless, so it vectorizes to an OR-reduction of compares, and chunked so
+/// a column that fails does not read to the end.
+pub fn all_finite(values: &[f64]) -> bool {
+    const CHUNK: usize = 1 << 13;
+    values.par_chunks(CHUNK).all(|chunk| {
+        let mut bad = 0u8;
+        for &value in chunk {
+            bad |= !value.is_finite() as u8;
+        }
+        bad == 0
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::all_finite;
+
+    #[test]
+    fn all_finite_accepts_only_real_numbers() {
+        assert!(all_finite(&[]));
+        assert!(all_finite(&[0.0, -1.5, 1e300]));
+        assert!(!all_finite(&[0.0, f64::NAN]));
+        assert!(!all_finite(&[f64::INFINITY]));
+        assert!(!all_finite(&[f64::NEG_INFINITY, 1.0]));
+    }
+
+    #[test]
+    fn all_finite_finds_a_late_value_across_chunks() {
+        let mut values = vec![1.0f64; 200_000];
+        assert!(all_finite(&values));
+        let last = values.len() - 1;
+        values[last] = f64::NAN;
+        assert!(!all_finite(&values));
+    }
 }

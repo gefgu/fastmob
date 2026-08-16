@@ -323,8 +323,13 @@ def _build_indexed_user_ranges(
     df: nw.DataFrame,
     uid_col: str | None,
     timestamps: Any | None = None,
+    uid_values: Any | None = None,
 ) -> tuple[Any | None, Any, Any]:
-    """Build stable grouped indices, optionally ordered by timestamp within each user."""
+    """Build stable grouped indices, optionally ordered by timestamp within each user.
+
+    `uid_values` lets a caller pass an Arrow uid column it already holds; see
+    `_build_presorted_user_ends`.
+    """
     import pyarrow as pa
     import pyarrow.compute as pc
 
@@ -341,7 +346,8 @@ def _build_indexed_user_ranges(
             )
         return None, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
-    uid_values = pa.array(df.get_column(uid_col).to_arrow())
+    if uid_values is None:
+        uid_values = pa.array(df.get_column(uid_col).to_arrow())
     factorize_started = time.perf_counter()
     codes, representatives = _factorize_arrow_values(uid_values, sort=False)
     if profile:
@@ -373,6 +379,87 @@ def _build_indexed_user_ranges(
             flush=True,
         )
     return labels, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
+
+
+def _build_user_ranges_auto(
+    df: nw.DataFrame,
+    uid_col: str | None,
+    timestamps: Any | None = None,
+    *,
+    coordinates: tuple[Any, Any] | None = None,
+) -> tuple[Any | None, Any | None, Any]:
+    """Build user ranges, taking the contiguous fast path when the data allows.
+
+    Same contract as `_build_indexed_user_ranges`, except that the returned
+    `indices` is ``None`` when the rows already satisfy the `presorted` kernels'
+    preconditions -- the caller should then use its contiguous kernel with
+    `ends` alone.
+
+    Pass `timestamps` when the measure is order-dependent (jump lengths and
+    friends): the fast path then additionally requires non-decreasing time
+    within each user.  Order-independent measures (radius of gyration) leave it
+    ``None`` and only require grouping.
+
+    `coordinates` is the ``(latitudes, longitudes)`` pair the caller is about to
+    hand its kernel.  The contiguous kernels sum coordinates with no per-row
+    validity test, whereas the indexed ones skip invalid rows, so a frame with a
+    null or NaN coordinate must stay on the indexed path to keep the same
+    answer.  Callers that have no coordinates to vouch for leave it ``None``,
+    which forces the indexed path.
+
+    The detection is deliberately built out of the work the *fast* path needs
+    anyway, not the slow one.  `_build_presorted_user_ends`'s single
+    `run_end_encode` scan already yields both the run boundaries the contiguous
+    kernels want and, as its values, each run's uid -- so contiguity reduces to
+    "no uid leads two runs", over an array with one entry per run.  Dense-coding
+    the uid column instead would answer the same question, but measured ~23ms
+    per 4M rows against ~8ms here, and would be wasted whenever the answer is
+    yes.  The cost of guessing wrong is that one `run_end_encode` scan, after
+    which this falls back to `_build_indexed_user_ranges` unchanged.
+
+    The ordering checks run before the coordinate one even though the coordinate
+    one is simpler: row order is what actually varies between frames, so testing
+    it first is what keeps a frame that was never going to qualify from paying
+    for a scan of both coordinate columns.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    from fastmob._core import (
+        coordinates_all_finite,
+        single_user_indices,
+        time_ordered_user_indices,
+        validate_grouped_user_timestamps,
+        validate_timestamps_within_ends,
+    )
+
+    def _coordinates_usable() -> bool:
+        return coordinates is not None and coordinates_all_finite(*coordinates)
+
+    n = len(df)
+    if uid_col is None:
+        ordered = timestamps is None or validate_grouped_user_timestamps(None, timestamps)
+        if ordered and _coordinates_usable():
+            return None, None, pa.array([] if n == 0 else [n], type=pa.uint64())
+        if timestamps is None:
+            raw_indices, raw_ends = single_user_indices(n)
+        else:
+            raw_indices, raw_ends = time_ordered_user_indices(None, timestamps)
+        return None, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
+
+    # Materialized once and shared with whichever path wins, so guessing wrong
+    # does not convert the uid column twice.
+    uid_values = pa.array(df.get_column(uid_col).to_arrow())
+    labels, ends = _build_presorted_user_ends(df, uid_col, uid_values)
+    grouped = len(pc.unique(labels)) == len(labels)
+    if (
+        grouped
+        and (timestamps is None or validate_timestamps_within_ends(timestamps, ends))
+        and _coordinates_usable()
+    ):
+        return labels, None, ends
+
+    return _build_indexed_user_ranges(df, uid_col, timestamps, uid_values)
 
 
 def _detect_trajectory_columns(
@@ -570,19 +657,40 @@ def _prepare_trajectory(
     return nw_df
 
 
-def _build_presorted_user_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[Any | None, Any]:
-    """Build contiguous user group end indices for data already grouped by user."""
+def _build_presorted_user_ends(
+    df: nw.DataFrame,
+    uid_col: str | None,
+    uid_values: Any | None = None,
+) -> tuple[Any | None, Any]:
+    """Build contiguous user group end indices for data already grouped by user.
+
+    `uid_values` lets a caller that has already materialized the uid column as
+    an Arrow array hand it over rather than have it converted again; converting
+    a 4M-row column measured ~6ms.
+    """
     import pyarrow as pa
     import pyarrow.compute as pc
+
+    from fastmob._core import value_run_boundaries
 
     n = len(df)
     if uid_col is None:
         return None, pa.array([] if n == 0 else [n], type=pa.uint64())
 
+    if uid_values is None:
+        uid_values = pa.array(df.get_column(uid_col).to_arrow())
     if n == 0:
-        return pa.array(df.get_column(uid_col).to_arrow()).slice(0, 0), pa.array([], type=pa.uint64())
+        return uid_values.slice(0, 0), pa.array([], type=pa.uint64())
 
-    uid_values = pa.array(df.get_column(uid_col).to_arrow())
+    # Comparing adjacent elements of a flat primitive buffer in Rust measured
+    # ~15x cheaper than `run_end_encode` at 4M rows.  It declines anything whose
+    # runs are not simply "adjacent values compare equal" -- strings,
+    # dictionaries, a column with nulls -- which then takes the Arrow route.
+    boundaries = value_run_boundaries(uid_values)
+    if boundaries is not None:
+        starts, ends = boundaries
+        return pc.take(uid_values, pa.array(starts)), pa.array(ends)
+
     encoded = pc.run_end_encode(uid_values)
     return encoded.values, pc.cast(encoded.run_ends, pa.uint64())
 

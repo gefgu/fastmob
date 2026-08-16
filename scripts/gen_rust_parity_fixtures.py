@@ -82,8 +82,8 @@ def build_case(name: str, records: list[tuple[str, str, str, str]], *, string_ui
     )
 
     arranged = df.sort(["uid", "datetime"], maintain_order=True)
-    jumps = np.asarray(jump_lengths(arranged, merge=True, presorted=True), dtype="<f8")
-    rog = radius_of_gyration(arranged, presorted=True)["radius_of_gyration"].drop_nulls().to_numpy().astype("<f8")
+    jumps = np.asarray(jump_lengths(arranged, merge=True), dtype="<f8")
+    rog = radius_of_gyration(arranged)["radius_of_gyration"].drop_nulls().to_numpy().astype("<f8")
 
     waits = np.asarray(waiting_times(arranged, merge=True, presorted=True), dtype="<f8")
 

@@ -243,7 +243,7 @@ def test_jump_lengths_no_uid_column_sorts_by_time():
     )
 
 
-def test_jump_lengths_sorted_true_uses_existing_grouped_order():
+def test_jump_lengths_auto_dispatch_uses_existing_grouped_order():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
     import pandas as pd
     from fastmob._core import jump_lengths_km
@@ -267,12 +267,12 @@ def test_jump_lengths_sorted_true_uses_existing_grouped_order():
         }
     )
 
-    result = _normalize_result(jump_lengths(df, merge=False, presorted=True))
+    result = _normalize_result(jump_lengths(df, merge=False))
     np.testing.assert_allclose(result["a"], jump_lengths_km([0.0, 0.0, 0.0], [0.0, 1.0, 3.0]))
     np.testing.assert_allclose(result["b"], jump_lengths_km([10.0, 10.0, 10.0], [0.0, 2.0, 4.0]))
 
 
-def test_jump_lengths_sorted_true_single_user_matches_normal_path():
+def test_jump_lengths_single_user_auto_dispatch_matches_unsorted_input():
     pytest.importorskip("fastmob._core", reason="Build the fastmob extension first (maturin develop)")
     import pandas as pd
     from fastmob.measures.individual.jump_lengths import jump_lengths
@@ -285,8 +285,11 @@ def test_jump_lengths_sorted_true_single_user_matches_normal_path():
         }
     )
 
-    sorted_result = jump_lengths(df, merge=False, presorted=True)
-    normal_result = jump_lengths(df, merge=False)
+    # Same rows, reversed: the sorted frame takes the contiguous path and the
+    # shuffled one the indexed path, and both must agree.
+    shuffled = df.iloc[::-1].reset_index(drop=True)
+    sorted_result = jump_lengths(df, merge=False)
+    normal_result = jump_lengths(shuffled, merge=False)
     np.testing.assert_allclose(
         sorted_result["jump_lengths"].iloc[0],
         normal_result["jump_lengths"].iloc[0],
@@ -294,8 +297,8 @@ def test_jump_lengths_sorted_true_single_user_matches_normal_path():
         atol=1e-12,
     )
     np.testing.assert_allclose(
-        jump_lengths(df, merge=True, presorted=True),
         jump_lengths(df, merge=True),
+        jump_lengths(shuffled, merge=True),
         rtol=0.0,
         atol=1e-12,
     )

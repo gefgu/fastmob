@@ -8,8 +8,7 @@ from fastmob._core import jump_lengths_indexed, jump_lengths_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _grouped_arrow_values,
     _to_native,
@@ -26,12 +25,15 @@ def jump_lengths(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ):
     """Compute jump lengths (km) for each user in the trajectory.
 
     A *jump length* is the Haversine distance (in km) between consecutive
     GPS fixes for the same user, sorted by datetime.
+
+    Input that is already grouped by user and ordered by datetime within each
+    user is detected automatically and computed on a contiguous fast path,
+    roughly halving the work; there is nothing to opt into.
 
     Parameters
     ----------
@@ -52,9 +54,6 @@ def jump_lengths(
         Explicit longitude column name.  Auto-detected when None.
     uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted : bool, optional
-        When True, trust that rows are already grouped by user and ordered by
-        datetime within each user, then use the presorted contiguous fast path.
 
     Returns
     -------
@@ -125,12 +124,16 @@ def jump_lengths(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
 
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    timestamps = df.get_column(datetime_col).to_arrow()
+    uid_values, indices, ends = _build_user_ranges_auto(
+        df,
+        uid_col,
+        timestamps,
+        coordinates=(lats_data, lngs_data),
+    )
+    if indices is None:
         v_starts, v_ends, flat_values = jump_lengths_presorted(lats_data, lngs_data, ends)
     else:
-        timestamps = df.get_column(datetime_col).to_arrow()
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         v_starts, v_ends, flat_values = jump_lengths_indexed(lats_data, lngs_data, indices, ends)
 
     flat_values = _as_arrow(flat_values)

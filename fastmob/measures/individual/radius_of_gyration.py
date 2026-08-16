@@ -12,8 +12,7 @@ from fastmob._core import (
 )
 from fastmob.utils._common import (
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _filter_result_values,
     _result_scalar,
@@ -28,7 +27,6 @@ def radius_of_gyration(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ):
     """Compute the radius of gyration (km) for each user in the trajectory.
 
@@ -44,7 +42,10 @@ def radius_of_gyration(
     coordinates.
 
     Radius of gyration is order-independent, so chronological sorting is not
-    required for correctness; grouping rows by user is what matters.
+    required for correctness; grouping rows by user is what matters.  Input that
+    already groups each user's rows together is detected automatically and
+    computed on a contiguous fast path, roughly halving the work; there is
+    nothing to opt into.
 
     Parameters
     ----------
@@ -61,9 +62,6 @@ def radius_of_gyration(
         Explicit longitude column name.  Auto-detected when None.
     uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted : bool, optional
-        When True, trust that rows are already grouped by user and use the
-        contiguous fast path.
 
     Returns
     -------
@@ -125,11 +123,15 @@ def radius_of_gyration(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    # Order-independent, so the fast path only asks for grouping, not time order.
+    uid_values, indices, ends = _build_user_ranges_auto(
+        df,
+        uid_col,
+        coordinates=(lats_data, lngs_data),
+    )
+    if indices is None:
         raw_values, raw_validity = radius_of_gyration_presorted(lats_data, lngs_data, ends)
     else:
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
         raw_values, raw_validity = radius_of_gyration_indexed(
             lats_data,
             lngs_data,
