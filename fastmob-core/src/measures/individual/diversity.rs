@@ -1,10 +1,9 @@
 use rayon::prelude::*;
-use rustc_hash::FxHashMap;
 
 use crate::utils::validate_ranges;
 
 /// Builds a suffix array via the O(n log^2 n) prefix-doubling algorithm.
-fn build_suffix_array(seq: &[usize]) -> Vec<usize> {
+fn build_suffix_array(seq: &[u32]) -> Vec<usize> {
     let n = seq.len();
     if n == 0 {
         return Vec::new();
@@ -46,7 +45,7 @@ fn build_suffix_array(seq: &[usize]) -> Vec<usize> {
 /// Kasai's O(n) algorithm: `lcp[rank[i]]` is the longest common prefix between
 /// the suffix starting at `i` and the suffix immediately before it in `sa` order.
 /// `lcp[0]` stays 0 by convention (the first suffix in SA order has no predecessor).
-fn kasai_lcp(seq: &[usize], sa: &[usize]) -> Vec<usize> {
+fn kasai_lcp(seq: &[u32], sa: &[usize]) -> Vec<usize> {
     let n = seq.len();
     let mut rank = vec![0usize; n];
     for (i, &s) in sa.iter().enumerate() {
@@ -76,7 +75,7 @@ fn kasai_lcp(seq: &[usize], sa: &[usize]) -> Vec<usize> {
 /// Distinct substring count follows the standard suffix-array + LCP formula:
 /// `sum((n - sa[i]) - lcp[i])`, matching `pydivsufsort`'s `divsufsort`/`kasai`
 /// convention (`lcp[0] == 0`).
-fn suffix_array_diversity(sequence: &[usize]) -> f64 {
+fn suffix_array_diversity(sequence: &[u32]) -> f64 {
     let n = sequence.len();
     if n <= 1 {
         return 0.0;
@@ -91,34 +90,15 @@ fn suffix_array_diversity(sequence: &[usize]) -> f64 {
     distinct_substrings as f64 / total_substrings as f64
 }
 
-fn encode_tokens(tokens: &[String]) -> Vec<usize> {
-    let mut ids_by_token: FxHashMap<&str, usize> = FxHashMap::default();
-    let mut ids = Vec::with_capacity(tokens.len());
-    for token in tokens {
-        let token = token.as_str();
-        let id = match ids_by_token.get(token) {
-            Some(&id) => id,
-            None => {
-                let id = ids_by_token.len();
-                ids_by_token.insert(token, id);
-                id
-            }
-        };
-        ids.push(id);
-    }
-    ids
-}
-
-pub fn diversity_batch(
-    tokens: Vec<String>,
+pub fn diversity_users(
+    location_ids: Vec<u32>,
     ranges: Vec<(usize, usize)>,
 ) -> Result<Vec<f64>, String> {
-    validate_ranges(tokens.len(), &ranges)?;
+    validate_ranges(location_ids.len(), &ranges)?;
 
-    let token_ids = encode_tokens(&tokens);
     let diversities = ranges
         .par_iter()
-        .map(|&(start, end)| suffix_array_diversity(&token_ids[start..end]))
+        .map(|&(start, end)| suffix_array_diversity(&location_ids[start..end]))
         .collect();
 
     Ok(diversities)
@@ -163,20 +143,17 @@ mod tests {
 
     #[test]
     fn batch_respects_ranges() {
-        let tokens: Vec<String> = ["A", "A", "A", "A", "A", "B", "C", "A", "B"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let tokens = vec![0, 0, 0, 0, 0, 1, 2, 0, 1];
         let ranges = vec![(0, 5), (5, 9)];
-        let result = diversity_batch(tokens, ranges).unwrap();
+        let result = diversity_users(tokens, ranges).unwrap();
         assert_eq!(result.len(), 2);
         assert!(result[0] < result[1]);
     }
 
     #[test]
     fn batch_rejects_invalid_ranges() {
-        let tokens = vec!["A".to_string(), "B".to_string()];
-        let result = diversity_batch(tokens, vec![(0, 3)]);
+        let tokens = vec![0, 1];
+        let result = diversity_users(tokens, vec![(0, 3)]);
         assert!(result.is_err());
     }
 }

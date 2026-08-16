@@ -352,7 +352,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(entropy::real_entropy_users, m)?)?;
-    m.add_function(wrap_pyfunction!(diversity::diversity_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(diversity::diversity_users, m)?)?;
     m.add_function(wrap_pyfunction!(
         stay_locations_py::detect_stay_locations_batch_presorted,
         m

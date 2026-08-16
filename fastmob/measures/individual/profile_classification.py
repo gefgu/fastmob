@@ -240,7 +240,7 @@ def compute_profiles(
             df.to_native(), user_id_col=user_id_col, location_id_col=location_id_col, location_type_col=purpose_col
         ),
         diversity(
-            df.to_native(), user_id_col=user_id_col, location_id_col=location_id_col, location_type_col=purpose_col
+            df.to_native(), user_id_col=user_id_col, location_id_col=location_id_col
         ),
         trajectory_entropy(
             df.to_native(),

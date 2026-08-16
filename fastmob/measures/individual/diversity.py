@@ -6,12 +6,12 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import diversity_batch as _diversity_batch_rust
+from fastmob._core import diversity_users
 from fastmob.utils._common import (
     LOCATION_CANDIDATES,
-    LOCATION_TYPE_CANDIDATES,
     USER_ID_CANDIDATES,
     _build_presorted_user_ends,
+    _factorize_arrow_values,
     _pick_existing_column,
 )
 
@@ -20,13 +20,10 @@ def diversity(
     visits: Any,
     user_id_col: str | None = None,
     location_id_col: str | None = None,
-    location_type_col: str | None = None,
 ) -> Any:
     """Compute trajectory diversity per user using suffix-array entropy.
 
-    Per-user: factorize the composite location string
-    (``location_id + "_" + location_type`` when ``location_type_col`` is not
-    None; otherwise just ``location_id``), then call the Rust suffix-array
+    Per-user: factorize the location column, then call the Rust suffix-array
     kernel on the integer-coded token sequence to compute the ratio of
     distinct substrings to total substrings.
 
@@ -38,10 +35,6 @@ def diversity(
         Column name for the user ID. Auto-detected if None.
     location_id_col : str or None, optional
         Column name for the location ID. Auto-detected if None.
-    location_type_col : str or None, optional
-        Column name for the location type / activity purpose.
-        Auto-detected if None; set explicitly to ``None`` to disable.
-
     Returns
     -------
     pandas.DataFrame or polars.DataFrame
@@ -70,38 +63,23 @@ def diversity(
         user_id_col = _pick_existing_column(nw_df.columns, USER_ID_CANDIDATES)
     if location_id_col is None:
         location_id_col = _pick_existing_column(nw_df.columns, LOCATION_CANDIDATES)
-    if location_type_col is None:
-        location_type_col = _pick_existing_column(nw_df.columns, LOCATION_TYPE_CANDIDATES)
 
-    location_key_col = "__fastmob_location_key__"
-    if location_id_col and location_type_col:
-        nw_df = nw_df.with_columns(
-            (nw.col(location_id_col).cast(nw.String) + nw.lit("_") + nw.col(location_type_col).cast(nw.String)).alias(
-                location_key_col
-            )
-        )
-        nw_df = nw_df.filter(~nw.col(location_key_col).is_null())
-    elif location_id_col:
-        nw_df = nw_df.with_columns(nw.col(location_id_col).cast(nw.String).alias(location_key_col))
-        nw_df = nw_df.filter(~nw.col(location_key_col).is_null())
-
+    nw_df = nw_df.filter(~nw.col(location_id_col).is_null())
     if user_id_col:
         nw_df = nw_df.sort(user_id_col)
+        location_codes, _ = _factorize_arrow_values(
+            nw_df.get_column(location_id_col).to_arrow(), sort=False
+        )
         uid_values, ends = _build_presorted_user_ends(nw_df, user_id_col)
-        if location_id_col:
-            tokens = nw_df.get_column(location_key_col).to_list()
-            values = _diversity_batch_rust(tokens, ends)
-        else:
-            values = [0.0] * len(ends)
+        values = diversity_users(location_codes, ends)
         return nw.from_dict(
             {user_id_col: uid_values.to_pylist(), "diversity": values},
             backend=nw_df.implementation,
         ).to_native()
 
-    if location_id_col:
-        tokens = nw_df.get_column(location_key_col).to_list()
-        _, ends = _build_presorted_user_ends(nw_df, None)
-        div = _diversity_batch_rust(tokens, ends)[0]
-    else:
-        div = 0.0
+    location_codes, _ = _factorize_arrow_values(
+        nw_df.get_column(location_id_col).to_arrow(), sort=False
+    )
+    _, ends = _build_presorted_user_ends(nw_df, None)
+    div = diversity_users(location_codes, ends)[0]
     return nw.from_dict({"diversity": [div]}, backend=nw_df.implementation).to_native()
