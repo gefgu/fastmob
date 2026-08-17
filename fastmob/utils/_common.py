@@ -429,7 +429,7 @@ def _build_user_ranges_auto(
         coordinates_all_finite,
         single_user_indices,
         time_ordered_user_indices,
-        validate_grouped_user_timestamps,
+        validate_timestamps_sorted,
         validate_timestamps_within_ends,
     )
 
@@ -438,7 +438,7 @@ def _build_user_ranges_auto(
 
     n = len(df)
     if uid_col is None:
-        ordered = timestamps is None or validate_grouped_user_timestamps(None, timestamps)
+        ordered = timestamps is None or validate_timestamps_sorted(timestamps)
         if ordered and _coordinates_usable():
             return None, None, pa.array([] if n == 0 else [n], type=pa.uint64())
         if timestamps is None:

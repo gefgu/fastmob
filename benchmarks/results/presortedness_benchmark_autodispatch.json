@@ -5,99 +5,87 @@
       "polars"
     ],
     "dataset_path": "/mnt/raid5/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
-    "iterations": 5,
+    "iterations": 3,
     "ordering_rule": "contiguous user groups; timestamps nondecreasing within group",
     "sizes": [
       4000000
     ],
-    "validator": "fastmob._core.validate_grouped_user_timestamps"
+    "validator": "fastmob._core.value_run_boundaries + validate_timestamps_within_ends"
   },
   "results": [
     {
       "backend": "pandas",
       "metrics": {
         "check_user_contiguous_kernel": {
-          "average_seconds": 0.0002625170163810253,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.000246299896389246,
+          "average_seconds": 0.0027991835959255695,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0026818718761205673,
           "status": "ok",
           "times_seconds": [
-            0.0002899100072681904,
-            0.00026212120428681374,
-            0.000255499966442585,
-            0.000246299896389246,
-            0.0002587540075182915
+            0.0026818718761205673,
+            0.0027560880407691,
+            0.002959590870887041
           ]
         },
         "check_user_contiguous_rust": {
-          "average_seconds": 0.008036414440721274,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.007705919910222292,
+          "average_seconds": 0.0030591565494736037,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.002704817336052656,
           "status": "ok",
           "times_seconds": [
-            0.007705919910222292,
-            0.00807016110047698,
-            0.00812070444226265,
-            0.008114165626466274,
-            0.008171121124178171
+            0.002704817336052656,
+            0.0030998000875115395,
+            0.003372852224856615
           ]
         },
         "check_user_timestamp_sorted_kernel": {
-          "average_seconds": 7.699411362409592e-05,
-          "iterations_completed": 5,
-          "minimum_seconds": 6.700819358229637e-05,
+          "average_seconds": 0.0030711636257668338,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0027398159727454185,
           "status": "ok",
           "times_seconds": [
-            9.18293371796608e-05,
-            7.075909525156021e-05,
-            8.657202124595642e-05,
-            6.700819358229637e-05,
-            6.880192086100578e-05
+            0.0028209048323333263,
+            0.0027398159727454185,
+            0.003652770072221756
           ]
         },
         "check_user_timestamp_sorted_rust": {
-          "average_seconds": 0.020104969386011362,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.019939232151955366,
+          "average_seconds": 0.013970173119256893,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.012233091052621603,
           "status": "ok",
           "times_seconds": [
-            0.020063460804522038,
-            0.019939232151955366,
-            0.020008896943181753,
-            0.020380454137921333,
-            0.02013280289247632
+            0.013902300968766212,
+            0.012233091052621603,
+            0.015775127336382866
           ]
         },
         "derived": {
-          "jump_dispatch_check_seconds": 7.699411362409592e-05,
+          "jump_dispatch_check_seconds": 0.0030711636257668338,
           "jump_takes_contiguous_path": false,
-          "radius_dispatch_check_seconds": 0.0002625170163810253,
+          "radius_dispatch_check_seconds": 0.0027991835959255695,
           "radius_takes_contiguous_path": true
         },
         "jump_lengths": {
-          "average_seconds": 0.09712602309882641,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.09236982092261314,
+          "average_seconds": 0.09727680745224158,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.09657587436959147,
           "status": "ok",
           "times_seconds": [
-            0.10190360900014639,
-            0.09236982092261314,
-            0.09699898073449731,
-            0.09818123886361718,
-            0.09617646597325802
+            0.09817238198593259,
+            0.09657587436959147,
+            0.09708216600120068
           ]
         },
         "radius_of_gyration": {
-          "average_seconds": 0.05185009026899934,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.049755838233977556,
+          "average_seconds": 0.048906508988390364,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.04449162818491459,
           "status": "ok",
           "times_seconds": [
-            0.049755838233977556,
-            0.05281765293329954,
-            0.05223692813888192,
-            0.05302614299580455,
-            0.05141388904303312
+            0.05112702073529363,
+            0.04449162818491459,
+            0.05110087804496288
           ]
         }
       },
@@ -108,87 +96,75 @@
       "backend": "pandas",
       "metrics": {
         "check_user_contiguous_kernel": {
-          "average_seconds": 0.00048148008063435553,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.00034143123775720596,
+          "average_seconds": 0.003292375554641088,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.003199602011591196,
           "status": "ok",
           "times_seconds": [
-            0.00038063107058405876,
-            0.00034143123775720596,
-            0.0008314643055200577,
-            0.0005029980093240738,
-            0.00035087577998638153
+            0.003239072859287262,
+            0.003199602011591196,
+            0.0034384517930448055
           ]
         },
         "check_user_contiguous_rust": {
-          "average_seconds": 0.009166037570685149,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.008877343032509089,
+          "average_seconds": 0.003683564097930988,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.003674127161502838,
           "status": "ok",
           "times_seconds": [
-            0.009478239808231592,
-            0.009219102095812559,
-            0.00918206013739109,
-            0.008877343032509089,
-            0.009073442779481411
+            0.003678782843053341,
+            0.003674127161502838,
+            0.003697782289236784
           ]
         },
         "check_user_timestamp_sorted_kernel": {
-          "average_seconds": 7.948782294988632e-05,
-          "iterations_completed": 5,
-          "minimum_seconds": 4.916684702038765e-05,
+          "average_seconds": 0.0032974546775221825,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.003131384961307049,
           "status": "ok",
           "times_seconds": [
-            0.00010404083877801895,
-            9.512901306152344e-05,
-            4.916684702038765e-05,
-            9.027216583490372e-05,
-            5.8830250054597855e-05
+            0.0035856682807207108,
+            0.003131384961307049,
+            0.003175310790538788
           ]
         },
         "check_user_timestamp_sorted_rust": {
-          "average_seconds": 0.02086233040317893,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.020264049991965294,
+          "average_seconds": 0.01661309553310275,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.01612553372979164,
           "status": "ok",
           "times_seconds": [
-            0.020264049991965294,
-            0.020763701759278774,
-            0.020824966952204704,
-            0.021128760185092688,
-            0.02133017312735319
+            0.01612553372979164,
+            0.01620989991351962,
+            0.01750385295599699
           ]
         },
         "derived": {
-          "jump_dispatch_check_seconds": 7.948782294988632e-05,
+          "jump_dispatch_check_seconds": 0.0032974546775221825,
           "jump_takes_contiguous_path": false,
-          "radius_dispatch_check_seconds": 0.00048148008063435553,
+          "radius_dispatch_check_seconds": 0.003292375554641088,
           "radius_takes_contiguous_path": true
         },
         "jump_lengths": {
-          "average_seconds": 0.10408642338588833,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.10147108603268862,
+          "average_seconds": 0.09560444857925177,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0950025119818747,
           "status": "ok",
           "times_seconds": [
-            0.10710918996483088,
-            0.1053423248231411,
-            0.10456312727183104,
-            0.10194638883695006,
-            0.10147108603268862
+            0.09537957096472383,
+            0.0950025119818747,
+            0.09643126279115677
           ]
         },
         "radius_of_gyration": {
-          "average_seconds": 0.05642604380846024,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.054930977057665586,
+          "average_seconds": 0.05158064467832446,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.05089443828910589,
           "status": "ok",
           "times_seconds": [
-            0.05656865984201431,
-            0.056946157943457365,
-            0.056710341945290565,
-            0.05697408225387335,
-            0.054930977057665586
+            0.05089443828910589,
+            0.051823318004608154,
+            0.052024177741259336
           ]
         }
       },
@@ -199,87 +175,75 @@
       "backend": "pandas",
       "metrics": {
         "check_user_contiguous_kernel": {
-          "average_seconds": 0.0004351836629211903,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0003523309715092182,
+          "average_seconds": 0.0035656453110277653,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.003492597956210375,
           "status": "ok",
           "times_seconds": [
-            0.0006208340637385845,
-            0.0004309900104999542,
-            0.00040062516927719116,
-            0.0003711380995810032,
-            0.0003523309715092182
+            0.0035462728701531887,
+            0.003492597956210375,
+            0.0036580651067197323
           ]
         },
         "check_user_contiguous_rust": {
-          "average_seconds": 0.011057829204946756,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.01023127418011427,
+          "average_seconds": 0.0038809080918629966,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0037590432912111282,
           "status": "ok",
           "times_seconds": [
-            0.011609892826527357,
-            0.011135006789118052,
-            0.01023127418011427,
-            0.01191871939226985,
-            0.010394252836704254
+            0.0037590432912111282,
+            0.003941494971513748,
+            0.003942186012864113
           ]
         },
         "check_user_timestamp_sorted_kernel": {
-          "average_seconds": 0.0006678231991827488,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0006198259070515633,
+          "average_seconds": 0.004119162913411856,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0039080483838915825,
           "status": "ok",
           "times_seconds": [
-            0.0006367960013449192,
-            0.0006198259070515633,
-            0.0006316462531685829,
-            0.0006653759628534317,
-            0.0007854718714952469
+            0.004336819984018803,
+            0.004112620372325182,
+            0.0039080483838915825
           ]
         },
         "check_user_timestamp_sorted_rust": {
-          "average_seconds": 0.023970113415271044,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.023726520594209433,
+          "average_seconds": 0.017567292011032503,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.016712314914911985,
           "status": "ok",
           "times_seconds": [
-            0.024050668347626925,
-            0.02405358199030161,
-            0.023930442053824663,
-            0.023726520594209433,
-            0.02408935409039259
+            0.01770727103576064,
+            0.01828229008242488,
+            0.016712314914911985
           ]
         },
         "derived": {
-          "jump_dispatch_check_seconds": 0.0006678231991827488,
+          "jump_dispatch_check_seconds": 0.004119162913411856,
           "jump_takes_contiguous_path": true,
-          "radius_dispatch_check_seconds": 0.0004351836629211903,
+          "radius_dispatch_check_seconds": 0.0035656453110277653,
           "radius_takes_contiguous_path": true
         },
         "jump_lengths": {
-          "average_seconds": 0.06235175896435976,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.060632103122770786,
+          "average_seconds": 0.059222775511443615,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.05696213711053133,
           "status": "ok",
           "times_seconds": [
-            0.06189031666144729,
-            0.060632103122770786,
-            0.06332398718222976,
-            0.06321802781894803,
-            0.06269436003640294
+            0.05696213711053133,
+            0.0594421923160553,
+            0.06126399710774422
           ]
         },
         "radius_of_gyration": {
-          "average_seconds": 0.05668602082878351,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.05538518913090229,
+          "average_seconds": 0.05411595137168964,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.05150287691503763,
           "status": "ok",
           "times_seconds": [
-            0.056325236801058054,
-            0.058372270315885544,
-            0.05661506997421384,
-            0.05538518913090229,
-            0.056732337921857834
+            0.05150287691503763,
+            0.052380883134901524,
+            0.05846409406512976
           ]
         }
       },
@@ -290,87 +254,75 @@
       "backend": "polars",
       "metrics": {
         "check_user_contiguous_kernel": {
-          "average_seconds": 0.00042877765372395515,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0003750487230718136,
+          "average_seconds": 0.0035887405586739383,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0035006371326744556,
           "status": "ok",
           "times_seconds": [
-            0.00040544895455241203,
-            0.00038116099312901497,
-            0.0003750487230718136,
-            0.0004022279754281044,
-            0.0005800016224384308
+            0.0036221458576619625,
+            0.0035006371326744556,
+            0.003643438685685396
           ]
         },
         "check_user_contiguous_rust": {
-          "average_seconds": 0.016031690035015346,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.015157259069383144,
+          "average_seconds": 0.008979545595745245,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.008413224946707487,
           "status": "ok",
           "times_seconds": [
-            0.01726198010146618,
-            0.015755916945636272,
-            0.015864651184529066,
-            0.015157259069383144,
-            0.01611864287406206
+            0.008692918810993433,
+            0.009832493029534817,
+            0.008413224946707487
           ]
         },
         "check_user_timestamp_sorted_kernel": {
-          "average_seconds": 0.0001956806518137455,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.00010289810597896576,
+          "average_seconds": 0.003743918923040231,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.00355216721072793,
           "status": "ok",
           "times_seconds": [
-            0.00023668073117733002,
-            0.0002744407393038273,
-            0.000235722865909338,
-            0.00012866081669926643,
-            0.00010289810597896576
+            0.003838864155113697,
+            0.00355216721072793,
+            0.003840725403279066
           ]
         },
         "check_user_timestamp_sorted_rust": {
-          "average_seconds": 0.017346704471856357,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0167251150123775,
+          "average_seconds": 0.013150042078147331,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.013062669895589352,
           "status": "ok",
           "times_seconds": [
-            0.018319363240152597,
-            0.01770176226273179,
-            0.017191329039633274,
-            0.016795952804386616,
-            0.0167251150123775
+            0.013083577156066895,
+            0.013062669895589352,
+            0.01330387918278575
           ]
         },
         "derived": {
-          "jump_dispatch_check_seconds": 0.0001956806518137455,
+          "jump_dispatch_check_seconds": 0.003743918923040231,
           "jump_takes_contiguous_path": false,
-          "radius_dispatch_check_seconds": 0.00042877765372395515,
+          "radius_dispatch_check_seconds": 0.0035887405586739383,
           "radius_takes_contiguous_path": true
         },
         "jump_lengths": {
-          "average_seconds": 0.08610228234902025,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.08396179880946875,
+          "average_seconds": 0.07222996139898896,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.07085314765572548,
           "status": "ok",
           "times_seconds": [
-            0.08396179880946875,
-            0.08869964815676212,
-            0.08770019980147481,
-            0.0854224399663508,
-            0.08472732501104474
+            0.07472981372848153,
+            0.07110692281275988,
+            0.07085314765572548
           ]
         },
         "radius_of_gyration": {
-          "average_seconds": 0.04099368592724204,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.03959874389693141,
+          "average_seconds": 0.037326599626491465,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.03630155697464943,
           "status": "ok",
           "times_seconds": [
-            0.04164425190538168,
-            0.04039126401767135,
-            0.040448401123285294,
-            0.042885768692940474,
-            0.03959874389693141
+            0.03630155697464943,
+            0.03726792894303799,
+            0.038410312961786985
           ]
         }
       },
@@ -381,87 +333,75 @@
       "backend": "polars",
       "metrics": {
         "check_user_contiguous_kernel": {
-          "average_seconds": 0.00037160133942961695,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0003443262539803982,
+          "average_seconds": 0.004230436248083909,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.00384514220058918,
           "status": "ok",
           "times_seconds": [
-            0.0004003793001174927,
-            0.0003443262539803982,
-            0.000356932170689106,
-            0.0003648879937827587,
-            0.0003914809785783291
+            0.004409753251820803,
+            0.004436413291841745,
+            0.00384514220058918
           ]
         },
         "check_user_contiguous_rust": {
-          "average_seconds": 0.013394764438271523,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.012812964618206024,
+          "average_seconds": 0.008991495706140995,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.008888701908290386,
           "status": "ok",
           "times_seconds": [
-            0.014561250805854797,
-            0.01338104996830225,
-            0.01320613594725728,
-            0.01301242085173726,
-            0.012812964618206024
+            0.009016766212880611,
+            0.009069018997251987,
+            0.008888701908290386
           ]
         },
         "check_user_timestamp_sorted_kernel": {
-          "average_seconds": 0.00011121425777673721,
-          "iterations_completed": 5,
-          "minimum_seconds": 6.351293995976448e-05,
+          "average_seconds": 0.003936635330319405,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0037755900993943214,
           "status": "ok",
           "times_seconds": [
-            0.00018774019554257393,
-            0.00014162389561533928,
-            9.56202857196331e-05,
-            6.757397204637527e-05,
-            6.351293995976448e-05
+            0.004094963893294334,
+            0.0037755900993943214,
+            0.003939351998269558
           ]
         },
         "check_user_timestamp_sorted_rust": {
-          "average_seconds": 0.01592290885746479,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.01566124288365245,
+          "average_seconds": 0.01429075002670288,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.013959893956780434,
           "status": "ok",
           "times_seconds": [
-            0.016533327288925648,
-            0.015902969986200333,
-            0.01576166320592165,
-            0.01566124288365245,
-            0.015755340922623873
+            0.014441518113017082,
+            0.014470838010311127,
+            0.013959893956780434
           ]
         },
         "derived": {
-          "jump_dispatch_check_seconds": 0.00011121425777673721,
+          "jump_dispatch_check_seconds": 0.003936635330319405,
           "jump_takes_contiguous_path": false,
-          "radius_dispatch_check_seconds": 0.00037160133942961695,
+          "radius_dispatch_check_seconds": 0.004230436248083909,
           "radius_takes_contiguous_path": true
         },
         "jump_lengths": {
-          "average_seconds": 0.0814639873802662,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0769425448961556,
+          "average_seconds": 0.0842149533952276,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.08255760697647929,
           "status": "ok",
           "times_seconds": [
-            0.0769425448961556,
-            0.07859703805297613,
-            0.08337762905284762,
-            0.0817138571292162,
-            0.0866888677701354
+            0.08255760697647929,
+            0.08399925194680691,
+            0.08608800126239657
           ]
         },
         "radius_of_gyration": {
-          "average_seconds": 0.04078503772616386,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.039128758013248444,
+          "average_seconds": 0.03558824164792895,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.03528103092685342,
           "status": "ok",
           "times_seconds": [
-            0.04184719501063228,
-            0.042763813864439726,
-            0.039128758013248444,
-            0.03928560670465231,
-            0.040899815037846565
+            0.03605804778635502,
+            0.03542564623057842,
+            0.03528103092685342
           ]
         }
       },
@@ -472,87 +412,75 @@
       "backend": "polars",
       "metrics": {
         "check_user_contiguous_kernel": {
-          "average_seconds": 0.00040774866938591,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0003461879678070545,
+          "average_seconds": 0.0035584859239558377,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.003440634813159704,
           "status": "ok",
           "times_seconds": [
-            0.0005277339369058609,
-            0.00038139522075653076,
-            0.0003926181234419346,
-            0.0003461879678070545,
-            0.0003908080980181694
+            0.003440634813159704,
+            0.003660529851913452,
+            0.0035742931067943573
           ]
         },
         "check_user_contiguous_rust": {
-          "average_seconds": 0.013262873608618974,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.012931040022522211,
+          "average_seconds": 0.00884638245527943,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.008584529627114534,
           "status": "ok",
           "times_seconds": [
-            0.013726038858294487,
-            0.0133601282723248,
-            0.012931040022522211,
-            0.013067491818219423,
-            0.013229669071733952
+            0.008737711701542139,
+            0.009216906037181616,
+            0.008584529627114534
           ]
         },
         "check_user_timestamp_sorted_kernel": {
-          "average_seconds": 0.0005886844359338283,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0005463031120598316,
+          "average_seconds": 0.0042799790389835835,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.0041303448379039764,
           "status": "ok",
           "times_seconds": [
-            0.0006563449278473854,
-            0.0005935588851571083,
-            0.0005801860243082047,
-            0.0005670292302966118,
-            0.0005463031120598316
+            0.004550534300506115,
+            0.004159057978540659,
+            0.0041303448379039764
           ]
         },
         "check_user_timestamp_sorted_rust": {
-          "average_seconds": 0.017803819850087166,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.01700309757143259,
+          "average_seconds": 0.01467848476022482,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.014068587217479944,
           "status": "ok",
           "times_seconds": [
-            0.01847174996510148,
-            0.017809757962822914,
-            0.01739725098013878,
-            0.01700309757143259,
-            0.018337242770940065
+            0.014068587217479944,
+            0.014910790137946606,
+            0.015056076925247908
           ]
         },
         "derived": {
-          "jump_dispatch_check_seconds": 0.0005886844359338283,
+          "jump_dispatch_check_seconds": 0.0042799790389835835,
           "jump_takes_contiguous_path": true,
-          "radius_dispatch_check_seconds": 0.00040774866938591,
+          "radius_dispatch_check_seconds": 0.0035584859239558377,
           "radius_takes_contiguous_path": true
         },
         "jump_lengths": {
-          "average_seconds": 0.03636093540117145,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.03476138925179839,
+          "average_seconds": 0.0358028745589157,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.035631098318845034,
           "status": "ok",
           "times_seconds": [
-            0.03476138925179839,
-            0.03922531474381685,
-            0.036375944036990404,
-            0.03509497595950961,
-            0.03634705301374197
+            0.03570626210421324,
+            0.03607126325368881,
+            0.035631098318845034
           ]
         },
         "radius_of_gyration": {
-          "average_seconds": 0.03490521507337689,
-          "iterations_completed": 5,
-          "minimum_seconds": 0.0337420292198658,
+          "average_seconds": 0.034518094578137,
+          "iterations_completed": 3,
+          "minimum_seconds": 0.032806393690407276,
           "status": "ok",
           "times_seconds": [
-            0.03698375914245844,
-            0.035377927124500275,
-            0.0337420292198658,
-            0.03379467688500881,
-            0.034627682995051146
+            0.03648747177794576,
+            0.03426041826605797,
+            0.032806393690407276
           ]
         }
       },

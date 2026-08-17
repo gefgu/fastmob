@@ -56,61 +56,38 @@ def _numpy_timestamps(df: Any) -> np.ndarray:
     return np.asarray(values.to_numpy(zero_copy_only=False))
 
 
-def _rust_user_codes(df: Any) -> pa.Array:
+def _rust_run_boundaries(df: Any) -> tuple[pa.Array, pa.Array] | None:
+    """``(run leaders, run ends)`` via the Rust scan, or None for a declined dtype."""
+    from fastmob._core import value_run_boundaries
+
     users = _arrow_column(df, "user")
-    try:
-        return users.cast(pa.uint32())
-    except (pa.ArrowInvalid, pa.ArrowNotImplementedError):
-        from fastmob.utils._common import _factorize_arrow_values
-
-        codes, _ = _factorize_arrow_values(users, sort=False)
-        return pa.array(codes, type=pa.uint32())
+    boundaries = value_run_boundaries(users)
+    if boundaries is None:
+        return None
+    starts, ends = boundaries
+    return pc.take(users, pa.array(starts)), pa.array(ends)
 
 
 def check_users_contiguous_rust(df: Any) -> bool:
-    from fastmob._core import validate_presorted_user_timestamps
-
-    return bool(validate_presorted_user_timestamps(_rust_user_codes(df), None, check_timestamps=False))
-
-
-def check_users_and_timestamps_sorted_rust(df: Any) -> bool:
-    from fastmob._core import validate_presorted_user_timestamps
-
-    return bool(
-        validate_presorted_user_timestamps(
-            _rust_user_codes(df),
-            _arrow_column(df, "check-in_time"),
-            check_timestamps=True,
-        )
-    )
-
-
-def check_users_contiguous_rust_new(df: Any) -> bool:
-    from fastmob._core import validate_grouped_user_timestamps
-
-    return bool(validate_grouped_user_timestamps(_rust_user_codes(df), check_timestamps=False))
-
-
-def check_users_and_timestamps_sorted_rust_new(df: Any) -> bool:
-    from fastmob._core import validate_grouped_user_timestamps
-
-    return bool(
-        validate_grouped_user_timestamps(
-            _rust_user_codes(df),
-            _arrow_column(df, "check-in_time"),
-            check_timestamps=True,
-        )
-    )
-
-
-def check_users_contiguous_rust(df: Any) -> bool:
-    """Compatibility alias for the current grouped Rust validator."""
-    return check_users_contiguous_rust_new(df)
+    """Contiguity exactly as the measures now establish it: no uid leads two runs."""
+    boundaries = _rust_run_boundaries(df)
+    if boundaries is None:
+        return check_users_contiguous(df)
+    leaders, _ = boundaries
+    return len(pc.unique(leaders)) == len(leaders)
 
 
 def check_users_and_timestamps_sorted_rust(df: Any) -> bool:
-    """Compatibility alias for the current grouped Rust validator."""
-    return check_users_and_timestamps_sorted_rust_new(df)
+    """Contiguity plus within-run time order, as ``jump_lengths`` establishes it."""
+    from fastmob._core import validate_timestamps_within_ends
+
+    boundaries = _rust_run_boundaries(df)
+    if boundaries is None:
+        return check_users_and_timestamps_sorted(df)
+    leaders, ends = boundaries
+    if len(pc.unique(leaders)) != len(leaders):
+        return False
+    return bool(validate_timestamps_within_ends(_arrow_column(df, "check-in_time"), ends))
 
 
 def check_users_contiguous(df: Any) -> bool:
@@ -167,22 +144,31 @@ def _metric_call(name: str, df: Any) -> Any:
 
 
 def _kernel_only_checks(df: Any) -> tuple[Callable[[], bool], Callable[[], bool]]:
-    """Bind the validator to already-extracted Arrow columns.
+    """Bind the dispatch decision to already-extracted Arrow columns.
 
-    ``check_users_*_rust_new`` re-extract and re-cast the uid and timestamp
-    columns on every call, which at 4M rows costs 15-22 ms against a validator
-    that costs well under 1 ms -- the harness would otherwise report almost
-    nothing but ``pa.array``/``cast``.  The measures hold these buffers already,
-    so the kernel-only number is what their dispatch decision actually adds.
+    ``check_users_*_rust`` re-extract the uid and timestamp columns on every
+    call, which at 4M rows costs far more than the decision itself -- the
+    harness would otherwise report mostly ``pa.array``.  The measures hold these
+    buffers already, so the kernel-only number is what their dispatch adds.
     """
-    from fastmob._core import validate_grouped_user_timestamps
+    from fastmob._core import validate_timestamps_within_ends, value_run_boundaries
 
-    codes = _rust_user_codes(df)
+    users = _arrow_column(df, "user")
     stamps = _arrow_column(df, "check-in_time")
-    return (
-        lambda: bool(validate_grouped_user_timestamps(codes, check_timestamps=False)),
-        lambda: bool(validate_grouped_user_timestamps(codes, stamps, check_timestamps=True)),
-    )
+
+    def grouped() -> bool:
+        starts, _ends = value_run_boundaries(users)
+        leaders = pc.take(users, pa.array(starts))
+        return len(pc.unique(leaders)) == len(leaders)
+
+    def grouped_and_time_ordered() -> bool:
+        starts, ends = value_run_boundaries(users)
+        leaders = pc.take(users, pa.array(starts))
+        if len(pc.unique(leaders)) != len(leaders):
+            return False
+        return bool(validate_timestamps_within_ends(stamps, pa.array(ends)))
+
+    return grouped, grouped_and_time_ordered
 
 
 def _timed_metrics(df: Any, backend: str, order: str, iterations: int) -> dict[str, Any]:
@@ -198,10 +184,10 @@ def _timed_metrics(df: Any, backend: str, order: str, iterations: int) -> dict[s
 
     metrics = {
         "check_user_contiguous_rust": _time_call(
-            lambda: check_users_contiguous_rust_new(df), iterations
+            lambda: check_users_contiguous_rust(df), iterations
         ),
         "check_user_timestamp_sorted_rust": _time_call(
-            lambda: check_users_and_timestamps_sorted_rust_new(df), iterations
+            lambda: check_users_and_timestamps_sorted_rust(df), iterations
         ),
         "check_user_contiguous_kernel": _time_call(user_kernel, iterations),
         "check_user_timestamp_sorted_kernel": _time_call(jump_kernel, iterations),
@@ -260,7 +246,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "sizes": args.sizes,
             "iterations": args.iterations,
             "ordering_rule": "contiguous user groups; timestamps nondecreasing within group",
-            "validator": "fastmob._core.validate_grouped_user_timestamps",
+            "validator": "fastmob._core.value_run_boundaries + validate_timestamps_within_ends",
         },
         "results": results,
     }

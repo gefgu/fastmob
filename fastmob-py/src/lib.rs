@@ -109,11 +109,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        time_ordering::validate_presorted_user_timestamps,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        time_ordering::validate_grouped_user_timestamps,
+        time_ordering::validate_timestamps_sorted,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(time_ordering::coordinates_all_finite, m)?)?;

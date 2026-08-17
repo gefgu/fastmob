@@ -5,10 +5,8 @@ import pandas as pd
 from benchmarks.individual.presortedness_benchmark import (
     check_users_and_timestamps_sorted,
     check_users_and_timestamps_sorted_rust,
-    check_users_and_timestamps_sorted_rust_new,
     check_users_contiguous,
     check_users_contiguous_rust,
-    check_users_contiguous_rust_new,
 )
 
 
@@ -67,5 +65,3 @@ def test_rust_checks_match_python_check_semantics():
     for frame in cases:
         assert check_users_contiguous_rust(frame) == check_users_contiguous(frame)
         assert check_users_and_timestamps_sorted_rust(frame) == check_users_and_timestamps_sorted(frame)
-        assert check_users_contiguous_rust_new(frame) == check_users_contiguous(frame)
-        assert check_users_and_timestamps_sorted_rust_new(frame) == check_users_and_timestamps_sorted(frame)
