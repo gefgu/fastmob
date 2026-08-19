@@ -372,6 +372,12 @@ def load_brightkite_polars(data_path: Path):
         has_header=False,
         new_columns=BRIGHTKITE_COLUMNS,
         try_parse_dates=True,
+        # Polars parses the file in parallel and leaves one chunk per split
+        # (641 for Brightkite), because rechunking is a copy most pipelines do
+        # not need.  The measures do: their Rust kernels take one contiguous
+        # slice, so every call would otherwise pay to consolidate the columns
+        # again -- 16-25ms per call at 4M rows, against ~47ms once here.
+        rechunk=True,
     )
 
 

@@ -64,7 +64,9 @@ def load_or_create_sorted_input(
         if backend == "polars":
             import polars as pl
 
-            return SortedInput(pl.read_parquet(path), path, "reused")
+            # See the loaders in the speed suites: one contiguous chunk per
+            # column, so measured calls do not re-pay for consolidation.
+            return SortedInput(pl.read_parquet(path, rechunk=True), path, "reused")
 
         import pandas as pd
 
