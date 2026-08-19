@@ -462,6 +462,48 @@ def _build_user_ranges_auto(
     return _build_indexed_user_ranges(df, uid_col, timestamps, uid_values)
 
 
+def _rechunk_kernel_columns(nw_df: nw.DataFrame, columns: Iterable[str | None]) -> nw.DataFrame:
+    """Consolidate the columns a Rust kernel will read into one chunk each.
+
+    Polars parses and sorts in parallel and leaves one chunk per split -- 641
+    straight out of `read_csv`, 40 after a `sort` -- because rechunking is a
+    copy most polars pipelines never need.  The kernels do need it: they take a
+    single contiguous slice, so `.to_arrow()` consolidates the column on every
+    call.  Doing it here instead, once, is worth roughly 2x: four separate
+    `.to_arrow()` calls measured 17.7ms on a 4M-row frame against 8.9ms for one
+    `rechunk` of the same four columns, because polars rechunks columns
+    concurrently while four Series calls run one after another.  Extraction
+    afterwards is a zero-copy view (0.07ms for all four).
+
+    Only the columns the kernels read are touched, so a wide frame does not pay
+    to consolidate columns nobody looks at, and a frame that is already
+    contiguous returns untouched.
+
+    This is the one place in `fastmob/` that reaches past Narwhals to a specific
+    backend, because Narwhals has no `rechunk` and chunking is not part of its
+    model.  It is a memory-layout normalization, not a computation: no result
+    depends on which branch runs.
+    """
+    if nw_df.implementation.value != "polars":
+        return nw_df
+    native = nw_df.to_native()
+    wanted = [name for name in dict.fromkeys(columns) if name is not None and name in native.columns]
+    chunked = [name for name in wanted if native[name].n_chunks() > 1]
+    if not chunked:
+        return nw_df
+    # One frame-level `rechunk`, not one per column: polars consolidates the
+    # columns of a frame concurrently, whereas `Series.rechunk()` in a Python
+    # loop is serial and costs exactly what the serial `.to_arrow()` calls it
+    # replaces (17.8ms either way on four 4M-row columns, against 8.8ms here).
+    # Selecting first keeps a wide frame from consolidating columns no kernel
+    # reads; splicing the results back is metadata only.
+    consolidated = native.select(chunked).rechunk()
+    return nw.from_native(
+        native.with_columns([consolidated[name] for name in chunked]),
+        eager_only=True,
+    )
+
+
 def _detect_trajectory_columns(
     nw_df: nw.DataFrame,
     datetime_col: str | None = None,
@@ -556,6 +598,8 @@ def _detect_trajectory_columns(
                 nw.col(lat_col).cast(nw.Float64),
                 nw.col(lng_col).cast(nw.Float64),
             )
+        # Returning the frame means a kernel is about to read these columns.
+        nw_df = _rechunk_kernel_columns(nw_df, (lat_col, lng_col, uid_col))
         return nw_df, datetime_col, lat_col, lng_col, uid_col
 
     return datetime_col, lat_col, lng_col, uid_col
