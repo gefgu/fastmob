@@ -11,10 +11,8 @@ from fastmob._core import (
     max_distance_from_point_presorted,
 )
 from fastmob.utils._common import (
-    _auto_presorted,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_hours,
     _to_native,
@@ -135,11 +133,8 @@ def max_distance_from_home(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     hours_data = hours.to_arrow()
-    presorted = _auto_presorted(
-        df, uid_col, coordinates=(lats_data, lngs_data)
-    )
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    uid_values, indices, ends = _build_user_ranges_auto(df, uid_col, coordinates=(lats_data, lngs_data))
+    if indices is None:
         home_lats, home_lngs = home_location_presorted(
             lats_data, lngs_data, hours_data, ends, float(start_night), float(end_night)
         )
@@ -147,8 +142,6 @@ def max_distance_from_home(
         if uid_col is None:
             return _to_native({"max_distance_from_home": max_distances}, df)
         return _to_native({uid_col: uid_values, "max_distance_from_home": max_distances}, df)
-
-    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
 
     home_lats, home_lngs = home_location_indexed(
         lats_data, lngs_data, hours_data, indices, ends, float(start_night), float(end_night)

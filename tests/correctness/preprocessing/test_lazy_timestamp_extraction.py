@@ -23,9 +23,9 @@ def sorted_trajectory() -> pd.DataFrame:
 @pytest.mark.parametrize(
     ("module_name", "function_name", "kwargs"),
     [
-            ("fastmob.preprocessing._stay_locations", "stay_locations", {}),
-            ("fastmob.measures.individual.waiting_times", "waiting_times", {}),
-            ("fastmob.preprocessing._compress", "compress", {}),
+        ("fastmob.preprocessing._stay_locations", "stay_locations", {}),
+        ("fastmob.measures.individual.waiting_times", "waiting_times", {}),
+        ("fastmob.preprocessing._compress", "compress", {}),
         ("fastmob.preprocessing._filter", "_filter_speed", {"is_sorted": True}),
         ("fastmob.preprocessing._segment", "segment", {"is_sorted": True, "method": "temporal", "mode": "hour"}),
         (

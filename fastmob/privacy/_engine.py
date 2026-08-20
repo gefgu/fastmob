@@ -8,9 +8,7 @@ import narwhals as nw
 
 from fastmob._core import privacy_assess_risk
 from fastmob.utils._common import (
-    _auto_presorted,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
     _factorize_arrow_values,
@@ -161,17 +159,12 @@ def assess_risk(
             raise ValueError("force_instances is not supported with externally assigned global locations")
     time_keys = _time_keys(df, datetime_col, time_precision) if time_precision is not None else None
     timestamps = _extract_timestamp_arrow(df, datetime_col) if attack == "sequence" else None
-    presorted = _auto_presorted(
+    uid_values, indices, ends = _build_user_ranges_auto(
         df,
         uid_col,
         timestamps,
         coordinates=(df.get_column(lat_col).to_arrow(), df.get_column(lng_col).to_arrow()),
     )
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
-        indices = None
-    else:
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     result = privacy_assess_risk(
         df.get_column(lat_col).to_arrow(),
         df.get_column(lng_col).to_arrow(),

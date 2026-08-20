@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from importlib import import_module
 import os
 import time
+from collections.abc import Iterable
+from importlib import import_module
 from typing import Any
 
 import narwhals as nw
@@ -341,9 +341,7 @@ def _build_indexed_user_ranges(
         if timestamps is None:
             raw_indices, raw_ends = single_user_indices(len(df))
         else:
-            raw_indices, raw_ends = time_ordered_user_indices(
-                None, timestamps
-            )
+            raw_indices, raw_ends = time_ordered_user_indices(None, timestamps)
         return None, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
 
     if uid_values is None:
@@ -361,21 +359,17 @@ def _build_indexed_user_ranges(
     if timestamps is None:
         raw_indices, raw_ends = indexed_user_indices(codes, len(representatives))
     else:
-        raw_indices, raw_ends = time_ordered_user_indices(
-            codes, timestamps, len(representatives)
-        )
+        raw_indices, raw_ends = time_ordered_user_indices(codes, timestamps, len(representatives))
     if profile:
         print(
-            f"[jump_lengths] user/time ordering and range construction: "
-            f"{time.perf_counter() - ordering_started:.6f}s",
+            f"[jump_lengths] user/time ordering and range construction: {time.perf_counter() - ordering_started:.6f}s",
             flush=True,
         )
     labels_started = time.perf_counter()
     labels = pc.take(uid_values, representatives)
     if profile:
         print(
-            f"[jump_lengths] representative label extraction: "
-            f"{time.perf_counter() - labels_started:.6f}s",
+            f"[jump_lengths] representative label extraction: {time.perf_counter() - labels_started:.6f}s",
             flush=True,
         )
     return labels, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
@@ -404,8 +398,8 @@ def _build_user_ranges_auto(
     hand its kernel.  The contiguous kernels sum coordinates with no per-row
     validity test, whereas the indexed ones skip invalid rows, so a frame with a
     null or NaN coordinate must stay on the indexed path to keep the same
-    answer.  Callers that have no coordinates to vouch for leave it ``None``,
-    which forces the indexed path.
+    answer. Callers whose kernels do not read coordinates leave it ``None``;
+    in that case only grouping and optional timestamp ordering are checked.
 
     The detection is deliberately built out of the work the *fast* path needs
     anyway, not the slow one.  `_build_presorted_user_ends`'s single
@@ -452,33 +446,10 @@ def _build_user_ranges_auto(
     uid_values = pa.array(df.get_column(uid_col).to_arrow())
     labels, ends = _build_presorted_user_ends(df, uid_col, uid_values)
     grouped = len(pc.unique(labels)) == len(labels)
-    if (
-        grouped
-        and (timestamps is None or validate_timestamps_within_ends(timestamps, ends))
-        and _coordinates_usable()
-    ):
+    if grouped and (timestamps is None or validate_timestamps_within_ends(timestamps, ends)) and _coordinates_usable():
         return labels, None, ends
 
     return _build_indexed_user_ranges(df, uid_col, timestamps, uid_values)
-
-
-def _auto_presorted(
-    df: nw.DataFrame,
-    uid_col: str | None,
-    timestamps: Any | None = None,
-    *,
-    coordinates: tuple[Any, Any] | None = None,
-) -> bool:
-    """Return whether the dataframe can use a contiguous native kernel.
-
-    This small compatibility helper keeps the dispatch decision centralized
-    for measures whose existing implementation has separate contiguous and
-    indexed kernel calls.  Public APIs do not expose the decision anymore.
-    """
-    _, indices, _ = _build_user_ranges_auto(
-        df, uid_col, timestamps, coordinates=coordinates
-    )
-    return indices is None
 
 
 def _rechunk_kernel_columns(nw_df: nw.DataFrame, columns: Iterable[str | None]) -> nw.DataFrame:

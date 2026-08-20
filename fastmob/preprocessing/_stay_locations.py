@@ -5,13 +5,11 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob._core import detect_stay_locations_batch_indexed
+from fastmob._core import detect_stay_locations_batch_indexed, single_user_indices
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _auto_presorted,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_indices_and_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
     _extract_timestamps,
@@ -139,41 +137,23 @@ def stay_locations(
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
     timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
 
-    presorted = _auto_presorted(
+    uid_values, sorted_indices, ends = _build_user_ranges_auto(
         df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
     )
-    if presorted:
-        uid_values, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col)
-        _result = detect_stay_locations_batch_indexed(
-            lats_data,
-            lngs_data,
-            timestamps_data,
-            sorted_indices,
-            ends,
-            spatial_radius_km,
-            minutes_for_a_stop,
-            no_data_for_minutes,
-            effective_min_speed,
-        )
-        out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
-    else:
-        uid_values, sorted_indices, ends = _build_indexed_user_ranges(
-            df,
-            uid_col,
-            timestamps=timestamp_arrow,
-        )
-        _result = detect_stay_locations_batch_indexed(
-            lats_data,
-            lngs_data,
-            timestamps_data,
-            sorted_indices,
-            ends,
-            spatial_radius_km,
-            minutes_for_a_stop,
-            no_data_for_minutes,
-            effective_min_speed,
-        )
-        out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
+    if sorted_indices is None:
+        sorted_indices, _ = single_user_indices(len(df))
+    _result = detect_stay_locations_batch_indexed(
+        lats_data,
+        lngs_data,
+        timestamps_data,
+        sorted_indices,
+        ends,
+        spatial_radius_km,
+        minutes_for_a_stop,
+        no_data_for_minutes,
+        effective_min_speed,
+    )
+    out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
 
     if len(out_lats) == 0:
         out_dict: dict[str, list] = {lat_col: [], lng_col: [], datetime_col: []}

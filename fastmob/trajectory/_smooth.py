@@ -20,9 +20,7 @@ from fastmob._core import (
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _auto_presorted,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
     _extract_timestamps,
@@ -164,14 +162,10 @@ def smooth(
 
     config = SmoothConfig(method=method_name, **params)
 
-    presorted = _auto_presorted(
-        df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
-    )
-    if presorted:
-        _, ends = _build_presorted_user_ends(df, uid_col)
+    _, indices, ends = _build_user_ranges_auto(df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data))
+    if indices is None:
         out_lats, out_lngs = smooth_trajectory_presorted(lats_data, lngs_data, times_data, ends, config)
     else:
-        _, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamp_arrow)
         out_lats, out_lngs = smooth_trajectory_indexed(lats_data, lngs_data, times_data, indices, ends, config)
 
     result = df.with_columns(

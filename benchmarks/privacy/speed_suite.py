@@ -134,7 +134,9 @@ def import_attack(spec: BenchmarkSpec, library: str) -> Callable[..., Any]:
                 "LocationProportionAttack": "location_proportion_risk",
                 "HomeWorkAttack": "home_work_risk",
             }
-            return functools.partial(getattr(importlib.import_module("fastmob.privacy"), function_names[spec.class_name]), **spec.init_kwargs)
+            return functools.partial(
+                getattr(importlib.import_module("fastmob.privacy"), function_names[spec.class_name]), **spec.init_kwargs
+            )
         module = importlib.import_module("skmob.privacy.attacks")
         attack = getattr(module, spec.class_name)(**spec.init_kwargs)
     except Exception as exc:

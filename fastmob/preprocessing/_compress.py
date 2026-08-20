@@ -5,13 +5,11 @@ from typing import Any
 import narwhals as nw
 import numpy as np
 
-from fastmob._core import compress_trajectory_representatives_indexed
+from fastmob._core import compress_trajectory_representatives_indexed, single_user_indices
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _auto_presorted,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_indices_and_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
 )
@@ -114,21 +112,10 @@ def compress(
     lngs_data = df.get_column(lng_col).to_arrow()
 
     timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
-    presorted = _auto_presorted(
-        df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
-    )
-    if presorted:
-        _, indices, ends = _build_presorted_indices_and_ends(df, uid_col)
-        result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, indices, ends, spatial_radius_km)
-    else:
-        _, sorted_indices, ends = _build_indexed_user_ranges(
-            df,
-            uid_col,
-            timestamps=timestamp_arrow,
-        )
-        result_raw = compress_trajectory_representatives_indexed(
-            lats_data, lngs_data, sorted_indices, ends, spatial_radius_km
-        )
+    _, indices, ends = _build_user_ranges_auto(df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data))
+    if indices is None:
+        indices, _ = single_user_indices(len(df))
+    result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, indices, ends, spatial_radius_km)
 
     representative_indices, median_lats, median_lngs = _unpack_result(result_raw)
 

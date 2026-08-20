@@ -8,9 +8,7 @@ from fastmob._core import maximum_distance_indexed, maximum_distance_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,
-    _auto_presorted,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
     _to_native,
@@ -124,16 +122,10 @@ def maximum_distance(
     lngs_data = df.get_column(lng_col).to_arrow()
 
     timestamps = _extract_timestamp_arrow(df, datetime_col)
-    presorted = _auto_presorted(
-        df, uid_col, timestamps, coordinates=(lats_data, lngs_data)
-    )
-
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    uid_values, indices, ends = _build_user_ranges_auto(df, uid_col, timestamps, coordinates=(lats_data, lngs_data))
+    if indices is None:
         max_distances = _as_arrow(maximum_distance_presorted(lats_data, lngs_data, ends))
     else:
-        timestamps = _extract_timestamp_arrow(df, datetime_col)
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         max_distances = _as_arrow(maximum_distance_indexed(lats_data, lngs_data, indices, ends))
 
     if uid_col is None:

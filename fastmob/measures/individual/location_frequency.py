@@ -6,10 +6,8 @@ import narwhals as nw
 
 from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
 from fastmob.utils._common import (
-    _auto_presorted,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _take_uid_values,
     _to_native,
@@ -153,14 +151,10 @@ def location_frequency(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
 
-    presorted = _auto_presorted(
-        df, uid_col, coordinates=(lats_data, lngs_data)
-    )
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    uid_values, indices, ends = _build_user_ranges_auto(df, uid_col, coordinates=(lats_data, lngs_data))
+    if indices is None:
         raw = location_frequency_presorted(lats_data, lngs_data, ends, normalize)
     else:
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col)
         raw = location_frequency_values_indexed(lats_data, lngs_data, indices, ends, normalize)
     out_lats, out_lngs, freqs, user_indices, _out_starts, _out_ends, rank_means = _unpack_location_frequency(raw)
 

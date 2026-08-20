@@ -11,10 +11,8 @@ from fastmob._core import (
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _auto_presorted,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
     _extract_timestamps,
@@ -172,16 +170,14 @@ def interpolate(
 
     config = InterpolationConfig(method=method_name, sampling_rate_s=sampling_rate_s, **params)
 
-    presorted = _auto_presorted(
+    uid_values, indices, ends = _build_user_ranges_auto(
         df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
     )
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    if indices is None:
         out_lats, out_lngs, out_times, out_user_idx = interpolate_trajectory_presorted(
             lats_data, lngs_data, times_data, ends, config
         )
     else:
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamp_arrow)
         out_lats, out_lngs, out_times, out_user_idx = interpolate_trajectory_indexed(
             lats_data, lngs_data, times_data, indices, ends, config
         )

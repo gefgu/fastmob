@@ -7,10 +7,8 @@ import narwhals as nw
 from fastmob._core import recency_rank_presorted, recency_rank_values_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _auto_presorted,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
     _take_uid_values,
@@ -129,14 +127,10 @@ def recency_rank(
     lngs_data = df.get_column(lng_col).to_arrow()
 
     timestamps = _extract_timestamp_arrow(df, datetime_col)
-    presorted = _auto_presorted(
-        df, uid_col, timestamps, coordinates=(lats_data, lngs_data)
-    )
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    uid_values, indices, ends = _build_user_ranges_auto(df, uid_col, timestamps, coordinates=(lats_data, lngs_data))
+    if indices is None:
         raw = recency_rank_presorted(lats_data, lngs_data, ends)
     else:
-        uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
         raw = recency_rank_values_indexed(lats_data, lngs_data, indices, ends)
     out_lats, out_lngs, ranks, user_indices = _unpack_rank(raw)
 

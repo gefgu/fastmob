@@ -8,15 +8,13 @@ import narwhals as nw
 
 from fastmob import _core
 from fastmob.utils._common import (
-    _auto_presorted,
     DURATION_CANDIDATES,
     LOCATION_CANDIDATES,
     PURPOSE_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _extract_timestamp_arrow,
     _factorize_arrow_values,
     _pick_existing_column,
@@ -164,12 +162,7 @@ def daily_motifs(
     )
 
     timestamps = _extract_timestamp_arrow(df, datetime_col)
-    presorted = _auto_presorted(df, uid_col, timestamps)
-    if presorted:
-        uid_labels, ends = _build_presorted_user_ends(df, uid_col)
-        indices = None
-    else:
-        uid_labels, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
+    uid_labels, indices, ends = _build_user_ranges_auto(df, uid_col, timestamps)
 
     location_values = _encode_locations(df, location_col)
 
@@ -187,7 +180,7 @@ def daily_motifs(
         duration_series = df.get_column(duration_col).cast(nw.Float64).fill_null(0.0)
         durations = _arrow_array(duration_series)
 
-    if presorted:
+    if indices is None:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_presorted(
             location_values,
             purpose_codes,
@@ -298,14 +291,8 @@ def daily_motifs_from_staypoints(
     uid_dtype = sp_nw.schema[uid_col]
     backend = sp_nw.implementation
 
-    presorted = _auto_presorted(sp_nw, uid_col)
-
-    if presorted:
-        uid_labels, ends = _build_presorted_user_ends(sp_nw, uid_col)
-        indices = None
-    else:
-        timestamps = _extract_timestamp_arrow(sp_nw, started_at_col)
-        uid_labels, indices, ends = _build_indexed_user_ranges(sp_nw, uid_col, timestamps)
+    timestamps = _extract_timestamp_arrow(sp_nw, started_at_col)
+    uid_labels, indices, ends = _build_user_ranges_auto(sp_nw, uid_col, timestamps)
 
     location_dtype = sp_nw.schema["location_id"]
     location_id_col = locations.location_id_col
@@ -335,7 +322,7 @@ def daily_motifs_from_staypoints(
         duration_series = sp_nw.get_column(duration_col).cast(nw.Float64).fill_null(0.0)
         durations = _arrow_array(duration_series)
 
-    if presorted:
+    if indices is None:
         raw_users, raw_dates, raw_motifs = _core.daily_motifs_presorted_joined(
             visit_location_codes,
             start_timestamps,

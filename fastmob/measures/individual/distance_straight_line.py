@@ -7,10 +7,8 @@ import narwhals as nw
 from fastmob._core import total_distance_indexed, total_distance_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
-    _auto_presorted,
     _as_arrow,
-    _build_indexed_user_ranges,
-    _build_presorted_user_ends,
+    _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamp_arrow,
     _to_native,
@@ -125,17 +123,13 @@ def distance_straight_line(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     timestamps = _extract_timestamp_arrow(df, datetime_col)
-    presorted = _auto_presorted(
-        df, uid_col, timestamps, coordinates=(lats_data, lngs_data)
-    )
-    if presorted:
-        uid_values, ends = _build_presorted_user_ends(df, uid_col)
+    uid_values, indices, ends = _build_user_ranges_auto(df, uid_col, timestamps, coordinates=(lats_data, lngs_data))
+    if indices is None:
         distances = _as_arrow(total_distance_presorted(lats_data, lngs_data, ends))
         if uid_col is None:
             return _to_native({"distance_straight_line": distances}, df)
         return _to_native({uid_col: uid_values, "distance_straight_line": distances}, df)
 
-    uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     distances = _as_arrow(total_distance_indexed(lats_data, lngs_data, indices, ends))
 
     if uid_col is None:

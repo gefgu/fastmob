@@ -35,9 +35,7 @@ def _clean(df: Any, backend: str) -> Any:
     if backend == "polars":
         import polars as pl
 
-        return df.drop_nulls(subset=required).filter(
-            pl.col("latitude").is_not_nan() & pl.col("longitude").is_not_nan()
-        )
+        return df.drop_nulls(subset=required).filter(pl.col("latitude").is_not_nan() & pl.col("longitude").is_not_nan())
     return df.dropna(subset=required).reset_index(drop=True)
 
 
@@ -106,9 +104,7 @@ def check_users_and_timestamps_sorted(df: Any) -> bool:
         return check_users_contiguous(df)
 
     timestamps = _numpy_timestamps(df)
-    same_user = np.asarray(
-        pc.equal(users.slice(1), users.slice(0, len(users) - 1)), dtype=bool
-    )
+    same_user = np.asarray(pc.equal(users.slice(1), users.slice(0, len(users) - 1)), dtype=bool)
     return bool(np.all(~same_user | (timestamps[1:] >= timestamps[:-1])))
 
 
@@ -183,29 +179,19 @@ def _timed_metrics(df: Any, backend: str, order: str, iterations: int) -> dict[s
     user_kernel, jump_kernel = _kernel_only_checks(df)
 
     metrics = {
-        "check_user_contiguous_rust": _time_call(
-            lambda: check_users_contiguous_rust(df), iterations
-        ),
-        "check_user_timestamp_sorted_rust": _time_call(
-            lambda: check_users_and_timestamps_sorted_rust(df), iterations
-        ),
+        "check_user_contiguous_rust": _time_call(lambda: check_users_contiguous_rust(df), iterations),
+        "check_user_timestamp_sorted_rust": _time_call(lambda: check_users_and_timestamps_sorted_rust(df), iterations),
         "check_user_contiguous_kernel": _time_call(user_kernel, iterations),
         "check_user_timestamp_sorted_kernel": _time_call(jump_kernel, iterations),
         "jump_lengths": _time_call(lambda: _metric_call("jump_lengths", df), iterations),
-        "radius_of_gyration": _time_call(
-            lambda: _metric_call("radius_of_gyration", df), iterations
-        ),
+        "radius_of_gyration": _time_call(lambda: _metric_call("radius_of_gyration", df), iterations),
     }
 
     metrics["derived"] = {
         "jump_takes_contiguous_path": bool(jump_kernel()),
         "radius_takes_contiguous_path": bool(user_kernel()),
-        "jump_dispatch_check_seconds": metrics["check_user_timestamp_sorted_kernel"][
-            "average_seconds"
-        ],
-        "radius_dispatch_check_seconds": metrics["check_user_contiguous_kernel"][
-            "average_seconds"
-        ],
+        "jump_dispatch_check_seconds": metrics["check_user_timestamp_sorted_kernel"]["average_seconds"],
+        "radius_dispatch_check_seconds": metrics["check_user_contiguous_kernel"]["average_seconds"],
     }
     return metrics
 
