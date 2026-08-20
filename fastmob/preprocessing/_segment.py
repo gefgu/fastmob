@@ -15,9 +15,9 @@ from fastmob.utils._common import (
     _as_arrow,
     _build_indexed_user_ranges,
     _detect_trajectory_columns,
-    _extract_timestamp_arrow,
     _extract_timestamps,
     _factorize_uids_uint32,
+    _to_arrow_columns,
 )
 
 # nw.col(...).dt.truncate() bucket-length strings for each TemporalSplitter mode.
@@ -314,24 +314,29 @@ def segment(
 
     bucket_ids = _build_bucket_ids(df, datetime_col, params)
 
-    lats_data = df.get_column(lat_col).to_arrow()
-    lngs_data = df.get_column(lng_col).to_arrow()
+    arrow_columns = _to_arrow_columns(df, (lat_col, lng_col, None if is_sorted else datetime_col, uid_col))
+    lats_data = arrow_columns[lat_col]
+    lngs_data = arrow_columns[lng_col]
+    timestamp_arrow = arrow_columns.get(datetime_col)
+    uid_values = arrow_columns.get(uid_col) if uid_col is not None else None
     timestamps = _extract_timestamps(df, datetime_col)
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     config = SegmentConfig(method=method_name, **params)
 
     if is_sorted:
-        _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col)
+        _, sorted_indices, ends = _build_indexed_user_ranges(df, uid_col, uid_values=uid_values)
         raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
     else:
-        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
             timestamps=timestamp_arrow,
+            uid_values=uid_values,
         )
         raw_ids = segment_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config, bucket_ids)
+
+    del arrow_columns, lats_data, lngs_data, timestamp_arrow, uid_values, timestamps, times_data, sorted_indices, ends
 
     segment_ids = np.asarray(_as_arrow(raw_ids), dtype=np.uint32)
     result = _assign_segment_column(df, segment_ids)

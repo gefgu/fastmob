@@ -26,6 +26,18 @@ class TestArrowCoercion:
         values = pa.chunked_array([["a"], ["b"]])
         assert _as_arrow(values) is values
 
+    def test_materializes_selected_columns_as_flat_arrow_arrays(self):
+        import narwhals as nw
+        import pyarrow as pa
+        from fastmob.utils._common import _to_arrow_columns
+
+        df = nw.from_native(pd.DataFrame({"lat": [1.0, 2.0], "lng": [3.0, 4.0]}), eager_only=True)
+        values = _to_arrow_columns(df, ("lat", "lng", "lat", None))
+
+        assert set(values) == {"lat", "lng"}
+        assert all(isinstance(value, pa.Array) for value in values.values())
+        assert values["lat"].to_pylist() == [1.0, 2.0]
+
 
 class TestArrowTimestampOrdering:
     @pytest.mark.parametrize("unit", ["s", "ms", "us", "ns"])

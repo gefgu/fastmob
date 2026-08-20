@@ -112,6 +112,15 @@ def _as_arrow(values: Any) -> pa.Array | pa.ChunkedArray:
     return pa.array(values)
 
 
+def _to_arrow_columns(df: nw.DataFrame, columns: Iterable[str | None]) -> dict[str, Any]:
+    """Materialize several dataframe columns through one Arrow table conversion."""
+    names = list(dict.fromkeys(name for name in columns if name is not None))
+    if not names:
+        return {}
+    table = df.select(names).to_arrow()
+    return {name: table.column(name).combine_chunks() for name in names}
+
+
 def _finite_arrow_array(values: Any) -> pa.Array | pa.ChunkedArray:
     """Cast to a float64 Arrow array and drop non-finite entries."""
     arr = pc.cast(_as_arrow(values), pa.float64())
@@ -213,6 +222,7 @@ def _factorize_arrow_values(values: Any, *, sort: bool) -> tuple[Any, Any]:
     if isinstance(values, pa.ChunkedArray):
         values = values.combine_chunks()
     raw_codes, raw_representatives = factorize_arrow(values, sort)
+    del values
     return _as_arrow(raw_codes), _as_arrow(raw_representatives)
 
 
@@ -367,12 +377,16 @@ def _build_indexed_user_ranges(
         )
     labels_started = time.perf_counter()
     labels = pc.take(uid_values, representatives)
+    del codes
     if profile:
         print(
             f"[jump_lengths] representative label extraction: {time.perf_counter() - labels_started:.6f}s",
             flush=True,
         )
-    return labels, pa.array(_as_arrow(raw_indices)), pa.array(_as_arrow(raw_ends))
+    indices = pa.array(_as_arrow(raw_indices))
+    ends = pa.array(_as_arrow(raw_ends))
+    del raw_indices, raw_ends, representatives
+    return labels, indices, ends
 
 
 def _build_user_ranges_auto(
@@ -381,6 +395,7 @@ def _build_user_ranges_auto(
     timestamps: Any | None = None,
     *,
     coordinates: tuple[Any, Any] | None = None,
+    uid_values: Any | None = None,
 ) -> tuple[Any | None, Any | None, Any]:
     """Build user ranges, taking the contiguous fast path when the data allows.
 
@@ -443,7 +458,7 @@ def _build_user_ranges_auto(
 
     # Materialized once and shared with whichever path wins, so guessing wrong
     # does not convert the uid column twice.
-    uid_values = pa.array(df.get_column(uid_col).to_arrow())
+    uid_values = pa.array(_as_arrow(uid_values)) if uid_values is not None else pa.array(df.get_column(uid_col).to_arrow())
     labels, ends = _build_presorted_user_ends(df, uid_col, uid_values)
     grouped = len(pc.unique(labels)) == len(labels)
     if grouped and (timestamps is None or validate_timestamps_within_ends(timestamps, ends)) and _coordinates_usable():
@@ -729,7 +744,11 @@ def _build_presorted_user_ends(
     return encoded.values, pc.cast(encoded.run_ends, pa.uint64())
 
 
-def _build_presorted_indices_and_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[Any | None, Any, Any]:
+def _build_presorted_indices_and_ends(
+    df: nw.DataFrame,
+    uid_col: str | None,
+    uid_values: Any | None = None,
+) -> tuple[Any | None, Any, Any]:
     """Cheap presorted-mode drop-in for `_build_indexed_user_ranges`.
 
     `_build_indexed_user_ranges` always pays for a hash-based factorize plus
@@ -759,7 +778,7 @@ def _build_presorted_indices_and_ends(df: nw.DataFrame, uid_col: str | None) -> 
     """
     from fastmob._core import single_user_indices
 
-    labels, ends = _build_presorted_user_ends(df, uid_col)
+    labels, ends = _build_presorted_user_ends(df, uid_col, uid_values)
     identity_indices, _ = single_user_indices(len(df))
     return labels, pa.array(_as_arrow(identity_indices)), ends
 

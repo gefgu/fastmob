@@ -7,7 +7,13 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import h3_cluster_labels_arrow as _h3_cluster_labels
-from fastmob.utils._common import _as_arrow, _build_presorted_user_ends, _detect_trajectory_columns, _prepare_trajectory
+from fastmob.utils._common import (
+    _as_arrow,
+    _build_presorted_user_ends,
+    _detect_trajectory_columns,
+    _prepare_trajectory,
+    _to_arrow_columns,
+)
 
 # Calibrated around H3's average cell edge lengths.  The automatic path keeps
 # the long-standing kilometre-radius API useful; callers needing exact grid
@@ -85,16 +91,19 @@ def cluster(
         sort=True,
     )
 
-    _, group_ends = _build_presorted_user_ends(df, uid_col)
+    arrow_columns = _to_arrow_columns(df, (lat_col, lng_col, uid_col))
+    uid_values = arrow_columns.get(uid_col) if uid_col is not None else None
+    _, group_ends = _build_presorted_user_ends(df, uid_col, uid_values)
     all_labels = _as_arrow(
         _h3_cluster_labels(
-            df.get_column(lat_col).to_arrow(),
-            df.get_column(lng_col).to_arrow(),
+            arrow_columns[lat_col],
+            arrow_columns[lng_col],
             group_ends,
             resolution,
             int(min_samples),
         )
     )
+    del arrow_columns, uid_values, group_ends
 
     try:
         cluster_series = nw.new_series(name="cluster", values=all_labels, backend=df.implementation)

@@ -16,9 +16,9 @@ from fastmob.utils._common import (
     _build_indexed_user_ranges,
     _build_presorted_indices_and_ends,
     _detect_trajectory_columns,
-    _extract_timestamp_arrow,
     _extract_timestamps,
     _narwhals_safe_value,
+    _to_arrow_columns,
 )
 
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
@@ -57,11 +57,15 @@ def _filter_speed(
     )
 
     timestamps = _extract_timestamps(df, datetime_col)
-    lats_data = df.get_column(lat_col).to_arrow()
-    lngs_data = df.get_column(lng_col).to_arrow()
+    arrow_columns = _to_arrow_columns(df, (lat_col, lng_col, None if is_sorted else datetime_col, uid_col))
+    lats_data = arrow_columns[lat_col]
+    lngs_data = arrow_columns[lng_col]
+    timestamp_arrow = arrow_columns.get(datetime_col)
+    uid_values = arrow_columns.get(uid_col) if uid_col is not None else None
     # The elapsed-time kernel keeps its numeric input; ordering receives the
     # original Arrow timestamp array separately below.
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
+    del timestamps
 
     config = FilterConfig(
         max_speed_kmh=max_speed_kmh,
@@ -73,16 +77,18 @@ def _filter_speed(
 
     # 3. Build ranges and select the appropriate core function from the dictionary
     if is_sorted:
-        _, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col)
+        _, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col, uid_values)
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
     else:
-        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
             timestamps=timestamp_arrow,
+            uid_values=uid_values,
         )
         raw_mask = filter_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
+
+    del arrow_columns, lats_data, lngs_data, times_data, timestamp_arrow, uid_values, sorted_indices, ends
 
     keep_mask = _narwhals_safe_value(_as_arrow(raw_mask))
     result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()
@@ -271,24 +277,30 @@ def filter(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    lats_data = df.get_column(lat_col).to_arrow()
-    lngs_data = df.get_column(lng_col).to_arrow()
+    arrow_columns = _to_arrow_columns(df, (lat_col, lng_col, None if is_sorted else datetime_col, uid_col))
+    lats_data = arrow_columns[lat_col]
+    lngs_data = arrow_columns[lng_col]
+    timestamp_arrow = arrow_columns.get(datetime_col)
+    uid_values = arrow_columns.get(uid_col) if uid_col is not None else None
     timestamps = _extract_timestamps(df, datetime_col)
     times_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
+    del timestamps
 
     config = OutlierConfig(method=method_name, **params)
 
     if is_sorted:
-        _, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col)
+        _, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col, uid_values)
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
     else:
-        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,
             timestamps=timestamp_arrow,
+            uid_values=uid_values,
         )
         raw_mask = outlier_trajectory_indexed(lats_data, lngs_data, times_data, sorted_indices, ends, config)
+
+    del arrow_columns, lats_data, lngs_data, times_data, timestamp_arrow, uid_values, sorted_indices, ends
 
     keep_mask = _narwhals_safe_value(_as_arrow(raw_mask))
     result = df.filter(nw.new_series("__keep__", keep_mask, backend=df.implementation)).to_native()

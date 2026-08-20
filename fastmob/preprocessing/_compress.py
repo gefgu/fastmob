@@ -11,7 +11,7 @@ from fastmob.utils._common import (
     _as_arrow,
     _build_user_ranges_auto,
     _detect_trajectory_columns,
-    _extract_timestamp_arrow,
+    _to_arrow_columns,
 )
 
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
@@ -108,14 +108,22 @@ def compress(
         nw.col(lng_col).cast(nw.Float64),
     )
 
-    lats_data = df.get_column(lat_col).to_arrow()
-    lngs_data = df.get_column(lng_col).to_arrow()
-
-    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
-    _, indices, ends = _build_user_ranges_auto(df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data))
+    arrow_columns = _to_arrow_columns(df, (lat_col, lng_col, datetime_col, uid_col))
+    lats_data = arrow_columns[lat_col]
+    lngs_data = arrow_columns[lng_col]
+    timestamp_arrow = arrow_columns[datetime_col]
+    uid_values = arrow_columns.get(uid_col) if uid_col is not None else None
+    _, indices, ends = _build_user_ranges_auto(
+        df,
+        uid_col,
+        timestamp_arrow,
+        coordinates=(lats_data, lngs_data),
+        uid_values=uid_values,
+    )
     if indices is None:
         indices, _ = single_user_indices(len(df))
     result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, indices, ends, spatial_radius_km)
+    del arrow_columns, lats_data, lngs_data, timestamp_arrow, uid_values, indices, ends
 
     representative_indices, median_lats, median_lngs = _unpack_result(result_raw)
 
