@@ -8,6 +8,7 @@ import numpy as np
 from fastmob._core import compress_trajectory_representatives_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_indices_and_ends,
@@ -34,7 +35,6 @@ def compress(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted=False,
 ) -> Any:
     """Compress trajectory by collapsing nearby points into single representative points.
 
@@ -49,10 +49,6 @@ def compress(
         Minimum distance (km) between consecutive output points.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    presorted:
-        Whether the trajectory is already sorted by user and time. When True,
-        assumes the data is pre-cleaned (no null lat/lng/datetime rows).
-
     Returns
     -------
     DataFrame
@@ -117,11 +113,14 @@ def compress(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
 
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
+    presorted = _auto_presorted(
+        df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         _, indices, ends = _build_presorted_indices_and_ends(df, uid_col)
         result_raw = compress_trajectory_representatives_indexed(lats_data, lngs_data, indices, ends, spatial_radius_km)
     else:
-        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         _, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,

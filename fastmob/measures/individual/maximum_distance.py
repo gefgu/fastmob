@@ -8,6 +8,7 @@ from fastmob._core import maximum_distance_indexed, maximum_distance_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,
+    _auto_presorted,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -25,7 +26,6 @@ def maximum_distance(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return the maximum distance (km) covered in a single movement for each user.
 
@@ -56,10 +56,6 @@ def maximum_distance(
         Explicit longitude column name.  Auto-detected when None.
     uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted : bool, optional
-        When True, trust that rows are already grouped by user and ordered by
-        datetime within each user, then use the contiguous fast path.
-
     Returns
     -------
     pandas.DataFrame or polars.DataFrame
@@ -126,6 +122,11 @@ def maximum_distance(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
+
+    timestamps = _extract_timestamp_arrow(df, datetime_col)
+    presorted = _auto_presorted(
+        df, uid_col, timestamps, coordinates=(lats_data, lngs_data)
+    )
 
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)

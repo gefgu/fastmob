@@ -434,7 +434,7 @@ def _build_user_ranges_auto(
     )
 
     def _coordinates_usable() -> bool:
-        return coordinates is not None and coordinates_all_finite(*coordinates)
+        return coordinates is None or coordinates_all_finite(*coordinates)
 
     n = len(df)
     if uid_col is None:
@@ -460,6 +460,25 @@ def _build_user_ranges_auto(
         return labels, None, ends
 
     return _build_indexed_user_ranges(df, uid_col, timestamps, uid_values)
+
+
+def _auto_presorted(
+    df: nw.DataFrame,
+    uid_col: str | None,
+    timestamps: Any | None = None,
+    *,
+    coordinates: tuple[Any, Any] | None = None,
+) -> bool:
+    """Return whether the dataframe can use a contiguous native kernel.
+
+    This small compatibility helper keeps the dispatch decision centralized
+    for measures whose existing implementation has separate contiguous and
+    indexed kernel calls.  Public APIs do not expose the decision anymore.
+    """
+    _, indices, _ = _build_user_ranges_auto(
+        df, uid_col, timestamps, coordinates=coordinates
+    )
+    return indices is None
 
 
 def _rechunk_kernel_columns(nw_df: nw.DataFrame, columns: Iterable[str | None]) -> nw.DataFrame:
@@ -743,7 +762,7 @@ def _build_presorted_indices_and_ends(df: nw.DataFrame, uid_col: str | None) -> 
     """Cheap presorted-mode drop-in for `_build_indexed_user_ranges`.
 
     `_build_indexed_user_ranges` (used unconditionally by compress/filter/
-    stay_locations, even in their ``presorted=True`` branch) always pays for
+    stay_locations always pays for
     a hash-based factorize plus the ``indexed_user_indices``/
     ``time_ordered_user_indices`` Rust kernels -- work that makes sense when
     the caller's ordering can't be trusted, but is pure waste when the

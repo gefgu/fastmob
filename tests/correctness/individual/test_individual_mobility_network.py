@@ -197,7 +197,7 @@ def test_imn_presorted_matches_default_pandas():
         .drop(columns=["__row_order"])
     )
 
-    assert _to_edge_dict(individual_mobility_network(sorted_input, presorted=True)) == _to_edge_dict(
+    assert _to_edge_dict(individual_mobility_network(sorted_input)) == _to_edge_dict(
         individual_mobility_network(raw)
     )
 
@@ -215,7 +215,7 @@ def test_imn_presorted_no_uid():
             "lng": [0.0] * 3,
         }
     )
-    result = individual_mobility_network(df, presorted=True)
+    result = individual_mobility_network(df)
     edge_dict = _to_edge_dict(result)
 
     assert edge_dict == {
@@ -241,7 +241,7 @@ def test_imn_presorted_polars_known_values():
             "lng": [0.0] * 5,
         }
     )
-    edge_dict = _to_edge_dict(individual_mobility_network(df, presorted=True))
+    edge_dict = _to_edge_dict(individual_mobility_network(df))
 
     assert edge_dict["a"] == {
         (1.0, 0.0, 2.0, 0.0): 1,
@@ -265,8 +265,8 @@ def test_imn_presorted_self_loop_behavior():
         }
     )
 
-    without_loops = _to_edge_dict(individual_mobility_network(df, presorted=True, self_loops=False))
-    with_loops = _to_edge_dict(individual_mobility_network(df, presorted=True, self_loops=True))
+    without_loops = _to_edge_dict(individual_mobility_network(df, self_loops=False))
+    with_loops = _to_edge_dict(individual_mobility_network(df, self_loops=True))
 
     assert (1.0, 0.0, 1.0, 0.0) not in without_loops["a"]
     assert with_loops["a"][(1.0, 0.0, 1.0, 0.0)] == 1

@@ -6,6 +6,7 @@ import narwhals as nw
 
 from fastmob._core import number_of_locations_indexed, number_of_locations_presorted
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -21,7 +22,6 @@ def number_of_locations(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return the number of distinct locations visited by each user.
 
@@ -106,6 +106,9 @@ def number_of_locations(
 
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
+    presorted = _auto_presorted(
+        df, uid_col, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         n_locs = _as_arrow(number_of_locations_presorted(lats_data, lngs_data, ends))

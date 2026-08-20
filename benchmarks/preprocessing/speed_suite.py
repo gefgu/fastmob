@@ -315,8 +315,6 @@ def metric_kwargs_for_library(
     input_order: str = "raw",
 ) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
-    if library == "fastmob" and input_order == "sorted" and spec.input_kind == "trajectory":
-        kwargs["presorted"] = True
     if library != "skmob":
         return kwargs
 

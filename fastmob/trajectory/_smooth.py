@@ -20,6 +20,7 @@ from fastmob._core import (
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
+    _auto_presorted,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -80,7 +81,6 @@ def smooth(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
     **method_kwargs: Any,
 ) -> Any:
     """Smooth a trajectory's positions using a named algorithm.
@@ -98,10 +98,6 @@ def smooth(
         shipped currently.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    presorted:
-        Whether the trajectory is already sorted by user and time. Setting
-        this to True can speed up processing but may lead to incorrect
-        results if the data is not properly preprocessed.
     **method_kwargs:
         Method-specific parameters, forwarded to the matching
         ``SMOOTH_METHODS[method]`` preparer.
@@ -168,6 +164,9 @@ def smooth(
 
     config = SmoothConfig(method=method_name, **params)
 
+    presorted = _auto_presorted(
+        df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         _, ends = _build_presorted_user_ends(df, uid_col)
         out_lats, out_lngs = smooth_trajectory_presorted(lats_data, lngs_data, times_data, ends, config)

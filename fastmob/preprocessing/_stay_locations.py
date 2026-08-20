@@ -8,6 +8,7 @@ import narwhals as nw
 from fastmob._core import detect_stay_locations_batch_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_indices_and_ends,
@@ -48,7 +49,6 @@ def stay_locations(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted=False,
 ) -> Any:
     """Detect stay locations (stops) in trajectory data.
 
@@ -71,8 +71,6 @@ def stay_locations(
         If set, trim trailing high-speed points from the end of each stop.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    presorted:
-        Whether the trajectory is already sorted by user and time.
 
     Returns
     -------
@@ -139,7 +137,11 @@ def stay_locations(
     timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
 
+    presorted = _auto_presorted(
+        df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         uid_values, sorted_indices, ends = _build_presorted_indices_and_ends(df, uid_col)
         _result = detect_stay_locations_batch_indexed(
@@ -155,7 +157,6 @@ def stay_locations(
         )
         out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
     else:
-        timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
         uid_values, sorted_indices, ends = _build_indexed_user_ranges(
             df,
             uid_col,

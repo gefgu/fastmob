@@ -83,7 +83,7 @@ def test_invalid_tolerance(function, trajectory):
 
 def test_presorted_path_matches_default(trajectory):
     expected = privacy.location_sequence_risk(trajectory, 2)
-    actual = privacy.location_sequence_risk(trajectory, 2, presorted=True)
+    actual = privacy.location_sequence_risk(trajectory, 2)
     pd.testing.assert_frame_equal(actual, expected)
 
 

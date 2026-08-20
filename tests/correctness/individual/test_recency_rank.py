@@ -157,7 +157,7 @@ def test_recency_rank_presorted_matches_default_pandas():
         .drop(columns=["__row_order"])
     )
 
-    assert _to_dict(recency_rank(sorted_input, presorted=True)) == _to_dict(recency_rank(raw))
+    assert _to_dict(recency_rank(sorted_input)) == _to_dict(recency_rank(raw))
 
 
 def test_recency_rank_presorted_no_uid():
@@ -171,7 +171,7 @@ def test_recency_rank_presorted_no_uid():
             "lng": [0.0] * 4,
         }
     )
-    result = recency_rank(df, presorted=True)
+    result = recency_rank(df)
     rows = {row["lat"]: row["recency_rank"] for row in nw.from_native(result, eager_only=True).rows(named=True)}
     assert rows == {3.0: 1, 1.0: 2, 2.0: 3}
 
@@ -189,7 +189,7 @@ def test_recency_rank_presorted_polars_known_values():
             "lng": [0.0] * 5,
         }
     )
-    mapping = _to_dict(recency_rank(df, presorted=True))
+    mapping = _to_dict(recency_rank(df))
     assert mapping["a"][(1.0, 0.0)] == 1
     assert mapping["a"][(2.0, 0.0)] == 2
     assert mapping["b"][(4.0, 0.0)] == 1

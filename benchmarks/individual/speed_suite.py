@@ -328,19 +328,6 @@ def metric_kwargs_for_library(
     input_order: str = "raw",
 ) -> dict[str, Any]:
     kwargs = dict(spec.kwargs)
-    if (
-        library == "fastmob"
-        and input_order == "sorted"
-        and spec.input_kind == "trajectory"
-        and spec.name
-        not in [
-            "random_entropy",
-            "uncorrelated_entropy",
-            "trajectory_entropy",
-            "trajectory_predictability",
-        ]
-    ):
-        kwargs["presorted"] = True
     if library != "skmob":
         return kwargs
 
@@ -401,7 +388,7 @@ def load_brightkite_movingpandas(data_path: Path, size: int) -> Any:
 
 
 def clean_sorted_trajectory_input(df: Any, *, backend: str) -> Any:
-    """Drop missing user/time/coordinate rows before presorted=True benchmarks."""
+    """Drop missing user/time/coordinate rows before trajectory benchmarks."""
     if backend == "polars":
         import polars as pl
 

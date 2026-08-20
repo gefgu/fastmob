@@ -160,7 +160,7 @@ def test_frequency_rank_presorted_matches_default_pandas():
     )
     sorted_input = raw.sort_values(["uid", "datetime"], kind="mergesort")
 
-    assert _to_dict(frequency_rank(sorted_input, presorted=True)) == _to_dict(frequency_rank(raw))
+    assert _to_dict(frequency_rank(sorted_input)) == _to_dict(frequency_rank(raw))
 
 
 def test_frequency_rank_presorted_no_uid():
@@ -174,7 +174,7 @@ def test_frequency_rank_presorted_no_uid():
             "lng": [0.0] * 4,
         }
     )
-    result = frequency_rank(df, presorted=True)
+    result = frequency_rank(df)
     rows = {row["lat"]: row["frequency_rank"] for row in nw.from_native(result, eager_only=True).rows(named=True)}
     assert rows == {1.0: 1, 2.0: 2}
 
@@ -192,7 +192,7 @@ def test_frequency_rank_presorted_polars_known_values():
             "lng": [0.0] * 5,
         }
     )
-    mapping = _to_dict(frequency_rank(df, presorted=True))
+    mapping = _to_dict(frequency_rank(df))
     assert mapping["a"][(1.0, 0.0)] == 1
     assert mapping["a"][(2.0, 0.0)] == 2
     assert set(mapping["b"].values()) == {1, 2}

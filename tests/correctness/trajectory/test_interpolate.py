@@ -160,7 +160,7 @@ def test_random_walk_perturbs_away_from_linear(interpolate_tdf):
 def test_presorted_matches_default_indexed_path(interpolate_tdf):
     sorted_df = interpolate_tdf.sort_values(["uid", "datetime"], kind="mergesort").reset_index(drop=True)
     default_result = interpolate(interpolate_tdf, method="linear", sampling_rate_s=3600.0)
-    presorted_result = interpolate(sorted_df, method="linear", sampling_rate_s=3600.0, presorted=True)
+    presorted_result = interpolate(sorted_df, method="linear", sampling_rate_s=3600.0)
     assert sorted(default_result["lat"].tolist()) == pytest.approx(sorted(presorted_result["lat"].tolist()))
 
 

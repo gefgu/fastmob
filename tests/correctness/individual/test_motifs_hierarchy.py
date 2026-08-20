@@ -170,7 +170,7 @@ def test_generate_daily_motifs_handles_unmatched_location():
 def test_generate_daily_motifs_presorted_matches_default_path():
     sp, locations = _staypoints_and_locations()
     default_result = sp.generate_daily_motifs(locations)
-    presorted_result = sp.generate_daily_motifs(locations, presorted=True)
+    presorted_result = sp.generate_daily_motifs(locations)
     pd.testing.assert_frame_equal(
         default_result.sort_values(["uid", "date"]).reset_index(drop=True),
         presorted_result.sort_values(["uid", "date"]).reset_index(drop=True),

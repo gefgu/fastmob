@@ -327,7 +327,6 @@ class TrajDataFrame(BaseDataFrame):
             lat_col=self.lat_col,
             lng_col=self.lng_col,
             uid_col=self.uid_col,
-            presorted=self.sorted,
             **kwargs,
         )
 
@@ -375,7 +374,6 @@ class TrajDataFrame(BaseDataFrame):
             lat_col=self.lat_col,
             lng_col=self.lng_col,
             uid_col=self.uid_col,
-            presorted=self.sorted,
             **method_kwargs,
         )
         return TrajDataFrame(
@@ -427,7 +425,6 @@ class TrajDataFrame(BaseDataFrame):
             lat_col=self.lat_col,
             lng_col=self.lng_col,
             uid_col=self.uid_col,
-            presorted=self.sorted,
             **method_kwargs,
         )
         return TrajDataFrame(
@@ -479,7 +476,6 @@ class TrajDataFrame(BaseDataFrame):
             lat_col=self.lat_col,
             lng_col=self.lng_col,
             uid_col=self.uid_col,
-            presorted=self.sorted,
         )
 
     def trajectory_distance(self, other, method: str = "dtw", **method_kwargs) -> float:

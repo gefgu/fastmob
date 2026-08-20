@@ -94,7 +94,6 @@ def _prepare_visitation_law_data(
     lng_col: str | None = None,
     start_night: int = 22,
     end_night: int = 7,
-    presorted: bool = False,
 ) -> Any:
     """Prepare per-user H3-cell observations for the universal visitation law.
 
@@ -118,8 +117,6 @@ def _prepare_visitation_law_data(
         defaults for a Staypoints input.
     start_night, end_night:
         Local hour bounds passed to :func:`fastmob.home_location`.
-    presorted:
-        Trust that staypoints are grouped by user for the home-detection fast path.
     """
     if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, int) or not 0 <= h3_resolution <= 15:
         raise ValueError("h3_resolution must be an integer between 0 and 15")
@@ -172,7 +169,6 @@ def _prepare_visitation_law_data(
             lat_col=lat_col,
             lng_col=lng_col,
             uid_col=user_id_col,
-            presorted=presorted,
         ),
         eager_only=True,
     ).rename({lat_col: "home_lat", lng_col: "home_lng"})
@@ -426,7 +422,6 @@ def fit_visitation_law(
     lng_col: str | None = None,
     start_night: int = 22,
     end_night: int = 7,
-    presorted: bool = False,
     min_rf: float | None = None,
     max_rf: float | None = None,
     n_bins: int = 30,
@@ -455,7 +450,6 @@ def fit_visitation_law(
         lng_col=lng_col,
         start_night=start_night,
         end_night=end_night,
-        presorted=presorted,
     )
     rf_values, rho_values, _label = _bin_visitation_law(
         data,

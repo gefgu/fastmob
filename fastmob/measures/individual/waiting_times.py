@@ -12,6 +12,7 @@ from fastmob._core import (
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -36,7 +37,6 @@ def waiting_times(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return the waiting times (seconds) between consecutive GPS fixes for each user.
 
@@ -135,8 +135,12 @@ def waiting_times(
 
     ops = _DISPATCHER.get_ops(df)
     timestamps = _extract_timestamps(df, datetime_col)
+    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     timestamps_data = ops["extract_data"](timestamps)
     is_numpy_backend = _DISPATCHER.get_backend_key(df) == "numpy"
+    presorted = _auto_presorted(
+        df, uid_col, timestamp_arrow
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         if merge:
@@ -149,7 +153,6 @@ def waiting_times(
             return _to_native({"waiting_times": wt_values}, df)
         return _to_native({uid_col: uid_values, "waiting_times": wt_values}, df)
 
-    timestamp_arrow = _extract_timestamp_arrow(df, datetime_col)
     uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamp_arrow)
     if merge:
         flat = _as_arrow(waiting_times_indexed_flat(timestamps_data, indices, ends))

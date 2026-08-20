@@ -64,12 +64,12 @@ def test_benchmark_metric_records_import_skip():
     assert result["times_seconds"] == []
 
 
-def test_sorted_fastmob_trajectory_benchmark_uses_presorted_keyword():
+def test_sorted_fastmob_trajectory_benchmark_uses_auto_dispatch():
     spec = suite.BenchmarkSpec("maximum_distance", "unused", "unused", "maximum_distance", {})
 
     kwargs = suite.metric_kwargs_for_library(spec, "fastmob", lambda **_kwargs: None, input_order="sorted")
 
-    assert kwargs == {"presorted": True}
+    assert kwargs == {}
 
 
 def test_sorted_fastmob_visit_benchmark_does_not_add_presorted_keyword():

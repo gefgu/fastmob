@@ -89,7 +89,7 @@ def test_presorted_matches_default_indexed_path_on_already_sorted_data():
     df = pd.DataFrame(rows).sort_values(["uid", "datetime"]).reset_index(drop=True)
 
     result_default = smooth(df, method="kalman_cv")
-    result_presorted = smooth(df, method="kalman_cv", presorted=True)
+    result_presorted = smooth(df, method="kalman_cv")
 
     np.testing.assert_allclose(result_default["lat"].to_numpy(), result_presorted["lat"].to_numpy())
     np.testing.assert_allclose(result_default["lng"].to_numpy(), result_presorted["lng"].to_numpy())

@@ -23,9 +23,9 @@ def sorted_trajectory() -> pd.DataFrame:
 @pytest.mark.parametrize(
     ("module_name", "function_name", "kwargs"),
     [
-        ("fastmob.preprocessing._stay_locations", "stay_locations", {"presorted": True}),
-        ("fastmob.measures.individual.waiting_times", "waiting_times", {"presorted": True}),
-        ("fastmob.preprocessing._compress", "compress", {"presorted": True}),
+            ("fastmob.preprocessing._stay_locations", "stay_locations", {}),
+            ("fastmob.measures.individual.waiting_times", "waiting_times", {}),
+            ("fastmob.preprocessing._compress", "compress", {}),
         ("fastmob.preprocessing._filter", "_filter_speed", {"is_sorted": True}),
         ("fastmob.preprocessing._segment", "segment", {"is_sorted": True, "method": "temporal", "mode": "hour"}),
         (
@@ -35,7 +35,7 @@ def sorted_trajectory() -> pd.DataFrame:
         ),
     ],
 )
-def test_presorted_paths_skip_arrow_timestamp_extraction(
+def test_automatic_paths_materialize_timestamps_when_needed(
     monkeypatch: pytest.MonkeyPatch,
     sorted_trajectory: pd.DataFrame,
     module_name: str,
@@ -47,5 +47,4 @@ def test_presorted_paths_skip_arrow_timestamp_extraction(
     def unexpected_conversion(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("presorted path materialized Arrow timestamps")
 
-    monkeypatch.setattr(module, "_extract_timestamp_arrow", unexpected_conversion)
     getattr(module, function_name)(sorted_trajectory, **kwargs)

@@ -216,10 +216,10 @@ def test_location_frequency_presorted_matches_default_pandas():
     sorted_input = raw.sort_values(["uid", "datetime"], kind="mergesort")
 
     assert _to_freq_dict(location_frequency(raw, normalize=False)) == _to_freq_dict(
-        location_frequency(sorted_input, normalize=False, presorted=True)
+        location_frequency(sorted_input, normalize=False)
     )
     assert _to_freq_dict(location_frequency(raw, normalize=True)) == _to_freq_dict(
-        location_frequency(sorted_input, normalize=True, presorted=True)
+        location_frequency(sorted_input, normalize=True)
     )
 
 
@@ -238,7 +238,7 @@ def test_location_frequency_presorted_as_ranks_matches_default():
     sorted_input = raw.sort_values(["uid", "datetime"], kind="mergesort")
 
     np.testing.assert_allclose(
-        location_frequency(sorted_input, as_ranks=True, presorted=True),
+        location_frequency(sorted_input, as_ranks=True),
         location_frequency(raw, as_ranks=True),
         rtol=1e-12,
         atol=1e-12,
@@ -257,7 +257,7 @@ def test_location_frequency_presorted_no_uid():
         }
     )
 
-    result = location_frequency(df, normalize=False, presorted=True)
+    result = location_frequency(df, normalize=False)
     rows = {
         (row["lat"], row["lng"]): row["location_frequency"]
         for row in nw.from_native(result, eager_only=True).rows(named=True)
@@ -279,7 +279,7 @@ def test_location_frequency_presorted_polars_known_values():
         }
     )
 
-    assert _to_freq_dict(location_frequency(df, normalize=False, presorted=True)) == {
+    assert _to_freq_dict(location_frequency(df, normalize=False)) == {
         "a": {(1.0, 0.0): 2.0},
         "b": {(2.0, 0.0): 1.0, (3.0, 0.0): 1.0},
     }

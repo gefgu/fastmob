@@ -8,6 +8,7 @@ import numpy as np
 from fastmob._core import interpolate_at_indexed, interpolate_at_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -49,7 +50,6 @@ def interpolate_at(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Query each user's interpolated position at one or more timestamps.
 
@@ -72,9 +72,6 @@ def interpolate_at(
         surrounding points; ``"nearest"`` returns the closer of the two.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    presorted:
-        Whether the trajectory is already sorted by user and time.
-
     Returns
     -------
     DataFrame
@@ -124,6 +121,9 @@ def interpolate_at(
 
     query_times_s = _query_timestamps_s(at)
 
+    presorted = _auto_presorted(
+        df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         out_lats, out_lngs, out_valid = interpolate_at_presorted(

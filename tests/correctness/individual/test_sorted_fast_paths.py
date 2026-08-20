@@ -22,8 +22,6 @@ SPATIAL_FUNCTIONS = (
     "waiting_times",
 )
 
-#: These detect an already-grouped frame themselves and have no ``presorted``
-#: keyword to opt into.
 AUTO_DISPATCH_FUNCTIONS = ("jump_lengths", "radius_of_gyration")
 
 
@@ -106,25 +104,16 @@ def test_sorted_spatial_fast_path_matches_default_pandas(name):
     kwargs = _metric_kwargs(name)
 
     default_result = metric(raw, **kwargs)
-    sorted_result = metric(sorted_input, **kwargs, presorted=True)
+    sorted_result = metric(sorted_input, **kwargs)
 
     _assert_frames_equivalent(default_result, sorted_result)
 
 
 @pytest.mark.parametrize("name", SPATIAL_FUNCTIONS)
-def test_spatial_metric_accepts_presorted_keyword(name):
-    module = __import__(f"fastmob.measures.individual.{name}", fromlist=[name])
-    metric = getattr(module, name)
-    assert "presorted" in inspect.signature(metric).parameters
-
-
-@pytest.mark.parametrize("name", AUTO_DISPATCH_FUNCTIONS)
-def test_auto_dispatch_metric_has_no_presorted_keyword(name):
+def test_spatial_metric_has_no_presorted_keyword(name):
     module = __import__(f"fastmob.measures.individual.{name}", fromlist=[name])
     metric = getattr(module, name)
     assert "presorted" not in inspect.signature(metric).parameters
-    with pytest.raises(TypeError):
-        metric(_tiny_unsorted_df(), presorted=True)
 
 
 @pytest.mark.parametrize("name", AUTO_DISPATCH_FUNCTIONS)
@@ -204,7 +193,7 @@ def test_sorted_waiting_times_and_jump_lengths_merge_match_default_single_user()
         atol=1e-10,
     )
     np.testing.assert_allclose(
-        waiting_times(sorted_input, merge=True, presorted=True),
+        waiting_times(sorted_input, merge=True),
         waiting_times(raw, merge=True),
         rtol=1e-10,
         atol=1e-10,
@@ -240,7 +229,7 @@ def test_sorted_spatial_fast_path_polars_smoke():
 
     raw = _tiny_unsorted_df()
     sorted_input = pl.from_pandas(_sorted_df(raw))
-    result = distance_straight_line(sorted_input, presorted=True)
+    result = distance_straight_line(sorted_input)
 
     assert result.height == 3
     assert "distance_straight_line" in result.columns

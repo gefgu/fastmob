@@ -1,6 +1,6 @@
 use fastmob_core::network::road_graph::{
-    RoadGraph, batch_nearest_coordinates, batch_road_distances, batch_road_routes,
-    batch_route_edge_flows, subsample_waypoints,
+    batch_nearest_coordinates, batch_road_distances, batch_road_routes, batch_route_edge_flows,
+    subsample_waypoints, RoadGraph,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -246,7 +246,11 @@ pub fn nearest_nodes_arrow(
         .zip(distances.iter())
         .map(
             |(node, &distance)| {
-                if distance <= max_distance_m { node } else { -1 }
+                if distance <= max_distance_m {
+                    node
+                } else {
+                    -1
+                }
             },
         )
         .collect();

@@ -8,6 +8,7 @@ import narwhals as nw
 
 from fastmob._core import home_location_indexed, home_location_presorted
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -26,7 +27,6 @@ def work_location(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return each user's most-visited weekday daytime location.
 
@@ -63,6 +63,9 @@ def work_location(
     # Reuse the Rust time-window mode finder with a non-wrapping daytime
     # interval. All rows are already weekday/daytime, so this also gives the
     # expected deterministic tie-breaking and Arrow fast path.
+    presorted = _auto_presorted(
+        work, uid_col, coordinates=(lats, lngs)
+    )
     if presorted:
         uids, ends = _build_presorted_user_ends(work, uid_col)
         out_lat, out_lng = home_location_presorted(lats, lngs, hours, ends, float(start_work), float(end_work))

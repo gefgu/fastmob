@@ -6,6 +6,7 @@ import narwhals as nw
 
 from fastmob._core import k_radius_of_gyration_indexed, k_radius_of_gyration_presorted
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -23,7 +24,6 @@ def k_radius_of_gyration(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ):
     """Compute the k-radius of gyration (km) for each user in the trajectory.
 
@@ -129,6 +129,9 @@ def k_radius_of_gyration(
     timestamps = _extract_timestamps(df, datetime_col)
     timestamps_data = timestamps.to_arrow()
 
+    presorted = _auto_presorted(
+        df, uid_col, coordinates=(lats, lngs)
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         krg_values = _as_arrow(k_radius_of_gyration_presorted(lats, lngs, timestamps_data, ends, k))

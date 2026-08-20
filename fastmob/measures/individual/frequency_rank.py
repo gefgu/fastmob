@@ -6,6 +6,7 @@ import narwhals as nw
 
 from fastmob._core import frequency_rank_indexed, frequency_rank_presorted
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -31,7 +32,6 @@ def frequency_rank(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return the frequency rank of each distinct location for every user.
 
@@ -123,6 +123,9 @@ def frequency_rank(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
 
+    presorted = _auto_presorted(
+        df, uid_col, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw = frequency_rank_presorted(lats_data, lngs_data, ends)

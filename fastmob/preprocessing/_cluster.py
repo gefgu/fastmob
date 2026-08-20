@@ -51,7 +51,6 @@ def cluster(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted=False,
     n_jobs: int | None = None,
 ) -> Any:
     """Cluster stop locations with H3 cells and connected components.
@@ -83,7 +82,7 @@ def cluster(
         lat_col=lat_col,
         lng_col=lng_col,
         uid_col=uid_col,
-        sort=not presorted,
+        sort=True,
     )
 
     _, group_ends = _build_presorted_user_ends(df, uid_col)

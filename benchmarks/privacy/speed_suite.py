@@ -338,8 +338,6 @@ def benchmark_attack(
         return skipped_result(str(exc), profile)
 
     assess_kwargs = dict(spec.assess_kwargs)
-    if library == "fastmob" and input_order == "sorted":
-        assess_kwargs["presorted"] = True
 
     try:
         return run_profiled_call(

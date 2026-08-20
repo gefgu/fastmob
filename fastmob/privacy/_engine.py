@@ -8,6 +8,7 @@ import narwhals as nw
 
 from fastmob._core import privacy_assess_risk
 from fastmob.utils._common import (
+    _auto_presorted,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -89,7 +90,12 @@ def _result(
     }
     if datetime_col is not None:
         values = df.get_column(datetime_col).to_list()
-        columns[datetime_col] = [None if int(index) == _NO_ROW else values[int(index)] for index in result.row_indices]
+        columns[datetime_col] = [
+            None
+            if int(index.as_py() if hasattr(index, "as_py") else index) == _NO_ROW
+            else values[int(index.as_py() if hasattr(index, "as_py") else index)]
+            for index in result.row_indices
+        ]
     columns.update(
         {
             output_uid: _uids(uid_values, result.force_user_indices),
@@ -114,7 +120,6 @@ def assess_risk(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
     require_datetime: bool = False,
     h3_resolution: int = 12,
     locations: Any | None = None,
@@ -155,11 +160,17 @@ def assess_risk(
         if force_instances:
             raise ValueError("force_instances is not supported with externally assigned global locations")
     time_keys = _time_keys(df, datetime_col, time_precision) if time_precision is not None else None
+    timestamps = _extract_timestamp_arrow(df, datetime_col) if attack == "sequence" else None
+    presorted = _auto_presorted(
+        df,
+        uid_col,
+        timestamps,
+        coordinates=(df.get_column(lat_col).to_arrow(), df.get_column(lng_col).to_arrow()),
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         indices = None
     else:
-        timestamps = _extract_timestamp_arrow(df, datetime_col) if attack == "sequence" else None
         uid_values, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
     result = privacy_assess_risk(
         df.get_column(lat_col).to_arrow(),

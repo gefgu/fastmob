@@ -575,7 +575,6 @@ def _jump_lengths_function_entrypoint(tdf: Any, **kwargs: Any) -> Any:
         lat_col=tdf.lat_col,
         lng_col=tdf.lng_col,
         uid_col=tdf.uid_col,
-        presorted=tdf.sorted,
         **kwargs,
     )
 

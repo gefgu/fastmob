@@ -11,6 +11,7 @@ from fastmob._core import (
 )
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -77,7 +78,6 @@ def interpolate(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
     **method_kwargs: Any,
 ) -> Any:
     """Fill gaps in a trajectory by inserting interpolated points.
@@ -101,10 +101,6 @@ def interpolate(
         before an interpolated point is inserted. Default ``3600.0``.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
-    presorted:
-        Whether the trajectory is already sorted by user and time. Setting
-        this to True can speed up processing but may lead to incorrect
-        results if the data is not properly preprocessed.
     **method_kwargs:
         Method-specific parameters, forwarded to the matching
         ``INTERPOLATE_METHODS[method]`` preparer.
@@ -176,6 +172,9 @@ def interpolate(
 
     config = InterpolationConfig(method=method_name, sampling_rate_s=sampling_rate_s, **params)
 
+    presorted = _auto_presorted(
+        df, uid_col, timestamp_arrow, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         out_lats, out_lngs, out_times, out_user_idx = interpolate_trajectory_presorted(

@@ -6,6 +6,7 @@ import narwhals as nw
 
 from fastmob._core import number_of_visits_indexed, number_of_visits_presorted
 from fastmob.utils._common import (
+    _auto_presorted,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
     _detect_trajectory_columns,
@@ -20,7 +21,6 @@ def number_of_visits(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return the total number of trajectory points (visits) for each user.
 
@@ -43,10 +43,6 @@ def number_of_visits(
         Explicit longitude column name.  Auto-detected when None.
     uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted : bool, optional
-        When True, trust that rows are already grouped by user and use the
-        contiguous fast path.
-
     Returns
     -------
     pandas.DataFrame or polars.DataFrame
@@ -96,6 +92,12 @@ def number_of_visits(
     df = df.with_columns(
         nw.col(lat_col).cast(nw.Float64),
         nw.col(lng_col).cast(nw.Float64),
+    )
+
+    presorted = _auto_presorted(
+        df,
+        uid_col,
+        coordinates=(df.get_column(lat_col).to_arrow(), df.get_column(lng_col).to_arrow()),
     )
 
     if presorted:

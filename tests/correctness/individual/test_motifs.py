@@ -146,7 +146,7 @@ def test_indexed_and_presorted_paths_match():
         ],
         ignore_index=True,
     ).sort_values(["agent_id", "start_timestamp"], kind="stable")
-    expected = daily_motifs(df, presorted=True).sort_values(["agent_id", "date"]).reset_index(drop=True)
+    expected = daily_motifs(df).sort_values(["agent_id", "date"]).reset_index(drop=True)
     shuffled = df.sample(frac=1.0, random_state=0).reset_index(drop=True)
     actual = daily_motifs(shuffled).sort_values(["agent_id", "date"]).reset_index(drop=True)
     pd.testing.assert_frame_equal(actual, expected)

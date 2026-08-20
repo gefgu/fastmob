@@ -8,6 +8,7 @@ import narwhals as nw
 
 from fastmob import _core
 from fastmob.utils._common import (
+    _auto_presorted,
     DURATION_CANDIDATES,
     LOCATION_CANDIDATES,
     PURPOSE_CANDIDATES,
@@ -133,13 +134,12 @@ def daily_motifs(
     datetime_col: str | None = None,
     end_datetime_col: str | None = None,
     duration_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Compute one home-anchored mobility motif per user and day.
 
     The returned dataframe matches the input backend and contains the resolved
-    user-ID column, ``date``, and ``motif_id``. Set ``presorted=True`` only when
-    rows are already grouped by user and chronological within each user.
+    user-ID column, ``date``, and ``motif_id``. Row ordering is detected
+    automatically before selecting the native kernel.
     """
     import pyarrow as pa
 
@@ -163,11 +163,12 @@ def daily_motifs(
         nw.col(purpose_col).cast(nw.String).alias(purpose_col),
     )
 
+    timestamps = _extract_timestamp_arrow(df, datetime_col)
+    presorted = _auto_presorted(df, uid_col, timestamps)
     if presorted:
         uid_labels, ends = _build_presorted_user_ends(df, uid_col)
         indices = None
     else:
-        timestamps = _extract_timestamp_arrow(df, datetime_col)
         uid_labels, indices, ends = _build_indexed_user_ranges(df, uid_col, timestamps)
 
     location_values = _encode_locations(df, location_col)
@@ -254,8 +255,6 @@ def _assemble_motif_result(
 def daily_motifs_from_staypoints(
     staypoints: Any,
     locations: Any,
-    *,
-    presorted: bool = False,
 ) -> Any:
     """Compute daily motifs directly from a ``Staypoints``/``Locations`` pair.
 
@@ -298,6 +297,8 @@ def daily_motifs_from_staypoints(
     )
     uid_dtype = sp_nw.schema[uid_col]
     backend = sp_nw.implementation
+
+    presorted = _auto_presorted(sp_nw, uid_col)
 
     if presorted:
         uid_labels, ends = _build_presorted_user_ends(sp_nw, uid_col)

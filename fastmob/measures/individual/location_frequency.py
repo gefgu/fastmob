@@ -6,6 +6,7 @@ import narwhals as nw
 
 from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -37,7 +38,6 @@ def location_frequency(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return visit frequency for each distinct location per user.
 
@@ -153,6 +153,9 @@ def location_frequency(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
 
+    presorted = _auto_presorted(
+        df, uid_col, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         raw = location_frequency_presorted(lats_data, lngs_data, ends, normalize)

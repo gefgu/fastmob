@@ -8,7 +8,7 @@ Example::
 
 The benchmark deliberately times checks separately from dataframe setup and
 sorting.  This makes the result useful for deciding whether automatic
-dispatch to the existing ``presorted=True`` kernels is worthwhile.
+dispatch to the existing contiguous kernels is worthwhile.
 """
 
 from __future__ import annotations

@@ -153,7 +153,6 @@ class Staypoints(BaseDataFrame):
     @staticmethod
     def resolve_dataframe(
         staypoints: Any | Staypoints,
-        *,
         user_id_col: str | None = None,
         timestamp_col: str | None = None,
         lat_col: str | None = None,
@@ -434,8 +433,6 @@ class Staypoints(BaseDataFrame):
     def generate_daily_motifs(
         self,
         locations: Locations,
-        *,
-        presorted: bool = False,
     ) -> Any:
         """Compute one home-anchored mobility motif per user and day.
 
@@ -445,9 +442,6 @@ class Staypoints(BaseDataFrame):
         ----------
         locations : Locations
             Global catalogue with home-location labels available to the motif method.
-        presorted : bool, optional
-            Whether rows are already user/time ordered.
-
         Returns
         -------
         DataFrame
@@ -459,4 +453,4 @@ class Staypoints(BaseDataFrame):
         """
         from ..measures.individual.motifs import daily_motifs_from_staypoints
 
-        return daily_motifs_from_staypoints(self, locations, presorted=presorted)
+        return daily_motifs_from_staypoints(self, locations)

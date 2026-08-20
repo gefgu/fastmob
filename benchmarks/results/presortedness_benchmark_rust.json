@@ -1,0 +1,665 @@
+{
+  "metadata": {
+    "backends": [
+      "pandas",
+      "polars"
+    ],
+    "dataset_path": "/mnt/raid5/gustavo/fastmob/tests/shared/data/loc-brightkite_totalCheckins.txt.gz",
+    "iterations": 2,
+    "ordering_rule": "contiguous user groups; timestamps nondecreasing within group",
+    "sizes": [
+      4000000
+    ],
+    "validator": "fastmob._core.validate_presorted_user_timestamps"
+  },
+  "results": [
+    {
+      "backend": "pandas",
+      "metrics": {
+        "check_user_contiguous_rust": {
+          "average_seconds": 0.011859124526381493,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.011775523889809847,
+          "status": "ok",
+          "times_seconds": [
+            0.011942725162953138,
+            0.011775523889809847
+          ]
+        },
+        "check_user_timestamp_sorted_rust": {
+          "average_seconds": 0.016805225983262062,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.016628256998956203,
+          "status": "ok",
+          "times_seconds": [
+            0.01698219496756792,
+            0.016628256998956203
+          ]
+        },
+        "derived": {
+          "jump_check_overhead_on_indexed": 0.016805225983262062,
+          "jump_checked_indexed_overhead_seconds": 0.03717466467060149,
+          "jump_net_savings_after_check_seconds": null,
+          "jump_presorted_savings_seconds": null,
+          "radius_check_overhead_on_indexed": 0.011859124526381493,
+          "radius_checked_indexed_overhead_seconds": 0.014217674033716321,
+          "radius_net_savings_after_check_seconds": null,
+          "radius_presorted_savings_seconds": null
+        },
+        "jump_lengths_auto_dispatch": {
+          "average_seconds": 0.12159099453128874,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.12084568198770285,
+          "status": "ok",
+          "times_seconds": [
+            0.12233630707487464,
+            0.12084568198770285
+          ]
+        },
+        "jump_lengths_checked_indexed": {
+          "average_seconds": 0.13008638890460134,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.1299282587133348,
+          "status": "ok",
+          "times_seconds": [
+            0.1299282587133348,
+            0.13024451909586787
+          ]
+        },
+        "jump_lengths_indexed": {
+          "average_seconds": 0.09291172423399985,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.08628756972029805,
+          "status": "ok",
+          "times_seconds": [
+            0.08628756972029805,
+            0.09953587874770164
+          ]
+        },
+        "jump_lengths_presorted": null,
+        "radius_of_gyration_auto_dispatch": {
+          "average_seconds": 0.07663673185743392,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.07638667291030288,
+          "status": "ok",
+          "times_seconds": [
+            0.07688679080456495,
+            0.07638667291030288
+          ]
+        },
+        "radius_of_gyration_checked_indexed": {
+          "average_seconds": 0.14229463902302086,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.14193491823971272,
+          "status": "ok",
+          "times_seconds": [
+            0.142654359806329,
+            0.14193491823971272
+          ]
+        },
+        "radius_of_gyration_indexed": {
+          "average_seconds": 0.12807696498930454,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.12758007599040866,
+          "status": "ok",
+          "times_seconds": [
+            0.12758007599040866,
+            0.12857385398820043
+          ]
+        },
+        "radius_of_gyration_presorted": null
+      },
+      "order": "raw",
+      "rows": 3999994
+    },
+    {
+      "backend": "pandas",
+      "metrics": {
+        "check_user_contiguous_rust": {
+          "average_seconds": 0.013728201854974031,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.013650937005877495,
+          "status": "ok",
+          "times_seconds": [
+            0.013650937005877495,
+            0.013805466704070568
+          ]
+        },
+        "check_user_timestamp_sorted_rust": {
+          "average_seconds": 0.020045662065967917,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.01998212607577443,
+          "status": "ok",
+          "times_seconds": [
+            0.020109198056161404,
+            0.01998212607577443
+          ]
+        },
+        "derived": {
+          "jump_check_overhead_on_indexed": 0.020045662065967917,
+          "jump_checked_indexed_overhead_seconds": 0.020517982309684157,
+          "jump_net_savings_after_check_seconds": null,
+          "jump_presorted_savings_seconds": null,
+          "radius_check_overhead_on_indexed": 0.013728201854974031,
+          "radius_checked_indexed_overhead_seconds": 0.0169592029415071,
+          "radius_net_savings_after_check_seconds": 0.05216119438409805,
+          "radius_presorted_savings_seconds": 0.06588939623907208
+        },
+        "jump_lengths_auto_dispatch": {
+          "average_seconds": 0.1330717597156763,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.12025863723829389,
+          "status": "ok",
+          "times_seconds": [
+            0.14588488219305873,
+            0.12025863723829389
+          ]
+        },
+        "jump_lengths_checked_indexed": {
+          "average_seconds": 0.12118704547174275,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.12109963223338127,
+          "status": "ok",
+          "times_seconds": [
+            0.12109963223338127,
+            0.12127445871010423
+          ]
+        },
+        "jump_lengths_indexed": {
+          "average_seconds": 0.10066906316205859,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.09975803224369884,
+          "status": "ok",
+          "times_seconds": [
+            0.10158009408041835,
+            0.09975803224369884
+          ]
+        },
+        "jump_lengths_presorted": null,
+        "radius_of_gyration_auto_dispatch": {
+          "average_seconds": 0.07616715529002249,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.07446197420358658,
+          "status": "ok",
+          "times_seconds": [
+            0.0778723363764584,
+            0.07446197420358658
+          ]
+        },
+        "radius_of_gyration_checked_indexed": {
+          "average_seconds": 0.14472888759337366,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.14461494516581297,
+          "status": "ok",
+          "times_seconds": [
+            0.14484283002093434,
+            0.14461494516581297
+          ]
+        },
+        "radius_of_gyration_indexed": {
+          "average_seconds": 0.12776968465186656,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.1276605292223394,
+          "status": "ok",
+          "times_seconds": [
+            0.1276605292223394,
+            0.12787884008139372
+          ]
+        },
+        "radius_of_gyration_presorted": {
+          "average_seconds": 0.06188028841279447,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.06122002890333533,
+          "status": "ok",
+          "times_seconds": [
+            0.06122002890333533,
+            0.06254054792225361
+          ]
+        }
+      },
+      "order": "user_sorted",
+      "rows": 3999994
+    },
+    {
+      "backend": "pandas",
+      "metrics": {
+        "check_user_contiguous_rust": {
+          "average_seconds": 0.013233561301603913,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.01315903989598155,
+          "status": "ok",
+          "times_seconds": [
+            0.013308082707226276,
+            0.01315903989598155
+          ]
+        },
+        "check_user_timestamp_sorted_rust": {
+          "average_seconds": 0.02675043698400259,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.02667132904753089,
+          "status": "ok",
+          "times_seconds": [
+            0.02667132904753089,
+            0.02682954492047429
+          ]
+        },
+        "derived": {
+          "jump_check_overhead_on_indexed": 0.02675043698400259,
+          "jump_checked_indexed_overhead_seconds": 0.04009779938496649,
+          "jump_net_savings_after_check_seconds": 0.022111819125711918,
+          "jump_presorted_savings_seconds": 0.04886225610971451,
+          "radius_check_overhead_on_indexed": 0.013233561301603913,
+          "radius_checked_indexed_overhead_seconds": -0.00059144152328372,
+          "radius_net_savings_after_check_seconds": 0.0601220999378711,
+          "radius_presorted_savings_seconds": 0.07335566123947501
+        },
+        "jump_lengths_auto_dispatch": {
+          "average_seconds": 0.08020346122793853,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.07980183232575655,
+          "status": "ok",
+          "times_seconds": [
+            0.07980183232575655,
+            0.08060509013012052
+          ]
+        },
+        "jump_lengths_checked_indexed": {
+          "average_seconds": 0.14138199551962316,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.1278679952956736,
+          "status": "ok",
+          "times_seconds": [
+            0.1548959957435727,
+            0.1278679952956736
+          ]
+        },
+        "jump_lengths_indexed": {
+          "average_seconds": 0.10128419613465667,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.09967632405459881,
+          "status": "ok",
+          "times_seconds": [
+            0.10289206821471453,
+            0.09967632405459881
+          ]
+        },
+        "jump_lengths_presorted": {
+          "average_seconds": 0.05242194002494216,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.05222071520984173,
+          "status": "ok",
+          "times_seconds": [
+            0.05222071520984173,
+            0.05262316484004259
+          ]
+        },
+        "radius_of_gyration_auto_dispatch": {
+          "average_seconds": 0.07689227140508592,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.07661994500085711,
+          "status": "ok",
+          "times_seconds": [
+            0.07661994500085711,
+            0.07716459780931473
+          ]
+        },
+        "radius_of_gyration_checked_indexed": {
+          "average_seconds": 0.1356020956300199,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.12946085399016738,
+          "status": "ok",
+          "times_seconds": [
+            0.12946085399016738,
+            0.14174333726987243
+          ]
+        },
+        "radius_of_gyration_indexed": {
+          "average_seconds": 0.13619353715330362,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.12724073929712176,
+          "status": "ok",
+          "times_seconds": [
+            0.12724073929712176,
+            0.14514633500948548
+          ]
+        },
+        "radius_of_gyration_presorted": {
+          "average_seconds": 0.06283787591382861,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.06279755989089608,
+          "status": "ok",
+          "times_seconds": [
+            0.06279755989089608,
+            0.06287819193676114
+          ]
+        }
+      },
+      "order": "user_timestamp_sorted",
+      "rows": 3999994
+    },
+    {
+      "backend": "polars",
+      "metrics": {
+        "check_user_contiguous_rust": {
+          "average_seconds": 0.025527096819132566,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.025454510934650898,
+          "status": "ok",
+          "times_seconds": [
+            0.025599682703614235,
+            0.025454510934650898
+          ]
+        },
+        "check_user_timestamp_sorted_rust": {
+          "average_seconds": 0.021135676419362426,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.020984469912946224,
+          "status": "ok",
+          "times_seconds": [
+            0.021286882925778627,
+            0.020984469912946224
+          ]
+        },
+        "derived": {
+          "jump_check_overhead_on_indexed": 0.021135676419362426,
+          "jump_checked_indexed_overhead_seconds": 0.03855887288227677,
+          "jump_net_savings_after_check_seconds": null,
+          "jump_presorted_savings_seconds": null,
+          "radius_check_overhead_on_indexed": 0.025527096819132566,
+          "radius_checked_indexed_overhead_seconds": 0.07328252354636788,
+          "radius_net_savings_after_check_seconds": null,
+          "radius_presorted_savings_seconds": null
+        },
+        "jump_lengths_auto_dispatch": {
+          "average_seconds": 0.08542092354036868,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.08475330984219909,
+          "status": "ok",
+          "times_seconds": [
+            0.08475330984219909,
+            0.08608853723853827
+          ]
+        },
+        "jump_lengths_checked_indexed": {
+          "average_seconds": 0.1067602054681629,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.08807816402986646,
+          "status": "ok",
+          "times_seconds": [
+            0.12544224690645933,
+            0.08807816402986646
+          ]
+        },
+        "jump_lengths_indexed": {
+          "average_seconds": 0.06820133258588612,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.0570515301078558,
+          "status": "ok",
+          "times_seconds": [
+            0.0570515301078558,
+            0.07935113506391644
+          ]
+        },
+        "jump_lengths_presorted": null,
+        "radius_of_gyration_auto_dispatch": {
+          "average_seconds": 0.05989962304010987,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.056836055126041174,
+          "status": "ok",
+          "times_seconds": [
+            0.06296319095417857,
+            0.056836055126041174
+          ]
+        },
+        "radius_of_gyration_checked_indexed": {
+          "average_seconds": 0.23628579475916922,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.23049274878576398,
+          "status": "ok",
+          "times_seconds": [
+            0.23049274878576398,
+            0.24207884073257446
+          ]
+        },
+        "radius_of_gyration_indexed": {
+          "average_seconds": 0.16300327121280134,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.16243478236719966,
+          "status": "ok",
+          "times_seconds": [
+            0.16243478236719966,
+            0.16357176005840302
+          ]
+        },
+        "radius_of_gyration_presorted": null
+      },
+      "order": "raw",
+      "rows": 3999994
+    },
+    {
+      "backend": "polars",
+      "metrics": {
+        "check_user_contiguous_rust": {
+          "average_seconds": 0.017138040391728282,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.017053531017154455,
+          "status": "ok",
+          "times_seconds": [
+            0.01722254976630211,
+            0.017053531017154455
+          ]
+        },
+        "check_user_timestamp_sorted_rust": {
+          "average_seconds": 0.01523411157540977,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.015165590215474367,
+          "status": "ok",
+          "times_seconds": [
+            0.015165590215474367,
+            0.015302632935345173
+          ]
+        },
+        "derived": {
+          "jump_check_overhead_on_indexed": 0.01523411157540977,
+          "jump_checked_indexed_overhead_seconds": 0.016663831658661366,
+          "jump_net_savings_after_check_seconds": null,
+          "jump_presorted_savings_seconds": null,
+          "radius_check_overhead_on_indexed": 0.017138040391728282,
+          "radius_checked_indexed_overhead_seconds": -0.01301902299746871,
+          "radius_net_savings_after_check_seconds": 0.13056101510301232,
+          "radius_presorted_savings_seconds": 0.1476990554947406
+        },
+        "jump_lengths_auto_dispatch": {
+          "average_seconds": 0.08527253288775682,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.08513362472876906,
+          "status": "ok",
+          "times_seconds": [
+            0.08513362472876906,
+            0.08541144104674459
+          ]
+        },
+        "jump_lengths_checked_indexed": {
+          "average_seconds": 0.08793754200451076,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.08263794705271721,
+          "status": "ok",
+          "times_seconds": [
+            0.08263794705271721,
+            0.09323713695630431
+          ]
+        },
+        "jump_lengths_indexed": {
+          "average_seconds": 0.0712737103458494,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.06298502627760172,
+          "status": "ok",
+          "times_seconds": [
+            0.07956239441409707,
+            0.06298502627760172
+          ]
+        },
+        "jump_lengths_presorted": null,
+        "radius_of_gyration_auto_dispatch": {
+          "average_seconds": 0.05545634147711098,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.05520915286615491,
+          "status": "ok",
+          "times_seconds": [
+            0.05520915286615491,
+            0.055703530088067055
+          ]
+        },
+        "radius_of_gyration_checked_indexed": {
+          "average_seconds": 0.16636264906264842,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.15962796611711383,
+          "status": "ok",
+          "times_seconds": [
+            0.173097332008183,
+            0.15962796611711383
+          ]
+        },
+        "radius_of_gyration_indexed": {
+          "average_seconds": 0.17938167206011713,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.1714563868008554,
+          "status": "ok",
+          "times_seconds": [
+            0.1714563868008554,
+            0.18730695731937885
+          ]
+        },
+        "radius_of_gyration_presorted": {
+          "average_seconds": 0.03168261656537652,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.031034333165735006,
+          "status": "ok",
+          "times_seconds": [
+            0.031034333165735006,
+            0.032330899965018034
+          ]
+        }
+      },
+      "order": "user_sorted",
+      "rows": 3999994
+    },
+    {
+      "backend": "polars",
+      "metrics": {
+        "check_user_contiguous_rust": {
+          "average_seconds": 0.01749108429066837,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.01743157533928752,
+          "status": "ok",
+          "times_seconds": [
+            0.017550593242049217,
+            0.01743157533928752
+          ]
+        },
+        "check_user_timestamp_sorted_rust": {
+          "average_seconds": 0.023021684493869543,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.022814671974629164,
+          "status": "ok",
+          "times_seconds": [
+            0.023228697013109922,
+            0.022814671974629164
+          ]
+        },
+        "derived": {
+          "jump_check_overhead_on_indexed": 0.023021684493869543,
+          "jump_checked_indexed_overhead_seconds": 0.03428693185560405,
+          "jump_net_savings_after_check_seconds": 0.013805253431200981,
+          "jump_presorted_savings_seconds": 0.036826937925070524,
+          "radius_check_overhead_on_indexed": 0.01749108429066837,
+          "radius_checked_indexed_overhead_seconds": 0.028443149756640196,
+          "radius_net_savings_after_check_seconds": 0.10598260257393122,
+          "radius_presorted_savings_seconds": 0.12347368686459959
+        },
+        "jump_lengths_auto_dispatch": {
+          "average_seconds": 0.055633777752518654,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.05511199031025171,
+          "status": "ok",
+          "times_seconds": [
+            0.05511199031025171,
+            0.056155565194785595
+          ]
+        },
+        "jump_lengths_checked_indexed": {
+          "average_seconds": 0.10289128194563091,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.10074930498376489,
+          "status": "ok",
+          "times_seconds": [
+            0.10074930498376489,
+            0.10503325890749693
+          ]
+        },
+        "jump_lengths_indexed": {
+          "average_seconds": 0.06860435009002686,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.06727326242253184,
+          "status": "ok",
+          "times_seconds": [
+            0.06993543775752187,
+            0.06727326242253184
+          ]
+        },
+        "jump_lengths_presorted": {
+          "average_seconds": 0.03177741216495633,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.03143665613606572,
+          "status": "ok",
+          "times_seconds": [
+            0.03211816819384694,
+            0.03143665613606572
+          ]
+        },
+        "radius_of_gyration_auto_dispatch": {
+          "average_seconds": 0.0755237564444542,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.06039358116686344,
+          "status": "ok",
+          "times_seconds": [
+            0.06039358116686344,
+            0.09065393172204494
+          ]
+        },
+        "radius_of_gyration_checked_indexed": {
+          "average_seconds": 0.19323352654464543,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.18439537519589067,
+          "status": "ok",
+          "times_seconds": [
+            0.18439537519589067,
+            0.2020716778934002
+          ]
+        },
+        "radius_of_gyration_indexed": {
+          "average_seconds": 0.16479037678800523,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.16075416328385472,
+          "status": "ok",
+          "times_seconds": [
+            0.16075416328385472,
+            0.16882659029215574
+          ]
+        },
+        "radius_of_gyration_presorted": {
+          "average_seconds": 0.04131668992340565,
+          "iterations_completed": 2,
+          "minimum_seconds": 0.04011362977325916,
+          "status": "ok",
+          "times_seconds": [
+            0.04251975007355213,
+            0.04011362977325916
+          ]
+        }
+      },
+      "order": "user_timestamp_sorted",
+      "rows": 3999994
+    }
+  ]
+}

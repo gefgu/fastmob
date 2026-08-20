@@ -11,6 +11,7 @@ from fastmob._core import (
     max_distance_from_point_presorted,
 )
 from fastmob.utils._common import (
+    _auto_presorted,
     _as_arrow,
     _build_indexed_user_ranges,
     _build_presorted_user_ends,
@@ -29,7 +30,6 @@ def max_distance_from_home(
     lat_col: str | None = None,
     lng_col: str | None = None,
     uid_col: str | None = None,
-    presorted: bool = False,
 ) -> Any:
     """Return the maximum Haversine distance (km) from each user's home location.
 
@@ -135,6 +135,9 @@ def max_distance_from_home(
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
     hours_data = hours.to_arrow()
+    presorted = _auto_presorted(
+        df, uid_col, coordinates=(lats_data, lngs_data)
+    )
     if presorted:
         uid_values, ends = _build_presorted_user_ends(df, uid_col)
         home_lats, home_lngs = home_location_presorted(

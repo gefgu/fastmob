@@ -29,12 +29,12 @@ def test_selected_specs_filters_metrics():
     assert [spec.name for spec in suite.selected_specs(args)] == ["filter", "cluster"]
 
 
-def test_sorted_fastmob_trajectory_benchmark_uses_presorted_keyword():
+def test_sorted_fastmob_trajectory_benchmark_uses_auto_dispatch():
     spec = suite.BenchmarkSpec("compress", "unused", "unused", "compress", {})
 
     kwargs = suite.metric_kwargs_for_library(spec, "fastmob", lambda **_kwargs: None, input_order="sorted")
 
-    assert kwargs == {"presorted": True}
+    assert kwargs == {}
 
 
 def test_sorted_fastmob_filter_benchmark_does_not_add_presorted_keyword():
