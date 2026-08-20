@@ -732,26 +732,30 @@ def _build_presorted_user_ends(
 def _build_presorted_indices_and_ends(df: nw.DataFrame, uid_col: str | None) -> tuple[Any | None, Any, Any]:
     """Cheap presorted-mode drop-in for `_build_indexed_user_ranges`.
 
-    `_build_indexed_user_ranges` (used unconditionally by compress/filter/
-    stay_locations always pays for
-    a hash-based factorize plus the ``indexed_user_indices``/
-    ``time_ordered_user_indices`` Rust kernels -- work that makes sense when
-    the caller's ordering can't be trusted, but is pure waste when the
-    caller has already promised the data is grouped by user (and, within
-    each user, already in the desired order): the "sorted indices" the
-    kernel needs are then just the identity permutation, and the only real
-    work left is finding each user's contiguous run boundary, which
+    `_build_indexed_user_ranges` always pays for a hash-based factorize plus
+    the ``indexed_user_indices``/``time_ordered_user_indices`` Rust kernels --
+    work that makes sense when the caller's ordering can't be trusted, but is
+    pure waste when the frame is already grouped by user and, within each
+    user, already in the desired order: the "sorted indices" the kernel needs
+    are then just the identity permutation, and the only real work left is
+    finding each user's contiguous run boundary, which
     `_build_presorted_user_ends` already does via a single `pyarrow`
     `run_end_encode` scan -- no hashing, no Rust factorize call.
 
-    ``cluster()`` already relies on this cheap path (after physically
-    sorting the frame via ``_prepare_trajectory(sort=not presorted)`` and
-    then calling `_build_presorted_user_ends` directly, since its kernel
-    only needs boundaries, not an indices array). This mirrors that same
-    "boundaries are cheap, trust the caller's order" idea for the
-    indices-based (non-physically-resorted) compress/filter/stay_locations
-    call sites, which still need an explicit ``sorted_indices`` array to
-    hand the kernel.
+    ``cluster()`` gets the same saving a different way: it physically sorts
+    the frame via ``_prepare_trajectory(sort=True)`` and then calls
+    `_build_presorted_user_ends` directly, since its kernel needs only
+    boundaries and no indices array. This helper carries that same
+    "boundaries are cheap" idea to the indices-based, non-physically-resorted
+    call sites, which still need an explicit ``sorted_indices`` array to hand
+    the kernel.
+
+    The remaining caller is `fastmob.preprocessing._filter`, whose ``filter``
+    and outlier-detection entry points take an internal ``is_sorted`` flag.
+    Measures that detect orderedness rather than being told about it go
+    through `_build_user_ranges_auto` instead, which returns ``None`` indices
+    on the contiguous path and lets the caller substitute
+    ``single_user_indices`` only if its kernel needs them.
     """
     from fastmob._core import single_user_indices
 
