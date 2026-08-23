@@ -1,9 +1,36 @@
-# fastmob
+# Fastkit-Mobility
 
-Fastmob is a high-performance Python library for mobility analysis. It accepts
-eager dataframe backends through Narwhals (including pandas, Polars, and
-PyArrow-compatible workflows) and uses Rust for compute-intensive trajectory
-kernels.
+[![PyPI version](https://img.shields.io/pypi/v/fastmob)](https://pypi.org/project/fastmob/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/fastmob)](https://pypi.org/project/fastmob/)
+[![Python versions](https://img.shields.io/pypi/pyversions/fastmob)](https://pypi.org/project/fastmob/)
+[![License](https://img.shields.io/pypi/l/fastmob)](LICENSE)
+
+Fastkit-Mobility (`fastmob` on PyPI) is a high-performance Python library for
+mobility analysis. It combines native Rust kernels with a
+[Narwhals](https://narwhals-dev.github.io/narwhals/)-based API, so the same
+code works unchanged against pandas, Polars, and other eager dataframe
+backends — no rewrites, no backend-specific branches.
+
+Beyond individual/collective mobility measures, fastmob covers the full
+pipeline: raw position fixes → staypoints → triplegs → trips → tours,
+trajectory preprocessing (outlier filtering, simplification, segmentation,
+smoothing), mobility models (next-location prediction, gravity/radiation,
+synthetic diary generation), and network/social analysis (road/rail-matched
+distances, co-presence contact networks, mobility-law fitting).
+
+## Why fastmob
+
+- **Backend-agnostic** — pass a pandas, Polars, or any other
+  Narwhals-compatible DataFrame; fastmob works without changes.
+- **Rust-accelerated core** — compute-heavy kernels run in parallel,
+  zero-copy Rust instead of Python loops.
+- **Full trajectory hierarchy** — positionfixes, staypoints, triplegs,
+  trips, tours, and locations, following the trackintel model.
+- **Migration-friendly** — API shapes mirror
+  [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility)
+  where compatibility matters, with reproducible parity tests against it.
+- **Measured, not claimed** — correctness tests, coverage, and
+  reproducible benchmarks back every performance and compatibility claim.
 
 ## Install
 
