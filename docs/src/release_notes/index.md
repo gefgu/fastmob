@@ -6,7 +6,8 @@ migration notes for renamed or removed APIs.
 
 | Version | Highlights |
 | --- | --- |
-| [v0.1.3](v0.1.3.md) | Current release notes and upgrade guidance. |
+| [v0.2.0](v0.2.0.md) | Trajectory hierarchy, new preprocessing algorithms, models, network/social analysis, Arrow-only Rust bindings. |
+| [v0.1.3](v0.1.3.md) | Maintenance release. |
 | [v0.1.2](v0.1.2.md) | Maintenance release. |
 | [v0.1.1](v0.1.1.md) | Maintenance release. |
 | [v0.1.0](v0.1.0.md) | Initial public release. |
