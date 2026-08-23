@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/src/assets/logo_filled.svg" alt="Fastkit-Mobility logo" width="280">
+</p>
+
 # Fastkit-Mobility
 
 [![PyPI version](https://img.shields.io/pypi/v/fastmob)](https://pypi.org/project/fastmob/)
