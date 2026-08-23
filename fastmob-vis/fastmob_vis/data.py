@@ -93,16 +93,21 @@ def transition_from_raw(data: Any, unknown_label: str = "UNKNOWN") -> tuple[list
 
 
 def matrix_from_precomputed(data: Any) -> tuple[list[str], list[list[float]]]:
-    if hasattr(data, "index") and hasattr(data, "columns") and hasattr(data, "values"):
-        return [str(label) for label in data.index.tolist()], np.asarray(data.values, dtype=float).tolist()
     if isinstance(data, tuple) and len(data) == 2:
         labels, matrix = data
         return [str(label) for label in labels], np.asarray(matrix, dtype=float).tolist()
+    # Check for an "activity" label column (e.g. fastmob.activity_transition_matrix's
+    # output: a plain, default-indexed DataFrame with "activity" as a regular column)
+    # before the generic index/columns/values branch below -- that branch matches any
+    # DataFrame, including this shape, and would otherwise try to cast the "activity"
+    # label column itself to float alongside the numeric ones.
     data_columns = columns(data)
     if "activity" in data_columns:
         labels = [str(label) for label in column(data, "activity")]
         matrix = [[float(value) for value in column(data, label)] for label in labels]
         return labels, np.asarray(matrix, dtype=float).T.tolist()
+    if hasattr(data, "index") and hasattr(data, "columns") and hasattr(data, "values"):
+        return [str(label) for label in data.index.tolist()], np.asarray(data.values, dtype=float).tolist()
     return [str(i) for i in range(len(data))], np.asarray(data, dtype=float).tolist()
 
 
