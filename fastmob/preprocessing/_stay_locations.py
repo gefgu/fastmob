@@ -14,7 +14,6 @@ from fastmob.utils._common import (
     _extract_timestamps,
     _take_uid_values,
     _timestamps_ms_to_datetime_ns,
-    _to_arrow_columns,
     _to_native,
 )
 
@@ -130,12 +129,12 @@ def stay_locations(
     )
 
     timestamps = _extract_timestamps(df, datetime_col)
-    arrow_columns = _to_arrow_columns(df, (lat_col, lng_col, datetime_col, uid_col))
-    lats_data = arrow_columns[lat_col]
-    lngs_data = arrow_columns[lng_col]
-    timestamp_arrow = arrow_columns[datetime_col]
-    uid_values_input = arrow_columns.get(uid_col) if uid_col is not None else None
+    lats_data = df.get_column(lat_col).to_arrow()
+    lngs_data = df.get_column(lng_col).to_arrow()
+    timestamp_arrow = df.get_column(datetime_col).to_arrow()
+    uid_values_input = df.get_column(uid_col).to_arrow() if uid_col is not None else None
     timestamps_data = _TIMESTAMP_EXTRACTOR.get_ops(df)["extract_data"](timestamps)
+    del timestamps
 
     effective_min_speed = min_speed_kmh if min_speed_kmh is not None else math.inf
     uid_values, sorted_indices, ends = _build_user_ranges_auto(
@@ -145,6 +144,7 @@ def stay_locations(
         coordinates=(lats_data, lngs_data),
         uid_values=uid_values_input,
     )
+    del timestamp_arrow, uid_values_input
     if sorted_indices is None:
         sorted_indices, _ = single_user_indices(len(df))
     _result = detect_stay_locations_batch_indexed(
@@ -158,8 +158,7 @@ def stay_locations(
         no_data_for_minutes,
         effective_min_speed,
     )
-    del arrow_columns, lats_data, lngs_data, timestamps, timestamps_data, timestamp_arrow, uid_values_input
-    del sorted_indices, ends
+    del lats_data, lngs_data, timestamps_data, sorted_indices, ends
     out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)
 
     if len(out_lats) == 0:
