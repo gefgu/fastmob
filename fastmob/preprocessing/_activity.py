@@ -16,6 +16,8 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.utils._common import _with_datetime_column
+
 
 def _as_native_and_wrapper(staypoints: Any) -> tuple[Any, Any]:
     """Return ``(native_df, staypoints_or_None)`` -- mirrors
@@ -61,6 +63,8 @@ def create_activity_flag(
     finished_at_col = getattr(wrapper, "finished_at_col", "finished_at")
 
     nw_df = nw.from_native(native_df, eager_only=True)
+    nw_df = _with_datetime_column(nw_df, started_at_col)
+    nw_df = _with_datetime_column(nw_df, finished_at_col)
     duration_min = (nw.col(finished_at_col).dt.timestamp("ms") - nw.col(started_at_col).dt.timestamp("ms")) / 60000.0
     result_native = nw_df.with_columns((duration_min >= time_threshold_min).alias("activity")).to_native()
 
@@ -139,6 +143,8 @@ def identify_locations(
 
     started_at_col = staypoints.started_at_col
     finished_at_col = staypoints.finished_at_col
+    sp_nw = _with_datetime_column(sp_nw, started_at_col)
+    sp_nw = _with_datetime_column(sp_nw, finished_at_col)
 
     duration_min = (nw.col(finished_at_col).dt.timestamp("ms") - nw.col(started_at_col).dt.timestamp("ms")) / 60000.0
     hour = nw.col(started_at_col).dt.hour()

@@ -13,6 +13,7 @@ from fastmob.utils._common import (
     _detect_trajectory_columns,
     _grouped_arrow_values,
     _to_native,
+    _with_datetime_column,
 )
 
 _DISPATCHER = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
@@ -122,6 +123,7 @@ def jump_lengths(
         uid_col=uid_col,
         cast_float_coordinates=True,
     )
+    df = _with_datetime_column(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
     lngs_data = df.get_column(lng_col).to_arrow()
 

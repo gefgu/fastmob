@@ -80,7 +80,13 @@ def _empty_like(nw_df: nw.DataFrame, columns: list[str]) -> Any:
 
 
 def _with_datetime_column(df: nw.DataFrame, column: str) -> nw.DataFrame:
-    """Ensure a trajectory datetime column has a Narwhals datetime dtype."""
+    """Ensure a datetime column has a backend-native datetime dtype.
+
+    Some pandas-backed inputs arrive as object/string columns even though all
+    values are datetime-like.  Narwhals' datetime namespace rejects those
+    columns, so normalize them once at the dataframe boundary before any
+    caller uses ``.dt`` or exports the column to Arrow.
+    """
     try:
         return df.with_columns(nw.col(column).cast(nw.Datetime).alias(column))
     except Exception:  # noqa: BLE001
@@ -281,13 +287,32 @@ def _extract_timestamps(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     to ``f64::NAN``, so the existing `is_finite()` null-row exclusion
     downstream is unaffected.
     """
-    values = nw.col(datetime_col).dt.timestamp("ms").fill_null(_NULL_TIMESTAMP_SENTINEL_MS).cast(nw.Int64)
-    return df.with_columns(values.alias("__fastmob_timestamp__")).get_column("__fastmob_timestamp__")
+    try:
+        values = nw.col(datetime_col).dt.timestamp("ms")
+        return df.with_columns(
+            values.fill_null(_NULL_TIMESTAMP_SENTINEL_MS)
+            .cast(nw.Int64)
+            .alias("__fastmob_timestamp__")
+        ).get_column("__fastmob_timestamp__")
+    except TypeError:
+        normalized = _with_datetime_column(df, datetime_col)
+        values = nw.col(datetime_col).dt.timestamp("ms")
+        return normalized.with_columns(
+            values.fill_null(_NULL_TIMESTAMP_SENTINEL_MS)
+            .cast(nw.Int64)
+            .alias("__fastmob_timestamp__")
+        ).get_column("__fastmob_timestamp__")
 
 
 def _extract_timestamp_arrow(df: nw.DataFrame, datetime_col: str) -> pa.Array | pa.ChunkedArray:
     """Return the native Arrow timestamp column without changing its unit."""
-    return _as_arrow(df.get_column(datetime_col).to_arrow())
+    if not isinstance(df.schema[datetime_col], nw.Datetime):
+        df = _with_datetime_column(df, datetime_col)
+    try:
+        return _as_arrow(df.get_column(datetime_col).to_arrow())
+    except (TypeError, pa.ArrowInvalid, pa.ArrowNotImplementedError):
+        normalized = _with_datetime_column(df, datetime_col)
+        return _as_arrow(normalized.get_column(datetime_col).to_arrow())
 
 
 def _timestamps_ms_to_datetime_ns(values: Any) -> np.ndarray:
@@ -321,6 +346,7 @@ def _extract_hours(df: nw.DataFrame, datetime_col: str) -> tuple[nw.DataFrame, n
     ``.dt.hour()`` reports, so computing straight from the tz-aware column
     would silently shift every hour bucket by the zone's UTC offset.
     """
+    df = _with_datetime_column(df, datetime_col)
     naive = _strip_time_zone(df, datetime_col)
     hour_values = naive.with_columns(
         (nw.col(datetime_col).dt.timestamp("ms") // 3_600_000 % 24).cast(nw.Float64).alias("__hour__")

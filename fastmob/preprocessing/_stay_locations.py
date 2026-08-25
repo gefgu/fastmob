@@ -13,6 +13,7 @@ from fastmob.utils._common import (
     _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamps,
+    _with_datetime_column,
     _take_uid_values,
     _timestamps_ms_to_datetime_ns,
     _to_native,
@@ -128,6 +129,7 @@ def stay_locations(
         uid_col=uid_col,
         cast_float_coordinates=True,
     )
+    df = _with_datetime_column(df, datetime_col)
 
     timestamps = _extract_timestamps(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()

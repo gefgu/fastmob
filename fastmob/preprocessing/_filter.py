@@ -19,6 +19,7 @@ from fastmob.utils._common import (
     _detect_trajectory_columns,
     _extract_timestamps,
     _narwhals_safe_value,
+    _with_datetime_column,
 )
 
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
@@ -55,6 +56,7 @@ def _filter_speed(
         lng_col=lng_col,
         uid_col=uid_col,
     )
+    df = _with_datetime_column(df, datetime_col)
 
     timestamps = _extract_timestamps(df, datetime_col)
     lats_data = df.get_column(lat_col).to_arrow()
@@ -269,6 +271,7 @@ def filter(
         lng_col=lng_col,
         uid_col=uid_col,
     )
+    df = _with_datetime_column(df, datetime_col)
 
     df = df.with_columns(
         nw.col(lat_col).cast(nw.Float64),

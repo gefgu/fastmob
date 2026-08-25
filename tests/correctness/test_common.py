@@ -51,6 +51,8 @@ class TestArrowTimestampOrdering:
         assert indices.to_pylist() == [1, 2, 0]
         assert ends.to_pylist() == [3]
 
+
+class TestArrowTimestampNullOrdering:
     def test_time_ordering_places_null_timestamps_before_values(self):
         import pyarrow as pa
         from fastmob._core import time_ordered_user_indices
@@ -60,6 +62,27 @@ class TestArrowTimestampOrdering:
 
         assert indices.to_pylist() == [1, 2, 0]
         assert ends.to_pylist() == [3]
+
+
+class TestTimestampExtraction:
+    @pytest.mark.parametrize(
+        "values",
+        [
+            ["2020-01-01 00:00:00", "2020-01-01 00:01:00"],
+            [pd.Timestamp("2020-01-01"), "2020-01-01 00:01:00"],
+        ],
+    )
+    def test_extract_timestamps_normalizes_non_datetime_pandas_columns(self, values):
+        import narwhals as nw
+
+        from fastmob.utils._common import _extract_timestamp_arrow, _extract_timestamps
+
+        df = nw.from_native(pd.DataFrame({"datetime": values}), eager_only=True)
+        timestamps = _extract_timestamps(df, "datetime").to_list()
+        arrow_timestamps = _extract_timestamp_arrow(df, "datetime")
+
+        assert timestamps == [1577836800000, 1577836860000]
+        assert str(arrow_timestamps.type).startswith("timestamp[")
 
 
 # ---------------------------------------------------------------------------

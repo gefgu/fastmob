@@ -15,6 +15,22 @@ def test_stay_locations_detects_single_stop(stops_tdf):
     assert len(result) == 1
 
 
+def test_stay_locations_normalizes_string_datetimes():
+    df = pd.DataFrame(
+        {
+            "uid": ["u1"] * 7,
+            "datetime": [f"2020-01-01 08:{minute:02d}:00" for minute in range(0, 35, 5)],
+            "lat": [48.8566] * 7,
+            "lng": [2.3522] * 7,
+        }
+    )
+
+    result = stay_locations(df, spatial_radius_km=0.2, minutes_for_a_stop=20.0)
+
+    assert len(result) == 1
+    assert pd.Timestamp(result.iloc[0]["datetime"]) == pd.Timestamp("2020-01-01 08:00:00")
+
+
 def test_stay_locations_no_stop_for_moving_user(stops_tdf):
     """Moving user (5 km steps, 5-min spacing) → 0 stops detected."""
     moving = stops_tdf[stops_tdf["uid"] == "user_moving"].copy()

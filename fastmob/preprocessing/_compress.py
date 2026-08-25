@@ -13,6 +13,7 @@ from fastmob.utils._common import (
     _as_arrow,
     _build_user_ranges_auto,
     _detect_trajectory_columns,
+    _with_datetime_column,
 )
 
 _TIMESTAMP_EXTRACTOR = TrajectoryDispatcher(arrow_ops={}, numpy_ops={})
@@ -103,6 +104,7 @@ def compress(
         lng_col=lng_col,
         uid_col=uid_col,
     )
+    df = _with_datetime_column(df, datetime_col)
 
     df = df.with_columns(
         nw.col(lat_col).cast(nw.Float64),

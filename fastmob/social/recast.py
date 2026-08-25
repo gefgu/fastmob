@@ -16,7 +16,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 from fastmob.core import Locations, Staypoints
-from fastmob.utils._common import _factorize_arrow_values
+from fastmob.utils._common import _factorize_arrow_values, _with_datetime_column
 
 
 class RecastClass(IntEnum):
@@ -156,6 +156,8 @@ def _prepare(staypoints: Staypoints, locations: Locations) -> _PreparedStaypoint
     work = (
         nw.from_native(assigned.df, eager_only=True).select([uid_col, "location_id", start_col, end_col]).drop_nulls()
     )
+    work = _with_datetime_column(work, start_col)
+    work = _with_datetime_column(work, end_col)
     if len(work) == 0:
         return _PreparedStaypoints(
             pa.array([], type=pa.null()),
