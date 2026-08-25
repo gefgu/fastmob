@@ -43,6 +43,7 @@ jobs:
   linux-wheels:
     name: Linux wheels (${{ matrix.target }})
     runs-on: ubuntu-latest
+    needs: test
     strategy:
       fail-fast: false
       matrix:
@@ -69,6 +70,7 @@ jobs:
   musllinux-wheels:
     name: musllinux wheels (${{ matrix.target }})
     runs-on: ubuntu-latest
+    needs: test
     strategy:
       fail-fast: false
       matrix:
@@ -95,6 +97,7 @@ jobs:
   macos-wheels:
     name: macOS wheels (aarch64)
     runs-on: macos-14
+    needs: test
     steps:
       - uses: actions/checkout@v4
 
@@ -114,6 +117,7 @@ jobs:
   macos-x86_64-wheels:
     name: macOS wheels (x86_64, optional)
     runs-on: macos-13
+    needs: test
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -136,6 +140,7 @@ jobs:
   windows-wheels:
     name: Windows wheels (${{ matrix.target }})
     runs-on: windows-latest
+    needs: test
     strategy:
       fail-fast: false
       matrix:
@@ -160,6 +165,7 @@ jobs:
   sdist:
     name: Source distribution
     runs-on: ubuntu-latest
+    needs: test
     steps:
       - uses: actions/checkout@v4
 
