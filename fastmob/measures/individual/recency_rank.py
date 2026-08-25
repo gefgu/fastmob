@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import recency_rank_presorted, recency_rank_values_indexed
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
@@ -110,7 +111,7 @@ def recency_rank(
     ----------
     - [BDEM2015] Barbosa, H., de Lima-Neto, F. B., Evsukoff, A., Menezes, R. (2015) The effect of recency to human mobility, EPJ Data Science 4(21), https://epjdatascience.springeropen.com/articles/10.1140/epjds/s13688-015-0059-8
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

@@ -6,6 +6,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import home_location_indexed, home_location_presorted
 from fastmob.utils._common import (
     _as_arrow,
@@ -36,7 +37,7 @@ def work_location(
     if not (0 <= start_work <= 23 and 0 <= end_work <= 24 and start_work < end_work):
         raise ValueError("work-hour bounds must satisfy 0 <= start_work < end_work <= 24")
 
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

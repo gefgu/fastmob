@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import (
     individual_mobility_network_indexed,
     individual_mobility_network_presorted,
@@ -130,7 +131,7 @@ def individual_mobility_network(
     - [BL2012] Bagrow, J. P. & Lin, Y.-R. (2012) Mesoscopic Structure and Social Aspects of Human Mobility. PLOS ONE 7(5): e37676. https://doi.org/10.1371/journal.pone.0037676
     - [SQBB2010] Song, C., Qu, Z., Blumm, N. & Barabasi, A. L. (2010) Limits of Predictability in Human Mobility. Science 327(5968), 1018-1021, https://science.sciencemag.org/content/327/5968/1018
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

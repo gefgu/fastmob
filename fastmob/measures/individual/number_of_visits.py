@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import number_of_visits_indexed, number_of_visits_presorted
 from fastmob.utils._common import (
     _build_user_ranges_auto,
@@ -79,7 +80,7 @@ def number_of_visits(
        1              1210
        2              1691
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

@@ -12,6 +12,8 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
+from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob.utils._common import (
@@ -92,7 +94,7 @@ def join_with_events(
     """
     from fastmob._core import nearest_event_within_window
 
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     lat_col, lng_col, datetime_col = _detect_lat_lng_datetime(df, lat_col, lng_col, datetime_col)
 
     query_lat = df.get_column(lat_col).to_numpy().astype(np.float64)

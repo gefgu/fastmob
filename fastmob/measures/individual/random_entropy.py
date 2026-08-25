@@ -5,6 +5,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import number_of_locations_indexed
 from fastmob.utils._common import (
     _as_arrow,
@@ -96,7 +97,7 @@ def random_entropy(
     uncorrelated_entropy : Entropy weighted by visit frequency (ignores temporal order).
     real_entropy : Entropy that captures temporal order and frequency of visits.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 import narwhals as nw
+
+from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob._core import cdr_approx_travel_minutes as _cdr_approx_travel_minutes
@@ -162,7 +164,7 @@ def cdr_to_visitation_df(
     """
     _validate_travel_parameters(avg_speed_kmh, circuity)
 
-    df = nw.from_native(trajectory_df, eager_only=True).with_row_index(_ROW_ORDER_COL)
+    df = nw.from_native(unwrap_native(trajectory_df), eager_only=True).with_row_index(_ROW_ORDER_COL)
     _require_columns(df, [user_id_column, timestamp_column, venue_column, lat_column, lon_column])
 
     df = (

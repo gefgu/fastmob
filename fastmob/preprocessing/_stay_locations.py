@@ -6,6 +6,7 @@ from typing import Any
 import narwhals as nw
 
 from fastmob._core import detect_stay_locations_batch_indexed, single_user_indices
+from fastmob.core.base import unwrap_native
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,
@@ -118,7 +119,7 @@ def stay_locations(
     - [Z2015] Zheng, Y. (2015) Trajectory data mining: an overview. ACM Transactions on Intelligent Systems and Technology 6(3), <a href="https://dl.acm.org/citation.cfm?id=2743025">https://dl.acm.org/citation.cfm?id=2743025</a>
 
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

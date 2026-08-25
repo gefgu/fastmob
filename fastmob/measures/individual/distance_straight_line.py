@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import total_distance_indexed, total_distance_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
@@ -107,7 +108,7 @@ def distance_straight_line(
     jump_lengths : Individual jump distances between consecutive points.
     maximum_distance : Largest single jump length per user.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

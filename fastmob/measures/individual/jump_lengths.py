@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import jump_lengths_indexed, jump_lengths_presorted
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
@@ -109,7 +110,7 @@ def jump_lengths(
     maximum_distance : Largest single jump length per user.
     distance_straight_line : Sum of all jump lengths per user.
     """
-    df = nw.from_native(traj)
+    df = nw.from_native(unwrap_native(traj))
     if isinstance(df, nw.LazyFrame):
         df = df.collect()
 

@@ -6,6 +6,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import h3_cluster_labels_arrow as _h3_cluster_labels
 from fastmob.utils._common import (
     _as_arrow,
@@ -73,7 +74,7 @@ def cluster(
         raise ValueError("min_samples must be an integer of at least 1")
     resolution = _resolve_resolution(cluster_radius_km, h3_resolution)
 
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

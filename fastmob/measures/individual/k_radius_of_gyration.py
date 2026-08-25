@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import k_radius_of_gyration_indexed, k_radius_of_gyration_presorted
 from fastmob.utils._common import (
     _as_arrow,
@@ -109,7 +110,7 @@ def k_radius_of_gyration(
     --------
     radius_of_gyration : Radius of gyration over all visited locations.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

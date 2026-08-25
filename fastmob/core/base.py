@@ -1,6 +1,16 @@
 import narwhals as nw
 
 
+def unwrap_native(value):
+    """Return the native dataframe from a Fastmob wrapper, if applicable.
+
+    Public APIs accept native dataframe objects as well as Fastmob dataframe
+    wrappers.  Keeping this conversion at the boundary lets Narwhals see the
+    actual backend object without making the wrapper pretend to be a backend.
+    """
+    return value.df if isinstance(value, BaseDataFrame) else value
+
+
 class BaseDataFrame:
     """Small wrapper around an eager dataframe backend."""
 

@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import (
     SmoothConfig,
     smooth_trajectory_indexed,
@@ -140,7 +141,7 @@ def smooth(
         raise ValueError(f"unknown smooth method: {method!r}; choose from {sorted(SMOOTH_METHODS)}")
     method_name, params = SMOOTH_METHODS[method](**method_kwargs)
 
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

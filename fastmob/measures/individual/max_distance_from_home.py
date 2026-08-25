@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import (
     home_location_indexed,
     home_location_presorted,
@@ -116,7 +117,7 @@ def max_distance_from_home(
     home_location : Inferred home location from nighttime visits.
     maximum_distance : Largest single jump length per user.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

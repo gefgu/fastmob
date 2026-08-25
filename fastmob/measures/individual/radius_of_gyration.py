@@ -4,6 +4,8 @@ import warnings
 from typing import Any
 
 import narwhals as nw
+
+from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob._core import (
@@ -110,7 +112,7 @@ def radius_of_gyration(
     --------
     k_radius_of_gyration : Radius of gyration restricted to the k most-visited locations.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
 
     df, _, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,

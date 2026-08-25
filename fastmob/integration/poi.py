@@ -12,6 +12,8 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
+from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _pick_existing_column
@@ -71,7 +73,7 @@ def join_with_pois(
         the same backend as `traj`. A `pois_df` with zero rows produces
         ``None``/``inf``/``None`` for every trajectory point.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     lat_col, lng_col = _detect_lat_lng(df, lat_col, lng_col)
 
     pois = nw.from_native(pois_df, eager_only=True)
@@ -126,7 +128,7 @@ def join_with_pois_by_category(
         column pair per distinct category value present in `pois_df`, in
         the same backend as `traj`.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     lat_col, lng_col = _detect_lat_lng(df, lat_col, lng_col)
     query_lat = df.get_column(lat_col).to_numpy().astype(np.float64)
     query_lng = df.get_column(lng_col).to_numpy().astype(np.float64)

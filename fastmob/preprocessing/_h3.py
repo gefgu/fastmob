@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import latlng_to_h3_arrow as _latlng_to_h3_arrow
 from fastmob._core import latlng_to_h3_numpy as _latlng_to_h3_numpy
 from fastmob.core.dispatch import TrajectoryDispatcher
@@ -56,7 +57,7 @@ def latlng_to_h3(
     >>> hex(result["h3_cell"].iloc[0])
     '0x89283082e73ffff'
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     ops = H3_DISPATCHER.get_ops(df)
 
     if lat_col is None:

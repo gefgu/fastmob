@@ -14,6 +14,8 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
+from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob._core import haversine_m_batch
@@ -81,7 +83,7 @@ def jump_lengths_road(
     numpy.ndarray
         One value per consecutive same-user pair (length: `len(traj) - n_users`).
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df, datetime_col=datetime_col, lat_col=lat_col, lng_col=lng_col, uid_col=uid_col
     )
@@ -155,7 +157,7 @@ def radius_of_gyration_road(
         ``[uid_col, "radius_of_gyration"]``, one row per user, in the same
         backend as input.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     if lat_col is None:
         lat_col = _pick_existing_column(df.columns, LAT_CANDIDATES)
     if lng_col is None:

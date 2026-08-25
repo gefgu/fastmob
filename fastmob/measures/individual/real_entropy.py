@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+
+from fastmob.core.base import unwrap_native
 import pyarrow.compute as pc
 
 from fastmob._core import real_entropy_users as _real_entropy_users_rust
@@ -99,7 +101,7 @@ def real_entropy(
     random_entropy : Maximum possible entropy assuming uniform visitation.
     uncorrelated_entropy : Entropy weighted by visit frequency (ignores temporal order).
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col = datetime_col or _pick_existing_column(df.columns, TIMESTAMP_CANDIDATES)
     location_id_col = location_id_col or _pick_existing_column(df.columns, LOCATION_CANDIDATES)
     uid_col = uid_col or _pick_existing_column(df.columns, USER_ID_CANDIDATES)

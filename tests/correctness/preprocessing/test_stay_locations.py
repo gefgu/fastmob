@@ -132,6 +132,21 @@ def test_stay_locations_returns_same_backend(stops_tdf):
     assert isinstance(result, type(stationary))
 
 
+def test_stay_locations_accepts_traj_dataframe(stops_tdf):
+    """Fastmob wrappers are unwrapped before entering the standalone API."""
+    from fastmob import TrajDataFrame
+
+    stationary = stops_tdf[stops_tdf["uid"] == "user_stationary"].copy()
+    result = stay_locations(
+        TrajDataFrame(stationary),
+        spatial_radius_km=0.2,
+        minutes_for_a_stop=20.0,
+    )
+
+    assert isinstance(result, type(stationary))
+    assert len(result) == 1
+
+
 def test_stay_locations_polars_backend(stops_tdf_polars):
     """Polars input → Polars output with correct stop count."""
     import polars as pl

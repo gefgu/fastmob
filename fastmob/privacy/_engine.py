@@ -6,6 +6,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import privacy_assess_risk
 from fastmob.utils._common import (
     _build_user_ranges_auto,
@@ -129,7 +130,7 @@ def assess_risk(
         raise ValueError("tolerance must be in the interval [0.0, 1.0]")
     if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, int) or not 0 <= h3_resolution <= 15:
         raise ValueError("h3_resolution must be an integer between 0 and 15")
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     df, datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

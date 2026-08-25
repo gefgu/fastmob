@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 from math import cos, exp, inf, pi, sqrt
 
 import narwhals as nw
+
+from fastmob.core.base import unwrap_native
 import pyarrow as pa
 
 from fastmob.utils._common import _detect_trajectory_columns, _pick_existing_column, UID_CANDIDATES
@@ -144,7 +146,7 @@ def match_trajectory(
     Results are Arrow-native and preserve input row order. Independent user
     trajectories are evaluated concurrently; a user sequence is sequential.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, detected_uid = _detect_trajectory_columns(
         df, datetime_col=datetime_col, lat_col=lat_col, lng_col=lng_col, uid_col=uid_col
     )

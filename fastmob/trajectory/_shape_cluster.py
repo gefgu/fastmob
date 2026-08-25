@@ -19,6 +19,7 @@ from typing import Any
 import numpy as np
 
 from fastmob._core import cluster_trajectory_shape_signatures, trajectory_shape_signatures
+from fastmob.core.base import unwrap_native
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import _prepare_trajectory, _trajectory_input
 
@@ -183,7 +184,7 @@ def cluster_trajectory_shapes_from_segments(
     """
     import narwhals as nw
 
-    nw_df = nw.from_native(traj, eager_only=True)
+    nw_df = nw.from_native(unwrap_native(traj), eager_only=True)
     group_cols = [uid_col, segment_col] if uid_col else [segment_col]
     keys = nw_df.select(group_cols).unique(maintain_order=True)
 

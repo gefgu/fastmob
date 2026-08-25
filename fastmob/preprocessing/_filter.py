@@ -4,6 +4,7 @@ from typing import Any, Callable
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import (
     FilterConfig,
     OutlierConfig,
@@ -45,7 +46,7 @@ def _filter_speed(
 
     @usedBy `filter()` via `FILTER_METHODS["speed"]` (the default method).
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
 
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
@@ -260,7 +261,7 @@ def filter(
 
     method_name, params = FILTER_METHODS[method](**method_kwargs)
 
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
 from fastmob.utils._common import (
     _as_arrow,
@@ -135,7 +136,7 @@ def location_frequency(
     frequency_rank : Rank locations by visit frequency (1 = most visited).
     visits_per_location : Total visits per location across all users (collective measure).
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,

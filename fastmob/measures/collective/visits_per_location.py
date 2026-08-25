@@ -4,6 +4,7 @@ from typing import Any
 
 import narwhals as nw
 
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     DATETIME_CANDIDATES,
     LOCATION_CANDIDATES,
@@ -92,7 +93,7 @@ def visits_per_location(
     homes_per_location : Number of users whose home is at each location.
     location_frequency : Per-user visit frequency (individual measure).
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col = _detect_required_column(df, datetime_col, DATETIME_CANDIDATES)
     location_id_col = _detect_required_column(df, location_id_col, LOCATION_CANDIDATES)
     uid_col = uid_col or _pick_existing_column(df.columns, UID_CANDIDATES)
