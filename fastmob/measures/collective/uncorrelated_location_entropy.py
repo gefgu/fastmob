@@ -5,7 +5,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.utils._common import _detect_trajectory_columns, _prepare_trajectory
+from fastmob.core.base import unwrap_native
+from fastmob.utils._common import _detect_trajectory_columns, _with_datetime_column
 
 
 def uncorrelated_location_entropy(
@@ -93,7 +94,7 @@ def uncorrelated_location_entropy(
     --------
     random_location_entropy : Baseline entropy assuming uniform visitation across users.
     """
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
@@ -101,14 +102,18 @@ def uncorrelated_location_entropy(
         lng_col=lng_col,
         uid_col=uid_col,
     )
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
-    )
+    # Narrow to only the columns this measure touches before the null-drop/
+    # cast pass -- avoids materializing/casting the caller's full (possibly
+    # much wider, e.g. visit-shaped) trajectory frame for an op that only
+    # ever needs datetime/uid/lat/lng. Same drop_nulls subset (datetime,
+    # lat, lng -- not uid) and same conditional Float64 cast as the shared
+    # _prepare_trajectory helper this replaces, so output is unchanged.
+    select_cols = [datetime_col, lat_col, lng_col] + ([uid_col] if uid_col is not None else [])
+    df = df.select(select_cols)
+    df = _with_datetime_column(df, datetime_col)
+    if df.schema[lat_col] != nw.Float64 or df.schema[lng_col] != nw.Float64:
+        df = df.with_columns(nw.col(lat_col).cast(nw.Float64), nw.col(lng_col).cast(nw.Float64))
+    df = df.drop_nulls(subset=[datetime_col, lat_col, lng_col])
 
     if uid_col is None:
         # Single user: each location has probability 1 -> entropy = 0.

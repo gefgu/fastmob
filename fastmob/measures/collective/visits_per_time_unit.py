@@ -5,7 +5,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.utils._common import _detect_trajectory_columns, _prepare_trajectory
+from fastmob.core.base import unwrap_native
+from fastmob.utils._common import _detect_trajectory_columns, _with_datetime_column
 
 _FREQ_RE = re.compile(r"^\s*(?P<count>\d+)?\s*(?P<unit>[A-Za-z]+)\s*$")
 _CASE_SENSITIVE_ALIASES = {
@@ -161,9 +162,9 @@ def visits_per_time_unit(
     if time_unit is not None:
         freq = time_unit
 
-    df = nw.from_native(traj, eager_only=True)
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
 
-    datetime_col, lat_col, lng_col, uid_col = _detect_trajectory_columns(
+    datetime_col, lat_col, lng_col, _ = _detect_trajectory_columns(
         df,
         datetime_col=datetime_col,
         lat_col=lat_col,
@@ -171,14 +172,16 @@ def visits_per_time_unit(
         uid_col=uid_col,
     )
 
-    df = _prepare_trajectory(
-        df,
-        datetime_col=datetime_col,
-        lat_col=lat_col,
-        lng_col=lng_col,
-        uid_col=uid_col,
-        sort=False,
-    )
+    # Narrow to only the columns needed to reproduce _prepare_trajectory's
+    # null-drop criterion (datetime, lat, lng -- matching its exact subset)
+    # before dropping nulls, then drop lat/lng immediately: this op never
+    # reads their values, only whether a row's location was present, so no
+    # Float64 cast is needed either. Avoids materializing/casting the
+    # caller's full (possibly much wider, e.g. visit-shaped) trajectory
+    # frame for an op that only ever returns datetime/n_visits.
+    df = df.select([datetime_col, lat_col, lng_col])
+    df = _with_datetime_column(df, datetime_col)
+    df = df.drop_nulls(subset=[datetime_col, lat_col, lng_col]).select(datetime_col)
 
     normalized_freq = _normalize_frequency_for_narwhals(freq)
 

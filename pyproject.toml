@@ -103,6 +103,15 @@ line-length = 120
 src = ["fastmob", "scripts", "tests", "benchmarks"]
 extend-exclude = ["benchmarks/*.ipynb"]
 
+[tool.ruff.lint.per-file-ignores]
+# These scripts intentionally modify sys.path before importing benchmark-only
+# and optional third-party dependencies.
+"benchmarks/*.py" = ["E402"]
+"benchmarks/**/*.py" = ["E402"]
+"tests/correctness/models/test_large_scale_parity.py" = ["E402"]
+"tests/correctness/tessellation/test_tilers.py" = ["E402"]
+"tests/populate_*.py" = ["E402"]
+
 [tool.maturin]
 module-name = "fastmob._core"
 python-source = "."
