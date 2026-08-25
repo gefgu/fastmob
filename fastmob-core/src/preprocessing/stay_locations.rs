@@ -70,7 +70,11 @@ pub fn detect_stops_for_user(
         let dt_min = t - t_0;
         let dr = haversine_km(lat_0, lon_0, lat, lon);
 
-        let speed = if dt_min > 0.0 { dr / dt_min } else { 0.0 };
+        let speed = if dt_min > 0.0 {
+            dr / dt_min * 3600.0
+        } else {
+            0.0
+        };
         speeds_kmh.push(speed);
 
         let is_last = i == lendata - 1;
@@ -117,6 +121,28 @@ pub fn detect_stops_for_user(
     }
 
     stops
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn min_speed_is_interpreted_in_kilometres_per_hour() {
+        // The first four points form a 30-minute stop. The final two points
+        // move at roughly 33 km/h, so a 5 km/h threshold must trim the stop
+        // at the last stationary point rather than treating the moving tail
+        // as below the threshold.
+        let lats = [0.0, 0.0, 0.0, 0.0, 0.05, 0.10];
+        let lngs = [0.0; 6];
+        let times = [0.0, 600.0, 1200.0, 1800.0, 2400.0, 3000.0];
+
+        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, 5.0);
+
+        assert_eq!(stops.len(), 1);
+        assert_eq!(stops[0].entry_time_s, 0.0);
+        assert_eq!(stops[0].leaving_time_s, 1800.0);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
