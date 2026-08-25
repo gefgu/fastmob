@@ -224,7 +224,7 @@ class TrajDataFrame(BaseDataFrame):
         an optional extra that transitively requires it (`data`/
         `tessellation` via geopandas).
         """
-        return nw.from_native(self.df, eager_only=True).to_pandas()
+        return self.to_pandas()
 
     # ------------------------------------------------------------------
     # Measure methods

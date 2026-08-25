@@ -1,3 +1,6 @@
+import narwhals as nw
+
+
 class BaseDataFrame:
     """Small wrapper around an eager dataframe backend."""
 
@@ -35,6 +38,14 @@ class BaseDataFrame:
 
     def to_native(self):
         return self.df
+
+    def to_pandas(self):
+        """Return the wrapped data as a native pandas DataFrame."""
+        return nw.from_native(self.df, eager_only=True).to_pandas()
+
+    def to_polars(self):
+        """Return the wrapped data as a native Polars DataFrame."""
+        return nw.from_native(self.df, eager_only=True).to_polars()
 
     def compare_to(self, other, value_col, *, group_col=None, metric=None):
         """Compare ``value_col`` against ``other``, optionally grouped by ``group_col``.

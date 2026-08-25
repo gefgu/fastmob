@@ -91,3 +91,20 @@ def test_pandas_and_polars_inputs_keep_their_own_backend():
     polars_df = pl.DataFrame({"uid": [1], "lat": [0.0], "lng": [0.0], "datetime": ["2020-01-01"]})
     tdf_pl = TrajDataFrame(polars_df)
     assert isinstance(tdf_pl.df, pl.DataFrame)
+
+
+def test_conversions_are_available_for_arrow_backed_trajectory():
+    tdf = TrajDataFrame(
+        {
+            "uid": [1, 1],
+            "lat": [40.0, 40.1],
+            "lng": [-73.0, -73.1],
+            "datetime": ["2020-01-01", "2020-01-02"],
+        }
+    )
+    pd = pytest.importorskip("pandas")
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    assert isinstance(tdf.to_pandas(), pd.DataFrame)
+    assert isinstance(tdf.to_polars(), pl.DataFrame)
+    assert tdf.to_pandas().columns.tolist() == tdf.df.column_names
+    assert tdf.to_polars().height == tdf.df.num_rows

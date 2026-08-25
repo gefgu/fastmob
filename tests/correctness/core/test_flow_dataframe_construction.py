@@ -67,3 +67,13 @@ def test_pandas_and_polars_inputs_keep_their_own_backend():
     polars_df = pl.DataFrame({"origin": ["A"], "destination": ["B"], "flow": [1]})
     fdf_pl = FlowDataFrame(polars_df)
     assert isinstance(fdf_pl.df, pl.DataFrame)
+
+
+def test_conversions_are_available_for_arrow_backed_flow():
+    fdf = FlowDataFrame({"origin": ["A"], "destination": ["B"], "flow": [1]})
+    pd = pytest.importorskip("pandas")
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    assert isinstance(fdf.to_pandas(), pd.DataFrame)
+    assert isinstance(fdf.to_polars(), pl.DataFrame)
+    assert fdf.to_pandas()["flow"].tolist() == [1]
+    assert fdf.to_polars()["flow"].to_list() == [1]

@@ -38,6 +38,7 @@ adopt the hierarchy incrementally.
 ## Shared behavior
 
 Every wrapper exposes `.df` for its original DataFrame and `.to_native()` to
-return the native backend object. Hierarchy wrappers also inherit comparison and
-chart helpers from `BaseDataFrame`; the generated API on each page documents
-the operations defined for that structure.
+return the native backend object. Use `.to_pandas()` or `.to_polars()` when a
+specific native dataframe backend is required. Hierarchy wrappers also inherit
+comparison and chart helpers from `BaseDataFrame`; the generated API on each
+page documents the operations defined for that structure.
