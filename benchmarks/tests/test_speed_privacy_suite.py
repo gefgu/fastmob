@@ -174,6 +174,7 @@ def test_skmob_workflow_tdf_builds_inside_each_timed_run(monkeypatch):
 
 
 def test_fastmob_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
+    pytest.importorskip("h3")
     tiny = _tiny_privacy_df()
     data_path = tmp_path / "privacy_toy.csv"
     data_path.write_text("placeholder", encoding="utf-8")
@@ -209,6 +210,7 @@ def test_fastmob_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
 
 
 def test_fastmob_sorted_smoke_with_tiny_pandas_dataframe(monkeypatch, tmp_path: Path):
+    pytest.importorskip("h3")
     tiny = _tiny_privacy_df()
     data_path = tmp_path / "privacy_toy.csv"
     data_path.write_text("placeholder", encoding="utf-8")

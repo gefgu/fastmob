@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 
 import pytest
+
+pytest.importorskip("matplotlib", reason="matplotlib not installed")
+
 from benchmarks import plot_benchmark_comparisons as plot
 
 
