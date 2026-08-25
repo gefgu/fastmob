@@ -12,6 +12,15 @@ pub struct Stop {
     pub leaving_time_s: f64,
 }
 
+pub fn sub_cmp_std(a: &[f64], b: &[f64], c: f64) -> Vec<bool> {
+    assert_eq!(a.len(), b.len(), "Input slices must have the same length");
+
+    a.iter()
+        .zip(b.iter())
+        .map(|(&a_val, &b_val)| (a_val - b_val) > c)
+        .collect()
+}
+
 pub fn detect_stops_for_user(
     lats: &[f64],
     lngs: &[f64],
@@ -37,6 +46,8 @@ pub fn detect_stops_for_user(
     let mut sum_lon: Vec<f64> = vec![lon_0];
     let mut speeds_kmh: Vec<f64> = Vec::new();
 
+    let time_gap_mask = sub_cmp_std(&times[1..], &times[..n - 1], no_data_for_minutes * 60.0);
+
     let lendata = n - 1;
 
     for i in 0..lendata {
@@ -44,8 +55,7 @@ pub fn detect_stops_for_user(
         let lon = lngs[i + 1];
         let t = times[i + 1];
 
-        let gap_min = (times[i + 1] - times[i]) / 60.0;
-        if gap_min > no_data_for_minutes {
+        if time_gap_mask[i] {
             lat_0 = lat;
             lon_0 = lon;
             t_0 = t;
