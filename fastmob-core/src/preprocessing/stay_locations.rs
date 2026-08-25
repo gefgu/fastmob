@@ -42,11 +42,14 @@ pub fn detect_stops_for_user(
     let mut t_0 = times[0];
     let mut segment_start = 0usize;
 
-    let mut sum_lat: Vec<f64> = vec![lat_0];
-    let mut sum_lon: Vec<f64> = vec![lon_0];
+    let mut scratch_lat: Vec<f64> = Vec::new();
+    let mut scratch_lon: Vec<f64> = Vec::new();
     let mut speeds_kmh: Vec<f64> = Vec::new();
 
-    let time_gap_mask = sub_cmp_std(&times[1..], &times[..n - 1], no_data_for_minutes * 60.0);
+    let minutes_for_a_stop = minutes_for_a_stop * 60.0; // convert to seconds
+    let no_data_for_minutes = no_data_for_minutes * 60.0; // convert to seconds
+
+    let time_gap_mask = sub_cmp_std(&times[1..], &times[..n - 1], no_data_for_minutes);
 
     let lendata = n - 1;
 
@@ -60,23 +63,14 @@ pub fn detect_stops_for_user(
             lon_0 = lon;
             t_0 = t;
             segment_start = i + 1;
-            sum_lat.clear();
-            sum_lon.clear();
             speeds_kmh.clear();
-
-            sum_lat.push(lat);
-            sum_lon.push(lon);
             continue;
         }
 
-        let dt_min = (t - t_0) / 60.0;
+        let dt_min = t - t_0;
         let dr = haversine_km(lat_0, lon_0, lat, lon);
 
-        let speed = if dt_min > 0.0 {
-            dr / dt_min * 60.0
-        } else {
-            0.0
-        };
+        let speed = if dt_min > 0.0 { dr / dt_min } else { 0.0 };
         speeds_kmh.push(speed);
 
         let is_last = i == lendata - 1;
@@ -84,29 +78,27 @@ pub fn detect_stops_for_user(
         if dr > stop_radius_km || is_last {
             if dt_min > minutes_for_a_stop || is_last {
                 let mut final_t = t;
-                let mut lat_end = sum_lat.len();
+                let mut lat_end = i + 1 - segment_start;
 
                 if min_speed_kmh.is_finite() && !speeds_kmh.is_empty() {
-                    let mut j = 0usize;
-                    for k in 1..speeds_kmh.len() {
-                        if speeds_kmh[speeds_kmh.len() - k] < min_speed_kmh {
-                            j = k;
-                            break;
-                        }
-                    }
-                    if j > 1 {
-                        let trim_idx = sum_lat.len().saturating_sub(j - 1);
-                        if trim_idx > 0 && trim_idx < sum_lat.len() {
+                    if let Some(pos) = speeds_kmh.iter().rev().position(|&s| s < min_speed_kmh) {
+                        let j = pos + 1;
+                        let trim_idx = lat_end.saturating_sub(j - 1);
+                        if trim_idx > 0 && trim_idx < lat_end {
                             final_t = times[segment_start + trim_idx];
                             lat_end = trim_idx.saturating_sub(1);
                         }
                     }
                 }
 
-                let dur_min = (final_t - t_0) / 60.0;
+                let dur_min = final_t - t_0;
                 if lat_end > 0 && dur_min > minutes_for_a_stop {
-                    let stop_lat = median_slice_in_place(&mut sum_lat[..lat_end]);
-                    let stop_lon = median_slice_in_place(&mut sum_lon[..lat_end]);
+                    scratch_lat.clear();
+                    scratch_lon.clear();
+                    scratch_lat.extend_from_slice(&lats[segment_start..segment_start + lat_end]);
+                    scratch_lon.extend_from_slice(&lngs[segment_start..segment_start + lat_end]);
+                    let stop_lat = median_slice_in_place(&mut scratch_lat);
+                    let stop_lon = median_slice_in_place(&mut scratch_lon);
                     stops.push(Stop {
                         lat: stop_lat,
                         lng: stop_lon,
@@ -120,13 +112,8 @@ pub fn detect_stops_for_user(
             lon_0 = lon;
             t_0 = t;
             segment_start = i + 1;
-            sum_lat.clear();
-            sum_lon.clear();
             speeds_kmh.clear();
         }
-
-        sum_lat.push(lat);
-        sum_lon.push(lon);
     }
 
     stops
