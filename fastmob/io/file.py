@@ -1,11 +1,45 @@
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import narwhals as nw
+import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.csv as pa_csv
 
 from fastmob.core import TrajDataFrame
 from fastmob.utils import _arrow_io
+
+_GEOLIFE_PLT_HEADER_ROWS = 6
+_GEOLIFE_PLT_COLUMN_NAMES = ["lat", "lng", "_reserved", "_altitude", "_days", "date", "time"]
+_GEOLIFE_PLT_COLUMN_TYPES = {"lat": pa.float64(), "lng": pa.float64(), "date": pa.string(), "time": pa.string()}
+_GEOLIFE_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+def _skip_invalid_plt_row(_row):
+    return "skip"
+
+
+def _parse_geolife_plt(plt_path: Path, user_id: str, encoding: str) -> pa.Table:
+    table = pa_csv.read_csv(
+        str(plt_path),
+        read_options=pa_csv.ReadOptions(
+            skip_rows=_GEOLIFE_PLT_HEADER_ROWS,
+            column_names=_GEOLIFE_PLT_COLUMN_NAMES,
+            encoding=encoding,
+            use_threads=False,
+        ),
+        parse_options=pa_csv.ParseOptions(delimiter=",", invalid_row_handler=_skip_invalid_plt_row),
+        convert_options=pa_csv.ConvertOptions(
+            include_columns=["lat", "lng", "date", "time"], column_types=_GEOLIFE_PLT_COLUMN_TYPES
+        ),
+    )
+    datetime_str = pc.binary_join_element_wise(table["date"], table["time"], " ")
+    datetime_col = pc.strptime(datetime_str, format=_GEOLIFE_DATETIME_FORMAT, unit="us")
+    uid_col = pa.array([user_id] * table.num_rows, type=pa.string())
+    return pa.table({"uid": uid_col, "lat": table["lat"], "lng": table["lng"], "datetime": datetime_col})
 
 
 def read(filename, **kwargs):
@@ -80,33 +114,30 @@ def load_geolife_trajectories(path, user_ids=None, **kwargs):
         list of user IDs to load. If empty or None, all users are loaded.
     **kwargs : dict
         Additional keyword arguments passed to the `TrajDataFrame` constructor.
+        ``encoding`` (default ``"utf-8"``) is applied when reading each `.plt`
+        file and is not forwarded to `TrajDataFrame`.
 
     Returns
     -------
     TrajDataFrame
-        a TrajDataFrame containing all trajectories
+        a TrajDataFrame with ``uid`` (string), ``lat``/``lng`` (float64), and
+        ``datetime`` (parsed as ``timestamp[us]``) columns.
     """
     root = Path(path)
-    rows = []
+    encoding = kwargs.pop("encoding", "utf-8")
     user_filter = None if user_ids is None else {str(user_id) for user_id in user_ids}
+    jobs = []
     for plt_path in sorted(root.rglob("*.plt")):
         parts = plt_path.parts
         user_id = next((part for part in reversed(parts) if part.isdigit() and len(part) == 3), plt_path.parent.name)
         if user_filter is not None and user_id not in user_filter:
             continue
-        with plt_path.open(encoding=kwargs.pop("encoding", "utf-8")) as handle:
-            for line_no, line in enumerate(handle):
-                if line_no < 6:
-                    continue
-                fields = line.strip().split(",")
-                if len(fields) < 7:
-                    continue
-                rows.append(
-                    {
-                        "uid": user_id,
-                        "lat": float(fields[0]),
-                        "lng": float(fields[1]),
-                        "datetime": f"{fields[5]} {fields[6]}",
-                    }
-                )
-    return TrajDataFrame(_arrow_io.table_from_pylist(rows), **kwargs)
+        jobs.append((plt_path, user_id))
+
+    if not jobs:
+        return TrajDataFrame(_arrow_io.table_from_pylist([]), **kwargs)
+
+    max_workers = min(64, (os.cpu_count() or 4) * 4)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        tables = list(executor.map(lambda job: _parse_geolife_plt(job[0], job[1], encoding), jobs))
+    return TrajDataFrame(pa.concat_tables(tables), **kwargs)
