@@ -8,6 +8,7 @@ description = "High-performance mobility analysis with a Rust-accelerated core a
 readme = "README.md"
 requires-python = ">=3.9"
 license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 authors = [
     { name = "Gustavo Henrique Bruno dos Santos" },
 ]
