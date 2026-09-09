@@ -495,6 +495,79 @@ fn classify_events_with_randoms(
     )
 }
 
+/// Classify an observed temporal graph while streaming the random null model.
+///
+/// The previous implementation materialized every random replica and every
+/// window before calculating any metrics.  The null metrics only require the
+/// aggregate graph for one replica at a time, so keep just that replica's
+/// counts and adjacency inputs, then release them before moving on.
+fn classify_events_streaming(
+    node_count: usize,
+    temporal: &TemporalEvents,
+    p_rnd: f64,
+    replicas: usize,
+    seed: u64,
+) -> (RecastOutput, Vec<f64>, Vec<f64>) {
+    let (edge_from, edge_to, persistence) = aggregate(&temporal.events);
+    let time_steps = temporal.events.len();
+    if edge_from.is_empty() {
+        return (
+            RecastOutput {
+                edge_from,
+                edge_to,
+                persistence,
+                topological_overlap: Vec::new(),
+                classes: Vec::new(),
+                persistence_threshold: 1.0,
+                overlap_threshold: 1.0,
+                time_steps,
+            },
+            Vec::new(),
+            Vec::new(),
+        );
+    }
+
+    let topological_overlap = overlaps(node_count, &edge_from, &edge_to);
+    let mut null_persistence = Vec::new();
+    let mut null_overlap = Vec::new();
+    for replica in 0..replicas.max(1) {
+        let mut aggregate_counts: FxHashMap<Edge, usize> = FxHashMap::default();
+        for (window, event) in temporal.events.iter().enumerate() {
+            let mut rng = Xoshiro256PlusPlus::seed_from_u64(stream_seed(seed, replica, window));
+            let random = rnd(node_count, event, &mut rng);
+            for edge in random {
+                *aggregate_counts.entry(edge).or_insert(0) += 1;
+            }
+        }
+        let (from, to, persistence) = aggregate_from_counts(aggregate_counts, time_steps);
+        let overlap = overlaps_serial(node_count, &from, &to);
+        null_persistence.extend(persistence);
+        null_overlap.extend(overlap);
+    }
+
+    let persistence_threshold = threshold(&mut null_persistence, p_rnd);
+    let overlap_threshold = threshold(&mut null_overlap, p_rnd);
+    let classes = persistence
+        .iter()
+        .zip(&topological_overlap)
+        .map(|(&p, &o)| relationship_class(p, o, persistence_threshold, overlap_threshold))
+        .collect();
+    (
+        RecastOutput {
+            edge_from,
+            edge_to,
+            persistence,
+            topological_overlap,
+            classes,
+            persistence_threshold,
+            overlap_threshold,
+            time_steps,
+        },
+        null_persistence,
+        null_overlap,
+    )
+}
+
 fn classify_events(
     node_count: usize,
     temporal: &TemporalEvents,
@@ -502,8 +575,7 @@ fn classify_events(
     replicas: usize,
     seed: u64,
 ) -> (RecastOutput, Vec<f64>, Vec<f64>) {
-    let randoms = random_replicas(node_count, temporal, replicas, seed);
-    classify_events_with_randoms(node_count, temporal, p_rnd, &randoms)
+    classify_events_streaming(node_count, temporal, p_rnd, replicas, seed)
 }
 
 /// Faithful RECAST classification. Class codes: 0 Friends, 1 Bridges, 2 Acquaintances, 3 Random.

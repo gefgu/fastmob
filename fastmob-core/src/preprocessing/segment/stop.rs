@@ -42,6 +42,9 @@ pub fn stop_segment_ids(
         return out;
     }
 
+    // include_last=true: segmentation needs the trailing open stay closed
+    // like every other detected stop, unlike generate_staypoints() where it's
+    // now a user-facing choice (see stay_locations.rs).
     let stops = detect_stops_for_user(
         lats,
         lngs,
@@ -50,6 +53,7 @@ pub fn stop_segment_ids(
         minutes_for_a_stop,
         no_data_for_minutes,
         min_speed_kmh,
+        true,
     );
     if stops.is_empty() {
         return out;

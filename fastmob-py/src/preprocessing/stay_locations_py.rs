@@ -46,6 +46,7 @@ pub fn detect_stay_locations_batch_presorted<'py>(
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
+    include_last: bool,
 ) -> PyResult<StayLocationsBatchResult<'py>> {
     let latitudes = as_f64_array(latitudes, "latitudes")?;
     let longitudes = as_f64_array(longitudes, "longitudes")?;
@@ -60,6 +61,7 @@ pub fn detect_stay_locations_batch_presorted<'py>(
             minutes_for_a_stop,
             no_data_for_minutes,
             min_speed_kmh,
+            include_last,
         )
     });
     Ok((
@@ -84,6 +86,7 @@ pub fn detect_stay_locations_batch_indexed<'py>(
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
+    include_last: bool,
 ) -> PyResult<StayLocationsBatchResult<'py>> {
     let (out_lats, out_lngs, entry_times, leaving_times, user_range_idx) =
         run_indexed_timed_coordinate_arrow_ms(
@@ -105,6 +108,7 @@ pub fn detect_stay_locations_batch_indexed<'py>(
                     minutes_for_a_stop,
                     no_data_for_minutes,
                     min_speed_kmh,
+                    include_last,
                 )
             },
         )?;

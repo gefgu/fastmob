@@ -43,6 +43,7 @@ def stay_locations(
     leaving_time: bool = True,
     no_data_for_minutes: float = 1e12,
     min_speed_kmh: float | None = None,
+    include_last: bool = True,
     *,
     datetime_col: str | None = None,
     lat_col: str | None = None,
@@ -68,6 +69,11 @@ def stay_locations(
         Gap threshold (minutes) above which data is treated as missing.
     min_speed_kmh:
         If set, trim trailing high-speed points from the end of each stop.
+    include_last:
+        Whether to close and emit the still-open stay at the end of a user's
+        track, i.e. one the user hadn't "stepped out of" yet when tracking
+        ended. Matches trackintel's ``generate_staypoints(include_last=...)``,
+        except trackintel defaults this to ``False``.
     datetime_col, lat_col, lng_col, uid_col:
         Explicit column name overrides; auto-detected when None.
 
@@ -160,6 +166,7 @@ def stay_locations(
         minutes_for_a_stop,
         no_data_for_minutes,
         effective_min_speed,
+        include_last,
     )
     del lats_data, lngs_data, timestamps_data, sorted_indices, ends
     out_lats, out_lngs, entry_times_ms, leaving_times_ms, user_range_indices = _unwrap_stay(*_result)

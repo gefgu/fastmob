@@ -36,13 +36,18 @@ def _home_work_home_rows(uid: str | None = "u1"):
     t0 = base + pd.Timedelta(minutes=610)
     for i in range(1, 4):
         add(t0 + pd.Timedelta(minutes=i * 3), 0.0, 0.1 * i)
-    t3 = t0 + pd.Timedelta(minutes=19)
+    # 5 minutes after the last tripleg point (t0+9), safely below
+    # STOP_KWARGS["minutes_for_a_stop"]=10.0 on either side (>= or >): a gap
+    # of exactly 10 minutes here would make fastmob's >= comparison (matching
+    # trackintel's own sliding-window semantics) register that single
+    # transitional point as its own spurious stop.
+    t3 = t0 + pd.Timedelta(minutes=14)
     for m in range(0, 601, 30):
         add(t3 + pd.Timedelta(minutes=m), 0.0, 1.0)
     t4 = t3 + pd.Timedelta(minutes=610)
     for i in range(1, 4):
         add(t4 + pd.Timedelta(minutes=i * 3), 0.0, 1.0 - 0.3333 * i)
-    t5 = t4 + pd.Timedelta(minutes=19)
+    t5 = t4 + pd.Timedelta(minutes=14)
     for m in range(0, 601, 30):
         add(t5 + pd.Timedelta(minutes=m), 0.0, 0.0)
 

@@ -21,7 +21,59 @@ pub fn sub_cmp_std(a: &[f64], b: &[f64], c: f64) -> Vec<bool> {
         .collect()
 }
 
-pub fn detect_stops_for_user(
+/// Drops rows that are exact duplicates (same lat, lng, and time) of the row
+/// immediately before them, mirroring trackintel's `exclude_duplicate_pfs=True`
+/// default. Assumes rows are already sorted by time within a user; duplicate
+/// timestamps put duplicate rows adjacent, so a consecutive check is enough.
+///
+/// Three flat elementwise-equality passes (same shape as `sub_cmp_std`)
+/// rather than one branchy fused loop or a "skip entirely if nothing to
+/// remove" prescan: measured head-to-head on full-scale GeoLife, both
+/// alternatives were *slower* than this, because duplicate positionfixes are
+/// common enough per user in real GPS logs that a prescan rarely gets to
+/// skip anything, and a fused per-element branch defeats autovectorization
+/// that these flat compares get for free.
+fn dedup_consecutive(lats: &[f64], lngs: &[f64], times: &[f64]) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let n = lats.len();
+    if n <= 1 {
+        return (lats.to_vec(), lngs.to_vec(), times.to_vec());
+    }
+
+    let eq_prev = |values: &[f64]| -> Vec<bool> {
+        values[1..]
+            .iter()
+            .zip(values[..n - 1].iter())
+            .map(|(&a, &b)| a == b)
+            .collect()
+    };
+    let lat_dup = eq_prev(lats);
+    let lng_dup = eq_prev(lngs);
+    let time_dup = eq_prev(times);
+
+    let mut out_lat = Vec::with_capacity(n);
+    let mut out_lng = Vec::with_capacity(n);
+    let mut out_t = Vec::with_capacity(n);
+    out_lat.push(lats[0]);
+    out_lng.push(lngs[0]);
+    out_t.push(times[0]);
+
+    for i in 0..n - 1 {
+        if !(lat_dup[i] && lng_dup[i] && time_dup[i]) {
+            out_lat.push(lats[i + 1]);
+            out_lng.push(lngs[i + 1]);
+            out_t.push(times[i + 1]);
+        }
+    }
+
+    (out_lat, out_lng, out_t)
+}
+
+/// Sliding-window stop detection (Li et al. 2008 / trackintel's algorithm)
+/// over already-deduplicated, chronologically-sorted rows for one user.
+/// Callers are responsible for deduplication -- both `detect_stops_for_user`
+/// and `detect_stops_for_user_indexed` call `dedup_consecutive` before this.
+#[allow(clippy::too_many_arguments)]
+fn detect_stops_for_user_core(
     lats: &[f64],
     lngs: &[f64],
     times: &[f64],
@@ -29,9 +81,10 @@ pub fn detect_stops_for_user(
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
+    include_last: bool,
 ) -> Vec<Stop> {
     let n = lats.len();
-    if n == 0 {
+    if n <= 1 {
         return Vec::new();
     }
 
@@ -78,9 +131,10 @@ pub fn detect_stops_for_user(
         speeds_kmh.push(speed);
 
         let is_last = i == lendata - 1;
+        let force_close = include_last && is_last;
 
-        if dr > stop_radius_km || is_last {
-            if dt_min > minutes_for_a_stop || is_last {
+        if dr >= stop_radius_km || force_close {
+            if dt_min >= minutes_for_a_stop || force_close {
                 let mut final_t = t;
                 let mut lat_end = i + 1 - segment_start;
 
@@ -96,7 +150,7 @@ pub fn detect_stops_for_user(
                 }
 
                 let dur_min = final_t - t_0;
-                if lat_end > 0 && dur_min > minutes_for_a_stop {
+                if lat_end > 0 && dur_min >= minutes_for_a_stop {
                     scratch_lat.clear();
                     scratch_lon.clear();
                     scratch_lat.extend_from_slice(&lats[segment_start..segment_start + lat_end]);
@@ -123,6 +177,30 @@ pub fn detect_stops_for_user(
     stops
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn detect_stops_for_user(
+    lats: &[f64],
+    lngs: &[f64],
+    times: &[f64],
+    stop_radius_km: f64,
+    minutes_for_a_stop: f64,
+    no_data_for_minutes: f64,
+    min_speed_kmh: f64,
+    include_last: bool,
+) -> Vec<Stop> {
+    let (lats, lngs, times) = dedup_consecutive(lats, lngs, times);
+    detect_stops_for_user_core(
+        &lats,
+        &lngs,
+        &times,
+        stop_radius_km,
+        minutes_for_a_stop,
+        no_data_for_minutes,
+        min_speed_kmh,
+        include_last,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,11 +215,44 @@ mod tests {
         let lngs = [0.0; 6];
         let times = [0.0, 600.0, 1200.0, 1800.0, 2400.0, 3000.0];
 
-        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, 5.0);
+        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, 5.0, true);
 
         assert_eq!(stops.len(), 1);
         assert_eq!(stops[0].entry_time_s, 0.0);
         assert_eq!(stops[0].leaving_time_s, 1800.0);
+    }
+
+    #[test]
+    fn consecutive_duplicate_positionfixes_are_dropped() {
+        // Row at t=300 repeats t=0's fix exactly; it must not be treated as a
+        // second, distinct sample when checking the stop's duration.
+        let lats = [0.0, 0.0, 0.0, 0.0, 0.0];
+        let lngs = [0.0; 5];
+        let times = [0.0, 0.0, 300.0, 300.0, 1500.0];
+
+        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
+
+        assert_eq!(stops.len(), 1);
+        assert_eq!(stops[0].entry_time_s, 0.0);
+        assert_eq!(stops[0].leaving_time_s, 1500.0);
+    }
+
+    #[test]
+    fn include_last_controls_the_trailing_open_stay() {
+        // The user is still stationary when tracking ends -- with
+        // include_last=false (trackintel's default) that trailing stay must
+        // be omitted; with include_last=true it must be emitted.
+        let lats = [0.0, 0.0, 0.0];
+        let lngs = [0.0; 3];
+        let times = [0.0, 600.0, 1500.0];
+
+        let omitted = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, false);
+        assert!(omitted.is_empty());
+
+        let included = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
+        assert_eq!(included.len(), 1);
+        assert_eq!(included[0].entry_time_s, 0.0);
+        assert_eq!(included[0].leaving_time_s, 1500.0);
     }
 }
 
@@ -156,24 +267,33 @@ fn detect_stops_for_user_indexed(
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
+    include_last: bool,
 ) -> Vec<Stop> {
-    let valid_user_indices: Vec<usize> = user_indices
-        .iter()
-        .copied()
-        .filter(|&idx| {
-            valid_rows.is_none_or(|v| v[idx])
-                && lats[idx].is_finite()
-                && lngs[idx].is_finite()
-                && times[idx].is_finite()
-        })
-        .collect();
-    if valid_user_indices.is_empty() {
-        return Vec::new();
+    // Fuses the valid-row filter and the gather-by-index copy into one pass
+    // (the previous shape was filter -> Vec<usize>, then 3 separate maps off
+    // that index vec: 4 passes/allocations for what's really one job).
+    // Dedup is a separate, deliberately non-fused bulk pass -- see
+    // `dedup_consecutive`'s docs for why fusing it in here as a per-element
+    // "compare to the last kept row" check measured slower, not faster.
+    let mut lats_u: Vec<f64> = Vec::with_capacity(user_indices.len());
+    let mut lngs_u: Vec<f64> = Vec::with_capacity(user_indices.len());
+    let mut times_u: Vec<f64> = Vec::with_capacity(user_indices.len());
+
+    for &idx in user_indices {
+        let valid = valid_rows.is_none_or(|v| v[idx])
+            && lats[idx].is_finite()
+            && lngs[idx].is_finite()
+            && times[idx].is_finite();
+        if valid {
+            lats_u.push(lats[idx]);
+            lngs_u.push(lngs[idx]);
+            times_u.push(times[idx]);
+        }
     }
-    let lats_u: Vec<f64> = valid_user_indices.iter().map(|&i| lats[i]).collect();
-    let lngs_u: Vec<f64> = valid_user_indices.iter().map(|&i| lngs[i]).collect();
-    let times_u: Vec<f64> = valid_user_indices.iter().map(|&i| times[i]).collect();
-    detect_stops_for_user(
+
+    let (lats_u, lngs_u, times_u) = dedup_consecutive(&lats_u, &lngs_u, &times_u);
+
+    detect_stops_for_user_core(
         &lats_u,
         &lngs_u,
         &times_u,
@@ -181,6 +301,7 @@ fn detect_stops_for_user_indexed(
         minutes_for_a_stop,
         no_data_for_minutes,
         min_speed_kmh,
+        include_last,
     )
 }
 
@@ -194,6 +315,7 @@ pub fn detect_stay_locations_batch_impl(
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
+    include_last: bool,
 ) -> StayLocationsBatchResult {
     let per_user_stops: Vec<Vec<Stop>> = ranges
         .par_iter()
@@ -206,6 +328,7 @@ pub fn detect_stay_locations_batch_impl(
                 minutes_for_a_stop,
                 no_data_for_minutes,
                 min_speed_kmh,
+                include_last,
             )
         })
         .collect();
@@ -225,6 +348,7 @@ pub fn detect_stay_locations_batch_indexed_impl(
     minutes_for_a_stop: f64,
     no_data_for_minutes: f64,
     min_speed_kmh: f64,
+    include_last: bool,
 ) -> StayLocationsBatchResult {
     let per_user_stops: Vec<Vec<Stop>> = (0..ends.len())
         .into_par_iter()
@@ -241,6 +365,7 @@ pub fn detect_stay_locations_batch_indexed_impl(
                 minutes_for_a_stop,
                 no_data_for_minutes,
                 min_speed_kmh,
+                include_last,
             )
         })
         .collect();
