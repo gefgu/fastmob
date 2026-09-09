@@ -104,6 +104,32 @@ PATH="$PWD/.venv-skmob/bin:$PATH" \
 
 The skmob comparison tests should usually be strict, but the Brightkite tests for `filter`, `distance_straight_line`, and `jump_lengths` intentionally allow a narrow tolerance. `skmob` computes distances with `skmob.utils.gislib.getDistanceByHaversine` and `earthradius = 6371.0`, while `fastmob` uses the Rust `geo::Haversine` kernel. This can move threshold-adjacent filtering points across the speed cutoff and can create metre-scale differences on long jumps. Keep that relaxation limited to those tests unless another comparison shows the same distance-kernel-only cause.
 
+## Release process
+
+`.github/workflows/CI.yml`'s wheel-build jobs (`linux-wheels`, `musllinux-wheels`, `macos-wheels`, `macos-x86_64-wheels`, `windows-wheels`, `sdist`) only run on a `vX.Y.Z` tag push or a manual `workflow_dispatch`; ordinary PRs and pushes to `main` only run the cheap `test` job. This keeps the expensive macOS (10x Linux runner cost) and Windows (2x) runners off the normal development loop. Use `workflow_dispatch` with the `platform` input (`all`, `linux`, `musllinux`, `macos`, `windows`, `sdist`) from the Actions tab to debug a single platform's wheel build without running the whole matrix.
+
+Before tagging a release, validate everything locally so the tag-triggered run succeeds on the first try instead of idling in the runner queue on a retry:
+
+```bash
+# Fast local Linux-CI-equivalent check (lint + pytest, via act + Docker)
+bash scripts/act_test.sh
+# or, without act:
+bash scripts/run_lint.sh
+bash scripts/run_correctness.sh
+
+# Mirror CI's Linux wheel/sdist jobs locally (manylinux + musllinux x86_64
+# via Docker, aarch64 via zig cross-compile, sdist)
+bash scripts/build_release_wheels.sh
+```
+
+macOS and Windows wheels cannot be built locally (no genuine Apple/Microsoft toolchain on this machine) and stay CI-only.
+
+To cut a release:
+
+1. Bump the version in `fastmob-py/Cargo.toml` — that's the authoritative version; `pyproject.toml` reads it dynamically via `[tool.maturin] manifest-path`. Commit the bump.
+2. `git tag vX.Y.Z && git push origin main --tags`.
+3. The tag push triggers the full wheel matrix, then `release` (gated on `startsWith(github.ref, 'refs/tags/v')`) generates artifact attestations, creates the GitHub release, and publishes to PyPI via OIDC Trusted Publishing — no stored token, and it must run inside GitHub Actions regardless of what was built locally.
+
 ## Documentation
 
 ```bash
