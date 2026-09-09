@@ -22,9 +22,15 @@
 ## Before opening a pull request
 
 ```bash
+uv run --group docs python scripts/build_notebook_docs.py
 uv run --group docs zensical build --strict
 pytest tests/docs
 ```
+
+Documentation notebooks in `docs/src/` are the source of truth. The conversion
+script generates ignored Markdown pages and output assets, and adds a Binder
+badge to each page. Do not edit generated files; rerun the script after
+changing a notebook.
 
 Public API changes must update the generated docstring contract and the
 appropriate recipe/reference/release note, or state why no user-facing

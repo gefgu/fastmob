@@ -27,6 +27,8 @@ nav = [
     { "Measure people and populations" = "learn/individual-and-collective-measures.md" },
     { "Route and map-match trajectories" = "learn/network-analysis.md" },
     { "Fit and evaluate mobility results" = "learn/fit-and-evaluate.md" },
+    { "Stay-point detection notebook" = "learn/notebooks/Stay_Point_Detection_Geolife.md" },
+    { "Compare mobility laws notebook" = "learn/comparision-to-mobility-laws.md" },
   ] },
   { "Reference" = [
     { "Overview" = "reference/index.md" },

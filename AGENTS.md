@@ -17,3 +17,17 @@ The workspace permits edits to the working tree but exposes `.git` as read-only
 inside the sandbox. For user-requested staging, commits, or other Git metadata
 writes, request elevated permission directly before running the Git command;
 do not first attempt the command in the sandbox.
+
+## Documentation notebooks
+
+Documentation notebooks under `docs/src/` are source files. Convert them to
+normal Markdown pages, including code blocks and saved outputs, with:
+
+```bash
+uv run --group docs python scripts/build_notebook_docs.py
+```
+
+The generated `.md` files and `*_files/` output directories are ignored build
+artifacts. Run the conversion before documentation tests or a local Zensical
+build. Each generated page includes a Binder badge linking to the original
+notebook on `main`.

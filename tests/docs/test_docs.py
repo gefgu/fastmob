@@ -27,7 +27,9 @@ DATA_STRUCTURE_PAGES = {
 
 def _local_target(page: Path, target: str) -> Path | None:
     target = target.strip().split(maxsplit=1)[0].split("#", 1)[0]
-    if not target or "://" in target or target.startswith(("mailto:", "#")):
+    # Notebook code/output can contain tuple and array indexing such as ``[1]``
+    # that resembles a Markdown link to the lightweight regex above.
+    if not target or target.isdigit() or "://" in target or target.startswith(("mailto:", "#")):
         return None
     path = (page.parent / target).resolve()
     if path.is_dir():

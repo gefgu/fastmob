@@ -145,6 +145,21 @@ uv run --group docs zensical build
 
 Documentation source pages live in `docs/src/`. The `docs/features/` subdirectory holds internal planning files and is intentionally excluded from the published site nav. `docs/DESIGN.md` is the Zensical design system reference.
 
+### Notebook documentation pages
+
+Notebooks under `docs/src/` are converted into normal Markdown pages before
+the docs build. The converter preserves notebook prose, code blocks, and
+captured outputs, writes the Markdown and output assets beside the source
+notebook, and adds a Binder badge linking to the original notebook:
+
+```bash
+uv run --group docs python scripts/build_notebook_docs.py
+```
+
+Generated notebook `.md` files and `*_files/` directories are ignored and
+must not be edited directly. Run the converter before `pytest tests/docs` or
+`uv run --group docs zensical build`; docs CI runs it automatically.
+
 API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
 
 ### Measures sidebar

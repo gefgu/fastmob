@@ -80,6 +80,7 @@ dev = [
 docs = [
     "zensical>=0.0.41; python_version >= '3.10'",
     "mkdocstrings[python]>=0.25",
+    "nbconvert>=7.0",
 ]
 
 [tool.uv.sources]

@@ -102,3 +102,9 @@ tests/shared/skmob_reference/*
 !tests/shared/skmob_reference/**/*.json
 
 graphify-out/
+
+# Generated documentation pages and output assets from docs notebooks.
+docs/src/learn/comparision-to-mobility-laws.md
+docs/src/learn/comparision-to-mobility-laws_files/
+docs/src/learn/notebooks/*.md
+docs/src/learn/notebooks/*_files/
