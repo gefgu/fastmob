@@ -43,9 +43,18 @@ docker run --rm -v "$REPO_ROOT":/io "$MATURIN_IMAGE" \
 
 if command -v zig >/dev/null 2>&1; then
     echo "==> Cross-compiling aarch64 Linux wheel (zig) ..."
-    uv run --with maturin maturin build --release \
-        --target aarch64-unknown-linux-gnu --zig \
-        --out dist "${FEATURE_ARGS[@]}"
+    # .cargo/config.toml pins target-cpu=native for this machine's own benchmarks;
+    # that's meaningless (and breaks the zig/clang backend) when cross-compiling
+    # to a different architecture, so clear it for this one invocation.
+    if RUSTFLAGS="" uv run --with maturin maturin build --release \
+        --target aarch64-unknown-linux-gnu --zig -i 3.12 \
+        --out dist "${FEATURE_ARGS[@]}"; then
+        :
+    else
+        echo "WARNING: aarch64 zig cross-build failed; continuing without it."
+        echo "         CI still builds aarch64 wheels independently via a manylinux/QEMU container,"
+        echo "         so this only affects local pre-flight coverage, not the real release."
+    fi
 else
     echo "WARNING: zig not found on PATH, skipping local aarch64 wheel build."
     echo "         Install with 'pip install ziglang' (or your system package manager) to enable it."
