@@ -32,6 +32,12 @@ script generates ignored Markdown pages and output assets, and adds a Binder
 badge to each page. Do not edit generated files; rerun the script after
 changing a notebook.
 
+To serve the site with notebook pages available automatically:
+
+```bash
+bash scripts/serve_docs.sh
+```
+
 Public API changes must update the generated docstring contract and the
 appropriate recipe/reference/release note, or state why no user-facing
 documentation change is needed.

@@ -31,3 +31,7 @@ The generated `.md` files and `*_files/` output directories are ignored build
 artifacts. Run the conversion before documentation tests or a local Zensical
 build. Each generated page includes a Binder badge linking to the original
 notebook on `main`.
+
+To serve the docs locally and regenerate notebook pages automatically on port
+5178, run `bash scripts/serve_docs.sh`. Override the address with
+`DOCS_DEV_ADDR=127.0.0.1:8000` when needed.

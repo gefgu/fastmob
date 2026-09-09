@@ -79,10 +79,6 @@ def location_frequency(
         Explicit longitude column name.  Auto-detected when None.
     uid_col : str or None, optional
         Explicit user-ID column name.  Auto-detected when None.
-    presorted : bool, optional
-        When True, trust that rows are already grouped by user and use the
-        contiguous fast path.
-
     Returns
     -------
     pandas.DataFrame or polars.DataFrame or list

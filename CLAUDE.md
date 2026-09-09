@@ -156,6 +156,9 @@ notebook, and adds a Binder badge linking to the original notebook:
 uv run --group docs python scripts/build_notebook_docs.py
 ```
 
+For local serving, use `bash scripts/serve_docs.sh`; it regenerates notebook
+pages first and serves Zensical at `http://127.0.0.1:5178` by default.
+
 Generated notebook `.md` files and `*_files/` directories are ignored and
 must not be edited directly. Run the converter before `pytest tests/docs` or
 `uv run --group docs zensical build`; docs CI runs it automatically.

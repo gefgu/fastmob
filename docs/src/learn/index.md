@@ -47,6 +47,12 @@ parameter contract.
 <p>Fit mobility laws and evaluate the results against your data.</p>
 <span class="how-to-card__link">Fit and evaluate mobility results →</span>
 </a>
+<a class="how-to-card" href="notebooks/Stay_Point_Detection_Geolife.md">
+<span class="how-to-card__eyebrow">Notebook example</span>
+<h2>Detect staypoints from GeoLife</h2>
+<p>Follow an end-to-end notebook example with rendered Markdown, code, and outputs.</p>
+<span class="how-to-card__link">Open the notebook guide →</span>
+</a>
 </div>
 
 !!! tip "Use the right level of detail"

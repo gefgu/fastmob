@@ -1,4 +1,5 @@
 /target
+.cargo-target/
 .profiles/
 .claude/
 .agents/
