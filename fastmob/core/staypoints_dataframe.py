@@ -371,7 +371,12 @@ class Staypoints(BaseDataFrame):
         if location_id_col not in df.columns:
             raise ValueError(f"Staypoints is missing global location-ID column {location_id_col!r}")
         known = set(nw.from_native(locations.df, eager_only=True).get_column(locations.location_id_col).to_list())
-        assigned = set(df.get_column(location_id_col).drop_nulls().to_list())
+        # `.unique()` before `.to_list()`: without it, every row (not just
+        # every distinct location) gets boxed into a Python object before
+        # the set is built -- at 100M rows with a catalogue of tens of
+        # thousands of locations, that's ~10s of pure-Python overhead to
+        # validate membership for a column that's ~99.97% duplicates.
+        assigned = set(df.get_column(location_id_col).drop_nulls().unique().to_list())
         unknown = assigned - known
         if unknown:
             raise ValueError("Staypoints contains location IDs absent from the global Locations catalogue")
