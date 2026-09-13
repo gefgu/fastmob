@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, Float64Array, Int64Array, UInt32Array, UInt64Array, UInt8Array,
+    Array, ArrayRef, Float32Array, Float64Array, Int64Array, UInt32Array, UInt64Array, UInt8Array,
 };
 use fastmob_core::social::co_presence_network::{
     event_graphs, flatten_events, recast_classify, rnd_graph, t_rnd_graph, validate_recast,
@@ -186,8 +186,8 @@ pub fn recast_classify_py(
     Ok((
         arrow(UInt32Array::from(result.edge_from)),
         arrow(UInt32Array::from(result.edge_to)),
-        arrow(Float64Array::from(result.persistence)),
-        arrow(Float64Array::from(result.topological_overlap)),
+        arrow(Float32Array::from(result.persistence)),
+        arrow(Float32Array::from(result.topological_overlap)),
         arrow(UInt8Array::from(result.classes)),
         result.persistence_threshold,
         result.overlap_threshold,
@@ -299,16 +299,16 @@ pub fn recast_validate_py(
     let out = PyList::empty(py);
     out.append(arrow(UInt32Array::from(c.edge_from)))?;
     out.append(arrow(UInt32Array::from(c.edge_to)))?;
-    out.append(arrow(Float64Array::from(c.persistence)))?;
-    out.append(arrow(Float64Array::from(c.topological_overlap)))?;
+    out.append(arrow(Float32Array::from(c.persistence)))?;
+    out.append(arrow(Float32Array::from(c.topological_overlap)))?;
     out.append(arrow(UInt8Array::from(c.classes)))?;
     out.append(c.persistence_threshold)?;
     out.append(c.overlap_threshold)?;
     out.append(c.time_steps)?;
-    out.append(arrow(Float64Array::from(result.observed_persistence)))?;
-    out.append(arrow(Float64Array::from(result.observed_overlap)))?;
-    out.append(arrow(Float64Array::from(result.random_persistence)))?;
-    out.append(arrow(Float64Array::from(result.random_overlap)))?;
+    out.append(arrow(Float32Array::from(result.observed_persistence)))?;
+    out.append(arrow(Float32Array::from(result.observed_overlap)))?;
+    out.append(arrow(Float32Array::from(result.random_persistence)))?;
+    out.append(arrow(Float32Array::from(result.random_overlap)))?;
     out.append(arrow(Float64Array::from(result.full_observed_clustering)))?;
     out.append(arrow(Float64Array::from(result.full_random_mean)))?;
     out.append(arrow(Float64Array::from(result.full_random_std)))?;

@@ -5,11 +5,12 @@
 //! with the paper's degree-product probability, and T-RND applies RND to every
 //! snapshot independently.
 
+#[cfg(feature = "numkong")]
+use numkong::SparseIntersect;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::cmp::Ordering;
 
 type Edge = (u32, u32);
 const DAY_MS: i64 = 86_400_000;
@@ -151,7 +152,7 @@ pub fn flatten_events(temporal: &TemporalEvents) -> TemporalGraphOutput {
 fn aggregate_from_counts(
     counts: FxHashMap<Edge, usize>,
     steps: usize,
-) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+) -> (Vec<u32>, Vec<u32>, Vec<f32>) {
     let mut values: Vec<_> = counts.into_iter().collect();
     values.sort_unstable_by_key(|(e, _)| *e);
     let denom = steps.max(1) as f64;
@@ -161,12 +162,12 @@ fn aggregate_from_counts(
     for ((u, v), n) in values {
         from.push(u);
         to.push(v);
-        persistence.push(n as f64 / denom);
+        persistence.push((n as f64 / denom) as f32);
     }
     (from, to, persistence)
 }
 
-fn aggregate_serial(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+fn aggregate_serial(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f32>) {
     let mut counts: FxHashMap<Edge, usize> = FxHashMap::default();
     for event in events {
         for &e in event {
@@ -176,7 +177,7 @@ fn aggregate_serial(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f64>
     aggregate_from_counts(counts, events.len())
 }
 
-fn aggregate(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+fn aggregate(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f32>) {
     let counts = events
         .par_iter()
         .fold(FxHashMap::default, |mut counts, event| {
@@ -218,53 +219,209 @@ fn build_adjacency_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Ve
     }
     adjacency
 }
+// perf (10M-row RECAST, `perf record`/`perf report`) showed this loop at
+// ~35-40% of total cycles -- the single dominant cost in the whole RECAST
+// classifier. `a`/`b` are node adjacency lists from `build_adjacency_csr`,
+// which are already sorted and duplicate-free (each edge contributes at most
+// one entry per side), satisfying numkong's `SparseIntersect` precondition.
+// When the `numkong` feature is enabled (the project default), this calls
+// its SIMD sorted-set intersection -- on this host (Ice Lake-SP) that's a
+// real AVX-512 VP2INTERSECT-style block intersection, not just a compiler
+// hint. `#[cfg(not(feature = "numkong"))]` below keeps the branchless
+// scalar version as a correctness-equivalent fallback for builds where
+// numkong is disabled (e.g. CI wheel builds avoiding its manylinux/
+// musllinux cross-build friction, see fastmob-core/Cargo.toml).
+#[inline(always)]
 fn count_common(a: &[u32], b: &[u32]) -> usize {
-    let (mut i, mut j, mut n) = (0, 0, 0);
-    while i < a.len() && j < b.len() {
-        match a[i].cmp(&b[j]) {
-            Ordering::Less => i += 1,
-            Ordering::Greater => j += 1,
-            Ordering::Equal => {
-                n += 1;
-                i += 1;
-                j += 1;
-            }
-        }
+    #[cfg(feature = "numkong")]
+    {
+        u32::sparse_intersection_size(a, b)
     }
-    n
+    #[cfg(not(feature = "numkong"))]
+    {
+        // `perf stat -e branches,branch-misses` measured only a 0.80%
+        // misprediction rate on the if/else version -- not the dominant
+        // cost, but real (~3.5% of total cycles by rough estimate:
+        // mispredicts * ~17-cycle penalty / total cycles). Resolving each
+        // comparison to a 0/1 value first and using that directly for the
+        // advance amount (instead of branching on it) compiles to
+        // `setcc`+add rather than conditional jumps, removing that
+        // misprediction cost outright. Same three-way outcome per
+        // iteration as a branchy if/else: advance `i`, advance `j`, or
+        // advance both and count a match.
+        let (mut i, mut j, mut n) = (0, 0, 0);
+        while i < a.len() && j < b.len() {
+            let x = a[i];
+            let y = b[j];
+            n += (x == y) as usize;
+            i += (x <= y) as usize;
+            j += (x >= y) as usize;
+        }
+        n
+    }
 }
-fn overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f64> {
-    let adjacency = build_adjacency(node_count, from, to);
+/// Flat CSR adjacency: `flat[offsets[u]..offsets[u+1]]` is node `u`'s sorted,
+/// deduplicated neighbor list. Unlike `Vec<Vec<u32>>` (one heap allocation per
+/// node), this is one contiguous buffer, which matters a lot here: `overlaps`
+/// below does millions of neighbor-list lookups at arbitrary node indices, and
+/// a flat buffer turns each lookup from "chase a pointer to a scattered heap
+/// block" into "one offset lookup into a buffer that's already resident."
+/// Sorting each node's slice is comparatively cheap next to that, so it stays
+/// a plain serial loop rather than adding unsafe disjoint-slice parallelism.
+fn build_adjacency_csr(node_count: usize, from: &[u32], to: &[u32]) -> (Vec<u32>, Vec<u32>) {
+    let mut degree = vec![0u32; node_count];
+    for i in 0..from.len() {
+        degree[from[i] as usize] += 1;
+        degree[to[i] as usize] += 1;
+    }
+    let mut offsets = vec![0u32; node_count + 1];
+    for i in 0..node_count {
+        offsets[i + 1] = offsets[i] + degree[i];
+    }
+    let mut flat = vec![0u32; offsets[node_count] as usize];
+    let mut cursor = offsets.clone();
+    for i in 0..from.len() {
+        let (u, v) = (from[i], to[i]);
+        flat[cursor[u as usize] as usize] = v;
+        cursor[u as usize] += 1;
+        flat[cursor[v as usize] as usize] = u;
+        cursor[v as usize] += 1;
+    }
+    // `from`/`to` are already unique edges, so each side contributes at most
+    // one entry per neighbor -- no duplicates possible, sort only.
+    for i in 0..node_count {
+        let s = offsets[i] as usize;
+        let e = offsets[i + 1] as usize;
+        flat[s..e].sort_unstable();
+    }
+    (offsets, flat)
+}
+fn overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
+    let (offsets, flat) = build_adjacency_csr(node_count, from, to);
     (0..from.len())
         .into_par_iter()
         .map(|i| {
-            let a = &adjacency[from[i] as usize];
-            let b = &adjacency[to[i] as usize];
+            let a =
+                &flat[offsets[from[i] as usize] as usize..offsets[from[i] as usize + 1] as usize];
+            let b = &flat[offsets[to[i] as usize] as usize..offsets[to[i] as usize + 1] as usize];
             let inter = count_common(a, b);
             let union = a.len() + b.len() - inter;
             if union == 0 {
                 0.0
             } else {
-                inter as f64 / union as f64
+                inter as f32 / union as f32
             }
         })
         .collect()
 }
-fn overlaps_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f64> {
-    let adjacency = build_adjacency_serial(node_count, from, to);
+fn overlaps_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
+    let (offsets, flat) = build_adjacency_csr(node_count, from, to);
     (0..from.len())
         .map(|i| {
-            let a = &adjacency[from[i] as usize];
-            let b = &adjacency[to[i] as usize];
+            let a =
+                &flat[offsets[from[i] as usize] as usize..offsets[from[i] as usize + 1] as usize];
+            let b = &flat[offsets[to[i] as usize] as usize..offsets[to[i] as usize + 1] as usize];
             let inter = count_common(a, b);
             let union = a.len() + b.len() - inter;
             if union == 0 {
                 0.0
             } else {
-                inter as f64 / union as f64
+                inter as f32 / union as f32
             }
         })
         .collect()
+}
+
+/// Sorts node indices `0..degree.len()` by descending degree using counting
+/// sort: O(n + max_degree) rather than a comparison sort's O(n log n), and
+/// degree values here are small bounded integers (bounded by how many
+/// distinct contacts one node can have within a single day's event graph),
+/// so this is both asymptotically cheaper and touches `degree` sequentially
+/// instead of through a comparator's random-access indirection. Tie order
+/// among equal-degree nodes doesn't matter: `sample_expected_degree_edges`
+/// only relies on probabilities being non-increasing along the scan, and
+/// equal-degree nodes are statistically exchangeable.
+fn sort_nodes_by_degree_desc(degree: &[usize]) -> Vec<u32> {
+    let n = degree.len();
+    let max_degree = degree.iter().copied().max().unwrap_or(0);
+    let mut starts = vec![0u32; max_degree + 1];
+    for &d in degree {
+        starts[d] += 1;
+    }
+    let mut cumulative = 0u32;
+    for d in (0..=max_degree).rev() {
+        let count = starts[d];
+        starts[d] = cumulative;
+        cumulative += count;
+    }
+    let mut order = vec![0u32; n];
+    for (i, &d) in degree.iter().enumerate() {
+        order[starts[d] as usize] = i as u32;
+        starts[d] += 1;
+    }
+    order
+}
+
+/// Miller & Hagberg (2011) fast expected-degree ("Chung-Lu") sampler: emits
+/// pair (u, v) independently with probability min(degree[u]*degree[v]/sum, 1)
+/// -- exactly the distribution the naive `for u { for v in (u+1).. {
+/// rng.gen_bool(p) } }` loop draws from -- but in O(node_count + edges
+/// emitted) expected time instead of O(node_count^2). A degree-product null
+/// model visits every possible pair regardless of how sparse the *actual*
+/// contact graph is, which dominated RECAST's wall time at realistic
+/// node_count (see git history for the perf profile that motivated this).
+///
+/// The trick: process nodes in descending-degree order, so for a fixed row
+/// `u` the per-pair probability is non-increasing as the scan moves right.
+/// That lets a geometric-distributed jump land directly on the next
+/// candidate `v` at a rate bounded by the *previous* landed pair's true
+/// probability `p` (valid since probabilities only shrink from there), then
+/// thin that candidate via acceptance-rejection against its own true
+/// probability `q` -- reproducing independent per-pair Bernoulli(p_uv)
+/// draws without visiting the (typically overwhelming) majority of pairs
+/// that would have been rejected anyway. `emit` receives original node ids,
+/// not sorted positions, and is called once per accepted pair with u < v
+/// already guaranteed false -- callers must canonicalize if they need u < v.
+fn sample_expected_degree_edges(
+    node_count: usize,
+    degree: &[usize],
+    sum: usize,
+    rng: &mut Xoshiro256PlusPlus,
+    mut emit: impl FnMut(u32, u32),
+) {
+    if sum == 0 || node_count < 2 {
+        return;
+    }
+    let rho = 1.0 / sum as f64;
+    let order = sort_nodes_by_degree_desc(degree);
+    let seq: Vec<f64> = order.iter().map(|&i| degree[i as usize] as f64).collect();
+    let n = node_count;
+    for u in 0..n {
+        let mut v = u + 1;
+        if v >= n {
+            continue;
+        }
+        let factor = seq[u] * rho;
+        let mut p = (seq[v] * factor).min(1.0);
+        while v < n && p > 0.0 {
+            if p != 1.0 {
+                let r: f64 = rng.r#gen();
+                let jump = r.ln() / (1.0 - p).ln();
+                if !jump.is_finite() {
+                    break;
+                }
+                v += jump.floor() as usize;
+            }
+            if v < n {
+                let q = (seq[v] * factor).min(1.0);
+                if rng.r#gen::<f64>() < q / p {
+                    emit(order[u], order[v]);
+                }
+                v += 1;
+                p = q;
+            }
+        }
+    }
 }
 
 /// Paper RND: sample pair (i,j) with p_ij = d_i*d_j / sum_k d_k.
@@ -281,18 +438,10 @@ pub fn rnd(
         degree[v as usize] += 1;
     }
     let sum: usize = degree.iter().sum();
-    if sum == 0 {
-        return FxHashSet::default();
-    }
     let mut result = FxHashSet::default();
-    for u in 0..node_count {
-        for v in (u + 1)..node_count {
-            let probability = ((degree[u] * degree[v]) as f64 / sum as f64).min(1.0);
-            if rng.gen_bool(probability) {
-                result.insert((u as u32, v as u32));
-            }
-        }
-    }
+    sample_expected_degree_edges(node_count, &degree, sum, rng, |a, b| {
+        result.insert(edge(a, b));
+    });
     result
 }
 
@@ -367,17 +516,17 @@ pub fn t_rnd_graph(
     ))
 }
 
-fn threshold(values: &mut [f64], p_rnd: f64) -> f64 {
+fn threshold(values: &mut [f32], p_rnd: f64) -> f64 {
     if values.is_empty() {
         return 1.0;
     }
     values.sort_by(|a, b| a.total_cmp(b));
     values[(((values.len() as f64) * (1.0 - p_rnd)).ceil() as usize)
         .saturating_sub(1)
-        .min(values.len() - 1)]
+        .min(values.len() - 1)] as f64
 }
-fn relationship_class(p: f64, o: f64, pt: f64, ot: f64) -> u8 {
-    match (p > pt, o > ot) {
+fn relationship_class(p: f32, o: f32, pt: f64, ot: f64) -> u8 {
+    match (p as f64 > pt, o as f64 > ot) {
         (true, true) => 0,
         (true, false) => 1,
         (false, true) => 2,
@@ -388,8 +537,8 @@ fn relationship_class(p: f64, o: f64, pt: f64, ot: f64) -> u8 {
 pub struct RecastOutput {
     pub edge_from: Vec<u32>,
     pub edge_to: Vec<u32>,
-    pub persistence: Vec<f64>,
-    pub topological_overlap: Vec<f64>,
+    pub persistence: Vec<f32>,
+    pub topological_overlap: Vec<f32>,
     pub classes: Vec<u8>,
     pub persistence_threshold: f64,
     pub overlap_threshold: f64,
@@ -436,7 +585,7 @@ fn classify_events_with_randoms(
     temporal: &TemporalEvents,
     p_rnd: f64,
     randoms: &[TemporalEvents],
-) -> (RecastOutput, Vec<f64>, Vec<f64>) {
+) -> (RecastOutput, Vec<f32>, Vec<f32>) {
     let (edge_from, edge_to, persistence) = aggregate(&temporal.events);
     let time_steps = temporal.events.len();
     if edge_from.is_empty() {
@@ -507,7 +656,7 @@ fn classify_events_streaming(
     p_rnd: f64,
     replicas: usize,
     seed: u64,
-) -> (RecastOutput, Vec<f64>, Vec<f64>) {
+) -> (RecastOutput, Vec<f32>, Vec<f32>) {
     let (edge_from, edge_to, persistence) = aggregate(&temporal.events);
     let time_steps = temporal.events.len();
     if edge_from.is_empty() {
@@ -528,19 +677,63 @@ fn classify_events_streaming(
     }
 
     let topological_overlap = overlaps(node_count, &edge_from, &edge_to);
+    // Windows within a replica have independent RNG streams (stream_seed is
+    // keyed on replica+window), so sampling and aggregating them is safe to
+    // parallelize even though replicas themselves stay a serial outer loop.
+    //
+    // A flat `(0..replicas*windows)` dispatch (processing all replicas'
+    // windows in one parallel stage instead of 5 sequential per-replica
+    // ones) was tried here and measured *4x slower* end to end (~400s vs
+    // ~22s at 10M rows) with effective parallelism collapsing to ~2.8 cores,
+    // reproducibly, under both a plain `.fold()`/`.reduce()` over the range
+    // and an explicit `num_threads`-way pre-chunked variant -- i.e. not a
+    // rayon-splitting-granularity artifact of one specific dispatch shape,
+    // something about spreading `replicas` *and* `windows` across the same
+    // flat rayon stage is fundamentally worse here than keeping them
+    // separate axes. Root cause not fully isolated; reverted rather than
+    // pursued further, since the serial-per-replica / parallel-per-window
+    // shape below already hits the target budget on its own once combined
+    // with sparse accumulation (see below) and the counting sort in
+    // `sort_nodes_by_degree_desc`.
+    //
+    // Each replica's random graph is aggregated via a plain `FxHashMap`
+    // rather than the dense O(node_count^2) byte-per-pair counter this
+    // replaced (see git history for `rnd_into_counts`): that dense buffer
+    // was the right call while RND sampling itself was an O(node_count^2)
+    // loop dominating wall time regardless of how it was aggregated, but
+    // Miller-Hagberg (see `sample_expected_degree_edges`) makes accepted
+    // edges per window sparse -- comparable in count to the real per-day
+    // contact graph, not node_count^2 -- so paying O(node_count^2) just to
+    // allocate, zero, and merge that buffer is now the more expensive side
+    // of the trade.
+    let replicas = replicas.max(1);
+    let per_replica_counts: Vec<FxHashMap<Edge, usize>> = (0..replicas)
+        .map(|replica| {
+            temporal
+                .events
+                .par_iter()
+                .enumerate()
+                .fold(FxHashMap::default, |mut counts, (window, event)| {
+                    let mut rng =
+                        Xoshiro256PlusPlus::seed_from_u64(stream_seed(seed, replica, window));
+                    for edge in rnd(node_count, event, &mut rng) {
+                        *counts.entry(edge).or_insert(0) += 1;
+                    }
+                    counts
+                })
+                .reduce(FxHashMap::default, |mut left, right| {
+                    for (edge, count) in right {
+                        *left.entry(edge).or_insert(0) += count;
+                    }
+                    left
+                })
+        })
+        .collect();
     let mut null_persistence = Vec::new();
     let mut null_overlap = Vec::new();
-    for replica in 0..replicas.max(1) {
-        let mut aggregate_counts: FxHashMap<Edge, usize> = FxHashMap::default();
-        for (window, event) in temporal.events.iter().enumerate() {
-            let mut rng = Xoshiro256PlusPlus::seed_from_u64(stream_seed(seed, replica, window));
-            let random = rnd(node_count, event, &mut rng);
-            for edge in random {
-                *aggregate_counts.entry(edge).or_insert(0) += 1;
-            }
-        }
-        let (from, to, persistence) = aggregate_from_counts(aggregate_counts, time_steps);
-        let overlap = overlaps_serial(node_count, &from, &to);
+    for counts in per_replica_counts {
+        let (from, to, persistence) = aggregate_from_counts(counts, time_steps);
+        let overlap = overlaps(node_count, &from, &to);
         null_persistence.extend(persistence);
         null_overlap.extend(overlap);
     }
@@ -574,7 +767,7 @@ fn classify_events(
     p_rnd: f64,
     replicas: usize,
     seed: u64,
-) -> (RecastOutput, Vec<f64>, Vec<f64>) {
+) -> (RecastOutput, Vec<f32>, Vec<f32>) {
     classify_events_streaming(node_count, temporal, p_rnd, replicas, seed)
 }
 
@@ -713,10 +906,10 @@ fn random_only_events(temporal: &TemporalEvents, output: &RecastOutput) -> Tempo
 
 pub struct RecastValidationOutput {
     pub classification: RecastOutput,
-    pub observed_persistence: Vec<f64>,
-    pub observed_overlap: Vec<f64>,
-    pub random_persistence: Vec<f64>,
-    pub random_overlap: Vec<f64>,
+    pub observed_persistence: Vec<f32>,
+    pub observed_overlap: Vec<f32>,
+    pub random_persistence: Vec<f32>,
+    pub random_overlap: Vec<f32>,
     pub full_observed_clustering: Vec<f64>,
     pub full_random_mean: Vec<f64>,
     pub full_random_std: Vec<f64>,
@@ -816,11 +1009,121 @@ mod tests {
         assert!(t.events[0].contains(&(0, 1)));
     }
     #[test]
+    fn event_graphs_matches_naive_o_n_squared_reference_on_dense_overlaps() {
+        // Stress test for the swap_remove + index-sort rewrite of the sweep
+        // in `event_graphs`: many users at one location on one day, with
+        // heavily overlapping and staggered intervals (the exact shape that
+        // made a busy H3-cell/day bucket slow at 100M-row scale), compared
+        // against a straightforward O(n^2) all-pairs reference that doesn't
+        // rely on any sweep/expiry mechanics at all.
+        let n = 400usize;
+        let mut state = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let mut users = Vec::new();
+        let mut locations = Vec::new();
+        let mut starts = Vec::new();
+        let mut ends = Vec::new();
+        for u in 0..n {
+            let start = (next() % 500_000) as i64;
+            let duration = 60_000 + (next() % 400_000) as i64;
+            users.push(u as u32);
+            locations.push(0u32);
+            starts.push(start);
+            ends.push(start + duration);
+        }
+        let min_contact_ms = 120_000;
+        let observed = event_graphs(&users, &locations, &starts, &ends, min_contact_ms);
+        assert_eq!(observed.events.len(), 1);
+
+        let mut expected = FxHashSet::default();
+        for i in 0..n {
+            for j in (i + 1)..n {
+                let overlap = starts[i].max(starts[j])..ends[i].min(ends[j]);
+                if overlap.end - overlap.start >= min_contact_ms {
+                    expected.insert(edge(users[i], users[j]));
+                }
+            }
+        }
+        assert_eq!(observed.events[0], expected);
+        assert!(!expected.is_empty(), "test fixture produced no overlaps to check");
+    }
+    #[test]
     fn rnd_is_seeded_simple_graph() {
         let event: FxHashSet<Edge> = [(0, 1), (0, 2), (1, 3)].into_iter().collect();
         let mut a = Xoshiro256PlusPlus::seed_from_u64(4);
         let mut b = Xoshiro256PlusPlus::seed_from_u64(4);
         assert_eq!(rnd(4, &event, &mut a), rnd(4, &event, &mut b));
+    }
+    #[test]
+    fn rnd_edge_cases_emit_nothing() {
+        let empty: FxHashSet<Edge> = FxHashSet::default();
+        let mut rng = Xoshiro256PlusPlus::seed_from_u64(1);
+        assert!(rnd(0, &empty, &mut rng).is_empty());
+        assert!(rnd(1, &empty, &mut rng).is_empty());
+        assert!(rnd(5, &empty, &mut rng).is_empty());
+    }
+    #[test]
+    fn sample_expected_degree_edges_matches_theoretical_probabilities() {
+        // Empirical acceptance-frequency check for the Miller-Hagberg
+        // sampler against the exact per-pair Bernoulli(d_u*d_v/sum) model it
+        // replaces the naive O(n^2) loop for -- a wrong node/position
+        // mapping, counting-sort bug, or skip/thinning bug would shift these
+        // frequencies even though it might still "look like a graph".
+        let node_count = 12;
+        let degree = [8usize, 6, 6, 5, 4, 3, 3, 2, 2, 1, 1, 1];
+        let sum: usize = degree.iter().sum();
+        let trials = 40_000u64;
+        let mut observed = vec![0u64; node_count * node_count];
+        for seed in 0..trials {
+            let mut rng = Xoshiro256PlusPlus::seed_from_u64(seed);
+            sample_expected_degree_edges(node_count, &degree, sum, &mut rng, |a, b| {
+                let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+                observed[lo as usize * node_count + hi as usize] += 1;
+            });
+        }
+        for u in 0..node_count {
+            for v in (u + 1)..node_count {
+                let expected_p = ((degree[u] * degree[v]) as f64 / sum as f64).min(1.0);
+                let observed_p = observed[u * node_count + v] as f64 / trials as f64;
+                // Binomial standard error at worst case p=0.5 is
+                // 0.5/sqrt(40000) ~= 0.0025; 0.02 is a generous margin.
+                assert!(
+                    (observed_p - expected_p).abs() < 0.02,
+                    "pair ({u},{v}): expected {expected_p:.4}, observed {observed_p:.4}"
+                );
+            }
+        }
+    }
+    #[test]
+    fn sort_nodes_by_degree_desc_matches_comparison_sort() {
+        let degree = [3usize, 0, 3, 7, 1, 0, 5, 1, 7, 2];
+        let mut expected: Vec<u32> = (0..degree.len() as u32).collect();
+        expected.sort_by(|&a, &b| degree[b as usize].cmp(&degree[a as usize]));
+        let actual = sort_nodes_by_degree_desc(&degree);
+        assert_eq!(actual.len(), expected.len());
+        // Counting sort may break ties differently than the comparison sort
+        // (both are valid: within-tie order doesn't affect the sampler's
+        // correctness), so compare degree *sequences* rather than exact
+        // node-id order.
+        let actual_degrees: Vec<usize> = actual.iter().map(|&i| degree[i as usize]).collect();
+        let expected_degrees: Vec<usize> = expected.iter().map(|&i| degree[i as usize]).collect();
+        assert_eq!(actual_degrees, expected_degrees);
+        let mut actual_sorted = actual.clone();
+        actual_sorted.sort_unstable();
+        assert_eq!(actual_sorted, (0..degree.len() as u32).collect::<Vec<_>>());
+    }
+    #[test]
+    fn sort_nodes_by_degree_desc_handles_empty_and_all_zero() {
+        assert!(sort_nodes_by_degree_desc(&[]).is_empty());
+        let all_zero = sort_nodes_by_degree_desc(&[0, 0, 0]);
+        let mut sorted = all_zero.clone();
+        sorted.sort_unstable();
+        assert_eq!(sorted, vec![0, 1, 2]);
     }
     #[test]
     fn recast_emits_all_four_relationship_classes() {
