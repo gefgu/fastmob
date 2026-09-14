@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use arrow_array::{
-    Array, ArrayRef, Float32Array, Float64Array, Int64Array, UInt32Array, UInt64Array, UInt8Array,
+    Array, ArrayRef, Float32Array, Float64Array, Int64Array, UInt8Array, UInt32Array, UInt64Array,
 };
+use arrow_buffer::ScalarBuffer;
 use fastmob_core::social::co_presence_network::{
     event_graphs, flatten_events, recast_classify, rnd_graph, t_rnd_graph, validate_recast,
 };
@@ -11,7 +12,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-fn u32_values(input: ArrowPyArray, name: &str) -> PyResult<Vec<u32>> {
+fn u32_values(input: ArrowPyArray, name: &str) -> PyResult<ScalarBuffer<u32>> {
     let (array, _) = input.into_inner();
     let values = array
         .as_any()
@@ -22,9 +23,9 @@ fn u32_values(input: ArrowPyArray, name: &str) -> PyResult<Vec<u32>> {
             "Arrow array for {name} must not contain nulls"
         )));
     }
-    Ok((0..values.len()).map(|i| values.value(i)).collect())
+    Ok(values.values().clone())
 }
-fn u64_values(input: ArrowPyArray, name: &str) -> PyResult<Vec<u64>> {
+fn u64_values(input: ArrowPyArray, name: &str) -> PyResult<ScalarBuffer<u64>> {
     let (array, _) = input.into_inner();
     let values = array
         .as_any()
@@ -35,9 +36,9 @@ fn u64_values(input: ArrowPyArray, name: &str) -> PyResult<Vec<u64>> {
             "Arrow array for {name} must not contain nulls"
         )));
     }
-    Ok((0..values.len()).map(|i| values.value(i)).collect())
+    Ok(values.values().clone())
 }
-fn i64_values(input: ArrowPyArray, name: &str) -> PyResult<Vec<i64>> {
+fn i64_values(input: ArrowPyArray, name: &str) -> PyResult<ScalarBuffer<i64>> {
     let (array, _) = input.into_inner();
     let values = array
         .as_any()
@@ -48,7 +49,7 @@ fn i64_values(input: ArrowPyArray, name: &str) -> PyResult<Vec<i64>> {
             "Arrow array for {name} must not contain nulls"
         )));
     }
-    Ok((0..values.len()).map(|i| values.value(i)).collect())
+    Ok(values.values().clone())
 }
 fn arrow<T: Array + 'static>(values: T) -> ArrowPyArray {
     ArrowPyArray::from_array_ref(Arc::new(values) as ArrayRef)

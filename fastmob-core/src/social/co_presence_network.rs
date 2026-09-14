@@ -11,16 +11,26 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Instant;
+
+fn profile(stage: &str, start: Instant, edges: usize) {
+    if std::env::var_os("FASTMOB_RECAST_PROFILE").is_some() {
+        eprintln!(
+            "recast {stage} seconds={:.6} edges={edges}",
+            start.elapsed().as_secs_f64()
+        );
+    }
+}
 
 type Edge = (u32, u32);
 const DAY_MS: i64 = 86_400_000;
 
 fn edge(a: u32, b: u32) -> Edge {
-    if a < b {
-        (a, b)
-    } else {
-        (b, a)
-    }
+    if a < b { (a, b) } else { (b, a) }
 }
 fn stream_seed(seed: u64, replica: usize, window: usize) -> u64 {
     seed ^ (replica as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
@@ -71,7 +81,7 @@ pub fn event_graphs(
         for window in starts[i].div_euclid(DAY_MS)..=(ends[i] - 1).div_euclid(DAY_MS) {
             let lo = starts[i].max(window * DAY_MS);
             let hi = ends[i].min((window + 1) * DAY_MS);
-            if lo < hi {
+            if hi - lo >= min_contact_ms {
                 groups
                     .entry((window, locations[i]))
                     .or_default()
@@ -91,18 +101,33 @@ pub fn event_graphs(
         .into_par_iter()
         .map(|((window, _), mut intervals)| {
             intervals.sort_unstable_by_key(|x| (x.start, x.end, x.user));
-            let mut active: Vec<Interval> = Vec::new();
+            let mut expiry = BinaryHeap::new();
+            let mut active: FxHashMap<u32, usize> = FxHashMap::default();
             let mut edges = FxHashSet::default();
             for current in intervals {
-                active.retain(|other| other.end > current.start);
-                for other in &active {
-                    if other.user != current.user
-                        && other.end.min(current.end) - current.start >= min_contact_ms
-                    {
-                        edges.insert(edge(other.user, current.user));
+                // All retained intervals are long enough. Since starts are
+                // sorted, an active user qualifies exactly when some end is
+                // >= current.start + min_contact_ms. Keep one count per user
+                // so repeated overlapping stays don't repeat pair work.
+                let required_end = current.start + min_contact_ms;
+                while let Some(&Reverse((end, user))) = expiry.peek() {
+                    if end >= required_end {
+                        break;
+                    }
+                    expiry.pop();
+                    let count = active.get_mut(&user).unwrap();
+                    *count -= 1;
+                    if *count == 0 {
+                        active.remove(&user);
                     }
                 }
-                active.push(current);
+                for &user in active.keys() {
+                    if user != current.user {
+                        edges.insert(edge(user, current.user));
+                    }
+                }
+                *active.entry(current.user).or_insert(0) += 1;
+                expiry.push(Reverse((current.end, current.user)));
             }
             let mut edges: Vec<_> = edges.into_iter().collect();
             edges.sort_unstable();
@@ -268,13 +293,13 @@ fn count_common(a: &[u32], b: &[u32]) -> usize {
 /// block" into "one offset lookup into a buffer that's already resident."
 /// Sorting each node's slice is comparatively cheap next to that, so it stays
 /// a plain serial loop rather than adding unsafe disjoint-slice parallelism.
-fn build_adjacency_csr(node_count: usize, from: &[u32], to: &[u32]) -> (Vec<u32>, Vec<u32>) {
-    let mut degree = vec![0u32; node_count];
+fn build_adjacency_csr(node_count: usize, from: &[u32], to: &[u32]) -> (Vec<usize>, Vec<u32>) {
+    let mut degree = vec![0usize; node_count];
     for i in 0..from.len() {
         degree[from[i] as usize] += 1;
         degree[to[i] as usize] += 1;
     }
-    let mut offsets = vec![0u32; node_count + 1];
+    let mut offsets = vec![0usize; node_count + 1];
     for i in 0..node_count {
         offsets[i + 1] = offsets[i] + degree[i];
     }
@@ -298,13 +323,50 @@ fn build_adjacency_csr(node_count: usize, from: &[u32], to: &[u32]) -> (Vec<u32>
 }
 fn overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
     let (offsets, flat) = build_adjacency_csr(node_count, from, to);
+    // Dense neighborhoods are cheaper to intersect wordwise. Sparse lists stay
+    // in CSR; this also avoids an O(n^2) allocation for large sparse graphs.
+    let words = node_count.div_ceil(64);
+    let mut bit_offsets = vec![usize::MAX; node_count];
+    let mut bit_words = 0usize;
+    for u in 0..node_count {
+        if offsets[u + 1] - offsets[u] >= words.saturating_mul(2).max(64)
+            && bit_words.saturating_add(words) <= 512 * 1024 * 1024
+        {
+            bit_offsets[u] = bit_words;
+            bit_words += words;
+        }
+    }
+    let mut bits = vec![0u64; bit_words];
+    for u in 0..node_count {
+        if bit_offsets[u] != usize::MAX {
+            for &v in &flat[offsets[u]..offsets[u + 1]] {
+                bits[bit_offsets[u] + v as usize / 64] |= 1u64 << (v % 64);
+            }
+        }
+    }
     (0..from.len())
         .into_par_iter()
         .map(|i| {
             let a =
                 &flat[offsets[from[i] as usize] as usize..offsets[from[i] as usize + 1] as usize];
             let b = &flat[offsets[to[i] as usize] as usize..offsets[to[i] as usize + 1] as usize];
-            let inter = count_common(a, b);
+            let (ao, bo) = (bit_offsets[from[i] as usize], bit_offsets[to[i] as usize]);
+            let inter = match (ao != usize::MAX, bo != usize::MAX) {
+                (true, true) => bits[ao..ao + words]
+                    .iter()
+                    .zip(&bits[bo..bo + words])
+                    .map(|(&x, &y)| (x & y).count_ones() as usize)
+                    .sum(),
+                (true, false) => b
+                    .iter()
+                    .filter(|&&v| bits[ao + v as usize / 64] & (1u64 << (v % 64)) != 0)
+                    .count(),
+                (false, true) => a
+                    .iter()
+                    .filter(|&&v| bits[bo + v as usize / 64] & (1u64 << (v % 64)) != 0)
+                    .count(),
+                (false, false) => count_common(a, b),
+            };
             let union = a.len() + b.len() - inter;
             if union == 0 {
                 0.0
@@ -387,15 +449,28 @@ fn sample_expected_degree_edges(
     degree: &[usize],
     sum: usize,
     rng: &mut Xoshiro256PlusPlus,
-    mut emit: impl FnMut(u32, u32),
+    emit: impl FnMut(u32, u32),
 ) {
     if sum == 0 || node_count < 2 {
         return;
     }
-    let rho = 1.0 / sum as f64;
     let order = sort_nodes_by_degree_desc(degree);
     let seq: Vec<f64> = order.iter().map(|&i| degree[i as usize] as f64).collect();
-    let n = node_count;
+    sample_ordered_edges(&order, &seq, sum, rng, emit);
+}
+
+fn sample_ordered_edges(
+    order: &[u32],
+    seq: &[f64],
+    sum: usize,
+    rng: &mut Xoshiro256PlusPlus,
+    mut emit: impl FnMut(u32, u32),
+) {
+    if sum == 0 {
+        return;
+    }
+    let rho = 1.0 / sum as f64;
+    let n = order.len();
     for u in 0..n {
         let mut v = u + 1;
         if v >= n {
@@ -644,131 +719,240 @@ fn classify_events_with_randoms(
     )
 }
 
-/// Classify an observed temporal graph while streaming the random null model.
-///
-/// The previous implementation materialized every random replica and every
-/// window before calculating any metrics.  The null metrics only require the
-/// aggregate graph for one replica at a time, so keep just that replica's
-/// counts and adjacency inputs, then release them before moving on.
+/// Exact tail selection: retain enough values for any realized edge count,
+/// then partition instead of sorting the full null distribution.
+struct NullTail {
+    values: Vec<f32>,
+    total: usize,
+    keep: usize,
+    upper: bool,
+}
+impl NullTail {
+    fn new(max_values: usize, p: f64) -> Self {
+        let upper = p <= 0.5;
+        let fraction = if upper { p } else { 1.0 - p };
+        let keep = ((max_values as f64 * fraction).ceil() as usize).saturating_add(2);
+        Self {
+            values: Vec::new(),
+            total: 0,
+            keep,
+            upper,
+        }
+    }
+    fn extend(&mut self, values: &[f32]) {
+        self.total += values.len();
+        // Bound transient storage as well as retained storage.
+        for chunk in values.chunks(65_536) {
+            self.values.extend_from_slice(chunk);
+            if self.values.len() > self.keep.saturating_mul(2).max(65_536) {
+                self.trim();
+            }
+        }
+    }
+    fn trim(&mut self) {
+        if self.values.len() > self.keep {
+            let upper = self.upper;
+            self.values.select_nth_unstable_by(self.keep, |a, b| {
+                if upper {
+                    b.total_cmp(a)
+                } else {
+                    a.total_cmp(b)
+                }
+            });
+            self.values.truncate(self.keep);
+        }
+    }
+    fn threshold(&mut self, p: f64) -> f64 {
+        if self.total == 0 {
+            return 1.0;
+        }
+        self.trim();
+        let rank = ((self.total as f64 * (1.0 - p)).ceil() as usize)
+            .saturating_sub(1)
+            .min(self.total - 1);
+        let index = if self.upper {
+            self.total - 1 - rank
+        } else {
+            rank
+        };
+        let upper = self.upper;
+        *self
+            .values
+            .select_nth_unstable_by(index, |a, b| {
+                if upper {
+                    b.total_cmp(a)
+                } else {
+                    a.total_cmp(b)
+                }
+            })
+            .1 as f64
+    }
+
+    fn merge(&mut self, partial: NullTail) {
+        self.total += partial.total;
+        self.values.extend(partial.values);
+        if self.values.len() > self.keep.saturating_mul(2).max(65_536) {
+            self.trim();
+        }
+    }
+}
+
+fn histogram_threshold(histogram: &FxHashMap<u32, usize>, p: f64) -> f64 {
+    let total: usize = histogram.values().sum();
+    if total == 0 {
+        return 1.0;
+    }
+    let rank = ((total as f64 * (1.0 - p)).ceil() as usize)
+        .saturating_sub(1)
+        .min(total - 1);
+    let mut bins: Vec<_> = histogram
+        .iter()
+        .map(|(&bits, &count)| (f32::from_bits(bits), count))
+        .collect();
+    bins.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+    let mut cumulative = 0;
+    for (value, count) in bins {
+        cumulative += count;
+        if cumulative > rank {
+            return value as f64;
+        }
+    }
+    unreachable!()
+}
+
+/// Only one replica's aggregate and overlap are resident at a time.
 fn classify_events_streaming(
     node_count: usize,
-    temporal: &TemporalEvents,
+    temporal: TemporalEvents,
     p_rnd: f64,
     replicas: usize,
     seed: u64,
-) -> (RecastOutput, Vec<f32>, Vec<f32>) {
+) -> RecastOutput {
+    let started = Instant::now();
     let (edge_from, edge_to, persistence) = aggregate(&temporal.events);
+    profile("observed_aggregate", started, edge_from.len());
     let time_steps = temporal.events.len();
     if edge_from.is_empty() {
-        return (
-            RecastOutput {
-                edge_from,
-                edge_to,
-                persistence,
-                topological_overlap: Vec::new(),
-                classes: Vec::new(),
-                persistence_threshold: 1.0,
-                overlap_threshold: 1.0,
-                time_steps,
-            },
-            Vec::new(),
-            Vec::new(),
-        );
+        return RecastOutput {
+            edge_from,
+            edge_to,
+            persistence,
+            topological_overlap: Vec::new(),
+            classes: Vec::new(),
+            persistence_threshold: 1.0,
+            overlap_threshold: 1.0,
+            time_steps,
+        };
     }
-
-    let topological_overlap = overlaps(node_count, &edge_from, &edge_to);
-    // Windows within a replica have independent RNG streams (stream_seed is
-    // keyed on replica+window), so sampling and aggregating them is safe to
-    // parallelize even though replicas themselves stay a serial outer loop.
-    //
-    // A flat `(0..replicas*windows)` dispatch (processing all replicas'
-    // windows in one parallel stage instead of 5 sequential per-replica
-    // ones) was tried here and measured *4x slower* end to end (~400s vs
-    // ~22s at 10M rows) with effective parallelism collapsing to ~2.8 cores,
-    // reproducibly, under both a plain `.fold()`/`.reduce()` over the range
-    // and an explicit `num_threads`-way pre-chunked variant -- i.e. not a
-    // rayon-splitting-granularity artifact of one specific dispatch shape,
-    // something about spreading `replicas` *and* `windows` across the same
-    // flat rayon stage is fundamentally worse here than keeping them
-    // separate axes. Root cause not fully isolated; reverted rather than
-    // pursued further, since the serial-per-replica / parallel-per-window
-    // shape below already hits the target budget on its own once combined
-    // with sparse accumulation (see below) and the counting sort in
-    // `sort_nodes_by_degree_desc`.
-    //
-    // Each replica's random graph is aggregated via a plain `FxHashMap`
-    // rather than the dense O(node_count^2) byte-per-pair counter this
-    // replaced (see git history for `rnd_into_counts`): that dense buffer
-    // was the right call while RND sampling itself was an O(node_count^2)
-    // loop dominating wall time regardless of how it was aggregated, but
-    // Miller-Hagberg (see `sample_expected_degree_edges`) makes accepted
-    // edges per window sparse -- comparable in count to the real per-day
-    // contact graph, not node_count^2 -- so paying O(node_count^2) just to
-    // allocate, zero, and merge that buffer is now the more expensive side
-    // of the trade.
-    let replicas = replicas.max(1);
-    let per_replica_counts: Vec<FxHashMap<Edge, usize>> = (0..replicas)
-        .map(|replica| {
-            temporal
-                .events
-                .par_iter()
-                .enumerate()
-                .fold(FxHashMap::default, |mut counts, (window, event)| {
-                    let mut rng =
-                        Xoshiro256PlusPlus::seed_from_u64(stream_seed(seed, replica, window));
-                    for edge in rnd(node_count, event, &mut rng) {
-                        *counts.entry(edge).or_insert(0) += 1;
-                    }
-                    counts
-                })
-                .reduce(FxHashMap::default, |mut left, right| {
-                    for (edge, count) in right {
-                        *left.entry(edge).or_insert(0) += count;
-                    }
-                    left
-                })
+    let started = Instant::now();
+    let sampling: Vec<_> = temporal
+        .events
+        .par_iter()
+        .map(|event| {
+            let mut degree = vec![0usize; node_count];
+            for &(a, b) in event {
+                degree[a as usize] += 1;
+                degree[b as usize] += 1;
+            }
+            let sum = degree.iter().sum::<usize>();
+            let order = sort_nodes_by_degree_desc(&degree);
+            let seq: Vec<f64> = order.iter().map(|&u| degree[u as usize] as f64).collect();
+            (order, seq, sum)
         })
         .collect();
-    let mut null_persistence = Vec::new();
-    let mut null_overlap = Vec::new();
-    for counts in per_replica_counts {
-        let (from, to, persistence) = aggregate_from_counts(counts, time_steps);
-        let overlap = overlaps(node_count, &from, &to);
-        null_persistence.extend(persistence);
-        null_overlap.extend(overlap);
-    }
-
-    let persistence_threshold = threshold(&mut null_persistence, p_rnd);
-    let overlap_threshold = threshold(&mut null_overlap, p_rnd);
+    // The null sampler needs degrees, not the original event edge sets.
+    drop(temporal);
+    profile("sampling_metadata", started, edge_from.len());
+    let started = Instant::now();
+    let topological_overlap = overlaps(node_count, &edge_from, &edge_to);
+    profile("observed_overlap", started, edge_from.len());
+    let replicas = replicas.max(1);
+    let max_values = node_count.saturating_mul(node_count.saturating_sub(1)) / 2;
+    let mut null_overlap = NullTail::new(max_values.saturating_mul(replicas), p_rnd);
+    let mut persistence_histogram = FxHashMap::default();
+    // Replica streams are independent. Fixed sub-pools use all CPU cores but
+    // return only threshold summaries, so no worker retains another replica's
+    // random graph.
+    let workers_per_replica = rayon::current_num_threads().div_ceil(replicas).max(1);
+    thread::scope(|scope| {
+        let (sender, receiver) = mpsc::channel();
+        for replica in 0..replicas {
+            let sender = sender.clone();
+            let sampling = &sampling;
+            scope.spawn(move || {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(workers_per_replica)
+                    .build()
+                    .unwrap();
+                let started = Instant::now();
+                let counts = pool.install(|| {
+                    sampling
+                        .par_iter()
+                        .enumerate()
+                        .fold(
+                            FxHashMap::default,
+                            |mut counts, (window, (order, seq, sum))| {
+                                let mut rng = Xoshiro256PlusPlus::seed_from_u64(stream_seed(
+                                    seed, replica, window,
+                                ));
+                                sample_ordered_edges(order, seq, *sum, &mut rng, |a, b| {
+                                    *counts.entry(edge(a, b)).or_insert(0usize) += 1;
+                                });
+                                counts
+                            },
+                        )
+                        .reduce(FxHashMap::default, |mut left, right| {
+                            for (edge, count) in right {
+                                *left.entry(edge).or_insert(0) += count;
+                            }
+                            left
+                        })
+                });
+                profile("null_sample_aggregate", started, counts.len());
+                let started = Instant::now();
+                let (from, to, persistence) = aggregate_from_counts(counts, time_steps);
+                profile("null_order", started, from.len());
+                let started = Instant::now();
+                let overlap = pool.install(|| overlaps(node_count, &from, &to));
+                profile("null_overlap", started, from.len());
+                let started = Instant::now();
+                let mut histogram = FxHashMap::default();
+                for value in persistence {
+                    *histogram.entry(value.to_bits()).or_insert(0usize) += 1;
+                }
+                let mut tail = NullTail::new(max_values.saturating_mul(replicas), p_rnd);
+                tail.extend(&overlap);
+                profile("null_tail", started, from.len());
+                sender.send((histogram, tail)).unwrap();
+            });
+        }
+        drop(sender);
+        for (histogram, tail) in receiver {
+            for (value, count) in histogram {
+                *persistence_histogram.entry(value).or_insert(0usize) += count;
+            }
+            null_overlap.merge(tail);
+        }
+    });
+    let started = Instant::now();
+    let persistence_threshold = histogram_threshold(&persistence_histogram, p_rnd);
+    let overlap_threshold = null_overlap.threshold(p_rnd);
     let classes = persistence
         .iter()
         .zip(&topological_overlap)
         .map(|(&p, &o)| relationship_class(p, o, persistence_threshold, overlap_threshold))
         .collect();
-    (
-        RecastOutput {
-            edge_from,
-            edge_to,
-            persistence,
-            topological_overlap,
-            classes,
-            persistence_threshold,
-            overlap_threshold,
-            time_steps,
-        },
-        null_persistence,
-        null_overlap,
-    )
-}
-
-fn classify_events(
-    node_count: usize,
-    temporal: &TemporalEvents,
-    p_rnd: f64,
-    replicas: usize,
-    seed: u64,
-) -> (RecastOutput, Vec<f32>, Vec<f32>) {
-    classify_events_streaming(node_count, temporal, p_rnd, replicas, seed)
+    profile("thresholds_and_classes", started, edge_from.len());
+    RecastOutput {
+        edge_from,
+        edge_to,
+        persistence,
+        topological_overlap,
+        classes,
+        persistence_threshold,
+        overlap_threshold,
+        time_steps,
+    }
 }
 
 /// Faithful RECAST classification. Class codes: 0 Friends, 1 Bridges, 2 Acquaintances, 3 Random.
@@ -784,8 +968,14 @@ pub fn recast_classify(
     replicas: usize,
     seed: u64,
 ) -> RecastOutput {
+    let started = Instant::now();
     let temporal = event_graphs(users, locations, starts, ends, min_contact_ms);
-    classify_events(node_count, &temporal, p_rnd, replicas, seed).0
+    profile(
+        "events",
+        started,
+        temporal.events.iter().map(|x| x.len()).sum(),
+    );
+    classify_events_streaming(node_count, temporal, p_rnd, replicas, seed)
 }
 
 fn average_clustering(node_count: usize, event: &FxHashSet<Edge>) -> f64 {
@@ -968,6 +1158,63 @@ mod tests {
     use super::*;
     use rayon::ThreadPoolBuilder;
 
+    #[test]
+    fn adaptive_overlap_matches_sparse_reference() {
+        // Dense clique, sparse chains, isolated nodes, and mixed neighborhoods.
+        let mut from = Vec::new();
+        let mut to = Vec::new();
+        for u in 0..250u32 {
+            for v in u + 1..300u32 {
+                if v < 180 || (u * 17 + v * 13) % 41 == 0 {
+                    from.push(u);
+                    to.push(v);
+                }
+            }
+        }
+        assert_eq!(overlaps(310, &from, &to), overlaps_serial(310, &from, &to));
+    }
+
+    #[test]
+    fn exact_tail_and_histogram_match_sorted_quantiles() {
+        let original: Vec<f32> = (0..200_123)
+            .map(|i| ((i * 7919) % 107) as f32 / 107.0)
+            .collect();
+        for p in [0.0, 0.00001, 0.001, 0.1, 0.5, 0.9, 0.99999, 1.0] {
+            let mut tail = NullTail::new(original.len() + 199, p);
+            let mut histogram = FxHashMap::default();
+            for chunk in original.chunks(1337) {
+                tail.extend(chunk);
+            }
+            for &v in &original {
+                *histogram.entry(v.to_bits()).or_insert(0) += 1;
+            }
+            let expected = threshold(&mut original.clone(), p);
+            assert_eq!(tail.threshold(p), expected);
+            assert_eq!(histogram_threshold(&histogram, p), expected);
+            assert_eq!(NullTail::new(10, p).threshold(p), 1.0);
+        }
+    }
+
+    #[test]
+    fn streaming_matches_materialized_reference() {
+        let (users, locations, starts, ends) = parallel_fixture();
+        let temporal = event_graphs(&users, &locations, &starts, &ends, 60_000);
+        for seed in [0, 9, 42] {
+            for p in [0.0, 0.001, 0.5, 1.0] {
+                let randoms = random_replicas(4, &temporal, 5, seed);
+                let expected = classify_events_with_randoms(4, &temporal, p, &randoms).0;
+                let actual = classify_events_streaming(4, temporal.clone(), p, 5, seed);
+                assert_eq!(actual.edge_from, expected.edge_from);
+                assert_eq!(actual.edge_to, expected.edge_to);
+                assert_eq!(actual.persistence, expected.persistence);
+                assert_eq!(actual.topological_overlap, expected.topological_overlap);
+                assert_eq!(actual.classes, expected.classes);
+                assert_eq!(actual.persistence_threshold, expected.persistence_threshold);
+                assert_eq!(actual.overlap_threshold, expected.overlap_threshold);
+            }
+        }
+    }
+
     fn parallel_fixture() -> (Vec<u32>, Vec<u32>, Vec<i64>, Vec<i64>) {
         (
             vec![0, 1, 2, 0, 1, 3, 2, 3],
@@ -1050,7 +1297,10 @@ mod tests {
             }
         }
         assert_eq!(observed.events[0], expected);
-        assert!(!expected.is_empty(), "test fixture produced no overlaps to check");
+        assert!(
+            !expected.is_empty(),
+            "test fixture produced no overlaps to check"
+        );
     }
     #[test]
     fn rnd_is_seeded_simple_graph() {
