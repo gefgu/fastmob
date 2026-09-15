@@ -78,6 +78,7 @@ from .preprocessing import (
     simplify,
     stay_locations,
     trajectory_to_od,
+    trajectory_to_trips,
 )
 from .preprocessing.cdr import cdr_to_trips_df, cdr_to_visitation_df
 from .social import (
@@ -186,6 +187,7 @@ __all__ = [
     "trajectory_entropy",
     "trajectory_predictability",
     "trajectory_to_od",
+    "trajectory_to_trips",
     "uncorrelated_entropy",
     "uncorrelated_location_entropy",
     "utils",

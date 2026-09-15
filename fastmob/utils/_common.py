@@ -254,6 +254,18 @@ def _joint_factorize_arrow_values(*values: Any) -> tuple[pa.Array, ...]:
     return tuple(results)
 
 
+def _all_unsigned_integer_arrow(*values: Any) -> bool:
+    """True when every Arrow-compatible value already has an unsigned integer type.
+
+    Lets a caller skip :func:`_joint_factorize_arrow_values`: equality among
+    already-numeric ids (e.g. H3 cell ids) is well-defined without building a
+    shared dense codebook, so factorization there is pure overhead. Signed
+    integer columns still go through factorization -- narrower, but avoids
+    sign/range edge cases for a first cut.
+    """
+    return all(pa.types.is_unsigned_integer(_as_arrow(value).type) for value in values)
+
+
 def _factorize_uids_uint32(
     df: nw.DataFrame,
     uid_col: str | None,

@@ -38,6 +38,7 @@ def od_matrix(
     trips: Any,
     origin_col: str | None = None,
     destination_col: str | None = None,
+    sort: bool = True,
 ) -> Any:
     """Compute an Origin-Destination matrix from a trips DataFrame.
 
@@ -54,6 +55,10 @@ def od_matrix(
         Column name for the origin area. Auto-detected if None.
     destination_col : str or None, optional
         Column name for the destination area. Auto-detected if None.
+    sort : bool, optional
+        When True (default), sort the result by ``[origin_col,
+        destination_col]``. Order-insensitive callers (e.g. building a
+        ``FlowDataFrame`` for CPC) can pass False to skip that sort.
 
     Returns
     -------
@@ -89,8 +94,9 @@ def od_matrix(
         .select([origin_col, destination_col])
         .group_by([origin_col, destination_col])
         .agg(nw.len().alias("count"))
-        .sort([origin_col, destination_col])
     )
+    if sort:
+        counts = counts.sort([origin_col, destination_col])
 
     return counts.to_native()
 

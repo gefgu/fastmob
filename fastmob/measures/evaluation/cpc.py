@@ -8,12 +8,13 @@ import narwhals as nw
 import pyarrow as pa
 import pyarrow.compute as pc
 
-from fastmob.utils._common import _as_arrow, _joint_factorize_arrow_values
+from fastmob.utils._common import _all_unsigned_integer_arrow, _as_arrow, _joint_factorize_arrow_values
 
 
 def common_part_of_commuters(observed: Any, predicted: Any) -> float:
     """Compare two Trips or two FlowDataFrames through sparse Rust CPC."""
     from fastmob._core import common_part_of_commuters as _cpc
+    from fastmob._core import common_part_of_commuters_u64 as _cpc_u64
     from fastmob.core.flow_dataframe import DESTINATION, FLOW, ORIGIN, FlowDataFrame
     from fastmob.core.trips_dataframe import Trips
 
@@ -41,6 +42,12 @@ def common_part_of_commuters(observed: Any, predicted: Any) -> float:
             "CPC compares two Trips or two FlowDataFrame instances; convert Trips explicitly to FlowDataFrame to mix them."
         )
 
+    if _all_unsigned_integer_arrow(origin_a, destination_a, origin_b, destination_b):
+        origin_a, destination_a, origin_b, destination_b = (
+            pc.cast(_as_arrow(value), pa.uint64()) for value in (origin_a, destination_a, origin_b, destination_b)
+        )
+        return float(_cpc_u64(origin_a, destination_a, weights_a, origin_b, destination_b, weights_b))
+
     origin_a, destination_a, origin_b, destination_b = _joint_factorize_arrow_values(
         origin_a, destination_a, origin_b, destination_b
     )
@@ -50,6 +57,7 @@ def common_part_of_commuters(observed: Any, predicted: Any) -> float:
 def common_part_of_links(observed: Any, predicted: Any) -> float:
     """Compare active sparse OD links in two Trips or FlowDataFrames."""
     from fastmob._core import common_part_of_links as _cpl
+    from fastmob._core import common_part_of_links_u64 as _cpl_u64
 
     # Reuse CPC's model validation and joint endpoint factorization by using
     # its prepared inputs through this intentionally parallel dispatch.
@@ -71,6 +79,13 @@ def common_part_of_links(observed: Any, predicted: Any) -> float:
         )
     else:
         raise TypeError("CPL compares two Trips or two FlowDataFrame instances")
+
+    if _all_unsigned_integer_arrow(origin_a, destination_a, origin_b, destination_b):
+        origin_a, destination_a, origin_b, destination_b = (
+            pc.cast(_as_arrow(value), pa.uint64()) for value in (origin_a, destination_a, origin_b, destination_b)
+        )
+        return float(_cpl_u64(origin_a, destination_a, weights_a, origin_b, destination_b, weights_b))
+
     origin_a, destination_a, origin_b, destination_b = _joint_factorize_arrow_values(
         origin_a, destination_a, origin_b, destination_b
     )

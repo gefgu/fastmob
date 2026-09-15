@@ -79,6 +79,22 @@ def test_od_matrix_column_autodetection():
     assert _lookup(result, "Y", "X", origin_col="Origin_Area", dest_col="Dest_Area") == 1
 
 
+def test_od_matrix_sort_false_matches_sort_true_rows():
+    """sort=False must return the same rows/counts, just not necessarily ordered."""
+    trips = pd.DataFrame(
+        {
+            "origin_area": ["C", "A", "A", "B", "A"],
+            "destination_area": ["A", "B", "B", "A", "A"],
+        }
+    )
+    sorted_result = od_matrix(trips, sort=True)
+    unsorted_result = od_matrix(trips, sort=False)
+
+    sorted_cmp = sorted_result.sort_values(["origin_area", "destination_area"]).reset_index(drop=True)
+    unsorted_cmp = unsorted_result.sort_values(["origin_area", "destination_area"]).reset_index(drop=True)
+    pd.testing.assert_frame_equal(sorted_cmp, unsorted_cmp)
+
+
 def test_od_metrics_per_area_move_inside():
     """MoveInside equals self-loops; InComing/OutGoing are cross-zone sums."""
     trips = pd.DataFrame(

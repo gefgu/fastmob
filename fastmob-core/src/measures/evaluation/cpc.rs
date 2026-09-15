@@ -1,14 +1,15 @@
 //! Sparse common-part-of-commuters comparison.
 
+use std::hash::Hash;
+
 use rustc_hash::FxHashMap;
 
-type Edge = (u32, u32);
-pub type EdgeCounts = FxHashMap<Edge, f64>;
+pub type EdgeCounts<K> = FxHashMap<(K, K), f64>;
 
-pub fn sparse_edge_counts(
-    edges: impl IntoIterator<Item = (Option<u32>, Option<u32>, f64)>,
-) -> Result<(EdgeCounts, f64), String> {
-    let mut counts = EdgeCounts::default();
+pub fn sparse_edge_counts<K: Eq + Hash + Copy>(
+    edges: impl IntoIterator<Item = (Option<K>, Option<K>, f64)>,
+) -> Result<(EdgeCounts<K>, f64), String> {
+    let mut counts: EdgeCounts<K> = EdgeCounts::default();
     let mut total = 0.0;
     for (origin, destination, weight) in edges {
         if !weight.is_finite() || weight < 0.0 {
@@ -26,10 +27,10 @@ pub fn sparse_edge_counts(
     Ok((counts, total))
 }
 
-pub fn common_part_of_commuters_from_counts(
-    counts_a: EdgeCounts,
+pub fn common_part_of_commuters_from_counts<K: Eq + Hash>(
+    counts_a: EdgeCounts<K>,
     total_a: f64,
-    counts_b: EdgeCounts,
+    counts_b: EdgeCounts<K>,
     total_b: f64,
 ) -> f64 {
     let total = total_a + total_b;
@@ -48,7 +49,10 @@ pub fn common_part_of_commuters_from_counts(
     2.0 * common / total
 }
 
-pub fn common_part_of_links_from_counts(counts_a: &EdgeCounts, counts_b: &EdgeCounts) -> f64 {
+pub fn common_part_of_links_from_counts<K: Eq + Hash>(
+    counts_a: &EdgeCounts<K>,
+    counts_b: &EdgeCounts<K>,
+) -> f64 {
     let total = counts_a.len() + counts_b.len();
     if total == 0 {
         return 0.0;
@@ -91,9 +95,9 @@ pub fn common_part_of_commuters_distance(values_a: &[f64], values_b: &[f64]) -> 
 /// Null endpoints and self-loops are ignored. Edge weights must be finite and
 /// non-negative; zero-weight edges are ignored. The kernel stores only edges
 /// that occur in either input, never a dense location-by-location matrix.
-pub fn common_part_of_commuters(
-    edges_a: impl IntoIterator<Item = (Option<u32>, Option<u32>, f64)>,
-    edges_b: impl IntoIterator<Item = (Option<u32>, Option<u32>, f64)>,
+pub fn common_part_of_commuters<K: Eq + Hash + Copy>(
+    edges_a: impl IntoIterator<Item = (Option<K>, Option<K>, f64)>,
+    edges_b: impl IntoIterator<Item = (Option<K>, Option<K>, f64)>,
 ) -> Result<f64, String> {
     let (counts_a, total_a) = sparse_edge_counts(edges_a)?;
     let (counts_b, total_b) = sparse_edge_counts(edges_b)?;
@@ -128,5 +132,19 @@ mod tests {
         )
         .unwrap();
         assert_eq!(value, 0.0);
+    }
+
+    #[test]
+    fn works_with_u64_keys_directly() {
+        // exercises the generic key type with values well past u32::MAX, as
+        // real H3 cell ids are -- the numeric-id CPC fast path skips
+        // factorization and hashes these directly.
+        let big = 1u64 << 40;
+        let value = common_part_of_commuters(
+            [(Some(big), Some(big + 1), 1.0)],
+            [(Some(big), Some(big + 1), 1.0)],
+        )
+        .unwrap();
+        assert_eq!(value, 1.0);
     }
 }

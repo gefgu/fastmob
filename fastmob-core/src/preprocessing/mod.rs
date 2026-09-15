@@ -10,3 +10,4 @@ pub mod segment;
 pub mod simplify;
 pub mod stay_locations;
 pub mod stay_locations_rs;
+pub mod trajectory_od;

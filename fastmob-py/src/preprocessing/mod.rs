@@ -9,3 +9,4 @@ pub mod outliers_traj_py;
 pub mod segment_traj_py;
 pub mod simplify_traj_py;
 pub mod stay_locations_py;
+pub mod trajectory_od_py;

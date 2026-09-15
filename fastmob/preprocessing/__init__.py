@@ -6,7 +6,7 @@ from ._h3 import latlng_to_h3
 from ._segment import segment
 from ._simplify import simplify
 from ._stay_locations import stay_locations
-from ._trajectory_od import trajectory_to_od
+from ._trajectory_od import trajectory_to_od, trajectory_to_trips
 from ._transport_mode import calculate_modal_split, predict_transport_mode
 from .cdr import cdr_to_trips_df, cdr_to_visitation_df
 
@@ -25,4 +25,5 @@ __all__ = [
     "simplify",
     "stay_locations",
     "trajectory_to_od",
+    "trajectory_to_trips",
 ]

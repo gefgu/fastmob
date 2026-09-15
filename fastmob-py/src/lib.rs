@@ -30,7 +30,7 @@ use measures::individual::{
 use network::road_graph_py;
 use preprocessing::{
     cdr, clustering, compress_traj_py, expand_trajectory_py, filter_traj_py, h3_py,
-    outliers_traj_py, segment_traj_py, simplify_traj_py, stay_locations_py,
+    outliers_traj_py, segment_traj_py, simplify_traj_py, stay_locations_py, trajectory_od_py,
 };
 use social::co_presence_network;
 
@@ -354,6 +354,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(h3_py::h3_polygons_to_cells, m)?)?;
     m.add_function(wrap_pyfunction!(h3_py::h3_cells_to_boundaries, m)?)?;
     m.add_function(wrap_pyfunction!(
+        trajectory_od_py::od_edge_counts_presorted,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         preprocessing::h3_cluster_py::h3_cluster_labels_arrow,
         m
     )?)?;
@@ -376,7 +380,9 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_function(wrap_pyfunction!(stvd_emd::stvd_emd, m)?)?;
     }
     m.add_function(wrap_pyfunction!(cpc::common_part_of_commuters, m)?)?;
+    m.add_function(wrap_pyfunction!(cpc::common_part_of_commuters_u64, m)?)?;
     m.add_function(wrap_pyfunction!(cpc::common_part_of_links, m)?)?;
+    m.add_function(wrap_pyfunction!(cpc::common_part_of_links_u64, m)?)?;
     m.add_function(wrap_pyfunction!(cpc::common_part_of_commuters_distance, m)?)?;
     m.add_function(wrap_pyfunction!(wasserstein::wasserstein, m)?)?;
     m.add_function(wrap_pyfunction!(jsd::jensen_shannon, m)?)?;
