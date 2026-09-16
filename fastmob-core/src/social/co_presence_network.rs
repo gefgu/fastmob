@@ -11,7 +11,7 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::cmp::{Ordering, Reverse};
+use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::sync::mpsc;
 use std::thread;
@@ -36,80 +36,15 @@ pub struct ContactGraphMetrics {
     pub topological_overlap: Vec<f64>,
 }
 
-fn contact_adjacency(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>> {
-    let mut adjacency = vec![Vec::new(); node_count];
-    for i in 0..from.len() {
-        adjacency[from[i] as usize].push(to[i]);
-        adjacency[to[i] as usize].push(from[i]);
-    }
-    adjacency.par_iter_mut().for_each(|neighbors| {
-        neighbors.sort_unstable();
-        neighbors.dedup();
-    });
-    adjacency
-}
-
-fn contact_common(a: &[u32], b: &[u32]) -> usize {
-    let (mut i, mut j, mut count) = (0, 0, 0);
-    while i < a.len() && j < b.len() {
-        match a[i].cmp(&b[j]) {
-            Ordering::Less => i += 1,
-            Ordering::Greater => j += 1,
-            Ordering::Equal => {
-                count += 1;
-                i += 1;
-                j += 1;
-            }
-        }
-    }
-    count
-}
-
-fn contact_common_after(a: &[u32], b: &[u32], threshold: u32) -> usize {
-    contact_common(
-        &a[a.partition_point(|&x| x <= threshold)..],
-        &b[b.partition_point(|&x| x <= threshold)..],
-    )
-}
-
 /// Compute generic contact-network metrics without entering RECAST's null
 /// model or classification pipeline.
 pub fn contact_graph_metrics(node_count: usize, from: &[u32], to: &[u32]) -> ContactGraphMetrics {
-    let adjacency = contact_adjacency(node_count, from, to);
-    let clustering_coefficient = (0..node_count)
-        .into_par_iter()
-        .map(|node| {
-            let neighbors = &adjacency[node];
-            let degree = neighbors.len();
-            if degree < 2 {
-                return 0.0;
-            }
-            let links: usize = neighbors
-                .iter()
-                .map(|&neighbor| {
-                    contact_common_after(neighbors, &adjacency[neighbor as usize], neighbor)
-                })
-                .sum();
-            2.0 * links as f64 / (degree as f64 * (degree - 1) as f64)
-        })
-        .collect();
-    let topological_overlap = (0..from.len())
-        .into_par_iter()
-        .map(|i| {
-            let a = &adjacency[from[i] as usize];
-            let b = &adjacency[to[i] as usize];
-            let intersection = contact_common(a, b);
-            let union = a.len() + b.len() - intersection;
-            if union == 0 {
-                0.0
-            } else {
-                intersection as f64 / union as f64
-            }
-        })
-        .collect();
     ContactGraphMetrics {
-        clustering_coefficient,
-        topological_overlap,
+        clustering_coefficient: local_clustering_coefficients(node_count, from, to),
+        topological_overlap: topological_overlaps(node_count, from, to)
+            .into_iter()
+            .map(f64::from)
+            .collect(),
     }
 }
 
@@ -345,30 +280,6 @@ fn aggregate(events: &[FxHashSet<Edge>]) -> (Vec<u32>, Vec<u32>, Vec<f32>) {
     aggregate_from_counts(counts, events.len())
 }
 
-fn build_adjacency(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>> {
-    let mut adjacency = vec![Vec::new(); node_count];
-    for i in 0..from.len() {
-        adjacency[from[i] as usize].push(to[i]);
-        adjacency[to[i] as usize].push(from[i]);
-    }
-    adjacency.par_iter_mut().for_each(|v| {
-        v.sort_unstable();
-        v.dedup();
-    });
-    adjacency
-}
-fn build_adjacency_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>> {
-    let mut adjacency = vec![Vec::new(); node_count];
-    for i in 0..from.len() {
-        adjacency[from[i] as usize].push(to[i]);
-        adjacency[to[i] as usize].push(from[i]);
-    }
-    for neighbors in &mut adjacency {
-        neighbors.sort_unstable();
-        neighbors.dedup();
-    }
-    adjacency
-}
 // perf (10M-row RECAST, `perf record`/`perf report`) showed this loop at
 // ~35-40% of total cycles -- the single dominant cost in the whole RECAST
 // classifier. `a`/`b` are node adjacency lists from `build_adjacency_csr`,
@@ -500,6 +411,11 @@ fn overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
         })
         .collect()
 }
+
+/// Exact RECAST topological overlap for every edge in a canonical graph.
+pub fn topological_overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
+    overlaps(node_count, from, to)
+}
 fn overlaps_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
     let (offsets, flat) = build_adjacency_csr(node_count, from, to);
     (0..from.len())
@@ -513,6 +429,58 @@ fn overlaps_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
             } else {
                 inter as f32 / union as f32
             }
+        })
+        .collect()
+}
+
+fn count_common_after(a: &[u32], b: &[u32], threshold: u32) -> usize {
+    count_common(
+        &a[a.partition_point(|&node| node <= threshold)..],
+        &b[b.partition_point(|&node| node <= threshold)..],
+    )
+}
+
+/// Exact local clustering coefficients using RECAST's canonical CSR adjacency
+/// and sorted-set intersection kernel.
+pub fn local_clustering_coefficients(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f64> {
+    let (offsets, flat) = build_adjacency_csr(node_count, from, to);
+    (0..node_count)
+        .into_par_iter()
+        .map(|node| {
+            let neighbors = &flat[offsets[node]..offsets[node + 1]];
+            let degree = neighbors.len();
+            if degree < 2 {
+                return 0.0;
+            }
+            let links: usize = neighbors
+                .iter()
+                .map(|&neighbor| {
+                    let other = &flat[offsets[neighbor as usize]..offsets[neighbor as usize + 1]];
+                    count_common_after(neighbors, other, neighbor)
+                })
+                .sum();
+            2.0 * links as f64 / (degree * (degree - 1)) as f64
+        })
+        .collect()
+}
+
+fn local_clustering_coefficients_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f64> {
+    let (offsets, flat) = build_adjacency_csr(node_count, from, to);
+    (0..node_count)
+        .map(|node| {
+            let neighbors = &flat[offsets[node]..offsets[node + 1]];
+            let degree = neighbors.len();
+            if degree < 2 {
+                return 0.0;
+            }
+            let links: usize = neighbors
+                .iter()
+                .map(|&neighbor| {
+                    let other = &flat[offsets[neighbor as usize]..offsets[neighbor as usize + 1]];
+                    count_common_after(neighbors, other, neighbor)
+                })
+                .sum();
+            2.0 * links as f64 / (degree * (degree - 1)) as f64
         })
         .collect()
 }
@@ -580,6 +548,19 @@ fn sample_expected_degree_edges(
     let order = sort_nodes_by_degree_desc(degree);
     let seq: Vec<f64> = order.iter().map(|&i| degree[i as usize] as f64).collect();
     sample_ordered_edges(&order, &seq, sum, rng, emit);
+}
+
+/// Sample an expected-degree graph with the same Chung-Lu distribution used
+/// by RECAST's RND kernel.
+pub fn expected_degree_graph(degree: &[usize], seed: u64) -> (Vec<u32>, Vec<u32>) {
+    let mut rng = Xoshiro256PlusPlus::seed_from_u64(seed);
+    let sum: usize = degree.iter().sum();
+    let mut values = Vec::new();
+    sample_expected_degree_edges(degree.len(), degree, sum, &mut rng, |u, v| {
+        values.push(edge(u, v));
+    });
+    values.sort_unstable();
+    values.into_iter().unzip()
 }
 
 fn sample_ordered_edges(
@@ -1106,23 +1087,8 @@ fn average_clustering(node_count: usize, event: &FxHashSet<Edge>) -> f64 {
         return 0.0;
     }
     let (from, to): (Vec<_>, Vec<_>) = event.iter().copied().unzip();
-    let adjacency = build_adjacency(node_count, &from, &to);
-    adjacency
-        .par_iter()
-        .map(|neighbors| {
-            if neighbors.len() < 2 {
-                return 0.0;
-            }
-            let mut links = 0usize;
-            for i in 0..neighbors.len() {
-                for &v in &neighbors[(i + 1)..] {
-                    if adjacency[neighbors[i] as usize].binary_search(&v).is_ok() {
-                        links += 1;
-                    }
-                }
-            }
-            2.0 * links as f64 / (neighbors.len() * (neighbors.len() - 1)) as f64
-        })
+    local_clustering_coefficients(node_count, &from, &to)
+        .into_iter()
         .sum::<f64>()
         / node_count as f64
 }
@@ -1142,23 +1108,8 @@ fn average_clustering_serial(node_count: usize, event: &FxHashSet<Edge>) -> f64 
         return 0.0;
     }
     let (from, to): (Vec<_>, Vec<_>) = event.iter().copied().unzip();
-    let adjacency = build_adjacency_serial(node_count, &from, &to);
-    let total: f64 = adjacency
-        .iter()
-        .map(|neighbors| {
-            if neighbors.len() < 2 {
-                return 0.0;
-            }
-            let mut links = 0usize;
-            for i in 0..neighbors.len() {
-                for &v in &neighbors[(i + 1)..] {
-                    if adjacency[neighbors[i] as usize].binary_search(&v).is_ok() {
-                        links += 1;
-                    }
-                }
-            }
-            2.0 * links as f64 / (neighbors.len() * (neighbors.len() - 1)) as f64
-        })
+    let total: f64 = local_clustering_coefficients_serial(node_count, &from, &to)
+        .into_iter()
         .sum();
     total / node_count as f64
 }
@@ -1295,10 +1246,8 @@ mod tests {
             metrics.clustering_coefficient,
             vec![1.0, 1.0, 1.0 / 3.0, 0.0]
         );
-        assert_eq!(
-            metrics.topological_overlap,
-            vec![1.0 / 3.0, 0.25, 0.25, 0.0]
-        );
+        assert!((metrics.topological_overlap[0] - 1.0 / 3.0).abs() < 1e-6);
+        assert_eq!(metrics.topological_overlap[1..], [0.25, 0.25, 0.0]);
     }
 
     #[test]

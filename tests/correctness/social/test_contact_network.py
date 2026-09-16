@@ -10,6 +10,8 @@ from fastmob.social import (
     RecastClass,
     clustering_coefficients,
     co_presence_graph_from_staypoints,
+    degree_preserving_random_graph,
+    graph_from_edges,
     recast_from_staypoints,
     rnd,
     t_rnd,
@@ -148,3 +150,14 @@ def test_raw_contact_graph_uses_minimum_duration_and_has_no_group_cap():
 
     too_short = co_presence_graph_from_staypoints(three_users, _locations(), min_minutes_for_encounter=21)
     assert too_short.graph.edge_count == 0
+
+
+def test_raw_contact_diagnostics_use_seeded_recast_graph_kernels():
+    graph = graph_from_edges(4, [(0, 1), (0, 2), (1, 2), (2, 3)])
+    np.testing.assert_allclose(clustering_coefficients(graph), [1.0, 1.0, 1.0 / 3.0, 0.0])
+    np.testing.assert_allclose(topological_overlap(graph), [1.0 / 3.0, 0.25, 0.25, 0.0])
+
+    first = degree_preserving_random_graph(graph.degrees(), seed=13)
+    second = degree_preserving_random_graph(graph.degrees(), seed=13)
+    assert first.edges == second.edges
+    assert all(source < target for source, target in first.edges)

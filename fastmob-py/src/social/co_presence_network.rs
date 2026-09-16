@@ -5,8 +5,9 @@ use arrow_array::{
 };
 use arrow_buffer::ScalarBuffer;
 use fastmob_core::social::co_presence_network::{
-    aggregate_flat_events, contact_graph_metrics, event_graphs, flatten_events, recast_classify,
-    rnd_graph, t_rnd_graph, validate_recast,
+    aggregate_flat_events, contact_graph_metrics, event_graphs, expected_degree_graph,
+    flatten_events, local_clustering_coefficients, recast_classify, rnd_graph, t_rnd_graph,
+    topological_overlaps, validate_recast,
 };
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
@@ -66,6 +67,20 @@ fn validate_lengths(from: &[u32], to: &[u32]) -> PyResult<()> {
     }
 }
 
+fn validate_graph(node_count: usize, from: &[u32], to: &[u32]) -> PyResult<()> {
+    validate_lengths(from, to)?;
+    if from
+        .iter()
+        .chain(to.iter())
+        .any(|&node| node as usize >= node_count)
+    {
+        return Err(PyValueError::new_err(
+            "edge endpoints must be smaller than node_count",
+        ));
+    }
+    Ok(())
+}
+
 #[pyfunction]
 #[pyo3(name = "contact_graph_metrics")]
 pub fn contact_graph_metrics_py<'py>(
@@ -76,25 +91,62 @@ pub fn contact_graph_metrics_py<'py>(
 ) -> PyResult<(Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>)> {
     let from = edge_from.as_slice()?;
     let to = edge_to.as_slice()?;
-    if from.len() != to.len() {
-        return Err(PyValueError::new_err(
-            "edge_from and edge_to must have the same length",
-        ));
-    }
-    if from
-        .iter()
-        .chain(to.iter())
-        .any(|&node| node as usize >= node_count)
-    {
-        return Err(PyValueError::new_err(
-            "edge endpoints must be smaller than node_count",
-        ));
-    }
+    validate_graph(node_count, from, to)?;
     let metrics = py.detach(|| contact_graph_metrics(node_count, from, to));
     Ok((
         metrics.clustering_coefficient.into_pyarray(py),
         metrics.topological_overlap.into_pyarray(py),
     ))
+}
+
+#[pyfunction]
+#[pyo3(name = "recast_local_clustering_coefficients")]
+pub fn recast_local_clustering_coefficients_py<'py>(
+    py: Python<'py>,
+    node_count: usize,
+    edge_from: PyReadonlyArray1<'py, u32>,
+    edge_to: PyReadonlyArray1<'py, u32>,
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
+    let from = edge_from.as_slice()?;
+    let to = edge_to.as_slice()?;
+    validate_graph(node_count, from, to)?;
+    Ok(py
+        .detach(|| local_clustering_coefficients(node_count, from, to))
+        .into_pyarray(py))
+}
+
+#[pyfunction]
+#[pyo3(name = "recast_topological_overlaps")]
+pub fn recast_topological_overlaps_py<'py>(
+    py: Python<'py>,
+    node_count: usize,
+    edge_from: PyReadonlyArray1<'py, u32>,
+    edge_to: PyReadonlyArray1<'py, u32>,
+) -> PyResult<Bound<'py, PyArray1<f32>>> {
+    let from = edge_from.as_slice()?;
+    let to = edge_to.as_slice()?;
+    validate_graph(node_count, from, to)?;
+    Ok(py
+        .detach(|| topological_overlaps(node_count, from, to))
+        .into_pyarray(py))
+}
+
+#[pyfunction]
+#[pyo3(name = "recast_expected_degree_graph")]
+pub fn recast_expected_degree_graph_py<'py>(
+    py: Python<'py>,
+    degrees: PyReadonlyArray1<'py, u64>,
+    seed: u64,
+) -> PyResult<(Bound<'py, PyArray1<u32>>, Bound<'py, PyArray1<u32>>)> {
+    let degrees = degrees.as_slice()?;
+    if degrees.iter().any(|&degree| degree > usize::MAX as u64) {
+        return Err(PyValueError::new_err(
+            "degrees exceed this platform's supported range",
+        ));
+    }
+    let degree: Vec<usize> = degrees.iter().map(|&value| value as usize).collect();
+    let (from, to) = py.detach(|| expected_degree_graph(&degree, seed));
+    Ok((from.into_pyarray(py), to.into_pyarray(py)))
 }
 
 #[pyfunction]

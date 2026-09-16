@@ -68,7 +68,7 @@ def graph_from_edges(node_count: int, edges: Iterable[tuple[int, int]]) -> Netwo
     if not normalized:
         return _empty_graph(node_count)
     array = np.asarray(sorted(normalized), dtype=np.uint32)
-    return NetworkGraph(node_count, array[:, 0], array[:, 1])
+    return NetworkGraph(node_count, np.ascontiguousarray(array[:, 0]), np.ascontiguousarray(array[:, 1]))
 
 
 def co_presence_graph_from_staypoints(
@@ -96,36 +96,44 @@ def co_presence_graph_from_staypoints(
     return ContactNetworkResult(temporal_graph, graph, np.asarray(persistence))
 
 
-def _metrics(graph: NetworkGraph) -> tuple[np.ndarray, np.ndarray]:
-    from fastmob._core import contact_graph_metrics
-
-    return tuple(np.asarray(x) for x in contact_graph_metrics(graph.node_count, graph.edge_from, graph.edge_to))
-
-
 def clustering_coefficients(graph: NetworkGraph) -> np.ndarray:
-    """Return one clustering coefficient per node."""
-    return _metrics(graph)[0]
+    """Return RECAST's exact local clustering coefficient for each node."""
+    from fastmob._core import recast_local_clustering_coefficients
+
+    return np.asarray(
+        recast_local_clustering_coefficients(graph.node_count, graph.edge_from, graph.edge_to)
+    )
 
 
 def topological_overlap(graph: NetworkGraph) -> np.ndarray:
-    """Return Jaccard neighborhood overlap aligned with graph edges."""
-    return _metrics(graph)[1]
+    """Return RECAST's exact Jaccard neighborhood overlap for each edge."""
+    from fastmob._core import recast_topological_overlaps
+
+    return np.asarray(recast_topological_overlaps(graph.node_count, graph.edge_from, graph.edge_to))
 
 
 def degree_preserving_random_graph(degrees: np.ndarray, *, seed: int = 42) -> NetworkGraph:
-    """Sample a Chung-Lu graph whose degrees match in expectation."""
-    degree = np.asarray(degrees, dtype=float)
-    total = float(degree.sum())
-    if degree.size < 2 or total <= 0:
+    """Sample RECAST's Chung-Lu graph whose degrees match in expectation."""
+    degree = np.asarray(degrees)
+    if degree.ndim != 1:
+        raise ValueError("degrees must be a one-dimensional array")
+    if not np.issubdtype(degree.dtype, np.number):
+        raise ValueError("degrees must be numeric")
+    degree_float = degree.astype(float, copy=False)
+    if not np.all(np.isfinite(degree_float)) or np.any(degree_float < 0) or np.any(degree_float != np.floor(degree_float)):
+        raise ValueError("degrees must be finite, non-negative integers")
+    if np.any(degree_float >= degree.size):
+        raise ValueError("each degree must be smaller than the node count")
+    if degree.size < 2 or not degree_float.sum():
         return _empty_graph(len(degree))
-    rng = np.random.default_rng(seed)
-    chunks: list[np.ndarray] = []
-    for source in range(len(degree) - 1):
-        probability = np.clip(degree[source] * degree[source + 1 :] / total, 0.0, 1.0)
-        targets = np.flatnonzero(rng.random(probability.size) < probability)
-        if targets.size:
-            chunks.append(np.column_stack((np.full(targets.size, source), targets + source + 1)))
-    return graph_from_edges(len(degree), np.vstack(chunks) if chunks else [])
+    if np.any(degree_float > np.iinfo(np.uint64).max):
+        raise ValueError("degrees exceed the supported range")
+    from fastmob._core import recast_expected_degree_graph
+
+    edge_from, edge_to = recast_expected_degree_graph(
+        np.ascontiguousarray(degree_float, dtype=np.uint64), seed
+    )
+    return NetworkGraph(len(degree), np.asarray(edge_from), np.asarray(edge_to))
 
 
 def random_persistence(graph: NetworkGraph, degrees: np.ndarray, *, time_steps: int, seed: int) -> np.ndarray:

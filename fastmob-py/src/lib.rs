@@ -217,6 +217,18 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        co_presence_network::recast_local_clustering_coefficients_py,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        co_presence_network::recast_topological_overlaps_py,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        co_presence_network::recast_expected_degree_graph_py,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         co_presence_network::recast_aggregate_event_graphs_py,
         m
     )?)?;
