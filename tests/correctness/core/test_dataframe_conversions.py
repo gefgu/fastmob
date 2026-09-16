@@ -40,9 +40,7 @@ from fastmob import Locations, Positionfixes, Staypoints, Tours, TrajDataFrame, 
                 }
             )
         ),
-        lambda: Locations(
-            pd.DataFrame({"location_id": [1], "center_lat": [0.0], "center_lng": [0.0]})
-        ),
+        lambda: Locations(pd.DataFrame({"location_id": [1], "center_lat": [0.0], "center_lng": [0.0]})),
         lambda: Triplegs(
             pd.DataFrame(
                 {

@@ -302,17 +302,13 @@ def _extract_timestamps(df: nw.DataFrame, datetime_col: str) -> nw.Series:
     try:
         values = nw.col(datetime_col).dt.timestamp("ms")
         return df.with_columns(
-            values.fill_null(_NULL_TIMESTAMP_SENTINEL_MS)
-            .cast(nw.Int64)
-            .alias("__fastmob_timestamp__")
+            values.fill_null(_NULL_TIMESTAMP_SENTINEL_MS).cast(nw.Int64).alias("__fastmob_timestamp__")
         ).get_column("__fastmob_timestamp__")
     except TypeError:
         normalized = _with_datetime_column(df, datetime_col)
         values = nw.col(datetime_col).dt.timestamp("ms")
         return normalized.with_columns(
-            values.fill_null(_NULL_TIMESTAMP_SENTINEL_MS)
-            .cast(nw.Int64)
-            .alias("__fastmob_timestamp__")
+            values.fill_null(_NULL_TIMESTAMP_SENTINEL_MS).cast(nw.Int64).alias("__fastmob_timestamp__")
         ).get_column("__fastmob_timestamp__")
 
 
@@ -496,7 +492,9 @@ def _build_user_ranges_auto(
 
     # Materialized once and shared with whichever path wins, so guessing wrong
     # does not convert the uid column twice.
-    uid_values = pa.array(_as_arrow(uid_values)) if uid_values is not None else pa.array(df.get_column(uid_col).to_arrow())
+    uid_values = (
+        pa.array(_as_arrow(uid_values)) if uid_values is not None else pa.array(df.get_column(uid_col).to_arrow())
+    )
     labels, ends = _build_presorted_user_ends(df, uid_col, uid_values)
     grouped = len(pc.unique(labels)) == len(labels)
     if grouped and (timestamps is None or validate_timestamps_within_ends(timestamps, ends)) and _coordinates_usable():

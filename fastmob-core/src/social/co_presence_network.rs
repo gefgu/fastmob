@@ -347,9 +347,8 @@ fn overlaps(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
     (0..from.len())
         .into_par_iter()
         .map(|i| {
-            let a =
-                &flat[offsets[from[i] as usize] as usize..offsets[from[i] as usize + 1] as usize];
-            let b = &flat[offsets[to[i] as usize] as usize..offsets[to[i] as usize + 1] as usize];
+            let a = &flat[offsets[from[i] as usize]..offsets[from[i] as usize + 1]];
+            let b = &flat[offsets[to[i] as usize]..offsets[to[i] as usize + 1]];
             let (ao, bo) = (bit_offsets[from[i] as usize], bit_offsets[to[i] as usize]);
             let inter = match (ao != usize::MAX, bo != usize::MAX) {
                 (true, true) => bits[ao..ao + words]
@@ -380,9 +379,8 @@ fn overlaps_serial(node_count: usize, from: &[u32], to: &[u32]) -> Vec<f32> {
     let (offsets, flat) = build_adjacency_csr(node_count, from, to);
     (0..from.len())
         .map(|i| {
-            let a =
-                &flat[offsets[from[i] as usize] as usize..offsets[from[i] as usize + 1] as usize];
-            let b = &flat[offsets[to[i] as usize] as usize..offsets[to[i] as usize + 1] as usize];
+            let a = &flat[offsets[from[i] as usize]..offsets[from[i] as usize + 1]];
+            let b = &flat[offsets[to[i] as usize]..offsets[to[i] as usize + 1]];
             let inter = count_common(a, b);
             let union = a.len() + b.len() - inter;
             if union == 0 {

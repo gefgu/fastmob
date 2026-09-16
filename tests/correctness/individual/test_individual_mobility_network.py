@@ -197,9 +197,7 @@ def test_imn_presorted_matches_default_pandas():
         .drop(columns=["__row_order"])
     )
 
-    assert _to_edge_dict(individual_mobility_network(sorted_input)) == _to_edge_dict(
-        individual_mobility_network(raw)
-    )
+    assert _to_edge_dict(individual_mobility_network(sorted_input)) == _to_edge_dict(individual_mobility_network(raw))
 
 
 def test_imn_presorted_no_uid():

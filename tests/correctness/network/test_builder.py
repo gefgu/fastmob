@@ -42,9 +42,7 @@ def test_fetch_road_network_returns_connected_graph():
     import pyarrow.compute as pc
     from fastmob.network import fetch_road_network
 
-    nodes_df, edges_df = _fetch_or_skip(
-        fetch_road_network, _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE
-    )
+    nodes_df, edges_df = _fetch_or_skip(fetch_road_network, _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE)
     assert nodes_df.num_rows > 0
     assert edges_df.num_rows > 0
     assert set(nodes_df.column_names) == {"node_idx", "connector_id", "lat", "lng"}
@@ -58,9 +56,7 @@ def test_fetch_road_network_returns_connected_graph():
 def test_fetch_road_network_builds_a_routable_network():
     from fastmob.network import RoadNetwork, fetch_road_network
 
-    nodes_df, edges_df = _fetch_or_skip(
-        fetch_road_network, _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE
-    )
+    nodes_df, edges_df = _fetch_or_skip(fetch_road_network, _MIN_LON, _MIN_LAT, _MAX_LON, _MAX_LAT, _OVERTURE_RELEASE)
     network = RoadNetwork.build(edges_df, nodes_df)
 
     import numpy as np

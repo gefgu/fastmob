@@ -3,6 +3,7 @@ from __future__ import annotations
 import narwhals as nw
 import pyarrow as pa
 
+
 def snap_locations_to_graph(
     tessellation_df,
     nodes_df,

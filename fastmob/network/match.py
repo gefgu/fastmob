@@ -48,7 +48,7 @@ def _candidates(lat, lng, edges, radius_m, max_candidates, sigma_m):
     result = [_project(float(lat), float(lng), edge) for edge in edges]
     result = [candidate for candidate in result if candidate[5] <= radius_m]
     result.sort(key=lambda candidate: (candidate[5], candidate[0], candidate[1]))
-    return [(candidate, -(candidate[5] / sigma_m) ** 2 / 2.0) for candidate in result[:max_candidates]]
+    return [(candidate, -((candidate[5] / sigma_m) ** 2) / 2.0) for candidate in result[:max_candidates]]
 
 
 def _match_user(rows, edges, network, radius_m, max_candidates, sigma_m, gap_seconds, max_speed_mps):
@@ -78,7 +78,13 @@ def _match_user(rows, edges, network, radius_m, max_candidates, sigma_m, gap_sec
     for row_index, lat, lng, timestamp in rows:
         current = _candidates(lat, lng, edges, radius_m, max_candidates, sigma_m)
         time = _seconds(timestamp)
-        split = not layers or time is None or previous_time is None or time <= previous_time or time - previous_time > gap_seconds
+        split = (
+            not layers
+            or time is None
+            or previous_time is None
+            or time <= previous_time
+            or time - previous_time > gap_seconds
+        )
         if not current:
             flush()
             layers, scores, backpointers, row_indices = [], [], [], []
@@ -86,7 +92,12 @@ def _match_user(rows, edges, network, radius_m, max_candidates, sigma_m, gap_sec
             continue
         if split:
             flush()
-            layers, scores, backpointers, row_indices = [current], [[emission for _candidate, emission in current]], [[-1] * len(current)], [row_index]
+            layers, scores, backpointers, row_indices = (
+                [current],
+                [[emission for _candidate, emission in current]],
+                [[-1] * len(current)],
+                [row_index],
+            )
         else:
             # The routing kernel receives the whole candidate cross-product in
             # one Arrow batch.  It releases the GIL and parallelises queries.
@@ -116,7 +127,12 @@ def _match_user(rows, edges, network, radius_m, max_candidates, sigma_m, gap_sec
                 pointers.append(best_left)
             if max(layer_scores) == -inf:
                 flush()
-                layers, scores, backpointers, row_indices = [current], [[emission for _candidate, emission in current]], [[-1] * len(current)], [row_index]
+                layers, scores, backpointers, row_indices = (
+                    [current],
+                    [[emission for _candidate, emission in current]],
+                    [[-1] * len(current)],
+                    [row_index],
+                )
             else:
                 layers.append(current)
                 scores.append(layer_scores)
@@ -154,8 +170,15 @@ def match_trajectory(
     table = df.to_arrow()
     node_coords = {row["node_idx"]: (row["lat"], row["lng"]) for row in network.nodes_df.to_pylist()}
     edges = [
-        (row["from_node"], row["to_node"], *node_coords[row["from_node"]], *node_coords[row["to_node"]], row["length_m"])
-        for row in network.edges_df.to_pylist() if row["from_node"] in node_coords and row["to_node"] in node_coords
+        (
+            row["from_node"],
+            row["to_node"],
+            *node_coords[row["from_node"]],
+            *node_coords[row["to_node"]],
+            row["length_m"],
+        )
+        for row in network.edges_df.to_pylist()
+        if row["from_node"] in node_coords and row["to_node"] in node_coords
     ]
     groups: dict[object, list[tuple[int, object, object, object]]] = {}
     for i, row in enumerate(table.select([lat_col, lng_col, datetime_col]).to_pylist()):
@@ -164,7 +187,16 @@ def match_trajectory(
     workers = min(32, max(1, len(groups)))
     with ThreadPoolExecutor(max_workers=workers) as executor:
         parts = executor.map(
-            lambda group: _match_user(group, edges, network, candidate_radius_m, max_candidates, gps_sigma_m, gap_seconds, max_transition_speed_kmh / 3.6),
+            lambda group: _match_user(
+                group,
+                edges,
+                network,
+                candidate_radius_m,
+                max_candidates,
+                gps_sigma_m,
+                gap_seconds,
+                max_transition_speed_kmh / 3.6,
+            ),
             groups.values(),
         )
     result = [(None, None, None, None, None, None, "unmatched", None) for _ in range(table.num_rows)]
@@ -172,7 +204,16 @@ def match_trajectory(
         for index, value in part.items():
             result[index] = value
     columns = {name: table.column(name) for name in table.column_names}
-    names = ["matched_edge_from", "matched_edge_to", "matched_fraction", "matched_lat", "matched_lng", "distance_to_road_m", "match_status", "match_score"]
+    names = [
+        "matched_edge_from",
+        "matched_edge_to",
+        "matched_fraction",
+        "matched_lat",
+        "matched_lng",
+        "distance_to_road_m",
+        "match_status",
+        "match_score",
+    ]
     for column, name in enumerate(names):
         columns[name] = pa.array([value[column] for value in result])
     return pa.table(columns)

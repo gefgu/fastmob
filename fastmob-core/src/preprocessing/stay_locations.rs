@@ -138,14 +138,15 @@ fn detect_stops_for_user_core(
                 let mut final_t = t;
                 let mut lat_end = i + 1 - segment_start;
 
-                if min_speed_kmh.is_finite() && !speeds_kmh.is_empty() {
-                    if let Some(pos) = speeds_kmh.iter().rev().position(|&s| s < min_speed_kmh) {
-                        let j = pos + 1;
-                        let trim_idx = lat_end.saturating_sub(j - 1);
-                        if trim_idx > 0 && trim_idx < lat_end {
-                            final_t = times[segment_start + trim_idx];
-                            lat_end = trim_idx.saturating_sub(1);
-                        }
+                if min_speed_kmh.is_finite()
+                    && !speeds_kmh.is_empty()
+                    && let Some(pos) = speeds_kmh.iter().rev().position(|&s| s < min_speed_kmh)
+                {
+                    let j = pos + 1;
+                    let trim_idx = lat_end.saturating_sub(j - 1);
+                    if trim_idx > 0 && trim_idx < lat_end {
+                        final_t = times[segment_start + trim_idx];
+                        lat_end = trim_idx.saturating_sub(1);
                     }
                 }
 
@@ -199,61 +200,6 @@ pub fn detect_stops_for_user(
         min_speed_kmh,
         include_last,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn min_speed_is_interpreted_in_kilometres_per_hour() {
-        // The first four points form a 30-minute stop. The final two points
-        // move at roughly 33 km/h, so a 5 km/h threshold must trim the stop
-        // at the last stationary point rather than treating the moving tail
-        // as below the threshold.
-        let lats = [0.0, 0.0, 0.0, 0.0, 0.05, 0.10];
-        let lngs = [0.0; 6];
-        let times = [0.0, 600.0, 1200.0, 1800.0, 2400.0, 3000.0];
-
-        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, 5.0, true);
-
-        assert_eq!(stops.len(), 1);
-        assert_eq!(stops[0].entry_time_s, 0.0);
-        assert_eq!(stops[0].leaving_time_s, 1800.0);
-    }
-
-    #[test]
-    fn consecutive_duplicate_positionfixes_are_dropped() {
-        // Row at t=300 repeats t=0's fix exactly; it must not be treated as a
-        // second, distinct sample when checking the stop's duration.
-        let lats = [0.0, 0.0, 0.0, 0.0, 0.0];
-        let lngs = [0.0; 5];
-        let times = [0.0, 0.0, 300.0, 300.0, 1500.0];
-
-        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
-
-        assert_eq!(stops.len(), 1);
-        assert_eq!(stops[0].entry_time_s, 0.0);
-        assert_eq!(stops[0].leaving_time_s, 1500.0);
-    }
-
-    #[test]
-    fn include_last_controls_the_trailing_open_stay() {
-        // The user is still stationary when tracking ends -- with
-        // include_last=false (trackintel's default) that trailing stay must
-        // be omitted; with include_last=true it must be emitted.
-        let lats = [0.0, 0.0, 0.0];
-        let lngs = [0.0; 3];
-        let times = [0.0, 600.0, 1500.0];
-
-        let omitted = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, false);
-        assert!(omitted.is_empty());
-
-        let included = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
-        assert_eq!(included.len(), 1);
-        assert_eq!(included[0].entry_time_s, 0.0);
-        assert_eq!(included[0].leaving_time_s, 1500.0);
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -398,4 +344,59 @@ fn flatten_stops(per_user_stops: Vec<Vec<Stop>>) -> StayLocationsBatchResult {
         leaving_times,
         user_range_idx,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn min_speed_is_interpreted_in_kilometres_per_hour() {
+        // The first four points form a 30-minute stop. The final two points
+        // move at roughly 33 km/h, so a 5 km/h threshold must trim the stop
+        // at the last stationary point rather than treating the moving tail
+        // as below the threshold.
+        let lats = [0.0, 0.0, 0.0, 0.0, 0.05, 0.10];
+        let lngs = [0.0; 6];
+        let times = [0.0, 600.0, 1200.0, 1800.0, 2400.0, 3000.0];
+
+        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, 5.0, true);
+
+        assert_eq!(stops.len(), 1);
+        assert_eq!(stops[0].entry_time_s, 0.0);
+        assert_eq!(stops[0].leaving_time_s, 1800.0);
+    }
+
+    #[test]
+    fn consecutive_duplicate_positionfixes_are_dropped() {
+        // Row at t=300 repeats t=0's fix exactly; it must not be treated as a
+        // second, distinct sample when checking the stop's duration.
+        let lats = [0.0, 0.0, 0.0, 0.0, 0.0];
+        let lngs = [0.0; 5];
+        let times = [0.0, 0.0, 300.0, 300.0, 1500.0];
+
+        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
+
+        assert_eq!(stops.len(), 1);
+        assert_eq!(stops[0].entry_time_s, 0.0);
+        assert_eq!(stops[0].leaving_time_s, 1500.0);
+    }
+
+    #[test]
+    fn include_last_controls_the_trailing_open_stay() {
+        // The user is still stationary when tracking ends -- with
+        // include_last=false (trackintel's default) that trailing stay must
+        // be omitted; with include_last=true it must be emitted.
+        let lats = [0.0, 0.0, 0.0];
+        let lngs = [0.0; 3];
+        let times = [0.0, 600.0, 1500.0];
+
+        let omitted = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, false);
+        assert!(omitted.is_empty());
+
+        let included = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
+        assert_eq!(included.len(), 1);
+        assert_eq!(included[0].entry_time_s, 0.0);
+        assert_eq!(included[0].leaving_time_s, 1500.0);
+    }
 }

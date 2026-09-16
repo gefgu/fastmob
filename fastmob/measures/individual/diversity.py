@@ -67,9 +67,7 @@ def diversity(
     nw_df = nw_df.filter(~nw.col(location_id_col).is_null())
     if user_id_col:
         nw_df = nw_df.sort(user_id_col)
-        location_codes, _ = _factorize_arrow_values(
-            nw_df.get_column(location_id_col).to_arrow(), sort=False
-        )
+        location_codes, _ = _factorize_arrow_values(nw_df.get_column(location_id_col).to_arrow(), sort=False)
         uid_values, ends = _build_presorted_user_ends(nw_df, user_id_col)
         values = diversity_users(location_codes, ends)
         return nw.from_dict(
@@ -77,9 +75,7 @@ def diversity(
             backend=nw_df.implementation,
         ).to_native()
 
-    location_codes, _ = _factorize_arrow_values(
-        nw_df.get_column(location_id_col).to_arrow(), sort=False
-    )
+    location_codes, _ = _factorize_arrow_values(nw_df.get_column(location_id_col).to_arrow(), sort=False)
     _, ends = _build_presorted_user_ends(nw_df, None)
     div = diversity_users(location_codes, ends)[0]
     return nw.from_dict({"diversity": [div]}, backend=nw_df.implementation).to_native()

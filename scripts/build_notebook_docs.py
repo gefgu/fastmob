@@ -79,8 +79,15 @@ def main() -> None:
             _clean_notebook(notebook, clean_notebook)
             subprocess.run(
                 [
-                    sys.executable, "-m", "jupyter", "nbconvert", "--to", "markdown",
-                    "--output-dir", str(notebook.parent), str(clean_notebook),
+                    sys.executable,
+                    "-m",
+                    "jupyter",
+                    "nbconvert",
+                    "--to",
+                    "markdown",
+                    "--output-dir",
+                    str(notebook.parent),
+                    str(clean_notebook),
                 ],
                 check=True,
                 cwd=ROOT,

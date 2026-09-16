@@ -92,9 +92,9 @@ def jump_lengths_road(
     )
 
     coords_pd = df.select([lat_col, lng_col]).to_pandas()
-    node_idx = np.asarray(snap_locations_to_graph(
-        coords_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col
-    ))
+    node_idx = np.asarray(
+        snap_locations_to_graph(coords_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col)
+    )
 
     uid_arr = df.get_column(uid_col).to_numpy() if uid_col is not None else None
     lat_arr = df.get_column(lat_col).to_numpy().astype(np.float64)
@@ -186,18 +186,18 @@ def radius_of_gyration_road(
 
     centroid = df.group_by(uid_col).agg(nw.col(lat_col).mean(), nw.col(lng_col).mean())
     centroid_pd = centroid.select([lat_col, lng_col]).to_pandas()
-    centroid_node = np.asarray(snap_locations_to_graph(
-        centroid_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col
-    ))
+    centroid_node = np.asarray(
+        snap_locations_to_graph(centroid_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col)
+    )
     centroid = centroid.with_columns(
         nw.new_series("__centroid_node__", centroid_node, backend=df.implementation).alias("__centroid_node__")
     ).rename({lat_col: "__centroid_lat__", lng_col: "__centroid_lng__"})
 
     merged = df.join(centroid, on=uid_col, how="left")
     stop_coords_pd = merged.select([lat_col, lng_col]).to_pandas()
-    stop_node = np.asarray(snap_locations_to_graph(
-        stop_coords_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col
-    ))
+    stop_node = np.asarray(
+        snap_locations_to_graph(stop_coords_pd, network.nodes_df, snap_max_distance_m, lat_col=lat_col, lng_col=lng_col)
+    )
 
     dist_km = _road_or_haversine_km(
         network,
