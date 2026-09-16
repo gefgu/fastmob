@@ -19,6 +19,18 @@ from .recast import (
     temporal_graph_from_staypoints,
     validate_recast_from_staypoints,
 )
+from .contact_network import (
+    ContactNetworkResult,
+    NetworkGraph,
+    clustering_coefficients,
+    co_presence_graph_from_staypoints,
+    degree_preserving_random_graph,
+    distribution_summary,
+    graph_from_edges,
+    random_persistence,
+    safe_wasserstein,
+    topological_overlap,
+)
 
 __all__ = [
     "RecastClass",
@@ -27,6 +39,16 @@ __all__ = [
     "RecastResult",
     "RecastTemporalGraph",
     "RecastValidation",
+    "ContactNetworkResult",
+    "NetworkGraph",
+    "clustering_coefficients",
+    "co_presence_graph_from_staypoints",
+    "degree_preserving_random_graph",
+    "distribution_summary",
+    "graph_from_edges",
+    "random_persistence",
+    "safe_wasserstein",
+    "topological_overlap",
     "recast_from_staypoints",
     "rnd",
     "t_rnd",

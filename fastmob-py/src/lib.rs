@@ -213,6 +213,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        co_presence_network::contact_graph_metrics_py,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        co_presence_network::recast_aggregate_event_graphs_py,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         co_presence_network::recast_classify_py,
         m
     )?)?;

@@ -1,26 +1,8 @@
-"""Big-scale contact-network benchmarks against the real YJMob100K dataset.
+"""Big-scale raw contact-network construction benchmark on YJMob100K.
 
-Builds a co-presence graph (item 4) from YJMob100K pings -- grouping by
-(day, H3 cell) as the co-presence key -- then runs social-tie inference
-(item 8) over the resulting graph.
-
-**Real finding from running this at increasing scale**: with day-level
-granularity, YJMob100K's co-presence graph is extremely dense -- average
-degree grows roughly quadratically with user count (122 at 500 users, 1799
-at 8,000 users), because so many users share an H3 cell on some day over
-the dataset's 75-day span. This is the same "unusually dense observed
-co-presence graph" characteristic citybehavex's own Rust module documented
-for a real-world dataset (avg degree ~1,070, ~51 minutes for `graph_metrics`
-in a naive implementation) -- at YJMob100K's full 100k-user scale, degree
-would be dense enough that `graph_metrics`' O(sum of degree^2)-ish cost
-(even with Rust's sorted-adjacency-intersection constant factor) becomes
-impractical for a benchmark script (observed: infer time already at ~7s for
-just 8,000 users; a naive extrapolation to 100k users is multiple orders of
-magnitude worse, not a small multiple). Defaults therefore stay in the
-1,000-8,000 user range, where this benchmark still exercises the real Rust
-kernels against real data at meaningful scale and records honest timing --
-pushing further would measure the same known dense-graph bottleneck, not
-this port's correctness.
+Pings are converted to stay intervals and globally assigned H3 locations.
+The timed operation builds raw contacts from RECAST's shared daily event
+graphs; it does not estimate random thresholds or classify relationship ties.
 
 Requires FASTMOB_YJMOB_DATA_PATH; skips cleanly (exit 0) when unset. See
 `benchmarks/shared/yjmob.py`.
@@ -50,34 +32,34 @@ H3_RESOLUTION = 9
 
 
 def benchmark_contact_network(data_path: Path, n_users: int) -> dict:
+    import polars as pl
+    from fastmob.core import Locations, Staypoints
     from fastmob.preprocessing import latlng_to_h3
-    from fastmob.social import co_presence_graph_from_staypoints, infer_social_ties
+    from fastmob.social import co_presence_graph_from_staypoints
 
     df = load_yjmob(data_path, n_users=n_users)
     df = latlng_to_h3(df, resolution=H3_RESOLUTION, output_col="location_id")
+    df = df.sort(["uid", "timestamp"]).with_columns(
+        pl.col("timestamp").shift(-1).over("uid")
+        .fill_null(pl.col("timestamp") + pl.duration(minutes=30)).alias("finished_at")
+    ).rename({"timestamp": "started_at"})
+    locations = df.group_by("location_id").agg(
+        pl.col("lat").mean().alias("center_lat"), pl.col("lon").mean().alias("center_lng")
+    )
+    staypoints = Staypoints(df.select("uid", "lat", "lon", "started_at", "finished_at", "location_id"))
+    locations = Locations(locations, scope="global")
 
     build_start = time.perf_counter()
-    graph, persistence, time_steps, _skip_info = co_presence_graph_from_staypoints(
-        df, user_id_col="uid", datetime_col="timestamp", location_id_col="location_id", max_group_size=200
-    )
+    result = co_presence_graph_from_staypoints(staypoints, locations)
     build_seconds = time.perf_counter() - build_start
-
-    infer_start = time.perf_counter()
-    inferred = infer_social_ties(graph, persistence, regularity_threshold=0.1, seed=42)
-    infer_seconds = time.perf_counter() - infer_start
-
-    degrees = inferred.degrees()
     return {
         "n_users": n_users,
         "n_rows": len(df),
         "size_label": size_label(len(df)),
-        "graph_node_count": graph.node_count,
-        "graph_edge_count": graph.edge_count,
-        "time_steps": time_steps,
+        "graph_node_count": result.graph.node_count,
+        "graph_edge_count": result.graph.edge_count,
+        "time_steps": result.time_steps,
         "build_seconds": build_seconds,
-        "infer_seconds": infer_seconds,
-        "inferred_edge_count": inferred.edge_count,
-        "inferred_mean_degree": float(degrees.mean()) if degrees.size else 0.0,
     }
 
 
@@ -99,23 +81,20 @@ def main(argv: list[str] | None = None) -> int:
 
     results = []
     for n_users in sorted(args.n_users):
-        print(f"Benchmarking co_presence_graph_from_staypoints + infer_social_ties: n_users={n_users}...")
+        print(f"Benchmarking raw contact construction: n_users={n_users}...")
         results.append(benchmark_contact_network(data_path, n_users))
 
     payload = {
         "metadata": {
-            "benchmark": "social.co_presence_graph_from_staypoints+infer_social_ties",
+            "benchmark": "social.co_presence_graph_from_staypoints",
             "dataset": "yjmob100k",
             "h3_resolution": H3_RESOLUTION,
             "data_path": str(data_path),
             "cpu_info": detect_cpu_info(),
-            "note": (
-                "YJMob100K's day-granularity co-presence graph is extremely dense "
-                "(avg degree grows roughly quadratically with user count) -- see "
-                "module docstring. n_users is capped well below the dataset's full "
-                "100k scale because graph_metrics' cost scales with this density, "
-                "not with row count."
-            ),
+            "location_semantics": "resolution 9 H3 cells, global Locations",
+            "interval_semantics": "each ping lasts until the next ping by the same user, final ping lasts 30 minutes",
+            "minimum_encounter_minutes": 5,
+            "group_size_cap": None,
         },
         "results": results,
     }
@@ -126,8 +105,8 @@ def main(argv: list[str] | None = None) -> int:
     for r in results:
         print(
             f"  n_users={r['n_users']:>7} rows={r['n_rows']:>10} "
-            f"graph_edges={r['graph_edge_count']:>10} build_s={r['build_seconds']:.4f} "
-            f"infer_s={r['infer_seconds']:.4f} inferred_mean_degree={r['inferred_mean_degree']:.3f}"
+            f"graph_edges={r['graph_edge_count']:>10} days={r['time_steps']:>4} "
+            f"build_s={r['build_seconds']:.4f}"
         )
     return 0
 

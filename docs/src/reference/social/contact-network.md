@@ -39,6 +39,19 @@ null distributions for the Figure 4 CCDFs, full cumulative clustering curves
 `temporal_graph_from_staypoints`, `rnd`, and `t_rnd` APIs expose the underlying
 Arrow-backed event graphs for independent inspection.
 
+## Raw co-presence networks
+
+`co_presence_graph_from_staypoints` returns raw contacts from the same daily
+event graphs RECAST uses. It applies globally assigned locations, stay
+interval overlap, and `min_minutes_for_encounter`, and returns both the daily
+`RecastTemporalGraph` and its aggregate `NetworkGraph` with per-edge daily
+persistence. Groups are not capped.
+
+The raw contact result does not estimate random thresholds or assign
+relationship classes. Those steps belong to RECAST. Generic graph diagnostics
+such as clustering coefficients and topological overlap remain available for
+the aggregate graph.
+
 ---
 
 ::: fastmob.social.RecastClass
@@ -72,5 +85,35 @@ Arrow-backed event graphs for independent inspection.
 ---
 
 ::: fastmob.social.validate_recast_from_staypoints
+    options:
+      show_source: false
+
+---
+
+::: fastmob.social.NetworkGraph
+    options:
+      show_source: false
+
+---
+
+::: fastmob.social.ContactNetworkResult
+    options:
+      show_source: false
+
+---
+
+::: fastmob.social.co_presence_graph_from_staypoints
+    options:
+      show_source: false
+
+---
+
+::: fastmob.social.clustering_coefficients
+    options:
+      show_source: false
+
+---
+
+::: fastmob.social.topological_overlap
     options:
       show_source: false

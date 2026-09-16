@@ -11,7 +11,7 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::cmp::Reverse;
+use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::sync::mpsc;
 use std::thread;
@@ -28,6 +28,90 @@ fn profile(stage: &str, start: Instant, edges: usize) {
 
 type Edge = (u32, u32);
 const DAY_MS: i64 = 86_400_000;
+
+/// A raw daily co-presence graph is deliberately separate from RECAST: it
+/// records who shared a location on a day, without inferring social ties.
+pub struct ContactGraphMetrics {
+    pub clustering_coefficient: Vec<f64>,
+    pub topological_overlap: Vec<f64>,
+}
+
+fn contact_adjacency(node_count: usize, from: &[u32], to: &[u32]) -> Vec<Vec<u32>> {
+    let mut adjacency = vec![Vec::new(); node_count];
+    for i in 0..from.len() {
+        adjacency[from[i] as usize].push(to[i]);
+        adjacency[to[i] as usize].push(from[i]);
+    }
+    adjacency.par_iter_mut().for_each(|neighbors| {
+        neighbors.sort_unstable();
+        neighbors.dedup();
+    });
+    adjacency
+}
+
+fn contact_common(a: &[u32], b: &[u32]) -> usize {
+    let (mut i, mut j, mut count) = (0, 0, 0);
+    while i < a.len() && j < b.len() {
+        match a[i].cmp(&b[j]) {
+            Ordering::Less => i += 1,
+            Ordering::Greater => j += 1,
+            Ordering::Equal => {
+                count += 1;
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+    count
+}
+
+fn contact_common_after(a: &[u32], b: &[u32], threshold: u32) -> usize {
+    contact_common(
+        &a[a.partition_point(|&x| x <= threshold)..],
+        &b[b.partition_point(|&x| x <= threshold)..],
+    )
+}
+
+/// Compute generic contact-network metrics without entering RECAST's null
+/// model or classification pipeline.
+pub fn contact_graph_metrics(node_count: usize, from: &[u32], to: &[u32]) -> ContactGraphMetrics {
+    let adjacency = contact_adjacency(node_count, from, to);
+    let clustering_coefficient = (0..node_count)
+        .into_par_iter()
+        .map(|node| {
+            let neighbors = &adjacency[node];
+            let degree = neighbors.len();
+            if degree < 2 {
+                return 0.0;
+            }
+            let links: usize = neighbors
+                .iter()
+                .map(|&neighbor| {
+                    contact_common_after(neighbors, &adjacency[neighbor as usize], neighbor)
+                })
+                .sum();
+            2.0 * links as f64 / (degree as f64 * (degree - 1) as f64)
+        })
+        .collect();
+    let topological_overlap = (0..from.len())
+        .into_par_iter()
+        .map(|i| {
+            let a = &adjacency[from[i] as usize];
+            let b = &adjacency[to[i] as usize];
+            let intersection = contact_common(a, b);
+            let union = a.len() + b.len() - intersection;
+            if union == 0 {
+                0.0
+            } else {
+                intersection as f64 / union as f64
+            }
+        })
+        .collect();
+    ContactGraphMetrics {
+        clustering_coefficient,
+        topological_overlap,
+    }
+}
 
 fn edge(a: u32, b: u32) -> Edge {
     if a < b { (a, b) } else { (b, a) }
@@ -172,6 +256,47 @@ pub fn flatten_events(temporal: &TemporalEvents) -> TemporalGraphOutput {
         edge_from: from,
         edge_to: to,
     }
+}
+
+/// Aggregate the already-built daily event graphs. This is shared with raw
+/// contact-network output and deliberately does not invoke RECAST sampling or
+/// classification.
+pub fn aggregate_flat_events(
+    edge_offsets: &[u64],
+    edge_from: &[u32],
+    edge_to: &[u32],
+) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+    let steps = edge_offsets.len().saturating_sub(1);
+    let counts = (0..steps)
+        .into_par_iter()
+        .fold(FxHashMap::default, |mut counts, window| {
+            let start = edge_offsets[window] as usize;
+            let end = edge_offsets[window + 1] as usize;
+            for i in start..end {
+                *counts
+                    .entry(edge(edge_from[i], edge_to[i]))
+                    .or_insert(0usize) += 1;
+            }
+            counts
+        })
+        .reduce(FxHashMap::default, |mut left, right| {
+            for (pair, count) in right {
+                *left.entry(pair).or_insert(0) += count;
+            }
+            left
+        });
+    let mut values: Vec<_> = counts.into_iter().collect();
+    values.sort_unstable_by_key(|(pair, _)| *pair);
+    let denominator = steps.max(1) as f64;
+    let mut from = Vec::with_capacity(values.len());
+    let mut to = Vec::with_capacity(values.len());
+    let mut persistence = Vec::with_capacity(values.len());
+    for ((u, v), count) in values {
+        from.push(u);
+        to.push(v);
+        persistence.push(count as f64 / denominator);
+    }
+    (from, to, persistence)
 }
 
 fn aggregate_from_counts(
@@ -1155,6 +1280,26 @@ pub fn validate_recast(
 mod tests {
     use super::*;
     use rayon::ThreadPoolBuilder;
+
+    #[test]
+    fn aggregate_raw_graph_from_temporal_events() {
+        let (from, to, persistence) = aggregate_flat_events(&[0, 2, 3], &[0, 1, 1], &[1, 2, 2]);
+        assert_eq!((from, to), (vec![0, 1], vec![1, 2]));
+        assert_eq!(persistence, vec![0.5, 1.0]);
+    }
+
+    #[test]
+    fn raw_contact_metrics_match_triangle_fixture() {
+        let metrics = contact_graph_metrics(4, &[0, 0, 1, 2], &[1, 2, 2, 3]);
+        assert_eq!(
+            metrics.clustering_coefficient,
+            vec![1.0, 1.0, 1.0 / 3.0, 0.0]
+        );
+        assert_eq!(
+            metrics.topological_overlap,
+            vec![1.0 / 3.0, 0.25, 0.25, 0.0]
+        );
+    }
 
     #[test]
     fn adaptive_overlap_matches_sparse_reference() {

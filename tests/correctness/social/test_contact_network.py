@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
+import numpy as np
 from fastmob.core import Locations, Staypoints
 from fastmob.social import (
     RecastClass,
+    clustering_coefficients,
+    co_presence_graph_from_staypoints,
     recast_from_staypoints,
     rnd,
     t_rnd,
     temporal_graph_from_staypoints,
+    topological_overlap,
     validate_recast_from_staypoints,
 )
 
@@ -105,3 +109,42 @@ def test_validation_exposes_paper_ccdf_and_clustering_diagnostics():
     assert len(validation.full_clustering.random_mean) == validation.graph.time_steps
     assert len(validation.full_clustering.random_std) == validation.graph.time_steps
     assert len(validation.random_only_clustering.observed) == validation.graph.time_steps
+
+
+def test_raw_contact_graph_reuses_recast_daily_event_construction():
+    frame = _staypoints().to_native().copy()
+    second_day = frame.copy()
+    second_day["started_at"] += pd.Timedelta(days=1)
+    second_day["finished_at"] += pd.Timedelta(days=1)
+    staypoints = Staypoints(pd.concat([frame, second_day], ignore_index=True))
+    temporal = temporal_graph_from_staypoints(staypoints, _locations(), min_minutes_for_encounter=5)
+    result = co_presence_graph_from_staypoints(staypoints, _locations(), min_minutes_for_encounter=5)
+
+    assert result.temporal_graph.edge_offsets.equals(temporal.edge_offsets)
+    assert result.temporal_graph.edge_from.equals(temporal.edge_from)
+    assert result.temporal_graph.edge_to.equals(temporal.edge_to)
+    assert result.graph.node_count == 3
+    assert result.graph.edges == {(0, 1)}
+    np.testing.assert_allclose(result.edge_persistence, [1.0])
+    assert result.time_steps == 2
+    assert result.temporal_graph.event(0).edge_from.equals(result.temporal_graph.event(1).edge_from)
+    np.testing.assert_allclose(clustering_coefficients(result.graph), [0.0, 0.0, 0.0])
+    np.testing.assert_allclose(topological_overlap(result.graph), [0.0])
+
+
+def test_raw_contact_graph_uses_minimum_duration_and_has_no_group_cap():
+    frame = _staypoints().to_native().copy()
+    frame = frame.loc[frame["location_id"] == "A"].copy()
+    frame = frame.iloc[:3].copy()
+    frame["uid"] = ["alice", "bob", "carol"]
+    frame["started_at"] = pd.Timestamp("2020-01-01T00:00:00Z")
+    frame["finished_at"] = pd.Timestamp("2020-01-01T00:20:00Z")
+    three_users = Staypoints(frame)
+
+    result = co_presence_graph_from_staypoints(three_users, _locations(), min_minutes_for_encounter=5)
+    assert result.temporal_graph.event(0).edge_from.to_pylist() == [0, 0, 1]
+    assert result.temporal_graph.event(0).edge_to.to_pylist() == [1, 2, 2]
+    assert result.graph.edge_count == 3
+
+    too_short = co_presence_graph_from_staypoints(three_users, _locations(), min_minutes_for_encounter=21)
+    assert too_short.graph.edge_count == 0

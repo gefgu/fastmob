@@ -5,8 +5,10 @@ use arrow_array::{
 };
 use arrow_buffer::ScalarBuffer;
 use fastmob_core::social::co_presence_network::{
-    event_graphs, flatten_events, recast_classify, rnd_graph, t_rnd_graph, validate_recast,
+    aggregate_flat_events, contact_graph_metrics, event_graphs, flatten_events, recast_classify,
+    rnd_graph, t_rnd_graph, validate_recast,
 };
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
@@ -62,6 +64,70 @@ fn validate_lengths(from: &[u32], to: &[u32]) -> PyResult<()> {
     } else {
         Ok(())
     }
+}
+
+#[pyfunction]
+#[pyo3(name = "contact_graph_metrics")]
+pub fn contact_graph_metrics_py<'py>(
+    py: Python<'py>,
+    node_count: usize,
+    edge_from: PyReadonlyArray1<'py, u32>,
+    edge_to: PyReadonlyArray1<'py, u32>,
+) -> PyResult<(Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>)> {
+    let from = edge_from.as_slice()?;
+    let to = edge_to.as_slice()?;
+    if from.len() != to.len() {
+        return Err(PyValueError::new_err(
+            "edge_from and edge_to must have the same length",
+        ));
+    }
+    if from
+        .iter()
+        .chain(to.iter())
+        .any(|&node| node as usize >= node_count)
+    {
+        return Err(PyValueError::new_err(
+            "edge endpoints must be smaller than node_count",
+        ));
+    }
+    let metrics = py.detach(|| contact_graph_metrics(node_count, from, to));
+    Ok((
+        metrics.clustering_coefficient.into_pyarray(py),
+        metrics.topological_overlap.into_pyarray(py),
+    ))
+}
+
+#[pyfunction]
+#[pyo3(name = "recast_aggregate_event_graphs")]
+pub fn recast_aggregate_event_graphs_py(
+    py: Python<'_>,
+    edge_offsets: ArrowPyArray,
+    edge_from: ArrowPyArray,
+    edge_to: ArrowPyArray,
+) -> PyResult<(ArrowPyArray, ArrowPyArray, ArrowPyArray)> {
+    let offsets = u64_values(edge_offsets, "edge_offsets")?;
+    let from = u32_values(edge_from, "edge_from")?;
+    let to = u32_values(edge_to, "edge_to")?;
+    if from.len() != to.len() {
+        return Err(PyValueError::new_err(
+            "edge_from and edge_to must have the same length",
+        ));
+    }
+    if offsets.is_empty()
+        || offsets.first() != Some(&0)
+        || offsets.last().copied() != Some(from.len() as u64)
+        || offsets.windows(2).any(|pair| pair[0] > pair[1])
+    {
+        return Err(PyValueError::new_err(
+            "edge_offsets must start at 0, end at edge count, and be non-decreasing",
+        ));
+    }
+    let (from, to, persistence) = py.detach(|| aggregate_flat_events(&offsets, &from, &to));
+    Ok((
+        arrow(UInt32Array::from(from)),
+        arrow(UInt32Array::from(to)),
+        arrow(Float64Array::from(persistence)),
+    ))
 }
 fn validate_recast_args(
     users: &[u32],
