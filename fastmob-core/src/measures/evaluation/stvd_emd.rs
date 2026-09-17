@@ -1,5 +1,6 @@
 use crate::utils::haversine::haversine_km;
 use ndarray::{Array1, Array2};
+use rayon::prelude::*;
 use std::f64::consts::PI;
 use wass::earth_mover_distance;
 
@@ -47,6 +48,27 @@ pub fn stvd_emd_impl(
     if cyclical_period <= 0.0 {
         return Err("cyclical_period must be positive".to_string());
     }
+    if !alpha.is_finite() || !cyclical_period.is_finite() {
+        return Err("alpha and cyclical_period must be finite".to_string());
+    }
+    if lats_a
+        .iter()
+        .chain(lngs_a)
+        .chain(ts_a)
+        .chain(lats_b)
+        .chain(lngs_b)
+        .chain(ts_b)
+        .any(|value| !value.is_finite())
+    {
+        return Err("coordinates and times must be finite".to_string());
+    }
+    if ws_a
+        .iter()
+        .chain(ws_b)
+        .any(|weight| !weight.is_finite() || *weight < 0.0)
+    {
+        return Err("weights must be finite and non-negative".to_string());
+    }
 
     let sum_a: f64 = ws_a.iter().sum();
     let sum_b: f64 = ws_b.iter().sum();
@@ -56,14 +78,25 @@ pub fn stvd_emd_impl(
 
     let r = (alpha * cyclical_period) / (2.0 * PI);
 
-    let mut cost = Array2::<f32>::zeros((n, m));
-    for i in 0..n {
-        for j in 0..m {
-            let spatial_m = haversine_km(lats_a[i], lngs_a[i], lats_b[j], lngs_b[j]) * 1000.0;
-            let temporal_m = temporal_chord_m(ts_a[i], ts_b[j], cyclical_period, r);
-            cost[[i, j]] = (spatial_m.powi(2) + temporal_m.powi(2)).sqrt() as f32;
-        }
-    }
+    let cost_len = n
+        .checked_mul(m)
+        .ok_or_else(|| "cost matrix dimensions overflow addressable memory".to_string())?;
+    let mut cost_values = vec![0.0_f32; cost_len];
+    // Each cost row is independent. Parallel construction moves the expensive
+    // great-circle calculations off the Python thread while preserving the
+    // exact matrix layout consumed by the existing Sinkhorn implementation.
+    cost_values
+        .par_chunks_mut(m)
+        .enumerate()
+        .for_each(|(i, row)| {
+            for j in 0..m {
+                let spatial_m = haversine_km(lats_a[i], lngs_a[i], lats_b[j], lngs_b[j]) * 1000.0;
+                let temporal_m = temporal_chord_m(ts_a[i], ts_b[j], cyclical_period, r);
+                row[j] = (spatial_m.powi(2) + temporal_m.powi(2)).sqrt() as f32;
+            }
+        });
+    let cost =
+        Array2::from_shape_vec((n, m), cost_values).expect("cost buffer has exactly n * m entries");
 
     let a: Array1<f32> = ws_a.iter().map(|&w| w as f32).collect();
     let b: Array1<f32> = ws_b.iter().map(|&w| w as f32).collect();
@@ -157,58 +190,82 @@ mod tests {
 
     #[test]
     fn empty_distribution_is_rejected() {
-        assert!(
-            stvd_emd_impl(
-                &[],
-                &[],
-                &[],
-                &[],
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[1.0],
-                10.0,
-                1440.0
-            )
-            .is_err()
-        );
+        assert!(stvd_emd_impl(
+            &[],
+            &[],
+            &[],
+            &[],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            1440.0
+        )
+        .is_err());
     }
 
     #[test]
     fn non_positive_cyclical_period_is_rejected() {
-        assert!(
-            stvd_emd_impl(
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[1.0],
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[1.0],
-                10.0,
-                0.0,
-            )
-            .is_err()
-        );
+        assert!(stvd_emd_impl(
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            0.0,
+        )
+        .is_err());
     }
 
     #[test]
     fn zero_weight_sum_is_rejected() {
-        assert!(
-            stvd_emd_impl(
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[0.0],
-                &[1.0],
-                10.0,
-                1440.0,
-            )
-            .is_err()
-        );
+        assert!(stvd_emd_impl(
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            1440.0,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn invalid_weights_and_coordinates_are_rejected() {
+        assert!(stvd_emd_impl(
+            &[f64::NAN],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            1440.0,
+        )
+        .is_err());
+        assert!(stvd_emd_impl(
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[-1.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            1440.0,
+        )
+        .is_err());
     }
 }

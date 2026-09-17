@@ -1010,6 +1010,7 @@ dependencies = [
 name = "fastmob-core"
 version = "0.2.0"
 dependencies = [
+ "chrono",
  "fast_paths",
  "geo",
  "h3o",

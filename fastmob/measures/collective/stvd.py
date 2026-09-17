@@ -11,27 +11,74 @@ catalogue, then compare the two results with ``stvd_emd``.
 
 from __future__ import annotations
 
-from collections import defaultdict
-from datetime import timedelta
 from typing import Any
 
 import narwhals as nw
+import pyarrow as pa
+import pyarrow.compute as pc
 
+from fastmob._core import mean_area_volume_arrow as _mean_area_volume_arrow
 from fastmob.core.locations_dataframe import Locations
 from fastmob.core.staypoints_dataframe import Staypoints
 from fastmob.utils._common import (
     LOCATION_CANDIDATES,
     TIMESTAMP_CANDIDATES,
     USER_ID_CANDIDATES,
+    _as_arrow,
+    _factorize_arrow_values,
     _pick_existing_column,
+    _strip_time_zone,
+    _with_datetime_column,
 )
 
 _END_TIMESTAMP_CANDIDATES: list[str] = ["end_timestamp", "end_time"]
-_10MIN = timedelta(minutes=10)
 
 
-def _floor_10min(dt: Any) -> Any:
-    return dt.replace(minute=(dt.minute // 10) * 10, second=0, microsecond=0)
+def _arrow_array(values: Any) -> pa.Array:
+    values = _as_arrow(values)
+    return values.combine_chunks() if isinstance(values, pa.ChunkedArray) else values
+
+
+def _mean_area_volume_native(
+    nw_df: nw.DataFrame,
+    area_col: str,
+    user_id_col: str,
+    start_col: str,
+    end_col: str,
+) -> Any:
+    """Aggregate via the Arrow/Rust kernel. Only the compact result is
+    materialized in Python so the historical string-based ordering is
+    preserved exactly.
+    """
+    nw_df = _strip_time_zone(_with_datetime_column(nw_df, start_col), start_col)
+    nw_df = _strip_time_zone(_with_datetime_column(nw_df, end_col), end_col)
+    nw_df = nw_df.with_columns(
+        nw.col(start_col).cast(nw.Datetime("us")),
+        nw.col(end_col).cast(nw.Datetime("us")),
+    )
+
+    area_values = _arrow_array(nw_df.get_column(area_col).to_arrow())
+    user_values = _arrow_array(nw_df.get_column(user_id_col).to_arrow())
+    starts = _arrow_array(nw_df.get_column(start_col).to_arrow())
+    ends = _arrow_array(nw_df.get_column(end_col).to_arrow())
+
+    area_codes, area_representatives = _factorize_arrow_values(area_values, sort=False)
+    user_codes, _ = _factorize_arrow_values(user_values, sort=False)
+    raw_areas, raw_minutes, raw_means = _mean_area_volume_arrow(area_codes, user_codes, starts, ends)
+    area_lookup = pc.take(area_values, area_representatives)
+    areas = pc.take(area_lookup, _arrow_array(raw_areas)).to_pylist()
+    minutes = _arrow_array(raw_minutes).to_pylist()
+    means = _arrow_array(raw_means).to_pylist()
+    rows = [(area, f"{minute // 60:02d}:{minute % 60:02d}", mean) for area, minute, mean in zip(areas, minutes, means)]
+    rows.sort(key=lambda row: (str(row[0]), row[1]))
+    return nw.from_dict(
+        {
+            "area": [row[0] for row in rows],
+            "time_bin": [row[1] for row in rows],
+            "mean_volume": [row[2] for row in rows],
+        },
+        backend=nw_df.implementation,
+    ).to_native()
 
 
 def mean_area_volume(
@@ -139,56 +186,7 @@ def mean_area_volume(
             backend=nw_df.implementation,
         ).to_native()
 
-    areas_list = nw_df.get_column(area_col).to_list()
-    uids_list = nw_df.get_column(user_id_col).to_list()
-    starts_list = nw_df.get_column(start_col).to_list()
-    ends_list = nw_df.get_column(end_col).to_list()
-
-    # presence[(area, date, dow, time_bin)] = set of user ids
-    presence: defaultdict = defaultdict(set)
-
-    for area, uid, start, end in zip(areas_list, uids_list, starts_list, ends_list):
-        if start is None or end is None:
-            continue
-        s = _floor_10min(start)
-        e = _floor_10min(end)
-        t = s
-        while t <= e:
-            key = (area, t.date(), t.weekday(), t.strftime("%H:%M"))
-            presence[key].add(uid)
-            t = t + _10MIN
-
-    # user_count per slot + track unique dates per (area, dow)
-    dates_per_area_dow: defaultdict = defaultdict(set)
-    dow_sum: defaultdict = defaultdict(float)
-
-    for (area, date, dow, tb), users_set in presence.items():
-        dates_per_area_dow[(area, dow)].add(date)
-        dow_sum[(area, dow, tb)] += len(users_set)
-
-    # dow mean = total / n_unique_dates
-    area_bin_sum: defaultdict = defaultdict(float)
-    for (area, dow, tb), total in dow_sum.items():
-        n_dates = len(dates_per_area_dow[(area, dow)])
-        area_bin_sum[(area, tb)] += total / n_dates
-
-    # final mean = sum_of_dow_means / 7; filter zeros; sort
-    rows = []
-    for (area, tb), val in area_bin_sum.items():
-        mv = val / 7.0
-        if mv > 0:
-            rows.append((area, tb, mv))
-
-    rows.sort(key=lambda r: (str(r[0]), r[1]))
-
-    return nw.from_dict(
-        {
-            "area": [r[0] for r in rows],
-            "time_bin": [r[1] for r in rows],
-            "mean_volume": [r[2] for r in rows],
-        },
-        backend=nw_df.implementation,
-    ).to_native()
+    return _mean_area_volume_native(nw_df, area_col, user_id_col, start_col, end_col)
 
 
 def build_stvd(
