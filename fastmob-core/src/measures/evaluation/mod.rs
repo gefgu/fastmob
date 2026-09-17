@@ -5,4 +5,6 @@ pub mod kl_divergence;
 pub mod stvd_candidate_graph;
 #[cfg(feature = "stvd-emd")]
 pub mod stvd_emd;
+#[cfg(feature = "stvd-emd")]
+pub mod stvd_sparse_sinkhorn;
 pub mod wasserstein;
