@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
+import pyarrow as pa
 
 from fastmob.core.base import unwrap_native
+from fastmob._core import h3_to_latlng_arrow as _h3_to_latlng_arrow
 from fastmob._core import latlng_to_h3_arrow as _latlng_to_h3_arrow
 from fastmob._core import latlng_to_h3_numpy as _latlng_to_h3_numpy
 from fastmob.core.dispatch import TrajectoryDispatcher
@@ -87,3 +89,64 @@ def latlng_to_h3(
 
 
 latlng_to_h3.__module__ = "fastmob.preprocessing"
+
+
+def h3_to_latlng(
+    traj: Any,
+    *,
+    h3_col: str = "h3_cell",
+    lat_col: str = "center_lat",
+    lng_col: str = "center_lng",
+) -> Any:
+    """Convert each H3 cell to its geographic center coordinates.
+
+    Null or invalid H3 cells produce null latitude and longitude values.
+
+    Parameters
+    ----------
+    traj:
+        Dataframe containing an H3 cell column; any Narwhals-compatible eager
+        backend.
+    h3_col:
+        Name of the input column containing native unsigned integer H3 cell
+        indexes.
+    lat_col, lng_col:
+        Names of the output columns containing the cell-center latitude and
+        longitude.
+
+    Returns
+    -------
+    DataFrame
+        `traj` with the two centroid columns added, in the same backend as
+        input.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from fastmob.preprocessing import h3_to_latlng, latlng_to_h3
+    >>> cells = latlng_to_h3(pd.DataFrame({"lat": [37.769377], "lng": [-122.388519]}))
+    >>> result = h3_to_latlng(cells)
+    >>> round(result["center_lat"].iloc[0], 5)
+    37.76929
+    """
+    df = nw.from_native(unwrap_native(traj), eager_only=True)
+    if h3_col not in df.columns:
+        raise ValueError(f"Could not find H3 cell column {h3_col!r}. Available columns: {df.columns}")
+
+    cells = _as_arrow(df.get_column(h3_col))
+    if not pa.types.is_uint64(cells.type):
+        if not pa.types.is_integer(cells.type):
+            raise ValueError(f"H3 cell column {h3_col!r} must contain integer H3 indexes")
+        cells = cells.cast(pa.uint64(), safe=False)
+    center_lats, center_lngs = _h3_to_latlng_arrow(cells)
+    arrow = nw.from_arrow(
+        pa.table({lat_col: center_lats, lng_col: center_lngs}),
+        backend=df.implementation,
+    )
+    return df.with_columns(
+        arrow.get_column(lat_col).alias(lat_col),
+        arrow.get_column(lng_col).alias(lng_col),
+    ).to_native()
+
+
+h3_to_latlng.__module__ = "fastmob.preprocessing"

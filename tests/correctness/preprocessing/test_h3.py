@@ -1,12 +1,13 @@
-"""Correctness tests for fastmob.preprocessing.latlng_to_h3."""
+"""Correctness tests for Fastmob's H3 conversions."""
 
 from __future__ import annotations
 
 import math
 
 import pandas as pd
+import pyarrow as pa
 import pytest
-from fastmob.preprocessing import latlng_to_h3
+from fastmob.preprocessing import h3_to_latlng, latlng_to_h3
 
 # Cross-checked against h3-py: h3.latlng_to_cell(37.769377, -122.388519, 9) == '89283082e73ffff'.
 KNOWN_LAT = 37.769377
@@ -87,3 +88,46 @@ def test_batch_matches_row_by_row_pandas():
     for i in range(len(lats)):
         single = latlng_to_h3(pd.DataFrame({"lat": [lats[i]], "lng": [lngs[i]]}), resolution=9)
         assert int(batch["h3_cell"].iloc[i]) == int(single["h3_cell"].iloc[0])
+
+
+def test_h3_to_latlng_matches_h3_py():
+    h3 = pytest.importorskip("h3", reason="h3-py not installed")
+    df = pd.DataFrame({"h3_cell": [KNOWN_CELL]})
+    result = h3_to_latlng(df)
+    expected_lat, expected_lng = h3.cell_to_latlng(h3.int_to_str(KNOWN_CELL))
+    assert result["center_lat"].iloc[0] == pytest.approx(expected_lat)
+    assert result["center_lng"].iloc[0] == pytest.approx(expected_lng)
+
+
+def test_h3_to_latlng_preserves_backend_and_custom_columns():
+    df = pd.DataFrame({"cell": [KNOWN_CELL]})
+    result = h3_to_latlng(df, h3_col="cell", lat_col="lat0", lng_col="lng0")
+    assert isinstance(result, type(df))
+    assert result[["lat0", "lng0"]].notna().all().all()
+
+
+def test_h3_to_latlng_null_and_invalid_cells_are_null():
+    cells = pa.array([KNOWN_CELL, None, 2**64 - 1], type=pa.uint64())
+    df = pd.DataFrame({"h3_cell": pd.array(cells.to_pylist(), dtype="UInt64")})
+    result = h3_to_latlng(df)
+    assert result["center_lat"].notna().tolist() == [True, False, False]
+    assert result["center_lng"].notna().tolist() == [True, False, False]
+
+
+def test_h3_to_latlng_polars_nulls():
+    pl = pytest.importorskip("polars", reason="Polars not installed")
+    result = h3_to_latlng(pl.DataFrame({"h3_cell": [KNOWN_CELL, None]}))
+    assert result["center_lat"][0] is not None
+    assert result["center_lat"][1] is None
+
+
+def test_h3_to_latlng_empty_input():
+    df = pd.DataFrame({"h3_cell": pd.Series([], dtype="uint64")})
+    result = h3_to_latlng(df)
+    assert len(result) == 0
+    assert {"center_lat", "center_lng"}.issubset(result.columns)
+
+
+def test_h3_to_latlng_missing_column_raises():
+    with pytest.raises(ValueError, match="H3 cell column"):
+        h3_to_latlng(pd.DataFrame({"other": [KNOWN_CELL]}))

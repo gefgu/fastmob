@@ -7,6 +7,7 @@
 | [`stay_locations`](#fastmob.preprocessing.stay_locations) | Stops detection. |
 | [`cluster`](#fastmob.preprocessing.cluster) | Cluster stop locations. |
 | [`latlng_to_h3`](#fastmob.preprocessing.latlng_to_h3) | Rust-accelerated batch lat/lng &rarr; H3 cell conversion. |
+| [`h3_to_latlng`](#fastmob.preprocessing.h3_to_latlng) | Rust-accelerated batch H3 cell &rarr; cell-center coordinates conversion. |
 | [`trajectory_to_od`](#fastmob.preprocessing.trajectory_to_od) | Build a long-format Origin-Destination matrix directly from a raw trajectory. |
 | [`trajectory_to_trips`](#fastmob.preprocessing.trajectory_to_trips) | Build one Trips row per consecutive ping pair for direct CPC comparisons. |
 
@@ -35,6 +36,12 @@
 ---
 
 ::: fastmob.preprocessing.latlng_to_h3
+    options:
+      show_source: false
+
+---
+
+::: fastmob.preprocessing.h3_to_latlng
     options:
       show_source: false
 

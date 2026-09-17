@@ -2,7 +2,7 @@ from ._activity import create_activity_flag, identify_locations
 from ._cluster import cluster
 from ._compress import compress
 from ._filter import filter
-from ._h3 import latlng_to_h3
+from ._h3 import h3_to_latlng, latlng_to_h3
 from ._segment import segment
 from ._simplify import simplify
 from ._stay_locations import stay_locations
@@ -19,6 +19,7 @@ __all__ = [
     "create_activity_flag",
     "filter",
     "identify_locations",
+    "h3_to_latlng",
     "latlng_to_h3",
     "predict_transport_mode",
     "segment",
