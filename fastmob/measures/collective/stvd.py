@@ -67,9 +67,21 @@ def _mean_area_volume_native(
     raw_areas, raw_minutes, raw_means = _mean_area_volume_arrow(area_codes, user_codes, starts, ends)
     area_lookup = pc.take(area_values, area_representatives)
     areas = pc.take(area_lookup, _arrow_array(raw_areas)).to_pylist()
-    minutes = _arrow_array(raw_minutes).to_pylist()
     means = _arrow_array(raw_means).to_pylist()
-    rows = [(area, f"{minute // 60:02d}:{minute % 60:02d}", mean) for area, minute, mean in zip(areas, minutes, means)]
+
+    # Vectorized "HH:MM" formatting: output cardinality (area x time-bin) can
+    # reach the millions at scale, and a per-row f-string loop was measured to
+    # cost roughly as much as the Rust aggregation kernel itself at that size.
+    minutes_arr = _arrow_array(raw_minutes)
+    hours = pc.divide(minutes_arr, 60)
+    remainder_minutes = pc.subtract(minutes_arr, pc.multiply(hours, 60))
+    time_bins = pc.binary_join_element_wise(
+        pc.utf8_zfill(pc.cast(hours, pa.string()), 2),
+        pc.utf8_zfill(pc.cast(remainder_minutes, pa.string()), 2),
+        ":",
+    ).to_pylist()
+
+    rows = list(zip(areas, time_bins, means))
     rows.sort(key=lambda row: (str(row[0]), row[1]))
     return nw.from_dict(
         {
