@@ -1,4 +1,4 @@
-use fastmob_core::measures::evaluation::stvd_emd::stvd_emd_impl;
+use fastmob_core::measures::evaluation::stvd_emd::{stvd_emd_impl, SinkhornConfig};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
@@ -6,7 +6,7 @@ use pyo3_arrow::PyArray as ArrowPyArray;
 use crate::utils::{arrow_values, as_f64_array};
 
 #[pyfunction]
-#[pyo3(signature = (lats_a, lngs_a, times_a, weights_a, lats_b, lngs_b, times_b, weights_b, alpha=10.0, cyclical_period=1440.0))]
+#[pyo3(signature = (lats_a, lngs_a, times_a, weights_a, lats_b, lngs_b, times_b, weights_b, alpha=10.0, cyclical_period=1440.0, reg=0.01, max_iter=200, tol=None))]
 #[allow(clippy::too_many_arguments)]
 pub fn stvd_emd(
     py: Python<'_>,
@@ -20,6 +20,9 @@ pub fn stvd_emd(
     weights_b: ArrowPyArray,
     alpha: f64,
     cyclical_period: f64,
+    reg: f64,
+    max_iter: usize,
+    tol: Option<f64>,
 ) -> PyResult<f64> {
     let lats_a = as_f64_array(lats_a, "lats_a")?;
     let lngs_a = as_f64_array(lngs_a, "lngs_a")?;
@@ -29,6 +32,7 @@ pub fn stvd_emd(
     let lngs_b = as_f64_array(lngs_b, "lngs_b")?;
     let times_b = as_f64_array(times_b, "times_b")?;
     let weights_b = as_f64_array(weights_b, "weights_b")?;
+    let sinkhorn = SinkhornConfig { reg, max_iter, tol };
     py.detach(|| {
         stvd_emd_impl(
             arrow_values(&lats_a),
@@ -41,6 +45,7 @@ pub fn stvd_emd(
             arrow_values(&weights_b),
             alpha,
             cyclical_period,
+            sinkhorn,
         )
     })
     .map_err(PyValueError::new_err)

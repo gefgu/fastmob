@@ -137,6 +137,130 @@ def test_invalid_cyclical_period_raises():
         stvd_emd(df, df.copy(), cyclical_period=0.0)
 
 
+# ---------------------------------------------------------------------------
+# reg / max_iter / tol plumbing
+# ---------------------------------------------------------------------------
+
+
+def test_custom_reg_max_iter_accepted():
+    """Explicit reg/max_iter must be accepted and still return a float."""
+    _skip_if_no_core()
+    from fastmob.measures.evaluation import stvd_emd
+
+    df_a = pd.DataFrame(
+        {
+            "center_lat": [0.0, 0.0],
+            "center_lng": [0.0, 0.002],
+            "time_bin": ["10:00", "14:00"],
+            "mean_volume": [0.3, 0.7],
+        }
+    )
+    df_b = pd.DataFrame(
+        {
+            "center_lat": [0.0, 0.0],
+            "center_lng": [0.001, 0.003],
+            "time_bin": ["11:00", "15:00"],
+            "mean_volume": [0.5, 0.5],
+        }
+    )
+    dist = stvd_emd(df_a, df_b, reg=0.5, max_iter=50)
+    assert isinstance(dist, float)
+    assert dist > 0.0
+
+
+def test_too_few_iterations_changes_result():
+    """A deliberately tiny max_iter must measurably differ from a converged run.
+
+    At the library's default ``reg=0.01`` the dual updates already saturate
+    within a single iteration on small problems (the same numerical
+    near-degeneracy motivating the sparse-Sinkhorn rewrite: cost values are
+    in metres, so ``exp(-cost/reg)`` underflows to 0.0 for all but a point's
+    closest match almost immediately) -- so this test uses a larger ``reg``
+    where convergence genuinely takes multiple iterations, confirmed
+    empirically against this exact fixture before writing the assertion.
+    """
+    _skip_if_no_core()
+    from fastmob.measures.evaluation import stvd_emd
+
+    df_a = pd.DataFrame(
+        {
+            "center_lat": [0.0, 0.0, 0.1],
+            "center_lng": [0.0, 0.002, 0.05],
+            "time_bin": ["10:00", "14:00", "18:00"],
+            "mean_volume": [0.3, 0.7, 0.4],
+        }
+    )
+    df_b = pd.DataFrame(
+        {
+            "center_lat": [0.0, 0.0, 0.12],
+            "center_lng": [0.001, 0.003, 0.06],
+            "time_bin": ["11:00", "15:00", "19:30"],
+            "mean_volume": [0.5, 0.5, 0.4],
+        }
+    )
+    dist_converged = stvd_emd(df_a, df_b, reg=10.0, max_iter=200)
+    dist_one_iter = stvd_emd(df_a, df_b, reg=10.0, max_iter=1)
+    assert dist_converged != pytest.approx(dist_one_iter, rel=1e-3)
+
+
+def test_tol_accepted_and_converges_for_trivial_case():
+    """tol must be accepted and not change the (already-converged) zero-distance case."""
+    _skip_if_no_core()
+    from fastmob.measures.evaluation import stvd_emd
+
+    df = _dist_df(0.0, 0.0, "12:00", 1.0)
+    dist = stvd_emd(df, df.copy(), tol=1e-6)
+    assert dist == pytest.approx(0.0, abs=1e-3)
+
+
+def test_invalid_max_iter_raises():
+    """max_iter == 0 must raise ValueError."""
+    _skip_if_no_core()
+    from fastmob.measures.evaluation import stvd_emd
+
+    df = _dist_df(0.0, 0.0, "12:00", 1.0)
+    with pytest.raises(ValueError, match="max_iter must be positive"):
+        stvd_emd(df, df.copy(), max_iter=0)
+
+
+def test_invalid_reg_raises():
+    """reg <= 0 must raise ValueError."""
+    _skip_if_no_core()
+    from fastmob.measures.evaluation import stvd_emd
+
+    df = _dist_df(0.0, 0.0, "12:00", 1.0)
+    with pytest.raises(ValueError, match="reg must be positive"):
+        stvd_emd(df, df.copy(), reg=0.0)
+
+
+# ---------------------------------------------------------------------------
+# Dense-path memory guard
+# ---------------------------------------------------------------------------
+
+
+def test_oversized_dense_input_raises_clear_error_not_oom():
+    """n*m past the dense-path safety budget must raise ValueError, not OOM.
+
+    n and m are each kept small/cheap to build (~24k rows, a few hundred KB);
+    only their *product* needs to cross the guard's byte threshold.
+    """
+    _skip_if_no_core()
+    from fastmob.measures.evaluation import stvd_emd
+
+    n = 24_000
+    df_a = pd.DataFrame(
+        {
+            "center_lat": [0.0] * n,
+            "center_lng": [0.0] * n,
+            "time_bin": ["12:00"] * n,
+            "mean_volume": [1.0] * n,
+        }
+    )
+    df_b = df_a.copy()
+    with pytest.raises(ValueError, match="too large"):
+        stvd_emd(df_a, df_b)
+
+
 def test_polars_parity():
     """Pandas and Polars inputs must produce the same result."""
     _skip_if_no_core()

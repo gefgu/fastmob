@@ -29,12 +29,15 @@ def _route_and_call(
     arrays_b: tuple[nw.Series, nw.Series, nw.Series, nw.Series],
     alpha: float,
     cyclical_period: float,
+    reg: float,
+    max_iter: int,
+    tol: float | None,
 ) -> float:
     if _stvd_emd is None:
         raise ImportError("stvd_emd requires fastmob to be built with the optional stvd-emd feature")
 
     args = [x.to_arrow() for x in (*arrays_a, *arrays_b)]
-    return _stvd_emd(*args, alpha, cyclical_period)
+    return _stvd_emd(*args, alpha, cyclical_period, reg, max_iter, tol)
 
 
 def stvd_emd(
@@ -47,6 +50,9 @@ def stvd_emd(
     weight_col: str | None = None,
     lat_col: str | None = None,
     lng_col: str | None = None,
+    reg: float = 0.01,
+    max_iter: int = 200,
+    tol: float | None = None,
 ) -> float:
     """Compute the spatio-temporal Wasserstein distance between two distributions.
 
@@ -77,6 +83,18 @@ def stvd_emd(
         Explicit weight column name. Auto-detected when ``None``.
     lat_col, lng_col:
         Explicit latitude/longitude column names. Auto-detected when ``None``.
+    reg:
+        Sinkhorn entropic regularization strength (same units as the cost
+        matrix, metres). Smaller values approximate exact optimal transport
+        more closely but are more prone to numerical underflow. Default
+        ``0.01``.
+    max_iter:
+        Maximum number of Sinkhorn dual-update iterations. Default ``200``.
+    tol:
+        Optional marginal-constraint convergence tolerance. When set, the
+        solver stops early once the dual updates converge to within ``tol``
+        instead of always running ``max_iter`` rounds. Default ``None``
+        (always run the full ``max_iter``, matching prior behavior).
 
     Returns
     -------
@@ -144,4 +162,7 @@ def stvd_emd(
         arrays_b,
         alpha,
         cyclical_period,
+        reg,
+        max_iter,
+        tol,
     )

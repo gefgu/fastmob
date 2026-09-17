@@ -2,7 +2,33 @@ use crate::utils::haversine::haversine_km;
 use ndarray::{Array1, Array2};
 use rayon::prelude::*;
 use std::f64::consts::PI;
-use wass::earth_mover_distance;
+use wass::{sinkhorn_log, sinkhorn_log_with_convergence};
+
+/// Sinkhorn solver knobs. `wass::earth_mover_distance` hardcodes
+/// `reg=0.01, max_iter=200` with no convergence check; this exposes those as
+/// real parameters instead, matching the defaults exactly for callers that
+/// don't override them.
+#[derive(Clone, Copy, Debug)]
+pub struct SinkhornConfig {
+    pub reg: f64,
+    pub max_iter: usize,
+    pub tol: Option<f64>,
+}
+
+impl Default for SinkhornConfig {
+    fn default() -> Self {
+        Self { reg: 0.01, max_iter: 200, tol: None }
+    }
+}
+
+/// Safety budget for the dense complete-bipartite-graph path: above this,
+/// `n*m*4` bytes for the cost matrix -- doubled, since `wass::sinkhorn_log`/
+/// `sinkhorn_log_with_convergence` additionally build and return a
+/// same-sized coupling/"plan" array -- would risk an OOM kill rather than a
+/// clean, actionable error. A sparse candidate-graph path for inputs above
+/// this budget is tracked separately; until it lands, oversized inputs must
+/// be reduced by the caller (e.g. coarser H3 resolution or time bins).
+const DENSE_COST_MEMORY_BUDGET_BYTES: u64 = 4 * 1024 * 1024 * 1024; // 4 GiB
 
 /// Shortest angular distance between two angles (radians), independent of winding direction.
 fn angular_diff(theta1: f64, theta2: f64) -> f64 {
@@ -32,6 +58,7 @@ pub fn stvd_emd_impl(
     ws_b: &[f64],
     alpha: f64,
     cyclical_period: f64,
+    sinkhorn: SinkhornConfig,
 ) -> Result<f64, String> {
     let n = lats_a.len();
     let m = lats_b.len();
@@ -69,6 +96,17 @@ pub fn stvd_emd_impl(
     {
         return Err("weights must be finite and non-negative".to_string());
     }
+    if sinkhorn.reg <= 0.0 || !sinkhorn.reg.is_finite() {
+        return Err("sinkhorn reg must be positive and finite".to_string());
+    }
+    if sinkhorn.max_iter == 0 {
+        return Err("sinkhorn max_iter must be positive".to_string());
+    }
+    if let Some(tol) = sinkhorn.tol
+        && (tol <= 0.0 || !tol.is_finite())
+    {
+        return Err("sinkhorn tol must be positive and finite".to_string());
+    }
 
     let sum_a: f64 = ws_a.iter().sum();
     let sum_b: f64 = ws_b.iter().sum();
@@ -81,6 +119,17 @@ pub fn stvd_emd_impl(
     let cost_len = n
         .checked_mul(m)
         .ok_or_else(|| "cost matrix dimensions overflow addressable memory".to_string())?;
+    let dense_bytes = (cost_len as u64).saturating_mul(2 * std::mem::size_of::<f32>() as u64);
+    if dense_bytes > DENSE_COST_MEMORY_BUDGET_BYTES {
+        return Err(format!(
+            "distributions are too large for stvd_emd's dense Sinkhorn path: {n}x{m} would need \
+             ~{:.1} GiB (cost matrix plus the solver's internal coupling matrix), which exceeds \
+             the {:.1} GiB safety budget. Reduce distribution size before calling stvd_emd (e.g. \
+             a coarser H3 resolution when building locations, or coarser time bins).",
+            dense_bytes as f64 / (1024.0 * 1024.0 * 1024.0),
+            DENSE_COST_MEMORY_BUDGET_BYTES as f64 / (1024.0 * 1024.0 * 1024.0),
+        ));
+    }
     let mut cost_values = vec![0.0_f32; cost_len];
     // Each cost row is independent. Parallel construction moves the expensive
     // great-circle calculations off the Python thread while preserving the
@@ -101,7 +150,17 @@ pub fn stvd_emd_impl(
     let a: Array1<f32> = ws_a.iter().map(|&w| w as f32).collect();
     let b: Array1<f32> = ws_b.iter().map(|&w| w as f32).collect();
 
-    Ok(earth_mover_distance(&a, &b, &cost) as f64)
+    let reg = sinkhorn.reg as f32;
+    let distance = if let Some(tol) = sinkhorn.tol {
+        let (_, distance, _iterations) =
+            sinkhorn_log_with_convergence(&a, &b, &cost, reg, sinkhorn.max_iter, tol as f32)
+                .map_err(|err| err.to_string())?;
+        distance
+    } else {
+        let (_, distance) = sinkhorn_log(&a, &b, &cost, reg, sinkhorn.max_iter);
+        distance
+    };
+    Ok(distance as f64)
 }
 
 #[cfg(test)]
@@ -121,6 +180,7 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
+            SinkhornConfig::default(),
         )
         .unwrap();
         assert!(value.abs() < 1e-6, "got {value}");
@@ -146,6 +206,7 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
+            SinkhornConfig::default(),
         )
         .unwrap();
         // Sinkhorn is an entropy-regularised approximation, not exact, so allow slack.
@@ -170,6 +231,7 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
+            SinkhornConfig::default(),
         )
         .unwrap();
         let far = stvd_emd_impl(
@@ -183,6 +245,7 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
+            SinkhornConfig::default(),
         )
         .unwrap();
         assert!(near < far, "near={near} far={far}");
@@ -200,9 +263,43 @@ mod tests {
             &[0.0],
             &[1.0],
             10.0,
-            1440.0
+            1440.0,
+            SinkhornConfig::default(),
         )
         .is_err());
+    }
+
+    #[test]
+    fn oversized_dense_input_is_rejected_with_clear_error() {
+        // n*m*8 bytes (cost + wass's internal coupling-matrix doubling) must
+        // exceed DENSE_COST_MEMORY_BUDGET_BYTES without actually allocating
+        // that much: n and m individually stay small and cheap to build.
+        let n = 24_000;
+        let m = 24_000;
+        assert!((n as u64) * (m as u64) * 8 > DENSE_COST_MEMORY_BUDGET_BYTES);
+        let lats_a = vec![0.0_f64; n];
+        let lngs_a = vec![0.0_f64; n];
+        let ts_a = vec![0.0_f64; n];
+        let ws_a = vec![1.0_f64; n];
+        let lats_b = vec![0.0_f64; m];
+        let lngs_b = vec![0.0_f64; m];
+        let ts_b = vec![0.0_f64; m];
+        let ws_b = vec![1.0_f64; m];
+        let err = stvd_emd_impl(
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &ws_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            &ws_b,
+            10.0,
+            1440.0,
+            SinkhornConfig::default(),
+        )
+        .unwrap_err();
+        assert!(err.contains("too large"), "unexpected error message: {err}");
     }
 
     #[test]
@@ -218,6 +315,7 @@ mod tests {
             &[1.0],
             10.0,
             0.0,
+            SinkhornConfig::default(),
         )
         .is_err());
     }
@@ -235,6 +333,7 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
+            SinkhornConfig::default(),
         )
         .is_err());
     }
@@ -252,6 +351,7 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
+            SinkhornConfig::default(),
         )
         .is_err());
         assert!(stvd_emd_impl(
@@ -265,7 +365,73 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
+            SinkhornConfig::default(),
         )
         .is_err());
+    }
+
+    #[test]
+    fn invalid_sinkhorn_reg_is_rejected() {
+        assert!(stvd_emd_impl(
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            1440.0,
+            SinkhornConfig { reg: 0.0, ..SinkhornConfig::default() },
+        )
+        .is_err());
+        assert!(stvd_emd_impl(
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            1440.0,
+            SinkhornConfig { max_iter: 0, ..SinkhornConfig::default() },
+        )
+        .is_err());
+        assert!(stvd_emd_impl(
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            &[0.0],
+            &[0.0],
+            &[0.0],
+            &[1.0],
+            10.0,
+            1440.0,
+            SinkhornConfig { tol: Some(-1.0), ..SinkhornConfig::default() },
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn custom_sinkhorn_config_with_tolerance_converges() {
+        let value = stvd_emd_impl(
+            &[10.0],
+            &[20.0],
+            &[480.0],
+            &[1.0],
+            &[10.0],
+            &[20.0],
+            &[480.0],
+            &[1.0],
+            10.0,
+            1440.0,
+            SinkhornConfig { reg: 0.1, max_iter: 500, tol: Some(1e-6) },
+        )
+        .unwrap();
+        assert!(value.abs() < 1e-3, "got {value}");
     }
 }
