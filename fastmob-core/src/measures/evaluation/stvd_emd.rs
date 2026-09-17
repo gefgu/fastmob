@@ -1,16 +1,13 @@
 use crate::utils::haversine::haversine_km;
-use ndarray::{Array1, Array2};
-use rayon::prelude::*;
 use std::f64::consts::PI;
-use wass::{sinkhorn_log, sinkhorn_log_with_convergence};
 
 use super::stvd_candidate_graph::CandidateGraphConfig;
 use super::stvd_sparse_sinkhorn::sparse_stvd_emd_impl;
 
-/// Sinkhorn solver knobs. `wass::earth_mover_distance` hardcodes
-/// `reg=0.01, max_iter=200` with no convergence check; this exposes those as
-/// real parameters instead, matching the defaults exactly for callers that
-/// don't override them.
+/// Sinkhorn solver knobs. The `wass` crate this module used to delegate to
+/// hardcoded `reg=0.01, max_iter=200` with no convergence check; this
+/// exposes those as real parameters instead, matching the defaults exactly
+/// for callers that don't override them.
 #[derive(Clone, Copy, Debug)]
 pub struct SinkhornConfig {
     pub reg: f64,
@@ -23,19 +20,6 @@ impl Default for SinkhornConfig {
         Self { reg: 0.01, max_iter: 200, tol: None }
     }
 }
-
-/// Threshold for switching from the dense complete-bipartite-graph path to
-/// the H3 candidate-graph sparse path (`stvd_candidate_graph.rs` /
-/// `stvd_sparse_sinkhorn.rs`): above this, `n*m*4` bytes for the cost
-/// matrix -- doubled, since `wass::sinkhorn_log`/`sinkhorn_log_with_convergence`
-/// additionally build and return a same-sized coupling/"plan" array -- would
-/// risk an OOM kill. Below it, the dense `wass`-backed path is exact and
-/// simplest, so it stays the default; the two paths are validated to agree
-/// within 1e-2 relative (see `stvd_sparse_sinkhorn.rs`'s differential tests)
-/// rather than sharing one solver implementation, since unifying them would
-/// mean representing the dense case's `n*m` pairs as explicit graph edges
-/// too -- pure overhead below the threshold, where dense is already cheap.
-const DENSE_COST_MEMORY_BUDGET_BYTES: u64 = 4 * 1024 * 1024 * 1024; // 4 GiB
 
 /// Shortest angular distance between two angles (radians), independent of winding direction.
 fn angular_diff(theta1: f64, theta2: f64) -> f64 {
@@ -142,23 +126,45 @@ pub fn stvd_emd_impl(
         return Err("weights must sum to a positive value".to_string());
     }
 
+    sparse_stvd_emd_impl(
+        lats_a, lngs_a, ts_a, ws_a, lats_b, lngs_b, ts_b, ws_b, alpha, cyclical_period, sinkhorn,
+        CandidateGraphConfig::default(),
+    )
+}
+
+/// The dense complete-bipartite-graph, `wass`-backed Sinkhorn this crate
+/// used to run in production before the H3 candidate-graph sparse rewrite
+/// (`stvd_candidate_graph.rs` / `stvd_sparse_sinkhorn.rs`). Kept **only** as
+/// a differential-testing reference -- `wass` is a `[dev-dependencies]`-only
+/// crate now, not linked into release builds at all. Callers are expected
+/// to have already run `stvd_emd_impl`'s validation; this assumes valid
+/// input and skips it, and (being test-only, always called at small scale)
+/// has no memory guard.
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dense_reference_impl(
+    lats_a: &[f64],
+    lngs_a: &[f64],
+    ts_a: &[f64],
+    ws_a: &[f64],
+    lats_b: &[f64],
+    lngs_b: &[f64],
+    ts_b: &[f64],
+    ws_b: &[f64],
+    alpha: f64,
+    cyclical_period: f64,
+    sinkhorn: SinkhornConfig,
+) -> Result<f64, String> {
+    use ndarray::{Array1, Array2};
+    use rayon::prelude::*;
+    use wass::{sinkhorn_log, sinkhorn_log_with_convergence};
+
+    let n = lats_a.len();
+    let m = lats_b.len();
     let r = (alpha * cyclical_period) / (2.0 * PI);
 
-    let dense_fits_budget = n.checked_mul(m).is_some_and(|cost_len| {
-        let dense_bytes = (cost_len as u64).saturating_mul(2 * std::mem::size_of::<f32>() as u64);
-        dense_bytes <= DENSE_COST_MEMORY_BUDGET_BYTES
-    });
-    if !dense_fits_budget {
-        return sparse_stvd_emd_impl(
-            lats_a, lngs_a, ts_a, ws_a, lats_b, lngs_b, ts_b, ws_b, alpha, cyclical_period, sinkhorn,
-            CandidateGraphConfig::default(),
-        );
-    }
     let cost_len = n * m;
     let mut cost_values = vec![0.0_f32; cost_len];
-    // Each cost row is independent. Parallel construction moves the expensive
-    // great-circle calculations off the Python thread while preserving the
-    // exact matrix layout consumed by the existing Sinkhorn implementation.
     cost_values
         .par_chunks_mut(m)
         .enumerate()
@@ -295,15 +301,16 @@ mod tests {
     }
 
     #[test]
-    fn oversized_dense_input_routes_to_sparse_path_instead_of_erroring() {
-        // n*m*8 bytes (cost + wass's internal coupling-matrix doubling) must
-        // exceed DENSE_COST_MEMORY_BUDGET_BYTES -- so this must succeed via
-        // the sparse candidate-graph path (stvd_sparse_sinkhorn.rs), not
-        // error. Points are spread across a city-sized bounding box (not
-        // all colocated) so the candidate graph actually stays sparse.
+    fn large_input_completes_via_sparse_path() {
+        // n*m = 576M would be ~4.6GB as a dense f32 cost matrix (plus
+        // wass's internal coupling-matrix doubling) -- large enough that
+        // this would have OOM'd the old dense-by-default path outright.
+        // Points are spread across a city-sized bounding box (not all
+        // colocated) so the candidate graph actually stays sparse; see
+        // stvd_sparse_sinkhorn.rs's capstone test for real-world-shaped
+        // scale (126,892 x 78,918 rows, 1,808 distinct locations).
         let n = 24_000;
         let m = 24_000;
-        assert!((n as u64) * (m as u64) * 8 > DENSE_COST_MEMORY_BUDGET_BYTES);
 
         struct XorShift(u64);
         impl XorShift {

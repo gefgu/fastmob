@@ -6,12 +6,14 @@
 //! and parallelized with rayon (the `wass` loops this replaces are
 //! single-threaded).
 //!
-//! `stvd_emd_impl` dispatches here whenever the dense complete-bipartite
-//! path's cost matrix would exceed its memory budget (see
-//! `stvd_emd.rs::DENSE_COST_MEMORY_BUDGET_BYTES`); below that threshold the
-//! dense `wass`-backed path stays the default, validated to agree with this
-//! module within 1e-2 relative by the differential tests below (the plan's
-//! stage 4 gate: `/mnt/raid5/gustavo/.claude/plans/clean-here-s-the-finding-cheeky-beaver.md`).
+//! `stvd_emd_impl` always calls into this module now -- this is the sole
+//! production path, at every input size. The dense complete-bipartite,
+//! `wass`-backed path (`stvd_emd.rs::dense_reference_impl`) still exists,
+//! but only as a `#[cfg(test)]` differential-testing reference: `wass` is a
+//! `[dev-dependencies]`-only crate, not linked into release builds. This
+//! module is validated to agree with that reference within 1e-2 relative by
+//! the differential tests below (the plan's stage 4 gate:
+//! `/mnt/raid5/gustavo/.claude/plans/clean-here-s-the-finding-cheeky-beaver.md`).
 
 use rayon::prelude::*;
 
@@ -220,7 +222,7 @@ pub fn sparse_stvd_emd_impl(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::measures::evaluation::stvd_emd::stvd_emd_impl;
+    use crate::measures::evaluation::stvd_emd::dense_reference_impl;
 
     /// Deterministic xorshift PRNG -- same dependency-free pattern as
     /// `../collective/stvd.rs`'s differential test.
@@ -280,7 +282,7 @@ mod tests {
                 let (lats_b, lngs_b, ts_b, ws_b) = random_distribution(&mut rng, m);
 
                 let config = SinkhornConfig { reg, max_iter: 200, tol: None };
-                let dense = stvd_emd_impl(
+                let dense = dense_reference_impl(
                     &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
                 )
                 .unwrap();
@@ -321,7 +323,7 @@ mod tests {
         ws_b.push(0.6);
 
         let config = SinkhornConfig::default();
-        let dense = stvd_emd_impl(
+        let dense = dense_reference_impl(
             &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
         )
         .unwrap();
@@ -344,7 +346,7 @@ mod tests {
         let ts_b = vec![480.0; ts_b_random.len()];
 
         let config = SinkhornConfig::default();
-        let dense = stvd_emd_impl(
+        let dense = dense_reference_impl(
             &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
         )
         .unwrap();
@@ -365,7 +367,7 @@ mod tests {
         let (lats_b, lngs_b, ts_b, ws_b) = random_distribution(&mut rng, 25);
 
         let config = SinkhornConfig::default();
-        let dense = stvd_emd_impl(
+        let dense = dense_reference_impl(
             &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
         )
         .unwrap();
@@ -394,7 +396,7 @@ mod tests {
         let ws_b = [1.0];
 
         let config = SinkhornConfig::default();
-        let dense = stvd_emd_impl(
+        let dense = dense_reference_impl(
             &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
         )
         .unwrap();
