@@ -46,6 +46,27 @@ fn temporal_chord_m(t1: f64, t2: f64, cyclical_period: f64, r: f64) -> f64 {
     2.0 * r * (angular_diff(theta1, theta2) / 2.0).sin()
 }
 
+/// Cost (metres) between one point of distribution A and one of distribution
+/// B: a Euclidean combination of great-circle spatial distance and cyclical-
+/// time chordal distance. Shared by the dense complete-bipartite-graph path
+/// (below) and the H3 candidate-graph path (`stvd_candidate_graph.rs`) so
+/// the two can never numerically drift apart.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn pair_cost_m(
+    lat_a: f64,
+    lng_a: f64,
+    t_a: f64,
+    lat_b: f64,
+    lng_b: f64,
+    t_b: f64,
+    cyclical_period: f64,
+    r: f64,
+) -> f32 {
+    let spatial_m = haversine_km(lat_a, lng_a, lat_b, lng_b) * 1000.0;
+    let temporal_m = temporal_chord_m(t_a, t_b, cyclical_period, r);
+    (spatial_m.powi(2) + temporal_m.powi(2)).sqrt() as f32
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn stvd_emd_impl(
     lats_a: &[f64],
@@ -139,9 +160,9 @@ pub fn stvd_emd_impl(
         .enumerate()
         .for_each(|(i, row)| {
             for j in 0..m {
-                let spatial_m = haversine_km(lats_a[i], lngs_a[i], lats_b[j], lngs_b[j]) * 1000.0;
-                let temporal_m = temporal_chord_m(ts_a[i], ts_b[j], cyclical_period, r);
-                row[j] = (spatial_m.powi(2) + temporal_m.powi(2)).sqrt() as f32;
+                row[j] = pair_cost_m(
+                    lats_a[i], lngs_a[i], ts_a[i], lats_b[j], lngs_b[j], ts_b[j], cyclical_period, r,
+                );
             }
         });
     let cost =
