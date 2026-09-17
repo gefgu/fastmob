@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -238,27 +240,38 @@ def test_invalid_reg_raises():
 # ---------------------------------------------------------------------------
 
 
-def test_oversized_dense_input_raises_clear_error_not_oom():
-    """n*m past the dense-path safety budget must raise ValueError, not OOM.
+def test_oversized_dense_input_routes_to_sparse_path_not_oom():
+    """n*m past the dense-path safety budget must still complete (via the
+    sparse candidate-graph path), not OOM and not raise.
 
-    n and m are each kept small/cheap to build (~24k rows, a few hundred KB);
-    only their *product* needs to cross the guard's byte threshold.
+    n and m are each kept moderate (~24k rows); their *product* crosses the
+    dense guard's byte threshold. Points are spread across a city-sized
+    bounding box (not all colocated) so the candidate graph stays sparse.
     """
     _skip_if_no_core()
     from fastmob.measures.evaluation import stvd_emd
 
     n = 24_000
-    df_a = pd.DataFrame(
-        {
-            "center_lat": [0.0] * n,
-            "center_lng": [0.0] * n,
-            "time_bin": ["12:00"] * n,
-            "mean_volume": [1.0] * n,
-        }
-    )
-    df_b = df_a.copy()
-    with pytest.raises(ValueError, match="too large"):
-        stvd_emd(df_a, df_b)
+
+    def _spread_df(seed: int) -> pd.DataFrame:
+        local_rng = np.random.default_rng(seed)
+        hours = local_rng.integers(0, 24, size=n)
+        minutes = local_rng.integers(0, 60, size=n)
+        return pd.DataFrame(
+            {
+                "center_lat": local_rng.uniform(48.5, 49.1, size=n),
+                "center_lng": local_rng.uniform(2.0, 2.6, size=n),
+                "time_bin": [f"{h:02d}:{m:02d}" for h, m in zip(hours, minutes)],
+                "mean_volume": local_rng.uniform(0.1, 1.0, size=n),
+            }
+        )
+
+    df_a = _spread_df(1)
+    df_b = _spread_df(2)
+
+    result = stvd_emd(df_a, df_b)
+    assert isinstance(result, float)
+    assert result >= 0.0 and not math.isnan(result)
 
 
 def test_polars_parity():

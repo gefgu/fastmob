@@ -4,6 +4,9 @@ use rayon::prelude::*;
 use std::f64::consts::PI;
 use wass::{sinkhorn_log, sinkhorn_log_with_convergence};
 
+use super::stvd_candidate_graph::CandidateGraphConfig;
+use super::stvd_sparse_sinkhorn::sparse_stvd_emd_impl;
+
 /// Sinkhorn solver knobs. `wass::earth_mover_distance` hardcodes
 /// `reg=0.01, max_iter=200` with no convergence check; this exposes those as
 /// real parameters instead, matching the defaults exactly for callers that
@@ -21,13 +24,17 @@ impl Default for SinkhornConfig {
     }
 }
 
-/// Safety budget for the dense complete-bipartite-graph path: above this,
-/// `n*m*4` bytes for the cost matrix -- doubled, since `wass::sinkhorn_log`/
-/// `sinkhorn_log_with_convergence` additionally build and return a
-/// same-sized coupling/"plan" array -- would risk an OOM kill rather than a
-/// clean, actionable error. A sparse candidate-graph path for inputs above
-/// this budget is tracked separately; until it lands, oversized inputs must
-/// be reduced by the caller (e.g. coarser H3 resolution or time bins).
+/// Threshold for switching from the dense complete-bipartite-graph path to
+/// the H3 candidate-graph sparse path (`stvd_candidate_graph.rs` /
+/// `stvd_sparse_sinkhorn.rs`): above this, `n*m*4` bytes for the cost
+/// matrix -- doubled, since `wass::sinkhorn_log`/`sinkhorn_log_with_convergence`
+/// additionally build and return a same-sized coupling/"plan" array -- would
+/// risk an OOM kill. Below it, the dense `wass`-backed path is exact and
+/// simplest, so it stays the default; the two paths are validated to agree
+/// within 1e-2 relative (see `stvd_sparse_sinkhorn.rs`'s differential tests)
+/// rather than sharing one solver implementation, since unifying them would
+/// mean representing the dense case's `n*m` pairs as explicit graph edges
+/// too -- pure overhead below the threshold, where dense is already cheap.
 const DENSE_COST_MEMORY_BUDGET_BYTES: u64 = 4 * 1024 * 1024 * 1024; // 4 GiB
 
 /// Shortest angular distance between two angles (radians), independent of winding direction.
@@ -137,20 +144,17 @@ pub fn stvd_emd_impl(
 
     let r = (alpha * cyclical_period) / (2.0 * PI);
 
-    let cost_len = n
-        .checked_mul(m)
-        .ok_or_else(|| "cost matrix dimensions overflow addressable memory".to_string())?;
-    let dense_bytes = (cost_len as u64).saturating_mul(2 * std::mem::size_of::<f32>() as u64);
-    if dense_bytes > DENSE_COST_MEMORY_BUDGET_BYTES {
-        return Err(format!(
-            "distributions are too large for stvd_emd's dense Sinkhorn path: {n}x{m} would need \
-             ~{:.1} GiB (cost matrix plus the solver's internal coupling matrix), which exceeds \
-             the {:.1} GiB safety budget. Reduce distribution size before calling stvd_emd (e.g. \
-             a coarser H3 resolution when building locations, or coarser time bins).",
-            dense_bytes as f64 / (1024.0 * 1024.0 * 1024.0),
-            DENSE_COST_MEMORY_BUDGET_BYTES as f64 / (1024.0 * 1024.0 * 1024.0),
-        ));
+    let dense_fits_budget = n.checked_mul(m).is_some_and(|cost_len| {
+        let dense_bytes = (cost_len as u64).saturating_mul(2 * std::mem::size_of::<f32>() as u64);
+        dense_bytes <= DENSE_COST_MEMORY_BUDGET_BYTES
+    });
+    if !dense_fits_budget {
+        return sparse_stvd_emd_impl(
+            lats_a, lngs_a, ts_a, ws_a, lats_b, lngs_b, ts_b, ws_b, alpha, cyclical_period, sinkhorn,
+            CandidateGraphConfig::default(),
+        );
     }
+    let cost_len = n * m;
     let mut cost_values = vec![0.0_f32; cost_len];
     // Each cost row is independent. Parallel construction moves the expensive
     // great-circle calculations off the Python thread while preserving the
@@ -291,22 +295,47 @@ mod tests {
     }
 
     #[test]
-    fn oversized_dense_input_is_rejected_with_clear_error() {
+    fn oversized_dense_input_routes_to_sparse_path_instead_of_erroring() {
         // n*m*8 bytes (cost + wass's internal coupling-matrix doubling) must
-        // exceed DENSE_COST_MEMORY_BUDGET_BYTES without actually allocating
-        // that much: n and m individually stay small and cheap to build.
+        // exceed DENSE_COST_MEMORY_BUDGET_BYTES -- so this must succeed via
+        // the sparse candidate-graph path (stvd_sparse_sinkhorn.rs), not
+        // error. Points are spread across a city-sized bounding box (not
+        // all colocated) so the candidate graph actually stays sparse.
         let n = 24_000;
         let m = 24_000;
         assert!((n as u64) * (m as u64) * 8 > DENSE_COST_MEMORY_BUDGET_BYTES);
-        let lats_a = vec![0.0_f64; n];
-        let lngs_a = vec![0.0_f64; n];
-        let ts_a = vec![0.0_f64; n];
-        let ws_a = vec![1.0_f64; n];
-        let lats_b = vec![0.0_f64; m];
-        let lngs_b = vec![0.0_f64; m];
-        let ts_b = vec![0.0_f64; m];
-        let ws_b = vec![1.0_f64; m];
-        let err = stvd_emd_impl(
+
+        struct XorShift(u64);
+        impl XorShift {
+            fn next(&mut self) -> u64 {
+                self.0 ^= self.0 << 13;
+                self.0 ^= self.0 >> 7;
+                self.0 ^= self.0 << 17;
+                self.0
+            }
+            fn range_f64(&mut self, lo: f64, hi: f64) -> f64 {
+                let frac = (self.next() % 1_000_000) as f64 / 1_000_000.0;
+                lo + frac * (hi - lo)
+            }
+        }
+        let mut rng = XorShift(7);
+        let mut gen_side = |count: usize| -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+            let mut lats = Vec::with_capacity(count);
+            let mut lngs = Vec::with_capacity(count);
+            let mut ts = Vec::with_capacity(count);
+            let mut ws = Vec::with_capacity(count);
+            for _ in 0..count {
+                lats.push(rng.range_f64(48.5, 49.1));
+                lngs.push(rng.range_f64(2.0, 2.6));
+                ts.push(rng.range_f64(0.0, 1439.0));
+                ws.push(rng.range_f64(0.1, 1.0));
+            }
+            (lats, lngs, ts, ws)
+        };
+        let (lats_a, lngs_a, ts_a, ws_a) = gen_side(n);
+        let (lats_b, lngs_b, ts_b, ws_b) = gen_side(m);
+
+        let value = stvd_emd_impl(
             &lats_a,
             &lngs_a,
             &ts_a,
@@ -319,8 +348,8 @@ mod tests {
             1440.0,
             SinkhornConfig::default(),
         )
-        .unwrap_err();
-        assert!(err.contains("too large"), "unexpected error message: {err}");
+        .unwrap();
+        assert!(value.is_finite() && value >= 0.0, "got {value}");
     }
 
     #[test]

@@ -29,14 +29,32 @@ pub struct CandidateGraphConfig {
     pub resolution: Resolution,
     /// Ring radius searched around each point's home cell.
     pub k_ring: u32,
-    /// Hard cap for escalating `k_ring` when a point's search comes up
-    /// empty, before falling back to a brute-force nearest-cell lookup.
+    /// Hard cap for escalating `k_ring`, before falling back to a
+    /// brute-force nearest-cell lookup for points that still found nothing.
     pub k_ring_max: u32,
+    /// Minimum candidates to gather before stopping escalation. Stopping at
+    /// the *first* nonempty ring (this field's earlier, simpler design) was
+    /// measured to diverge sharply from the dense reference on sparse point
+    /// distributions -- Sinkhorn's soft assignment genuinely spreads mass
+    /// over several nearby candidates, not just whichever ring happened to
+    /// contain the first match, so a small floor is needed even though the
+    /// ring already found *something*.
+    pub k_min: usize,
+    /// Maximum candidates kept per point, after sorting by cost. The ring
+    /// search only filters by *space*; a real `build_stvd`-shaped input can
+    /// have many time-bin rows per location (up to 144) and several
+    /// locations per H3 cell, so an unbounded spatial match can pull in
+    /// hundreds of temporally-irrelevant rows (e.g. 3am matched against
+    /// 3pm) before cost-based filtering ever gets a say. Keeping only the
+    /// cheapest `max_candidates` bounds memory/compute directly, and drops
+    /// exactly the rows that would already contribute ~0 to the dense
+    /// computation's Gibbs kernel at typical `reg`.
+    pub max_candidates: usize,
 }
 
 impl Default for CandidateGraphConfig {
     fn default() -> Self {
-        Self { resolution: Resolution::Eight, k_ring: 2, k_ring_max: 32 }
+        Self { resolution: Resolution::Eight, k_ring: 2, k_ring_max: 32, k_min: 8, max_candidates: 64 }
     }
 }
 
@@ -138,10 +156,14 @@ fn nearby_candidates(
                     found.extend(indices.iter().map(|&idx| (idx, cost_to(idx))));
                 }
             }
-            if !found.is_empty() || k >= config.k_ring_max {
+            if found.len() >= config.k_min || k >= config.k_ring_max {
                 break;
             }
             k = (k * 2).min(config.k_ring_max);
+        }
+        if found.len() > config.max_candidates {
+            found.sort_unstable_by(|a, b| a.1.partial_cmp(&b.1).expect("costs are always finite"));
+            found.truncate(config.max_candidates);
         }
     }
 
@@ -154,6 +176,10 @@ fn nearby_candidates(
         && let Some(indices) = other_buckets.get(&nearest_cell)
     {
         found.extend(indices.iter().map(|&idx| (idx, cost_to(idx))));
+        if found.len() > config.max_candidates {
+            found.sort_unstable_by(|a, b| a.1.partial_cmp(&b.1).expect("costs are always finite"));
+            found.truncate(config.max_candidates);
+        }
     }
 
     found
