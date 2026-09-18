@@ -35,9 +35,7 @@ class NetworkGraph:
     def degrees(self) -> np.ndarray:
         if not self.edge_count:
             return np.zeros(self.node_count, dtype=np.int64)
-        return np.bincount(
-            np.concatenate((self.edge_from, self.edge_to)), minlength=self.node_count
-        )
+        return np.bincount(np.concatenate((self.edge_from, self.edge_to)), minlength=self.node_count)
 
 
 @dataclass(frozen=True)
@@ -100,9 +98,7 @@ def clustering_coefficients(graph: NetworkGraph) -> np.ndarray:
     """Return RECAST's exact local clustering coefficient for each node."""
     from fastmob._core import recast_local_clustering_coefficients
 
-    return np.asarray(
-        recast_local_clustering_coefficients(graph.node_count, graph.edge_from, graph.edge_to)
-    )
+    return np.asarray(recast_local_clustering_coefficients(graph.node_count, graph.edge_from, graph.edge_to))
 
 
 def topological_overlap(graph: NetworkGraph) -> np.ndarray:
@@ -120,7 +116,11 @@ def degree_preserving_random_graph(degrees: np.ndarray, *, seed: int = 42) -> Ne
     if not np.issubdtype(degree.dtype, np.number):
         raise ValueError("degrees must be numeric")
     degree_float = degree.astype(float, copy=False)
-    if not np.all(np.isfinite(degree_float)) or np.any(degree_float < 0) or np.any(degree_float != np.floor(degree_float)):
+    if (
+        not np.all(np.isfinite(degree_float))
+        or np.any(degree_float < 0)
+        or np.any(degree_float != np.floor(degree_float))
+    ):
         raise ValueError("degrees must be finite, non-negative integers")
     if np.any(degree_float >= degree.size):
         raise ValueError("each degree must be smaller than the node count")
@@ -130,9 +130,7 @@ def degree_preserving_random_graph(degrees: np.ndarray, *, seed: int = 42) -> Ne
         raise ValueError("degrees exceed the supported range")
     from fastmob._core import recast_expected_degree_graph
 
-    edge_from, edge_to = recast_expected_degree_graph(
-        np.ascontiguousarray(degree_float, dtype=np.uint64), seed
-    )
+    edge_from, edge_to = recast_expected_degree_graph(np.ascontiguousarray(degree_float, dtype=np.uint64), seed)
     return NetworkGraph(len(degree), np.asarray(edge_from), np.asarray(edge_to))
 
 
@@ -152,7 +150,14 @@ def distribution_summary(values: np.ndarray) -> dict[str, float | int | None]:
     values = values[np.isfinite(values)]
     if not values.size:
         return {key: None for key in ("mean", "median", "std", "p10", "p90")} | {"count": 0}
-    return {"count": int(values.size), "mean": float(values.mean()), "median": float(np.median(values)), "std": float(values.std()), "p10": float(np.percentile(values, 10)), "p90": float(np.percentile(values, 90))}
+    return {
+        "count": int(values.size),
+        "mean": float(values.mean()),
+        "median": float(np.median(values)),
+        "std": float(values.std()),
+        "p10": float(np.percentile(values, 10)),
+        "p90": float(np.percentile(values, 90)),
+    }
 
 
 def safe_wasserstein(left: np.ndarray, right: np.ndarray) -> float | None:
@@ -165,7 +170,11 @@ for _item in (
     NetworkGraph,
     graph_from_edges,
     co_presence_graph_from_staypoints,
-    clustering_coefficients, topological_overlap, degree_preserving_random_graph, random_persistence,
-    distribution_summary, safe_wasserstein,
+    clustering_coefficients,
+    topological_overlap,
+    degree_preserving_random_graph,
+    random_persistence,
+    distribution_summary,
+    safe_wasserstein,
 ):
     _item.__module__ = "fastmob.social"

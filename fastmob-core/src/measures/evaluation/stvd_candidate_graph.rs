@@ -322,7 +322,7 @@ mod tests {
             &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0, default_config(),
         );
 
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = rustc_hash::FxHashSet::default();
         for i in 0..lats_a.len() {
             let start = graph.offsets_a[i] as usize;
             let end = graph.offsets_a[i + 1] as usize;

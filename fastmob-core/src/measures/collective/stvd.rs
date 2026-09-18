@@ -206,17 +206,17 @@ mod tests {
     }
 
     /// Brute-force reference mirroring the pre-rewrite implementation: a
-    /// `HashMap<key, HashSet<user>>` built with the standard library only,
-    /// kept solely to differentially test the sort-based rewrite above.
+    /// `HashMap<key, HashSet<user>>` reference structure, kept solely to
+    /// differentially test the sort-based rewrite above.
     fn brute_force_reference(
         areas: &[u32],
         users: &[u32],
         starts: &[i64],
         ends: &[i64],
     ) -> Vec<(u32, u16, f64)> {
-        use std::collections::{HashMap, HashSet};
+        use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
-        let mut presence: HashMap<(u32, i32, u8, u16), HashSet<u32>> = HashMap::new();
+        let mut presence: HashMap<(u32, i32, u8, u16), HashSet<u32>> = HashMap::default();
         for i in 0..areas.len() {
             let mut slot = starts[i].div_euclid(TEN_MINUTES_US) * TEN_MINUTES_US;
             let end_slot = ends[i].div_euclid(TEN_MINUTES_US) * TEN_MINUTES_US;
@@ -234,14 +234,14 @@ mod tests {
             }
         }
 
-        let mut dates_per_area_dow: HashMap<(u32, u8), HashSet<i32>> = HashMap::new();
-        let mut dow_sum: HashMap<(u32, u8, u16), f64> = HashMap::new();
+        let mut dates_per_area_dow: HashMap<(u32, u8), HashSet<i32>> = HashMap::default();
+        let mut dow_sum: HashMap<(u32, u8, u16), f64> = HashMap::default();
         for ((area, date, dow, minute), users_set) in presence {
             dates_per_area_dow.entry((area, dow)).or_default().insert(date);
             *dow_sum.entry((area, dow, minute)).or_insert(0.0) += users_set.len() as f64;
         }
 
-        let mut area_bin_sum: HashMap<(u32, u16), f64> = HashMap::new();
+        let mut area_bin_sum: HashMap<(u32, u16), f64> = HashMap::default();
         for ((area, dow, minute), total) in dow_sum {
             let dates = dates_per_area_dow[&(area, dow)].len() as f64;
             *area_bin_sum.entry((area, minute)).or_insert(0.0) += total / dates;
