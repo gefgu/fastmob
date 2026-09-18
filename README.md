@@ -9,18 +9,12 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/fastmob)](https://pypi.org/project/fastmob/)
 [![License](https://img.shields.io/pypi/l/fastmob)](LICENSE)
 
-Fastkit-Mobility (`fastmob` on PyPI) is a high-performance Python library for
-mobility analysis. It combines native Rust kernels with a
-[Narwhals](https://narwhals-dev.github.io/narwhals/)-based API, so the same
-code works unchanged against pandas, Polars, and other eager dataframe
-backends — no rewrites, no backend-specific branches.
+Fastkit-Mobility (`fastmob` on PyPI) turns raw mobility data into useful trips,
+stays, and measures. Its compiled Rust engine and [Narwhals](https://narwhals-dev.github.io/narwhals/)-based API keep the same workflow running on pandas, Polars, and other eager dataframe backends.
 
-Beyond individual/collective mobility measures, fastmob covers the full
-pipeline: raw position fixes → staypoints → triplegs → trips → tours,
-trajectory preprocessing (outlier filtering, simplification, segmentation,
-smoothing), mobility models (next-location prediction, gravity/radiation,
-synthetic diary generation), and network/social analysis (road/rail-matched
-distances, co-presence contact networks, mobility-law fitting).
+Start with position fixes, derive staypoints and triplegs, then build trips and
+tours. The hierarchy follows established mobility data models while keeping the
+input as an ordinary dataframe.
 
 ## Why fastmob
 
@@ -28,8 +22,8 @@ distances, co-presence contact networks, mobility-law fitting).
   Narwhals-compatible DataFrame; fastmob works without changes.
 - **Rust-accelerated core** — compute-heavy kernels run in parallel,
   zero-copy Rust instead of Python loops.
-- **Full trajectory hierarchy** — positionfixes, staypoints, triplegs,
-  trips, tours, and locations, following the trackintel model.
+- **A hierarchy for real movement data** — positionfixes, staypoints,
+  triplegs, trips, tours, and locations.
 - **Migration-friendly** — API shapes mirror
   [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility)
   where compatibility matters, with reproducible parity tests against it.
@@ -50,28 +44,50 @@ pip install statsmodels  # fit the Gravity Poisson-GLM
 pip install "fastmob[vis]"  # visualization package
 ```
 
-## Quickstart
+## Turn raw GPS points into staypoints and trips
 
 ```python
 import pandas as pd
-from fastmob import jump_lengths, radius_of_gyration
+from fastmob import Positionfixes
 
-traj = pd.DataFrame(
+gps = pd.DataFrame(
     {
-        "uid": ["alice", "alice", "alice"],
-        "datetime": pd.date_range("2024-01-01", periods=3, freq="h"),
-        "lat": [41.8902, 41.9028, 41.9109],
-        "lng": [12.4922, 12.4964, 12.4818],
+        "uid": ["alice"] * 9,
+        "datetime": pd.date_range("2024-01-01 08:00", periods=9, freq="10min"),
+        "lat": [41.8902] * 3 + [41.8950, 41.9000, 41.9050] + [41.9109] * 3,
+        "lng": [12.4922] * 3 + [12.4950, 12.4980, 12.4800] + [12.4818] * 3,
     }
 )
 
-print(jump_lengths(traj))
-print(radius_of_gyration(traj))
+fixes = Positionfixes(gps)
+staypoints = fixes.generate_staypoints(minutes_for_a_stop=20, spatial_radius_km=0.2)
+triplegs = fixes.generate_triplegs(staypoints)
+activity_stays = staypoints.create_activity_flag(time_threshold_min=20)
+trips = triplegs.generate_trips(activity_stays)
+print(trips.df[["started_at", "finished_at", "origin_staypoint_id", "destination_staypoint_id"]])
 ```
 
 Fastmob auto-detects common time, latitude, longitude, and user-ID column
 names. Pass explicit `datetime_col`, `lat_col`, `lng_col`, and `uid_col`
 arguments when your schema differs.
+
+Next: [measure people and populations](https://gefgu.github.io/fastmob/learn/individual-and-collective-measures/), [clean and segment trajectories](https://gefgu.github.io/fastmob/learn/clean-and-segment/), [route and map-match GPS traces](https://gefgu.github.io/fastmob/learn/network-analysis/), or explore [mobility models](https://gefgu.github.io/fastmob/reference/models/).
+
+## Full GeoLife benchmark
+
+The full [GeoLife GPS Trajectories](https://www.microsoft.com/en-my/download/details.aspx?id=52367) dataset contains **24,876,978 position fixes**. On an AMD Ryzen 9 9950X3D (16C/32T, 88 GB RAM), Fastmob detected staypoints in **0.59 s**, versus **99.84 s** for Trackintel: **170× faster**.
+
+The comparison uses the same raw GPS corpus and staypoint thresholds (100 m radius, 20-minute dwell, 15-minute observation gap). The detectors have related but non-identical edge and duplicate handling, so the reproducible benchmark reports both timings and comparable detected-stay counts rather than claiming byte-for-byte identical output.
+
+Run the full benchmark locally to record the exact speedup and hardware for your environment:
+
+```bash
+python benchmarks/geolife_staypoints.py \
+  --data-dir "/path/to/Geolife Trajectories 1.3" \
+  --output benchmarks/results/geolife_staypoints.json
+```
+
+See the [end-to-end GeoLife comparison notebook](https://gefgu.github.io/fastmob/learn/notebooks/stay-point-detection-geolife/) for the data preparation, equivalent Trackintel call, and visual output comparison.
 
 ## Documentation
 
