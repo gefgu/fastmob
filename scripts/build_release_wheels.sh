@@ -21,7 +21,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 MATURIN_IMAGE="ghcr.io/pyo3/maturin"
-FEATURE_ARGS=(--no-default-features --features stvd-emd)
+FEATURE_ARGS=(--no-default-features --features stvd-emd --strip)
 
 mkdir -p dist
 
