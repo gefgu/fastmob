@@ -3,7 +3,7 @@
 //! The dense path evaluates every `(i, j)` pair between two distributions.
 //! At `reg=0.01` and cost values in metres, `exp(-cost/reg)` underflows to
 //! *exactly* `0.0` in float32 for all but a point's closest few matches (see
-//! `stvd_emd.rs`'s module docs / the plan this implements), so the dense
+//! `stvd_emd.rs`'s module docs), so the dense
 //! computation is already discarding almost all of that work -- it just does
 //! so by brute force. This module builds a much smaller candidate graph
 //! instead: for each point, only pairs with plausibly-nearby points (found
@@ -19,8 +19,8 @@ use crate::utils::haversine::haversine_km;
 
 use super::stvd_emd::pair_cost_m;
 
-/// Candidate-search knobs. Defaults are a starting point for stage-4
-/// empirical tuning (see the plan's Open Risk #2), not a final answer.
+/// Candidate-search knobs. Defaults are a starting point for empirical
+/// tuning, not a final answer.
 #[derive(Clone, Copy, Debug)]
 pub struct CandidateGraphConfig {
     /// Internal H3 index resolution used purely for neighbor search --

@@ -39,11 +39,6 @@ fn normalize_near(angle: f64, reference: f64) -> f64 {
 /// running wedge intersection becomes empty.
 ///
 /// Returns `start` unchanged when `start` is the last index in `coords`.
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/chan_chin.rs` (forward
-/// and backward greedy passes) and
-/// `fastmob-core/src/preprocessing/simplify/imai_iri.rs` (per-anchor
-/// feasible-edge construction).
 pub fn farthest_feasible_index(coords: &[(f64, f64)], start: usize, tolerance: f64) -> usize {
     let n = coords.len();
     if start + 1 >= n {

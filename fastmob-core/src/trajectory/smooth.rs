@@ -330,8 +330,6 @@ fn smooth_slice(
 /// through `sorted_indices`/`ends`). Handles nulls natively per Rule 2:
 /// invalid rows are excluded from the per-user chronological slice before
 /// smoothing, and left as `NaN` in the output (row count never changes).
-///
-/// @usedBy `fastmob-py/src/trajectory/smooth_py.rs::smooth_trajectory_indexed`.
 pub fn smooth_trajectory_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -387,8 +385,6 @@ pub fn smooth_trajectory_indexed_impl(
 /// input (the `presorted=True` escape hatch); no null handling. Each range
 /// is already the caller's original row order, so output arrays are simply
 /// the per-user results concatenated in range order -- no scatter needed.
-///
-/// @usedBy `fastmob-py/src/trajectory/smooth_py.rs::smooth_trajectory_presorted`.
 pub fn smooth_trajectory_presorted_impl(
     latitudes: &[f64],
     longitudes: &[f64],

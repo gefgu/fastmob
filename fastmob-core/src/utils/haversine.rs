@@ -138,10 +138,6 @@ const EARTH_RADIUS_KM: f64 = 6371.0088;
 /// which is why algorithms that need real 2D vector geometry (Douglas-Peucker,
 /// MaxDistance, Chan-Chin, Imai-Iri) project per-user slices rather than a
 /// whole dataframe at once.
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/{douglas_peucker,
-/// distance_time_threshold,corridor}.rs` for building per-user planar
-/// coordinates before computing point-to-line / point-to-segment distances.
 pub fn project_local_planar_km(latitudes: &[f64], longitudes: &[f64]) -> Vec<(f64, f64)> {
     let n = latitudes.len();
     if n == 0 {
@@ -155,9 +151,6 @@ pub fn project_local_planar_km(latitudes: &[f64], longitudes: &[f64]) -> Vec<(f6
 /// [`unproject_local_planar_km`]: the mean latitude (radians) of a point slice
 /// and its cosine, shared by a projection/unprojection round-trip so both
 /// directions agree on the same local tangent plane.
-///
-/// @usedBy `fastmob-core/src/trajectory/smooth.rs` (Kalman CV smoother:
-/// project once per user before filtering, unproject once after).
 pub fn local_planar_km_params(latitudes: &[f64]) -> (f64, f64) {
     let n = latitudes.len();
     if n == 0 {
@@ -171,8 +164,6 @@ pub fn local_planar_km_params(latitudes: &[f64]) -> (f64, f64) {
 /// latitude supplied explicitly (rather than recomputed from `latitudes`) so
 /// callers that need the inverse via [`unproject_local_planar_km`] can reuse
 /// identical parameters on both legs of the round-trip.
-///
-/// @usedBy `fastmob-core/src/trajectory/smooth.rs`.
 pub fn project_local_planar_km_with_params(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -196,8 +187,6 @@ pub fn project_local_planar_km_with_params(
 /// equirectangular planar kilometre `(x_km, y_km)` points back to
 /// `(latitude, longitude)` degrees, using the same `mean_lat_rad`/
 /// `cos_mean_lat` reference parameters the forward projection used.
-///
-/// @usedBy `fastmob-core/src/trajectory/smooth.rs`.
 pub fn unproject_local_planar_km(
     points: &[(f64, f64)],
     mean_lat_rad: f64,
@@ -218,10 +207,6 @@ pub fn unproject_local_planar_km(
 /// All inputs are `(x_km, y_km)` pairs already produced by
 /// [`project_local_planar_km`]; the result is in the same km units. When `a`
 /// and `b` coincide, this is simply the distance from `point` to `a`.
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/{douglas_peucker,
-/// distance_time_threshold,corridor}.rs` for perpendicular-distance and
-/// corridor-feasibility checks against a candidate simplified segment.
 pub fn point_to_segment_distance_km(point: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
     let (px, py) = point;
     let (ax, ay) = a;
@@ -252,8 +237,6 @@ pub fn point_to_segment_distance_km(point: (f64, f64), a: (f64, f64), b: (f64, f
 /// sin(lat1).cos(lat2).cos(Δlong))`, normalized to `[0, 360)`), so
 /// `fastmob.preprocessing.segment(method="angle_change")` stays directly
 /// comparable to MovingPandas' `AngleChangeSplitter` reference behavior.
-///
-/// @usedBy `fastmob-core/src/preprocessing/segment/angle_change.rs`.
 pub fn bearing_deg(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     let lat1_rad = lat1.to_radians();
     let lat2_rad = lat2.to_radians();
@@ -272,8 +255,6 @@ pub fn bearing_deg(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
 /// Ported from MovingPandas' `angular_difference`
 /// (`geometry_utils.py`): `diff = |a - b|`, then `|diff - 360|` if
 /// `diff > 180`.
-///
-/// @usedBy `fastmob-core/src/preprocessing/segment/angle_change.rs`.
 pub fn angular_difference(degrees1: f64, degrees2: f64) -> f64 {
     let diff = (degrees1 - degrees2).abs();
     if diff > 180.0 {

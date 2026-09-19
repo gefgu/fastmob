@@ -31,15 +31,12 @@ pub(crate) fn is_consistent_pair(
 /// Greedy outlier detector keep-mask for one user's point sequence.
 ///
 /// The first point is always kept. Every subsequent point `i` is kept iff
-/// [`is_consistent_pair`] holds between the immediately preceding
+/// `is_consistent_pair` holds between the immediately preceding
 /// *original* point `i - 1` and `i` — matching `GreedyOutlierDetector.h`'s
 /// documented behavior ("The first element of the range is always added.
 /// An arbitrary element is added if the previous element and the element
 /// satisfy the predicate"), i.e. a fixed per-original-adjacent-pair test
 /// rather than a running "last accepted point" anchor.
-///
-/// @usedBy `fastmob-core/src/preprocessing/outliers/mod.rs::outlier_user_slice`
-/// (method = `greedy`).
 pub fn greedy_keep_mask(
     lats: &[f64],
     lngs: &[f64],
@@ -100,9 +97,6 @@ pub fn greedy_keep_mask(
 /// heuristic -- the upstream algorithm itself returns *every*
 /// maximal-length chain and leaves the caller to pick one), but the
 /// maximal chain length, and therefore the number of points kept, matches.
-///
-/// @usedBy `fastmob-core/src/preprocessing/outliers/mod.rs::outlier_user_slice`
-/// (method = `smart_greedy`).
 pub fn smart_greedy_keep_mask(
     lats: &[f64],
     lngs: &[f64],

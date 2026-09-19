@@ -5,7 +5,7 @@
 //! (`hampel.extension.hampel`), which is the exact implementation PTRAIL's
 //! `Filters.hampel_outlier_detection` delegates to (via `from hampel import
 //! hampel`) — matching it precisely keeps the cache-based PTRAIL parity test
-//! (see the project plan) meaningful rather than approximate.
+//! meaningful rather than approximate.
 
 use crate::utils::haversine::haversine_km;
 
@@ -51,9 +51,6 @@ fn window_median(window: &mut [f64]) -> f64 {
 /// are always kept, exactly matching the reference kernel's
 /// `range(half_window, n - half_window)` loop bounds (no partial/clipped
 /// windows at the boundary).
-///
-/// @usedBy `fastmob-core/src/preprocessing/outliers/mod.rs::outlier_user_slice`
-/// (method = `hampel`).
 pub fn hampel_keep_mask(
     lats: &[f64],
     lngs: &[f64],

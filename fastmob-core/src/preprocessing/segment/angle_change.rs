@@ -32,9 +32,6 @@ use crate::utils::haversine::{angular_difference, bearing_deg, haversine_km};
 /// which starts at `bearing_deg(0, 1)` (see this module's docs); deviations
 /// of at least `min_angle_deg` while at least `min_speed_kmh` bump the
 /// segment id and become the new reference bearing.
-///
-/// @usedBy `fastmob-core/src/preprocessing/segment/mod.rs::segment_user_slice`
-/// (method = `angle_change`).
 pub fn angle_change_segment_ids(
     lats: &[f64],
     lngs: &[f64],

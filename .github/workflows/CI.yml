@@ -51,6 +51,14 @@ jobs:
       - name: Build Rust extension
         run: uv run --with maturin maturin develop
 
+      - name: Verify publishable Rust core
+        run: |
+          cargo test -p fastmob-core --no-default-features --locked
+          cargo test -p fastmob-core --all-features --locked
+          cargo clippy -p fastmob-core --all-targets --all-features --locked -- -D warnings
+          RUSTDOCFLAGS="-D warnings" cargo doc -p fastmob-core --all-features --no-deps --locked
+          cargo package -p fastmob-core --locked
+
       - name: Ruff
         run: uv run --group dev ruff check
 

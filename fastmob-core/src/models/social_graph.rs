@@ -26,7 +26,7 @@ pub fn edges_to_csr(srcs: &[usize], dsts: &[usize], n_nodes: usize) -> (Vec<usiz
     (neighbor_starts, neighbors)
 }
 
-/// Random Geometric Graph: place `n_nodes` points uniformly in [0,1]²
+/// Random Geometric Graph: place `n_nodes` points uniformly in `\[0, 1\]²`
 /// and connect pairs within Euclidean distance `radius`.
 /// Returns CSR adjacency (simple, undirected, no self-loops).
 pub fn random_geometric_graph(n_nodes: usize, radius: f64, seed: u64) -> (Vec<usize>, Vec<usize>) {

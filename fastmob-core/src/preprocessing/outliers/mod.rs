@@ -11,8 +11,8 @@
 //! parameters, one per-user dispatch function, and batched
 //! contiguous-range / indexed entry points that return a boolean keep-mask.
 //!
-//! Output-Sensitive outlier detection is explicitly out of scope (see the
-//! project plan): it is MoveTK's largest/most complex detector, and
+//! Output-Sensitive outlier detection is explicitly out of scope: it is
+//! MoveTK's largest/most complex detector, and
 //! Greedy + SmartGreedy + Zheng already cover the "fast heuristic" and
 //! "physics-based" niches this phase targets.
 
@@ -122,8 +122,6 @@ fn is_valid_outlier_row(
 
 /// Batched, presorted-contiguous-ranges entry point (one call covers every
 /// user). Returns a boolean keep-mask the same length as `latitudes`.
-///
-/// @usedBy `fastmob-py/src/preprocessing/outliers_traj_py.rs::outlier_trajectory_{numpy,arrow}`.
 pub fn outlier_trajectory_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -153,10 +151,8 @@ pub fn outlier_trajectory_impl(
 
 /// Batched, indexed entry point (one call covers every user, rows addressed
 /// through `sorted_indices`/`ends` rather than contiguous ranges). Handles
-/// nulls natively: rows failing [`is_valid_outlier_row`] are marked `false`
+/// nulls natively: rows failing `is_valid_outlier_row` are marked `false`
 /// in the output mask and excluded from the per-user algorithm input.
-///
-/// @usedBy `fastmob-py/src/preprocessing/outliers_traj_py.rs::outlier_trajectory_indexed_{numpy,arrow}`.
 pub fn outlier_trajectory_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],

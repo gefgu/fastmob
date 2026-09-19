@@ -1,9 +1,9 @@
 //! Trajectory-pair similarity/distance metrics.
 //!
 //! `fastmob.trajectory.trajectory_distance` compares exactly two whole
-//! point-sequences (no per-user grouping/batching -- see the project plan:
-//! these algorithms are inherently defined between two sequences, not
-//! aggregated over many users). All four share the same
+//! point-sequences (no per-user grouping/batching: these algorithms are
+//! inherently defined between two sequences, not aggregated over many
+//! users). All four share the same
 //! `Result<f64, String>` shape and reuse [`haversine_km`] as the
 //! point-distance metric, matching every other fastmob measure's geographic-
 //! distance convention.

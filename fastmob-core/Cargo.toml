@@ -5,6 +5,20 @@ edition = "2024"
 description = "Rust compute kernels for fastmob mobility analysis."
 license = "BSD-3-Clause"
 repository = "https://github.com/gefgu/fastmob"
+homepage = "https://gefgu.github.io/fastmob/"
+documentation = "https://docs.rs/fastmob-core"
+readme = "README.md"
+rust-version = "1.87"
+keywords = ["mobility", "trajectory", "geospatial", "gis", "analysis"]
+categories = ["algorithms", "science"]
+include = [
+    "src/**",
+    "Cargo.toml",
+    "Cargo.lock",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+]
 
 [lib]
 name = "fastmob_core"

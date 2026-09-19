@@ -9,9 +9,6 @@
 ///
 /// Point `0` always starts segment `0`. For `i >= 1`, a new segment starts
 /// at `i` whenever `times[i] - times[i-1] > gap_s`.
-///
-/// @usedBy `fastmob-core/src/preprocessing/segment/mod.rs::segment_user_slice`
-/// (method = `observation_gap`).
 pub fn observation_gap_segment_ids(times: &[f64], gap_s: f64) -> Vec<u32> {
     let n = times.len();
     let mut out = vec![0u32; n];

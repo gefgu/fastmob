@@ -5,8 +5,7 @@
 //! `simplify`/`filter` (which both produce a boolean keep-mask, i.e. a row
 //! *subset*), segmentation partitions rows without dropping any of them: the
 //! output is a per-row `segment_id` (`u32`) column aligned 1:1 with the
-//! input, restarting at `0` per user (see the project plan's "Segmentation
-//! output shape" decision). This module's dispatch functions mirror
+//! input, restarting at `0` per user. This module's dispatch functions mirror
 //! `simplify/mod.rs`/`outliers/mod.rs`'s batched contiguous-range / indexed
 //! entry-point shape, but return `Vec<u32>` segment ids instead of
 //! `Vec<bool>` keep-masks.
@@ -20,8 +19,8 @@
 //! arbitrary column's values).
 //!
 //! MoveTK's Monotone/Model-based/Brownian-bridge segmentation strategies are
-//! intentionally out of scope (see the project plan): Monotone is a
-//! generic criterion-family rather than one algorithm, Model-based needs a
+//! intentionally out of scope: Monotone is a generic criterion-family
+//! rather than one algorithm, Model-based needs a
 //! real change-point/model-selection framework, and Brownian-bridge is a
 //! full probabilistic movement model — each a separate research-grade
 //! feature, while MovingPandas' 6 splitters already fully satisfy "a menu of
@@ -193,8 +192,6 @@ fn is_valid_segment_row(
 
 /// Batched, presorted-contiguous-ranges entry point (one call covers every
 /// user). Returns a `segment_id` array the same length as `latitudes`.
-///
-/// @usedBy `fastmob-py/src/preprocessing/segment_traj_py.rs::segment_trajectory_{numpy,arrow}`.
 pub fn segment_trajectory_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -226,14 +223,12 @@ pub fn segment_trajectory_impl(
 
 /// Batched, indexed entry point (one call covers every user, rows addressed
 /// through `sorted_indices`/`ends` rather than contiguous ranges). Handles
-/// nulls natively: rows failing [`is_valid_segment_row`] are excluded from
+/// nulls natively: rows failing `is_valid_segment_row` are excluded from
 /// the per-user algorithm input, but — unlike `simplify`/`outliers`'
 /// keep-mask outputs — every row still receives a `segment_id` in the
 /// output, since segmentation can never drop rows. An invalid row is
 /// assigned the most recently computed segment id for its user (carrying
 /// forward across the gap), defaulting to `0` if no valid row precedes it.
-///
-/// @usedBy `fastmob-py/src/preprocessing/segment_traj_py.rs::segment_trajectory_indexed_{numpy,arrow}`.
 #[allow(clippy::too_many_arguments)]
 pub fn segment_trajectory_indexed_impl(
     latitudes: &[f64],

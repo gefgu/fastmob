@@ -15,14 +15,13 @@
 //! suggests the fixed-`prev` behavior is an upstream bug rather than
 //! intentional. This port follows the documented adjacent-pair intent
 //! instead; if a real MoveTK-driver parity test disagrees with this kernel,
-//! that is the expected, disclosed cause (see the project plan for the
-//! oracle-comparison writeup).
+//! this documented deviation is the expected, disclosed cause.
 
 use super::greedy::is_consistent_pair;
 
 /// Zheng keep-mask for one user's point sequence: a single forward pass
 /// groups points into maximal runs where every adjacent pair satisfies
-/// [`is_consistent_pair`] (speed implied by consecutive points does not
+/// `is_consistent_pair` (speed implied by consecutive points does not
 /// exceed `max_speed_kmh`); runs strictly longer than `min_seg_size` points
 /// are kept in full, shorter runs are dropped entirely.
 ///
@@ -31,9 +30,6 @@ use super::greedy::is_consistent_pair;
 /// single point, and dropping a lone point here would contradict every
 /// other shipped algorithm's convention of leaving trivial trajectories
 /// untouched.
-///
-/// @usedBy `fastmob-core/src/preprocessing/outliers/mod.rs::outlier_user_slice`
-/// (method = `zheng`).
 pub fn zheng_keep_mask(
     lats: &[f64],
     lngs: &[f64],

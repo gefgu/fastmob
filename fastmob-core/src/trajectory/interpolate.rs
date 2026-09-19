@@ -356,8 +356,6 @@ fn is_valid_row(
 /// Batched, indexed entry point (one call covers every user, rows addressed
 /// through `sorted_indices`/`ends`). Handles nulls natively: invalid rows are
 /// excluded before gap detection, per Rule 2.
-///
-/// @usedBy `fastmob-py/src/trajectory/interpolate_py.rs::interpolate_trajectory_indexed`.
 pub fn interpolate_trajectory_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -400,8 +398,6 @@ pub fn interpolate_trajectory_indexed_impl(
 
 /// Batched, presorted-contiguous-ranges entry point. Assumes pre-cleaned
 /// input (the `presorted=True` escape hatch); no null handling.
-///
-/// @usedBy `fastmob-py/src/trajectory/interpolate_py.rs::interpolate_trajectory_presorted`.
 pub fn interpolate_trajectory_presorted_impl(
     latitudes: &[f64],
     longitudes: &[f64],

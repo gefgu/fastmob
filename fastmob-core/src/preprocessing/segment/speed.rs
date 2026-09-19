@@ -4,9 +4,8 @@
 //! MovingPandas' `SpeedSplitter` filters out every point whose incoming
 //! speed falls outside `[speed, max_speed]` ("non-moving" points), then runs
 //! `ObservationGapSplitter` on the *remaining* points, which drops rows
-//! entirely. fastmob's segmentation has a hard row-preservation contract
-//! (see the project plan's "Segmentation output shape" decision), so this
-//! module keeps every row: a maximal run of consecutive "non-moving" points
+//! entirely. fastmob's segmentation has a hard row-preservation contract,
+//! so this module keeps every row: a maximal run of consecutive "non-moving" points
 //! spanning at least `duration_s` becomes its own bracketing segment between
 //! the moving segment before it and the moving segment after it; a
 //! below-threshold non-moving run is folded into the surrounding segment
@@ -26,9 +25,6 @@ use crate::utils::haversine::haversine_km;
 /// least `duration_s` are bracketed by a new segment id on entry and a
 /// further new segment id on exit; shorter non-moving runs are folded into
 /// the surrounding segment with no split.
-///
-/// @usedBy `fastmob-core/src/preprocessing/segment/mod.rs::segment_user_slice`
-/// (method = `speed`).
 pub fn speed_segment_ids(
     lats: &[f64],
     lngs: &[f64],

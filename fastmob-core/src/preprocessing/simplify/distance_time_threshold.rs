@@ -12,9 +12,6 @@ use crate::utils::haversine::{
 /// the first point, then every subsequent point whose haversine distance
 /// from the previously *kept* point is at least `min_distance_km`, plus the
 /// last point (always kept, matching MovingPandas' `MinDistanceGeneralizer`).
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/mod.rs::simplify_user_slice`
-/// (method = `min_distance`).
 pub fn min_distance_indices(lats: &[f64], lngs: &[f64], min_distance_km: f64) -> Vec<usize> {
     let n = lats.len();
     if n == 0 {
@@ -43,9 +40,6 @@ pub fn min_distance_indices(lats: &[f64], lngs: &[f64], min_distance_km: f64) ->
 /// `min_time_delta_s` seconds after the previously *kept* point's timestamp,
 /// plus the last point (always kept, matching MovingPandas'
 /// `MinTimeDeltaGeneralizer`).
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/mod.rs::simplify_user_slice`
-/// (method = `min_time_delta`).
 pub fn min_time_delta_indices(times: &[f64], min_time_delta_s: f64) -> Vec<usize> {
     let n = times.len();
     if n == 0 {
@@ -80,9 +74,6 @@ pub fn min_time_delta_indices(times: &[f64], min_time_delta_s: f64) -> Vec<usize
 /// over locally-projected planar coordinates); if so, the point *before*
 /// the current one is marked as a kept vertex, the anchor moves to the
 /// current point, and the buffer is cleared. The last point is always kept.
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/mod.rs::simplify_user_slice`
-/// (method = `max_distance`).
 pub fn max_distance_indices(lats: &[f64], lngs: &[f64], max_distance_km: f64) -> Vec<usize> {
     let n = lats.len();
     if n == 0 {

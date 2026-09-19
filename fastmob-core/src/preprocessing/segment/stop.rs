@@ -1,8 +1,8 @@
 //! Stop segmentation, adapted from MovingPandas' `StopSplitter`
 //! (`trajectory_splitter.py`).
 //!
-//! Reuses [`detect_stops_for_user`] directly (per the project plan's reuse
-//! note) rather than reimplementing stop detection. MovingPandas'
+//! Reuses [`detect_stops_for_user`] directly rather than reimplementing
+//! stop detection. MovingPandas'
 //! `StopSplitter` builds "between stops" trajectories and drops every row
 //! strictly inside a detected stop's `[entry_time, leaving_time]` window
 //! (see `StopSplitter.get_time_ranges_between_stops`). fastmob's
@@ -23,9 +23,6 @@ use crate::preprocessing::stay_locations::detect_stops_for_user;
 /// previous point, a new segment id starts. This yields alternating
 /// moving/stop segments with the detected stop's own rows isolated in their
 /// own segment, exactly bracketed by the moving segments on either side.
-///
-/// @usedBy `fastmob-core/src/preprocessing/segment/mod.rs::segment_user_slice`
-/// (method = `stop`).
 #[allow(clippy::too_many_arguments)]
 pub fn stop_segment_ids(
     lats: &[f64],

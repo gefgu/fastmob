@@ -22,9 +22,6 @@ use super::corridor::farthest_feasible_index;
 ///
 /// `epsilon_km` is the maximum perpendicular distance, in kilometres,
 /// allowed between an original point and its nearest retained segment.
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/mod.rs::simplify_user_slice`
-/// (method = `imai_iri`).
 pub fn imai_iri_indices(lats: &[f64], lngs: &[f64], epsilon_km: f64) -> Vec<usize> {
     let n = lats.len();
     if n <= 2 {

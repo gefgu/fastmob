@@ -120,8 +120,6 @@ fn is_valid_row(
 type PositionQueryResult = Result<(Vec<f64>, Vec<f64>, Vec<bool>), String>;
 
 /// Batched, indexed entry point. Handles nulls natively per Rule 2.
-///
-/// @usedBy `fastmob-py/src/trajectory/interpolate_at_py.rs::interpolate_at_indexed`.
 #[allow(clippy::too_many_arguments)]
 pub fn interpolate_at_indexed_impl(
     latitudes: &[f64],
@@ -165,8 +163,6 @@ pub fn interpolate_at_indexed_impl(
 
 /// Batched, presorted-contiguous-ranges entry point. Assumes pre-cleaned
 /// input (the `presorted=True` escape hatch); no null handling.
-///
-/// @usedBy `fastmob-py/src/trajectory/interpolate_at_py.rs::interpolate_at_presorted`.
 pub fn interpolate_at_presorted_impl(
     latitudes: &[f64],
     longitudes: &[f64],

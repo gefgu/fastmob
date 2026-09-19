@@ -11,9 +11,6 @@
 ///
 /// Point `0` always starts segment `0`. For `i >= 1`, a new segment starts
 /// at `i` whenever `bucket_ids[i] != bucket_ids[i-1]`.
-///
-/// @usedBy `fastmob-core/src/preprocessing/segment/mod.rs::segment_user_slice`
-/// (method = `value_change`, which also serves `temporal`).
 pub fn value_change_segment_ids(bucket_ids: &[i64]) -> Vec<u32> {
     let n = bucket_ids.len();
     let mut out = vec![0u32; n];

@@ -8,8 +8,8 @@
 //! into a single boolean keep-mask aligned with the input rows, matching
 //! `filter_traj`'s keep-mask output convention.
 //!
-//! Agarwal simplification is intentionally out of scope (see the project
-//! plan): it needs a parametric feasibility-region search materially more
+//! Agarwal simplification is intentionally out of scope: it needs a
+//! parametric feasibility-region search materially more
 //! complex than the Wedge/corridor primitive built here for Chan-Chin and
 //! Imai-Iri, with low value-add over Chan-Chin's tighter approximation
 //! bound alone.
@@ -147,8 +147,6 @@ fn is_valid_simplify_row(
 
 /// Batched, presorted-contiguous-ranges entry point (one call covers every
 /// user). Returns a boolean keep-mask the same length as `latitudes`.
-///
-/// @usedBy `fastmob-py/src/preprocessing/simplify_traj_py.rs::simplify_trajectory_{numpy,arrow}`.
 pub fn simplify_trajectory_impl(
     latitudes: &[f64],
     longitudes: &[f64],
@@ -178,10 +176,8 @@ pub fn simplify_trajectory_impl(
 
 /// Batched, indexed entry point (one call covers every user, rows addressed
 /// through `sorted_indices`/`ends` rather than contiguous ranges). Handles
-/// nulls natively: rows failing [`is_valid_simplify_row`] are marked `false`
+/// nulls natively: rows failing `is_valid_simplify_row` are marked `false`
 /// in the output mask and excluded from the per-user algorithm input.
-///
-/// @usedBy `fastmob-py/src/preprocessing/simplify_traj_py.rs::simplify_trajectory_indexed_{numpy,arrow}`.
 pub fn simplify_trajectory_indexed_impl(
     latitudes: &[f64],
     longitudes: &[f64],

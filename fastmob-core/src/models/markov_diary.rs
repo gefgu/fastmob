@@ -34,7 +34,7 @@ fn slot_seconds_for(slots_per_day: usize) -> i64 {
 ///
 /// `values`: per-slot location rank sequence (rank 1 = home).
 /// `shift`: starting slot (0..slots_per_day) of the first entry.
-/// `counts`: mutable flat [n_states*n_states] accumulator (caller zeroes before first user).
+/// `counts`: mutable flat `n_states * n_states` accumulator (caller zeroes before first user).
 /// `slots_per_day`: number of time slots per day (24 = hourly, 96 = 15-min, 288 = 5-min).
 ///
 /// Implements the same tau-lookahead logic as Python `_update_markov_chain`.

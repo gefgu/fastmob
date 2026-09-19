@@ -12,8 +12,7 @@
 //! but only as a `#[cfg(test)]` differential-testing reference: `wass` is a
 //! `[dev-dependencies]`-only crate, not linked into release builds. This
 //! module is validated to agree with that reference within 1e-2 relative by
-//! the differential tests below (the plan's stage 4 gate:
-//! `/mnt/raid5/gustavo/.claude/plans/clean-here-s-the-finding-cheeky-beaver.md`).
+//! the differential tests below.
 
 use rayon::prelude::*;
 
@@ -260,15 +259,14 @@ mod tests {
     /// compute here, so it's usable as ground truth) and across several
     /// `reg` values including the library's actual default (0.01).
     ///
-    /// Measured empirically before picking this tolerance (see the plan's
-    /// Open Risk #1 discussion): max relative difference over 100 trials
-    /// per reg was ~0 at reg=0.01 (consistent with the near-degeneracy
-    /// argument -- the dense computation is already effectively
-    /// nearest-neighbor at this reg), ~4e-6 at reg=1/10, and ~6e-3 at
-    /// reg=50 (larger reg genuinely spreads mass over more candidates, so
-    /// the bounded-radius search has more to miss) -- 1e-2 gives headroom
-    /// above the observed worst case without being so loose it would miss
-    /// a real regression.
+    /// Measured empirically before picking this tolerance: max relative
+    /// difference over 100 trials per reg was ~0 at reg=0.01 (consistent
+    /// with the near-degeneracy argument -- the dense computation is
+    /// already effectively nearest-neighbor at this reg), ~4e-6 at
+    /// reg=1/10, and ~6e-3 at reg=50 (larger reg genuinely spreads mass
+    /// over more candidates, so the bounded-radius search has more to
+    /// miss) -- 1e-2 gives headroom above the observed worst case without
+    /// being so loose it would miss a real regression.
     #[test]
     fn matches_dense_reference_on_random_inputs_reg_sweep() {
         let mut rng = XorShift(0xC0FFEE_u64);
@@ -496,14 +494,13 @@ mod tests {
         assert_eq!(err, "Sinkhorn did not converge in 1 iterations");
     }
 
-    /// Capstone scale validation (plan's verification section): synthetic
-    /// data shaped like the real production report that motivated this
-    /// rewrite -- gparis's ~126,892-row / ~78,918-row (location, 10-min-bin)
-    /// distributions over only 1,808 distinct H3-8 locations, which OOM'd
-    /// the dense path outright (n*m ~= 1e10 cells, ~40GB+). Run on demand
-    /// (`cargo test --release -- --ignored`), not in the default suite,
-    /// matching how `ae1009e`'s large-scale `mean_area_volume` validation
-    /// was kept out of the fast test loop.
+    /// Capstone scale validation: synthetic data shaped like a real
+    /// production-scale workload -- ~126,892-row / ~78,918-row
+    /// (location, 10-min-bin) distributions over only 1,808 distinct H3-8
+    /// locations, which OOM'd the dense path outright (n*m ~= 1e10 cells,
+    /// ~40GB+). Run on demand (`cargo test --release -- --ignored`), not in
+    /// the default suite -- this input size is too slow for the fast test
+    /// loop.
     #[test]
     #[ignore = "capstone scale validation, run with --release -- --ignored"]
     fn handles_real_world_gparis_scale_in_bounded_memory_and_time() {

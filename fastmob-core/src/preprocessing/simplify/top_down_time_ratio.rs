@@ -19,9 +19,6 @@ use crate::utils::haversine::project_local_planar_km;
 /// `epsilon_km` is the spatiotemporal distance tolerance, in kilometres,
 /// between a point and its time-interpolated position on the candidate
 /// replacement segment.
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/mod.rs::simplify_user_slice`
-/// (method = `top_down_time_ratio`).
 pub fn top_down_time_ratio_indices(
     lats: &[f64],
     lngs: &[f64],

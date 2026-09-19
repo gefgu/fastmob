@@ -12,9 +12,6 @@ use crate::utils::haversine::project_local_planar_km;
 /// [`project_local_planar_km`] first, so `epsilon_km` is a genuine
 /// perpendicular-distance tolerance in kilometres rather than a raw
 /// lat/lng-degree tolerance.
-///
-/// @usedBy `fastmob-core/src/preprocessing/simplify/mod.rs::simplify_user_slice`
-/// (method = `douglas_peucker`).
 pub fn douglas_peucker_indices(lats: &[f64], lngs: &[f64], epsilon_km: f64) -> Vec<usize> {
     let coords = project_local_planar_km(lats, lngs);
     let line = LineString::from(coords);

@@ -1,9 +1,5 @@
-//! Jensen-Shannon divergence.
-//!
-//! `jensen_shannon_divergence_impl` is the sole implementation backing
-//! `fastmob.measures.evaluation.jensen_shannon_divergence` (see
-//! `fastmob/measures/evaluation/metrics.py`), exposed to Python via the
-//! `jensen_shannon` PyO3 binding in `fastmob-py/src/measures/evaluation/jsd.rs`.
+//! Jensen-Shannon divergence, a bounded, symmetric measure of how similar
+//! two probability distributions are.
 
 /// Normalise a distribution to sum to 1, treating non-finite entries as zero.
 ///
