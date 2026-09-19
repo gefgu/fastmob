@@ -17,6 +17,7 @@ include = [
     "Cargo.lock",
     "README.md",
     "LICENSE",
+    "LICENSE-APACHE-MOVETK",
     "THIRD_PARTY_NOTICES.md",
 ]
 

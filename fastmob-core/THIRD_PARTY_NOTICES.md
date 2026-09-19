@@ -12,8 +12,7 @@ release review; it must remain in source and binary distributions.
 - Copyright: 2018-2026 MovingPandas developers
 - Affected modules: trajectory smoothing; segmentation; selected trajectory
   simplification and Haversine helpers.
-- Pinned version: `movingpandas==0.22.4` (per
-  `fastmob_benchmarks/movingpandas/requirements.txt`).
+- Pinned version: `movingpandas==0.22.4`.
 
 MovingPandas' BSD-3-Clause notice requires its copyright notice, conditions,
 and disclaimer to be retained in redistributions of derivative source or
@@ -28,8 +27,7 @@ https://github.com/movingpandas/movingpandas/blob/main/LICENSE.txt.
   Sandia, LLC; the U.S. Government retains certain rights under Contract
   DE-NA0003525.
 - Affected module: `src/trajectory/shape_signature.rs`.
-- Pinned version: `tracktable==1.7.3` (per
-  `fastmob_benchmarks/tracktable/requirements.txt`).
+- Pinned version: `tracktable==1.7.3`.
 
 Tracktable's BSD-3-Clause notice must be retained for any derivative code.
 Its license text is available at
@@ -51,16 +49,13 @@ https://github.com/sandialabs/tracktable/blob/main/LICENSE.txt.
 - Affected modules: `src/preprocessing/outliers/greedy.rs`,
   `src/preprocessing/outliers/zheng.rs`.
 - Pinned revision: commit `facd6babd3f6915ccfb92ae405347da48ae5e98d`
-  (`master`, 2023-03-14, `git describe`: `v0.7.0-beta-340-gfacd6ba`) — the
-  checkout at `fastmob_benchmarks/movetk/src-repo`, remote
-  `https://github.com/movetk/movetk.git`.
+  (`master`, 2023-03-14, `git describe`: `v0.7.0-beta-340-gfacd6ba`).
 
 `greedy.rs` and `zheng.rs` are translations of this MoveTK C++ source, so
-Apache-2.0 §4 applies in full: this crate's redistribution must (a) include a
-copy of the Apache License, Version 2.0 itself (not just a link — a
-`LICENSE-APACHE-MOVETK` file, or the full text appended here, needs adding
-before publish), (b) carry a notice that `greedy.rs`/`zheng.rs` are modified
-from the original C++, and (c) retain the copyright/attribution lines above.
+Apache-2.0 §4 applies in full: this crate's redistribution (a) includes a
+copy of the Apache License, Version 2.0 itself, in `LICENSE-APACHE-MOVETK`,
+(b) carries a notice, right here, that `greedy.rs`/`zheng.rs` are modified
+from the original C++, and (c) retains the copyright/attribution lines above.
 
 ## PTRAIL
 
@@ -73,9 +68,7 @@ from the original C++, and (c) retain the copyright/attribution lines above.
   derivation, translated into Rust.
 - Affected modules: `src/preprocessing/outliers/hampel.rs`,
   `src/trajectory/interpolate.rs`.
-- Pinned version: `ptrail==1.0` (per
-  `fastmob_benchmarks/ptrail/requirements.txt`; installed at
-  `fastmob_benchmarks/ptrail/.venv`).
+- Pinned version: `ptrail==1.0`.
 
 PTRAIL's BSD-3-Clause notice requires its copyright notice, conditions, and
 disclaimer to be retained in redistributions of derivative source or binary
@@ -93,9 +86,7 @@ code.
 - Referenced upstream implementation: the package's Cython kernel
   (`hampel.extension.hampel`), translated into Rust.
 - Affected module: `src/preprocessing/outliers/hampel.rs`.
-- Pinned version: `hampel==1.0.2` (per
-  `fastmob_benchmarks/ptrail/requirements.txt`, where PTRAIL pulls it in as
-  a dependency; installed at `fastmob_benchmarks/ptrail/.venv`).
+- Pinned version: `hampel==1.0.2`.
 
 The MIT license requires the above copyright notice and the permission
 notice to be included in all copies or substantial portions of the
@@ -109,9 +100,7 @@ Software.
 - Referenced upstream implementation: `predictors.markov.MarkovChain` and
   `predictors.wrapper.TopLoc`, translated into Rust.
 - Affected module: `src/models/next_location.rs`.
-- Pinned version: `humobi==0.1.17` (per
-  `fastmob_benchmarks/humobi/requirements.txt`; installed at
-  `fastmob_benchmarks/humobi/.venv`).
+- Pinned version: `humobi==0.1.17`.
 
 HuMobi's BSD-3-Clause notice requires its copyright notice, conditions, and
 disclaimer to be retained in redistributions of derivative source or binary
@@ -122,14 +111,9 @@ code.
 Provenance is now confirmed for every `ported from`/`adapted from`/`ported to
 match` statement under `src/`: all five sources above (MovingPandas,
 Tracktable, MoveTK, PTRAIL, `hampel`, HuMobi) were translated from upstream
-source rather than independently reimplemented, and each entry above records
-the exact upstream revision (a pinned git commit for MoveTK, pinned package
-versions for the rest) per the checkouts/installs in `fastmob_benchmarks`.
-Remaining pre-publish checklist items:
-
-- Add a full copy of the Apache License, Version 2.0 to this crate's
-  distributed contents for the MoveTK entry — the only non-BSD/MIT license
-  here, and the only one requiring the license text itself to be included
-  rather than just its notice/disclaimer retained.
-- If any further `ported from`/`adapted from` statement is added to `src/`
-  later, add a matching entry here before the next release.
+source rather than independently reimplemented, each entry above records the
+exact upstream revision (a pinned git commit for MoveTK, pinned package
+versions for the rest), and the MoveTK entry's Apache-2.0 text is included
+in full at `LICENSE-APACHE-MOVETK`. If any further `ported from`/`adapted
+from` statement is added to `src/` later, add a matching entry here before
+the next release.
