@@ -51,8 +51,10 @@ Issues = "https://github.com/gefgu/fastmob/issues"
 # dedicated benchmark environments below; they are intentionally not published
 # as installable package extras.
 geo = ["geopandas", "shapely", "pyproj"]
-# `vis` is the separate ECharts/Leaflet visualization package.
-vis = ["fastmob-vis"]
+# `vis` is the separately distributed ECharts/Leaflet visualization package.
+# Keep the minor line bounded: ``fastmob.vis`` is Fastmob's stable public
+# facade, while ``fastmob-vis`` owns the optional implementation and assets.
+vis = ["fastmob-vis>=0.1,<0.2"]
 
 [dependency-groups]
 dev = [

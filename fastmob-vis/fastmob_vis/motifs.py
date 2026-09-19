@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import base64
 import importlib.resources
-from functools import lru_cache
-from typing import Any, Sequence
+from collections.abc import Sequence
+from functools import cache
+from typing import Any
 
 from .brand import FONT_MONO, FONT_SANS
 from .common import base_option, norm_width, resolve_palette
@@ -59,7 +60,7 @@ LITERATURE_MOTIF_ID_TO_ORDINAL = {
 }
 
 
-@lru_cache(maxsize=None)
+@cache
 def _motif_svg_data_uri(motif_id: int) -> str:
     filename = f"{format_motif_hex_id(motif_id)}.svg"
     with importlib.resources.open_binary("fastmob_vis.assets.motifs", filename) as resource:

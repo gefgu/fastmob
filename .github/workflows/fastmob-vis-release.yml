@@ -1,0 +1,206 @@
+name: fastmob-vis release
+
+on:
+  pull_request:
+    paths:
+      - "fastmob-vis/**"
+      - "fastmob/vis.py"
+      - "fastmob-py/Cargo.toml"
+      - "pyproject.toml"
+      - "Cargo.lock"
+      - "tests/correctness/test_visualization_facade.py"
+      - ".github/workflows/fastmob-vis-release.yml"
+  push:
+    branches:
+      - main
+    tags:
+      - "fastmob-vis-v*.*.*"
+    paths:
+      - "fastmob-vis/**"
+      - "fastmob/vis.py"
+      - "fastmob-py/Cargo.toml"
+      - "pyproject.toml"
+      - "Cargo.lock"
+      - "tests/correctness/test_visualization_facade.py"
+      - ".github/workflows/fastmob-vis-release.yml"
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Which wheel platform(s) to build"
+        type: choice
+        default: all
+        options: [all, linux, musllinux, macos, windows, sdist]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  test:
+    name: Test fastmob-vis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install and build extensions
+        run: |
+          uv sync --project fastmob-vis --extra dev
+          uv run --project fastmob-vis --extra dev maturin develop --manifest-path fastmob-py/Cargo.toml
+          uv run --project fastmob-vis --extra dev maturin develop --manifest-path fastmob-vis/Cargo.toml
+      - name: Ruff
+        run: uv run --project fastmob-vis --extra dev ruff check
+      - name: Python tests
+        run: uv run --project fastmob-vis --extra dev pytest fastmob-vis/tests
+      - name: Rust tests
+        run: cargo test -p fastmob-vis --locked
+
+  linux-wheels:
+    name: Linux wheels (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/fastmob-vis-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'linux'))
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --manifest-path fastmob-vis/Cargo.toml --release --out dist --find-interpreter --strip
+          manylinux: auto
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastmob-vis-wheels-linux-${{ matrix.target }}
+          path: dist/*.whl
+
+  musllinux-wheels:
+    name: musllinux wheels (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/fastmob-vis-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'musllinux'))
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --manifest-path fastmob-vis/Cargo.toml --release --out dist --find-interpreter --strip
+          manylinux: musllinux_1_2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastmob-vis-wheels-musllinux-${{ matrix.target }}
+          path: dist/*.whl
+
+  macos-wheels:
+    name: macOS wheels (aarch64)
+    runs-on: macos-14
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/fastmob-vis-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos'))
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: aarch64
+          args: --manifest-path fastmob-vis/Cargo.toml --release --out dist --find-interpreter --strip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastmob-vis-wheels-macos-aarch64
+          path: dist/*.whl
+
+  macos-x86_64-wheels:
+    name: macOS wheels (x86_64, optional)
+    runs-on: macos-13
+    needs: test
+    continue-on-error: true
+    if: startsWith(github.ref, 'refs/tags/fastmob-vis-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos'))
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: x86_64
+          args: --manifest-path fastmob-vis/Cargo.toml --release --out dist --find-interpreter --strip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastmob-vis-wheels-macos-x86_64
+          path: dist/*.whl
+
+  windows-wheels:
+    name: Windows wheels (x64)
+    runs-on: windows-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/fastmob-vis-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'windows'))
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: x64
+          args: --manifest-path fastmob-vis/Cargo.toml --release --out dist --find-interpreter --strip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastmob-vis-wheels-windows-x64
+          path: dist/*.whl
+
+  sdist:
+    name: Source distribution
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/fastmob-vis-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'sdist'))
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Build sdist
+        run: uv run --with maturin maturin sdist --manifest-path fastmob-vis/Cargo.toml --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastmob-vis-wheels-sdist
+          path: dist/*.tar.gz
+
+  release:
+    name: Release fastmob-vis
+    runs-on: ubuntu-latest
+    environment: pypi
+    needs: [test, linux-wheels, musllinux-wheels, macos-wheels, windows-wheels, sdist]
+    if: startsWith(github.ref, 'refs/tags/fastmob-vis-v')
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release tag matches package version
+        run: |
+          version=$(awk -F '"' '/^version = / { print $2; exit }' fastmob-vis/pyproject.toml)
+          test "${GITHUB_REF_NAME}" = "fastmob-vis-v${version}"
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Show release files
+        run: ls -lh dist
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/*"
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

@@ -15,7 +15,7 @@ authors = [
 dependencies = [
     "narwhals>=1.0",
     "numpy>=1.23",
-    "fastmob",
+    "fastmob>=0.3.1,<0.4",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -42,6 +42,11 @@ dev = [
 [tool.maturin]
 module-name = "fastmob_vis._core"
 python-source = "."
+
+[tool.uv.sources]
+# Develop against the workspace's Fastmob checkout; released wheels resolve
+# the bounded requirement above from PyPI instead.
+fastmob = { path = "..", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

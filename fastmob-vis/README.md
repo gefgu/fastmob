@@ -29,7 +29,7 @@ env -u CONDA_PREFIX uv run maturin develop
 
 ## Example
 
-Directly:
+Through Fastmob's stable public facade:
 
 ```python
 import pyarrow as pa
@@ -64,6 +64,15 @@ functions are not provided.
 uv run pytest
 uv run ruff check
 ```
+
+## Release
+
+Configure a PyPI trusted publisher for the `fastmob-vis` project that permits
+the repository's `fastmob-vis release` workflow in the `pypi` environment.
+Publish a compatible Fastmob release first (the initial release sequence is
+`fastmob-v0.3.2`, then `fastmob-vis-v0.1.0`). After CI passes, create a tag
+matching the package version; the workflow builds, attests, releases, and
+publishes only the visualization artifacts.
 
 ## License
 

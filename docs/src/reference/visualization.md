@@ -1,8 +1,9 @@
 # Visualization
 
-Install the optional visualisation package with `pip install fastmob[vis]`.
-Its documented entry point is `fastmob.vis`; the wheel is named `fastmob-vis`
-and its direct Python import is `fastmob_vis`.
+Install the optional visualisation package with `pip install "fastmob[vis]"`.
+Its stable public entry point is `fastmob.vis`; the wheel is named
+`fastmob-vis`. Direct `fastmob_vis` imports remain supported for compatibility,
+but new applications should import from `fastmob.vis`.
 
 `fastmob.vis` accepts any Narwhals-compatible eager dataframe. Chart constructors
 use explicit field mappings, so one API works for pandas and Polars results.
@@ -63,3 +64,11 @@ embedding several charts in one document.
 
 The former Folium/Matplotlib plotting API was removed in the `fastmob-vis`
 transition. Use the generic ECharts charts or a dedicated GIS renderer instead.
+
+## Motif reference data
+
+The literature motif constants are also available through the Fastmob facade:
+
+```python
+from fastmob.vis import LITERATURE_MOTIF_PERCENTAGES, LITERATURE_TO_FASTMOB_MOTIF_ID
+```

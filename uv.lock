@@ -1140,7 +1140,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastmob" },
+    { name = "fastmob", editable = "." },
     { name = "maturin", marker = "extra == 'dev'", specifier = ">=1.13,<2.0" },
     { name = "narwhals", specifier = ">=1.0" },
     { name = "numpy", specifier = ">=1.23" },

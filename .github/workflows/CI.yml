@@ -6,7 +6,7 @@ on:
     branches:
       - main
     tags:
-      - "v*.*.*"
+      - "fastmob-v*.*.*"
   workflow_dispatch:
     inputs:
       platform:
@@ -69,7 +69,7 @@ jobs:
     name: Linux wheels (${{ matrix.target }})
     runs-on: ubuntu-latest
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'linux'))
+    if: startsWith(github.ref, 'refs/tags/fastmob-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'linux'))
     strategy:
       fail-fast: false
       matrix:
@@ -97,7 +97,7 @@ jobs:
     name: musllinux wheels (${{ matrix.target }})
     runs-on: ubuntu-latest
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'musllinux'))
+    if: startsWith(github.ref, 'refs/tags/fastmob-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'musllinux'))
     strategy:
       fail-fast: false
       matrix:
@@ -125,7 +125,7 @@ jobs:
     name: macOS wheels (aarch64)
     runs-on: macos-14
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos'))
+    if: startsWith(github.ref, 'refs/tags/fastmob-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos'))
     steps:
       - uses: actions/checkout@v4
 
@@ -146,7 +146,7 @@ jobs:
     name: macOS wheels (x86_64, optional)
     runs-on: macos-13
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos'))
+    if: startsWith(github.ref, 'refs/tags/fastmob-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'macos'))
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -170,7 +170,7 @@ jobs:
     name: Windows wheels (${{ matrix.target }})
     runs-on: windows-latest
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'windows'))
+    if: startsWith(github.ref, 'refs/tags/fastmob-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'windows'))
     strategy:
       fail-fast: false
       matrix:
@@ -196,7 +196,7 @@ jobs:
     name: Source distribution
     runs-on: ubuntu-latest
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'sdist'))
+    if: startsWith(github.ref, 'refs/tags/fastmob-v') || (github.event_name == 'workflow_dispatch' && (inputs.platform == 'all' || inputs.platform == 'sdist'))
     steps:
       - uses: actions/checkout@v4
 
@@ -225,7 +225,7 @@ jobs:
       - macos-wheels
       - windows-wheels
       - sdist
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/fastmob-v')
     permissions:
       contents: write
       id-token: write
@@ -235,6 +235,11 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+
+      - name: Verify release tag matches package version
+        run: |
+          version=$(awk -F '"' '/^version = / { print $2; exit }' fastmob-py/Cargo.toml)
+          test "${GITHUB_REF_NAME}" = "fastmob-v${version}"
 
       - name: Show release files
         run: ls -lh dist
