@@ -22,21 +22,22 @@ from typing import Any, Callable
 
 import narwhals as nw
 import numpy as np
+import psutil
 import pyarrow as pa
 import pyarrow.compute as pc
-import psutil
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from benchmarks.benchmark_env import detect_cpu_info
 from fastmob import FlowDataFrame
 from fastmob._core import common_part_of_commuters as rust_cpc
 from fastmob.measures.collective.od import od_matrix
 from fastmob.measures.evaluation import common_part_of_commuters
 from fastmob.preprocessing import trajectory_to_od, trajectory_to_trips
 from fastmob.utils._common import _as_arrow, _joint_factorize_arrow_values
+
+from benchmarks.benchmark_env import detect_cpu_info
 
 DEFAULT_DATA_PATH = REPO_ROOT.parent / "fastmob_benchmarks" / "data" / "raw" / "yjmob_wgs84_simple.parquet"
 DEFAULT_SIZES = (1_000_000, 10_000_000)

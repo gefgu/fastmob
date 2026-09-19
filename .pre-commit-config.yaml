@@ -1,10 +1,10 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+    rev: v0.16.1
     hooks:
       - id: ruff-check
         args: [--fix]
-        files: ^(fastmob|scripts|tests)/.*\.py$
+        files: ^(benchmarks|docs|fastmob|fastmob-vis|scripts|tests)/.*\.(py|ipynb)$
   - repo: local
     hooks:
       - id: cargo-clippy

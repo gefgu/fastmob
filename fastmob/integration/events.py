@@ -12,10 +12,9 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-
-from fastmob.core.base import unwrap_native
 import numpy as np
 
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     DATETIME_CANDIDATES,
     LAT_CANDIDATES,

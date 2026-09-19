@@ -30,6 +30,7 @@ def nearest_candidate(
         is its exact Haversine distance, ``inf`` in that same case.
     """
     import pyarrow as pa
+
     from fastmob._core import nearest_nodes_arrow
 
     n = len(query_lat)

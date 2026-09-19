@@ -7,12 +7,14 @@ not run RECAST or infer social relationship classes.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 
 from fastmob.measures.evaluation.metrics import wasserstein_distance
+
 from .recast import RecastTemporalGraph, temporal_graph_from_staypoints
 
 

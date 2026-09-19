@@ -4,8 +4,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import jump_lengths_indexed, jump_lengths_presorted
+from fastmob.core.base import unwrap_native
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,

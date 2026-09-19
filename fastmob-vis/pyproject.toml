@@ -36,7 +36,7 @@ Issues = "https://github.com/gefgu/fastmob/issues"
 dev = [
     "maturin>=1.13,<2.0",
     "pytest",
-    "ruff",
+    "ruff>=0.16.1",
 ]
 
 [tool.maturin]

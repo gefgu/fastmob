@@ -1,7 +1,6 @@
 """Tests for the presortedness cost benchmark helpers."""
 
 import pandas as pd
-
 from benchmarks.individual.presortedness_benchmark import (
     check_users_and_timestamps_sorted,
     check_users_and_timestamps_sorted_rust,

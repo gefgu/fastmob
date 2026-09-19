@@ -29,8 +29,8 @@ COLUMNS = ["user", "check-in_time", "latitude", "longitude", "location id"]
 
 
 def load_brightkite_arrow(path: Path) -> Any:
-    import pyarrow.csv as csv
     import pyarrow as pa
+    from pyarrow import csv
 
     return csv.read_csv(
         path,

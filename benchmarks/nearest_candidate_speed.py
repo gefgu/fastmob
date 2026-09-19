@@ -16,7 +16,6 @@ import time
 import tracemalloc
 
 import numpy as np
-
 from fastmob._core import haversine_m_batch
 from fastmob.network._nearest import nearest_candidate
 

@@ -5,10 +5,10 @@ from typing import Any
 import narwhals as nw
 import pyarrow as pa
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import h3_to_latlng_arrow as _h3_to_latlng_arrow
 from fastmob._core import latlng_to_h3_arrow as _latlng_to_h3_arrow
 from fastmob._core import latlng_to_h3_numpy as _latlng_to_h3_numpy
+from fastmob.core.base import unwrap_native
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import LAT_CANDIDATES, LNG_CANDIDATES, _as_arrow, _pick_existing_column
 

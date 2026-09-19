@@ -51,7 +51,7 @@ def bbox_from_name(query: str, which_osm_result: int = 0, crs=None):
     geometry = _require_shapely_geometry()
     query_string = urlencode({"q": query, "polygon_geojson": 1, "format": "json"})
     nominatim_url = f"https://nominatim.openstreetmap.org/search.php?{query_string}"
-    with urlopen(nominatim_url, timeout=30) as response:  # noqa: S310 - fixed public Nominatim endpoint
+    with urlopen(nominatim_url, timeout=30) as response:
         data = json.load(response)
 
     features = []

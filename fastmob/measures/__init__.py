@@ -132,6 +132,6 @@ __all__ = [
     "visits_per_location",
     "visits_per_time_unit",
     "waiting_times",
-    "work_location",
     "wasserstein_distance",
+    "work_location",
 ]

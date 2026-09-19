@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pyarrow as pa
-
 from fastmob.network import RoadNetwork, match_trajectory
 
 

@@ -4,14 +4,13 @@ import warnings
 from typing import Any
 
 import narwhals as nw
-
-from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob._core import (
     radius_of_gyration_indexed,
     radius_of_gyration_presorted,
 )
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     _as_arrow,
     _build_user_ranges_auto,

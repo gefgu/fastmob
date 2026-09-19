@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-
 from fastmob import TrajDataFrame
 from fastmob.measures.individual import work_location
 

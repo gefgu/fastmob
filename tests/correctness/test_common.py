@@ -74,7 +74,6 @@ class TestTimestampExtraction:
     )
     def test_extract_timestamps_normalizes_non_datetime_pandas_columns(self, values):
         import narwhals as nw
-
         from fastmob.utils._common import _extract_timestamp_arrow, _extract_timestamps
 
         df = nw.from_native(pd.DataFrame({"datetime": values}), eager_only=True)

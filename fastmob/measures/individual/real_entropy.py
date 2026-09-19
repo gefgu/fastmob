@@ -5,20 +5,19 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-
-from fastmob.core.base import unwrap_native
 import pyarrow.compute as pc
 
 from fastmob._core import real_entropy_users as _real_entropy_users_rust
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
+    LOCATION_CANDIDATES,
+    TIMESTAMP_CANDIDATES,
+    USER_ID_CANDIDATES,
     _build_indexed_user_ranges,
     _extract_timestamp_arrow,
     _factorize_arrow_values,
     _pick_existing_column,
     _with_datetime_column,
-    LOCATION_CANDIDATES,
-    TIMESTAMP_CANDIDATES,
-    USER_ID_CANDIDATES,
 )
 
 

@@ -57,6 +57,8 @@ jobs:
           uv run --project fastmob-vis --extra dev maturin develop --manifest-path fastmob-py/Cargo.toml
           uv run --project fastmob-vis --extra dev maturin develop --manifest-path fastmob-vis/Cargo.toml
       - name: Ruff
+        # Keep release and main CI equally strict: releases may only proceed
+        # when the complete repository passes the pinned Ruff version.
         run: uv run --project fastmob-vis --extra dev ruff check
       - name: Python tests
         run: uv run --project fastmob-vis --extra dev pytest fastmob-vis/tests

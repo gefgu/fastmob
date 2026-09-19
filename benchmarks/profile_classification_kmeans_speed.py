@@ -17,7 +17,6 @@ import tracemalloc
 
 import numpy as np
 import pyarrow as pa
-
 from fastmob._core import cluster_standardized_kmeans_arrow
 
 

@@ -11,7 +11,6 @@ from urllib.parse import quote
 
 import nbformat
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs" / "src"
 BINDER_MARKER = "<!-- Launch this notebook in Binder. -->"

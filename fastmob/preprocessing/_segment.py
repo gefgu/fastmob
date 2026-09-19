@@ -4,14 +4,13 @@ import math
 from typing import Any, Callable
 
 import narwhals as nw
-
-from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob._core import (
     SegmentConfig,
     segment_trajectory_indexed,
 )
+from fastmob.core.base import unwrap_native
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,

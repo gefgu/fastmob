@@ -4,12 +4,12 @@ from typing import Any, Callable
 
 import narwhals as nw
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import (
     InterpolationConfig,
     interpolate_trajectory_indexed,
     interpolate_trajectory_presorted,
 )
+from fastmob.core.base import unwrap_native
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,

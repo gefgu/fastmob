@@ -11,11 +11,10 @@ from concurrent.futures import ThreadPoolExecutor
 from math import cos, exp, inf, pi, sqrt
 
 import narwhals as nw
-
-from fastmob.core.base import unwrap_native
 import pyarrow as pa
 
-from fastmob.utils._common import _detect_trajectory_columns, _pick_existing_column, UID_CANDIDATES
+from fastmob.core.base import unwrap_native
+from fastmob.utils._common import UID_CANDIDATES, _detect_trajectory_columns, _pick_existing_column
 
 
 def _seconds(value) -> float | None:

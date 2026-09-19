@@ -4,8 +4,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import location_frequency_presorted, location_frequency_values_indexed
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     _as_arrow,
     _build_user_ranges_auto,

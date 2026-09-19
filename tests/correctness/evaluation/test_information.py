@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 from fastmob.measures.evaluation.information import information_gain, kullback_leibler_divergence
 
-
 # ---------------------------------------------------------------------------
 # information_gain
 # ---------------------------------------------------------------------------

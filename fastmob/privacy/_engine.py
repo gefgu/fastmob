@@ -6,8 +6,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import privacy_assess_risk
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     _build_user_ranges_auto,
     _detect_trajectory_columns,

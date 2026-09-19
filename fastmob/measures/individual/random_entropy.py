@@ -5,8 +5,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import number_of_locations_indexed
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     _as_arrow,
     _build_indexed_user_ranges,

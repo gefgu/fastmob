@@ -4,8 +4,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import recency_rank_presorted, recency_rank_values_indexed
+from fastmob.core.base import unwrap_native
 from fastmob.core.dispatch import TrajectoryDispatcher
 from fastmob.utils._common import (
     _as_arrow,

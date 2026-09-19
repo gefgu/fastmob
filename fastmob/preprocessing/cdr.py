@@ -4,13 +4,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 import narwhals as nw
-
-from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob._core import cdr_approx_travel_minutes as _cdr_approx_travel_minutes
 from fastmob._core import cdr_trip_indices as _cdr_trip_indices
 from fastmob._core import cdr_visitation_stays as _cdr_visitation_stays
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import _ROW_ORDER_COL, _build_presorted_user_ends
 
 _VISITATION_COLUMNS = [

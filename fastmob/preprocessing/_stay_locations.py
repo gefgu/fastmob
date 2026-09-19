@@ -13,10 +13,10 @@ from fastmob.utils._common import (
     _build_user_ranges_auto,
     _detect_trajectory_columns,
     _extract_timestamps,
-    _with_datetime_column,
     _take_uid_values,
     _timestamps_ms_to_datetime_ns,
     _to_native,
+    _with_datetime_column,
 )
 
 

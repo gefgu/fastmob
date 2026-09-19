@@ -6,8 +6,8 @@ from typing import Any
 
 import narwhals as nw
 
-from fastmob.core.base import unwrap_native
 from fastmob._core import h3_cluster_labels_arrow as _h3_cluster_labels
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     _as_arrow,
     _build_presorted_user_ends,

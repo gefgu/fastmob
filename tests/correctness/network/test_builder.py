@@ -32,7 +32,7 @@ _OVERTURE_RELEASE = "2026-05-20.0"
 def _fetch_or_skip(fetch, *args):
     try:
         return fetch(*args)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         if "No files found" in str(exc):
             pytest.skip(f"Overture release {_OVERTURE_RELEASE} is unavailable: {exc}")
         raise

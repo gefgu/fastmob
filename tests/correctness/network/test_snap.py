@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-
 from fastmob.network import snap_locations_to_graph
 
 _NODES = pd.DataFrame({"node_idx": [0, 1, 2], "lat": [0.0, 1.0, 2.0], "lng": [0.0, 0.0, 0.0]})

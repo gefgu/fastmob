@@ -10,11 +10,11 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import resource
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -29,8 +29,7 @@ def worker(args):
     import polars as pl
     from fastmob.core import Locations, Staypoints
     from fastmob.preprocessing import latlng_to_h3
-    from fastmob.social import recast_from_staypoints
-    import fastmob.social.recast as recast
+    from fastmob.social import recast, recast_from_staypoints
 
     stages = {}
     started = last = time.perf_counter()
@@ -74,10 +73,18 @@ def worker(args):
     for name in ("source_users", "target_users", "edge_persistence", "topological_overlap", "classes"):
         array = getattr(result, name)
         digests[name] = hashlib.sha256(array.to_numpy(zero_copy_only=False).tobytes()).hexdigest()
-    return dict(rows=rows, users=users, days=result.time_steps, edges=len(result.classes),
-                seconds=elapsed, stages=stages, peak_rss_kib=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
-                persistence_threshold=result.persistence_threshold, overlap_threshold=result.overlap_threshold,
-                digests=digests)
+    return {
+        "rows": rows,
+        "users": users,
+        "days": result.time_steps,
+        "edges": len(result.classes),
+        "seconds": elapsed,
+        "stages": stages,
+        "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        "persistence_threshold": result.persistence_threshold,
+        "overlap_threshold": result.overlap_threshold,
+        "digests": digests,
+    }
 
 
 def main():
@@ -104,8 +111,14 @@ def main():
             if args.extension:
                 command += ["--extension", str(args.extension.resolve())]
             try:
-                completed = subprocess.run(command, capture_output=True, text=True, timeout=args.timeout,
-                                           env={**os.environ, "FASTMOB_RECAST_PROFILE": "1"})
+                completed = subprocess.run(
+                    command,
+                    capture_output=True,
+                    check=False,
+                    text=True,
+                    timeout=args.timeout,
+                    env={**os.environ, "FASTMOB_RECAST_PROFILE": "1"},
+                )
                 result = json.loads(completed.stdout) if completed.returncode == 0 else {"error": completed.stderr}
                 result["profile"] = completed.stderr.splitlines()
             except subprocess.TimeoutExpired as error:
@@ -115,9 +128,21 @@ def main():
             print(json.dumps(result), flush=True)
             if args.output:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
-                args.output.write_text(json.dumps(dict(results=results, extension=str(args.extension),
-                    data_path=str(args.data_path), replicas=args.replicas, cpu_count=os.cpu_count(),
-                    threads={k: os.environ.get(k) for k in ("RAYON_NUM_THREADS", "POLARS_MAX_THREADS")}), indent=2))
+                args.output.write_text(
+                    json.dumps(
+                        {
+                            "results": results,
+                            "extension": str(args.extension),
+                            "data_path": str(args.data_path),
+                            "replicas": args.replicas,
+                            "cpu_count": os.cpu_count(),
+                            "threads": {
+                                key: os.environ.get(key) for key in ("RAYON_NUM_THREADS", "POLARS_MAX_THREADS")
+                            },
+                        },
+                        indent=2,
+                    )
+                )
 
 
 if __name__ == "__main__":

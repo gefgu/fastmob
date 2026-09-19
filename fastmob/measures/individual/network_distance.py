@@ -14,11 +14,10 @@ from __future__ import annotations
 from typing import Any
 
 import narwhals as nw
-
-from fastmob.core.base import unwrap_native
 import numpy as np
 
 from fastmob._core import haversine_m_batch
+from fastmob.core.base import unwrap_native
 from fastmob.utils._common import (
     LAT_CANDIDATES,
     LNG_CANDIDATES,

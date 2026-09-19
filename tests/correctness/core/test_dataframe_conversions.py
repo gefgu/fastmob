@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-
 from fastmob import Locations, Positionfixes, Staypoints, Tours, TrajDataFrame, Triplegs, Trips
 
 
