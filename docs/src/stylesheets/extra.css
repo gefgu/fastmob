@@ -515,3 +515,55 @@
   max-width: 100%;
   height: auto;
 }
+
+/* Below the width where the TOC column fits, the collapsed TOC button floats over text; hide it. */
+@media screen and (max-width: 76.1875em) {
+  .md-sidebar--secondary {
+    display: none;
+  }
+}
+
+/* Inline code in table cells and cards keeps identifiers whole. */
+.md-typeset table:not([class]) td code,
+.feature-card code {
+  white-space: nowrap;
+}
+
+.md-typeset ul li,
+.md-typeset ol li {
+  margin-bottom: 0.25em;
+}
+
+/* Printed output blocks: no copy button, lighter box. */
+.md-typeset .language-text .md-clipboard {
+  display: none;
+}
+
+.md-typeset .language-text {
+  margin-top: -0.4rem;
+}
+
+.md-typeset .language-text pre > code {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+.md-footer__link {
+  min-width: 0;
+}
+
+@media screen and (max-width: 600px) {
+  .hero-lead {
+    font-size: 0.95rem;
+  }
+
+  .hero-actions .hero-button {
+    flex: 1 1 auto;
+    padding: 0.5rem 0.8rem;
+    text-align: center;
+  }
+}
+
+.figure--square {
+  max-width: 560px;
+}

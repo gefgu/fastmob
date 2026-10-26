@@ -1,17 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 230" role="img" aria-labelledby="t d" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 290" role="img" aria-labelledby="t d" font-family="Inter, system-ui, sans-serif">
   <title id="t">fastmob mobility hierarchy</title>
   <desc id="d">Positionfixes produce Staypoints and Triplegs. Triplegs and Staypoints combine into Trips, then Tours. Staypoints also cluster into Locations, which tours return to.</desc>
   <style>
     .box { fill: rgba(250,255,105,0.28); stroke: #b8a600; stroke-width: 1.6; }
     .name { fill: #5c4a00; font-size: 15px; font-weight: 700; text-anchor: middle; }
-    .sub { fill: #6a5a1a; font-size: 11.5px; text-anchor: middle; }
-    .cap { fill: #7a7a7a; font-size: 12px; text-anchor: middle; }
+    .sub { fill: #6a5a1a; font-size: 12px; text-anchor: middle; }
+    .cap { fill: #6b6b6b; font-size: 12px; text-anchor: middle; }
     .arrow { stroke: #8a8a8a; stroke-width: 1.8; fill: none; marker-end: url(#a); }
     .dash { stroke: #8a8a8a; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; marker-end: url(#a); }
     @media (prefers-color-scheme: dark) {
       .box { fill: rgba(250,255,105,0.08); stroke: #faff69; }
       .name { fill: #faff69; }
       .sub { fill: #cfcf8a; }
+      .cap { fill: #aaa; }
     }
   </style>
   <defs>
@@ -19,24 +20,24 @@
       <path d="M0 0L10 5L0 10z" fill="#8a8a8a"/>
     </marker>
   </defs>
-  <rect class="box" x="8" y="45" width="150" height="64" rx="10"/>
+  <rect class="box" x="8" y="130" width="150" height="64" rx="10"/>
   <rect class="box" x="208" y="10" width="150" height="64" rx="10"/>
-  <rect class="box" x="208" y="80" width="150" height="64" rx="10"/>
-  <rect class="box" x="418" y="45" width="130" height="64" rx="10"/>
-  <rect class="box" x="598" y="45" width="130" height="64" rx="10"/>
-  <rect class="box" x="418" y="150" width="130" height="64" rx="10"/>
-  <text class="name" x="83" y="74">Positionfixes</text><text class="sub" x="83" y="93">raw GPS / check-ins</text>
-  <text class="name" x="283" y="39">Staypoints</text><text class="sub" x="283" y="58">where you stopped</text>
-  <text class="name" x="283" y="109">Triplegs</text><text class="sub" x="283" y="128">movement between</text>
-  <text class="name" x="483" y="74">Trips</text><text class="sub" x="483" y="93">stop to stop</text>
-  <text class="name" x="663" y="74">Tours</text><text class="sub" x="663" y="93">trips back to a place</text>
-  <text class="name" x="483" y="179">Locations</text><text class="sub" x="483" y="198">recurring places</text>
-  <path class="arrow" d="M158 70 L206 45"/>
-  <path class="arrow" d="M158 84 L206 109"/>
-  <path class="arrow" d="M358 45 L416 70"/>
-  <path class="arrow" d="M358 109 L416 84"/>
-  <path class="arrow" d="M548 77 L596 77"/>
-  <path class="arrow" d="M358 58 C 390 150, 390 182, 416 182"/>
-  <path class="dash" d="M548 182 C 640 182, 663 150, 663 111"/>
-  <text class="cap" x="760" y="190">tours return to a Location</text>
+  <rect class="box" x="208" y="100" width="150" height="64" rx="10"/>
+  <rect class="box" x="208" y="190" width="150" height="64" rx="10"/>
+  <rect class="box" x="418" y="130" width="130" height="64" rx="10"/>
+  <rect class="box" x="598" y="130" width="130" height="64" rx="10"/>
+  <text class="name" x="83" y="159">Positionfixes</text><text class="sub" x="83" y="178">raw GPS / check-ins</text>
+  <text class="name" x="283" y="39">Locations</text><text class="sub" x="283" y="58">recurring places</text>
+  <text class="name" x="283" y="129">Staypoints</text><text class="sub" x="283" y="148">where you stopped</text>
+  <text class="name" x="283" y="219">Triplegs</text><text class="sub" x="283" y="238">movement between</text>
+  <text class="name" x="483" y="159">Trips</text><text class="sub" x="483" y="178">stop to stop</text>
+  <text class="name" x="663" y="159">Tours</text><text class="sub" x="663" y="178">trips back to a place</text>
+  <path class="arrow" d="M158 150 L206 132"/>
+  <path class="arrow" d="M158 174 L206 222"/>
+  <path class="arrow" d="M283 100 L283 76"/>
+  <path class="arrow" d="M358 132 L416 156"/>
+  <path class="arrow" d="M358 222 L416 168"/>
+  <path class="arrow" d="M548 162 L596 162"/>
+  <path class="dash" d="M358 42 L663 42 L663 128"/>
+  <text class="cap" x="510" y="34">tours return to a Location</text>
 </svg>

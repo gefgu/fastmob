@@ -23,7 +23,7 @@ BENCH = {
     "max distance from home": (182.82, 0.151, 1208.46),
 }
 
-GOLD, GREY, TEXT = "#c9a400", "#8a8a8a", "#8a8a8a"
+GOLD, GREY, TEXT = "#a98600", "#8a8a8a", "#777777"
 
 fig, ax = plt.subplots(figsize=(8, 4.2), dpi=200)
 names = list(BENCH)[::-1]
@@ -57,7 +57,7 @@ fig.savefig(OUT / "home-benchmark-speedup.png", transparent=True)
 
 
 # Portrait variant for phones: speedup factors only, large type.
-fig, ax = plt.subplots(figsize=(4.2, 4.6), dpi=200)
+fig, ax = plt.subplots(figsize=(4.0, 4.6), dpi=200)
 items = sorted(BENCH.items(), key=lambda kv: kv[1][2])
 for i, (name, (sk, fm, speedup)) in enumerate(items):
     ax.barh(i, speedup, height=0.55, color=GOLD)
@@ -67,7 +67,7 @@ ax.set_xscale("log")
 ax.set_xlim(100, 6000)
 ax.set_yticks(range(len(items)), [n for n, _ in items], fontsize=12, color=TEXT)
 ax.set_xticks([100, 1000], ["100x", "1000x"], fontsize=11, color=TEXT)
-ax.set_title("speedup vs scikit-mobility\n(4M check-ins)", fontsize=12, color=TEXT)
+ax.set_title("speedup vs scikit-mobility\n(4M check-ins)", fontsize=11, color=TEXT, loc="center", pad=10)
 for sp in ("top", "right", "left"):
     ax.spines[sp].set_visible(False)
 ax.spines["bottom"].set_color(TEXT)

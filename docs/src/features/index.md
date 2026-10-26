@@ -41,8 +41,11 @@ import fastmob as m
 
 ## Speed at a glance
 
-<div class="figure-scroll">
+<div class="figure">
+<picture>
+<source media="(max-width: 600px)" srcset="../assets/images/home/home-benchmark-speedup-mobile.png">
 <img src="../assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and fastmob execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.">
+</picture>
 </div>
 
 Average of 5 runs on 4 million Brightkite check-ins, pandas backend. Hardware

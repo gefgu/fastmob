@@ -90,6 +90,11 @@ method call.
 
 ## What you can do
 
+<div class="figure figure--square">
+<img src="assets/images/home/home-geolife-staypoints-triplegs.png" alt="One GeoLife user-day: grey position fixes, coloured triplegs between stops, and gold circles at detected staypoints.">
+</div>
+<p class="figure-caption">One day of a GeoLife user in Beijing: fastmob turns raw fixes into staypoints and triplegs.</p>
+
 <div class="feature-grid">
 <a class="feature-card" href="learn/clean-and-segment/">
 <h3>Clean and segment</h3>

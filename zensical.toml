@@ -67,9 +67,7 @@ nav = [
     { "About fastmob" = "about/index.md" },
     { "Resources" = "resource/index.md" },
     { "Development setup" = "about/development.md" },
-    { "Release Notes" = [
-      { "All releases" = "release_notes/index.md" },
-    ] },
+    { "Release Notes" = "release_notes/index.md" },
   ] },
 ]
 
