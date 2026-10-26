@@ -8,35 +8,35 @@ dataframe you already use.
 <h3>Familiar API →</h3>
 <p>Measure names and signatures follow scikit-mobility, so existing code ports with an import change.</p>
 </a>
-<a class="feature-card" href="benchmarks/">
-<h3>Fast →</h3>
+<div class="feature-card">
+<h3>Fast</h3>
 <p>Median 426x faster than scikit-mobility across 16 individual measures on 4M Brightkite rows.</p>
-</a>
+</div>
 <a class="feature-card" href="../learn/use-custom-columns-and-dataframe-backends/">
 <h3>Any dataframe →</h3>
 <p>pandas, Polars and other Narwhals backends in; the same backend out.</p>
 </a>
-<a class="feature-card" href="optimizations/">
-<h3>Low memory →</h3>
+<div class="feature-card">
+<h3>Low memory</h3>
 <p>Kernels read your columns in place instead of copying or sorting whole tables.</p>
-</a>
-<a class="feature-card" href="../about/development/">
-<h3>Validated →</h3>
+</div>
+<div class="feature-card">
+<h3>Validated</h3>
 <p>Correctness tests on pandas and Polars, plus comparison tests against scikit-mobility. Run them yourself.</p>
-</a>
-<a class="feature-card" href="https://github.com/gefgu/fastmob">
-<h3>Open source →</h3>
+</div>
+<div class="feature-card">
+<h3>Open source</h3>
 <p>BSD-3 licensed. Read the source, file issues, reproduce every benchmark.</p>
-</a>
+</div>
 </div>
 
 ## Switching is one import
 
 ```python
 # before
-from skmob.measures.individual import jump_lengths
+import skmob.measures.individual as m
 # after
-from fastmob import jump_lengths
+import fastmob as m
 ```
 
 ## Speed at a glance

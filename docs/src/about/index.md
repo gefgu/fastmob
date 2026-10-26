@@ -10,6 +10,8 @@ for what it can do.
 [![License](https://img.shields.io/pypi/l/fastmob)](https://github.com/gefgu/fastmob/blob/main/LICENSE)
 [![GitHub](https://img.shields.io/github/stars/gefgu/fastmob?style=social)](https://github.com/gefgu/fastmob)
 
+Version 0.3.2 · BSD-3-Clause · Python 3.9 or later · pandas and Polars via Narwhals
+
 ## Relationship to scikit-mobility
 
 fastmob follows the measure API of
@@ -29,11 +31,14 @@ Third-party code and algorithms, including MoveTK (Apache-2.0), are credited in
 
 ```bibtex
 @software{fastmob,
-  author = {dos Santos, Gustavo Henrique Bruno},
-  title  = {fastmob: fast human-mobility analysis in Python},
-  year   = {2026},
+  author  = {dos Santos, Gustavo
+             Henrique Bruno},
+  title   = {fastmob},
+  note    = {Fast human-mobility
+             analysis in Python},
+  year    = {2026},
   version = {0.3.2},
-  url    = {https://github.com/gefgu/fastmob}
+  url     = {https://github.com/gefgu/fastmob}
 }
 ```
 

@@ -9,14 +9,19 @@ import fastmob
 
 df = pd.DataFrame({
     "uid": ["alice"] * 3,
-    "datetime": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"]),
+    "datetime": pd.date_range("2020-01-01 08:00", periods=3, freq="h"),
     "lat": [41.9, 42.0, 42.1],
     "lng": [12.5, 12.5, 12.6],
 })
-
-# One row per user, returned as a pandas DataFrame because df is pandas.
 fastmob.radius_of_gyration(df)
 ```
+
+```text
+     uid  radius_of_gyration
+0  alice            9.878827
+```
+
+The result is a pandas DataFrame because `df` is pandas; pass Polars and you get Polars.
 
 ## Start from your input
 

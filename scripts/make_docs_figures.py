@@ -54,3 +54,23 @@ ax.legend(
 )
 fig.tight_layout()
 fig.savefig(OUT / "home-benchmark-speedup.png", transparent=True)
+
+
+# Portrait variant for phones: speedup factors only, large type.
+fig, ax = plt.subplots(figsize=(4.2, 4.6), dpi=200)
+items = sorted(BENCH.items(), key=lambda kv: kv[1][2])
+for i, (name, (sk, fm, speedup)) in enumerate(items):
+    ax.barh(i, speedup, height=0.55, color=GOLD)
+    ax.text(speedup * 1.12, i, f"{speedup:.0f}x", va="center", fontsize=14,
+            color=GOLD, fontweight="bold")
+ax.set_xscale("log")
+ax.set_xlim(100, 6000)
+ax.set_yticks(range(len(items)), [n for n, _ in items], fontsize=12, color=TEXT)
+ax.set_xticks([100, 1000], ["100x", "1000x"], fontsize=11, color=TEXT)
+ax.set_title("speedup vs scikit-mobility\n(4M check-ins)", fontsize=12, color=TEXT)
+for sp in ("top", "right", "left"):
+    ax.spines[sp].set_visible(False)
+ax.spines["bottom"].set_color(TEXT)
+ax.tick_params(colors=TEXT)
+fig.tight_layout()
+fig.savefig(OUT / "home-benchmark-speedup-mobile.png", transparent=True)

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 600" role="img" aria-label="Positionfixes produce Staypoints and Triplegs, which combine into Trips and then Tours; Staypoints also cluster into Locations" font-family="Inter, system-ui, sans-serif">
+  <style>
+    .box { fill: rgba(250,255,105,0.28); stroke: #b8a600; stroke-width: 1.6; }
+    .name { fill: #5c4a00; font-size: 18px; font-weight: 700; text-anchor: middle; }
+    .sub { fill: #6a5a1a; font-size: 13px; text-anchor: middle; }
+    .arrow { stroke: #8a8a8a; stroke-width: 2; fill: none; marker-end: url(#a); }
+    @media (prefers-color-scheme: dark) { .box { fill: rgba(250,255,105,0.08); stroke: #faff69; } .name { fill: #faff69; } .sub { fill: #cfcf8a; } }
+  </style>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a8a8a"/></marker></defs>
+  <rect class="box" x="90" y="10" width="180" height="62" rx="10"/><text class="name" x="180" y="38">Positionfixes</text><text class="sub" x="180" y="58">raw GPS / check-ins</text>
+  <rect class="box" x="10" y="130" width="160" height="62" rx="10"/><text class="name" x="90" y="158">Staypoints</text><text class="sub" x="90" y="178">where you stopped</text>
+  <rect class="box" x="190" y="130" width="160" height="62" rx="10"/><text class="name" x="270" y="158">Triplegs</text><text class="sub" x="270" y="178">movement between</text>
+  <rect class="box" x="90" y="260" width="180" height="62" rx="10"/><text class="name" x="180" y="288">Trips</text><text class="sub" x="180" y="308">stop to stop</text>
+  <rect class="box" x="90" y="390" width="180" height="62" rx="10"/><text class="name" x="180" y="418">Tours</text><text class="sub" x="180" y="438">trips back to a place</text>
+  <rect class="box" x="10" y="520" width="160" height="62" rx="10"/><text class="name" x="90" y="548">Locations</text><text class="sub" x="90" y="568">recurring places</text>
+  <path class="arrow" d="M140 72 L100 128"/><path class="arrow" d="M220 72 L260 128"/>
+  <path class="arrow" d="M100 192 L150 258"/><path class="arrow" d="M260 192 L210 258"/>
+  <path class="arrow" d="M180 322 L180 388"/>
+  <path class="arrow" d="M60 192 C 20 300, 20 420, 50 518"/>
+</svg>

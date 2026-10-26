@@ -7,12 +7,12 @@
 
 | Version | Highlights |
 | --- | --- |
-| [v0.3.2](v0.3.2.md)<br>2026-09-19 | Stable `fastmob.vis` facade; `fastmob[vis]` pins a compatible `fastmob-vis` 0.1.x. |
-| [v0.3.1](v0.3.1.md)<br>2026-09-18 | Docs only: contributing guide and GeoLife benchmark story. |
-| [v0.3.0](v0.3.0.md)<br>2026-09-18 | [Spatiotemporal visitation comparison](../reference/measures/evaluation.md) scales to 100M-row inputs; contact-network analysis shares one faster set of kernels. |
-| [v0.2.2](v0.2.2.md)<br>2026-09-09 | Better staypoint detection; packaging improvements. |
-| [v0.2.1](v0.2.1.md)<br>2026-08-25 | Faster stay-location detection and GeoLife loading; fastmob dataframes accepted by every public API. |
-| [v0.2.0](v0.2.0.md)<br>2026-08-23 | [Trajectory hierarchy](../reference/data-structures.md), new [preprocessing](../reference/preprocessing.md) algorithms, [models](../reference/models.md), and network and social analysis. |
+| [v0.3.2](v0.3.2.md)<br><small>2026-09-19</small> | Stable `fastmob.vis` facade; `fastmob[vis]` pins a compatible `fastmob-vis` 0.1.x. |
+| [v0.3.1](v0.3.1.md)<br><small>2026-09-18</small> | Docs only: contributing guide and GeoLife benchmark story. |
+| [v0.3.0](v0.3.0.md)<br><small>2026-09-18</small> | [Spatiotemporal visitation comparison](../reference/measures/evaluation.md) scales to 100M-row inputs; contact-network analysis shares one faster set of kernels. |
+| [v0.2.2](v0.2.2.md)<br><small>2026-09-09</small> | Better staypoint detection; packaging improvements. |
+| [v0.2.1](v0.2.1.md)<br><small>2026-08-25</small> | Faster stay-location detection and GeoLife loading; fastmob dataframes accepted by every public API. |
+| [v0.2.0](v0.2.0.md)<br><small>2026-08-23</small> | [Trajectory hierarchy](../reference/data-structures.md), new [preprocessing](../reference/preprocessing.md) algorithms, [models](../reference/models.md), and network and social analysis. |
 
 ??? note "0.1.x series (2026-07-16 to 2026-07-21)"
 

@@ -141,9 +141,11 @@ def trajectory():
     cx, cy = day.lng.mean(), day.lat.mean()
     ax.add_patch(plt.Circle((cx, cy), rg / 111.19, fill=False, ls="--", color=GOLD, lw=2))
     ax.set_aspect("equal")
-    ax.text(0.02, 0.97, f"radius of gyration: {rg:.1f} km", transform=ax.transAxes,
-            color=INK, fontsize=14, va="top", fontweight="bold")
-    finish(fig, ax, "learn-thumb-trajectory.png")
+    fig.suptitle(f"radius of gyration: {rg:.1f} km", color=INK, fontsize=14, fontweight="bold")
+    ax.set_axis_off()
+    fig.tight_layout(pad=0.4, rect=(0, 0, 1, 0.92))
+    fig.savefig(OUT / "learn-thumb-trajectory.png", transparent=True)
+    plt.close(fig)
     print("trajectory rg", rg, "points", len(day))
 
 

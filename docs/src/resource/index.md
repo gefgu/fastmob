@@ -19,11 +19,9 @@ Datasets, packages, community and background reading for fastmob.
 
 ## Datasets
 
-| Dataset | What it is | How to use it in fastmob |
-| --- | --- | --- |
-| [Brightkite](https://snap.stanford.edu/data/loc-brightkite.html) | About 4M location check-ins from a social network | Benchmark workload for the [benchmarks page](../features/benchmarks.md) |
-| [GeoLife](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/) | GPS trajectories of 182 users in Beijing | `load_geolife_trajectories`; used in the [stay-point notebook](../learn/notebooks/stay-point-detection-geolife.md) |
-| Foursquare NYC and others | Datasets from scikit-mobility | `load_dataset`; see the [data reference](../reference/data.md) |
+- **[Brightkite](https://snap.stanford.edu/data/loc-brightkite.html)**: about 4M location check-ins from a social network. The workload for the [benchmarks](../features/benchmarks.md).
+- **[GeoLife](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/)**: GPS trajectories of 182 users in Beijing. Read it with `load_geolife_trajectories`; used in the [stay-point notebook](../learn/notebooks/stay-point-detection-geolife.md).
+- **Foursquare NYC and others**: datasets from scikit-mobility, available through `load_dataset`. See the [data reference](../reference/data.md).
 
 ## Background reading
 
@@ -33,17 +31,23 @@ Datasets, packages, community and background reading for fastmob.
 
 ## Terms used in these docs
 
-Ordered along the hierarchy from raw fixes to tours. See [Data structures](../reference/data-structures.md) for the full picture.
+Ordered along the hierarchy from raw fixes to tours.
 
-| Term | Meaning | Class |
-| --- | --- | --- |
-| Trajectory | Timestamped positions of one or many users | [`TrajDataFrame`](../reference/data-structures/traj-dataframe.md) |
-| Position fix | One timestamped latitude/longitude observation | [`Positionfixes`](../reference/data-structures/positionfixes.md) |
-| Staypoint | A period spent within a small spatial area | [`Staypoints`](../reference/data-structures/staypoints.md) |
-| Tripleg | Movement between two stays | [`Triplegs`](../reference/data-structures/triplegs.md) |
-| Trip | Triplegs merged between two activity stays | [`Trips`](../reference/data-structures/trips.md) |
-| Tour | Consecutive trips that return to the same place | [`Tours`](../reference/data-structures/tours.md) |
-| Location | A recurring place formed by clustering staypoints | [`Locations`](../reference/data-structures/locations.md) |
-| OD flow | A count or value from an origin to a destination | [`FlowDataFrame`](../reference/data-structures/flow-dataframe.md) |
+<div class="figure-scroll">
+<img src="../assets/images/home/mobility-hierarchy.svg" alt="Positionfixes produce Staypoints and Triplegs, which combine into Trips and then Tours; Staypoints cluster into Locations, which tours return to.">
+</div>
 
-To cite fastmob, see [About](../about/index.md#cite-fastmob).
+| Term | Meaning |
+| --- | --- |
+| Trajectory: [`TrajDataFrame`](../reference/data-structures/traj-dataframe.md) | Timestamped positions of one or many users |
+| Position fix: [`Positionfixes`](../reference/data-structures/positionfixes.md) | One timestamped latitude/longitude observation |
+| Staypoint: [`Staypoints`](../reference/data-structures/staypoints.md) | A period spent within a small spatial area |
+| Location: [`Locations`](../reference/data-structures/locations.md) | A recurring place formed by clustering staypoints |
+| Tripleg: [`Triplegs`](../reference/data-structures/triplegs.md) | Movement between two stays |
+| Trip: [`Trips`](../reference/data-structures/trips.md) | Triplegs merged between two activity stays |
+| Tour: [`Tours`](../reference/data-structures/tours.md) | Consecutive trips that return to the same place |
+| OD flow: [`FlowDataFrame`](../reference/data-structures/flow-dataframe.md) | A count or value from an origin to a destination |
+
+!!! tip "Citing fastmob"
+
+    See [Cite fastmob](../about/index.md#cite-fastmob) for a BibTeX entry.

@@ -13,11 +13,13 @@ parameter? Each guide links to the [API reference](../reference/index.md).
 
 <div class="how-to-grid">
 <a class="how-to-card how-to-card--start" href="analyze-a-simple-trajectory.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-trajectory.png" alt="Two short trajectories with jump lengths and a radius-of-gyration circle">
+<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-trajectory.png" alt="One GeoLife outing as a path coloured by time, with a dashed circle showing its radius of gyration">
+<div>
 <span class="how-to-card__eyebrow">Start here</span>
 <h2>Start with a trajectory</h2>
 <p>Build a small trajectory and compute your first mobility measures.</p>
 <span class="how-to-card__meta">Synthetic data</span>
+</div>
 </a>
 <a class="how-to-card" href="use-custom-columns-and-dataframe-backends.md">
 <img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-backends.svg" alt="A pandas or Polars dataframe goes through fastmob and comes back as the same type">
@@ -46,6 +48,7 @@ parameter? Each guide links to the [API reference](../reference/index.md).
 <a class="how-to-card" href="network-analysis.md">
 <h2>Route and map-match trajectories</h2>
 <p>Build network-aware workflows for routes and map-matched traces.</p>
+<span class="how-to-card__meta">Road and rail networks</span>
 </a>
 <a class="how-to-card" href="fit-and-evaluate.md">
 <img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-fit.png" alt="Truncated power law fitted to Brightkite jump-length distribution on log-log axes">
@@ -57,15 +60,15 @@ parameter? Each guide links to the [API reference](../reference/index.md).
 
 ## Notebook examples
 
-<div class="how-to-grid">
+<div class="how-to-grid how-to-grid--two">
 <a class="how-to-card" href="notebooks/stay-point-detection-geolife.md">
 <h2>Stay-point detection notebook</h2>
 <p>An end-to-end run on GeoLife GPS traces, compared with trackintel.</p>
-<span class="how-to-card__meta">Binder · GeoLife</span>
+<span class="how-to-card__meta">GeoLife <span class="how-to-card__badge">Binder</span></span>
 </a>
 <a class="how-to-card" href="comparision-to-mobility-laws.md">
 <h2>Compare mobility laws notebook</h2>
 <p>Fit a power law to the distribution of Brightkite jump lengths.</p>
-<span class="how-to-card__meta">Binder</span>
+<span class="how-to-card__meta">Brightkite <span class="how-to-card__badge">Binder</span></span>
 </a>
 </div>
