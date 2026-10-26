@@ -16,9 +16,9 @@
   --md-primary-fg-color--light: #242424;
   --md-primary-fg-color--dark: #000000;
   --md-primary-bg-color: #ffffff;
-  --md-accent-fg-color: #7a7600;
+  --md-accent-fg-color: #7a5c00;
   --md-accent-fg-color--transparent: rgba(250, 255, 105, 0.18);
-  --md-typeset-a-color: #6c6900;
+  --md-typeset-a-color: #7a5c00;
   --md-code-bg-color: #f6f6f6;
   --md-code-fg-color: #1f1f1f;
   --md-footer-bg-color: var(--skmob-black);
@@ -190,11 +190,11 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin: 2rem 0;
+  align-items: start;
 }
 
 .how-to-card {
   display: flex;
-  min-height: 12rem;
   flex-direction: column;
   padding: 1.5rem;
   border: 1px solid var(--skmob-hairline);
@@ -272,7 +272,7 @@
 
 [data-md-color-scheme="default"] .how-to-card__eyebrow,
 [data-md-color-scheme="default"] .how-to-card__link {
-  color: #6c6900;
+  color: #7a5c00;
 }
 
 /* Example outputs wider than the column scroll instead of clipping. */
@@ -351,4 +351,63 @@
   .feature-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* One link colour family per theme, regardless of theme variant defaults. */
+[data-md-color-scheme="default"] .md-typeset a:not(.hero-button):not(.feature-card):not(.how-to-card) {
+  color: #7a5c00;
+}
+
+[data-md-color-scheme="slate"] .md-typeset a:not(.hero-button):not(.feature-card):not(.how-to-card) {
+  color: var(--skmob-yellow);
+}
+
+/* Dark footer matches the page instead of a mid-grey band. */
+[data-md-color-scheme="slate"] .md-footer,
+[data-md-color-scheme="slate"] .md-footer-meta {
+  background: var(--skmob-black);
+}
+
+/* Tables fill the content column. */
+.md-typeset__table,
+.md-typeset table:not([class]) {
+  width: 100%;
+}
+
+.md-typeset table:not([class]) {
+  display: table;
+}
+
+/* Learn cards: thumbnail, meta row, aligned links. */
+.how-to-card__thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 0.9rem;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--md-code-bg-color);
+}
+
+.how-to-card__meta {
+  margin-top: 0.6rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.7rem;
+}
+
+.how-to-card p {
+  flex: 1;
+}
+
+.how-to-card--start {
+  border-color: var(--skmob-yellow-active);
+  box-shadow: 0 0 0 1px var(--skmob-yellow-active);
+}
+
+/* Figures keep a readable minimum width and scroll sideways on narrow screens. */
+.figure-scroll {
+  overflow-x: auto;
+}
+
+.figure-scroll img {
+  min-width: 620px;
 }

@@ -1,28 +1,45 @@
 # Resources
 
-## Choose the right starting point
+Datasets, packages, community and background reading for fastmob.
 
-| Need | Resource |
-| --- | --- |
-| A minimal runnable analysis | [Start with a trajectory](../learn/analyze-a-simple-trajectory.md) |
-| Column names or backend behavior | [Columns and backends](../learn/use-custom-columns-and-dataframe-backends.md) |
-| Accepted inputs and return schemas | [API reference](../reference/index.md) |
-| Performance evidence | [Benchmarks](../features/benchmarks.md) |
-| Recent behavior changes | [Release notes](../release_notes/index.md) |
+<div class="feature-grid">
+<a class="feature-card" href="https://github.com/gefgu/fastmob/issues">
+<h3>Get help →</h3>
+<p>Report bugs and ask questions on the GitHub issue tracker.</p>
+</a>
+<a class="feature-card" href="https://pypi.org/project/fastmob/">
+<h3>PyPI →</h3>
+<p>Install with <code>pip install fastmob</code>; prebuilt wheels for Linux, macOS and Windows.</p>
+</a>
+<a class="feature-card" href="https://github.com/gefgu/fastmob">
+<h3>Source code →</h3>
+<p>Rust kernels, Python API, tests and benchmark scripts.</p>
+</a>
+</div>
 
-## Data and ecosystem
+## Datasets
 
-Fastmob is designed for trajectory, staypoint, trip, and origin-destination
-data. The [data reference](../reference/data.md) documents bundled dataset
-loaders. Its public API is informed by the
-[scikit-mobility](https://scikit-mobility.github.io/scikit-mobility/) ecosystem;
-Fastmob documents its own behavior and performance contracts independently.
+| Dataset | What it is | How to use it in fastmob |
+| --- | --- | --- |
+| [Brightkite](https://snap.stanford.edu/data/loc-brightkite.html) | About 4M location check-ins from a social network | Benchmark workload for the [benchmarks page](../features/benchmarks.md) |
+| [GeoLife](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/) | GPS trajectories of 182 users in Beijing | `load_geolife_trajectories`; used in the [stay-point notebook](../learn/notebooks/stay-point-detection-geolife.md) |
+| Foursquare NYC and others | Datasets from scikit-mobility | `load_dataset`; see the [data reference](../reference/data.md) |
 
-## Glossary
+## Background reading
 
-- **Position fix** — one timestamped latitude/longitude observation.
-- **Staypoint** — a period spent within a small spatial area.
-- **Location** — a recurring place formed by clustering staypoints.
-- **Trip leg** — movement between two stays.
-- **OD flow** — an aggregate count or value from origin to destination.
-- **STVD** — spatiotemporal visitation distribution.
+- [scikit-mobility](https://scikit-mobility.github.io/scikit-mobility/): the library whose measure API fastmob follows.
+- [trackintel](https://trackintel.readthedocs.io/): the staypoint, tripleg, trip and tour hierarchy that inspired fastmob's.
+- [Narwhals](https://narwhals-dev.github.io/narwhals/): the dataframe-agnostic layer that lets fastmob accept pandas and Polars.
+
+## Terms used in these docs
+
+| Term | Meaning | Class |
+| --- | --- | --- |
+| Position fix | One timestamped latitude/longitude observation | [`Positionfixes`](../reference/data-structures/positionfixes.md) |
+| Staypoint | A period spent within a small spatial area | [`Staypoints`](../reference/data-structures/staypoints.md) |
+| Tripleg | Movement between two stays | [`Triplegs`](../reference/data-structures/triplegs.md) |
+| Trip | Triplegs merged between two activity stays | [`Trips`](../reference/data-structures/trips.md) |
+| Tour | Consecutive trips that return to the same place | [`Tours`](../reference/data-structures/tours.md) |
+| Location | A recurring place formed by clustering staypoints | [`Locations`](../reference/data-structures/locations.md) |
+| OD flow | A count or value from an origin to a destination | [`FlowDataFrame`](../reference/data-structures/flow-dataframe.md) |
+| STVD | Spatiotemporal visitation distribution | [Evaluation measures](../reference/measures/evaluation.md) |

@@ -1,5 +1,6 @@
 ---
 hide:
+  - navigation
   - toc
 ---
 
@@ -25,54 +26,67 @@ pip install fastmob
 
     ```python
     import pandas as pd
-    from fastmob import jump_lengths, radius_of_gyration
+    from fastmob import radius_of_gyration
 
     df = pd.DataFrame({
         "uid": ["alice"] * 3 + ["bob"] * 3,
         "datetime": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"] * 2),
-        "lat": [41.9, 42.0, 42.1, 40.7, 40.8, 40.9],
-        "lng": [12.5, 12.5, 12.5, -74.0, -74.0, -74.0],
+        "lat": [41.9, 42.0, 42.1, 40.7, 40.8, 41.0],
+        "lng": [12.5, 12.5, 12.6, -74.0, -74.0, -73.9],
     })
 
-    jump_lengths(df)        # km between consecutive points, per user
-    radius_of_gyration(df)  # how far each user ranges around their center
+    radius_of_gyration(df)  # km each user ranges around their center
+    ```
+
+    ```text
+         uid  radius_of_gyration
+    0  alice            9.878827
+    1    bob           14.423721
     ```
 
 === "Polars"
 
     ```python
     import polars as pl
-    from fastmob import jump_lengths
+    from fastmob import radius_of_gyration
 
     df = pl.DataFrame({
-        "uid": ["alice"] * 3,
-        "datetime": ["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"],
-        "lat": [41.9, 42.0, 42.1],
-        "lng": [12.5, 12.5, 12.5],
+        "uid": ["alice"] * 3 + ["bob"] * 3,
+        "datetime": ["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"] * 2,
+        "lat": [41.9, 42.0, 42.1, 40.7, 40.8, 41.0],
+        "lng": [12.5, 12.5, 12.6, -74.0, -74.0, -73.9],
     }).with_columns(pl.col("datetime").str.to_datetime())
 
-    jump_lengths(df)  # returns a Polars DataFrame
+    radius_of_gyration(df)  # returns a Polars DataFrame
     ```
 
-```text
-     uid  radius_of_gyration
-0  alice             9.07904
-1    bob             9.07904
-```
+    ```text
+    uid      radius_of_gyration
+    "alice"  9.878827
+    "bob"    14.423721
+    ```
 
 ## Fast on real data
 
 Average execution time on 4 million Brightkite check-ins, fastmob (pandas) versus
 scikit-mobility. [See all measures and methodology](features/benchmarks.md).
 
+<div class="figure-scroll" markdown>
+
 ![Bar chart comparing scikit-mobility and fastmob execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.](assets/images/home/home-benchmark-speedup.png)
+
+</div>
 
 ## From raw GPS fixes to tours
 
 Each level of the hierarchy is derived from the one below it with a single
 method call.
 
-![Diagram: Positionfixes produce Staypoints and Triplegs; these combine into Trips, then Tours; Staypoints cluster into Locations.](assets/images/home/mobility-hierarchy.svg)
+<div class="figure-scroll" markdown>
+
+![Diagram: Positionfixes produce Staypoints and Triplegs; these combine into Trips, then Tours. Staypoints also cluster into Locations, which tours return to.](assets/images/home/mobility-hierarchy.svg)
+
+</div>
 
 ## What you can do
 
@@ -105,28 +119,26 @@ method call.
 
 ## Why fastmob
 
-- **Any dataframe.** Narwhals accepts pandas, Polars and other eager backends and returns the same type.
-- **Native speed.** Parallel Rust kernels read your columns without copying.
-- **Familiar API.** Measure names and signatures follow [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility), so existing code ports easily.
-- **Tested.** Correctness suites run on pandas and Polars, with comparison tests against scikit-mobility where the APIs overlap.
+- **Familiar API.** Measure names and signatures follow [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility), so existing code ports easily, and comparison tests check the results.
+- **Any dataframe, no copies.** Narwhals accepts pandas, Polars and other eager backends and returns the same type; Rust kernels read your columns in place.
 
 Requires Python 3.9 or later. Prebuilt wheels are available, so no Rust toolchain
-is needed to install. Building from source is covered in
+is needed to install; building from source is covered in
 [development setup](about/development.md).
 
 ## Next steps
 
 <div class="feature-grid">
-<a class="feature-card" href="learn/">
-<h3>Learn →</h3>
-<p>Step-by-step guides with runnable examples.</p>
+<a class="feature-card" href="learn/use-custom-columns-and-dataframe-backends/">
+<h3>Columns and backends →</h3>
+<p>Use your own column names and move between pandas and Polars.</p>
 </a>
-<a class="feature-card" href="reference/">
-<h3>Reference →</h3>
-<p>Every function, parameter and return schema.</p>
+<a class="feature-card" href="learn/notebooks/stay-point-detection-geolife/">
+<h3>Stay-point notebook →</h3>
+<p>An end-to-end example on real GeoLife GPS traces.</p>
 </a>
-<a class="feature-card" href="features/benchmarks/">
-<h3>Benchmarks →</h3>
-<p>Methodology and results across all measure families.</p>
+<a class="feature-card" href="resource/">
+<h3>Resources →</h3>
+<p>Datasets, citation, and where to get help.</p>
 </a>
 </div>

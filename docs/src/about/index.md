@@ -1,30 +1,50 @@
-# About Fastmob
+# About fastmob
 
-Fastmob is a high-performance, backend-agnostic Python library for mobility
-analysis. It combines a familiar dataframe-facing API with Rust kernels for
-the compute-heavy parts of trajectory processing and measurement.
+fastmob is a Python library for human-mobility analysis. It pairs a
+familiar dataframe-facing API with Rust kernels for the compute-heavy parts of
+trajectory processing and measurement. See [Features](../features/index.md)
+for what it can do.
 
-## What it supports
+[![PyPI](https://img.shields.io/pypi/v/fastmob)](https://pypi.org/project/fastmob/)
+[![Python](https://img.shields.io/pypi/pyversions/fastmob)](https://pypi.org/project/fastmob/)
+[![License](https://img.shields.io/pypi/l/fastmob)](https://github.com/gefgu/fastmob/blob/main/LICENSE)
+[![GitHub](https://img.shields.io/github/stars/gefgu/fastmob?style=social)](https://github.com/gefgu/fastmob)
 
-- eager dataframe inputs through Narwhals, including pandas, Polars, and
-  PyArrow-compatible workflows;
-- a trajectory hierarchy from raw position fixes through stays, trip legs,
-  trips, tours, and flows;
-- individual and collective mobility measures, statistical fitting, models,
-  privacy assessment, and optional road/rail-network analysis.
+## Relationship to scikit-mobility
 
-## Project status
+fastmob follows the measure API of
+[scikit-mobility](https://github.com/scikit-mobility/scikit-mobility) and
+reimplements it on a Rust core with Narwhals dataframe support. Comparison
+tests against scikit-mobility run wherever the APIs overlap. Beyond that,
+fastmob has its own trajectory hierarchy, models and network tools.
 
-Fastmob is under active development. Public behavior, supported Python
-versions, optional extras, and migration notes are documented in the current
-[reference](../reference/index.md) and [release notes](../release_notes/index.md).
-Pin a released version for reproducible research or production pipelines.
+## License and credits
+
+fastmob is released under the
+[BSD 3-Clause license](https://github.com/gefgu/fastmob/blob/main/LICENSE).
+Third-party code and algorithms, including MoveTK (Apache-2.0), are credited in
+[THIRD_PARTY_NOTICES.md](https://github.com/gefgu/fastmob/blob/main/fastmob-core/THIRD_PARTY_NOTICES.md).
+
+## Cite fastmob
+
+```bibtex
+@software{fastmob,
+  author = {dos Santos, Gustavo Henrique Bruno},
+  title  = {fastmob: fast human-mobility analysis in Python},
+  year   = {2026},
+  url    = {https://github.com/gefgu/fastmob}
+}
+```
+
+## Maintainer
+
+Gustavo Henrique Bruno dos Santos ([@gefgu](https://github.com/gefgu)).
 
 ## Contribute and report issues
 
-- [Source code and issue tracker](https://github.com/gefgu/fastmob)
-- [Release history](../release_notes/index.md)
-- [Documentation recipes](../learn/index.md)
+- [Source code and issue tracker](https://github.com/gefgu/fastmob/issues)
+- [Development setup](development.md)
 
-When reporting an issue, include Fastmob and Python versions, dataframe
-backend/version, a minimal input, expected output, and the complete error.
+A useful bug report includes the fastmob and Python versions, dataframe backend
+and version, a minimal input, the expected and actual output, and the complete
+traceback.

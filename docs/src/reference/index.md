@@ -1,8 +1,28 @@
 # API reference
 
-The reference is the authoritative contract for Fastmob's public APIs. It
-documents accepted dataframe backends, detected columns, return schemas,
-optional dependencies, and behavior that matters at production scale.
+Every public function and class in fastmob, grouped by module. Inputs can be any
+pandas or Polars dataframe, and results come back in the same backend.
+
+```python
+import fastmob
+
+fastmob.radius_of_gyration(df)  # one row per user, in df's backend
+```
+
+| API | Description |
+| --- | --- |
+| [Data structures](data-structures.md) | Typed trajectory, hierarchy and flow wrappers. |
+| [Preprocessing](preprocessing.md) | Filtering, segmentation, staypoints, H3 and OD preparation. |
+| [Trajectory](trajectory.md) | Interpolation, smoothing, shape clustering and comparison. |
+| [Network](network.md) | Road and rail graphs, routing, snapping and map matching. |
+| [Integration](integration.md) | Joins with points of interest and events. |
+| [Measures](measures/index.md) | Individual, collective, contact-network and evaluation metrics. |
+| [Fitting](fitting.md) | Truncated power law, visitation law and daily-location fits. |
+| [Models](models.md) | Mobility generation models. |
+| [Input/output](io.md) | Readers and writers for common trajectory formats. |
+| [Privacy](privacy.md) | Re-identification risk assessment for trajectories. |
+| [Data](data.md) | Bundled and downloadable datasets. |
+| [Visualization](visualization.md) | Interactive ECharts views (`fastmob[vis]`). |
 
 ## Start from your input
 
@@ -13,17 +33,6 @@ optional dependencies, and behavior that matters at production scale.
 | Visits, stays, or trips | [Collective measures](measures/collective.md) |
 | A road/rail graph or GPS trace | [Network](network.md) |
 | A model output to compare | [Evaluation](measures/evaluation.md) |
-
-## Modules
-
-- [Data structures](data-structures.md) — typed trajectory, hierarchy, and flow wrappers.
-- [Preprocessing](preprocessing.md) — filtering, segmentation, stays, H3, and OD preparation.
-- [Trajectory](trajectory.md) — interpolation, smoothing, shape clustering, and comparison.
-- [Network](network.md) — Overture graphs, Arrow routing, snapping, and map matching.
-- [Integration](integration.md) — joins with points of interest and events.
-- [Measures](measures/index.md) — individual, collective, and evaluation metrics.
-- [Models](models.md) — mobility generation models.
-- [Input/output](io.md), [privacy](privacy.md), [data](data.md), and [visualization](visualization.md).
 
 !!! note "Column and backend conventions"
 

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="A pandas or Polars dataframe goes into the same fastmob call and comes back as the same dataframe type" font-family="Inter, system-ui, sans-serif">
+  <style>
+    .box { fill: rgba(250,255,105,0.28); stroke: #b8a600; stroke-width: 1.6; }
+    .core { fill: rgba(150,150,150,0.18); stroke: #8a8a8a; stroke-width: 1.6; }
+    .t { fill: #5c4a00; font-size: 20px; font-weight: 700; text-anchor: middle; }
+    .c { fill: #666; font-size: 15px; font-weight: 600; text-anchor: middle; }
+    .arrow { stroke: #8a8a8a; stroke-width: 2; fill: none; marker-end: url(#a); }
+    @media (prefers-color-scheme: dark) { .box { fill: rgba(250,255,105,0.08); stroke: #faff69; } .t { fill: #faff69; } .c { fill: #bbb; } }
+  </style>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a8a8a"/></marker></defs>
+  <rect class="box" x="30" y="60" width="150" height="90" rx="12"/><text class="t" x="105" y="112">pandas</text>
+  <rect class="box" x="30" y="210" width="150" height="90" rx="12"/><text class="t" x="105" y="262">Polars</text>
+  <rect class="core" x="250" y="110" width="140" height="140" rx="12"/><text class="c" x="320" y="172">fastmob</text><text class="c" x="320" y="196">Rust kernel</text>
+  <rect class="box" x="460" y="60" width="150" height="90" rx="12"/><text class="t" x="535" y="112">pandas</text>
+  <rect class="box" x="460" y="210" width="150" height="90" rx="12"/><text class="t" x="535" y="262">Polars</text>
+  <path class="arrow" d="M180 105 L248 160"/><path class="arrow" d="M180 255 L248 200"/>
+  <path class="arrow" d="M390 160 L458 105"/><path class="arrow" d="M390 200 L458 255"/>
+</svg>
