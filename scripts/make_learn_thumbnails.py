@@ -87,9 +87,8 @@ def measures():
     fig, ax = new_fig()
     ax.hist(np.log10(rg), bins=40, color=GOLD)
     ax.set_xlim(-2.2, 3.8)
-    ax.set_xticks([-2, -1, 0, 1, 2, 3], ["0.01", "0.1", "1", "10", "100", "1000"])
-    ax.set_xlabel("radius of gyration (km)", color=INK, fontsize=9)
-    ax.tick_params(colors=INK, labelsize=8)
+    ax.set_xticks([])
+    ax.set_xlabel("radius of gyration per user", color=INK, fontsize=14)
     ax.set_yticks([])
     for s in ("top", "right", "left"):
         ax.spines[s].set_visible(False)
@@ -116,9 +115,10 @@ def fit():
     xs = np.logspace(np.log10(x.min()), np.log10(x.max()), 200)
     ax.loglog(xs, np.exp(log_truncated_powerlaw(xs, c, r0, beta, kappa)), color=GOLD, lw=2.5,
               label=f"truncated power law (beta={beta:.2f})")
-    ax.set_xlabel("jump length (km)", color=INK, fontsize=9)
-    ax.tick_params(colors=INK, labelsize=8)
-    ax.legend(frameon=False, labelcolor=INK, fontsize=8)
+    ax.set_xlabel("jump length", color=INK, fontsize=14)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.minorticks_off()
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
     for sp in ("left", "bottom"):

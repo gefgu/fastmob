@@ -29,7 +29,7 @@
   <text class="name" x="83" y="159">Positionfixes</text><text class="sub" x="83" y="178">raw GPS / check-ins</text>
   <text class="name" x="283" y="39">Locations</text><text class="sub" x="283" y="58">recurring places</text>
   <text class="name" x="283" y="129">Staypoints</text><text class="sub" x="283" y="148">where you stopped</text>
-  <text class="name" x="283" y="219">Triplegs</text><text class="sub" x="283" y="238">movement between</text>
+  <text class="name" x="283" y="219">Triplegs</text><text class="sub" x="283" y="238">movement between stops</text>
   <text class="name" x="483" y="159">Trips</text><text class="sub" x="483" y="178">stop to stop</text>
   <text class="name" x="663" y="159">Tours</text><text class="sub" x="663" y="178">trips back to a place</text>
   <path class="arrow" d="M158 150 L206 132"/>

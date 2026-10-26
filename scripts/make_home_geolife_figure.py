@@ -46,7 +46,7 @@ d_stay = stays[
 ]
 
 fig, ax = plt.subplots(figsize=(6, 5), dpi=200)
-ax.scatter(d_fix.lng, d_fix.lat, s=2, color=GREY, alpha=0.45, linewidths=0, label="position fixes")
+ax.scatter(d_fix.lng, d_fix.lat, s=3, color="#6f6f6f", alpha=0.55, linewidths=0, label="position fixes")
 palette = plt.get_cmap("tab10")
 for i, (_, leg) in enumerate(d_legs.iterrows()):
     m = (d_fix.datetime >= pd.Timestamp(leg.started_at)) & (d_fix.datetime <= pd.Timestamp(leg.finished_at))

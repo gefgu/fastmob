@@ -1,13 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Noisy GPS points snapped onto a road line" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Noisy GPS points snapped onto the nearest road" font-family="Inter, system-ui, sans-serif">
   <style>
     .road { stroke: #9a9a9a; stroke-width: 10; fill: none; stroke-linecap: round; }
-    .route { stroke: #c9a400; stroke-width: 5; fill: none; stroke-linecap: round; }
+    .route { stroke: #c9a400; stroke-width: 7; fill: none; stroke-linecap: round; }
+    .link { stroke: #d9534f; stroke-width: 2; stroke-dasharray: 4 4; fill: none; }
     .pt { fill: #d9534f; }
-    .t { fill: #777; font-size: 20px; font-weight: 600; }
   </style>
-  <path class="road" d="M40 280 C 200 280, 220 90, 380 90 S 560 200, 600 200"/>
-  <path class="road" d="M200 330 L200 200"/>
-  <path class="route" d="M40 280 C 200 280, 220 90, 380 90 S 560 200, 600 200"/>
-  <g class="pt"><circle cx="60" cy="262" r="6"/><circle cx="120" cy="296" r="6"/><circle cx="190" cy="250" r="6"/><circle cx="235" cy="170" r="6"/><circle cx="290" cy="64" r="6"/><circle cx="370" cy="118" r="6"/><circle cx="450" cy="100" r="6"/><circle cx="520" cy="215" r="6"/><circle cx="585" cy="180" r="6"/></g>
-  <text class="t" x="40" y="40">raw GPS (red) snapped to the road (gold)</text>
+  <path class="road" d="M40 300 L200 300 L200 100 L420 100 L420 250 L600 250"/>
+  <path class="road" d="M200 300 L330 330 L330 330"/>
+  <path class="road" d="M420 100 L600 60"/>
+  <path class="road" d="M200 200 L40 160"/>
+  <path class="route" d="M40 300 L200 300 L200 100 L420 100 L420 250 L600 250"/>
+  <path class="link" d="M70 270 L70 300 M130 328 L130 300 M170 220 L200 220 M235 68 L235 100 M330 130 L330 100 M395 160 L420 160 M450 285 L450 250 M540 215 L540 250"/>
+  <g class="pt"><circle cx="70" cy="270" r="7"/><circle cx="130" cy="328" r="7"/><circle cx="170" cy="220" r="7"/><circle cx="235" cy="68" r="7"/><circle cx="330" cy="130" r="7"/><circle cx="395" cy="160" r="7"/><circle cx="450" cy="285" r="7"/><circle cx="540" cy="215" r="7"/></g>
 </svg>

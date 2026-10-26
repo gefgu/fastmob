@@ -10,7 +10,9 @@ import fastmob
 df = pd.DataFrame({
     "uid": ["alice"] * 3,
     "datetime": pd.date_range(
-        "2020-01-01 08:00", periods=3, freq="h"
+        "2020-01-01 08:00",
+        periods=3,
+        freq="h",
     ),
     "lat": [41.9, 42.0, 42.1],
     "lng": [12.5, 12.5, 12.6],
@@ -37,20 +39,20 @@ The result is a pandas DataFrame because `df` is pandas; pass Polars and you get
 
 ## Modules
 
-| API | Description | Key functions |
-| --- | --- | --- |
-| [Data structures](data-structures.md) | Typed trajectory, hierarchy and flow wrappers. | `TrajDataFrame`, `Positionfixes` |
-| [Preprocessing](preprocessing.md) | Filtering, segmentation, staypoints, H3 and OD preparation. | `filter`, `segment`, `stay_locations` |
-| [Trajectory](trajectory.md) | Interpolation, smoothing, shape clustering and comparison. | `interpolate`, `smooth` |
-| [Network](network.md) | Road and rail graphs, routing, snapping and map matching. | `match_trajectory`, `build_road_graph` |
-| [Integration](integration.md) | Joins with points of interest and events. | `join_with_pois`, `join_with_events` |
-| [Measures](measures/index.md) | Individual, collective, contact-network and evaluation metrics. | `radius_of_gyration`, `jump_lengths` |
-| [Fitting](fitting.md) | Truncated power law, visitation law and daily-location fits. | `fit_values_to_truncated_powerlaw` |
-| [Models](models.md) | Mobility generation models. | `Gravity`, `SpatialEPR` |
-| [Input/output](io.md) | Readers and writers for common trajectory formats. | `read`, `load_geolife_trajectories` |
-| [Privacy](privacy.md) | Re-identification risk assessment for trajectories. | `location_risk` |
-| [Data](data.md) | Bundled and downloadable datasets. | `load_dataset` |
-| [Visualization](visualization.md) | Interactive ECharts views (`fastmob[vis]`). | `fastmob.vis` |
+| API | Key functions |
+| --- | --- |
+| [Data structures](data-structures.md)<br><span class="muted">Typed trajectory, hierarchy and flow wrappers.</span> | `TrajDataFrame`, `Positionfixes` |
+| [Preprocessing](preprocessing.md)<br><span class="muted">Filtering, segmentation, staypoints, H3 and OD preparation.</span> | `filter`, `segment`, `stay_locations` |
+| [Trajectory](trajectory.md)<br><span class="muted">Interpolation, smoothing, shape clustering and comparison.</span> | `interpolate`, `smooth` |
+| [Network](network.md)<br><span class="muted">Road and rail graphs, routing, snapping and map matching.</span> | `match_trajectory`, `build_road_graph` |
+| [Integration](integration.md)<br><span class="muted">Joins with points of interest and events.</span> | `join_with_pois`, `join_with_events` |
+| [Measures](measures/index.md)<br><span class="muted">Individual, collective, contact-network and evaluation metrics.</span> | `radius_of_gyration`, `jump_lengths` |
+| [Fitting](fitting.md)<br><span class="muted">Truncated power law, visitation law and daily-location fits.</span> | `fit_values_to_truncated_powerlaw` |
+| [Models](models.md)<br><span class="muted">Mobility generation models.</span> | `Gravity`, `SpatialEPR` |
+| [Input/output](io.md)<br><span class="muted">Readers and writers for common trajectory formats.</span> | `read`, `load_geolife_trajectories` |
+| [Privacy](privacy.md)<br><span class="muted">Re-identification risk assessment for trajectories.</span> | `location_risk` |
+| [Data](data.md)<br><span class="muted">Bundled and downloadable datasets.</span> | `load_dataset` |
+| [Visualization](visualization.md)<br><span class="muted">Interactive ECharts views (`fastmob[vis]`).</span> | `fastmob.vis` |
 
 !!! note "Column and backend conventions"
 

@@ -14,7 +14,7 @@ people move. Rust does the heavy lifting; you keep your pandas or Polars datafra
 <div class="hero-actions">
 <a class="hero-button hero-button--primary" href="learn/analyze-a-simple-trajectory/">Get started →</a>
 <a class="hero-button" href="reference/">API reference</a>
-<a class="hero-button" href="features/benchmarks/">Benchmarks</a>
+<a class="hero-button hero-button--optional" href="features/benchmarks/">Benchmarks</a>
 </div>
 
 <p class="figure-caption">Average time on 4 million Brightkite check-ins, fastmob (pandas) versus scikit-mobility. <a href="features/benchmarks/">All measures and methodology</a>.</p>

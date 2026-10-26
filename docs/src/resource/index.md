@@ -29,24 +29,36 @@ Datasets, packages, community and background reading for fastmob.
 - [trackintel](https://trackintel.readthedocs.io/): the staypoint, tripleg, trip and tour hierarchy that inspired fastmob's.
 - [Narwhals](https://narwhals-dev.github.io/narwhals/): the dataframe-agnostic layer that lets fastmob accept pandas and Polars.
 
+### Papers
+
+- Pappalardo, Simini, Barlacchi, Pellungrini. *scikit-mobility: A Python Library for the Analysis, Generation, and Risk Assessment of Mobility Data.* Journal of Statistical Software, 2022.
+- Martin, Hong, Raubal and others. *Trackintel: An open-source Python library for human mobility analysis.* Computers, Environment and Urban Systems, 2023.
+- Cho, Myers, Leskovec. *Friendship and mobility: user movement in location-based social networks.* KDD 2011 (the Brightkite data).
+- Zheng, Zhang, Xie, Ma. *Mining interesting locations and travel sequences from GPS trajectories.* WWW 2009 (the GeoLife data).
+
+Check each dataset's own page for its license and terms of use before redistributing it.
+
 ## Terms used in these docs
 
 Ordered along the hierarchy from raw fixes to tours.
 
-<div class="figure-scroll">
+<div class="figure">
+<picture>
+<source media="(max-width: 600px)" srcset="../assets/images/home/mobility-hierarchy-vertical.svg">
 <img src="../assets/images/home/mobility-hierarchy.svg" alt="Positionfixes produce Staypoints and Triplegs, which combine into Trips and then Tours; Staypoints cluster into Locations, which tours return to.">
+</picture>
 </div>
 
-| Term | Meaning |
+| Class | Meaning |
 | --- | --- |
-| Trajectory: [`TrajDataFrame`](../reference/data-structures/traj-dataframe.md) | Timestamped positions of one or many users |
-| Position fix: [`Positionfixes`](../reference/data-structures/positionfixes.md) | One timestamped latitude/longitude observation |
-| Staypoint: [`Staypoints`](../reference/data-structures/staypoints.md) | A period spent within a small spatial area |
-| Location: [`Locations`](../reference/data-structures/locations.md) | A recurring place formed by clustering staypoints |
-| Tripleg: [`Triplegs`](../reference/data-structures/triplegs.md) | Movement between two stays |
-| Trip: [`Trips`](../reference/data-structures/trips.md) | Triplegs merged between two activity stays |
-| Tour: [`Tours`](../reference/data-structures/tours.md) | Consecutive trips that return to the same place |
-| OD flow: [`FlowDataFrame`](../reference/data-structures/flow-dataframe.md) | A count or value from an origin to a destination |
+| [`TrajDataFrame`](../reference/data-structures/traj-dataframe.md) | **Trajectory**: timestamped positions of one or many users |
+| [`Positionfixes`](../reference/data-structures/positionfixes.md) | **Position fix**: one timestamped latitude/longitude observation |
+| [`Staypoints`](../reference/data-structures/staypoints.md) | **Staypoint**: a period spent within a small spatial area |
+| [`Locations`](../reference/data-structures/locations.md) | **Location**: a recurring place formed by clustering staypoints |
+| [`Triplegs`](../reference/data-structures/triplegs.md) | **Tripleg**: movement between two stays |
+| [`Trips`](../reference/data-structures/trips.md) | **Trip**: triplegs merged between two activity stays |
+| [`Tours`](../reference/data-structures/tours.md) | **Tour**: consecutive trips that return to the same place |
+| [`FlowDataFrame`](../reference/data-structures/flow-dataframe.md) | **OD flow**: a count or value from an origin to a destination |
 
 !!! tip "Citing fastmob"
 

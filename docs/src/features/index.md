@@ -3,6 +3,8 @@
 fastmob runs the scikit-mobility measure API on a Rust core, on whatever
 dataframe you already use.
 
+<div class="stat-strip"><span>426x median speedup</span><span>pandas and Polars</span><span>scikit-mobility-style API</span></div>
+
 <div class="feature-grid">
 <a class="feature-card" href="../learn/analyze-a-simple-trajectory/">
 <h3>Familiar API →</h3>

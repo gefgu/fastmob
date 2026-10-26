@@ -10,14 +10,14 @@ for what it can do.
 [![License](https://img.shields.io/pypi/l/fastmob)](https://github.com/gefgu/fastmob/blob/main/LICENSE)
 [![GitHub](https://img.shields.io/github/stars/gefgu/fastmob?style=social)](https://github.com/gefgu/fastmob)
 
-Version 0.3.2 · BSD-3-Clause · Python 3.9 or later · pandas and Polars via Narwhals
+Version 0.3.2 (released 2026-09-19, see [release notes](../release_notes/index.md)) · Alpha · BSD-3-Clause · Python 3.9 or later · pandas and Polars via Narwhals
 
 ## Relationship to scikit-mobility
 
 fastmob follows the measure API of
 [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility) and
 reimplements it on a Rust core with Narwhals dataframe support. Comparison
-tests against scikit-mobility run wherever the APIs overlap. Beyond that,
+tests against scikit-mobility run wherever the APIs overlap, and it is up to 1329x faster on 4M Brightkite rows (see [benchmarks](../features/benchmarks.md)). Beyond that,
 fastmob has its own trajectory hierarchy, models and network tools.
 
 ## License and credits
@@ -51,10 +51,4 @@ Gustavo Henrique Bruno dos Santos ([@gefgu](https://github.com/gefgu)).
 - [Source code and issue tracker](https://github.com/gefgu/fastmob/issues)
 - [Development setup](development.md)
 
-A useful bug report includes:
-
-- the fastmob and Python versions
-- the dataframe backend and its version
-- a minimal input
-- the expected and the actual output
-- the complete traceback
+A useful bug report includes the fastmob and Python versions, the dataframe backend and its version, a minimal input, the expected and actual output, and the full traceback.
