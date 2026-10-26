@@ -1,220 +1,132 @@
-# fastmob
+---
+hide:
+  - toc
+---
 
-<p align="center">
-  <img src="assets/logo_filled.svg" alt="fastmob logo" width="280">
+# Mobility analysis, hundreds of times faster
+
+<p class="hero-lead">
+<strong>fastmob</strong> is a Python library for human-mobility data: clean GPS
+traces, find stops and trips, and measure how individuals and populations move.
+Rust kernels do the heavy lifting; you keep your pandas or Polars dataframes.
 </p>
 
-**fastmob** is the fast mobility-analysis library for Python: a Rust-accelerated,
-backend-agnostic toolkit for preparing trajectories, modelling movement, and
-measuring individual and collective mobility.
-
-It combines native Rust kernels with a Python API and
-[Narwhals](https://narwhals-dev.github.io/narwhals/) dataframe support, so the
-same workflow works with pandas, Polars, and other eager dataframe backends.
-Fastmob includes trajectory processing, the Positionfixes → Staypoints →
-Triplegs → Trips → Tours hierarchy, networks, privacy, fitting, and mobility
-generation models. Compatibility with [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility)
-is supported where it helps teams migrate, but it is not the library's scope or
-identity.
-
-# Key Features
-
-- **Backend-agnostic**: pass a pandas, polars, or any other Narwhals-compatible DataFrame — fastmob works without changes.
-
-- **Rust-accelerated core**: parallel, zero-copy kernels for compute-heavy mobility workloads.
-    
-- **Mobility-native toolkit**: work from raw position fixes through stays,
-  locations, trips, tours, flows, networks, privacy, fitting, and generation.
-    
-- **Migration-friendly**: familiar scikit-mobility APIs and reproducible parity
-  checks make adoption straightforward when compatibility matters.
-
-- **Zero-copy by design**: fastmob processes data where it lives, avoiding
-  unnecessary dataframe copies and memory pressure.
-
-- **Lightweight**: Python wheels ship compact, release-ready binaries.
-
-
-## Installation
+<div class="hero-actions">
+<a class="hero-button hero-button--primary" href="learn/analyze-a-simple-trajectory/">Get started →</a>
+<a class="hero-button" href="reference/">API reference</a>
+<a class="hero-button" href="features/benchmarks/">Benchmarks</a>
+</div>
 
 ```bash
 pip install fastmob
 ```
 
-## Validation and Performance
+=== "pandas"
 
-fastmob is tested as a mobility library and a performance project. The
-correctness suite covers its native APIs across pandas and Polars, while optional
-scikit-mobility comparisons verify compatibility where the projects overlap. The
-benchmark suite uses standalone perf-counter scripts on representative mobility
-workloads, including Brightkite-derived data slices.
+    ```python
+    import pandas as pd
+    from fastmob import jump_lengths, radius_of_gyration
 
-For reproducible benchmark commands and methodology, see the
-[benchmarks page](features/benchmarks.md).
+    df = pd.DataFrame({
+        "uid": ["alice"] * 3 + ["bob"] * 3,
+        "datetime": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"] * 2),
+        "lat": [41.9, 42.0, 42.1, 40.7, 40.8, 40.9],
+        "lng": [12.5, 12.5, 12.5, -74.0, -74.0, -74.0],
+    })
 
-## Quick Example
+    jump_lengths(df)        # km between consecutive points, per user
+    radius_of_gyration(df)  # how far each user ranges around their center
+    ```
 
-```python
-import pandas as pd
-from fastmob import jump_lengths
+=== "Polars"
 
-df = pd.DataFrame({
-    "uid": ["alice", "alice", "alice", "bob", "bob"],
-    "datetime": pd.date_range("2020-01-01", periods=5, freq="h"),
-    "lat": [41.9, 42.0, 42.1, 40.7, 40.8],
-    "lng": [12.5, 12.5, 12.5, -74.0, -74.0],
-})
+    ```python
+    import polars as pl
+    from fastmob import jump_lengths
 
-result = jump_lengths(df)
-print(result)
+    df = pl.DataFrame({
+        "uid": ["alice"] * 3,
+        "datetime": ["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"],
+        "lat": [41.9, 42.0, 42.1],
+        "lng": [12.5, 12.5, 12.5],
+    }).with_columns(pl.col("datetime").str.to_datetime())
+
+    jump_lengths(df)  # returns a Polars DataFrame
+    ```
+
+```text
+     uid  radius_of_gyration
+0  alice             9.07904
+1    bob             9.07904
 ```
 
-# Getting Started
+## Fast on real data
 
-## Requirements
+Average execution time on 4 million Brightkite check-ins, fastmob (pandas) versus
+scikit-mobility. [See all measures and methodology](features/benchmarks.md).
 
-- Python >= 3.9
-- Rust toolchain (for building from source)
+![Bar chart comparing scikit-mobility and fastmob execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.](assets/images/home/home-benchmark-speedup.png)
 
-## Install from PyPI
+## From raw GPS fixes to tours
 
-=== "pip"
+Each level of the hierarchy is derived from the one below it with a single
+method call.
 
-    ```bash
-    pip install fastmob
-    ```
+![Diagram: Positionfixes produce Staypoints and Triplegs; these combine into Trips, then Tours; Staypoints cluster into Locations.](assets/images/home/mobility-hierarchy.svg)
 
-=== "uv"
+## What you can do
 
-    ```bash
-    uv add fastmob
-    ```
+<div class="feature-grid">
+<a class="feature-card" href="learn/clean-and-segment/">
+<h3>Clean and segment</h3>
+<p>Filter noise, compress, and split traces into movement and stops.</p>
+</a>
+<a class="feature-card" href="learn/staypoints-and-locations/">
+<h3>Staypoints and locations</h3>
+<p>Detect where people stop and cluster recurring places such as home and work.</p>
+</a>
+<a class="feature-card" href="learn/individual-and-collective-measures/">
+<h3>Measure mobility</h3>
+<p>Radius of gyration, entropy, jump lengths, flows and more, per person or per population.</p>
+</a>
+<a class="feature-card" href="learn/network-analysis/">
+<h3>Networks and map matching</h3>
+<p>Route and map-match trajectories on road and rail graphs.</p>
+</a>
+<a class="feature-card" href="learn/fit-and-evaluate/">
+<h3>Fit and evaluate</h3>
+<p>Fit mobility laws and compare generated trajectories with observed ones.</p>
+</a>
+<a class="feature-card" href="reference/models/">
+<h3>Generate synthetic mobility</h3>
+<p>Gravity, radiation, EPR and other models for flows and trajectories.</p>
+</a>
+</div>
 
-=== "generation fitting"
+## Why fastmob
 
-    ```bash
-    pip install statsmodels
-    ```
+- **Any dataframe.** Narwhals accepts pandas, Polars and other eager backends and returns the same type.
+- **Native speed.** Parallel Rust kernels read your columns without copying.
+- **Familiar API.** Measure names and signatures follow [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility), so existing code ports easily.
+- **Tested.** Correctness suites run on pandas and Polars, with comparison tests against scikit-mobility where the APIs overlap.
 
-=== "visualization extra"
+Requires Python 3.9 or later. Prebuilt wheels are available, so no Rust toolchain
+is needed to install. Building from source is covered in
+[development setup](about/development.md).
 
-    ```bash
-    pip install "fastmob[vis]"
-    ```
+## Next steps
 
-## Install for Development (from source)
-
-=== "Initial setup"
-
-    ```bash
-    git clone https://github.com/gefgu/fastmob.git
-    cd fastmob
-    bash scripts/setup_env.sh
-    source .venv/bin/activate
-    ```
-
-=== "Rebuild Rust extension"
-
-    ```bash
-    maturin develop
-    ```
-
-=== "Docs"
-
-    ```bash
-    uv sync --group docs
-    uv run --group docs zensical serve
-    uv run --group docs zensical build
-    ```
-
-Development requires `uv` and a Rust toolchain. After setup the compiled Rust extension (`.so`) is placed directly in `fastmob/`, so the package is importable from the repo root without a separate pip install.
-
-## Column Name Auto-Detection
-
-fastmob auto-detects required columns by scanning a priority list:
-
-| Semantic role | Accepted column names (in order) |
-|---|---|
-| datetime | `datetime`, `check-in_time`, `timestamp`, `time` |
-| latitude | `lat`, `latitude` |
-| longitude | `lng`, `lon`, `longitude` |
-| user ID (optional) | `uid`, `user`, `user_id` |
-
-When a user-ID column is absent, the entire dataframe is treated as a single individual.
-
-You can also pass column names explicitly via keyword arguments (`datetime_col`, `lat_col`, `lng_col`, `uid_col`).
-
-## Your First Measure: jump_lengths
-
-```python
-import pandas as pd
-from fastmob import jump_lengths
-
-# Build a minimal trajectory dataframe
-df = pd.DataFrame({
-    "uid": ["alice", "alice", "alice"],
-    "datetime": pd.date_range("2020-01-01", periods=3, freq="h"),
-    "lat": [0.0, 1.0, 2.0],
-    "lng": [0.0, 0.0, 0.0],
-})
-
-# Compute jump lengths (Haversine distances in km between consecutive points)
-result = jump_lengths(df)
-print(result)
-# uid  jump_lengths
-# alice  [111.19..., 111.19...]
-```
-
-## Using Polars
-
-fastmob is backend-agnostic. Pass a polars DataFrame and you get a polars DataFrame back:
-
-```python
-import polars as pl
-from fastmob import jump_lengths
-
-df = pl.DataFrame({
-    "uid": ["alice", "alice", "alice"],
-    "datetime": ["2020-01-01 00:00:00", "2020-01-01 01:00:00", "2020-01-01 02:00:00"],
-    "lat": [0.0, 1.0, 2.0],
-    "lng": [0.0, 0.0, 0.0],
-}).with_columns(pl.col("datetime").str.to_datetime())
-
-result = jump_lengths(df)  # returns a polars DataFrame
-```
-
-## Optional Extras
-
-| Extra | Installs | Used by |
-|---|---|---|
-| `geo` | GeoPandas, Shapely, PyProj | geospatial data conversion and tessellation; H3 is native Rust |
-| `vis` | `fastmob-vis` | `fastmob.vis` generic ECharts visualization |
-
-Install an extra with:
-
-```bash
-pip install "fastmob[geo]"
-# or with uv:
-uv sync --extra geo
-```
-
-## Generation Models
-
-```python
-import pandas as pd
-from fastmob.models import Gravity, SpatialEPR
-
-tessellation = pd.DataFrame({
-    "tile_id": [0, 1, 2],
-    "lat": [45.0, 45.1, 45.2],
-    "lng": [7.0, 7.1, 7.2],
-    "relevance": [5, 6, 7],
-    "tot_outflow": [10, 12, 14],
-})
-
-flows = Gravity().generate(tessellation, out_format="probabilities")
-
-start = pd.Timestamp("2020-01-01 00:00:00")
-end = pd.Timestamp("2020-01-01 06:00:00")
-trajectories = SpatialEPR().generate(start, end, tessellation, n_agents=2, random_state=0)
-```
+<div class="feature-grid">
+<a class="feature-card" href="learn/">
+<h3>Learn →</h3>
+<p>Step-by-step guides with runnable examples.</p>
+</a>
+<a class="feature-card" href="reference/">
+<h3>Reference →</h3>
+<p>Every function, parameter and return schema.</p>
+</a>
+<a class="feature-card" href="features/benchmarks/">
+<h3>Benchmarks →</h3>
+<p>Methodology and results across all measure families.</p>
+</a>
+</div>

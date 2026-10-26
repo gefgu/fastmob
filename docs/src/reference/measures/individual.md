@@ -12,6 +12,7 @@ when auto-detection does not match your schema.
 | Question | Representative APIs |
 | --- | --- |
 | How far and how often does someone move? | `jump_lengths`, `radius_of_gyration`, `waiting_times` |
+| What if the data does not fit in memory? | `radius_of_gyration_lazy` |
 | Which places matter? | `home_location`, `work_location`, `location_frequency` |
 | Is their movement regular or predictable? | `regularity`, entropy, predictability, motifs |
 | Does route distance matter? | `jump_lengths_road`, `radius_of_gyration_road` |
@@ -102,6 +103,10 @@ For a task-focused introduction, see
       show_source: false
 
 ::: fastmob.measures.individual.radius_of_gyration
+    options:
+      show_source: false
+
+::: fastmob.measures.individual.radius_of_gyration_lazy
     options:
       show_source: false
 

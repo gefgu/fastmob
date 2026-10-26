@@ -62,7 +62,10 @@ nav = [
     { "Data" = "reference/data.md" },
   ] },
   {"Resources" = "resource/index.md"},
-  { "About" = "about/index.md" },
+  { "About" = [
+    { "Overview" = "about/index.md" },
+    { "Development setup" = "about/development.md" },
+  ] },
   { "Release Notes" = [
     { "Overview" = "release_notes/index.md" },
     { "v0.3.2" = "release_notes/v0.3.2.md" },
