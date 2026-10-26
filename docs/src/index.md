@@ -7,9 +7,8 @@ hide:
 # Mobility analysis, hundreds of times faster
 
 <p class="hero-lead">
-<strong>fastmob</strong> is a Python library for human-mobility data: clean GPS
-traces, find stops and trips, and measure how individuals and populations move.
-Rust kernels do the heavy lifting; you keep your pandas or Polars dataframes.
+<strong>fastmob</strong> cleans GPS traces, finds stops and trips, and measures how
+people move. Rust does the heavy lifting; you keep your pandas or Polars dataframes.
 </p>
 
 <div class="hero-actions">
@@ -17,6 +16,12 @@ Rust kernels do the heavy lifting; you keep your pandas or Polars dataframes.
 <a class="hero-button" href="reference/">API reference</a>
 <a class="hero-button" href="features/benchmarks/">Benchmarks</a>
 </div>
+
+<p class="figure-caption">Average time on 4 million Brightkite check-ins, fastmob (pandas) versus scikit-mobility. <a href="features/benchmarks/">All measures and methodology</a>.</p>
+<div class="figure-scroll">
+<img src="assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and fastmob execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.">
+</div>
+
 
 ```bash
 pip install fastmob
@@ -66,26 +71,13 @@ pip install fastmob
     "bob"    14.423721
     ```
 
-## Fast on real data
-
-Average execution time on 4 million Brightkite check-ins, fastmob (pandas) versus
-scikit-mobility. [See all measures and methodology](features/benchmarks.md).
-
-<div class="figure-scroll" markdown>
-
-![Bar chart comparing scikit-mobility and fastmob execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.](assets/images/home/home-benchmark-speedup.png)
-
-</div>
-
 ## From raw GPS fixes to tours
 
 Each level of the hierarchy is derived from the one below it with a single
 method call.
 
-<div class="figure-scroll" markdown>
-
-![Diagram: Positionfixes produce Staypoints and Triplegs; these combine into Trips, then Tours. Staypoints also cluster into Locations, which tours return to.](assets/images/home/mobility-hierarchy.svg)
-
+<div class="figure-scroll">
+<img src="assets/images/home/mobility-hierarchy.svg" alt="Diagram: Positionfixes produce Staypoints and Triplegs; these combine into Trips, then Tours. Staypoints also cluster into Locations, which tours return to.">
 </div>
 
 ## What you can do

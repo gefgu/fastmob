@@ -32,6 +32,7 @@ Third-party code and algorithms, including MoveTK (Apache-2.0), are credited in
   author = {dos Santos, Gustavo Henrique Bruno},
   title  = {fastmob: fast human-mobility analysis in Python},
   year   = {2026},
+  version = {0.3.2},
   url    = {https://github.com/gefgu/fastmob}
 }
 ```
@@ -45,6 +46,10 @@ Gustavo Henrique Bruno dos Santos ([@gefgu](https://github.com/gefgu)).
 - [Source code and issue tracker](https://github.com/gefgu/fastmob/issues)
 - [Development setup](development.md)
 
-A useful bug report includes the fastmob and Python versions, dataframe backend
-and version, a minimal input, the expected and actual output, and the complete
-traceback.
+A useful bug report includes:
+
+- the fastmob and Python versions
+- the dataframe backend and its version
+- a minimal input
+- the expected and the actual output
+- the complete traceback

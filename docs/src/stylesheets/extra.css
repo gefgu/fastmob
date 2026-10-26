@@ -189,8 +189,8 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
-  margin: 2rem 0;
-  align-items: start;
+  margin: 1.25rem 0 2rem;
+  align-items: stretch;
 }
 
 .how-to-card {
@@ -410,4 +410,48 @@
 
 .figure-scroll img {
   min-width: 620px;
+}
+
+/* Code-styled links follow the link colour. */
+.md-typeset a code {
+  color: inherit;
+}
+
+/* Card body text uses the body colour in both themes. */
+[data-md-color-scheme="default"] .feature-card p {
+  color: #3a3a3a;
+}
+
+/* Tables read at body size; short identifier columns do not wrap mid-token. */
+.md-typeset table:not([class]) {
+  font-size: 0.75rem;
+}
+
+.md-typeset table:not([class]) td:first-child code,
+.md-typeset table:not([class]) td:first-child a {
+  white-space: nowrap;
+}
+
+.md-typeset table:not([class]) td:nth-child(2) {
+  white-space: nowrap;
+}
+
+/* Three guide cards per row on wide screens. */
+@media screen and (min-width: 1100px) {
+  .how-to-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Footer pager keeps its labels on small screens. */
+@media screen and (max-width: 44.9375em) {
+  .md-footer__link .md-footer__title {
+    display: block;
+  }
+}
+
+.figure-caption {
+  margin-top: 0;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.75rem;
 }

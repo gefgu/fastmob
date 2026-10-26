@@ -69,16 +69,6 @@ nav = [
     { "Development setup" = "about/development.md" },
     { "Release Notes" = [
       { "All releases" = "release_notes/index.md" },
-      { "v0.3.2" = "release_notes/v0.3.2.md" },
-      { "v0.3.1" = "release_notes/v0.3.1.md" },
-      { "v0.3.0" = "release_notes/v0.3.0.md" },
-      { "v0.2.2" = "release_notes/v0.2.2.md" },
-      { "v0.2.1" = "release_notes/v0.2.1.md" },
-      { "v0.2.0" = "release_notes/v0.2.0.md" },
-      { "v0.1.3" = "release_notes/v0.1.3.md" },
-      { "v0.1.2" = "release_notes/v0.1.2.md" },
-      { "v0.1.1" = "release_notes/v0.1.1.md" },
-      { "v0.1.0" = "release_notes/v0.1.0.md" },
     ] },
   ] },
 ]
@@ -91,10 +81,8 @@ features = [
   "content.code.copy",
   "content.tabs.link",
   "navigation.footer",
-  "navigation.indexes",
   "navigation.tabs",
   "navigation.tabs.sticky",
-  "navigation.top",
   "search.highlight",
 ]
 

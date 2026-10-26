@@ -25,21 +25,21 @@ BENCH = {
 
 GOLD, GREY, TEXT = "#c9a400", "#8a8a8a", "#8a8a8a"
 
-fig, ax = plt.subplots(figsize=(8, 3.6), dpi=200)
+fig, ax = plt.subplots(figsize=(8, 4.2), dpi=200)
 names = list(BENCH)[::-1]
 for i, name in enumerate(names):
     sk, fm, speedup = BENCH[name]
     ax.barh(i + 0.18, sk, height=0.34, color=GREY)
     ax.barh(i - 0.18, fm, height=0.34, color=GOLD)
-    ax.text(sk * 1.15, i + 0.18, f"{sk:.1f}s", va="center", fontsize=8, color=TEXT)
+    ax.text(sk * 1.15, i + 0.18, f"{sk:.1f}s", va="center", fontsize=11, color=TEXT)
     ax.text(
         fm * 1.15, i - 0.18, f"{fm:.2f}s  ({speedup:.0f}x faster)",
-        va="center", fontsize=8, color=GOLD, fontweight="bold",
+        va="center", fontsize=11, color=GOLD, fontweight="bold",
     )
-ax.set_yticks(range(len(names)), names, fontsize=9, color=TEXT)
+ax.set_yticks(range(len(names)), names, fontsize=12, color=TEXT)
 ax.set_xlabel("Execution time on 4M Brightkite check-ins (seconds, log scale, lower is better)",
-              fontsize=8, color=TEXT)
-ax.tick_params(colors=TEXT, labelsize=8)
+              fontsize=11, color=TEXT)
+ax.tick_params(colors=TEXT, labelsize=10)
 ax.set_xscale("log")
 ax.set_xlim(0.05, 2000)
 ax.set_ylim(-0.6, len(names) - 0.2)
@@ -49,8 +49,8 @@ for s in ("top", "right", "left"):
 ax.spines["bottom"].set_color(TEXT)
 ax.legend(
     handles=[plt.Rectangle((0, 0), 1, 1, color=GREY), plt.Rectangle((0, 0), 1, 1, color=GOLD)],
-    labels=["scikit-mobility", "fastmob (pandas)"], loc="upper right",
-    frameon=False, labelcolor=TEXT, fontsize=8,
+    labels=["scikit-mobility", "fastmob (pandas)"], loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2,
+    frameon=False, labelcolor=TEXT, fontsize=11,
 )
 fig.tight_layout()
 fig.savefig(OUT / "home-benchmark-speedup.png", transparent=True)

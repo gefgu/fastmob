@@ -3,10 +3,6 @@
 Datasets, packages, community and background reading for fastmob.
 
 <div class="feature-grid">
-<a class="feature-card" href="https://github.com/gefgu/fastmob/issues">
-<h3>Get help →</h3>
-<p>Report bugs and ask questions on the GitHub issue tracker.</p>
-</a>
 <a class="feature-card" href="https://pypi.org/project/fastmob/">
 <h3>PyPI →</h3>
 <p>Install with <code>pip install fastmob</code>; prebuilt wheels for Linux, macOS and Windows.</p>
@@ -14,6 +10,10 @@ Datasets, packages, community and background reading for fastmob.
 <a class="feature-card" href="https://github.com/gefgu/fastmob">
 <h3>Source code →</h3>
 <p>Rust kernels, Python API, tests and benchmark scripts.</p>
+</a>
+<a class="feature-card" href="https://github.com/gefgu/fastmob/issues">
+<h3>Get help →</h3>
+<p>Report bugs and ask questions on the GitHub issue tracker.</p>
 </a>
 </div>
 
@@ -33,8 +33,11 @@ Datasets, packages, community and background reading for fastmob.
 
 ## Terms used in these docs
 
+Ordered along the hierarchy from raw fixes to tours. See [Data structures](../reference/data-structures.md) for the full picture.
+
 | Term | Meaning | Class |
 | --- | --- | --- |
+| Trajectory | Timestamped positions of one or many users | [`TrajDataFrame`](../reference/data-structures/traj-dataframe.md) |
 | Position fix | One timestamped latitude/longitude observation | [`Positionfixes`](../reference/data-structures/positionfixes.md) |
 | Staypoint | A period spent within a small spatial area | [`Staypoints`](../reference/data-structures/staypoints.md) |
 | Tripleg | Movement between two stays | [`Triplegs`](../reference/data-structures/triplegs.md) |
@@ -42,4 +45,5 @@ Datasets, packages, community and background reading for fastmob.
 | Tour | Consecutive trips that return to the same place | [`Tours`](../reference/data-structures/tours.md) |
 | Location | A recurring place formed by clustering staypoints | [`Locations`](../reference/data-structures/locations.md) |
 | OD flow | A count or value from an origin to a destination | [`FlowDataFrame`](../reference/data-structures/flow-dataframe.md) |
-| STVD | Spatiotemporal visitation distribution | [Evaluation measures](../reference/measures/evaluation.md) |
+
+To cite fastmob, see [About](../about/index.md#cite-fastmob).

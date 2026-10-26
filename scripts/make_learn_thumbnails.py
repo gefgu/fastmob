@@ -32,35 +32,6 @@ def finish(fig, ax, name, axes=False):
     plt.close(fig)
 
 
-def trajectory():
-    df = pd.DataFrame({
-        "uid": ["alice"] * 3 + ["bob"] * 3,
-        "datetime": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"] * 2),
-        "lat": [41.9, 42.0, 42.1, 40.7, 40.8, 40.9],
-        "lng": [12.5, 12.5, 12.5, -74.0, -74.0, -74.0],
-    })
-    jl = jump_lengths(df).set_index("uid")["jump_lengths"]
-    rg = radius_of_gyration(df).set_index("uid")["radius_of_gyration"]
-    fig, axes = plt.subplots(1, 2, figsize=(6.4, 3.6), dpi=150)
-    for ax, uid in zip(axes, ["alice", "bob"]):
-        g = df[df.uid == uid]
-        lat, lng = g.lat.to_numpy(), g.lng.to_numpy()
-        ax.plot(lng, lat, "-o", color=GOLD, lw=3, ms=9)
-        for k in range(2):
-            ax.text(lng[k] + 0.0006, (lat[k] + lat[k + 1]) / 2, f"{jl[uid][k]:.1f} km",
-                    color=INK, fontsize=9, va="center")
-        cy = lat.mean()
-        r_deg = rg[uid] / 111.19
-        ax.add_patch(plt.Circle((lng.mean(), cy), r_deg, fill=False, ls="--", color=GREY))
-        ax.set_aspect("equal")
-        ax.set_title(f"{uid}: radius of gyration {rg[uid]:.1f} km", color=INK, fontsize=9)
-        ax.set_xlim(lng.mean() - 0.17, lng.mean() + 0.17)
-        ax.set_axis_off()
-    fig.tight_layout(pad=0.4)
-    fig.savefig(OUT / "learn-thumb-trajectory.png", transparent=True)
-    plt.close(fig)
-
-
 def geolife_user(user="000"):
     import shutil
     import tempfile
@@ -154,6 +125,26 @@ def fit():
         ax.spines[sp].set_color(INK)
     finish(fig, ax, "learn-thumb-fit.png", axes=True)
     print("fit beta", beta, "n", len(values))
+
+
+def trajectory():
+    """One GeoLife outing: path coloured by time, with its radius of gyration."""
+    tdf = geolife_user()
+    tdf["datetime"] = pd.to_datetime(tdf["datetime"], utc=True)
+    tdf = tdf.sort_values("datetime")
+    tdf = tdf[(tdf.lat.between(39.9, 40.1)) & (tdf.lng.between(116.2, 116.5))]
+    day = tdf[tdf.datetime.dt.date == tdf.datetime.dt.date.iloc[len(tdf) // 2]].iloc[::8]
+    rg = radius_of_gyration(day)["radius_of_gyration"].iloc[0]
+    fig, ax = new_fig()
+    ax.scatter(day.lng, day.lat, c=np.arange(len(day)), cmap="YlOrBr", s=14, zorder=3)
+    ax.plot(day.lng, day.lat, color=GREY, lw=1, zorder=2)
+    cx, cy = day.lng.mean(), day.lat.mean()
+    ax.add_patch(plt.Circle((cx, cy), rg / 111.19, fill=False, ls="--", color=GOLD, lw=2))
+    ax.set_aspect("equal")
+    ax.text(0.02, 0.97, f"radius of gyration: {rg:.1f} km", transform=ax.transAxes,
+            color=INK, fontsize=14, va="top", fontweight="bold")
+    finish(fig, ax, "learn-thumb-trajectory.png")
+    print("trajectory rg", rg, "points", len(day))
 
 
 if __name__ == "__main__":
