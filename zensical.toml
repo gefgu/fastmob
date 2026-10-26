@@ -19,7 +19,8 @@ nav = [
     { "Optimizations" = "features/optimizations.md" },
     { "Motifs" = "features/motifs.md" },
   ] },
-  { "Learn" = "learn/index.md", children = [
+  { "Learn" = [
+    { "Overview" = "learn/index.md" },
     { "Start with a trajectory" = "learn/analyze-a-simple-trajectory.md" },
     { "Columns and backends" = "learn/use-custom-columns-and-dataframe-backends.md" },
     { "Clean and segment trajectories" = "learn/clean-and-segment.md" },
@@ -62,7 +63,10 @@ nav = [
   ] },
   {"Resources" = "resource/index.md"},
   { "About" = "about/index.md" },
-  { "Release Notes" = "release_notes/index.md", children = [
+  { "Release Notes" = [
+    { "Overview" = "release_notes/index.md" },
+    { "v0.3.2" = "release_notes/v0.3.2.md" },
+    { "v0.2.0" = "release_notes/v0.2.0.md" },
     { "v0.1.3" = "release_notes/v0.1.3.md" },
     { "v0.1.2" = "release_notes/v0.1.2.md" },
     { "v0.1.1" = "release_notes/v0.1.1.md" },
@@ -77,6 +81,7 @@ variant = "modern"
 features = [
   "content.code.copy",
   "content.tabs.link",
+  "navigation.footer",
   "navigation.indexes",
   "navigation.sections",
   "navigation.tabs",

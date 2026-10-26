@@ -1,4 +1,4 @@
-# How-to guides
+# Learn
 
 These short recipes take you from a concrete task to a working Fastmob call.
 They use small, deterministic inputs; the API reference remains the complete

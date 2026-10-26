@@ -19,7 +19,7 @@
   --md-accent-fg-color: #7a7600;
   --md-accent-fg-color--transparent: rgba(250, 255, 105, 0.18);
   --md-typeset-a-color: #6c6900;
-  --md-code-bg-color: #f5f5ee;
+  --md-code-bg-color: #f6f6f6;
   --md-code-fg-color: #1f1f1f;
   --md-footer-bg-color: var(--skmob-black);
   --md-footer-bg-color--dark: #000000;
@@ -251,4 +251,31 @@
   .how-to-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Light theme: neutral surface cards, yellow kept for the small accents only. */
+[data-md-color-scheme="default"] .how-to-card {
+  border-color: #e2e2e2;
+  background: #ffffff;
+  color: #3a3a3a !important;
+}
+
+[data-md-color-scheme="default"] .how-to-card:hover,
+[data-md-color-scheme="default"] .how-to-card:focus-visible {
+  border-color: #b8b300;
+  color: #3a3a3a !important;
+}
+
+[data-md-color-scheme="default"] .how-to-card h2 {
+  color: #111111;
+}
+
+[data-md-color-scheme="default"] .how-to-card__eyebrow,
+[data-md-color-scheme="default"] .how-to-card__link {
+  color: #6c6900;
+}
+
+/* Example outputs wider than the column scroll instead of clipping. */
+.md-typeset pre {
+  overflow-x: auto;
 }
