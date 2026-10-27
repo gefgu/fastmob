@@ -21,7 +21,7 @@ people move. Rust does the heavy lifting; you keep your pandas or Polars datafra
 <div class="figure">
 <picture>
 <source media="(max-width: 600px)" srcset="assets/images/home/home-benchmark-speedup-mobile.png">
-<img src="assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and Fastkit-Mobility execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.">
+<img src="assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and Fastkit-Mobility execution time on 4M check-ins for five measures; fastmob is 423x to 2658x faster.">
 </picture>
 </div>
 
@@ -91,7 +91,10 @@ method call.
 ## What you can do
 
 <div class="figure figure--square">
+<picture>
+<source media="(max-width: 600px)" srcset="assets/images/home/home-geolife-staypoints-triplegs-mobile.png">
 <img src="assets/images/home/home-geolife-staypoints-triplegs.png" alt="One GeoLife user-day: grey position fixes, coloured triplegs between stops, and gold circles at detected staypoints.">
+</picture>
 </div>
 <p class="figure-caption">One day of a GeoLife user in Beijing: Fastkit-Mobility turns raw fixes into staypoints and triplegs.</p>
 

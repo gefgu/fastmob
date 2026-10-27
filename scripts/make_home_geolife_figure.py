@@ -40,29 +40,46 @@ t1 = pd.to_datetime(d_legs.finished_at, utc=True).max() + pd.Timedelta("1h")
 d_fix = tdf[(tdf.datetime >= t0) & (tdf.datetime <= t1)]
 d_stay = stays[(pd.to_datetime(stays.started_at, utc=True) >= t0) & (pd.to_datetime(stays.started_at, utc=True) <= t1)]
 
-fig, ax = plt.subplots(figsize=(6, 5), dpi=200)
-ax.scatter(d_fix.lng, d_fix.lat, s=3, color="#6f6f6f", alpha=0.55, linewidths=0, label="position fixes")
-palette = plt.get_cmap("tab10")
-for i, (_, leg) in enumerate(d_legs.iterrows()):
-    m = (d_fix.datetime >= pd.Timestamp(leg.started_at)) & (d_fix.datetime <= pd.Timestamp(leg.finished_at))
-    seg = d_fix[m]
-    ax.plot(seg.lng, seg.lat, lw=2, color=palette(i % 10), label="triplegs" if i == 0 else None)
-ax.scatter(d_stay.lng, d_stay.lat, s=90, facecolor="none", edgecolor=GOLD, linewidths=2, label="staypoints", zorder=5)
-ax.set_aspect("equal")
-# Square window centred on the stops; the rare long trip leaves the frame.
-cx, cy = d_stay.lng.median(), d_stay.lat.median()
-half = (
-    max(
-        d_stay.lng.quantile(0.9) - d_stay.lng.quantile(0.1),
-        (d_stay.lat.quantile(0.9) - d_stay.lat.quantile(0.1)) / 0.77,
+# (file, figure size, legend font size, legend columns, legend height share): wide for desktop, tall for phones.
+VARIANTS = [
+    ("home-geolife-staypoints-triplegs.png", (6, 5), 11, 3, 0.07),
+    ("home-geolife-staypoints-triplegs-mobile.png", (4, 4.8), 14, 1, 0.2),
+]
+for name, size, fs, ncol, legend_h in VARIANTS:
+    fig, ax = plt.subplots(figsize=size, dpi=200)
+    ax.scatter(d_fix.lng, d_fix.lat, s=3, color="#6f6f6f", alpha=0.55, linewidths=0, label="position fixes")
+    palette = plt.get_cmap("tab10")
+    for i, (_, leg) in enumerate(d_legs.iterrows()):
+        m = (d_fix.datetime >= pd.Timestamp(leg.started_at)) & (d_fix.datetime <= pd.Timestamp(leg.finished_at))
+        seg = d_fix[m]
+        ax.plot(seg.lng, seg.lat, lw=2, color=palette(i % 10), label="triplegs" if i == 0 else None)
+    ax.scatter(
+        d_stay.lng, d_stay.lat, s=90, facecolor="none", edgecolor=GOLD, linewidths=2, label="staypoints", zorder=5
     )
-    * 0.75
-)
-ax.set_xlim(cx - half, cx + half)
-ax.set_ylim(cy - half * 0.77, cy + half * 0.77)
-ax.set_axis_off()
-handles, labels = ax.get_legend_handles_labels()
-fig.legend(handles, labels, frameon=False, labelcolor=TEXT, fontsize=11, loc="lower center", ncol=3, markerscale=1)
-fig.tight_layout(pad=0.3, rect=(0, 0.07, 1, 1))
-fig.savefig(OUT / "home-geolife-staypoints-triplegs.png", transparent=True)
-print("day", day, "triplegs", len(d_legs), "staypoints", len(d_stay), "fixes", len(d_fix))
+    ax.set_aspect("equal")
+    # Square window centred on the stops; the rare long trip leaves the frame.
+    cx, cy = d_stay.lng.median(), d_stay.lat.median()
+    half = (
+        max(
+            d_stay.lng.quantile(0.9) - d_stay.lng.quantile(0.1),
+            (d_stay.lat.quantile(0.9) - d_stay.lat.quantile(0.1)) / 0.77,
+        )
+        * 0.75
+    )
+    ax.set_xlim(cx - half, cx + half)
+    ax.set_ylim(cy - half * 0.77, cy + half * 0.77)
+    ax.set_axis_off()
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        frameon=False,
+        labelcolor=TEXT,
+        fontsize=fs,
+        loc="lower center",
+        ncol=ncol,
+        markerscale=1.4 if ncol == 1 else 1,
+    )
+    fig.tight_layout(pad=0.3, rect=(0, legend_h, 1, 1))
+    fig.savefig(OUT / name, transparent=True)
+    print("day", day, "triplegs", len(d_legs), "staypoints", len(d_stay), "fixes", len(d_fix))

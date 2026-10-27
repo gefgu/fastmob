@@ -680,3 +680,25 @@
 .md-typeset details.tip {
   background-color: rgba(250, 255, 105, 0.08);
 }
+
+/* Features overview on phones: the trait cards (the grid right after the stat strip) collapse to a
+   compact two-column set of titles instead of a screen-tall stack. */
+@media (max-width: 480px) {
+  .stat-strip + .feature-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .stat-strip + .feature-grid .feature-card {
+    padding: 0.6rem 0.7rem;
+  }
+
+  .stat-strip + .feature-grid .feature-card p {
+    display: none;
+  }
+
+  .stat-strip span {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.55rem;
+  }
+}

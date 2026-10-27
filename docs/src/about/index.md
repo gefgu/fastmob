@@ -17,7 +17,7 @@ Released 2026-09-19 ([release notes](../release_notes/index.md)) · Alpha · pan
 Fastkit-Mobility follows the measure API of
 [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility) and
 reimplements it on a Rust core with Narwhals dataframe support. Comparison
-tests against scikit-mobility run wherever the APIs overlap, and it is up to 1329x faster on 4M Brightkite rows (see [benchmarks](../features/benchmarks.md)). Beyond that,
+tests against scikit-mobility run wherever the APIs overlap, and it is up to 2658x faster on 4M Brightkite rows (see [benchmarks](../features/benchmarks.md)). Beyond that,
 Fastkit-Mobility has its own trajectory hierarchy, models and network tools.
 
 ## License and credits
@@ -28,6 +28,28 @@ Third-party code and algorithms, including MoveTK (Apache-2.0), are credited in
 [THIRD_PARTY_NOTICES.md](https://github.com/gefgu/fastmob/blob/main/fastmob-core/THIRD_PARTY_NOTICES.md).
 
 ## Cite Fastkit-Mobility
+
+If you use Fastkit-Mobility in research, please cite the paper
+([HAL hal-05755990](https://inria.hal.science/hal-05755990)):
+
+```bibtex
+@inproceedings{santos2026fastkit,
+  author    = {Santos, Gustavo H. and
+               Viana, Aline Carneiro and
+               Pappalardo, Luca and
+               Silva, Thiago H.},
+  title     = {Fastkit-Mobility: A High-Performance,
+               DataFrame-Agnostic Library for
+               Mobility Analysis},
+  booktitle = {NetMob 2026},
+  address   = {Niter{\'o}i, Rio de Janeiro, Brazil},
+  year      = {2026},
+  month     = oct,
+  url       = {https://inria.hal.science/hal-05755990}
+}
+```
+
+To cite a specific release of the software, use:
 
 ```bibtex
 @software{fastmob,

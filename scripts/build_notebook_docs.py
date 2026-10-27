@@ -11,6 +11,8 @@ from urllib.parse import quote
 
 import nbformat
 
+import sync_docs_version
+
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs" / "src"
 BINDER_MARKER = "<!-- Launch this notebook in Binder. -->"
@@ -71,6 +73,7 @@ def _clean_notebook(notebook: Path, destination: Path) -> None:
 
 
 def main() -> None:
+    sync_docs_version.sync()
     notebooks = sorted(DOCS.rglob("*.ipynb"))
     for notebook in notebooks:
         with tempfile.TemporaryDirectory() as temporary_dir:

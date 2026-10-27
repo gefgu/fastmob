@@ -1,4 +1,4 @@
-# Motifs
+# Find daily mobility motifs
 
 
 ## Daily Mobility Motifs Daily Representation

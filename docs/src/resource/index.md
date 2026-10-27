@@ -19,6 +19,10 @@ Datasets, packages, community and background reading for Fastkit-Mobility.
 
 ## Datasets
 
+<div class="figure">
+<img src="../assets/images/resources/resources-datasets.png" alt="Brightkite check-ins scattered over the world map next to GeoLife GPS traces forming the ring roads of Beijing.">
+</div>
+
 - **[Brightkite](https://snap.stanford.edu/data/loc-brightkite.html)**: about 4M location check-ins from a social network. The workload for the [benchmarks](../features/benchmarks.md).
 - **[GeoLife](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/)**: GPS trajectories of 182 users in Beijing. Read it with `load_geolife_trajectories`; used in the [stay-point notebook](../learn/notebooks/stay-point-detection-geolife.md).
 - **Foursquare NYC and others**: datasets from scikit-mobility, available through `load_dataset`. See the [data reference](../reference/data.md).
@@ -33,6 +37,7 @@ Check each dataset's own page for its license and terms of use before redistribu
 
 ### Papers
 
+- Santos, Viana, Pappalardo, Silva. [*Fastkit-Mobility: A High-Performance, DataFrame-Agnostic Library for Mobility Analysis.*](https://inria.hal.science/hal-05755990) NetMob 2026 (the paper to cite for this library).
 - Pappalardo, Simini, Barlacchi, Pellungrini. *scikit-mobility: A Python Library for the Analysis, Generation, and Risk Assessment of Mobility Data.* Journal of Statistical Software, 2022.
 - Martin, Hong, Raubal and others. *Trackintel: An open-source Python library for human mobility analysis.* Computers, Environment and Urban Systems, 2023.
 - Cho, Myers, Leskovec. *Friendship and mobility: user movement in location-based social networks.* KDD 2011 (the Brightkite data).

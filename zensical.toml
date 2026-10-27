@@ -18,7 +18,6 @@ nav = [
     { "Features overview" = "features/index.md" },
     { "Benchmarks" = "features/benchmarks.md" },
     { "Optimizations" = "features/optimizations.md" },
-    { "Motifs" = "features/motifs.md" },
   ] },
   { "Learn" = [
     { "Learn overview" = "learn/index.md" },
@@ -29,8 +28,9 @@ nav = [
     { "Measure people and populations" = "learn/individual-and-collective-measures.md" },
     { "Route and map-match trajectories" = "learn/network-analysis.md" },
     { "Fit and evaluate mobility results" = "learn/fit-and-evaluate.md" },
+    { "Find daily mobility motifs" = "learn/motifs.md" },
     { "Stay-point detection notebook" = "learn/notebooks/stay-point-detection-geolife.md" },
-    { "Compare mobility laws notebook" = "learn/comparision-to-mobility-laws.md" },
+    { "Compare mobility laws notebook" = "learn/compare-to-mobility-laws.md" },
   ] },
   { "Reference" = [
     { "Reference overview" = "reference/index.md" },
@@ -72,7 +72,8 @@ nav = [
 ]
 
 [project.theme]
-logo = "assets/logo_filled.svg"
+custom_dir = "docs/overrides"
+logo = "assets/logo_header.svg"
 favicon = "assets/icon.svg"
 variant = "modern"
 features = [

@@ -59,15 +59,19 @@ parameter? Each guide links to the [API reference](../reference/index.md).
 </a>
 </div>
 
+Also see [daily mobility motifs](motifs.md), a worked example of matching daily movement patterns.
+
 ## Notebook examples
 
 <div class="how-to-grid how-to-grid--two">
 <a class="how-to-card" href="notebooks/stay-point-detection-geolife.md">
+<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-notebook-staypoints.png" alt="GeoLife GPS traces in grey with staypoints as gold circles sized by how long each stay lasted">
 <h2>Stay-point detection notebook</h2>
 <p>An end-to-end run on GeoLife GPS traces, compared with trackintel.</p>
 <span class="how-to-card__meta">Data: GeoLife · Binder notebook</span>
 </a>
-<a class="how-to-card" href="comparision-to-mobility-laws.md">
+<a class="how-to-card" href="compare-to-mobility-laws.md">
+<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-notebook-laws.png" alt="Brightkite jump-length histogram in grey with the fitted truncated power law in gold">
 <h2>Compare mobility laws notebook</h2>
 <p>Fit a power law to the distribution of Brightkite jump lengths.</p>
 <span class="how-to-card__meta">Data: Brightkite · Binder notebook</span>

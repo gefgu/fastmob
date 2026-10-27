@@ -154,7 +154,54 @@ def trajectory():
     print("trajectory rg", rg, "points", len(day))
 
 
+def notebook_staypoints():
+    """Notebook card: stays of another GeoLife user, sized by how long the stay lasted."""
+    tdf = geolife_user("003")
+    tdf["datetime"] = pd.to_datetime(tdf["datetime"], utc=True)
+    tdf = tdf.sort_values("datetime")
+    tdf = tdf[(tdf.lat.between(39.8, 40.2)) & (tdf.lng.between(116.1, 116.6))]
+    stays = Positionfixes(tdf).generate_staypoints(minutes_for_a_stop=20, spatial_radius_km=0.2).to_pandas()
+    minutes = (pd.to_datetime(stays["finished_at"]) - pd.to_datetime(stays["started_at"])).dt.total_seconds() / 60
+    fig, ax = new_fig()
+    ax.scatter(tdf.lng, tdf.lat, s=1.2, color=GREY, alpha=0.4, linewidths=0)
+    ax.scatter(stays.lng, stays.lat, s=10 + minutes.clip(upper=600) / 4, color=GOLD, alpha=0.75, linewidths=0)
+    finish(fig, ax, "learn-thumb-notebook-staypoints.png")
+    print("notebook staypoints:", len(stays))
+
+
+def notebook_laws():
+    """Notebook card: survival function of Brightkite jump lengths with the fitted law."""
+    from fastmob.measures.fitting import fit_values_to_truncated_powerlaw
+    from fastmob.measures.fitting.truncated_powerlaw import log_truncated_powerlaw
+
+    df = pd.read_csv(
+        DATA / "loc-brightkite_totalCheckins.txt.gz",
+        sep="\t",
+        header=None,
+        names=["uid", "datetime", "lat", "lng", "loc"],
+        nrows=600_000,
+    ).dropna(subset=["lat", "lng"])
+    df["datetime"] = pd.to_datetime(df["datetime"])
+    values = np.concatenate([np.asarray(x) for x in jump_lengths(df)["jump_lengths"]])
+    values = values[values > 0]
+    params, x, y = fit_values_to_truncated_powerlaw(values)
+    fig, ax = new_fig()
+    ax.fill_between(x, y, y2=y.min() / 2, color=GREY, alpha=0.35, linewidth=0)
+    ax.loglog(x, np.exp(log_truncated_powerlaw(x, *params)), color=GOLD, lw=3)
+    ax.set_ylim(y.min() / 2, y.max() * 2)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.minorticks_off()
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    for sp in ("left", "bottom"):
+        ax.spines[sp].set_color(INK)
+    finish(fig, ax, "learn-thumb-notebook-laws.png", axes=True)
+
+
 if __name__ == "__main__":
+    notebook_staypoints()
+    notebook_laws()
     fit()
     trajectory()
     staypoints_and_segments()

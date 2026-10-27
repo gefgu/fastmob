@@ -1,8 +1,6 @@
 """Generate static figures for the docs home page.
 
-Benchmark numbers are copied from the published 4M-row Brightkite chart
-(docs/src/assets/benchmarks/fastmob_vs_skmob_individual_pandas_4M.png,
-pandas backend, average seconds over 5 iterations).
+Benchmark numbers come from the raw results in ../fastmob_benchmarks (see make_benchmark_figures.py).
 
 Usage: uv run --with matplotlib python scripts/make_docs_figures.py
 """
@@ -11,17 +9,41 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+import make_benchmark_figures
+
 OUT = Path("docs/src/assets/images/home")
 OUT.mkdir(parents=True, exist_ok=True)
 
-# measure: (skmob seconds, fastmob seconds, published speedup) at 4M rows
-BENCH = {
-    "radius of gyration": (31.42, 0.100, 315.19),
-    "jump lengths": (42.79, 0.131, 325.92),
-    "location frequency": (115.29, 0.087, 1329.29),
-    "home location": (76.97, 0.121, 637.66),
-    "max distance from home": (182.82, 0.151, 1208.46),
+# measure: (scikit-mobility seconds, Fastkit-Mobility seconds, speedup) at 4M rows, read from the
+# same benchmark run as the benchmarks page (Intel Core i7-10700, time-sorted Brightkite input).
+HOME_MEASURES = {
+    "radius of gyration": "radius_of_gyration",
+    "jump lengths": "jump_lengths",
+    "location frequency": "location_frequency",
+    "home location": "home_location",
+    "max distance from home": "max_distance_from_home",
 }
+
+
+def _load_bench():
+    runs = make_benchmark_figures.load_json(
+        Path("../fastmob_benchmarks")
+        / make_benchmark_figures.RESULTS.format(suite="measures", machine=make_benchmark_figures.I7 + "_brightkite4M")
+        / "measures_benchmarks.json",
+        "name",
+    )
+    seconds = {(r.op, r.library): r.seconds for r in runs}
+    return {
+        label: (
+            seconds[op, "skmob"],
+            seconds[op, "fastmob-pandas"],
+            seconds[op, "skmob"] / seconds[op, "fastmob-pandas"],
+        )
+        for label, op in HOME_MEASURES.items()
+    }
+
+
+BENCH = _load_bench()
 
 GOLD, GREY, TEXT = "#a98600", "#8a8a8a", "#666666"
 
@@ -43,11 +65,11 @@ for i, name in enumerate(names):
     )
 ax.set_yticks(range(len(names)), names, fontsize=12, color=TEXT)
 ax.set_xlabel(
-    "Execution time on 4M Brightkite check-ins (seconds, log scale, lower is better)", fontsize=11, color=TEXT
+    "Time on 4M Brightkite check-ins, time-sorted input (seconds, log scale, lower is better)", fontsize=11, color=TEXT
 )
 ax.tick_params(colors=TEXT, labelsize=10)
 ax.set_xscale("log")
-ax.set_xlim(0.05, 2000)
+ax.set_xlim(0.05, 4000)
 ax.set_ylim(-0.6, len(names) - 0.2)
 ax.set_xticks([0.1, 1, 10, 100, 1000], ["0.1", "1", "10", "100", "1000"])
 for s in ("top", "right", "left"):

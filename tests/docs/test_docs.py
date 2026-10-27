@@ -91,3 +91,12 @@ def test_measure_packages_use_explicit_api_directives_not___all__():
     assert "::: fastmob.measures.individual.jump_lengths" in individual
     assert "::: fastmob.measures.fitting\n" not in fitting
     assert "::: fastmob.measures.fitting.fit_visitation_law" in fitting
+
+
+def test_docs_version_strings_match_cargo_version():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("sync_docs_version", ROOT / "scripts" / "sync_docs_version.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert not module.sync(check=True), "Run `python scripts/sync_docs_version.py` to refresh docs version strings."
