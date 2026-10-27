@@ -116,6 +116,11 @@ uv run --group docs zensical serve
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for documentation conventions and
 the repository workflows.
 
+For a fastmob release, set the version in `fastmob-py/Cargo.toml`, run the
+release checks, and tag the tested commit `fastmob-v<version>` (for example,
+`fastmob-v0.3.3`). Push that tag to trigger the wheel builds and PyPI release.
+Tags named only `v<version>` do not trigger the fastmob release workflow.
+
 ## Status and support
 
 Fastmob is actively developed. Please include versions, dataframe backend, a
