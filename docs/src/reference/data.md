@@ -1,12 +1,14 @@
 # Data
 
-| API | Description |
-| --- | --- |
-| [`list_datasets`](#fastmob.data.list_datasets) | List available scikit-mobility datasets. |
-| [`load_dataset`](#fastmob.data.load_dataset) | Load one of the original scikit-mobility datasets. |
-| [`get_dataset_info`](#fastmob.data.get_dataset_info) | Return metadata for a dataset. |
-| [`load_geolife`](#fastmob.data.load_geolife) | Load selected users of the Microsoft GeoLife GPS trajectories, downloading only what is needed. |
-| [`load_brightkite`](#fastmob.data.load_brightkite) | Load the first rows of the Brightkite check-in dataset. |
+<!-- api-table:start -->
+| API | Description | Example |
+| --- | --- | --- |
+| [`list_datasets`](#fastmob.data.list_datasets) | List datasets. | [Which datasets does the library list?](../learn/process-trajectories.md#which-datasets-does-the-library-list) |
+| [`load_dataset`](#fastmob.data.load_dataset) | Load dataset. |  |
+| [`get_dataset_info`](#fastmob.data.get_dataset_info) | Get dataset info. | [Which datasets does the library list?](../learn/process-trajectories.md#which-datasets-does-the-library-list) |
+| [`load_geolife`](#fastmob.data.load_geolife) | Load GPS trajectories of selected GeoLife users, downloading only what is needed. | [Load the data](../learn/clean-and-detect-stops.md#load-the-data) |
+| [`load_brightkite`](#fastmob.data.load_brightkite) | Load Brightkite location check-ins, downloading only the rows requested. | [Load and clean](../learn/compare-to-mobility-laws.md#load-and-clean) |
+<!-- api-table:end -->
 
 ## Datasets
 
@@ -24,6 +26,8 @@
     options:
       show_source: false
 
+<!-- example-link -->**Worked example:** [Which datasets does the library list?](../learn/process-trajectories.md#which-datasets-does-the-library-list)
+
 ---
 
 ::: fastmob.data.load_dataset
@@ -36,14 +40,21 @@
     options:
       show_source: false
 
+<!-- example-link -->**Worked example:** [Which datasets does the library list?](../learn/process-trajectories.md#which-datasets-does-the-library-list)
+
 ---
 
 ::: fastmob.data.load_geolife
     options:
       show_source: false
 
+<!-- example-link -->**Worked example:** [Load the data](../learn/clean-and-detect-stops.md#load-the-data)
+
 ---
 
 ::: fastmob.data.load_brightkite
     options:
       show_source: false
+
+<!-- example-link -->**Worked example:** [Load and clean](../learn/compare-to-mobility-laws.md#load-and-clean)
+

@@ -35,7 +35,7 @@ def _query_timestamps_s(at: Any) -> np.ndarray:
     ``Timestamp`` objects, ...) without importing pandas/polars directly
     (forbidden under `fastmob/`, see CLAUDE.md).
     """
-    values = at if isinstance(at, (list, tuple, np.ndarray)) else [at]
+    values = [at] if isinstance(at, (str, bytes)) or not hasattr(at, "__iter__") else at
     arr = np.asarray(values, dtype="datetime64[ns]")
     return arr.astype("int64").astype("float64") / 1e9
 

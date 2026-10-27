@@ -1,13 +1,518 @@
 {
- "fastmob.data.brightkite.load_brightkite": {
+ "fastmob.core.base.BaseDataFrame.__len__": {
+  "anchor": "stays-on-a-shared-grid",
+  "page": "learn/contact-networks.md",
+  "title": "Stays on a shared grid"
+ },
+ "fastmob.core.base.BaseDataFrame.to_native": {
+  "anchor": "checking-inputs",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Checking inputs"
+ },
+ "fastmob.core.base.BaseDataFrame.to_pandas": {
   "anchor": "load-the-data",
-  "page": "learn/measure-individual-mobility.md",
+  "page": "learn/clean-and-detect-stops.md",
   "title": "Load the data"
+ },
+ "fastmob.core.flow_dataframe.FlowDataFrame.__init__": {
+  "anchor": "fit-and-run-a-gravity-model",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Fit and run a gravity model"
+ },
+ "fastmob.core.flow_dataframe.FlowDataFrame.common_part_of_commuters": {
+  "anchor": "compare-two-flow-tables",
+  "page": "learn/population-measures.md",
+  "title": "Compare two flow tables"
+ },
+ "fastmob.core.flow_dataframe.FlowDataFrame.common_part_of_links": {
+  "anchor": "compare-two-flow-tables",
+  "page": "learn/population-measures.md",
+  "title": "Compare two flow tables"
+ },
+ "fastmob.core.flow_dataframe.FlowDataFrame.get_flow": {
+  "anchor": "flows-between-zones",
+  "page": "learn/population-measures.md",
+  "title": "Flows between zones"
+ },
+ "fastmob.core.flow_dataframe.FlowDataFrame.get_geometry": {
+  "anchor": "flows-between-zones",
+  "page": "learn/population-measures.md",
+  "title": "Flows between zones"
+ },
+ "fastmob.core.flow_dataframe.FlowDataFrame.settings_from": {
+  "anchor": "compare-two-flow-tables",
+  "page": "learn/population-measures.md",
+  "title": "Compare two flow tables"
+ },
+ "fastmob.core.flow_dataframe.FlowDataFrame.to_matrix": {
+  "anchor": "flows-between-zones",
+  "page": "learn/population-measures.md",
+  "title": "Flows between zones"
+ },
+ "fastmob.core.locations_dataframe.Locations.from_tessellation": {
+  "anchor": "fit-and-run-a-gravity-model",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Fit and run a gravity model"
+ },
+ "fastmob.core.locations_dataframe.Locations.identify": {
+  "anchor": "build-the-visits",
+  "page": "learn/motifs.md",
+  "title": "Build the visits"
+ },
+ "fastmob.core.locations_dataframe.Locations.model_input": {
+  "anchor": "city-wide-places-instead-of-per-person-places",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "City-wide places instead of per-person places"
+ },
+ "fastmob.core.locations_dataframe.Locations.require_global": {
+  "anchor": "city-wide-places-instead-of-per-person-places",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "City-wide places instead of per-person places"
+ },
+ "fastmob.core.locations_dataframe.Locations.validate_staypoint_assignments": {
+  "anchor": "checking-inputs",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Checking inputs"
+ },
+ "fastmob.core.positionfixes_dataframe.Positionfixes.generate_staypoints": {
+  "anchor": "build-the-visits",
+  "page": "learn/motifs.md",
+  "title": "Build the visits"
+ },
+ "fastmob.core.positionfixes_dataframe.Positionfixes.generate_triplegs": {
+  "anchor": "movement-between-stops-triplegs-and-transport-mode",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Movement between stops: triplegs and transport mode"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.__init__": {
+  "anchor": "law-2-the-universal-visitation-law",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Law 2: the universal visitation law"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.associate_global_locations": {
+  "anchor": "city-wide-places-instead-of-per-person-places",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "City-wide places instead of per-person places"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.build_stvd": {
+  "anchor": "compare-when-things-happen-spatio-temporal-distance",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Compare when things happen: spatio-temporal distance"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.coerce": {
+  "anchor": "checking-inputs",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Checking inputs"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.create_activity_flag": {
+  "anchor": "which-stops-are-activities",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Which stops are activities?"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.generate_daily_motifs": {
+  "anchor": "one-motif-per-person-and-day-from-the-typed-tables",
+  "page": "learn/motifs.md",
+  "title": "One motif per person and day, from the typed tables"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.generate_global_locations": {
+  "anchor": "law-2-the-universal-visitation-law",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Law 2: the universal visitation law"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.generate_user_locations": {
+  "anchor": "build-the-visits",
+  "page": "learn/motifs.md",
+  "title": "Build the visits"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.interest_network": {
+  "anchor": "when-and-where-is-each-place-busy",
+  "page": "learn/population-measures.md",
+  "title": "When and where is each place busy?"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.resolve_dataframe": {
+  "anchor": "checking-inputs",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Checking inputs"
+ },
+ "fastmob.core.staypoints_dataframe.Staypoints.validate": {
+  "anchor": "checking-inputs",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Checking inputs"
+ },
+ "fastmob.core.tours_dataframe.Tours.from_trips": {
+  "anchor": "the-same-pipeline-step-by-step",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "The same pipeline, step by step"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.__init__": {
+  "anchor": "observed-flows-between-zones",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Observed flows between zones"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.compress": {
+  "anchor": "summaries-from-the-same-object",
+  "page": "learn/process-trajectories.md",
+  "title": "Summaries from the same object"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.interpolate": {
+  "anchor": "resample-to-a-regular-interval",
+  "page": "learn/process-trajectories.md",
+  "title": "Resample to a regular interval"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.interpolate_at": {
+  "anchor": "ask-for-a-position-at-a-given-time",
+  "page": "learn/process-trajectories.md",
+  "title": "Ask for a position at a given time"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.jump_lengths": {
+  "anchor": "summaries-from-the-same-object",
+  "page": "learn/process-trajectories.md",
+  "title": "Summaries from the same object"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.mapping": {
+  "anchor": "observed-flows-between-zones",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Observed flows between zones"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.radius_of_gyration": {
+  "anchor": "summaries-from-the-same-object",
+  "page": "learn/process-trajectories.md",
+  "title": "Summaries from the same object"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.settings_from": {
+  "anchor": "move-between-tables",
+  "page": "learn/process-trajectories.md",
+  "title": "Move between tables"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.smooth": {
+  "anchor": "smooth-gps-noise",
+  "page": "learn/process-trajectories.md",
+  "title": "Smooth GPS noise"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.sort_by_uid_and_datetime": {
+  "anchor": "keep-the-data-in-time-order",
+  "page": "learn/process-trajectories.md",
+  "title": "Keep the data in time order"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.stay_locations": {
+  "anchor": "summaries-from-the-same-object",
+  "page": "learn/process-trajectories.md",
+  "title": "Summaries from the same object"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.timezone_conversion": {
+  "anchor": "build-the-visits",
+  "page": "learn/motifs.md",
+  "title": "Build the visits"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.to_flowdataframe": {
+  "anchor": "observed-flows-between-zones",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Observed flows between zones"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.to_geodataframe": {
+  "anchor": "move-between-tables",
+  "page": "learn/process-trajectories.md",
+  "title": "Move between tables"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.trajectory_distance": {
+  "anchor": "compare-two-trajectories",
+  "page": "learn/process-trajectories.md",
+  "title": "Compare two trajectories"
+ },
+ "fastmob.core.trajectory_dataframe.TrajDataFrame.work_location": {
+  "anchor": "summaries-from-the-same-object",
+  "page": "learn/process-trajectories.md",
+  "title": "Summaries from the same object"
+ },
+ "fastmob.core.triplegs_dataframe.Triplegs.calculate_modal_split": {
+  "anchor": "movement-between-stops-triplegs-and-transport-mode",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Movement between stops: triplegs and transport mode"
+ },
+ "fastmob.core.triplegs_dataframe.Triplegs.from_positionfixes": {
+  "anchor": "the-same-pipeline-step-by-step",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "The same pipeline, step by step"
+ },
+ "fastmob.core.triplegs_dataframe.Triplegs.generate_trips": {
+  "anchor": "trips-and-tours",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Trips and tours"
+ },
+ "fastmob.core.triplegs_dataframe.Triplegs.predict_transport_mode": {
+  "anchor": "movement-between-stops-triplegs-and-transport-mode",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Movement between stops: triplegs and transport mode"
+ },
+ "fastmob.core.trips_dataframe.Trips.__init__": {
+  "anchor": "common-part-of-commuters-and-links",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Common part of commuters and links"
+ },
+ "fastmob.core.trips_dataframe.Trips.common_part_of_commuters": {
+  "anchor": "compare-two-flow-tables",
+  "page": "learn/population-measures.md",
+  "title": "Compare two flow tables"
+ },
+ "fastmob.core.trips_dataframe.Trips.common_part_of_commuters_distance": {
+  "anchor": "common-part-of-commuters-and-links",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Common part of commuters and links"
+ },
+ "fastmob.core.trips_dataframe.Trips.common_part_of_links": {
+  "anchor": "compare-two-flow-tables",
+  "page": "learn/population-measures.md",
+  "title": "Compare two flow tables"
+ },
+ "fastmob.core.trips_dataframe.Trips.from_triplegs": {
+  "anchor": "the-same-pipeline-step-by-step",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "The same pipeline, step by step"
+ },
+ "fastmob.core.trips_dataframe.Trips.generate_tours": {
+  "anchor": "trips-and-tours",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Trips and tours"
+ },
+ "fastmob.core.trips_dataframe.Trips.to_flow_dataframe": {
+  "anchor": "compare-two-flow-tables",
+  "page": "learn/population-measures.md",
+  "title": "Compare two flow tables"
+ },
+ "fastmob.data.brightkite.load_brightkite": {
+  "anchor": "load-and-clean",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Load and clean"
  },
  "fastmob.data.geolife.load_geolife": {
   "anchor": "load-the-data",
   "page": "learn/clean-and-detect-stops.md",
   "title": "Load the data"
+ },
+ "fastmob.data.load.get_dataset_info": {
+  "anchor": "which-datasets-does-the-library-list",
+  "page": "learn/process-trajectories.md",
+  "title": "Which datasets does the library list?"
+ },
+ "fastmob.data.load.list_datasets": {
+  "anchor": "which-datasets-does-the-library-list",
+  "page": "learn/process-trajectories.md",
+  "title": "Which datasets does the library list?"
+ },
+ "fastmob.integration.join_with_events": {
+  "anchor": "join-trajectories-to-points-of-interest-and-events",
+  "page": "learn/road-network-analysis.md",
+  "title": "Join trajectories to points of interest and events"
+ },
+ "fastmob.integration.join_with_pois": {
+  "anchor": "join-trajectories-to-points-of-interest-and-events",
+  "page": "learn/road-network-analysis.md",
+  "title": "Join trajectories to points of interest and events"
+ },
+ "fastmob.integration.join_with_pois_by_category": {
+  "anchor": "join-trajectories-to-points-of-interest-and-events",
+  "page": "learn/road-network-analysis.md",
+  "title": "Join trajectories to points of interest and events"
+ },
+ "fastmob.io.file.load_geolife_trajectories": {
+  "anchor": "store-and-reload",
+  "page": "learn/process-trajectories.md",
+  "title": "Store and reload"
+ },
+ "fastmob.io.file.read": {
+  "anchor": "store-and-reload",
+  "page": "learn/process-trajectories.md",
+  "title": "Store and reload"
+ },
+ "fastmob.io.file.write": {
+  "anchor": "store-and-reload",
+  "page": "learn/process-trajectories.md",
+  "title": "Store and reload"
+ },
+ "fastmob.measures.collective.homes_per_location.homes_per_location": {
+  "anchor": "homes-and-visits-per-place",
+  "page": "learn/population-measures.md",
+  "title": "Homes and visits per place"
+ },
+ "fastmob.measures.collective.interest_network.interest_network": {
+  "anchor": "when-and-where-is-each-place-busy",
+  "page": "learn/population-measures.md",
+  "title": "When and where is each place busy?"
+ },
+ "fastmob.measures.collective.mean_square_displacement.mean_square_displacement": {
+  "anchor": "how-far-do-people-spread-over-time",
+  "page": "learn/population-measures.md",
+  "title": "How far do people spread over time?"
+ },
+ "fastmob.measures.collective.od.od_matrix": {
+  "anchor": "from-check-ins-to-flows",
+  "page": "learn/population-measures.md",
+  "title": "From check-ins to flows"
+ },
+ "fastmob.measures.collective.od.od_metrics_per_area": {
+  "anchor": "from-check-ins-to-flows",
+  "page": "learn/population-measures.md",
+  "title": "From check-ins to flows"
+ },
+ "fastmob.measures.collective.random_location_entropy.random_location_entropy": {
+  "anchor": "how-many-different-people-use-a-place",
+  "page": "learn/population-measures.md",
+  "title": "How many different people use a place?"
+ },
+ "fastmob.measures.collective.stvd.build_stvd": {
+  "anchor": "when-and-where-is-each-place-busy",
+  "page": "learn/population-measures.md",
+  "title": "When and where is each place busy?"
+ },
+ "fastmob.measures.collective.stvd.mean_area_volume": {
+  "anchor": "when-and-where-is-each-place-busy",
+  "page": "learn/population-measures.md",
+  "title": "When and where is each place busy?"
+ },
+ "fastmob.measures.collective.uncorrelated_location_entropy.uncorrelated_location_entropy": {
+  "anchor": "how-many-different-people-use-a-place",
+  "page": "learn/population-measures.md",
+  "title": "How many different people use a place?"
+ },
+ "fastmob.measures.collective.visits_per_location.visits_per_location": {
+  "anchor": "homes-and-visits-per-place",
+  "page": "learn/population-measures.md",
+  "title": "Homes and visits per place"
+ },
+ "fastmob.measures.collective.visits_per_time_unit.visits_per_time_unit": {
+  "anchor": "homes-and-visits-per-place",
+  "page": "learn/population-measures.md",
+  "title": "Homes and visits per place"
+ },
+ "fastmob.measures.evaluation.compare.compare_to": {
+  "anchor": "compare-by-group",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Compare by group"
+ },
+ "fastmob.measures.evaluation.cpc.common_part_of_commuters": {
+  "anchor": "common-part-of-commuters-and-links",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Common part of commuters and links"
+ },
+ "fastmob.measures.evaluation.cpc.common_part_of_commuters_distance": {
+  "anchor": "common-part-of-commuters-and-links",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Common part of commuters and links"
+ },
+ "fastmob.measures.evaluation.cpc.common_part_of_links": {
+  "anchor": "common-part-of-commuters-and-links",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Common part of commuters and links"
+ },
+ "fastmob.measures.evaluation.information.information_gain": {
+  "anchor": "information-and-distribution-metrics",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Information and distribution metrics"
+ },
+ "fastmob.measures.evaluation.information.kullback_leibler_divergence": {
+  "anchor": "information-and-distribution-metrics",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Information and distribution metrics"
+ },
+ "fastmob.measures.evaluation.metrics.jensen_shannon_divergence": {
+  "anchor": "information-and-distribution-metrics",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Information and distribution metrics"
+ },
+ "fastmob.measures.evaluation.metrics.wasserstein_distance": {
+  "anchor": "information-and-distribution-metrics",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Information and distribution metrics"
+ },
+ "fastmob.measures.evaluation.regression.max_error": {
+  "anchor": "error-metrics-on-matched-flows",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Error metrics on matched flows"
+ },
+ "fastmob.measures.evaluation.regression.mse": {
+  "anchor": "error-metrics-on-matched-flows",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Error metrics on matched flows"
+ },
+ "fastmob.measures.evaluation.regression.nrmse": {
+  "anchor": "error-metrics-on-matched-flows",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Error metrics on matched flows"
+ },
+ "fastmob.measures.evaluation.regression.r_squared": {
+  "anchor": "error-metrics-on-matched-flows",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Error metrics on matched flows"
+ },
+ "fastmob.measures.evaluation.regression.rmse": {
+  "anchor": "error-metrics-on-matched-flows",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Error metrics on matched flows"
+ },
+ "fastmob.measures.evaluation.spatial.stvd_emd": {
+  "anchor": "compare-when-things-happen-spatio-temporal-distance",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Compare when things happen: spatio-temporal distance"
+ },
+ "fastmob.measures.fitting.daily_location_lognormal.fit_daily_location_lognormal": {
+  "anchor": "law-3-distinct-places-per-day-are-lognormal",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Law 3: distinct places per day are lognormal"
+ },
+ "fastmob.measures.fitting.truncated_powerlaw.fit_values_to_truncated_powerlaw": {
+  "anchor": "law-1-jump-lengths-follow-a-truncated-power-law",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Law 1: jump lengths follow a truncated power law"
+ },
+ "fastmob.measures.fitting.truncated_powerlaw.log_truncated_powerlaw": {
+  "anchor": "law-1-jump-lengths-follow-a-truncated-power-law",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Law 1: jump lengths follow a truncated power law"
+ },
+ "fastmob.measures.fitting.visitation_law.fit_visitation_law": {
+  "anchor": "law-2-the-universal-visitation-law",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Law 2: the universal visitation law"
+ },
+ "fastmob.measures.individual.activity.activity_transition_matrix": {
+  "anchor": "what-are-people-doing",
+  "page": "learn/visit-based-measures.md",
+  "title": "What are people doing?"
+ },
+ "fastmob.measures.individual.activity.daily_activity_distribution": {
+  "anchor": "what-are-people-doing",
+  "page": "learn/visit-based-measures.md",
+  "title": "What are people doing?"
+ },
+ "fastmob.measures.individual.activity.visit_purpose_distribution": {
+  "anchor": "what-are-people-doing",
+  "page": "learn/visit-based-measures.md",
+  "title": "What are people doing?"
+ },
+ "fastmob.measures.individual.compute_profiles": {
+  "anchor": "one-table-of-profiles",
+  "page": "learn/visit-based-measures.md",
+  "title": "One table of profiles"
+ },
+ "fastmob.measures.individual.distance_straight_line.distance_straight_line": {
+  "anchor": "how-far-did-they-travel-in-total",
+  "page": "learn/visit-based-measures.md",
+  "title": "How far did they travel in total?"
+ },
+ "fastmob.measures.individual.diversity.diversity": {
+  "anchor": "how-regular-diverse-and-predictable",
+  "page": "learn/visit-based-measures.md",
+  "title": "How regular, diverse and predictable?"
+ },
+ "fastmob.measures.individual.entropy.trajectory_entropy": {
+  "anchor": "how-regular-diverse-and-predictable",
+  "page": "learn/visit-based-measures.md",
+  "title": "How regular, diverse and predictable?"
+ },
+ "fastmob.measures.individual.entropy.trajectory_predictability": {
+  "anchor": "how-regular-diverse-and-predictable",
+  "page": "learn/visit-based-measures.md",
+  "title": "How regular, diverse and predictable?"
  },
  "fastmob.measures.individual.frequency_rank.frequency_rank": {
   "anchor": "which-places-matter-frequency-and-recency-ranks",
@@ -29,6 +534,11 @@
   "page": "learn/analyze-a-simple-trajectory.md",
   "title": "Measure jump lengths"
  },
+ "fastmob.measures.individual.jump_lengths_road": {
+  "anchor": "road-distance-versus-straight-line",
+  "page": "learn/road-network-analysis.md",
+  "title": "Road distance versus straight line"
+ },
  "fastmob.measures.individual.k_radius_of_gyration.k_radius_of_gyration": {
   "anchor": "how-far-and-how-widely-radius-of-gyration-maximum-distance-jump-lengths",
   "page": "learn/measure-individual-mobility.md",
@@ -49,6 +559,26 @@
   "page": "learn/analyze-a-simple-trajectory.md",
   "title": "Find the longest single jump"
  },
+ "fastmob.measures.individual.mobility_profiling.exploration_profiling": {
+  "anchor": "return-and-exploration",
+  "page": "learn/visit-based-measures.md",
+  "title": "Return and exploration"
+ },
+ "fastmob.measures.individual.mobility_profiling.intermittance_and_degree_of_return": {
+  "anchor": "return-and-exploration",
+  "page": "learn/visit-based-measures.md",
+  "title": "Return and exploration"
+ },
+ "fastmob.measures.individual.motifs.daily_motifs": {
+  "anchor": "the-same-from-a-plain-visit-table",
+  "page": "learn/motifs.md",
+  "title": "The same from a plain visit table"
+ },
+ "fastmob.measures.individual.motifs.motif_distribution": {
+  "anchor": "how-common-is-each-motif",
+  "page": "learn/motifs.md",
+  "title": "How common is each motif?"
+ },
  "fastmob.measures.individual.number_of_locations.number_of_locations": {
   "anchor": "how-many-places-locations-visits-and-entropy",
   "page": "learn/measure-individual-mobility.md",
@@ -64,15 +594,30 @@
   "page": "learn/analyze-a-simple-trajectory.md",
   "title": "Measure the radius of gyration"
  },
+ "fastmob.measures.individual.radius_of_gyration_road": {
+  "anchor": "road-distance-versus-straight-line",
+  "page": "learn/road-network-analysis.md",
+  "title": "Road distance versus straight line"
+ },
  "fastmob.measures.individual.random_entropy.random_entropy": {
   "anchor": "how-many-places-locations-visits-and-entropy",
   "page": "learn/measure-individual-mobility.md",
   "title": "How many places: locations, visits and entropy"
  },
+ "fastmob.measures.individual.real_entropy.real_entropy": {
+  "anchor": "how-regular-diverse-and-predictable",
+  "page": "learn/visit-based-measures.md",
+  "title": "How regular, diverse and predictable?"
+ },
  "fastmob.measures.individual.recency_rank.recency_rank": {
   "anchor": "which-places-matter-frequency-and-recency-ranks",
   "page": "learn/measure-individual-mobility.md",
   "title": "Which places matter: frequency and recency ranks"
+ },
+ "fastmob.measures.individual.regularity.regularity": {
+  "anchor": "how-regular-diverse-and-predictable",
+  "page": "learn/visit-based-measures.md",
+  "title": "How regular, diverse and predictable?"
  },
  "fastmob.measures.individual.uncorrelated_entropy.uncorrelated_entropy": {
   "anchor": "how-many-places-locations-visits-and-entropy",
@@ -89,6 +634,176 @@
   "page": "learn/measure-individual-mobility.md",
   "title": "Home and work"
  },
+ "fastmob.models.epr.DensityEPR.__init__": {
+  "anchor": "exploration-and-preferential-return",
+  "page": "learn/generate-mobility.md",
+  "title": "Exploration and preferential return"
+ },
+ "fastmob.models.epr.DensityEPR.generate": {
+  "anchor": "exploration-and-preferential-return",
+  "page": "learn/generate-mobility.md",
+  "title": "Exploration and preferential return"
+ },
+ "fastmob.models.epr.Ditras.__init__": {
+  "anchor": "realistic-daily-rhythm-diaries",
+  "page": "learn/generate-mobility.md",
+  "title": "Realistic daily rhythm: diaries"
+ },
+ "fastmob.models.epr.Ditras.generate": {
+  "anchor": "realistic-daily-rhythm-diaries",
+  "page": "learn/generate-mobility.md",
+  "title": "Realistic daily rhythm: diaries"
+ },
+ "fastmob.models.epr.EPR.__init__": {
+  "anchor": "exploration-and-preferential-return",
+  "page": "learn/generate-mobility.md",
+  "title": "Exploration and preferential return"
+ },
+ "fastmob.models.epr.EPR.generate": {
+  "anchor": "exploration-and-preferential-return",
+  "page": "learn/generate-mobility.md",
+  "title": "Exploration and preferential return"
+ },
+ "fastmob.models.epr.SpatialEPR.__init__": {
+  "anchor": "exploration-and-preferential-return",
+  "page": "learn/generate-mobility.md",
+  "title": "Exploration and preferential return"
+ },
+ "fastmob.models.epr.SpatialEPR.generate": {
+  "anchor": "exploration-and-preferential-return",
+  "page": "learn/generate-mobility.md",
+  "title": "Exploration and preferential return"
+ },
+ "fastmob.models.geosim.GeoSim.__init__": {
+  "anchor": "social-ties",
+  "page": "learn/generate-mobility.md",
+  "title": "Social ties"
+ },
+ "fastmob.models.geosim.GeoSim.generate": {
+  "anchor": "social-ties",
+  "page": "learn/generate-mobility.md",
+  "title": "Social ties"
+ },
+ "fastmob.models.gravity.Gravity.__init__": {
+  "anchor": "fit-and-run-a-gravity-model",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Fit and run a gravity model"
+ },
+ "fastmob.models.gravity.Gravity.deterrence_func_args": {
+  "anchor": "fit-and-run-a-gravity-model",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Fit and run a gravity model"
+ },
+ "fastmob.models.gravity.Gravity.fit": {
+  "anchor": "fit-and-run-a-gravity-model",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Fit and run a gravity model"
+ },
+ "fastmob.models.gravity.Gravity.generate": {
+  "anchor": "fit-and-run-a-gravity-model",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Fit and run a gravity model"
+ },
+ "fastmob.models.markov_diary_generator.MarkovDiaryGenerator.__init__": {
+  "anchor": "realistic-daily-rhythm-diaries",
+  "page": "learn/generate-mobility.md",
+  "title": "Realistic daily rhythm: diaries"
+ },
+ "fastmob.models.markov_diary_generator.MarkovDiaryGenerator.fit": {
+  "anchor": "realistic-daily-rhythm-diaries",
+  "page": "learn/generate-mobility.md",
+  "title": "Realistic daily rhythm: diaries"
+ },
+ "fastmob.models.markov_diary_generator.MarkovDiaryGenerator.generate": {
+  "anchor": "realistic-daily-rhythm-diaries",
+  "page": "learn/generate-mobility.md",
+  "title": "Realistic daily rhythm: diaries"
+ },
+ "fastmob.models.radiation.Radiation.__init__": {
+  "anchor": "flows-gravity-and-radiation-models",
+  "page": "learn/generate-mobility.md",
+  "title": "Flows: gravity and radiation models"
+ },
+ "fastmob.models.radiation.Radiation.generate": {
+  "anchor": "flows-gravity-and-radiation-models",
+  "page": "learn/generate-mobility.md",
+  "title": "Flows: gravity and radiation models"
+ },
+ "fastmob.models.sts_epr.STS_epr.__init__": {
+  "anchor": "social-ties",
+  "page": "learn/generate-mobility.md",
+  "title": "Social ties"
+ },
+ "fastmob.models.sts_epr.STS_epr.generate": {
+  "anchor": "social-ties",
+  "page": "learn/generate-mobility.md",
+  "title": "Social ties"
+ },
+ "fastmob.network.builder.build_rail_graph": {
+  "anchor": "rail-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Rail network"
+ },
+ "fastmob.network.builder.build_road_graph": {
+  "anchor": "trajectory-and-road-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Trajectory and road network"
+ },
+ "fastmob.network.builder.fetch_rail_network": {
+  "anchor": "rail-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Rail network"
+ },
+ "fastmob.network.builder.fetch_road_network": {
+  "anchor": "trajectory-and-road-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Trajectory and road network"
+ },
+ "fastmob.network.match.match_trajectory": {
+  "anchor": "match-a-gps-trace-to-roads",
+  "page": "learn/road-network-analysis.md",
+  "title": "Match a GPS trace to roads"
+ },
+ "fastmob.network.od_flow.od_desire_lines": {
+  "anchor": "accumulate-flows-on-roads-desire-lines",
+  "page": "learn/road-network-analysis.md",
+  "title": "Accumulate flows on roads: desire lines"
+ },
+ "fastmob.network.road_graph.RoadNetwork.batch_distances": {
+  "anchor": "distances-and-routes-on-the-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Distances and routes on the network"
+ },
+ "fastmob.network.road_graph.RoadNetwork.batch_routes": {
+  "anchor": "distances-and-routes-on-the-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Distances and routes on the network"
+ },
+ "fastmob.network.road_graph.RoadNetwork.build": {
+  "anchor": "trajectory-and-road-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Trajectory and road network"
+ },
+ "fastmob.network.snap.snap_locations_to_graph": {
+  "anchor": "snap-points-to-the-network",
+  "page": "learn/road-network-analysis.md",
+  "title": "Snap points to the network"
+ },
+ "fastmob.preprocessing.calculate_modal_split": {
+  "anchor": "functional-forms",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Functional forms"
+ },
+ "fastmob.preprocessing.cdr.cdr_to_trips_df": {
+  "anchor": "mobile-phone-records",
+  "page": "learn/population-measures.md",
+  "title": "Mobile-phone records"
+ },
+ "fastmob.preprocessing.cdr.cdr_to_visitation_df": {
+  "anchor": "mobile-phone-records",
+  "page": "learn/population-measures.md",
+  "title": "Mobile-phone records"
+ },
  "fastmob.preprocessing.cluster": {
   "anchor": "group-stops-into-locations",
   "page": "learn/clean-and-detect-stops.md",
@@ -99,10 +814,35 @@
   "page": "learn/clean-and-detect-stops.md",
   "title": "Reduce the number of points"
  },
+ "fastmob.preprocessing.create_activity_flag": {
+  "anchor": "functional-forms",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Functional forms"
+ },
  "fastmob.preprocessing.filter": {
   "anchor": "remove-implausible-jumps",
   "page": "learn/clean-and-detect-stops.md",
   "title": "Remove implausible jumps"
+ },
+ "fastmob.preprocessing.h3_to_latlng": {
+  "anchor": "common-part-of-commuters-and-links",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Common part of commuters and links"
+ },
+ "fastmob.preprocessing.identify_locations": {
+  "anchor": "functional-forms",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Functional forms"
+ },
+ "fastmob.preprocessing.latlng_to_h3": {
+  "anchor": "homes-and-visits-per-place",
+  "page": "learn/population-measures.md",
+  "title": "Homes and visits per place"
+ },
+ "fastmob.preprocessing.predict_transport_mode": {
+  "anchor": "functional-forms",
+  "page": "learn/trajectory-hierarchy.md",
+  "title": "Functional forms"
  },
  "fastmob.preprocessing.segment": {
   "anchor": "split-each-trace-at-recording-gaps",
@@ -118,5 +858,170 @@
   "anchor": "detect-stops",
   "page": "learn/clean-and-detect-stops.md",
   "title": "Detect stops"
+ },
+ "fastmob.preprocessing.trajectory_to_od": {
+  "anchor": "from-check-ins-to-flows",
+  "page": "learn/population-measures.md",
+  "title": "From check-ins to flows"
+ },
+ "fastmob.preprocessing.trajectory_to_trips": {
+  "anchor": "common-part-of-commuters-and-links",
+  "page": "learn/fit-and-evaluate.md",
+  "title": "Common part of commuters and links"
+ },
+ "fastmob.privacy.frequency.home_work_risk": {
+  "anchor": "other-attacker-models",
+  "page": "learn/privacy-risk.md",
+  "title": "Other attacker models"
+ },
+ "fastmob.privacy.frequency.location_frequency_risk": {
+  "anchor": "other-attacker-models",
+  "page": "learn/privacy-risk.md",
+  "title": "Other attacker models"
+ },
+ "fastmob.privacy.frequency.location_probability_risk": {
+  "anchor": "other-attacker-models",
+  "page": "learn/privacy-risk.md",
+  "title": "Other attacker models"
+ },
+ "fastmob.privacy.frequency.location_proportion_risk": {
+  "anchor": "other-attacker-models",
+  "page": "learn/privacy-risk.md",
+  "title": "Other attacker models"
+ },
+ "fastmob.privacy.frequency.unique_location_risk": {
+  "anchor": "other-attacker-models",
+  "page": "learn/privacy-risk.md",
+  "title": "Other attacker models"
+ },
+ "fastmob.privacy.location.location_risk": {
+  "anchor": "risk-from-places-the-attacker-knows",
+  "page": "learn/privacy-risk.md",
+  "title": "Risk from places the attacker knows"
+ },
+ "fastmob.privacy.location.location_sequence_risk": {
+  "anchor": "other-attacker-models",
+  "page": "learn/privacy-risk.md",
+  "title": "Other attacker models"
+ },
+ "fastmob.privacy.location.location_time_risk": {
+  "anchor": "other-attacker-models",
+  "page": "learn/privacy-risk.md",
+  "title": "Other attacker models"
+ },
+ "fastmob.social.ContactNetworkResult.time_steps": {
+  "anchor": "build-the-contact-network",
+  "page": "learn/contact-networks.md",
+  "title": "Build the contact network"
+ },
+ "fastmob.social.NetworkGraph.degrees": {
+  "anchor": "build-the-contact-network",
+  "page": "learn/contact-networks.md",
+  "title": "Build the contact network"
+ },
+ "fastmob.social.NetworkGraph.edge_count": {
+  "anchor": "build-the-contact-network",
+  "page": "learn/contact-networks.md",
+  "title": "Build the contact network"
+ },
+ "fastmob.social.RecastResult.mask": {
+  "anchor": "classify-the-contacts-friends-bridges-acquaintances-random",
+  "page": "learn/contact-networks.md",
+  "title": "Classify the contacts: Friends, Bridges, Acquaintances, Random"
+ },
+ "fastmob.social.RecastTemporalGraph.event": {
+  "anchor": "look-inside-daily-graphs-and-their-randomisation",
+  "page": "learn/contact-networks.md",
+  "title": "Look inside: daily graphs and their randomisation"
+ },
+ "fastmob.social.RecastTemporalGraph.time_steps": {
+  "anchor": "look-inside-daily-graphs-and-their-randomisation",
+  "page": "learn/contact-networks.md",
+  "title": "Look inside: daily graphs and their randomisation"
+ },
+ "fastmob.social.clustering_coefficients": {
+  "anchor": "structure-clustering-and-neighbourhood-overlap",
+  "page": "learn/contact-networks.md",
+  "title": "Structure: clustering and neighbourhood overlap"
+ },
+ "fastmob.social.co_presence_graph_from_staypoints": {
+  "anchor": "build-the-contact-network",
+  "page": "learn/contact-networks.md",
+  "title": "Build the contact network"
+ },
+ "fastmob.social.degree_preserving_random_graph": {
+  "anchor": "a-random-baseline",
+  "page": "learn/contact-networks.md",
+  "title": "A random baseline"
+ },
+ "fastmob.social.distribution_summary": {
+  "anchor": "structure-clustering-and-neighbourhood-overlap",
+  "page": "learn/contact-networks.md",
+  "title": "Structure: clustering and neighbourhood overlap"
+ },
+ "fastmob.social.graph_from_edges": {
+  "anchor": "a-random-baseline",
+  "page": "learn/contact-networks.md",
+  "title": "A random baseline"
+ },
+ "fastmob.social.random_persistence": {
+  "anchor": "look-inside-daily-graphs-and-their-randomisation",
+  "page": "learn/contact-networks.md",
+  "title": "Look inside: daily graphs and their randomisation"
+ },
+ "fastmob.social.recast_from_staypoints": {
+  "anchor": "classify-the-contacts-friends-bridges-acquaintances-random",
+  "page": "learn/contact-networks.md",
+  "title": "Classify the contacts: Friends, Bridges, Acquaintances, Random"
+ },
+ "fastmob.social.rnd": {
+  "anchor": "look-inside-daily-graphs-and-their-randomisation",
+  "page": "learn/contact-networks.md",
+  "title": "Look inside: daily graphs and their randomisation"
+ },
+ "fastmob.social.safe_wasserstein": {
+  "anchor": "a-random-baseline",
+  "page": "learn/contact-networks.md",
+  "title": "A random baseline"
+ },
+ "fastmob.social.t_rnd": {
+  "anchor": "look-inside-daily-graphs-and-their-randomisation",
+  "page": "learn/contact-networks.md",
+  "title": "Look inside: daily graphs and their randomisation"
+ },
+ "fastmob.social.temporal_graph_from_staypoints": {
+  "anchor": "look-inside-daily-graphs-and-their-randomisation",
+  "page": "learn/contact-networks.md",
+  "title": "Look inside: daily graphs and their randomisation"
+ },
+ "fastmob.social.topological_overlap": {
+  "anchor": "structure-clustering-and-neighbourhood-overlap",
+  "page": "learn/contact-networks.md",
+  "title": "Structure: clustering and neighbourhood overlap"
+ },
+ "fastmob.social.validate_recast_from_staypoints": {
+  "anchor": "look-inside-daily-graphs-and-their-randomisation",
+  "page": "learn/contact-networks.md",
+  "title": "Look inside: daily graphs and their randomisation"
+ },
+ "fastmob.trajectory.interpolate": {
+  "anchor": "resample-to-a-regular-interval",
+  "page": "learn/process-trajectories.md",
+  "title": "Resample to a regular interval"
+ },
+ "fastmob.trajectory.interpolate_at": {
+  "anchor": "ask-for-a-position-at-a-given-time",
+  "page": "learn/process-trajectories.md",
+  "title": "Ask for a position at a given time"
+ },
+ "fastmob.trajectory.smooth": {
+  "anchor": "smooth-gps-noise",
+  "page": "learn/process-trajectories.md",
+  "title": "Smooth GPS noise"
+ },
+ "fastmob.trajectory.trajectory_distance": {
+  "anchor": "compare-two-trajectories",
+  "page": "learn/process-trajectories.md",
+  "title": "Compare two trajectories"
  }
 }

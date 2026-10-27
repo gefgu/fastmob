@@ -5,7 +5,7 @@ site_url = "https://gefgu.github.io/fastmob/"
 repo_url = "https://github.com/gefgu/fastmob"
 repo_name = "gefgu/fastmob"
 docs_dir = "docs/src"
-copyright = "Fastkit-Mobility 0.3.3 &middot; BSD-3-Clause licensed &middot; <a href=\"https://pypi.org/project/fastmob/\">PyPI</a> &middot; <a href=\"https://github.com/gefgu/fastmob\">GitHub</a>"
+copyright = "Fastkit-Mobility 0.3.4 &middot; BSD-3-Clause licensed &middot; <a href=\"https://pypi.org/project/fastmob/\">PyPI</a> &middot; <a href=\"https://github.com/gefgu/fastmob\">GitHub</a>"
 extra_css = ["stylesheets/extra.css"]
 extra_javascript = [
   "javascripts/mathjax.js",
@@ -23,24 +23,32 @@ nav = [
     { "Learn overview" = "learn/index.md" },
     { "1. Getting started" = [
       { "Start with a trajectory" = "learn/analyze-a-simple-trajectory.md" },
-      { "Columns and backends" = "learn/use-custom-columns-and-dataframe-backends.md" },
+      { "Columns and dataframe libraries" = "learn/use-custom-columns-and-dataframe-backends.md" },
     ] },
     { "2. Preparing trajectories" = [
       { "Cleaning and segmentation" = "learn/clean-and-segment.md" },
-      { "Clean noisy GPS data and find stops" = "learn/clean-and-detect-stops.md" },
+      { "Clean GPS data and find stops" = "learn/clean-and-detect-stops.md" },
+      { "Resample, smooth and convert" = "learn/process-trajectories.md" },
       { "Stops and locations" = "learn/staypoints-and-locations.md" },
+      { "Stops, trips and tours" = "learn/trajectory-hierarchy.md" },
     ] },
     { "3. Measuring mobility" = [
       { "Measuring people and populations" = "learn/individual-and-collective-measures.md" },
       { "Measure individual mobility" = "learn/measure-individual-mobility.md" },
+      { "Routine and mobility profiles" = "learn/visit-based-measures.md" },
+      { "Daily mobility motifs" = "learn/motifs.md" },
+      { "Population measures and flows" = "learn/population-measures.md" },
     ] },
     { "4. Spatial and network analysis" = [
-      { "Route and map-match trajectories" = "learn/network-analysis.md" },
-      { "Find daily mobility motifs" = "learn/motifs.md" },
+      { "Roads, rails and map matching" = "learn/network-analysis.md" },
+      { "Road network notebook" = "learn/road-network-analysis.md" },
+      { "Contact networks" = "learn/contact-networks.md" },
     ] },
     { "5. Modelling and evaluating" = [
-      { "Fit and evaluate mobility results" = "learn/fit-and-evaluate.md" },
-      { "Compare to mobility laws" = "learn/compare-to-mobility-laws.md" },
+      { "Mobility laws" = "learn/compare-to-mobility-laws.md" },
+      { "Generate mobility with models" = "learn/generate-mobility.md" },
+      { "Fit and compare distributions" = "learn/fit-and-evaluate.md" },
+      { "Privacy risk" = "learn/privacy-risk.md" },
     ] },
     { "Stay-point benchmark notebook" = "learn/notebooks/stay-point-detection-geolife.md" },
   ] },

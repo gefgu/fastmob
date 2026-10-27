@@ -23,7 +23,7 @@ def load_geolife(
     about 25 million fixes, mostly in Beijing, sampled every 1 to 5 seconds). The full
     archive is about 313 MB; this loader reads the requested users' `.plt` files straight
     from the archive with HTTP range requests, so a few users cost a few megabytes.
-    Files are cached, so repeated calls with the same arguments do not download again.
+    Files are cached per combination of arguments, so repeated calls with the same arguments do not download again and a call never returns files cached for a different selection.
 
     Parameters
     ----------
@@ -56,8 +56,9 @@ def load_geolife(
     from fastmob.io import load_geolife_trajectories
 
     wanted = None if users is None else {f"{int(u):03d}" if str(u).isdigit() else str(u) for u in users}
-    root = cache_dir("geolife", cache)
-    marker = root / ".complete" / ("all" if wanted is None else "-".join(sorted(wanted)) + f"_{max_trips_per_user}")
+    selection = "all" if wanted is None else "-".join(sorted(wanted))
+    root = cache_dir("geolife", cache) / f"{selection}_{max_trips_per_user}"
+    marker = root / ".complete"
     if not marker.exists():
         archive = zipfile.ZipFile(HttpRangeFile(GEOLIFE_URL))
         members: dict[str, list[str]] = {}
@@ -69,6 +70,5 @@ def load_geolife(
             for name in sorted(names)[:max_trips_per_user]:
                 if not (root / name).exists():
                     archive.extract(name, root)
-        marker.parent.mkdir(exist_ok=True)
         marker.touch()
     return load_geolife_trajectories(root, user_ids=None if wanted is None else sorted(wanted))

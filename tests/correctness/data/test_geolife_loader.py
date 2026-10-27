@@ -35,3 +35,8 @@ def test_load_geolife_second_call_uses_cache(archive, monkeypatch, tmp_path):
 
     monkeypatch.setattr(geolife, "HttpRangeFile", fail)
     assert len(geolife.load_geolife(users=[0], cache=tmp_path)) == 4
+
+
+def test_load_geolife_does_not_return_files_cached_for_another_selection(archive, tmp_path):
+    assert len(geolife.load_geolife(users=["000"], max_trips_per_user=2, cache=tmp_path)) == 4
+    assert len(geolife.load_geolife(users=["000"], max_trips_per_user=1, cache=tmp_path)) == 2

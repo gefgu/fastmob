@@ -1,12 +1,13 @@
 # Release notes
 
-!!! tip "Latest release: v0.3.3 (2026-10-27)"
+!!! tip "Latest release: v0.3.4 (2026-10-27)"
 
     `pip install -U fastmob`. No breaking changes in this release. Pin
     `fastmob==X.Y.Z` for reproducible research.
 
 | Version | Highlights |
 | --- | --- |
+| [v0.3.4](v0.3.4.md)<br><small>2026-10-27</small> | Fixes a wrong [`common_part_of_commuters_distance`](../reference/measures/evaluation.md) result, `load_geolife` caching and `interpolate_at` with pandas time indexes; 15 runnable Learn notebooks. |
 | [v0.3.3](v0.3.3.md)<br><small>2026-10-27</small> | [`load_geolife` and `load_brightkite`](../reference/data.md) download just the part of a public dataset you ask for. |
 | [v0.3.2](v0.3.2.md)<br><small>2026-09-19</small> | Stable `fastmob.vis` facade; `fastmob[vis]` pins a compatible `fastmob-vis` 0.1.x. |
 | [v0.3.1](v0.3.1.md)<br><small>2026-09-18</small> | Docs only: contributing guide and GeoLife benchmark story. |

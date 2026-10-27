@@ -64,6 +64,12 @@ def test_unknown_method_raises(interpolate_at_tdf):
         interpolate_at(interpolate_at_tdf, at="2020-01-01 00:30", method="bogus")
 
 
+def test_accepts_pandas_datetime_index(interpolate_at_tdf):
+    result = interpolate_at(interpolate_at_tdf, at=pd.to_datetime(["2020-01-01 00:30", "2020-01-01 01:30"]))
+    assert len(result) == 2
+    assert result["lat"].tolist() == pytest.approx([0.5, 1.5])
+
+
 def test_matches_movingpandas_reference(movingpandas_reference):
     """Numeric-value comparison against MovingPandas' real
     `Trajectory.get_position_at` for both `"linear"` and `"nearest"`."""

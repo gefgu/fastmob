@@ -15,6 +15,8 @@ from pathlib import Path
 
 import fastmob
 
+# Symbols present only in uncommitted work, so not part of any release: excluded from the inventory.
+UNRELEASED = ("radius_of_gyration_lazy",)
 INTERNAL = ("fastmob._core", "fastmob.utils", "fastmob.core.dispatch", "fastmob.core.base")
 FIELDS = [
     "canonical_symbol",
@@ -85,6 +87,8 @@ def collect() -> dict[str, dict]:
             if getattr(o, "__module__", "").startswith(INTERNAL):
                 continue
             add(n, o, "reference page", "class" if inspect.isclass(o) else "function", getattr(o, "__module__", ""))
+    for key in [k for k in syms if any(u in k for u in UNRELEASED)]:
+        del syms[key]
     for key, row in list(syms.items()):
         if row["kind"] != "class":
             continue
@@ -93,8 +97,10 @@ def collect() -> dict[str, dict]:
             if n.startswith("_") or not callable(m):
                 continue
             owner = getattr(m, "__qualname__", "")
-            if not owner.startswith(cls.__name__ + "."):
-                continue  # inherited: counted under its defining class
+            if not owner.startswith(cls.__name__ + ".") or not str(getattr(m, "__module__", None)).startswith(
+                "fastmob"
+            ):
+                continue  # inherited (from a base class or a builtin): counted under its defining class
             syms.setdefault(
                 f"{cls.__module__}.{owner}",
                 {
@@ -120,7 +126,11 @@ def main() -> None:
     rows, missing = [], []
     for key, r in sorted(syms.items()):
         status = "uncovered"
-        has_anchor = any(f'id="{a}"' in blob for a in r["aliases"]) or any(f'id="{key}"' in blob for _ in [0])
+        candidates = {key, *r["aliases"]}
+        if r["kind"] == "method":  # rendered under the class's own anchor, e.g. fastmob.network.RoadNetwork.build
+            owner, method = key.rsplit(".", 1)
+            candidates |= {f"{alias}.{method}" for alias in syms.get(owner, {}).get("aliases", ())}
+        has_anchor = any(f'id="{c}"' in blob for c in candidates)
         if not has_anchor and pages:
             missing.append(key)
         rows.append(

@@ -36,28 +36,35 @@ def entries(page: Path) -> list[tuple[str, object]]:
     return [e for t in re.findall(r"^::: ([\w.]+)", page.read_text(), re.MULTILINE) for e in entries_for(t, resolve(t))]
 
 
+def _class_methods(path: str, cls) -> list[tuple[str, object]]:
+    """Public methods defined by ``cls`` itself; inherited ones belong to their defining class."""
+    return [
+        (f"{path}.{name}", member)
+        for name, member in inspect.getmembers(cls)
+        if not name.startswith("_")
+        and callable(member)
+        and str(getattr(member, "__module__", None)).startswith("fastmob")
+        and getattr(member, "__qualname__", "").startswith(cls.__name__ + ".")
+    ]
+
+
 def entries_for(target: str, obj) -> list[tuple[str, object]]:
+    if not inspect.ismodule(obj):
+        return [(target, obj), *(_class_methods(target, obj) if inspect.isclass(obj) else [])]
+    tail = obj.__name__.rsplit(".", 1)[-1]
+    names = getattr(obj, "__all__", None) or [
+        n
+        for n in dir(obj)
+        if not n.startswith("_") and (getattr(getattr(obj, n), "__module__", None) == obj.__name__ or n == tail)
+    ]
     out = []
-    if True:
-        if inspect.ismodule(obj):
-            names = getattr(obj, "__all__", None) or [
-                n
-                for n in dir(obj)
-                if not n.startswith("_")
-                and (
-                    getattr(getattr(obj, n), "__module__", None) == obj.__name__ or n == obj.__name__.rsplit(".", 1)[-1]
-                )
-            ]
-            for n in names:
-                member = getattr(obj, n)
-                if (
-                    callable(member)
-                    and not inspect.ismodule(member)
-                    and not getattr(member, "__module__", "").startswith(INTERNAL)
-                ):
-                    out.append((f"{target}.{n}", member))
-        else:
-            out.append((target, obj))
+    for n in names:
+        member = getattr(obj, n)
+        if not callable(member) or inspect.ismodule(member) or getattr(member, "__module__", "").startswith(INTERNAL):
+            continue
+        out.append((f"{target}.{n}", member))
+        if inspect.isclass(member):
+            out += _class_methods(f"{target}.{n}", member)
     return out
 
 

@@ -65,8 +65,7 @@ pub fn common_part_of_links_from_counts<K: Eq + Hash>(
 }
 
 pub fn common_part_of_commuters_distance(values_a: &[f64], values_b: &[f64]) -> f64 {
-    let denominator: f64 = values_a.iter().sum();
-    if denominator == 0.0 || values_a.is_empty() || values_b.is_empty() {
+    if values_a.is_empty() || values_b.is_empty() {
         return 0.0;
     }
     let max = values_a
@@ -86,6 +85,10 @@ pub fn common_part_of_commuters_distance(values_a: &[f64], values_b: &[f64]) -> 
                 counts[((value / 2.0).floor() as usize).min(bins - 1)] += 1;
             }
         }
+    }
+    let denominator = a.iter().sum::<u64>() as f64;
+    if denominator == 0.0 {
+        return 0.0;
     }
     a.iter().zip(b).map(|(&x, y)| x.min(y) as f64).sum::<f64>() / denominator
 }

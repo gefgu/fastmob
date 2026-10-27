@@ -103,7 +103,7 @@ def test_docs_version_strings_match_cargo_version():
 
 
 def _learn_notebooks() -> list[Path]:
-    return sorted(p for p in (DOCS / "learn").glob("*.ipynb") if p.name != "compare-to-mobility-laws.ipynb")
+    return sorted((DOCS / "learn").glob("*.ipynb"))
 
 
 def test_learn_notebooks_follow_the_notebook_contract():
@@ -134,3 +134,21 @@ def test_reference_example_links_point_at_existing_notebook_sections():
             for h in re.findall(r"^#{2,3} (.+)$", page.read_text(encoding="utf-8"), re.MULTILINE)
         }
         assert example["anchor"] in slugs, f"{symbol}: no section '{example['anchor']}' in {example['page']}"
+
+
+def test_learn_notebooks_pin_the_minimum_release():
+    pins = {re.search(r"fastmob>=([0-9.]+)", p.read_text()).group(1) for p in _learn_notebooks()}
+    cargo = (ROOT / "fastmob-py" / "Cargo.toml").read_text()
+    version = re.search(r'^version = "([^"]+)"', cargo, re.MULTILINE).group(1)
+    assert len(pins) == 1, f"notebooks disagree on the minimum fastmob version: {pins}"
+    assert pins <= {version}, f"notebooks need fastmob>={pins} but the package is {version}"
+    assert f"fastmob>={pins.pop()}" in (ROOT / "binder" / "requirements.txt").read_text()
+
+
+def test_reference_module_pages_have_a_generated_catalogue():
+    missing = []
+    for page in (DOCS / "reference").rglob("*.md"):
+        text = page.read_text(encoding="utf-8")
+        if re.search(r"^::: ", text, re.MULTILINE) and "<!-- api-table:start -->" not in text:
+            missing.append(str(page.relative_to(ROOT)))
+    assert not missing, f"Run scripts/update_reference_tables.py and add markers to: {missing}"

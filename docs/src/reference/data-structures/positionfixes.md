@@ -9,6 +9,16 @@ hierarchy. It is a semantic subclass of [`TrajDataFrame`](traj-dataframe.md):
 one row represents one GPS fix with a timestamp, coordinates, and optionally a
 user ID.
 
+## Catalogue
+
+<!-- api-table:start -->
+| API | Description | Example |
+| --- | --- | --- |
+| [`Positionfixes`](#fastmob.core.positionfixes_dataframe.Positionfixes) | Semantic alias for `TrajDataFrame` at the base of the Positionfixes -> Staypoints -> Triplegs -> Trips -> Tours hierarchy. |  |
+| [`generate_staypoints`](#fastmob.core.positionfixes_dataframe.Positionfixes.generate_staypoints) | Detect stop locations, returning them as a typed `Staypoints` level. | [Build the visits](../../learn/motifs.md#build-the-visits) |
+| [`generate_triplegs`](#fastmob.core.positionfixes_dataframe.Positionfixes.generate_triplegs) | Derive movement segments (triplegs) between staypoints. | [Movement between stops](../../learn/trajectory-hierarchy.md#movement-between-stops-triplegs-and-transport-mode) |
+<!-- api-table:end -->
+
 ## Required data
 
 Use the same trajectory columns as `TrajDataFrame`: datetime, latitude,
@@ -32,3 +42,6 @@ with [`Triplegs`](triplegs.md) to classify movement.
 ::: fastmob.core.positionfixes_dataframe.Positionfixes
     options:
       show_source: false
+
+<!-- example-link -->**Worked example:** [Build the visits](../../learn/motifs.md#build-the-visits) · [Movement between stops](../../learn/trajectory-hierarchy.md#movement-between-stops-triplegs-and-transport-mode)
+

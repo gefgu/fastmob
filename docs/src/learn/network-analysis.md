@@ -1,29 +1,26 @@
-# Route and map-match trajectories
+# Roads, rails and map matching
 
-Use the network module when a straight-line distance is not a useful proxy for
+**Question.** A straight line is not how people travel. How do I measure distance along roads, find which roads a GPS trace used, and see where flows concentrate?
+
+Use the network functions when a straight-line distance is not a useful proxy for
 travel. Build the graph once, then reuse it for snapping, route queries, and
 network-aware measures.
+
+| Term | Meaning |
+| --- | --- |
+| Graph | Nodes (road connectors) joined by edges (road segments with a length, speed and class). |
+| Snapping | Assigning a point to its nearest node, within a maximum distance. |
+| Map matching | Choosing, for every GPS fix of a trace, the most likely road segment. |
+| Desire line | Flow between an origin and a destination, accumulated on the roads of the fastest route. |
 
 <div class="figure">
 <img src="../assets/images/learn/learn-thumb-route.png" alt="Illustrative GPS observations offset from a gold matched path on real Beijing road geometry">
 </div>
 <p class="figure-caption">Road geometry from the Beijing OpenStreetMap extract; GPS observations are illustrative. © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.</p>
 
-```python
-from fastmob.network import RoadNetwork, fetch_road_network, match_trajectory
-from fastmob.measures.individual import jump_lengths_road
+Run it on real data in [Road networks: matching, routing and desire lines](road-network-analysis.md), which fetches a road network, matches a GPS trace, compares road and straight-line distance and accumulates flows on roads.
 
-nodes, edges = fetch_road_network(
-    min_lon=2.34, min_lat=48.85, max_lon=2.36, max_lat=48.86,
-    overture_release="2026-05-20.0",
-)
-network = RoadNetwork.build(edges, nodes)
-
-road_jumps = jump_lengths_road(traj, network=network)
-matched = match_trajectory(traj, network=network)
-```
-
-The graph build is reused; do not fetch or prepare it once per trajectory.
+Build the graph once and reuse it; do not fetch or prepare it once per trajectory.
 Snapping returns `-1` for a point outside the chosen threshold, and
 network-aware distance measures fall back to Haversine when an endpoint is
 unsnapped or disconnected.

@@ -61,7 +61,7 @@ To cite a specific release of the software, use:
              analysis in Python.
              PyPI package fastmob},
   year    = {2026},
-  version = {0.3.3},
+  version = {0.3.4},
   url     = {https://github.com/
              gefgu/fastmob}
 }
