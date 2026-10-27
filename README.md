@@ -121,3 +121,23 @@ the repository workflows.
 Fastmob is actively developed. Please include versions, dataframe backend, a
 minimal reproducible input, expected behavior, and the full error when opening
 an issue.
+
+## Citation
+
+Please use cite this work if Fastkit-Mobility helped in your work:
+
+```bibtex
+@inproceedings{santos:hal-05755990,
+  TITLE = {{Fastkit-Mobility: A High-Performance, DataFrame-Agnostic Library for Mobility Analysis}},
+  AUTHOR = {Santos, Gustavo H and Carneiro Viana, Aline and Pappalardo, Luca and Silva, Thiago H},
+  URL = {https://inria.hal.science/hal-05755990},
+  BOOKTITLE = {{NetMob 2026}},
+  ADDRESS = {Niter{\'o}i, Rio de Janeiro state, Brazil},
+  YEAR = {2026},
+  MONTH = Oct,
+  KEYWORDS = {Data Privacy ; Trajectory Processing ; Parallel Processing ; High Performance Computing ; Spatiotemporal Data ; Mobility Analytics ; Human mobility analysis},
+  PDF = {https://inria.hal.science/hal-05755990v1/file/32160_Final_Version.pdf},
+  HAL_ID = {hal-05755990},
+  HAL_VERSION = {v1},
+}
+```
