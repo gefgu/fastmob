@@ -105,3 +105,4 @@ icon: lucide/users-round
       show_source: false
 
 <!-- example-link -->**Worked example:** [When and where is each place busy?](../../learn/population-measures.md#when-and-where-is-each-place-busy)
+

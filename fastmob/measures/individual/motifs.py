@@ -354,7 +354,22 @@ def daily_motifs_from_staypoints(
 
 
 def motif_distribution(daily: Any, motif_id_col: str = "motif_id") -> Any:
-    """Aggregate daily motif IDs into count and percentage columns."""
+    """Count the days of each daily mobility motif and give their percentage.
+
+    Parameters
+    ----------
+    daily : DataFrame-like
+        Output of ``daily_motifs`` (one row per user and day), or any table with a motif id column.
+    motif_id_col : str, optional
+        Column holding the motif ids. Default ``"motif_id"``.
+
+    Returns
+    -------
+    DataFrame
+        One row per motif with ``motif_id``, ``count`` (number of user-days) and ``percentage`` (of all rows).
+        The id packs the number of distinct places into its high bits (``motif_id // 2**36``); the id -1 marks
+        days with more than six distinct places. The result is in the input's dataframe type.
+    """
     df = nw.from_native(daily, eager_only=True)
     if motif_id_col not in df.columns:
         raise ValueError(f"Motif ID column {motif_id_col!r} does not exist.")

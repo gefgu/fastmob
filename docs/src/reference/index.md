@@ -8,6 +8,7 @@ Every public function and class in Fastkit-Mobility, grouped by module. Each mod
 | --- |
 | [Data structures](data-structures.md)<br><span class="muted">Typed trajectory, hierarchy and flow wrappers.</span><br>[`TrajDataFrame`](data-structures.md), [`Positionfixes`](data-structures.md) |
 | [Preprocessing](preprocessing.md)<br><span class="muted">Filtering, segmentation, staypoints, H3 and OD preparation.</span><br>[`filter`](preprocessing.md#fastmob.preprocessing.filter), [`segment`](preprocessing.md), [`stay_locations`](preprocessing.md#fastmob.preprocessing.stay_locations) |
+| [Tessellation](tessellation.md)<br><span class="muted">Square, H3 and Voronoi tilers.</span><br>[`TessellationTilers`](tessellation.md) |
 | [Trajectory](trajectory.md)<br><span class="muted">Interpolation, smoothing, shape clustering and comparison.</span><br>[`interpolate`](trajectory.md#fastmob.trajectory.interpolate), [`smooth`](trajectory.md) |
 | [Network](network.md)<br><span class="muted">Road and rail graphs, routing, snapping and map matching.</span><br>[`match_trajectory`](network.md), [`build_road_graph`](network.md#fastmob.network.build_road_graph) |
 | [Integration](integration.md)<br><span class="muted">Joins with points of interest and events.</span><br>[`join_with_pois`](integration.md#fastmob.integration.join_with_pois), [`join_with_events`](integration.md#fastmob.integration.join_with_events) |

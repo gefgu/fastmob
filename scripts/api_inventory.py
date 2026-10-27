@@ -17,6 +17,24 @@ import fastmob
 
 # Symbols present only in uncommitted work, so not part of any release: excluded from the inventory.
 UNRELEASED = ("radius_of_gyration_lazy",)
+# Exposed by `fastmob.models.__all__` by accident: an internal helper of the Poisson fit, not public API.
+NOT_PUBLIC = ("fastmob.models.gravity.ci",)
+# Packages whose ``__all__`` lists the public API (so the inventory does not depend on what the docs already name).
+PUBLIC_PACKAGES = (
+    "fastmob.tessellation",
+    "fastmob.core",
+    "fastmob.data",
+    "fastmob.integration",
+    "fastmob.io",
+    "fastmob.measures",
+    "fastmob.models",
+    "fastmob.network",
+    "fastmob.preprocessing",
+    "fastmob.privacy",
+    "fastmob.social",
+    "fastmob.tessellation",
+    "fastmob.trajectory",
+)
 INTERNAL = ("fastmob._core", "fastmob.utils", "fastmob.core.dispatch", "fastmob.core.base")
 FIELDS = [
     "canonical_symbol",
@@ -75,6 +93,26 @@ def collect() -> dict[str, dict]:
         if obj.__module__.startswith(INTERNAL):
             continue
         add(f"fastmob.{name}", obj, "fastmob.__all__", "class" if inspect.isclass(obj) else "function", obj.__module__)
+    for package in PUBLIC_PACKAGES:
+        module = importlib.import_module(package)
+        for name in getattr(module, "__all__", ()):
+            obj = getattr(module, name, None)
+            if obj is None or inspect.ismodule(obj) or not callable(obj):
+                continue
+            if getattr(obj, "__module__", "").startswith(INTERNAL) or not getattr(obj, "__module__", "").startswith(
+                "fastmob"
+            ):
+                continue
+            add(
+                f"{package}.{name}",
+                obj,
+                f"{package}.__all__",
+                "class" if inspect.isclass(obj) else "function",
+                obj.__module__,
+            )
+    from fastmob.core.base import BaseDataFrame
+
+    add("fastmob.core.base.BaseDataFrame", BaseDataFrame, "public base class", "class", BaseDataFrame.__module__)
     for target in doc_targets(Path("docs/src/reference")):
         obj = resolve(target)
         names = getattr(obj, "__all__", None) or [n for n in dir(obj) if not n.startswith("_")]
@@ -87,7 +125,7 @@ def collect() -> dict[str, dict]:
             if getattr(o, "__module__", "").startswith(INTERNAL):
                 continue
             add(n, o, "reference page", "class" if inspect.isclass(o) else "function", getattr(o, "__module__", ""))
-    for key in [k for k in syms if any(u in k for u in UNRELEASED)]:
+    for key in [k for k in syms if any(u in k for u in UNRELEASED + NOT_PUBLIC)]:
         del syms[key]
     for key, row in list(syms.items()):
         if row["kind"] != "class":
@@ -141,6 +179,20 @@ def main() -> None:
                 "kind": r["kind"],
                 "public_evidence": ";".join(sorted(r["evidence"])),
                 "status": status,
+            }
+        )
+    previous = {}
+    ledger = args.out / "coverage.csv"
+    if ledger.exists():  # keep what notebook_coverage.py already filled in
+        with ledger.open() as fh:
+            previous = {r["canonical_symbol"]: r for r in csv.DictReader(fh)}
+    for r in rows:
+        old = previous.get(r["canonical_symbol"], {})
+        r.update(
+            {
+                k: v
+                for k, v in old.items()
+                if v and k not in ("canonical_symbol", "module", "aliases", "kind", "public_evidence")
             }
         )
     with (args.out / "coverage.csv").open("w", newline="") as fh:

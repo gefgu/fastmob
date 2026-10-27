@@ -20,8 +20,26 @@ import nbformat
 
 DOCS = Path("docs/src")
 # Symbols that are not counted, or not covered, with the evidence for it.
-EXCLUDED: dict[str, tuple[str, str]] = {}
+EXCLUDED: dict[str, tuple[str, str]] = {
+    ".gravity.ci": (
+        "excluded",
+        "internal indicator helper of the Poisson fit that `fastmob.models.__all__` exposes by accident",
+    ),
+}
+_VIS = (
+    "uncovered",
+    "needs the optional `fastmob[vis]` extra; described on the visualization page, no executed example yet",
+)
 UNCOVERED = {
+    ".DatasetBuilder.prepare": (
+        "uncovered",
+        "abstract hook to subclass when adding a dataset; there is no runnable default",
+    ),
+    ".BaseDataFrame.plot_bar": _VIS,
+    ".BaseDataFrame.plot_boxplot": _VIS,
+    ".BaseDataFrame.plot_ecdf": _VIS,
+    ".BaseDataFrame.plot_heatmap": _VIS,
+    ".BaseDataFrame.plot_scatter": _VIS,
     ".load.load_dataset": (
         "uncovered",
         "the download host (www-public.it-sudparis.eu) did not resolve on 2026-10-27, so no example can run",

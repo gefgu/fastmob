@@ -30,7 +30,21 @@ def jensen_shannon_divergence(distribution1: Any, distribution2: Any) -> float:
 
 
 def wasserstein_distance(values1: Any, values2: Any) -> float:
-    """Return Rust-backed 1D Wasserstein distance between empirical samples."""
+    """Return the 1-D Wasserstein (earth mover's) distance between two empirical samples.
+
+    The distance is the average amount by which the values of one sample must be moved to turn it into the
+    other, in the units of the values. Non-finite values are dropped; the result is ``nan`` if a sample is empty.
+
+    Parameters
+    ----------
+    values1, values2 : array-like
+        The two samples (they may have different lengths).
+
+    Returns
+    -------
+    float
+        Non-negative distance; 0 for identical samples.
+    """
     v1 = _finite_arrow_array(values1)
     v2 = _finite_arrow_array(values2)
     if len(v1) == 0 or len(v2) == 0:

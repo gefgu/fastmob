@@ -21,6 +21,7 @@ DATA_STRUCTURE_PAGES = {
     "trips.md",
     "tours.md",
     "flow-dataframe.md",
+    "base-dataframe.md",
 }
 
 

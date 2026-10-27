@@ -177,7 +177,29 @@ def daily_activity_distribution(
     day_filter: str | None = None,
     unknown_label: str = "UNKNOWN",
 ) -> tuple[np.ndarray, list[Any], int]:
-    """Compute a daily activity distribution matrix over fixed time bins."""
+    """Return how activity purposes are spread over the hours of the day.
+
+    Each visit is spread over fixed time bins between its start and end times. For every bin the result is the
+    percentage of the activity observed in that bin that falls in each purpose (the purposes of one bin sum to
+    100).
+
+    Parameters
+    ----------
+    visits : DataFrame-like
+        Visits with an activity (purpose) column and start and end timestamps.
+    activity_col, start_time_col, end_time_col : str, optional
+        Column names; auto-detected when ``None``.
+    bin_size_minutes : int, optional
+        Width of the time bins in minutes. Default 10.
+    day_col, day_filter : optional
+        Restrict the computation to the visits of one day-of-week value.
+
+    Returns
+    -------
+    tuple
+        ``(matrix, activities, bins)``: ``matrix`` has one row per purpose and one column per time bin, in
+        percent; ``activities`` lists the purposes (the rows); ``bins`` is the number of bins in a day.
+    """
     if bin_size_minutes <= 0 or 1440 % bin_size_minutes != 0:
         raise ValueError("bin_size_minutes must be a positive divisor of 1440")
 

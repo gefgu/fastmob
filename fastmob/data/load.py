@@ -25,7 +25,7 @@ class DatasetBuilder(ABC):
 
     @abstractmethod
     def prepare(self, full_path_files):
-        pass
+        """Turn the downloaded files (a list of paths) into the dataset object; implemented by each dataset builder."""
 
 
 def load_dataset(name, drop_columns=False, auth=None, show_progress=False):

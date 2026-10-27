@@ -20,6 +20,7 @@ the columns and operations for a mobility-analysis level explicit.
 | [`Trips`](data-structures/trips.md) | Connected triplegs between activity staypoints. | Compare OD demand, create flows, or generate tours. |
 | [`Tours`](data-structures/tours.md) | Round trips that return to their starting location. | Analyze journeys as a whole. |
 | [`FlowDataFrame`](data-structures/flow-dataframe.md) | Sparse origin-destination flows. | Query, compare, or convert the OD matrix. |
+| [`BaseDataFrame`](data-structures/base-dataframe.md) | The common base of all of the above. | Convert to pandas or Polars, compare, chart. |
 
 ## Mobility hierarchy
 

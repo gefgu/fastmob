@@ -11,14 +11,14 @@ network-aware measures.
 | Graph | Nodes (road connectors) joined by edges (road segments with a length, speed and class). |
 | Snapping | Assigning a point to its nearest node, within a maximum distance. |
 | Map matching | Choosing, for every GPS fix of a trace, the most likely road segment. |
-| Desire line | Flow between an origin and a destination, accumulated on the roads of the fastest route. |
+| Route flow (the library's `od_desire_lines`) | Flow between origins and destinations, added up on the road segments of each pair's fastest route. A desire line in the strict sense is the straight line between the origin and the destination. |
 
 <div class="figure">
 <img src="../assets/images/learn/learn-thumb-route.png" alt="Illustrative GPS observations offset from a gold matched path on real Beijing road geometry">
 </div>
 <p class="figure-caption">Road geometry from the Beijing OpenStreetMap extract; GPS observations are illustrative. © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.</p>
 
-Run it on real data in [Road networks: matching, routing and desire lines](road-network-analysis.md), which fetches a road network, matches a GPS trace, compares road and straight-line distance and accumulates flows on roads.
+Run it on real data in [Road networks: matching, routing and route flows](road-network-analysis.md), which fetches a road network, matches a GPS trace, compares road and straight-line distance and accumulates flows on roads.
 
 Build the graph once and reuse it; do not fetch or prepare it once per trajectory.
 Snapping returns `-1` for a point outside the chosen threshold, and
