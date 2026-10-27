@@ -10,7 +10,7 @@ for what it can do.
 [![License](https://img.shields.io/pypi/l/fastmob)](https://github.com/gefgu/fastmob/blob/main/LICENSE)
 [![GitHub](https://img.shields.io/github/stars/gefgu/fastmob?style=social)](https://github.com/gefgu/fastmob)
 
-Released 2026-09-19 ([release notes](../release_notes/index.md)) · Alpha · pandas and Polars via Narwhals
+Released 2026-10-27 ([release notes](../release_notes/index.md)) · Alpha · pandas and Polars via Narwhals
 
 ## Relationship to scikit-mobility
 
@@ -61,7 +61,7 @@ To cite a specific release of the software, use:
              analysis in Python.
              PyPI package fastmob},
   year    = {2026},
-  version = {0.3.2},
+  version = {0.3.3},
   url     = {https://github.com/
              gefgu/fastmob}
 }
