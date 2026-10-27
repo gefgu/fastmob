@@ -1,31 +1,29 @@
-# Measure people and populations
+# Measuring people and populations
 
-Individual measures answer how each person moves; collective measures summarize
-where and when the population moves.
+**Question.** Which measure answers my research question, and what does it mean?
 
-```python
-from fastmob.measures.individual import radius_of_gyration, home_location
-from fastmob.measures.collective import visits_per_time_unit, od_matrix
+Individual measures describe each person; collective measures describe where and when the whole population moves. To run the individual measures on real data, open [Measure individual mobility](measure-individual-mobility.md).
 
-per_person_range = radius_of_gyration(traj)
-homes = home_location(traj)
-visits_by_hour = visits_per_time_unit(visits, freq="1h")
-flows = od_matrix(trips)
-```
+## Which measure for which question
 
-Use raw trajectories for point-based measures such as radius of gyration.
-Use staypoint/visit data for visitation metrics, and trips or explicitly
-origin-destination-shaped data for OD metrics. Do not aggregate a per-user
-result manually when a collective API already defines the intended population
-semantics.
+| Question | Start with | Unit |
+| --- | --- | --- |
+| How widely does each person range? | `radius_of_gyration`, `maximum_distance` | km |
+| How long are their trips and waits? | `jump_lengths`, `waiting_times` | km, seconds |
+| How many places, how evenly used? | `number_of_locations`, `uncorrelated_entropy` | count, bits |
+| Which places matter? | `frequency_rank`, `home_location`, `work_location` | places |
+| When do visits occur? | `visits_per_time_unit` (collective) | visits per interval |
+| Which origins and destinations connect? | `od_matrix` (collective) | trips |
 
-| Question | Start with |
-| --- | --- |
-| How far does each user range? | `radius_of_gyration` |
-| Which places does each user revisit? | `location_frequency`, `home_location` |
-| When do visits occur? | `visits_per_time_unit` |
-| Which origins and destinations are connected? | `od_matrix` |
+## Choosing the input
 
-See [individual measures](../reference/measures/individual.md) and
-[collective measures](../reference/measures/collective.md) for complete
-schemas and options.
+Point-based measures such as the radius of gyration use raw trajectories. Visit-based measures (`diversity`, `regularity`, motif measures) need visit tables, such as staypoints. OD measures need trips or an origin-destination layout. Do not average a per-person result by hand when a collective function already defines the population.
+
+## Assumptions
+
+Distances are straight lines in kilometres, times are seconds, and hour-of-day measures treat hours in the data's own time zone, so convert to local time first.
+
+## Related API
+
+[Individual measures](../reference/measures/individual.md) ·
+[Collective measures](../reference/measures/collective.md)

@@ -16,9 +16,9 @@
   --md-primary-fg-color--light: #242424;
   --md-primary-fg-color--dark: #000000;
   --md-primary-bg-color: #ffffff;
-  --md-accent-fg-color: #7a7600;
+  --md-accent-fg-color: #7a5c00;
   --md-accent-fg-color--transparent: rgba(250, 255, 105, 0.18);
-  --md-typeset-a-color: #6c6900;
+  --md-typeset-a-color: #7a5c00;
   --md-code-bg-color: #f6f6f6;
   --md-code-fg-color: #1f1f1f;
   --md-footer-bg-color: var(--skmob-black);
@@ -189,12 +189,12 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
-  margin: 2rem 0;
+  margin: 1.25rem 0 2rem;
+  align-items: stretch;
 }
 
 .how-to-card {
   display: flex;
-  min-height: 12rem;
   flex-direction: column;
   padding: 1.5rem;
   border: 1px solid var(--skmob-hairline);
@@ -272,10 +272,622 @@
 
 [data-md-color-scheme="default"] .how-to-card__eyebrow,
 [data-md-color-scheme="default"] .how-to-card__link {
-  color: #6c6900;
+  color: #7a5c00;
 }
 
 /* Example outputs wider than the column scroll instead of clipping. */
 .md-typeset pre {
   overflow-x: auto;
+}
+
+/* Home hero and feature cards */
+.hero-lead {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.md-typeset .hero-button {
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  color: var(--md-default-fg-color) !important;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.md-typeset .hero-button--primary {
+  border-color: var(--skmob-yellow);
+  background: var(--skmob-yellow);
+  color: var(--skmob-black) !important;
+}
+
+.md-typeset .hero-button:hover {
+  border-color: var(--skmob-yellow-active);
+  transform: translateY(-1px);
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.md-typeset .feature-card {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 12px;
+  color: var(--md-default-fg-color) !important;
+  text-decoration: none;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.md-typeset .feature-card:hover {
+  border-color: var(--skmob-yellow-active);
+  transform: translateY(-2px);
+}
+
+.feature-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.feature-card__icon {
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin: 0 0 0.55rem;
+}
+
+.feature-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+}
+
+@media screen and (max-width: 900px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* One link colour family per theme, regardless of theme variant defaults. */
+[data-md-color-scheme="default"] .md-typeset a:not(.hero-button):not(.feature-card):not(.how-to-card) {
+  color: #7a5c00;
+}
+
+[data-md-color-scheme="slate"] .md-typeset a:not(.hero-button):not(.feature-card):not(.how-to-card) {
+  color: var(--skmob-yellow);
+}
+
+/* Dark footer matches the page instead of a mid-grey band. */
+[data-md-color-scheme="slate"] .md-footer,
+[data-md-color-scheme="slate"] .md-footer-meta {
+  background: var(--skmob-black);
+}
+
+/* Tables fill the content column. */
+.md-typeset__table,
+.md-typeset table:not([class]) {
+  width: 100%;
+}
+
+.md-typeset table:not([class]) {
+  display: table;
+}
+
+/* Learn cards: thumbnail, meta row, aligned links. */
+.how-to-card__thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 0.9rem;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--md-code-bg-color);
+}
+
+.how-to-card__meta {
+  margin-top: 0.6rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.7rem;
+}
+
+.how-to-card p {
+  flex: 1;
+}
+
+.how-to-card--start {
+  border-color: var(--skmob-yellow-active);
+  box-shadow: 0 0 0 1px var(--skmob-yellow-active);
+}
+
+/* Figures keep a readable minimum width and scroll sideways on narrow screens. */
+.figure-scroll {
+  overflow-x: auto;
+}
+
+.figure-scroll img {
+  min-width: 620px;
+}
+
+/* Code-styled links follow the link colour. */
+.md-typeset a code {
+  color: inherit;
+}
+
+/* Card body text uses the body colour in both themes. */
+[data-md-color-scheme="default"] .feature-card p {
+  color: #3a3a3a;
+}
+
+/* Tables read at body size; identifier columns stay on one line on wide screens. */
+.md-typeset table:not([class]) {
+  font-size: 0.75rem;
+}
+
+.md-typeset small {
+  color: var(--md-default-fg-color--light);
+  white-space: nowrap;
+}
+
+@media screen and (min-width: 700px) {
+  .md-typeset table:not([class]) td:first-child code,
+  .md-typeset table:not([class]) td:first-child a {
+    white-space: nowrap;
+  }
+}
+
+/* Small screens: wide tables scroll sideways inside their own box. */
+@media screen and (max-width: 699px) {
+  .md-typeset table:not([class]) {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .figure-scroll::after {
+    content: "scroll \2192";
+    display: block;
+    color: var(--md-default-fg-color--light);
+    font-size: 0.7rem;
+    text-align: right;
+  }
+}
+
+/* The floating mobile TOC toggle covers body text; the header drawer remains. */
+.md-sidebar-button {
+  display: none;
+}
+
+/* Three guide cards per row on wide screens. */
+@media screen and (min-width: 1100px) {
+  .how-to-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .how-to-grid--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .how-to-card--start {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .how-to-card--start .how-to-card__thumb {
+    width: 45%;
+    margin-bottom: 0;
+  }
+}
+
+.how-to-card__badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.45rem;
+  border: 1px solid var(--skmob-yellow-active);
+  border-radius: 999px;
+  font-size: 0.65rem;
+}
+
+/* Footer pager keeps its labels on small screens. */
+@media screen and (max-width: 44.9375em) {
+  .md-footer__link .md-footer__title {
+    display: block;
+  }
+}
+
+.figure-caption {
+  margin-top: 0;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.75rem;
+}
+
+.figure {
+  margin: 1rem auto;
+  max-width: 820px;
+  text-align: center;
+}
+
+.figure--hierarchy {
+  max-width: 1000px;
+}
+
+.figure img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Below the width where the TOC column fits, the collapsed TOC button floats over text; hide it. */
+@media screen and (max-width: 76.1875em) {
+  .md-sidebar--secondary {
+    display: none;
+  }
+}
+
+/* Inline code in table cells and cards keeps identifiers whole. */
+.md-typeset table:not([class]) td code,
+.feature-card code {
+  white-space: nowrap;
+}
+
+.md-typeset ul li,
+.md-typeset ol li {
+  margin-bottom: 0.25em;
+}
+
+/* Printed output blocks: no copy button, lighter box. */
+.md-typeset .language-text .md-code__nav {
+  display: none;
+}
+
+.md-typeset .language-text {
+  margin-top: -0.4rem;
+}
+
+.md-typeset .language-text pre > code {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+.md-footer__link {
+  min-width: 0;
+}
+
+@media screen and (max-width: 600px) {
+  .hero-lead {
+    font-size: 0.95rem;
+  }
+
+  .hero-actions .hero-button {
+    flex: 1 1 auto;
+    padding: 0.5rem 0.8rem;
+    text-align: center;
+  }
+}
+
+.figure--square {
+  max-width: 560px;
+}
+
+@media screen and (max-width: 600px) {
+  .hero-button--optional {
+    display: none;
+  }
+
+  .md-typeset pre > code {
+    padding-right: 1rem;
+  }
+
+  .md-footer__title,
+  .md-footer__link .md-ellipsis {
+    white-space: normal;
+  }
+}
+
+.md-typeset table:not([class]) td:first-child a {
+  white-space: nowrap;
+}
+
+.stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.stat-strip span {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+:root {
+  --thumb-surface: #f4f4f4;
+}
+
+[data-md-color-scheme="slate"] {
+  --thumb-surface: #2a2a2a;
+}
+
+.how-to-card__thumb {
+  background: var(--thumb-surface);
+}
+
+.muted {
+  color: var(--md-default-fg-color--light);
+  font-size: 0.85em;
+}
+
+@media screen and (max-width: 600px) {
+  .md-footer__inner {
+    flex-wrap: wrap;
+  }
+
+  .md-footer__link {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .md-footer__link--next {
+    text-align: right;
+  }
+}
+
+@media screen and (max-width: 699px) {
+  .md-typeset table:not([class]) td:nth-child(2) code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media screen and (max-width: 699px) {
+  /* Tables whose first column carries a dated version stay narrow there. */
+  .md-typeset table:has(td small) td:first-child {
+    width: 1%;
+    white-space: nowrap;
+  }
+}
+
+/* Tips use the accent colour instead of the theme's teal. */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: #c9a400;
+}
+
+.md-typeset .tip > .admonition-title::before,
+.md-typeset .tip > summary::before {
+  background-color: #c9a400;
+}
+
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary {
+  background-color: rgba(250, 255, 105, 0.12);
+}
+
+@media screen and (max-width: 699px) {
+  /* Glossary-style tables: the identifier column stays narrow so descriptions get the width. */
+  .md-typeset table:has(td:first-child code) td:first-child {
+    width: 1%;
+  }
+}
+
+.figure img {
+  width: 100%;
+}
+
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  background-color: rgba(250, 255, 105, 0.08);
+}
+
+/* Features overview on phones: the trait cards (the grid right after the stat strip) collapse to a
+   compact two-column set of titles instead of a screen-tall stack. */
+@media (max-width: 480px) {
+  .stat-strip + .feature-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .stat-strip + .feature-grid .feature-card {
+    padding: 0.6rem 0.7rem;
+  }
+
+  .stat-strip + .feature-grid .feature-card p {
+    display: none;
+  }
+
+  .stat-strip span {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.55rem;
+  }
+}
+
+/* Light mode: white header with a gold rule and the black-text logo; dark mode keeps the black header. */
+[data-md-color-scheme="default"] .md-header,
+[data-md-color-scheme="default"] .md-tabs {
+  background: #ffffff;
+  color: var(--skmob-black);
+}
+
+[data-md-color-scheme="default"] .md-header {
+  box-shadow: none;
+}
+
+[data-md-color-scheme="default"] .md-tabs {
+  border-bottom: 2px solid #c9a400;
+}
+
+[data-md-color-scheme="default"] .md-header__button.md-icon,
+[data-md-color-scheme="default"] .md-header__title,
+[data-md-color-scheme="default"] .md-source,
+[data-md-color-scheme="default"] .md-tabs__link {
+  color: var(--skmob-black);
+}
+
+[data-md-color-scheme="default"] .md-tabs__link {
+  opacity: 0.7;
+}
+
+[data-md-color-scheme="default"] .md-tabs__link--active,
+[data-md-color-scheme="default"] .md-tabs__item--active .md-tabs__link,
+[data-md-color-scheme="default"] .md-tabs__link:hover,
+[data-md-color-scheme="default"] .md-header__button.md-icon:hover,
+[data-md-color-scheme="default"] .md-source:hover {
+  color: var(--skmob-black);
+  opacity: 1;
+}
+
+[data-md-color-scheme="default"] .md-tabs__item--active .md-tabs__link {
+  box-shadow: inset 0 -2px 0 #c9a400;
+}
+
+[data-md-color-scheme="default"] .md-search__form {
+  background: #f1f1f1;
+}
+
+[data-md-color-scheme="default"] .md-search__input,
+[data-md-color-scheme="default"] .md-search__input::placeholder,
+[data-md-color-scheme="default"] .md-search__icon {
+  color: #444444;
+}
+
+/* The header logo is an <img> of the white-text SVG; in light mode paint the black-text one behind it instead. */
+[data-md-color-scheme="default"] .md-header__button.md-logo {
+  background: url("../assets/logo_light.svg") center / contain no-repeat;
+}
+
+[data-md-color-scheme="default"] .md-header__button.md-logo img {
+  visibility: hidden;
+}
+
+[data-md-color-scheme="default"] .md-search__button {
+  background: #f1f1f1;
+  border-color: #d9d9d9;
+  color: #444444;
+}
+
+[data-md-color-scheme="default"] .md-search__button::before {
+  background-color: #444444;
+}
+
+[data-md-color-scheme="default"] .md-search__button::after {
+  background: #e4e4e4;
+  color: #444444;
+}
+
+[data-md-color-scheme="default"] .md-search__button:hover {
+  border-color: #c9a400;
+  color: var(--skmob-black);
+}
+
+[data-md-color-scheme="default"] .md-search__button:hover::before {
+  background-color: var(--skmob-black);
+}
+
+/* Header: the outlined logo already carries the wordmark, so hide the duplicate title on desktop. */
+@media (min-width: 60em) {
+  .md-header__title {
+    display: none;
+  }
+
+  .md-header__button.md-logo img,
+  .md-header__button.md-logo {
+    height: 2.3rem;
+    width: auto;
+    min-width: 5.4rem;
+  }
+}
+
+[data-md-color-scheme="slate"] .md-tabs {
+  border-bottom: 2px solid #8a7300;
+}
+
+/* Dark mode: lift the grey text baked into transparent chart PNGs, and soften the bright map tile. */
+[data-md-color-scheme="slate"] .figure img[src*="benchmark"] {
+  filter: brightness(1.55);
+}
+
+[data-md-color-scheme="slate"] .how-to-card__thumb[src$="route.png"] {
+  filter: brightness(0.72) contrast(1.05);
+}
+
+/* Fill the content column with the hierarchy diagram. */
+.figure--hierarchy,
+.figure--hierarchy img {
+  max-width: none;
+  width: 100%;
+}
+
+/* Tighter gap under figures that lead into a list. */
+.figure {
+  margin-bottom: 0.8em;
+}
+
+/* Phones: code blocks share the 16px content gutter instead of bleeding to one edge. */
+@media (max-width: 44.9375em) {
+  .md-typeset .highlight {
+    margin-inline: 0;
+  }
+
+  .md-typeset .highlight > pre,
+  .md-typeset .highlight .md-code__content {
+    border-radius: 0.2rem;
+  }
+}
+
+/* Two-column tables whose first column is short code or a version: let it shrink to its content on phones. */
+@media (max-width: 44.9375em) {
+  .md-typeset table:not([class]):has(th:nth-child(2)):has(td:first-child :is(code, small)) :is(th, td):first-child {
+    width: 1%;
+    padding-inline: 0.6em;
+  }
+
+  .md-typeset table:not([class]):has(th:nth-child(2)):has(td:first-child :is(code, small)) :is(th, td):nth-child(2) {
+    padding-inline: 0.6em;
+  }
+}
+
+/* One-column tables (the Reference modules list) do not need a header band. */
+.md-typeset table:not([class]):not(:has(th:nth-child(2))) thead {
+  display: none;
+}
+
+/* Notebook output tables (raw pandas HTML): scroll inside the column, match the site tables. */
+.md-typeset table.dataframe {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  border: 0;
+}
+
+.md-typeset table.dataframe th,
+.md-typeset table.dataframe td {
+  padding: 0.35em 0.7em;
+  text-align: right;
+  border: 0;
+  border-bottom: 0.05rem solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset table.dataframe thead tr {
+  text-align: right;
+}
+
+/* Three-column catalogues keep their Example column on phones and scroll sideways instead. */
+@media (max-width: 30em) {
+  .md-typeset table:not([class]):has(th:nth-child(3):last-child) {
+    min-width: 34rem;
+  }
 }

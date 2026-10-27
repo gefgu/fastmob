@@ -1,62 +1,48 @@
+---
+hide:
+  - toc
+---
+
 # Learn
 
-These short recipes take you from a concrete task to a working Fastmob call.
-They use small, deterministic inputs; the API reference remains the complete
-parameter contract.
+Guides for mobility researchers, grouped by what you want to do. Start at chapter 1 if this is your first time. Each chapter mixes **notebooks** (runnable end to end in Colab or Binder, with real public data where possible) and **concept pages** (the ideas and choices, no code to run). Looking for a specific function? Use the [API reference](../reference/index.md).
 
-<div class="how-to-grid">
-<a class="how-to-card" href="analyze-a-simple-trajectory.md">
-<span class="how-to-card__eyebrow">Scenario 01</span>
-<h2>Inspect a minimal trajectory</h2>
-<p>Start with a small trajectory and calculate your first mobility measures.</p>
-<span class="how-to-card__link">Start with a trajectory →</span>
-</a>
-<a class="how-to-card" href="use-custom-columns-and-dataframe-backends.md">
-<span class="how-to-card__eyebrow">Scenario 02</span>
-<h2>Adapt your schema or backend</h2>
-<p>Use custom column names or move the same workflow between dataframe backends.</p>
-<span class="how-to-card__link">Columns and backends →</span>
-</a>
-<a class="how-to-card" href="clean-and-segment.md">
-<span class="how-to-card__eyebrow">Scenario 03</span>
-<h2>Remove noise and split movement</h2>
-<p>Clean raw position fixes and divide trajectories into meaningful segments.</p>
-<span class="how-to-card__link">Clean and segment trajectories →</span>
-</a>
-<a class="how-to-card" href="staypoints-and-locations.md">
-<span class="how-to-card__eyebrow">Scenario 04</span>
-<h2>Turn pings into places</h2>
-<p>Detect staypoints and locations from a stream of position fixes.</p>
-<span class="how-to-card__link">Create staypoints and locations →</span>
-</a>
-<a class="how-to-card" href="individual-and-collective-measures.md">
-<span class="how-to-card__eyebrow">Scenario 05</span>
-<h2>Describe individuals and populations</h2>
-<p>Measure mobility patterns at both the person and population level.</p>
-<span class="how-to-card__link">Measure people and populations →</span>
-</a>
-<a class="how-to-card" href="network-analysis.md">
-<span class="how-to-card__eyebrow">Scenario 06</span>
-<h2>Work with roads, routes, and GPS traces</h2>
-<p>Build network-aware workflows for routes and map-matched trajectories.</p>
-<span class="how-to-card__link">Route and map-match trajectories →</span>
-</a>
-<a class="how-to-card" href="fit-and-evaluate.md">
-<span class="how-to-card__eyebrow">Scenario 07</span>
-<h2>Fit laws and compare results</h2>
-<p>Fit mobility laws and evaluate the results against your data.</p>
-<span class="how-to-card__link">Fit and evaluate mobility results →</span>
-</a>
-<a class="how-to-card" href="notebooks/stay-point-detection-geolife.md">
-<span class="how-to-card__eyebrow">Notebook example</span>
-<h2>Detect staypoints from GeoLife</h2>
-<p>Follow an end-to-end notebook example with rendered Markdown, code, and outputs.</p>
-<span class="how-to-card__link">Open the notebook guide →</span>
-</a>
-</div>
+## 1. Getting started
 
-!!! tip "Use the right level of detail"
+*What does mobility data look like, and how do I use it?*
 
-    Recipes show the shortest supported route to a result. For accepted
-    columns, return schemas, edge cases, and all options, follow the API links
-    on each page.
+- [**Start with a trajectory**](analyze-a-simple-trajectory.md): notebook, synthetic data. Build a trajectory table and compute your first four measures.
+- [**Columns and backends**](use-custom-columns-and-dataframe-backends.md): use your own column names, or pandas and Polars interchangeably.
+
+## 2. Preparing trajectories
+
+*How do I turn noisy GPS fixes into trips, stops and places?*
+
+- [**Cleaning and segmentation**](clean-and-segment.md): concept page. What to remove or split, and which choices change your results.
+- [**Clean noisy GPS data and find stops**](clean-and-detect-stops.md): notebook, GeoLife. Filter glitches, split at gaps, detect stops, group them into places.
+- [**Stops and locations**](staypoints-and-locations.md): concept page. Staypoints, locations and the positions-to-tours hierarchy.
+
+## 3. Measuring mobility
+
+*How far, how often and how predictably do people move?*
+
+- [**Measuring people and populations**](individual-and-collective-measures.md): concept page. Which measure answers which question, and its units.
+- [**Measure individual mobility**](measure-individual-mobility.md): notebook, Brightkite. Range, places, entropy, home and work for hundreds of users.
+
+## 4. Spatial and network analysis
+
+*What happens on the road network, and what do daily routines look like?*
+
+- [**Route and map-match trajectories**](network-analysis.md): build a road graph, snap traces and query routes.
+- [**Find daily mobility motifs**](motifs.md): match each day's movement to a library of daily patterns.
+
+## 5. Modelling and evaluating mobility
+
+*Which law or model describes my data, and how well?*
+
+- [**Fit and evaluate mobility results**](fit-and-evaluate.md): choose the comparison that fits your question.
+- [**Compare to mobility laws**](compare-to-mobility-laws.md): notebook, Brightkite. Fit a jump-length law and compare it with reference models.
+
+## Advanced notebook
+
+- [**Stay-point detection benchmark**](notebooks/stay-point-detection-geolife.md): full 25-million-fix GeoLife run, compared with trackintel. Downloads the whole 313 MB archive and takes a long time; start with the chapter 2 notebook instead.

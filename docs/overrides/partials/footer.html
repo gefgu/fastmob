@@ -1,0 +1,71 @@
+{#-
+  Override of the stock footer: previous/next links never cross a top-level nav section.
+-#}
+<footer class="md-footer">
+  {% if "navigation.footer" in features %}
+    {# page.previous_page/next_page expose no ancestors, so collect the URLs of the
+       current top-level section (nav depth <= 3) and keep only neighbours inside it. #}
+    {% set ns = namespace(urls="|" ~ page.url ~ "|") %}
+    {% if page.ancestors %}
+      {% set ns.urls = "|" %}
+      {% for a in (page.ancestors | last).children %}
+        {% set ns.urls = ns.urls ~ a.url ~ "|" %}
+        {% for b in a.children %}
+          {% set ns.urls = ns.urls ~ b.url ~ "|" %}
+          {% for c in b.children %}{% set ns.urls = ns.urls ~ c.url ~ "|" %}{% endfor %}
+        {% endfor %}
+      {% endfor %}
+    {% endif %}
+    {% set prev = page.previous_page if page.previous_page and ("|" ~ page.previous_page.url ~ "|") in ns.urls else none %}
+    {% set nxt = page.next_page if page.next_page and ("|" ~ page.next_page.url ~ "|") in ns.urls else none %}
+    {% if prev or nxt %}
+      {% if page.meta and page.meta.hide %}
+        {% set hidden = "hidden" if "footer" in page.meta.hide %}
+      {% endif %}
+      <nav class="md-footer__inner md-grid" aria-label="{{ lang.t('footer') }}" {{ hidden }}>
+        {% if prev %}
+          {% set direction = lang.t("footer.previous") %}
+          <a href="{{ prev.url | url }}" class="md-footer__link md-footer__link--prev" aria-label="{{ direction }}: {{ prev.title | e }}">
+            <div class="md-footer__button md-icon">
+              {% set icon = config.theme.icon.previous or "material/arrow-left" %}
+              {% include ".icons/" ~ icon ~ ".svg" %}
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                {{ direction }}
+              </span>
+              <div class="md-ellipsis">
+                {{ prev.title }}
+              </div>
+            </div>
+          </a>
+        {% endif %}
+        {% if nxt %}
+          {% set direction = lang.t("footer.next") %}
+          <a href="{{ nxt.url | url }}" class="md-footer__link md-footer__link--next" aria-label="{{ direction }}: {{ nxt.title | e }}">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                {{ direction }}
+              </span>
+              <div class="md-ellipsis">
+                {{ nxt.title }}
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              {% set icon = config.theme.icon.next or "material/arrow-right" %}
+              {% include ".icons/" ~ icon ~ ".svg" %}
+            </div>
+          </a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% endif %}
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      {% include "partials/copyright.html" %}
+      {% if config.extra.social %}
+        {% include "partials/social.html" %}
+      {% endif %}
+    </div>
+  </div>
+</footer>

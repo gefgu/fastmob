@@ -5,6 +5,8 @@
 | [`list_datasets`](#fastmob.data.list_datasets) | List available scikit-mobility datasets. |
 | [`load_dataset`](#fastmob.data.load_dataset) | Load one of the original scikit-mobility datasets. |
 | [`get_dataset_info`](#fastmob.data.get_dataset_info) | Return metadata for a dataset. |
+| [`load_geolife`](#fastmob.data.load_geolife) | Load selected users of the Microsoft GeoLife GPS trajectories, downloading only what is needed. |
+| [`load_brightkite`](#fastmob.data.load_brightkite) | Load the first rows of the Brightkite check-in dataset. |
 
 ## Datasets
 
@@ -31,5 +33,17 @@
 ---
 
 ::: fastmob.data.get_dataset_info
+    options:
+      show_source: false
+
+---
+
+::: fastmob.data.load_geolife
+    options:
+      show_source: false
+
+---
+
+::: fastmob.data.load_brightkite
     options:
       show_source: false

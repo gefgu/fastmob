@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" role="img" aria-label="Memory">
+  <rect x="15" y="18" width="34" height="28" rx="4" stroke="#66717a" stroke-width="3"/>
+  <path d="M22 26h20M22 33h13M22 40h17M21 11v7m11-7v7m11-7v7m-22 28v7m11-7v7m11-7v7M8 25h7m-7 10h7m34-10h7m-7 10h7" stroke="#ad9700" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

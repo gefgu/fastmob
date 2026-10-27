@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="435" viewBox="0 0 1320 435" role="img" aria-labelledby="t d" font-family="Inter, system-ui, sans-serif">
+  <title id="t">fastmob mobility hierarchy</title>
+  <desc id="d">Positionfixes produce Staypoints and Triplegs. Triplegs and Staypoints combine into Trips, then Tours. Staypoints also cluster into Locations, which tours return to.</desc>
+  <style>
+    .box { fill: rgba(250,255,105,0.28); stroke: #b8a600; stroke-width: 1.6; }
+    .name { fill: #5c4a00; font-size: 15px; font-weight: 700; text-anchor: middle; }
+    .sub { fill: #6a5a1a; font-size: 12px; text-anchor: middle; }
+    .cap { fill: #6b6b6b; font-size: 12px; text-anchor: middle; }
+    .arrow { stroke: #8a8a8a; stroke-width: 1.8; fill: none; marker-end: url(#a); }
+    .dash { stroke: #8a8a8a; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; marker-end: url(#a); }
+    @media (prefers-color-scheme: dark) {
+      .box { fill: rgba(250,255,105,0.08); stroke: #faff69; }
+      .name { fill: #faff69; }
+      .sub { fill: #cfcf8a; }
+      .cap { fill: #aaa; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#8a8a8a"/>
+    </marker>
+  </defs>
+  <g transform="scale(1.5)">
+  <rect class="box" x="8" y="130" width="150" height="64" rx="10"/>
+  <rect class="box" x="208" y="10" width="150" height="64" rx="10"/>
+  <rect class="box" x="208" y="100" width="150" height="64" rx="10"/>
+  <rect class="box" x="208" y="190" width="150" height="64" rx="10"/>
+  <rect class="box" x="418" y="130" width="130" height="64" rx="10"/>
+  <rect class="box" x="598" y="130" width="130" height="64" rx="10"/>
+  <text class="name" x="83" y="159">Positionfixes</text><text class="sub" x="83" y="178">raw GPS / check-ins</text>
+  <text class="name" x="283" y="39">Locations</text><text class="sub" x="283" y="58">recurring places</text>
+  <text class="name" x="283" y="129">Staypoints</text><text class="sub" x="283" y="148">where you stopped</text>
+  <text class="name" x="283" y="219">Triplegs</text><text class="sub" x="283" y="238">moving segments</text>
+  <text class="name" x="483" y="159">Trips</text><text class="sub" x="483" y="178">stop to stop</text>
+  <text class="name" x="663" y="159">Tours</text><text class="sub" x="663" y="178">trips back to a place</text>
+  <path class="arrow" d="M158 150 L206 132"/>
+  <path class="arrow" d="M158 174 L206 222"/>
+  <path class="arrow" d="M283 100 L283 76"/>
+  <path class="arrow" d="M358 132 L416 156"/>
+  <path class="arrow" d="M358 222 L416 168"/>
+  <path class="arrow" d="M548 162 L596 162"/>
+  <path class="dash" d="M358 42 L663 42 L663 128"/>
+  <text class="cap" x="510" y="34">tours return to a Location</text>
+  </g>
+</svg>

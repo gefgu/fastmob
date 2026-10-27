@@ -1,58 +1,44 @@
 # Benchmark Results
 
-These plots collect the largest benchmark runs that directly compare fastmob with scikit-mobility (`skmob`). They are useful as a quick visual snapshot of fastmob behavior on 4M-row trajectory workloads.
+These plots compare Fastkit-Mobility with every library that offers the same function, on the largest datasets we benchmark. Bars show average time (or peak extra memory) on a log axis, and the label on a Fastkit-Mobility bar is its advantage over the best other library. A bar reading *timeout* or *error* means the library did not finish.
 
 The numbers are environment-specific, so they should be read as benchmark evidence for this run rather than as a universal performance guarantee.
 
+## One function, every library
+
+`jump_lengths` is the function the most libraries share.
+
+![jump_lengths speed across eight libraries](../assets/benchmarks/jump-lengths-libraries.png)
+
+## Measures
+
+### Individual
+
+![Individual measures, execution time](../assets/benchmarks/measures-individual-speed.png)
+
+![Individual measures, peak extra memory](../assets/benchmarks/measures-individual-memory.png)
+
+### Collective
+
+![Collective measures, execution time](../assets/benchmarks/measures-collective-speed.png)
+
+![Collective measures, peak extra memory](../assets/benchmarks/measures-collective-memory.png)
+
 ## Preprocessing
 
-#### Preprocessing - Pandas (Speed)
-![4M-row pandas preprocessing speed benchmark](../assets/benchmarks/fastmob_vs_skmob_preprocessing_pandas_4M.png)
+![Preprocessing, execution time](../assets/benchmarks/preprocessing-speed.png)
 
-#### Preprocessing - Pandas (Memory) (Still needs adjusts)
-![4M-row pandas preprocessing memory benchmark](../assets/benchmarks/fastmob_vs_skmob_preprocessing_pandas_4M_memory.png)
+![Preprocessing, peak extra memory](../assets/benchmarks/preprocessing-memory.png)
 
+## Distributed baseline: SparkMobility
 
-#### Preprocessing - Polars (Speed)
-![4M-row polars preprocessing speed benchmark](../assets/benchmarks/fastmob_vs_skmob_preprocessing_polars_4M.png)
+![Execution time against SparkMobility](../assets/benchmarks/sparkmobility-speed.png)
 
-#### Preprocessing - Polars (Memory) (Still needs adjusts)
-![4M-row polars preprocessing memory benchmark](../assets/benchmarks/fastmob_vs_skmob_preprocessing_polars_4M_memory.png)
-
-
-## Measures - Individual
-
-#### Measures - Individual - Pandas (Speed)
-![4M-row pandas measures individual speed benchmark](../assets/benchmarks/fastmob_vs_skmob_individual_pandas_4M.png)
-
-#### Measures - Individual - Pandas (Memory) (Still needs adjusts)
-![4M-row pandas measures individual memory benchmark](../assets/benchmarks/fastmob_vs_skmob_individual_pandas_4M_memory.png)
-
-
-#### Measures - Individual - Polars (Speed)
-![4M-row polars measures individual speed benchmark](../assets/benchmarks/fastmob_vs_skmob_individual_polars_4M.png)
-
-#### Measures - Individual - Polars (Memory) (Still needs adjusts)
-![4M-row polars measures individual memory benchmark](../assets/benchmarks/fastmob_vs_skmob_individual_polars_4M_memory.png)
-
-
-## Measures - Collective
-
-#### Measures - Collective - Pandas (Speed)
-![4M-row pandas measures collective speed benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_pandas_4M.png)
-
-#### Measures - Collective - Pandas (Memory) (Still needs adjusts)
-![4M-row pandas measures collective memory benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_pandas_4M_memory.png)
-
-
-#### Measures - Collective - Polars (Speed)
-![4M-row polars measures collective speed benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_polars_4M.png)
-
-<!-- #### Measures - Collective - Polars (Memory) (Still needs adjusts)
-![4M-row polars measures collective memory benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_polars_4M_memory.png) -->
-
+![Peak extra memory against SparkMobility](../assets/benchmarks/sparkmobility-memory.png)
 
 ## Measures - Evaluation
+
+*The evaluation and model plots below are earlier snapshots in the previous plotting style.*
 
 #### Measures - Evaluation - (Speed) - NumPy and Rust kernels
 ![measures evaluation speed benchmark](../assets/benchmarks/fastmob_vs_skmob_evaluation_4M.png)
@@ -73,68 +59,14 @@ The numbers are environment-specific, so they should be read as benchmark eviden
 
 ## Privacy
 
-#### Privacy - Pandas (Speed)
-![4M-row pandas privacy speed benchmark](../assets/benchmarks/fastmob_vs_skmob_privacy_pandas_all.png)
+![Privacy risk, execution time](../assets/benchmarks/privacy-speed.png)
 
-<!-- #### Privacy - Pandas (Memory) (Still needs adjusts)
-![4M-row pandas privacy memory benchmark](../assets/benchmarks/fastmob_vs_skmob_privacy_pandas_all_memory.png) -->
+## Reproduce the figures
 
+The figures are drawn from the raw results of the sibling `fastmob_benchmarks` repository:
 
-#### Privacy - Polars (Speed)
-![4M-row polars privacy speed benchmark](../assets/benchmarks/fastmob_vs_skmob_privacy_polars_all.png)
+```bash
+uv run --no-project --with matplotlib python scripts/make_benchmark_figures.py
+```
 
-<!-- #### Privacy - Polars (Memory) (Still needs adjusts) -->
-<!-- ![4M-row polars privacy memory benchmark](../assets/benchmarks/fastmob_vs_skmob_privacy_polars_all_memory.png) -->
-
-
-## Pre-Sorted Benchmark Results
-
-These refer to special metrics which benefit from sorted paths.
-
-
-### Preprocessing
-
-#### Preprocessing - Pandas (Speed)
-![4M-row pandas preprocessing speed benchmark](../assets/benchmarks/sorted/fastmob_vs_skmob_preprocessing_pandas_4M.png)
-
-<!-- #### Preprocessing - Pandas (Memory) (Still needs adjusts)
-![4M-row pandas preprocessing memory benchmark](../assets/benchmarks/fastmob_vs_skmob_preprocessing_pandas_4M_memory.png) -->
-
-
-#### Preprocessing - Polars (Speed)
-![4M-row polars preprocessing speed benchmark](../assets/benchmarks/fastmob_vs_skmob_preprocessing_polars_4M.png)
-
-<!-- #### Preprocessing - Polars (Memory) (Still needs adjusts)
-![4M-row polars preprocessing memory benchmark](../assets/benchmarks/fastmob_vs_skmob_preprocessing_polars_4M_memory.png) -->
-
-
-## Measures - Individual
-
-#### Measures - Individual - Pandas (Speed)
-![4M-row pandas measures individual speed benchmark](../assets/benchmarks/sorted/fastmob_vs_skmob_individual_pandas_4M.png)
-
-<!-- #### Measures - Individual - Pandas (Memory) (Still needs adjusts)
-![4M-row pandas measures individual memory benchmark](../assets/benchmarks/fastmob_vs_skmob_individual_pandas_4M_memory.png) -->
-
-
-#### Measures - Individual - Polars (Speed)
-![4M-row polars measures individual speed benchmark](../assets/benchmarks/sorted/fastmob_vs_skmob_individual_polars_4M.png)
-
-<!-- #### Measures - Individual - Polars (Memory) (Still needs adjusts)
-![4M-row polars measures individual memory benchmark](../assets/benchmarks/fastmob_vs_skmob_individual_polars_4M_memory.png) -->
-
-
-## Measures - Collective
-
-#### Measures - Collective - Pandas (Speed)
-![4M-row pandas measures collective speed benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_pandas_4M.png)
-
-<!-- #### Measures - Collective - Pandas (Memory) (Still needs adjusts)
-![4M-row pandas measures collective memory benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_pandas_4M_memory.png) -->
-
-
-#### Measures - Collective - Polars (Speed)
-![4M-row polars measures collective speed benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_polars_4M.png)
-
-<!-- #### Measures - Collective - Polars (Memory) (Still needs adjusts)
-![4M-row polars measures collective memory benchmark](../assets/benchmarks/fastmob_vs_skmob_collective_polars_4M_memory.png) -->
+Each figure is one entry of `figures()` in that script, so a new comparison needs one new entry.

@@ -127,6 +127,7 @@ macOS and Windows wheels cannot be built locally (no genuine Apple/Microsoft too
 To cut a release:
 
 1. Bump the version in `fastmob-py/Cargo.toml` — that's the authoritative version; `pyproject.toml` reads it dynamically via `[tool.maturin] manifest-path`. Commit the bump.
+   Before committing, add the release to the docs: a new first row (with the release date) in `docs/src/release_notes/index.md` and a `docs/src/release_notes/vX.Y.Z.md` page, then run `uv run python scripts/sync_docs_version.py`. That script copies the version and release date into the site footer (`zensical.toml`) and the About page; `tests/docs` fails if they are stale.
 2. `git tag vX.Y.Z && git push origin main --tags`.
 3. The tag push triggers the full wheel matrix, then `release` (gated on `startsWith(github.ref, 'refs/tags/v')`) generates artifact attestations, creates the GitHub release, and publishes to PyPI via OIDC Trusted Publishing — no stored token, and it must run inside GitHub Actions regardless of what was built locally.
 

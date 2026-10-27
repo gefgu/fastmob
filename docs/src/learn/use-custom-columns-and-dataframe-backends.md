@@ -110,3 +110,18 @@ Check these points before using the result downstream:
 - The result contains one row per user when `uid_col` is provided.
 - Distances are expressed in kilometers.
 - If a required column is missing, pass its name explicitly with the matching `*_col` argument.
+
+## Column name auto-detection
+
+fastmob detects required columns by scanning a priority list:
+
+| Semantic role | Accepted column names (in order) |
+|---|---|
+| datetime | `datetime`, `check-in_time`, `timestamp`, `time` |
+| latitude | `lat`, `latitude` |
+| longitude | `lng`, `lon`, `longitude` |
+| user ID (optional) | `uid`, `user`, `user_id` |
+
+When a user-ID column is absent, the entire dataframe is treated as a single
+individual. You can also pass column names explicitly with `datetime_col`,
+`lat_col`, `lng_col`, and `uid_col`.
