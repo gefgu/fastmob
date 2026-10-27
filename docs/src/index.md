@@ -21,7 +21,7 @@ people move. Rust does the heavy lifting; you keep your pandas or Polars datafra
 <div class="figure">
 <picture>
 <source media="(max-width: 600px)" srcset="assets/images/home/home-benchmark-speedup-mobile.png">
-<img src="assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and fastmob execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.">
+<img src="assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and Fastkit-Mobility execution time on 4M check-ins for five measures; fastmob is 315x to 1329x faster.">
 </picture>
 </div>
 

@@ -647,11 +647,6 @@
     width: 1%;
     white-space: nowrap;
   }
-
-  .md-typeset > .highlight {
-    margin-left: 0.8rem;
-    margin-right: 0.8rem;
-  }
 }
 
 /* Tips use the accent colour instead of the theme's teal. */
@@ -668,4 +663,20 @@
 .md-typeset .tip > .admonition-title,
 .md-typeset .tip > summary {
   background-color: rgba(250, 255, 105, 0.12);
+}
+
+@media screen and (max-width: 699px) {
+  /* Glossary-style tables: the identifier column stays narrow so descriptions get the width. */
+  .md-typeset table:has(td:first-child code) td:first-child {
+    width: 1%;
+  }
+}
+
+.figure img {
+  width: 100%;
+}
+
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  background-color: rgba(250, 255, 105, 0.08);
 }

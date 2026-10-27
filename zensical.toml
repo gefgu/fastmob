@@ -64,7 +64,7 @@ nav = [
     { "Visualization" = "reference/visualization.md" },
   ] },
   { "About" = [
-    { "About fastmob" = "about/index.md" },
+    { "About Fastkit-Mobility" = "about/index.md" },
     { "Resources" = "resource/index.md" },
     { "Development setup" = "about/development.md" },
     { "Release notes" = "release_notes/index.md" },

@@ -1,6 +1,6 @@
 # Resources
 
-Datasets, packages, community and background reading for fastmob.
+Datasets, packages, community and background reading for Fastkit-Mobility.
 
 <div class="feature-grid">
 <a class="feature-card" href="https://pypi.org/project/fastmob/">

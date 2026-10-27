@@ -10,7 +10,7 @@ import fastmob
 df = pd.DataFrame({
     "uid": ["alice"] * 3,
     "datetime": pd.date_range(
-        "2020-01-01", periods=3, freq="h"
+        "2020-01-01", periods=3
     ),
     "lat": [41.9, 42.0, 42.1],
     "lng": [12.5, 12.5, 12.6],

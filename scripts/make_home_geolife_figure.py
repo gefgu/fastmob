@@ -8,11 +8,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-
 import fastmob
+import matplotlib.pyplot as plt
+import pandas as pd
 from fastmob import Positionfixes
 
 OUT = Path("docs/src/assets/images/home")
@@ -40,10 +38,7 @@ d_legs = legs[legs.day == day]
 t0 = pd.to_datetime(d_legs.started_at, utc=True).min() - pd.Timedelta("1h")
 t1 = pd.to_datetime(d_legs.finished_at, utc=True).max() + pd.Timedelta("1h")
 d_fix = tdf[(tdf.datetime >= t0) & (tdf.datetime <= t1)]
-d_stay = stays[
-    (pd.to_datetime(stays.started_at, utc=True) >= t0)
-    & (pd.to_datetime(stays.started_at, utc=True) <= t1)
-]
+d_stay = stays[(pd.to_datetime(stays.started_at, utc=True) >= t0) & (pd.to_datetime(stays.started_at, utc=True) <= t1)]
 
 fig, ax = plt.subplots(figsize=(6, 5), dpi=200)
 ax.scatter(d_fix.lng, d_fix.lat, s=3, color="#6f6f6f", alpha=0.55, linewidths=0, label="position fixes")
@@ -56,10 +51,13 @@ ax.scatter(d_stay.lng, d_stay.lat, s=90, facecolor="none", edgecolor=GOLD, linew
 ax.set_aspect("equal")
 # Square window centred on the stops; the rare long trip leaves the frame.
 cx, cy = d_stay.lng.median(), d_stay.lat.median()
-half = max(
-    d_stay.lng.quantile(0.9) - d_stay.lng.quantile(0.1),
-    (d_stay.lat.quantile(0.9) - d_stay.lat.quantile(0.1)) / 0.77,
-) * 0.75
+half = (
+    max(
+        d_stay.lng.quantile(0.9) - d_stay.lng.quantile(0.1),
+        (d_stay.lat.quantile(0.9) - d_stay.lat.quantile(0.1)) / 0.77,
+    )
+    * 0.75
+)
 ax.set_xlim(cx - half, cx + half)
 ax.set_ylim(cy - half * 0.77, cy + half * 0.77)
 ax.set_axis_off()

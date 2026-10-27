@@ -34,9 +34,7 @@ with sync_playwright() as p:
         d = out / name
         d.mkdir(parents=True, exist_ok=True)
         for label, w, h, scheme in shots:
-            ctx = browser.new_context(
-                viewport={"width": w, "height": h}, color_scheme=scheme
-            )
+            ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
             page = ctx.new_page()
             page.goto(f"http://127.0.0.1:{port}/{path}", wait_until="networkidle")
             page.screenshot(path=d / f"{label}-fold.png")

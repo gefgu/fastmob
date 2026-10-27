@@ -33,12 +33,18 @@ for i, name in enumerate(names):
     ax.barh(i - 0.18, fm, height=0.34, color=GOLD)
     ax.text(sk * 1.15, i + 0.18, f"{sk:.1f}s", va="center", fontsize=11, color=TEXT)
     ax.text(
-        fm * 1.15, i - 0.18, f"{fm:.2f}s  ({speedup:.0f}x faster)",
-        va="center", fontsize=11, color=GOLD, fontweight="bold",
+        fm * 1.15,
+        i - 0.18,
+        f"{fm:.2f}s  ({speedup:.0f}x faster)",
+        va="center",
+        fontsize=11,
+        color=GOLD,
+        fontweight="bold",
     )
 ax.set_yticks(range(len(names)), names, fontsize=12, color=TEXT)
-ax.set_xlabel("Execution time on 4M Brightkite check-ins (seconds, log scale, lower is better)",
-              fontsize=11, color=TEXT)
+ax.set_xlabel(
+    "Execution time on 4M Brightkite check-ins (seconds, log scale, lower is better)", fontsize=11, color=TEXT
+)
 ax.tick_params(colors=TEXT, labelsize=10)
 ax.set_xscale("log")
 ax.set_xlim(0.05, 2000)
@@ -49,8 +55,13 @@ for s in ("top", "right", "left"):
 ax.spines["bottom"].set_color(TEXT)
 ax.legend(
     handles=[plt.Rectangle((0, 0), 1, 1, color=GREY), plt.Rectangle((0, 0), 1, 1, color=GOLD)],
-    labels=["scikit-mobility", "Fastkit-Mobility (pandas)"], loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2,
-    frameon=False, labelcolor=TEXT, fontsize=11,
+    labels=["scikit-mobility", "Fastkit-Mobility (pandas)"],
+    loc="lower center",
+    bbox_to_anchor=(0.5, 1.0),
+    ncol=2,
+    frameon=False,
+    labelcolor=TEXT,
+    fontsize=11,
 )
 fig.tight_layout()
 fig.savefig(OUT / "home-benchmark-speedup.png", transparent=True)
@@ -61,12 +72,11 @@ fig, ax = plt.subplots(figsize=(4.0, 4.6), dpi=200)
 items = sorted(BENCH.items(), key=lambda kv: kv[1][2])
 for i, (name, (sk, fm, speedup)) in enumerate(items):
     ax.barh(i, speedup, height=0.55, color=GOLD)
-    ax.text(speedup * 1.12, i, f"{speedup:.0f}x", va="center", fontsize=14,
-            color=GOLD, fontweight="bold")
+    ax.text(speedup * 1.12, i, f"{speedup:.0f}x", va="center", fontsize=14, color=GOLD, fontweight="bold")
 ax.set_xscale("log")
 ax.set_xlim(1, 6000)
 ax.set_yticks(range(len(items)), [n for n, _ in items], fontsize=12, color=TEXT)
-ax.set_xticks([1, 10, 100, 1000], ["1x", "10x", "100x", "1000x"], fontsize=11, color=TEXT)
+ax.set_xticks([10, 1000], ["10x", "1000x"], fontsize=11, color=TEXT)
 fig.suptitle("Speedup vs scikit-mobility", fontsize=12, color=TEXT)
 ax.set_title("4M Brightkite check-ins", fontsize=10, color=TEXT, pad=6)
 for sp in ("top", "right", "left"):

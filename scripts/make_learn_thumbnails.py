@@ -6,11 +6,10 @@ Usage: uv run --with matplotlib python scripts/make_learn_thumbnails.py
 
 from pathlib import Path
 
+import fastmob
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-import fastmob
 from fastmob import Positionfixes, jump_lengths, radius_of_gyration
 
 OUT = Path("docs/src/assets/images/learn")
@@ -48,9 +47,7 @@ def staypoints_and_segments():
     tdf = tdf.sort_values("datetime")
     # Keep the dense Beijing core so the picture is readable.
     tdf = tdf[(tdf.lat.between(39.9, 40.1)) & (tdf.lng.between(116.2, 116.5))]
-    stays = Positionfixes(tdf).generate_staypoints(
-        minutes_for_a_stop=20, spatial_radius_km=0.2
-    ).to_pandas()
+    stays = Positionfixes(tdf).generate_staypoints(minutes_for_a_stop=20, spatial_radius_km=0.2).to_pandas()
 
     fig, ax = new_fig()
     ax.scatter(tdf.lng, tdf.lat, s=1.5, color=GREY, alpha=0.5, linewidths=0)
@@ -58,11 +55,11 @@ def staypoints_and_segments():
     finish(fig, ax, "learn-thumb-staypoints.png")
     print("staypoints:", len(stays), "of", len(tdf), "fixes")
 
-    from fastmob.preprocessing import filter as fm_filter, segment
+    from fastmob.preprocessing import segment
 
-    seg = segment(tdf, method="observation_gap", gap_s=30 * 60).to_pandas() \
-        if hasattr(segment(tdf.head(10), method="observation_gap", gap_s=1800), "to_pandas") \
-        else segment(tdf, method="observation_gap", gap_s=30 * 60)
+    seg = segment(tdf, method="observation_gap", gap_s=30 * 60)
+    if hasattr(seg, "to_pandas"):
+        seg = seg.to_pandas()
     fig, ax = new_fig()
     ids = seg["segment_id"].to_numpy()
     uniq = pd.unique(ids)
@@ -78,8 +75,11 @@ def staypoints_and_segments():
 
 def measures():
     df = pd.read_csv(
-        DATA / "loc-brightkite_totalCheckins.txt.gz", sep="\t", header=None,
-        names=["uid", "datetime", "lat", "lng", "loc"], nrows=600_000,
+        DATA / "loc-brightkite_totalCheckins.txt.gz",
+        sep="\t",
+        header=None,
+        names=["uid", "datetime", "lat", "lng", "loc"],
+        nrows=600_000,
     ).dropna(subset=["lat", "lng"])
     df["datetime"] = pd.to_datetime(df["datetime"])
     rg = radius_of_gyration(df)["radius_of_gyration"].to_numpy()
@@ -101,8 +101,11 @@ def fit():
     from fastmob.measures.fitting.truncated_powerlaw import log_truncated_powerlaw
 
     df = pd.read_csv(
-        DATA / "loc-brightkite_totalCheckins.txt.gz", sep="\t", header=None,
-        names=["uid", "datetime", "lat", "lng", "loc"], nrows=600_000,
+        DATA / "loc-brightkite_totalCheckins.txt.gz",
+        sep="\t",
+        header=None,
+        names=["uid", "datetime", "lat", "lng", "loc"],
+        nrows=600_000,
     ).dropna(subset=["lat", "lng"])
     df["datetime"] = pd.to_datetime(df["datetime"])
     jl = jump_lengths(df)["jump_lengths"]
@@ -112,8 +115,13 @@ def fit():
     fig, ax = new_fig()
     ax.loglog(x, y, "o", ms=4, color=GREY, label="Brightkite jump lengths")
     xs = np.logspace(np.log10(x.min()), np.log10(x.max()), 200)
-    ax.loglog(xs, np.exp(log_truncated_powerlaw(xs, c, r0, beta, kappa)), color=GOLD, lw=2.5,
-              label=f"truncated power law (beta={beta:.2f})")
+    ax.loglog(
+        xs,
+        np.exp(log_truncated_powerlaw(xs, c, r0, beta, kappa)),
+        color=GOLD,
+        lw=2.5,
+        label=f"truncated power law (beta={beta:.2f})",
+    )
     ax.set_xticks([])
     ax.set_yticks([])
     ax.minorticks_off()
