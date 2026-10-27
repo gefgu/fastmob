@@ -218,11 +218,33 @@ def recast_from_staypoints(
     random_replicates: int = 5,
     seed: int = 42,
 ) -> RecastResult:
-    """Classify contacts into Friends, Bridges, Acquaintances, and Random.
+    """Classify contacts as Friends, Bridges, Acquaintances or Random (the RECAST method).
 
-    The random null model is the paper's degree-product RND, independently
-    sampled per daily event graph by T-RND.  It preserves snapshot degrees in
-    expectation, not exactly in each realization.
+    Each contact has a persistence (share of days it occurred) and a topological overlap (neighbourhood
+    overlap). A value counts as high when it exceeds the ``1 - p_rnd`` quantile of the same quantity in
+    degree-preserving randomized copies of the data. Friends have high persistence and high overlap, Bridges
+    high persistence and low overlap, Acquaintances low persistence and high overlap, and Random neither.
+
+    Parameters
+    ----------
+    staypoints : Staypoints
+        Stays that carry a global ``location_id``.
+    locations : Locations
+        The global location catalogue.
+    min_minutes_for_encounter : int, optional
+        Minimum time overlap, in minutes, for a contact. Default 5.
+    p_rnd : float, optional
+        Tail probability of the null distributions used for the thresholds. Default 0.001.
+    random_replicates : int, optional
+        Number of randomized replicas of the period. Default 5.
+    seed : int, optional
+        Random seed. Default 42.
+
+    Returns
+    -------
+    RecastResult
+        Per-contact ``classes`` (codes of ``RecastClass``), ``edge_persistence``, ``topological_overlap``, the two
+        thresholds, and ``mask`` to select the contacts of one class.
     """
     min_contact_ms = _validate_options(min_minutes_for_encounter, p_rnd, random_replicates)
     prepared = _prepare(staypoints, locations)
@@ -268,7 +290,25 @@ def recast_from_staypoints(
 def temporal_graph_from_staypoints(
     staypoints: Staypoints, locations: Locations, *, min_minutes_for_encounter: int = 5
 ) -> RecastTemporalGraph:
-    """Construct the daily RECAST event graphs without running classification."""
+    """Build the daily contact graphs from staypoints and a global location catalogue, without classifying.
+
+    Two users are in contact on a day when their stays at the same location overlap in time for at least
+    ``min_minutes_for_encounter`` minutes.
+
+    Parameters
+    ----------
+    staypoints : Staypoints
+        Stays that carry a global ``location_id``.
+    locations : Locations
+        The global location catalogue.
+    min_minutes_for_encounter : int, optional
+        Minimum overlap, in minutes, for a contact. Default 5.
+
+    Returns
+    -------
+    RecastTemporalGraph
+        One contact graph per day; ``time_steps`` is the number of days and ``event(i)`` gives day ``i``.
+    """
     min_contact_ms = _validate_options(min_minutes_for_encounter, 1e-3, 1)
     prepared = _prepare(staypoints, locations)
     if prepared.node_count == 0:
@@ -296,7 +336,22 @@ def temporal_graph_from_staypoints(
 
 
 def rnd(event_graph: RecastEventGraph, *, seed: int = 42) -> RecastEventGraph:
-    """Generate one paper-RND graph from a RECAST event graph."""
+    """Generate one randomized copy of a daily contact graph (the paper's RND null model).
+
+    Each node keeps about the number of contacts it had that day, but contacts are redrawn at random.
+
+    Parameters
+    ----------
+    event_graph : RecastEventGraph
+        The contact graph of one day, for example ``temporal_graph.event(i)``.
+    seed : int, optional
+        Random seed. Default 42.
+
+    Returns
+    -------
+    RecastEventGraph
+        The randomized graph. Degrees are preserved in expectation, not exactly.
+    """
     if not isinstance(event_graph, RecastEventGraph):
         raise TypeError("rnd requires a RecastEventGraph")
     from fastmob._core import recast_rnd
@@ -308,7 +363,22 @@ def rnd(event_graph: RecastEventGraph, *, seed: int = 42) -> RecastEventGraph:
 def t_rnd(
     temporal_graph: RecastTemporalGraph, *, random_replicates: int = 5, seed: int = 42
 ) -> list[RecastTemporalGraph]:
-    """Generate independent T-RND replicas for every daily event graph."""
+    """Generate independent randomized replicas of every daily contact graph (the T-RND null model).
+
+    Parameters
+    ----------
+    temporal_graph : RecastTemporalGraph
+        The daily contact graphs.
+    random_replicates : int, optional
+        Number of independent replicas of the whole period. Default 5.
+    seed : int, optional
+        Random seed. Default 42.
+
+    Returns
+    -------
+    list of RecastTemporalGraph
+        ``random_replicates`` randomized copies of the period.
+    """
     if not isinstance(temporal_graph, RecastTemporalGraph):
         raise TypeError("t_rnd requires a RecastTemporalGraph")
     _validate_options(1, 1e-3, random_replicates)
@@ -344,11 +414,26 @@ def validate_recast_from_staypoints(
     random_replicates: int = 5,
     seed: int = 42,
 ) -> RecastValidation:
-    """Return the classifier plus Figure 3/4/8 validation diagnostics.
+    """Run the RECAST classifier and return it together with the validation distributions.
 
-    This library-scope API intentionally stops at validating RECAST's temporal
-    graph model; the paper's opportunistic-routing and Facebook studies remain
-    application-level evaluations.
+    Takes the same arguments as ``recast_from_staypoints`` and returns a ``RecastValidation`` that holds the
+    classification and the observed and null distributions of persistence, topological overlap and clustering,
+    which are the data for the method's diagnostic plots.
+
+    Parameters
+    ----------
+    staypoints : Staypoints
+        Stays that carry a global ``location_id``.
+    locations : Locations
+        The global location catalogue.
+    min_minutes_for_encounter, p_rnd, random_replicates, seed : optional
+        As in ``recast_from_staypoints``.
+
+    Returns
+    -------
+    RecastValidation
+        With ``classification``, ``graph``, ``persistence_observed``, ``persistence_null``, ``overlap_observed``,
+        ``overlap_null``, ``full_clustering`` and ``random_only_clustering``.
     """
     min_contact_ms = _validate_options(min_minutes_for_encounter, p_rnd, random_replicates)
     prepared = _prepare(staypoints, locations)

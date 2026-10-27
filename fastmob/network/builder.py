@@ -266,7 +266,27 @@ def build_road_graph(
     nodes_output: str,
     edges_output: str,
 ) -> tuple[pa.Table, pa.Table]:
-    """Load a cached road graph from disk, or fetch and cache it."""
+    """Load a saved road graph from disk, or fetch it from Overture Maps and save it.
+
+    If both ``nodes_output`` and ``edges_output`` exist they are read (no download); otherwise the network is
+    fetched with ``fetch_road_network`` and written there as Parquet.
+
+    Parameters
+    ----------
+    min_lon, min_lat, max_lon, max_lat : float
+        Bounding box in degrees (WGS 84).
+    overture_release : str
+        Overture Maps release id, for example ``"2026-10-21.0"``. Old releases are removed from the public bucket,
+        so choose a current one.
+    nodes_output, edges_output : str
+        Paths of the Parquet files for the graph nodes and edges.
+
+    Returns
+    -------
+    (nodes, edges) : tuple of pyarrow.Table
+        As returned by ``fetch_road_network``: nodes with ``node_idx``, ``connector_id``, ``lat``, ``lng``; edges with
+        ``from_node``, ``to_node``, ``length_m``, ``speed_kmh``, ``weight_ds`` (travel time in deciseconds) and ``class``.
+    """
     if Path(nodes_output).exists() and Path(edges_output).exists():
         logger.info("Loading cached road graph from %s / %s ...", nodes_output, edges_output)
         return pq.read_table(nodes_output), pq.read_table(edges_output)
@@ -296,7 +316,28 @@ def fetch_rail_network(
     speed_kmh_by_class: dict[str, float] | None = None,
     default_speed_kmh: float = 35.0,
 ) -> tuple[pa.Table, pa.Table]:
-    """Fetch and build a simple bidirectional rail graph from Overture segments."""
+    """Fetch rail segments from Overture Maps and build a bidirectional rail graph.
+
+    Parameters
+    ----------
+    min_lon, min_lat, max_lon, max_lat : float
+        Bounding box in degrees (WGS 84).
+    overture_release : str
+        Overture Maps release id, for example ``"2026-10-21.0"``. Old releases are removed from the public bucket,
+        so choose a current one.
+    classes : list of str, optional
+        Overture rail classes to keep (default: light rail, standard gauge, subway and tram).
+    speed_kmh_by_class : dict, optional
+        Speed in km/h for each class, used to compute travel times.
+    default_speed_kmh : float, optional
+        Speed for a class not in ``speed_kmh_by_class``. Default 35.
+
+    Returns
+    -------
+    (nodes, edges) : tuple of pyarrow.Table
+        Same columns as ``fetch_road_network``; every segment appears in both directions. Rail and road graphs are
+        separate and not connected.
+    """
     duckdb = _require_duckdb()
 
     rail_classes = classes or DEFAULT_RAIL_CLASSES
@@ -388,7 +429,28 @@ def build_rail_graph(
     speed_kmh_by_class: dict[str, float] | None = None,
     default_speed_kmh: float = 35.0,
 ) -> tuple[pa.Table, pa.Table]:
-    """Load a cached rail graph from disk, or fetch and cache it."""
+    """Load a saved rail graph from disk, or fetch it from Overture Maps and save it.
+
+    Arguments are those of ``fetch_rail_network`` plus the two output paths. If both files exist they are read
+    (no download); otherwise the graph is fetched and written there as Parquet.
+
+    Parameters
+    ----------
+    min_lon, min_lat, max_lon, max_lat : float
+        Bounding box in degrees (WGS 84).
+    overture_release : str
+        Overture Maps release id, for example ``"2026-10-21.0"``. Old releases are removed from the public bucket,
+        so choose a current one.
+    nodes_output, edges_output : str
+        Paths of the Parquet files for the graph nodes and edges.
+    classes, speed_kmh_by_class, default_speed_kmh : optional
+        As in ``fetch_rail_network``.
+
+    Returns
+    -------
+    (nodes, edges) : tuple of pyarrow.Table
+        As returned by ``fetch_rail_network``.
+    """
     if Path(nodes_output).exists() and Path(edges_output).exists():
         logger.info("Loading cached rail graph from %s / %s ...", nodes_output, edges_output)
         return pq.read_table(nodes_output), pq.read_table(edges_output)

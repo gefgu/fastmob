@@ -60,7 +60,20 @@ def _empty_graph(node_count: int) -> NetworkGraph:
 
 
 def graph_from_edges(node_count: int, edges: Iterable[tuple[int, int]]) -> NetworkGraph:
-    """Construct a normalized graph from an iterable of undirected edges."""
+    """Build a normalized undirected graph from a list of edges.
+
+    Parameters
+    ----------
+    node_count : int
+        Number of nodes; nodes are the integers ``0`` to ``node_count - 1``.
+    edges : iterable of (int, int)
+        Undirected edges. Self-loops are dropped and duplicate edges (in either direction) are merged.
+
+    Returns
+    -------
+    NetworkGraph
+        The graph, with ``edge_from``, ``edge_to``, ``node_count`` and ``edge_count`` and the method ``degrees()``.
+    """
     normalized = {
         (min(int(u), int(v)), max(int(u), int(v)))
         for u, v in edges
@@ -78,12 +91,22 @@ def co_presence_graph_from_staypoints(
     *,
     min_minutes_for_encounter: int = 5,
 ) -> ContactNetworkResult:
-    """Build raw contacts from RECAST's daily interval-overlap event graphs.
+    """Build the aggregate contact network from the co-presence of users at the same location.
 
-    The same globally located staypoints, strict interval-overlap rule, and
-    minimum encounter duration as RECAST are used. The daily event graphs are
-    returned alongside their aggregate graph and per-edge persistence. No
-    random thresholds or relationship classes are inferred.
+    Parameters
+    ----------
+    staypoints : Staypoints
+        Stays that carry a global ``location_id``.
+    locations : Locations
+        The global location catalogue.
+    min_minutes_for_encounter : int, optional
+        Minimum time overlap, in minutes, for two users to count as in contact on a day. Default 5.
+
+    Returns
+    -------
+    ContactNetworkResult
+        ``graph`` (undirected, nodes are users), ``temporal_graph`` (daily graphs), ``time_steps`` (number of
+        days) and ``edge_persistence`` (share of days on which each contact occurred, 0 to 1).
     """
     temporal_graph = temporal_graph_from_staypoints(
         staypoints, locations, min_minutes_for_encounter=min_minutes_for_encounter
@@ -98,21 +121,64 @@ def co_presence_graph_from_staypoints(
 
 
 def clustering_coefficients(graph: NetworkGraph) -> np.ndarray:
-    """Return RECAST's exact local clustering coefficient for each node."""
+    """Return the local clustering coefficient of every node.
+
+    For a node with at least two neighbours it is the share of pairs of its neighbours that are also
+    connected to each other (0 to 1); for a node with fewer than two neighbours it is 0.
+
+    Parameters
+    ----------
+    graph : NetworkGraph
+        An undirected graph, for example ``contact_network.graph``.
+
+    Returns
+    -------
+    numpy.ndarray
+        One value per node, in node order.
+    """
     from fastmob._core import recast_local_clustering_coefficients
 
     return np.asarray(recast_local_clustering_coefficients(graph.node_count, graph.edge_from, graph.edge_to))
 
 
 def topological_overlap(graph: NetworkGraph) -> np.ndarray:
-    """Return RECAST's exact Jaccard neighborhood overlap for each edge."""
+    """Return the neighbourhood overlap of every edge.
+
+    For an edge between nodes ``u`` and ``v`` it is the Jaccard overlap of their neighbourhoods: the number
+    of neighbours they share divided by the size of the union of their neighbourhoods (0 to 1). High values
+    mean the two people have many common contacts.
+
+    Parameters
+    ----------
+    graph : NetworkGraph
+        An undirected graph.
+
+    Returns
+    -------
+    numpy.ndarray
+        One value per edge, in the order of ``graph.edge_from`` and ``graph.edge_to``.
+    """
     from fastmob._core import recast_topological_overlaps
 
     return np.asarray(recast_topological_overlaps(graph.node_count, graph.edge_from, graph.edge_to))
 
 
 def degree_preserving_random_graph(degrees: np.ndarray, *, seed: int = 42) -> NetworkGraph:
-    """Sample RECAST's Chung-Lu graph whose degrees match in expectation."""
+    """Sample a random graph whose node degrees match the given degrees in expectation (Chung-Lu model).
+
+    Parameters
+    ----------
+    degrees : numpy.ndarray
+        Target degree of each node; its length is the number of nodes.
+    seed : int, optional
+        Random seed. Default 42.
+
+    Returns
+    -------
+    NetworkGraph
+        A random undirected graph. Its degrees equal ``degrees`` only on average, so the number of edges
+        differs slightly from one sample to the next.
+    """
     degree = np.asarray(degrees)
     if degree.ndim != 1:
         raise ValueError("degrees must be a one-dimensional array")
@@ -138,7 +204,24 @@ def degree_preserving_random_graph(degrees: np.ndarray, *, seed: int = 42) -> Ne
 
 
 def random_persistence(graph: NetworkGraph, degrees: np.ndarray, *, time_steps: int, seed: int) -> np.ndarray:
-    """Sample persistence for a Chung-Lu baseline graph."""
+    """Sample the persistence that edges of a degree-preserving random baseline would have.
+
+    Parameters
+    ----------
+    graph : NetworkGraph
+        The observed graph, whose edges define how many values are drawn.
+    degrees : numpy.ndarray
+        Degree of each node used by the Chung-Lu baseline.
+    time_steps : int
+        Number of time steps (days) over which persistence is measured.
+    seed : int
+        Random seed.
+
+    Returns
+    -------
+    numpy.ndarray
+        One persistence value (share of time steps in which the edge exists, 0 to 1) per sampled edge.
+    """
     degree = np.asarray(degrees, dtype=float)
     total = float(degree.sum())
     if not graph.edge_count or time_steps <= 0 or total <= 0:
@@ -148,7 +231,19 @@ def random_persistence(graph: NetworkGraph, degrees: np.ndarray, *, time_steps: 
 
 
 def distribution_summary(values: np.ndarray) -> dict[str, float | int | None]:
-    """Return stable summary statistics after dropping non-finite values."""
+    """Summarize a sample with stable statistics after dropping non-finite values.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        The sample.
+
+    Returns
+    -------
+    dict
+        ``count``, ``mean``, ``median``, ``std``, ``p10`` and ``p90``; the statistics are ``None`` when no
+        finite value remains.
+    """
     values = np.asarray(values, dtype=float)
     values = values[np.isfinite(values)]
     if not values.size:
@@ -164,7 +259,18 @@ def distribution_summary(values: np.ndarray) -> dict[str, float | int | None]:
 
 
 def safe_wasserstein(left: np.ndarray, right: np.ndarray) -> float | None:
-    """Return the 1-D Wasserstein distance between two samples, or ``None`` when it is undefined (NaN)."""
+    """Return the 1-D Wasserstein distance between two samples, or ``None`` when it is undefined.
+
+    Parameters
+    ----------
+    left, right : numpy.ndarray
+        The two samples.
+
+    Returns
+    -------
+    float or None
+        The distance in the units of the values, or ``None`` if it is NaN (for example for an empty sample).
+    """
     value = wasserstein_distance(left, right)
     return None if math.isnan(value) else value
 

@@ -20,7 +20,7 @@ Guides for mobility researchers, grouped by what you want to do. Start at chapte
 
 - [**Cleaning and segmentation**](clean-and-segment.md): concept page. What to remove or split, and which choices change your results.
 - [**Clean noisy GPS data and find stops**](clean-and-detect-stops.md): notebook, GeoLife. Filter glitches, split at gaps, thin the data, detect stops, group them into places.
-- [**Resample, smooth, compare and convert trajectories**](process-trajectories.md): notebook, GeoLife. Local time, regular sampling, smoothing, trajectory distance, grids, GeoPandas, file round trip.
+- [**Fill gaps, smooth, compare and convert trajectories**](process-trajectories.md): notebook, GeoLife. Local time, filling recording gaps, smoothing, trajectory distance, grids and tilers, shape clustering, GeoPandas, file round trip.
 - [**Stops and locations**](staypoints-and-locations.md): concept page. Staypoints, locations and the positions-to-tours hierarchy.
 - [**Build the trajectory hierarchy: stops, trips and tours**](trajectory-hierarchy.md): notebook, GeoLife. Staypoints, places, home and work, triplegs, transport mode, trips and tours.
 
@@ -38,8 +38,8 @@ Guides for mobility researchers, grouped by what you want to do. Start at chapte
 
 *What happens on the road network, and who meets whom?*
 
-- [**Roads, rails and map matching**](network-analysis.md): concept page. Graphs, snapping, map matching and desire lines.
-- [**Road networks: matching, routing and desire lines**](road-network-analysis.md): notebook, GeoLife and Overture Maps. Match a trace, route, compare road and straight-line distance, join points of interest and events.
+- [**Roads, rails and map matching**](network-analysis.md): concept page. Graphs, snapping, map matching and route flows.
+- [**Road networks: matching, routing and route flows**](road-network-analysis.md): notebook, GeoLife and Overture Maps. Match a trace, route, compare road and straight-line distance, join points of interest and events.
 - [**Contact networks from stays**](contact-networks.md): notebook, Brightkite. Co-presence contacts, structure against a random baseline, Friends, Bridges, Acquaintances.
 
 ## 5. Modelling, evaluating and protecting
@@ -50,7 +50,3 @@ Guides for mobility researchers, grouped by what you want to do. Start at chapte
 - [**Generate mobility with models**](generate-mobility.md): notebook, synthetic data. Exploration and return models, diaries, social ties, gravity and radiation flows.
 - [**Fit and compare distributions**](fit-and-evaluate.md): notebook, Brightkite. Error, information, distribution and common-part metrics.
 - [**Privacy risk of trajectories**](privacy-risk.md): notebook, Brightkite. Re-identification risk under eight attacker models.
-
-## Advanced notebook
-
-- [**Stay-point detection benchmark**](notebooks/stay-point-detection-geolife.md): full 25-million-fix GeoLife run, compared with trackintel. Downloads the whole 313 MB archive and takes a long time; it is not part of the tested Learn notebooks. Start with the chapter 2 notebooks instead.

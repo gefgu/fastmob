@@ -12,7 +12,23 @@ from fastmob.utils._common import _all_unsigned_integer_arrow, _as_arrow, _joint
 
 
 def common_part_of_commuters(observed: Any, predicted: Any) -> float:
-    """Compare two Trips or two FlowDataFrames through sparse Rust CPC."""
+    """Return the common part of commuters (CPC) between observed and predicted flows.
+
+    CPC is ``2 * sum(min(observed, predicted)) / (sum(observed) + sum(predicted))`` over origin-destination
+    pairs: 1 when the two flow tables are identical, 0 when they share no trips. Self-loops and missing
+    endpoints are ignored.
+
+    Parameters
+    ----------
+    observed, predicted : Trips or FlowDataFrame
+        Two ``Trips`` tables (each trip counts 1) or two sparse ``FlowDataFrame`` tables (weighted by ``flow``).
+        Both must be the same type.
+
+    Returns
+    -------
+    float
+        CPC between 0 and 1 (higher is more similar). It depends on the zone size: finer zones give lower values.
+    """
     from fastmob._core import common_part_of_commuters as _cpc
     from fastmob._core import common_part_of_commuters_u64 as _cpc_u64
     from fastmob.core.flow_dataframe import DESTINATION, FLOW, ORIGIN, FlowDataFrame
@@ -55,7 +71,21 @@ def common_part_of_commuters(observed: Any, predicted: Any) -> float:
 
 
 def common_part_of_links(observed: Any, predicted: Any) -> float:
-    """Compare active sparse OD links in two Trips or FlowDataFrames."""
+    """Return the common part of links (CPL) between observed and predicted flows.
+
+    CPL is ``2 * |links in both| / (|links observed| + |links predicted|)``: the share of origin-destination
+    links that exist in both tables, whatever their weight. It is 1 when both have exactly the same links.
+
+    Parameters
+    ----------
+    observed, predicted : Trips or FlowDataFrame
+        Two ``Trips`` tables or two ``FlowDataFrame`` tables of the same type.
+
+    Returns
+    -------
+    float
+        CPL between 0 and 1 (higher is more similar).
+    """
     from fastmob._core import common_part_of_links as _cpl
     from fastmob._core import common_part_of_links_u64 as _cpl_u64
 
@@ -93,7 +123,21 @@ def common_part_of_links(observed: Any, predicted: Any) -> float:
 
 
 def common_part_of_commuters_distance(observed: Any, predicted: Any) -> float:
-    """Compare ``distance_km`` distributions in two Trips using Rust CPCD."""
+    """Compare the trip-distance distributions of two sets of trips (CPCD).
+
+    Distances are grouped in 2 km bins and the result is ``sum(min(count_observed, count_predicted)) /
+    number of observed trips``: 1 for identical distance distributions, 0 for none in common.
+
+    Parameters
+    ----------
+    observed, predicted : Trips
+        Two ``Trips`` tables, each with a ``distance_km`` column (kilometres).
+
+    Returns
+    -------
+    float
+        CPCD between 0 and 1 (higher is more similar when the two sets have similar numbers of trips).
+    """
     from fastmob._core import common_part_of_commuters_distance as _cpcd
     from fastmob.core.trips_dataframe import Trips
 

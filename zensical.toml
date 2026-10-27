@@ -28,7 +28,7 @@ nav = [
     { "2. Preparing trajectories" = [
       { "Cleaning and segmentation" = "learn/clean-and-segment.md" },
       { "Clean GPS data and find stops" = "learn/clean-and-detect-stops.md" },
-      { "Resample, smooth and convert" = "learn/process-trajectories.md" },
+      { "Gaps, smoothing and conversion" = "learn/process-trajectories.md" },
       { "Stops and locations" = "learn/staypoints-and-locations.md" },
       { "Stops, trips and tours" = "learn/trajectory-hierarchy.md" },
     ] },
@@ -50,7 +50,6 @@ nav = [
       { "Fit and compare distributions" = "learn/fit-and-evaluate.md" },
       { "Privacy risk" = "learn/privacy-risk.md" },
     ] },
-    { "Stay-point benchmark notebook" = "learn/notebooks/stay-point-detection-geolife.md" },
   ] },
   { "Reference" = [
     { "Reference overview" = "reference/index.md" },
@@ -64,9 +63,11 @@ nav = [
       { "Trips" = "reference/data-structures/trips.md" },
       { "Tours" = "reference/data-structures/tours.md" },
       { "FlowDataFrame" = "reference/data-structures/flow-dataframe.md" },
+      { "BaseDataFrame" = "reference/data-structures/base-dataframe.md" },
     ] },
     { "Preprocessing" = "reference/preprocessing.md" },
     { "Trajectory" = "reference/trajectory.md" },
+    { "Tessellation" = "reference/tessellation.md" },
     { "Network" = "reference/network.md" },
     { "Integration" = "reference/integration.md" },
     { "Measures" = [

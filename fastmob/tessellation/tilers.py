@@ -45,15 +45,23 @@ class TessellationTilers:
         self._tilers = {}
 
     def register_tiler(self, key: str, tiler_instance):
+        """Register ``tiler_instance`` (a callable tiler object) under the name ``key``, replacing any tiler of that name."""
         self._tilers[key] = tiler_instance
 
     def create(self, key: str, **kwargs):
+        """Build a tessellation with the tiler registered under ``key`` (``squared``, ``h3_tessellation``, ``voronoi`` or your own).
+
+        Keyword arguments are passed to the tiler: ``base_shape`` and ``meters`` for the squared and H3 tilers,
+        ``points`` for the Voronoi tiler. Returns a GeoDataFrame with ``tile_id`` and ``geometry``.
+        Raises ``ValueError`` for an unknown ``key``.
+        """
         tiler_instance = self._tilers.get(key)
         if not tiler_instance:
             raise ValueError(key)
         return tiler_instance(**kwargs)
 
     def get(self, service_id: str, **kwargs):
+        """Alias of ``create``: build a tessellation with the tiler registered as ``service_id``."""
         return self.create(service_id, **kwargs)
 
 

@@ -23,6 +23,11 @@
 | [`generate`](#fastmob.models.geosim.GeoSim.generate) | Simulate a socially connected population from `start_date` to `end_date`. | [Social ties](../learn/generate-mobility.md#social-ties) |
 | [`STS_epr`](#fastmob.models.sts_epr.STS_epr) | STS-EPR (Spatial, Temporal, and Social EPR) trajectory generator. |  |
 | [`generate`](#fastmob.models.sts_epr.STS_epr.generate) | Simulate a socially connected population from `start_date` to `end_date`. | [Social ties](../learn/generate-mobility.md#social-ties) |
+| [`NextLocationPredictor`](#fastmob.models.next_location.NextLocationPredictor) | Order-k Markov next-location predictor with optional backoff. |  |
+| [`evaluate`](#fastmob.models.next_location.NextLocationPredictor.evaluate) | Holdout-last-`n_holdout` accuracy over the data given to `fit`. | [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place) |
+| [`fit`](#fastmob.models.next_location.NextLocationPredictor.fit) | Fit one Markov model per user from each user's location-id sequence. | [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place) |
+| [`predict`](#fastmob.models.next_location.NextLocationPredictor.predict) | Predict each fitted user's single most likely next location. | [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place) |
+| [`predict_proba`](#fastmob.models.next_location.NextLocationPredictor.predict_proba) | Predict each fitted user's next location(s) from their own training history's tail. | [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place) |
 <!-- api-table:end -->
 
 The `fastmob.models` package mirrors the original scikit-mobility generation API. Model implementations accept pandas or Narwhals-compatible eager dataframes and may convert inputs to pandas internally.
@@ -106,4 +111,12 @@ pip install statsmodels
       show_source: false
 
 <!-- example-link -->**Worked example:** [Social ties](../learn/generate-mobility.md#social-ties)
+
+---
+
+::: fastmob.models.next_location.NextLocationPredictor
+    options:
+      show_source: false
+
+<!-- example-link -->**Worked example:** [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place)
 

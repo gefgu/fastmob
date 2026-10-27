@@ -4,15 +4,25 @@
   "page": "learn/contact-networks.md",
   "title": "Stays on a shared grid"
  },
+ "fastmob.core.base.BaseDataFrame.compare_to": {
+  "anchor": "convert-and-compare-typed-tables",
+  "page": "learn/process-trajectories.md",
+  "title": "Convert and compare typed tables"
+ },
  "fastmob.core.base.BaseDataFrame.to_native": {
-  "anchor": "checking-inputs",
-  "page": "learn/trajectory-hierarchy.md",
-  "title": "Checking inputs"
+  "anchor": "convert-and-compare-typed-tables",
+  "page": "learn/process-trajectories.md",
+  "title": "Convert and compare typed tables"
  },
  "fastmob.core.base.BaseDataFrame.to_pandas": {
   "anchor": "load-the-data",
   "page": "learn/clean-and-detect-stops.md",
   "title": "Load the data"
+ },
+ "fastmob.core.base.BaseDataFrame.to_polars": {
+  "anchor": "convert-and-compare-typed-tables",
+  "page": "learn/process-trajectories.md",
+  "title": "Convert and compare typed tables"
  },
  "fastmob.core.flow_dataframe.FlowDataFrame.__init__": {
   "anchor": "fit-and-run-a-gravity-model",
@@ -155,9 +165,9 @@
   "title": "Summaries from the same object"
  },
  "fastmob.core.trajectory_dataframe.TrajDataFrame.interpolate": {
-  "anchor": "resample-to-a-regular-interval",
+  "anchor": "fill-recording-gaps",
   "page": "learn/process-trajectories.md",
-  "title": "Resample to a regular interval"
+  "title": "Fill recording gaps"
  },
  "fastmob.core.trajectory_dataframe.TrajDataFrame.interpolate_at": {
   "anchor": "ask-for-a-position-at-a-given-time",
@@ -719,6 +729,31 @@
   "page": "learn/generate-mobility.md",
   "title": "Realistic daily rhythm: diaries"
  },
+ "fastmob.models.next_location.NextLocationPredictor.__init__": {
+  "anchor": "predict-the-next-place",
+  "page": "learn/visit-based-measures.md",
+  "title": "Predict the next place"
+ },
+ "fastmob.models.next_location.NextLocationPredictor.evaluate": {
+  "anchor": "predict-the-next-place",
+  "page": "learn/visit-based-measures.md",
+  "title": "Predict the next place"
+ },
+ "fastmob.models.next_location.NextLocationPredictor.fit": {
+  "anchor": "predict-the-next-place",
+  "page": "learn/visit-based-measures.md",
+  "title": "Predict the next place"
+ },
+ "fastmob.models.next_location.NextLocationPredictor.predict": {
+  "anchor": "predict-the-next-place",
+  "page": "learn/visit-based-measures.md",
+  "title": "Predict the next place"
+ },
+ "fastmob.models.next_location.NextLocationPredictor.predict_proba": {
+  "anchor": "predict-the-next-place",
+  "page": "learn/visit-based-measures.md",
+  "title": "Predict the next place"
+ },
  "fastmob.models.radiation.Radiation.__init__": {
   "anchor": "flows-gravity-and-radiation-models",
   "page": "learn/generate-mobility.md",
@@ -765,9 +800,9 @@
   "title": "Match a GPS trace to roads"
  },
  "fastmob.network.od_flow.od_desire_lines": {
-  "anchor": "accumulate-flows-on-roads-desire-lines",
+  "anchor": "accumulate-flows-on-roads",
   "page": "learn/road-network-analysis.md",
-  "title": "Accumulate flows on roads: desire lines"
+  "title": "Accumulate flows on roads"
  },
  "fastmob.network.road_graph.RoadNetwork.batch_distances": {
   "anchor": "distances-and-routes-on-the-network",
@@ -1004,10 +1039,35 @@
   "page": "learn/contact-networks.md",
   "title": "Look inside: daily graphs and their randomisation"
  },
- "fastmob.trajectory.interpolate": {
-  "anchor": "resample-to-a-regular-interval",
+ "fastmob.tessellation.tilers.TessellationTilers.create": {
+  "anchor": "build-a-grid-and-snap-positions-to-it",
   "page": "learn/process-trajectories.md",
-  "title": "Resample to a regular interval"
+  "title": "Build a grid and snap positions to it"
+ },
+ "fastmob.tessellation.tilers.TessellationTilers.get": {
+  "anchor": "build-a-grid-and-snap-positions-to-it",
+  "page": "learn/process-trajectories.md",
+  "title": "Build a grid and snap positions to it"
+ },
+ "fastmob.tessellation.tilers.TessellationTilers.register_tiler": {
+  "anchor": "build-a-grid-and-snap-positions-to-it",
+  "page": "learn/process-trajectories.md",
+  "title": "Build a grid and snap positions to it"
+ },
+ "fastmob.trajectory.cluster_trajectory_shapes": {
+  "anchor": "group-trajectories-by-shape",
+  "page": "learn/process-trajectories.md",
+  "title": "Group trajectories by shape"
+ },
+ "fastmob.trajectory.cluster_trajectory_shapes_from_segments": {
+  "anchor": "group-trajectories-by-shape",
+  "page": "learn/process-trajectories.md",
+  "title": "Group trajectories by shape"
+ },
+ "fastmob.trajectory.interpolate": {
+  "anchor": "fill-recording-gaps",
+  "page": "learn/process-trajectories.md",
+  "title": "Fill recording gaps"
  },
  "fastmob.trajectory.interpolate_at": {
   "anchor": "ask-for-a-position-at-a-given-time",

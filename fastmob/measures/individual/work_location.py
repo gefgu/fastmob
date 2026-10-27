@@ -27,12 +27,25 @@ def work_location(
     lng_col: str | None = None,
     uid_col: str | None = None,
 ) -> Any:
-    """Return each user's most-visited weekday daytime location.
+    """Return each user's most visited place on weekdays during working hours.
 
-    Uses Monday--Friday observations whose local hour lies in
-    ``[start_work, end_work)``. Users without an observation in that window
-    are omitted: unlike home inference, treating arbitrary visits as work is
-    not a useful fallback.
+    The work location is the most frequent coordinate among the user's records between ``start_work`` and
+    ``end_work`` (local hours as recorded, no time-zone conversion) on Monday to Friday. Users without any
+    record in that window are omitted.
+
+    Parameters
+    ----------
+    traj : DataFrame-like
+        Trajectory table with datetime, latitude and longitude.
+    start_work, end_work : int, optional
+        Hours of the working window. Default 8 and 18.
+    datetime_col, lat_col, lng_col, uid_col : str, optional
+        Column names; auto-detected when ``None``.
+
+    Returns
+    -------
+    DataFrame
+        One row per user with the user id, ``lat`` and ``lng`` of the work location, in the input's dataframe type.
     """
     if not (0 <= start_work <= 23 and 0 <= end_work <= 24 and start_work < end_work):
         raise ValueError("work-hour bounds must satisfy 0 <= start_work < end_work <= 24")

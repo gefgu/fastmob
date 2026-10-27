@@ -50,24 +50,24 @@ Arrow-backed event graphs for independent inspection.
 | [`RecastTemporalGraph`](#fastmob.social.RecastTemporalGraph) | Packed Arrow event graphs; offsets delimit the edges for each day. |  |
 | [`event`](#fastmob.social.RecastTemporalGraph.event) | Return the contact graph of time step `index` (one day), raising `IndexError` if out of range. |  |
 | [`RecastValidation`](#fastmob.social.RecastValidation) | Section 4/5 RECAST validation artifacts, all in Arrow arrays. |  |
-| [`recast_from_staypoints`](#fastmob.social.recast_from_staypoints) | Classify contacts into Friends, Bridges, Acquaintances, and Random. | [Classify the contacts](../../learn/contact-networks.md#classify-the-contacts-friends-bridges-acquaintances-random) |
-| [`validate_recast_from_staypoints`](#fastmob.social.validate_recast_from_staypoints) | Return the classifier plus Figure 3/4/8 validation diagnostics. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
+| [`recast_from_staypoints`](#fastmob.social.recast_from_staypoints) | Classify contacts as Friends, Bridges, Acquaintances or Random (the RECAST method). | [Classify the contacts](../../learn/contact-networks.md#classify-the-contacts-friends-bridges-acquaintances-random) |
+| [`validate_recast_from_staypoints`](#fastmob.social.validate_recast_from_staypoints) | Run the RECAST classifier and return it together with the validation distributions. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
 | [`NetworkGraph`](#fastmob.social.NetworkGraph) | An undirected graph stored as sorted, dense integer edge arrays. |  |
 | [`degrees`](#fastmob.social.NetworkGraph.degrees) | Return the number of contacts of each node, as an integer array of length `node_count`. |  |
 | [`ContactNetworkResult`](#fastmob.social.ContactNetworkResult) | Daily RECAST event graphs plus their raw aggregate contact network. |  |
-| [`co_presence_graph_from_staypoints`](#fastmob.social.co_presence_graph_from_staypoints) | Build raw contacts from RECAST's daily interval-overlap event graphs. | [Build the contact network](../../learn/contact-networks.md#build-the-contact-network) |
-| [`clustering_coefficients`](#fastmob.social.clustering_coefficients) | Return RECAST's exact local clustering coefficient for each node. | [Structure](../../learn/contact-networks.md#structure-clustering-and-neighbourhood-overlap) |
-| [`topological_overlap`](#fastmob.social.topological_overlap) | Return RECAST's exact Jaccard neighborhood overlap for each edge. | [Structure](../../learn/contact-networks.md#structure-clustering-and-neighbourhood-overlap) |
+| [`co_presence_graph_from_staypoints`](#fastmob.social.co_presence_graph_from_staypoints) | Build the aggregate contact network from the co-presence of users at the same location. | [Build the contact network](../../learn/contact-networks.md#build-the-contact-network) |
+| [`clustering_coefficients`](#fastmob.social.clustering_coefficients) | Return the local clustering coefficient of every node. | [Structure](../../learn/contact-networks.md#structure-clustering-and-neighbourhood-overlap) |
+| [`topological_overlap`](#fastmob.social.topological_overlap) | Return the neighbourhood overlap of every edge. | [Structure](../../learn/contact-networks.md#structure-clustering-and-neighbourhood-overlap) |
 | [`RecastEventGraph`](#fastmob.social.RecastEventGraph) | One Arrow-backed, undirected event graph with integer node ids. |  |
 | [`RecastClusteringComparison`](#fastmob.social.RecastClusteringComparison) | Cumulative clustering coefficients for observed G_t and T-RND G^R_t. |  |
-| [`temporal_graph_from_staypoints`](#fastmob.social.temporal_graph_from_staypoints) | Construct the daily RECAST event graphs without running classification. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
-| [`graph_from_edges`](#fastmob.social.graph_from_edges) | Construct a normalized graph from an iterable of undirected edges. | [A random baseline](../../learn/contact-networks.md#a-random-baseline) |
-| [`degree_preserving_random_graph`](#fastmob.social.degree_preserving_random_graph) | Sample RECAST's Chung-Lu graph whose degrees match in expectation. | [A random baseline](../../learn/contact-networks.md#a-random-baseline) |
-| [`random_persistence`](#fastmob.social.random_persistence) | Sample persistence for a Chung-Lu baseline graph. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
-| [`rnd`](#fastmob.social.rnd) | Generate one paper-RND graph from a RECAST event graph. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
-| [`t_rnd`](#fastmob.social.t_rnd) | Generate independent T-RND replicas for every daily event graph. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
-| [`distribution_summary`](#fastmob.social.distribution_summary) | Return stable summary statistics after dropping non-finite values. | [Structure](../../learn/contact-networks.md#structure-clustering-and-neighbourhood-overlap) |
-| [`safe_wasserstein`](#fastmob.social.safe_wasserstein) | Return the 1-D Wasserstein distance between two samples, or `None` when it is undefined (NaN). | [A random baseline](../../learn/contact-networks.md#a-random-baseline) |
+| [`temporal_graph_from_staypoints`](#fastmob.social.temporal_graph_from_staypoints) | Build the daily contact graphs from staypoints and a global location catalogue, without classifying. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
+| [`graph_from_edges`](#fastmob.social.graph_from_edges) | Build a normalized undirected graph from a list of edges. | [A random baseline](../../learn/contact-networks.md#a-random-baseline) |
+| [`degree_preserving_random_graph`](#fastmob.social.degree_preserving_random_graph) | Sample a random graph whose node degrees match the given degrees in expectation (Chung-Lu model). | [A random baseline](../../learn/contact-networks.md#a-random-baseline) |
+| [`random_persistence`](#fastmob.social.random_persistence) | Sample the persistence that edges of a degree-preserving random baseline would have. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
+| [`rnd`](#fastmob.social.rnd) | Generate one randomized copy of a daily contact graph (the paper's RND null model). | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
+| [`t_rnd`](#fastmob.social.t_rnd) | Generate independent randomized replicas of every daily contact graph (the T-RND null model). | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
+| [`distribution_summary`](#fastmob.social.distribution_summary) | Summarize a sample with stable statistics after dropping non-finite values. | [Structure](../../learn/contact-networks.md#structure-clustering-and-neighbourhood-overlap) |
+| [`safe_wasserstein`](#fastmob.social.safe_wasserstein) | Return the 1-D Wasserstein distance between two samples, or `None` when it is undefined. | [A random baseline](../../learn/contact-networks.md#a-random-baseline) |
 <!-- api-table:end -->
 
 ## Raw co-presence networks
@@ -234,3 +234,4 @@ the aggregate graph.
       show_source: false
 
 <!-- example-link -->**Worked example:** [A random baseline](../../learn/contact-networks.md#a-random-baseline)
+

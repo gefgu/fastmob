@@ -99,7 +99,7 @@ def add_example_links(page: Path, text: str, examples: dict) -> str:
         line = example_link(page, match.group(2), examples)
         return match.group(1) + (f"\n{line}" if line else "")
 
-    return re.sub(r"(^::: ([\w.]+)\n(?:    .*\n)+)", put, text, flags=re.MULTILINE)
+    return re.sub(r"(^::: ([\w.]+)\n(?:    .*\n)*)", put, text, flags=re.MULTILINE)
 
 
 def main() -> None:

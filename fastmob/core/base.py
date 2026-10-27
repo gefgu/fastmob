@@ -47,6 +47,7 @@ class BaseDataFrame:
         return self.df.columns
 
     def to_native(self):
+        """Return the stored native dataframe (a PyArrow table for tables built by the library's own readers)."""
         return self.df
 
     def to_pandas(self):
