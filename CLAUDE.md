@@ -131,6 +131,16 @@ To cut a release:
 2. `git tag vX.Y.Z && git push origin main --tags`.
 3. The tag push triggers the full wheel matrix, then `release` (gated on `startsWith(github.ref, 'refs/tags/v')`) generates artifact attestations, creates the GitHub release, and publishes to PyPI via OIDC Trusted Publishing — no stored token, and it must run inside GitHub Actions regardless of what was built locally.
 
+## The AI/ folder on GitHub
+
+Only the prompts under `AI/` (critic, implementer, loop and agent prompts such as
+`AI/docs_audit/*.md` and `AI/docs_audit/learn_reference/*.md`) are pushed to GitHub. Run
+records are local working material and are not needed on GitHub: per-round
+`critic.md`, `changes.md`, `baseline.md`, `inventory.md`, `coverage.csv`, execution logs,
+executed-notebook copies, screenshots and score indexes under `AI/**/runs/`. Keep them on
+disk, do not stage them, and do not include them in commits, pull requests or merges to
+`main`.
+
 ## Documentation
 
 ```bash

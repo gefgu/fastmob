@@ -18,6 +18,16 @@ inside the sandbox. For user-requested staging, commits, or other Git metadata
 writes, request elevated permission directly before running the Git command;
 do not first attempt the command in the sandbox.
 
+## The AI/ folder on GitHub
+
+Only the prompts under `AI/` (critic, implementer, loop and agent prompts such as
+`AI/docs_audit/*.md` and `AI/docs_audit/learn_reference/*.md`) are pushed to GitHub. Run
+records are local working material and are not needed on GitHub: per-round
+`critic.md`, `changes.md`, `baseline.md`, `inventory.md`, `coverage.csv`, execution logs,
+executed-notebook copies, screenshots and score indexes under `AI/**/runs/`. Keep them on
+disk, do not stage them, and do not include them in commits, pull requests or merges to
+`main`.
+
 ## Documentation notebooks
 
 Documentation notebooks under `docs/src/` are source files. Convert them to
@@ -29,7 +39,7 @@ uv run --group docs python scripts/build_notebook_docs.py
 
 The generated `.md` files and `*_files/` output directories are ignored build
 artifacts. Run the conversion before documentation tests or a local Zensical
-build. Each generated page includes a Binder badge linking to the original
+build. Each generated page includes Colab and Binder badges linking to the original
 notebook on `main`.
 
 To serve the docs locally and regenerate notebook pages automatically on port
