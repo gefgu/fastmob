@@ -100,3 +100,37 @@ def test_docs_version_strings_match_cargo_version():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert not module.sync(check=True), "Run `python scripts/sync_docs_version.py` to refresh docs version strings."
+
+
+def _learn_notebooks() -> list[Path]:
+    return sorted(p for p in (DOCS / "learn").glob("*.ipynb") if p.name != "compare-to-mobility-laws.ipynb")
+
+
+def test_learn_notebooks_follow_the_notebook_contract():
+    import json
+
+    notebooks = _learn_notebooks()
+    assert notebooks
+    for path in notebooks:
+        cells = json.loads(path.read_text())["cells"]
+        first = "".join(cells[0]["source"])
+        code = "\n".join("".join(c["source"]) for c in cells if c["cell_type"] == "code")
+        assert first.startswith("# ") and "**Question.**" in first and "**Data.**" in first, path.name
+        assert "%pip" in code or 'run_line_magic("pip"' in code, path.name
+        assert "/content/" not in code and "../" not in code, f"{path.name} uses a non-portable path"
+        assert "total notebook runtime" in "".join(cells[-1]["source"]), f"{path.name} must end with the timing table"
+        assert any(c.get("outputs") for c in cells if c["cell_type"] == "code"), f"{path.name} has no saved outputs"
+
+
+def test_reference_example_links_point_at_existing_notebook_sections():
+    import json
+
+    index = json.loads((ROOT / "docs" / "reference_examples.json").read_text())
+    for symbol, example in index.items():
+        page = DOCS / example["page"]
+        assert page.exists(), f"{symbol}: {page} is missing; run scripts/build_notebook_docs.py"
+        slugs = {
+            re.sub(r"[-\s]+", "-", re.sub(r"[^\w\s-]", "", h).strip().lower())
+            for h in re.findall(r"^#{2,3} (.+)$", page.read_text(encoding="utf-8"), re.MULTILINE)
+        }
+        assert example["anchor"] in slugs, f"{symbol}: no section '{example['anchor']}' in {example['page']}"

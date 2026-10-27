@@ -1,0 +1,122 @@
+{
+ "fastmob.data.brightkite.load_brightkite": {
+  "anchor": "load-the-data",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "Load the data"
+ },
+ "fastmob.data.geolife.load_geolife": {
+  "anchor": "load-the-data",
+  "page": "learn/clean-and-detect-stops.md",
+  "title": "Load the data"
+ },
+ "fastmob.measures.individual.frequency_rank.frequency_rank": {
+  "anchor": "which-places-matter-frequency-and-recency-ranks",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "Which places matter: frequency and recency ranks"
+ },
+ "fastmob.measures.individual.home_location.home_location": {
+  "anchor": "home-and-work",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "Home and work"
+ },
+ "fastmob.measures.individual.individual_mobility_network.individual_mobility_network": {
+  "anchor": "a-users-mobility-network",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "A user's mobility network"
+ },
+ "fastmob.measures.individual.jump_lengths.jump_lengths": {
+  "anchor": "measure-jump-lengths",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Measure jump lengths"
+ },
+ "fastmob.measures.individual.k_radius_of_gyration.k_radius_of_gyration": {
+  "anchor": "how-far-and-how-widely-radius-of-gyration-maximum-distance-jump-lengths",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "How far and how widely: radius of gyration, maximum distance, jump lengths"
+ },
+ "fastmob.measures.individual.location_frequency.location_frequency": {
+  "anchor": "which-places-matter-frequency-and-recency-ranks",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "Which places matter: frequency and recency ranks"
+ },
+ "fastmob.measures.individual.max_distance_from_home.max_distance_from_home": {
+  "anchor": "home-and-work",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "Home and work"
+ },
+ "fastmob.measures.individual.maximum_distance.maximum_distance": {
+  "anchor": "find-the-longest-single-jump",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Find the longest single jump"
+ },
+ "fastmob.measures.individual.number_of_locations.number_of_locations": {
+  "anchor": "how-many-places-locations-visits-and-entropy",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "How many places: locations, visits and entropy"
+ },
+ "fastmob.measures.individual.number_of_visits.number_of_visits": {
+  "anchor": "how-many-places-locations-visits-and-entropy",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "How many places: locations, visits and entropy"
+ },
+ "fastmob.measures.individual.radius_of_gyration.radius_of_gyration": {
+  "anchor": "measure-the-radius-of-gyration",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Measure the radius of gyration"
+ },
+ "fastmob.measures.individual.random_entropy.random_entropy": {
+  "anchor": "how-many-places-locations-visits-and-entropy",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "How many places: locations, visits and entropy"
+ },
+ "fastmob.measures.individual.recency_rank.recency_rank": {
+  "anchor": "which-places-matter-frequency-and-recency-ranks",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "Which places matter: frequency and recency ranks"
+ },
+ "fastmob.measures.individual.uncorrelated_entropy.uncorrelated_entropy": {
+  "anchor": "how-many-places-locations-visits-and-entropy",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "How many places: locations, visits and entropy"
+ },
+ "fastmob.measures.individual.waiting_times.waiting_times": {
+  "anchor": "measure-waiting-times",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Measure waiting times"
+ },
+ "fastmob.measures.individual.work_location": {
+  "anchor": "home-and-work",
+  "page": "learn/measure-individual-mobility.md",
+  "title": "Home and work"
+ },
+ "fastmob.preprocessing.cluster": {
+  "anchor": "group-stops-into-locations",
+  "page": "learn/clean-and-detect-stops.md",
+  "title": "Group stops into locations"
+ },
+ "fastmob.preprocessing.compress": {
+  "anchor": "reduce-the-number-of-points",
+  "page": "learn/clean-and-detect-stops.md",
+  "title": "Reduce the number of points"
+ },
+ "fastmob.preprocessing.filter": {
+  "anchor": "remove-implausible-jumps",
+  "page": "learn/clean-and-detect-stops.md",
+  "title": "Remove implausible jumps"
+ },
+ "fastmob.preprocessing.segment": {
+  "anchor": "split-each-trace-at-recording-gaps",
+  "page": "learn/clean-and-detect-stops.md",
+  "title": "Split each trace at recording gaps"
+ },
+ "fastmob.preprocessing.simplify": {
+  "anchor": "reduce-the-number-of-points",
+  "page": "learn/clean-and-detect-stops.md",
+  "title": "Reduce the number of points"
+ },
+ "fastmob.preprocessing.stay_locations": {
+  "anchor": "detect-stops",
+  "page": "learn/clean-and-detect-stops.md",
+  "title": "Detect stops"
+ }
+}

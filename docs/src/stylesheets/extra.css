@@ -863,3 +863,31 @@
 .md-typeset table:not([class]):not(:has(th:nth-child(2))) thead {
   display: none;
 }
+
+/* Notebook output tables (raw pandas HTML): scroll inside the column, match the site tables. */
+.md-typeset table.dataframe {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  border: 0;
+}
+
+.md-typeset table.dataframe th,
+.md-typeset table.dataframe td {
+  padding: 0.35em 0.7em;
+  text-align: right;
+  border: 0;
+  border-bottom: 0.05rem solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset table.dataframe thead tr {
+  text-align: right;
+}
+
+/* Three-column catalogues keep their Example column on phones and scroll sideways instead. */
+@media (max-width: 30em) {
+  .md-typeset table:not([class]):has(th:nth-child(3):last-child) {
+    min-width: 34rem;
+  }
+}

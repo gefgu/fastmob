@@ -5,75 +5,44 @@ hide:
 
 # Learn
 
-Short, runnable guides from a first trajectory to fitted mobility laws. New to
-Fastkit-Mobility? Start with the first guide, then follow the order below. Need every
-parameter? Each guide links to the [API reference](../reference/index.md).
+Guides for mobility researchers, grouped by what you want to do. Start at chapter 1 if this is your first time. Each chapter mixes **notebooks** (runnable end to end in Colab or Binder, with real public data where possible) and **concept pages** (the ideas and choices, no code to run). Looking for a specific function? Use the [API reference](../reference/index.md).
 
-## Guides
+## 1. Getting started
 
-<div class="how-to-grid">
-<a class="how-to-card how-to-card--start" href="analyze-a-simple-trajectory.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-trajectory.png" alt="One GeoLife outing as a path coloured by time, with a dashed circle showing its radius of gyration">
-<div>
-<span class="how-to-card__eyebrow">Start here</span>
-<h2>Start with a trajectory</h2>
-<p>Build a small trajectory and compute your first mobility measures.</p>
-<span class="how-to-card__meta">Data: synthetic (figure: GeoLife)</span>
-</div>
-</a>
-<a class="how-to-card" href="use-custom-columns-and-dataframe-backends.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-backends.svg" alt="A pandas or Polars dataframe goes through fastmob and comes back as the same type">
-<h2>Columns and backends</h2>
-<p>Use your own column names, or move the same workflow between pandas and Polars.</p>
-<span class="how-to-card__meta">Data: synthetic</span>
-</a>
-<a class="how-to-card" href="clean-and-segment.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-clean-segment.png" alt="The longest movement segments of one GeoLife user, each in its own colour">
-<h2>Clean and segment trajectories</h2>
-<p>Remove implausible jumps and split traces into movement episodes.</p>
-<span class="how-to-card__meta">Data: GeoLife</span>
-</a>
-<a class="how-to-card" href="staypoints-and-locations.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-staypoints.png" alt="GeoLife GPS fixes in grey with detected staypoints as gold circles">
-<h2>Create staypoints and locations</h2>
-<p>Detect where people stop and cluster repeated visits into locations.</p>
-<span class="how-to-card__meta">Data: GeoLife</span>
-</a>
-<a class="how-to-card" href="individual-and-collective-measures.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-measures.png" alt="Histogram of radius of gyration across Brightkite users">
-<h2>Measure people and populations</h2>
-<p>Quantify mobility per person and across a population.</p>
-<span class="how-to-card__meta">Data: Brightkite</span>
-</a>
-<a class="how-to-card" href="network-analysis.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-route.png" alt="Noisy GPS points offset from a muted road map, with their matched path shown in gold">
-<h2>Route and map-match trajectories</h2>
-<p>Build network-aware workflows for routes and map-matched traces.</p>
-<span class="how-to-card__meta">Data: road and rail networks</span>
-</a>
-<a class="how-to-card" href="fit-and-evaluate.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-fit.png" alt="Truncated power law fitted to Brightkite jump-length distribution on log-log axes">
-<h2>Fit and evaluate mobility results</h2>
-<p>Fit mobility laws and evaluate them against your data.</p>
-<span class="how-to-card__meta">Data: Brightkite</span>
-</a>
-</div>
+*What does mobility data look like, and how do I use it?*
 
-Also see [daily mobility motifs](motifs.md), a worked example of matching daily movement patterns.
+- [**Start with a trajectory**](analyze-a-simple-trajectory.md): notebook, synthetic data. Build a trajectory table and compute your first four measures.
+- [**Columns and backends**](use-custom-columns-and-dataframe-backends.md): use your own column names, or pandas and Polars interchangeably.
 
-## Notebook examples
+## 2. Preparing trajectories
 
-<div class="how-to-grid how-to-grid--two">
-<a class="how-to-card" href="notebooks/stay-point-detection-geolife.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-notebook-staypoints.png" alt="GeoLife GPS traces in grey with staypoints as gold circles sized by how long each stay lasted">
-<h2>Stay-point detection notebook</h2>
-<p>An end-to-end run on GeoLife GPS traces, compared with trackintel.</p>
-<span class="how-to-card__meta">Data: GeoLife · Binder notebook</span>
-</a>
-<a class="how-to-card" href="compare-to-mobility-laws.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-notebook-laws.png" alt="Brightkite jump-length histogram in grey with the fitted truncated power law in gold">
-<h2>Compare mobility laws notebook</h2>
-<p>Fit a power law to the distribution of Brightkite jump lengths.</p>
-<span class="how-to-card__meta">Data: Brightkite · Binder notebook</span>
-</a>
-</div>
+*How do I turn noisy GPS fixes into trips, stops and places?*
+
+- [**Cleaning and segmentation**](clean-and-segment.md): concept page. What to remove or split, and which choices change your results.
+- [**Clean noisy GPS data and find stops**](clean-and-detect-stops.md): notebook, GeoLife. Filter glitches, split at gaps, detect stops, group them into places.
+- [**Stops and locations**](staypoints-and-locations.md): concept page. Staypoints, locations and the positions-to-tours hierarchy.
+
+## 3. Measuring mobility
+
+*How far, how often and how predictably do people move?*
+
+- [**Measuring people and populations**](individual-and-collective-measures.md): concept page. Which measure answers which question, and its units.
+- [**Measure individual mobility**](measure-individual-mobility.md): notebook, Brightkite. Range, places, entropy, home and work for hundreds of users.
+
+## 4. Spatial and network analysis
+
+*What happens on the road network, and what do daily routines look like?*
+
+- [**Route and map-match trajectories**](network-analysis.md): build a road graph, snap traces and query routes.
+- [**Find daily mobility motifs**](motifs.md): match each day's movement to a library of daily patterns.
+
+## 5. Modelling and evaluating mobility
+
+*Which law or model describes my data, and how well?*
+
+- [**Fit and evaluate mobility results**](fit-and-evaluate.md): choose the comparison that fits your question.
+- [**Compare to mobility laws**](compare-to-mobility-laws.md): notebook, Brightkite. Fit a jump-length law and compare it with reference models.
+
+## Advanced notebook
+
+- [**Stay-point detection benchmark**](notebooks/stay-point-detection-geolife.md): full 25-million-fix GeoLife run, compared with trackintel. Downloads the whole 313 MB archive and takes a long time; start with the chapter 2 notebook instead.

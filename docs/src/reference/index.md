@@ -1,33 +1,6 @@
 # API reference
 
-Every public function and class in Fastkit-Mobility, grouped by module. Inputs can be any
-pandas or Polars dataframe, and results come back in the same backend.
-
-```python
-import pandas as pd
-import fastmob
-
-df = pd.DataFrame({
-    "uid": ["alice"] * 3,
-    "datetime": pd.date_range(
-        "2020-01-01", periods=3
-    ),
-    "lat": [41.9, 42.0, 42.1],
-    "lng": [12.5, 12.5, 12.6],
-})
-fastmob.radius_of_gyration(df)
-```
-
-```text
-     uid  radius_of_gyration
-0  alice            9.878827
-```
-
-The result is a pandas DataFrame because `df` is pandas; pass Polars and you get Polars.
-
-<div class="figure figure-scroll">
-<img src="../assets/images/reference/reference-module-map.png" alt="Module pipeline: raw points flow through data structures and preprocessing, then trajectory, network and integration, then measures, fitting and models, then evaluation, privacy and visualization">
-</div>
+Every public function and class in Fastkit-Mobility, grouped by module. Each module page opens with a table of its APIs (one line each, with a link to a worked example where one exists) followed by the full details: signature, parameters, return values and assumptions. To find a function by name, use the search box. To learn how to use the library, start with [Learn](../learn/index.md).
 
 ## Modules
 
@@ -43,7 +16,7 @@ The result is a pandas DataFrame because `df` is pandas; pass Polars and you get
 | [Models](models.md)<br><span class="muted">Mobility generation models.</span><br>[`Gravity`](models.md#fastmob.models.gravity.Gravity), [`SpatialEPR`](models.md#fastmob.models.epr.SpatialEPR) |
 | [Input/output](io.md)<br><span class="muted">Readers and writers for common trajectory formats.</span><br>[`read`](io.md#fastmob.io.file.read), [`load_geolife_trajectories`](io.md#fastmob.io.file.load_geolife_trajectories) |
 | [Privacy](privacy.md)<br><span class="muted">Re-identification risk assessment for trajectories.</span><br>[`location_risk`](privacy.md#fastmob.privacy.location_risk) |
-| [Data](data.md)<br><span class="muted">Bundled and downloadable datasets.</span><br>[`load_dataset`](data.md#fastmob.data.load_dataset) |
+| [Data](data.md)<br><span class="muted">Bundled and downloadable datasets.</span><br>[`load_dataset`](data.md#fastmob.data.load_dataset), [`load_geolife`](data.md#fastmob.data.load_geolife) |
 | [Visualization](visualization.md)<br><span class="muted">Interactive ECharts views (`fastmob[vis]`).</span><br>`fastmob.vis` |
 
 ## Start from your input
@@ -62,3 +35,9 @@ The result is a pandas DataFrame because `df` is pandas; pass Polars and you get
     names. Pass explicit `*_col` arguments when your schema differs. See
     [Columns and backends](../learn/use-custom-columns-and-dataframe-backends.md)
     for the supported workflow.
+
+## How the modules fit together
+
+<div class="figure figure-scroll">
+<img src="../assets/images/reference/reference-module-map.png" alt="Module pipeline: raw points flow through data structures and preprocessing, then trajectory, network and integration, then measures, fitting and models, then evaluation, privacy and visualization">
+</div>

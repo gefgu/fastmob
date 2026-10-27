@@ -1,4 +1,4 @@
-"""Convert documentation notebooks to Markdown pages with Binder links."""
+"""Convert documentation notebooks to Markdown pages with Colab and Binder links."""
 
 from __future__ import annotations
 
@@ -21,11 +21,13 @@ MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\([^)]*\)")
 CLEAR_OUTPUT_FOR = ("%pip install", "!wget", "tdf =", "tdf\n", "tdf.info")
 
 
-def _binder_link(notebook: Path) -> str:
+def _launch_links(notebook: Path) -> str:
     repository_path = notebook.relative_to(ROOT).as_posix()
     encoded_path = quote(repository_path, safe="")
     return (
         f"{BINDER_MARKER}\n\n"
+        f"[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)]"
+        f"(https://colab.research.google.com/github/gefgu/fastmob/blob/main/{quote(repository_path)}) "
         f"[![Launch Binder](https://mybinder.org/badge_logo.svg)]"
         f"(https://mybinder.org/v2/gh/gefgu/fastmob/main?labpath={encoded_path})\n"
     )
@@ -98,7 +100,7 @@ def main() -> None:
         contents = markdown.read_text(encoding="utf-8")
         contents = _escape_notebook_brackets(contents)
         if not contents.startswith(BINDER_MARKER):
-            contents = _binder_link(notebook) + "\n" + contents
+            contents = _launch_links(notebook) + "\n" + contents
         markdown.write_text(contents, encoding="utf-8")
         print(f"Generated {markdown.relative_to(ROOT)}")
 
