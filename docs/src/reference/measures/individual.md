@@ -35,7 +35,6 @@ when auto-detection does not match your schema.
 | [`number_of_locations`](#fastmob.measures.individual.number_of_locations.number_of_locations) | Return the number of distinct locations visited by each user. | [How many places](../../learn/measure-individual-mobility.md#how-many-places-locations-visits-and-entropy) |
 | [`number_of_visits`](#fastmob.measures.individual.number_of_visits.number_of_visits) | Return the total number of trajectory points (visits) for each user. | [How many places](../../learn/measure-individual-mobility.md#how-many-places-locations-visits-and-entropy) |
 | [`radius_of_gyration`](#fastmob.measures.individual.radius_of_gyration.radius_of_gyration) | Compute the radius of gyration (km) for each user in the trajectory. | [Measure the radius of gyration](../../learn/analyze-a-simple-trajectory.md#measure-the-radius-of-gyration) |
-| [`radius_of_gyration_lazy`](#fastmob.measures.individual.radius_of_gyration_lazy.radius_of_gyration_lazy) | Compute the radius of gyration (km) per user by streaming a Polars LazyFrame. |  |
 | [`radius_of_gyration_road`](#fastmob.measures.individual.radius_of_gyration_road) | Road-network radius of gyration (km) per user: RMS network distance from each of a user's stops to the arithmetic-mean centroid of their stops |  |
 | [`random_entropy`](#fastmob.measures.individual.random_entropy.random_entropy) | Return the random entropy of mobility for each user. | [How many places](../../learn/measure-individual-mobility.md#how-many-places-locations-visits-and-entropy) |
 | [`real_entropy`](#fastmob.measures.individual.real_entropy.real_entropy) | Return the real (true) entropy of mobility for each user. |  |
@@ -54,7 +53,6 @@ when auto-detection does not match your schema.
 | Question | Representative APIs |
 | --- | --- |
 | How far and how often does someone move? | `jump_lengths`, `radius_of_gyration`, `waiting_times` |
-| What if the data does not fit in memory? | `radius_of_gyration_lazy` |
 | Which places matter? | `home_location`, `work_location`, `location_frequency` |
 | Is their movement regular or predictable? | `regularity`, entropy, predictability, motifs |
 | Does route distance matter? | `jump_lengths_road`, `radius_of_gyration_road` |
@@ -169,10 +167,6 @@ For a task-focused introduction, see
       show_source: false
 
 <!-- example-link -->**Worked example:** [Measure the radius of gyration](../../learn/analyze-a-simple-trajectory.md#measure-the-radius-of-gyration)
-
-::: fastmob.measures.individual.radius_of_gyration_lazy
-    options:
-      show_source: false
 
 ::: fastmob.measures.individual.radius_of_gyration_road
     options:
