@@ -23,7 +23,7 @@ BENCH = {
     "max distance from home": (182.82, 0.151, 1208.46),
 }
 
-GOLD, GREY, TEXT = "#a98600", "#8a8a8a", "#777777"
+GOLD, GREY, TEXT = "#a98600", "#8a8a8a", "#666666"
 
 fig, ax = plt.subplots(figsize=(8, 4.2), dpi=200)
 names = list(BENCH)[::-1]
@@ -49,7 +49,7 @@ for s in ("top", "right", "left"):
 ax.spines["bottom"].set_color(TEXT)
 ax.legend(
     handles=[plt.Rectangle((0, 0), 1, 1, color=GREY), plt.Rectangle((0, 0), 1, 1, color=GOLD)],
-    labels=["scikit-mobility", "fastmob (pandas)"], loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2,
+    labels=["scikit-mobility", "Fastkit-Mobility (pandas)"], loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2,
     frameon=False, labelcolor=TEXT, fontsize=11,
 )
 fig.tight_layout()
@@ -64,9 +64,9 @@ for i, (name, (sk, fm, speedup)) in enumerate(items):
     ax.text(speedup * 1.12, i, f"{speedup:.0f}x", va="center", fontsize=14,
             color=GOLD, fontweight="bold")
 ax.set_xscale("log")
-ax.set_xlim(100, 6000)
+ax.set_xlim(1, 6000)
 ax.set_yticks(range(len(items)), [n for n, _ in items], fontsize=12, color=TEXT)
-ax.set_xticks([100, 1000], ["100x", "1000x"], fontsize=11, color=TEXT)
+ax.set_xticks([1, 10, 100, 1000], ["1x", "10x", "100x", "1000x"], fontsize=11, color=TEXT)
 fig.suptitle("Speedup vs scikit-mobility", fontsize=12, color=TEXT)
 ax.set_title("4M Brightkite check-ins", fontsize=10, color=TEXT, pad=6)
 for sp in ("top", "right", "left"):

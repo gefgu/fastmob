@@ -6,7 +6,7 @@ hide:
 # Learn
 
 Short, runnable guides from a first trajectory to fitted mobility laws. New to
-fastmob? Start with the first guide, then follow the order below. Need every
+Fastkit-Mobility? Start with the first guide, then follow the order below. Need every
 parameter? Each guide links to the [API reference](../reference/index.md).
 
 ## Guides

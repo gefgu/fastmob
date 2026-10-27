@@ -1,11 +1,11 @@
 [project]
-site_name = "fastmob"
+site_name = "Fastkit-Mobility"
 site_description = "High-performance mobility analysis library with a Rust-accelerated core and backend-agnostic DataFrame API."
 site_url = "https://gefgu.github.io/fastmob/"
 repo_url = "https://github.com/gefgu/fastmob"
 repo_name = "gefgu/fastmob"
 docs_dir = "docs/src"
-copyright = "fastmob 0.3.2 &middot; BSD-3-Clause licensed &middot; <a href=\"https://pypi.org/project/fastmob/\">PyPI</a> &middot; <a href=\"https://github.com/gefgu/fastmob\">GitHub</a>"
+copyright = "Fastkit-Mobility 0.3.2 &middot; BSD-3-Clause licensed &middot; <a href=\"https://pypi.org/project/fastmob/\">PyPI</a> &middot; <a href=\"https://github.com/gefgu/fastmob\">GitHub</a>"
 extra_css = ["stylesheets/extra.css"]
 extra_javascript = [
   "javascripts/mathjax.js",

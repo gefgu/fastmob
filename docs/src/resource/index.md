@@ -5,15 +5,15 @@ Datasets, packages, community and background reading for fastmob.
 <div class="feature-grid">
 <a class="feature-card" href="https://pypi.org/project/fastmob/">
 <h3>PyPI →</h3>
-<p>Install with <code>pip install fastmob</code>; prebuilt wheels for Linux, macOS and Windows.</p>
+<p><code>pip install fastmob</code></p>
 </a>
 <a class="feature-card" href="https://github.com/gefgu/fastmob">
 <h3>Source code →</h3>
-<p>Rust kernels, Python API, tests and benchmark scripts.</p>
+<p>Rust kernels, Python API and tests.</p>
 </a>
 <a class="feature-card" href="https://github.com/gefgu/fastmob/issues">
 <h3>Get help →</h3>
-<p>Report bugs and ask questions on the GitHub issue tracker.</p>
+<p>Report bugs and ask questions.</p>
 </a>
 </div>
 
@@ -23,11 +23,13 @@ Datasets, packages, community and background reading for fastmob.
 - **[GeoLife](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/)**: GPS trajectories of 182 users in Beijing. Read it with `load_geolife_trajectories`; used in the [stay-point notebook](../learn/notebooks/stay-point-detection-geolife.md).
 - **Foursquare NYC and others**: datasets from scikit-mobility, available through `load_dataset`. See the [data reference](../reference/data.md).
 
+Check each dataset's own page for its license and terms of use before redistributing it.
+
 ## Background reading
 
-- [scikit-mobility](https://scikit-mobility.github.io/scikit-mobility/): the library whose measure API fastmob follows.
-- [trackintel](https://trackintel.readthedocs.io/): the staypoint, tripleg, trip and tour hierarchy that inspired fastmob's.
-- [Narwhals](https://narwhals-dev.github.io/narwhals/): the dataframe-agnostic layer that lets fastmob accept pandas and Polars.
+- [scikit-mobility](https://scikit-mobility.github.io/scikit-mobility/): the library whose measure API Fastkit-Mobility follows.
+- [trackintel](https://trackintel.readthedocs.io/): the staypoint, tripleg, trip and tour hierarchy that inspired Fastkit-Mobility's.
+- [Narwhals](https://narwhals-dev.github.io/narwhals/): the dataframe-agnostic layer that lets Fastkit-Mobility accept pandas and Polars.
 
 ### Papers
 
@@ -35,8 +37,6 @@ Datasets, packages, community and background reading for fastmob.
 - Martin, Hong, Raubal and others. *Trackintel: An open-source Python library for human mobility analysis.* Computers, Environment and Urban Systems, 2023.
 - Cho, Myers, Leskovec. *Friendship and mobility: user movement in location-based social networks.* KDD 2011 (the Brightkite data).
 - Zheng, Zhang, Xie, Ma. *Mining interesting locations and travel sequences from GPS trajectories.* WWW 2009 (the GeoLife data).
-
-Check each dataset's own page for its license and terms of use before redistributing it.
 
 ## Terms used in these docs
 
@@ -60,6 +60,6 @@ Ordered along the hierarchy from raw fixes to tours.
 | [`Tours`](../reference/data-structures/tours.md) | **Tour**: consecutive trips that return to the same place |
 | [`FlowDataFrame`](../reference/data-structures/flow-dataframe.md) | **OD flow**: a count or value from an origin to a destination |
 
-!!! tip "Citing fastmob"
+!!! tip "Citing Fastkit-Mobility"
 
-    See [Cite fastmob](../about/index.md#cite-fastmob) for a BibTeX entry.
+    See [Cite Fastkit-Mobility](../about/index.md#cite-fastkit-mobility) for a BibTeX entry.

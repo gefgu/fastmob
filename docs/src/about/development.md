@@ -1,6 +1,6 @@
 # Development setup
 
-Install fastmob from source when you want to change the library or its Rust
+Install Fastkit-Mobility from source when you want to change the library or its Rust
 kernels. Development needs [`uv`](https://docs.astral.sh/uv/) and a Rust
 toolchain.
 

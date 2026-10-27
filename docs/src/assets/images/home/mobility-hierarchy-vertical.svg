@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 600" role="img" aria-label="Positionfixes produce Staypoints and Triplegs, which combine into Trips and then Tours; Staypoints also cluster into Locations, which tours return to" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 500" role="img" aria-label="Positionfixes produce Staypoints and Triplegs, which combine into Trips and then Tours; Staypoints also cluster into Locations, which tours return to" font-family="Inter, system-ui, sans-serif">
   <style>
     .box { fill: rgba(250,255,105,0.28); stroke: #b8a600; stroke-width: 1.6; }
     .name { fill: #5c4a00; font-size: 18px; font-weight: 700; text-anchor: middle; }
@@ -11,7 +11,7 @@
   <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a8a8a"/></marker></defs>
   <rect class="box" x="90" y="10" width="180" height="62" rx="10"/><text class="name" x="180" y="38">Positionfixes</text><text class="sub" x="180" y="58">raw GPS / check-ins</text>
   <rect class="box" x="10" y="130" width="160" height="62" rx="10"/><text class="name" x="90" y="158">Staypoints</text><text class="sub" x="90" y="178">where you stopped</text>
-  <rect class="box" x="190" y="130" width="160" height="62" rx="10"/><text class="name" x="270" y="158">Triplegs</text><text class="sub" x="270" y="178">movement between stops</text>
+  <rect class="box" x="190" y="130" width="160" height="62" rx="10"/><text class="name" x="270" y="158">Triplegs</text><text class="sub" x="270" y="178">moving segments</text>
   <rect class="box" x="90" y="260" width="180" height="62" rx="10"/><text class="name" x="180" y="288">Trips</text><text class="sub" x="180" y="308">stop to stop</text>
   <rect class="box" x="190" y="390" width="160" height="62" rx="10"/><text class="name" x="270" y="418">Tours</text><text class="sub" x="270" y="438">trips back to a place</text>
   <rect class="box" x="10" y="390" width="140" height="62" rx="10"/><text class="name" x="80" y="418">Locations</text><text class="sub" x="80" y="438">recurring places</text>

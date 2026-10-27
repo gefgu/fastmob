@@ -88,7 +88,6 @@ def measures():
     ax.hist(np.log10(rg), bins=40, color=GOLD)
     ax.set_xlim(-2.2, 3.8)
     ax.set_xticks([])
-    ax.set_xlabel("radius of gyration per user", color=INK, fontsize=14)
     ax.set_yticks([])
     for s in ("top", "right", "left"):
         ax.spines[s].set_visible(False)
@@ -115,7 +114,6 @@ def fit():
     xs = np.logspace(np.log10(x.min()), np.log10(x.max()), 200)
     ax.loglog(xs, np.exp(log_truncated_powerlaw(xs, c, r0, beta, kappa)), color=GOLD, lw=2.5,
               label=f"truncated power law (beta={beta:.2f})")
-    ax.set_xlabel("jump length", color=INK, fontsize=14)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.minorticks_off()
@@ -141,7 +139,6 @@ def trajectory():
     cx, cy = day.lng.mean(), day.lat.mean()
     ax.add_patch(plt.Circle((cx, cy), rg / 111.19, fill=False, ls="--", color=GOLD, lw=2))
     ax.set_aspect("equal")
-    fig.suptitle(f"radius of gyration: {rg:.1f} km", color=INK, fontsize=14, fontweight="bold")
     ax.set_axis_off()
     fig.tight_layout(pad=0.4, rect=(0, 0, 1, 0.92))
     fig.savefig(OUT / "learn-thumb-trajectory.png", transparent=True)

@@ -607,7 +607,7 @@
 }
 
 [data-md-color-scheme="slate"] {
-  --thumb-surface: #1a1a1a;
+  --thumb-surface: #2a2a2a;
 }
 
 .how-to-card__thumb {
@@ -639,4 +639,33 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
+}
+
+@media screen and (max-width: 699px) {
+  /* Tables whose first column carries a dated version stay narrow there. */
+  .md-typeset table:has(td small) td:first-child {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .md-typeset > .highlight {
+    margin-left: 0.8rem;
+    margin-right: 0.8rem;
+  }
+}
+
+/* Tips use the accent colour instead of the theme's teal. */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: #c9a400;
+}
+
+.md-typeset .tip > .admonition-title::before,
+.md-typeset .tip > summary::before {
+  background-color: #c9a400;
+}
+
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary {
+  background-color: rgba(250, 255, 105, 0.12);
 }

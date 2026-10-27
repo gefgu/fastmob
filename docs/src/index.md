@@ -7,7 +7,7 @@ hide:
 # Mobility analysis, hundreds of times faster
 
 <p class="hero-lead">
-<strong>fastmob</strong> cleans GPS traces, finds stops and trips, and measures how
+<strong>Fastkit-Mobility</strong> cleans GPS traces, finds stops and trips, and measures how
 people move. Rust does the heavy lifting; you keep your pandas or Polars dataframes.
 </p>
 
@@ -17,7 +17,7 @@ people move. Rust does the heavy lifting; you keep your pandas or Polars datafra
 <a class="hero-button hero-button--optional" href="features/benchmarks/">Benchmarks</a>
 </div>
 
-<p class="figure-caption">Average time on 4 million Brightkite check-ins, fastmob (pandas) versus scikit-mobility. <a href="features/benchmarks/">All measures and methodology</a>.</p>
+<p class="figure-caption">Average time on 4 million Brightkite check-ins, Fastkit-Mobility (pandas) versus scikit-mobility. <a href="features/benchmarks/">All measures and methodology</a>.</p>
 <div class="figure">
 <picture>
 <source media="(max-width: 600px)" srcset="assets/images/home/home-benchmark-speedup-mobile.png">
@@ -93,7 +93,7 @@ method call.
 <div class="figure figure--square">
 <img src="assets/images/home/home-geolife-staypoints-triplegs.png" alt="One GeoLife user-day: grey position fixes, coloured triplegs between stops, and gold circles at detected staypoints.">
 </div>
-<p class="figure-caption">One day of a GeoLife user in Beijing: fastmob turns raw fixes into staypoints and triplegs.</p>
+<p class="figure-caption">One day of a GeoLife user in Beijing: Fastkit-Mobility turns raw fixes into staypoints and triplegs.</p>
 
 <div class="feature-grid">
 <a class="feature-card" href="learn/clean-and-segment/">
@@ -122,7 +122,7 @@ method call.
 </a>
 </div>
 
-## Why fastmob
+## Why Fastkit-Mobility
 
 - **Familiar API.** Measure names and signatures follow [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility), so existing code ports easily, and comparison tests check the results.
 - **Any dataframe, no copies.** Narwhals accepts pandas, Polars and other eager backends and returns the same type; Rust kernels read your columns in place.
