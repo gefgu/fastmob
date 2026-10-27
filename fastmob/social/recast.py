@@ -53,6 +53,7 @@ class RecastTemporalGraph:
         return len(self.window_starts_ms)
 
     def event(self, index: int) -> RecastEventGraph:
+        """Return the contact graph of time step ``index`` (one day), raising ``IndexError`` if out of range."""
         if not 0 <= index < self.time_steps:
             raise IndexError("event index out of range")
         start = self.edge_offsets[index].as_py()
@@ -84,6 +85,7 @@ class RecastResult:
         return pc.take(pa.array(["Friends", "Bridges", "Acquaintances", "Random"]), self.classes)
 
     def mask(self, relationship: RecastClass) -> pa.Array:
+        """Return a boolean array that is true for the contacts classified as ``relationship``."""
         return pc.equal(self.classes, pa.scalar(int(relationship), pa.uint8()))
 
 

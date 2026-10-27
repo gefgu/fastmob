@@ -8,6 +8,20 @@ icon: lucide/car
 the full journey between meaningful activities, including the contributing
 tripleg IDs and endpoint staypoint IDs.
 
+## Catalogue
+
+<!-- api-table:start -->
+| API | Description | Example |
+| --- | --- | --- |
+| [`Trips`](#fastmob.core.trips_dataframe.Trips) | One row per trip. |  |
+| [`common_part_of_commuters`](#fastmob.core.trips_dataframe.Trips.common_part_of_commuters) | Compare trips using globally comparable endpoint location IDs. | [Compare two flow tables](../../learn/population-measures.md#compare-two-flow-tables) |
+| [`common_part_of_commuters_distance`](#fastmob.core.trips_dataframe.Trips.common_part_of_commuters_distance) | Return the distance-weighted CPC score against another trip set. | [Common part of commuters and links](../../learn/fit-and-evaluate.md#common-part-of-commuters-and-links) |
+| [`common_part_of_links`](#fastmob.core.trips_dataframe.Trips.common_part_of_links) | Return the common part of links score against another trip set. | [Compare two flow tables](../../learn/population-measures.md#compare-two-flow-tables) |
+| [`from_triplegs`](#fastmob.core.trips_dataframe.Trips.from_triplegs) | Derive trips from triplegs + activity-flagged staypoints. | [The same pipeline, step by step](../../learn/trajectory-hierarchy.md#the-same-pipeline-step-by-step) |
+| [`generate_tours`](#fastmob.core.trips_dataframe.Trips.generate_tours) | Group consecutive trips into tours (round trips back to the same location). | [Trips and tours](../../learn/trajectory-hierarchy.md#trips-and-tours) |
+| [`to_flow_dataframe`](#fastmob.core.trips_dataframe.Trips.to_flow_dataframe) | Materialize this trip set as aggregated sparse OD flows. | [Compare two flow tables](../../learn/population-measures.md#compare-two-flow-tables) |
+<!-- api-table:end -->
+
 ## Required data
 
 Rows require `trip_id`, `started_at`, and `finished_at`. Generated trips include
@@ -29,3 +43,6 @@ Use [`FlowDataFrame`](flow-dataframe.md) for a materialized sparse OD table or
 ::: fastmob.core.trips_dataframe.Trips
     options:
       show_source: false
+
+<!-- example-link -->**Worked example:** [Compare two flow tables](../../learn/population-measures.md#compare-two-flow-tables) · [Common part of commuters and links](../../learn/fit-and-evaluate.md#common-part-of-commuters-and-links) · [The same pipeline, step by step](../../learn/trajectory-hierarchy.md#the-same-pipeline-step-by-step) · [Trips and tours](../../learn/trajectory-hierarchy.md#trips-and-tours)
+

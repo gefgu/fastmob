@@ -89,3 +89,25 @@ def test_trip_cpc_string_ids_still_use_factorization_fallback():
     left = _trips([("home", "work"), ("home", "work"), ("work", "home")])
     right = _trips([("home", "work"), ("park", "work")])
     assert fastmob.common_part_of_commuters(left, right) == pytest.approx(0.4)
+
+
+def _distance_trips(distances):
+    trips = _trips([(0, 1)] * len(distances)).to_pandas()
+    trips["distance_km"] = distances
+    return fastmob.Trips(trips)
+
+
+def test_cpcd_is_one_for_identical_distance_distributions():
+    distances = [0.5, 1.0, 3.0, 7.0, 7.5, 12.0]
+
+    assert fastmob.measures.evaluation.common_part_of_commuters_distance(
+        _distance_trips(distances), _distance_trips(distances)
+    ) == pytest.approx(1.0)
+
+
+def test_cpcd_counts_trips_per_two_kilometre_bin():
+    observed = _distance_trips([1.0, 1.0, 3.0, 9.0])  # bins 0, 0, 1, 4
+    predicted = _distance_trips([1.0, 3.0, 3.5, 3.9])  # bins 0, 1, 1, 1
+
+    # min counts per bin: bin0 min(2, 1) + bin1 min(1, 3) + bin4 min(1, 0) = 2 of 4 observed trips
+    assert fastmob.measures.evaluation.common_part_of_commuters_distance(observed, predicted) == pytest.approx(0.5)

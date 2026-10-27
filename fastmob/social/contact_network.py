@@ -35,6 +35,7 @@ class NetworkGraph:
         return set(zip(self.edge_from.tolist(), self.edge_to.tolist()))
 
     def degrees(self) -> np.ndarray:
+        """Return the number of contacts of each node, as an integer array of length ``node_count``."""
         if not self.edge_count:
             return np.zeros(self.node_count, dtype=np.int64)
         return np.bincount(np.concatenate((self.edge_from, self.edge_to)), minlength=self.node_count)
@@ -163,6 +164,7 @@ def distribution_summary(values: np.ndarray) -> dict[str, float | int | None]:
 
 
 def safe_wasserstein(left: np.ndarray, right: np.ndarray) -> float | None:
+    """Return the 1-D Wasserstein distance between two samples, or ``None`` when it is undefined (NaN)."""
     value = wasserstein_distance(left, right)
     return None if math.isnan(value) else value
 

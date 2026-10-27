@@ -5,11 +5,13 @@ dataframe with columns describing its nearest point(s) of interest or
 nearest event, rather than aggregating the trajectory into a per-user
 summary like the measures under `fastmob.measures`.
 
-| API | Description |
-| --- | --- |
-| [`join_with_pois`](#fastmob.integration.join_with_pois) | Join each trajectory point with its single nearest point of interest. |
-| [`join_with_pois_by_category`](#fastmob.integration.join_with_pois_by_category) | Join each trajectory point with its nearest POI in each category. |
-| [`join_with_events`](#fastmob.integration.join_with_events) | Join each trajectory point with the nearest event within a time window. |
+<!-- api-table:start -->
+| API | Description | Example |
+| --- | --- | --- |
+| [`join_with_pois`](#fastmob.integration.join_with_pois) | Join each trajectory point with its single nearest point of interest. | [Join trajectories to points of interest and events](../learn/road-network-analysis.md#join-trajectories-to-points-of-interest-and-events) |
+| [`join_with_pois_by_category`](#fastmob.integration.join_with_pois_by_category) | Join each trajectory point with its nearest POI in each category. | [Join trajectories to points of interest and events](../learn/road-network-analysis.md#join-trajectories-to-points-of-interest-and-events) |
+| [`join_with_events`](#fastmob.integration.join_with_events) | Join each trajectory point with the nearest event within a time window. | [Join trajectories to points of interest and events](../learn/road-network-analysis.md#join-trajectories-to-points-of-interest-and-events) |
+<!-- api-table:end -->
 
 POI/event nearest-neighbor lookup runs through FastMOB's native Rust spatial
 kernel; no additional installation is required.
@@ -37,14 +39,21 @@ zero rows, reports a real null (`None`/`inf`) rather than the untyped
     options:
       show_source: false
 
+<!-- example-link -->**Worked example:** [Join trajectories to points of interest and events](../learn/road-network-analysis.md#join-trajectories-to-points-of-interest-and-events)
+
 ---
 
 ::: fastmob.integration.join_with_pois_by_category
     options:
       show_source: false
 
+<!-- example-link -->**Worked example:** [Join trajectories to points of interest and events](../learn/road-network-analysis.md#join-trajectories-to-points-of-interest-and-events)
+
 ---
 
 ::: fastmob.integration.join_with_events
     options:
       show_source: false
+
+<!-- example-link -->**Worked example:** [Join trajectories to points of interest and events](../learn/road-network-analysis.md#join-trajectories-to-points-of-interest-and-events)
+

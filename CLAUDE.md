@@ -106,7 +106,7 @@ The skmob comparison tests should usually be strict, but the Brightkite tests fo
 
 ## Release process
 
-`.github/workflows/CI.yml`'s wheel-build jobs (`linux-wheels`, `musllinux-wheels`, `macos-wheels`, `macos-x86_64-wheels`, `windows-wheels`, `sdist`) only run on a `vX.Y.Z` tag push or a manual `workflow_dispatch`; ordinary PRs and pushes to `main` only run the cheap `test` job. This keeps the expensive macOS (10x Linux runner cost) and Windows (2x) runners off the normal development loop. Use `workflow_dispatch` with the `platform` input (`all`, `linux`, `musllinux`, `macos`, `windows`, `sdist`) from the Actions tab to debug a single platform's wheel build without running the whole matrix.
+`.github/workflows/CI.yml`'s wheel-build jobs (`linux-wheels`, `musllinux-wheels`, `macos-wheels`, `macos-x86_64-wheels`, `windows-wheels`, `sdist`) only run on a `fastmob-vX.Y.Z` tag push or a manual `workflow_dispatch`; ordinary PRs and pushes to `main` only run the cheap `test` job. This keeps the expensive macOS (10x Linux runner cost) and Windows (2x) runners off the normal development loop. Use `workflow_dispatch` with the `platform` input (`all`, `linux`, `musllinux`, `macos`, `windows`, `sdist`) from the Actions tab to debug a single platform's wheel build without running the whole matrix.
 
 Before tagging a release, validate everything locally so the tag-triggered run succeeds on the first try instead of idling in the runner queue on a retry:
 
@@ -128,7 +128,7 @@ To cut a release:
 
 1. Bump the version in `fastmob-py/Cargo.toml` — that's the authoritative version; `pyproject.toml` reads it dynamically via `[tool.maturin] manifest-path`. Commit the bump.
    Before committing, add the release to the docs: a new first row (with the release date) in `docs/src/release_notes/index.md` and a `docs/src/release_notes/vX.Y.Z.md` page, then run `uv run python scripts/sync_docs_version.py`. That script copies the version and release date into the site footer (`zensical.toml`) and the About page; `tests/docs` fails if they are stale.
-2. `git tag vX.Y.Z && git push origin main --tags`.
+2. `git tag fastmob-vX.Y.Z && git push origin main && git push origin fastmob-vX.Y.Z`. The tag must be `fastmob-vX.Y.Z`: a bare `vX.Y.Z` tag triggers nothing. Push `main` first and check that it was accepted before pushing the tag.
 3. The tag push triggers the full wheel matrix, then `release` (gated on `startsWith(github.ref, 'refs/tags/v')`) generates artifact attestations, creates the GitHub release, and publishes to PyPI via OIDC Trusted Publishing — no stored token, and it must run inside GitHub Actions regardless of what was built locally.
 
 ## The AI/ folder on GitHub
@@ -173,6 +173,16 @@ pages first and serves Zensical at `http://127.0.0.1:5178` by default.
 Generated notebook `.md` files and `*_files/` directories are ignored and
 must not be edited directly. Run the converter before `pytest tests/docs` or
 `uv run --group docs zensical build`; docs CI runs it automatically.
+
+Learn notebooks are tested in a fresh virtualenv and an empty temp directory with
+`scripts/run_notebook_isolated.sh NOTEBOOK OUT_DIR [WHEEL]` (it installs the published release
+unless a local wheel is given, and records which `fastmob` functions the cells call). Notebooks
+pin `fastmob>=<current version>` in their first cell and in `binder/requirements.txt`; bump both
+with the version at release time (`tests/docs` checks it). Reference catalogue tables and the
+"Worked example" links under each entry are generated:
+`uv run python scripts/notebook_coverage.py --ledger <coverage.csv> --logs <execution dir>` then
+`uv run python scripts/update_reference_tables.py`. `scripts/api_inventory.py` lists every public
+symbol and checks that it has an anchor in the built site.
 
 API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
 
