@@ -46,7 +46,7 @@ parameter? Each guide links to the [API reference](../reference/index.md).
 <span class="how-to-card__meta">Data: Brightkite</span>
 </a>
 <a class="how-to-card" href="network-analysis.md">
-<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-route.svg" alt="Noisy GPS points snapped onto a road line">
+<img class="how-to-card__thumb" src="../assets/images/learn/learn-thumb-route.png" alt="Noisy GPS points offset from a muted road map, with their matched path shown in gold">
 <h2>Route and map-match trajectories</h2>
 <p>Build network-aware workflows for routes and map-matched traces.</p>
 <span class="how-to-card__meta">Data: road and rail networks</span>

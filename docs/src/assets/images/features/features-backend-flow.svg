@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="330" viewBox="0 0 1500 330" role="img" aria-labelledby="title desc">
+  <title id="title">Same dataframe type in and out</title>
+  <desc id="desc">Pandas or Polars data passes through Narwhals and Arrow buffers into the Rust kernel and returns as the same backend type.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#68737a"/></marker>
+    <style>
+      .node { fill:#f5f3eb; stroke:#b6a12c; stroke-width:2.5; }
+      .highlight { fill:#f2e6b4; stroke:#b49a16; stroke-width:2.5; }
+      .label { fill:#343a3e; font-family:DejaVu Sans,sans-serif; font-size:27px; font-weight:600; text-anchor:middle; dominant-baseline:middle; }
+      .arrow { fill:none; stroke:#68737a; stroke-width:3; }
+      .caption { fill:#555e63; font-family:DejaVu Sans,sans-serif; font-size:26px; font-weight:600; text-anchor:middle; }
+      @media(prefers-color-scheme:dark) { .node{fill:#34393c;stroke:#d8bd45}.highlight{fill:#514927;stroke:#e1c748}.label{fill:#f5f3eb}.arrow{stroke:#bdc3c5}.caption{fill:#e2dfd5} }
+    </style>
+  </defs>
+  <g>
+    <rect class="node" x="24" y="90" width="250" height="94" rx="18"/>
+    <rect class="node" x="330" y="90" width="220" height="94" rx="18"/>
+    <rect class="highlight" x="606" y="90" width="250" height="94" rx="18"/>
+    <rect class="node" x="912" y="90" width="220" height="94" rx="18"/>
+    <rect class="node" x="1188" y="90" width="286" height="94" rx="18"/>
+    <text class="label" x="149" y="137">pandas / Polars</text>
+    <text class="label" x="440" y="137">Narwhals</text>
+    <text class="label" x="731" y="137">Arrow buffers</text>
+    <text class="label" x="1022" y="137">Rust kernel</text>
+    <text class="label" x="1331" y="137">same backend out</text>
+    <path class="arrow" d="M278 137H320"/><path class="arrow" d="M554 137H596"/>
+    <path class="arrow" d="M860 137H902"/><path class="arrow" d="M1136 137H1178"/>
+    <path d="M318 129 330 137 318 145ZM594 129 606 137 594 145ZM858 129 870 137 858 145ZM1174 129 1186 137 1174 145Z" fill="#68737a"/>
+    <rect x="497" y="224" width="506" height="56" rx="15" fill="#f5f3eb" stroke="#b6a12c" stroke-width="2"/>
+    <text class="caption" x="750" y="260">same type in, same type out</text>
+  </g>
+</svg>

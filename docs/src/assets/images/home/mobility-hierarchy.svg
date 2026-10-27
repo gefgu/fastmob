@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 290" role="img" aria-labelledby="t d" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="435" viewBox="0 0 1320 435" role="img" aria-labelledby="t d" font-family="Inter, system-ui, sans-serif">
   <title id="t">fastmob mobility hierarchy</title>
   <desc id="d">Positionfixes produce Staypoints and Triplegs. Triplegs and Staypoints combine into Trips, then Tours. Staypoints also cluster into Locations, which tours return to.</desc>
   <style>
@@ -20,6 +20,7 @@
       <path d="M0 0L10 5L0 10z" fill="#8a8a8a"/>
     </marker>
   </defs>
+  <g transform="scale(1.5)">
   <rect class="box" x="8" y="130" width="150" height="64" rx="10"/>
   <rect class="box" x="208" y="10" width="150" height="64" rx="10"/>
   <rect class="box" x="208" y="100" width="150" height="64" rx="10"/>
@@ -40,4 +41,5 @@
   <path class="arrow" d="M548 162 L596 162"/>
   <path class="dash" d="M358 42 L663 42 L663 128"/>
   <text class="cap" x="510" y="34">tours return to a Location</text>
+  </g>
 </svg>

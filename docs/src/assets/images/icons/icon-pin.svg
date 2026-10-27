@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" role="img" aria-label="Location pin">
+  <path d="M32 56S14 38 14 26a18 18 0 0 1 36 0c0 12-18 30-18 30Z" stroke="#66717a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 20a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z" stroke="#ad9700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

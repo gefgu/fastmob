@@ -38,14 +38,16 @@ If you use Fastkit-Mobility in research, please cite the paper
                Viana, Aline Carneiro and
                Pappalardo, Luca and
                Silva, Thiago H.},
-  title     = {Fastkit-Mobility: A High-Performance,
-               DataFrame-Agnostic Library for
-               Mobility Analysis},
+  title     = {Fastkit-Mobility: A
+               High-Performance,
+               DataFrame-Agnostic Library
+               for Mobility Analysis},
   booktitle = {NetMob 2026},
-  address   = {Niter{\'o}i, Rio de Janeiro, Brazil},
+  address   = {Niter{\'o}i, Brazil},
   year      = {2026},
   month     = oct,
-  url       = {https://inria.hal.science/hal-05755990}
+  url       = {https://inria.hal.science/
+               hal-05755990}
 }
 ```
 
@@ -53,8 +55,7 @@ To cite a specific release of the software, use:
 
 ```bibtex
 @software{fastmob,
-  author  = {dos Santos, Gustavo
-             Henrique Bruno},
+  author  = {Santos, Gustavo H.},
   title   = {Fastkit-Mobility},
   note    = {Fast human-mobility
              analysis in Python.

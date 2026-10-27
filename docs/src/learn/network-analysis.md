@@ -4,6 +4,11 @@ Use the network module when a straight-line distance is not a useful proxy for
 travel. Build the graph once, then reuse it for snapping, route queries, and
 network-aware measures.
 
+<div class="figure">
+<img src="../assets/images/learn/learn-thumb-route.png" alt="Illustrative GPS observations offset from a gold matched path on real Beijing road geometry">
+</div>
+<p class="figure-caption">Road geometry from the Beijing OpenStreetMap extract; GPS observations are illustrative. © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.</p>
+
 ```python
 from fastmob.network import RoadNetwork, fetch_road_network, match_trajectory
 from fastmob.measures.individual import jump_lengths_road
@@ -37,5 +42,3 @@ inspect results carefully on curved roads.
 
 See the [network reference](../reference/network.md) for Arrow return types,
 route geometry, OD desire lines, and rail support.
-
-<!-- Visual placeholder: GPS points → candidate road edges → matched route map. -->

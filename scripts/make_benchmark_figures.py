@@ -49,7 +49,7 @@ COLLECTIVE = {
     "random_location_entropy",
     "uncorrelated_location_entropy",
 }
-TEXT = "#666666"
+TEXT = "#555555"
 MEMORY_FLOOR_MB = 0.1
 
 

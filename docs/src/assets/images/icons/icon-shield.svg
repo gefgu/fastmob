@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" role="img" aria-label="Shield">
+  <path d="M32 8 50 15v14c0 12-7.6 21-18 27C21.6 50 14 41 14 29V15l18-7Z" stroke="#66717a" stroke-width="3" stroke-linejoin="round"/>
+  <path d="m23 31 6 6 13-14" stroke="#ad9700" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

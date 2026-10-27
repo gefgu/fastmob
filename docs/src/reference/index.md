@@ -25,6 +25,27 @@ fastmob.radius_of_gyration(df)
 
 The result is a pandas DataFrame because `df` is pandas; pass Polars and you get Polars.
 
+<div class="figure figure-scroll">
+<img src="../assets/images/reference/reference-module-map.png" alt="Module pipeline: raw points flow through data structures and preprocessing, then trajectory, network and integration, then measures, fitting and models, then evaluation, privacy and visualization">
+</div>
+
+## Modules
+
+| Module |
+| --- |
+| [Data structures](data-structures.md)<br><span class="muted">Typed trajectory, hierarchy and flow wrappers.</span><br>[`TrajDataFrame`](data-structures.md), [`Positionfixes`](data-structures.md) |
+| [Preprocessing](preprocessing.md)<br><span class="muted">Filtering, segmentation, staypoints, H3 and OD preparation.</span><br>[`filter`](preprocessing.md#fastmob.preprocessing.filter), [`segment`](preprocessing.md), [`stay_locations`](preprocessing.md#fastmob.preprocessing.stay_locations) |
+| [Trajectory](trajectory.md)<br><span class="muted">Interpolation, smoothing, shape clustering and comparison.</span><br>[`interpolate`](trajectory.md#fastmob.trajectory.interpolate), [`smooth`](trajectory.md) |
+| [Network](network.md)<br><span class="muted">Road and rail graphs, routing, snapping and map matching.</span><br>[`match_trajectory`](network.md), [`build_road_graph`](network.md#fastmob.network.build_road_graph) |
+| [Integration](integration.md)<br><span class="muted">Joins with points of interest and events.</span><br>[`join_with_pois`](integration.md#fastmob.integration.join_with_pois), [`join_with_events`](integration.md#fastmob.integration.join_with_events) |
+| [Measures](measures/index.md)<br><span class="muted">Individual, collective, contact-network and evaluation metrics.</span><br>[`radius_of_gyration`](measures/individual.md#fastmob.measures.individual.radius_of_gyration), [`jump_lengths`](measures/individual.md#fastmob.measures.individual.jump_lengths) |
+| [Fitting](fitting.md)<br><span class="muted">Truncated power law, visitation law and daily-location fits.</span><br>[`fit_values_to_truncated_powerlaw`](fitting.md#fastmob.measures.fitting.fit_values_to_truncated_powerlaw) |
+| [Models](models.md)<br><span class="muted">Mobility generation models.</span><br>[`Gravity`](models.md#fastmob.models.gravity.Gravity), [`SpatialEPR`](models.md#fastmob.models.epr.SpatialEPR) |
+| [Input/output](io.md)<br><span class="muted">Readers and writers for common trajectory formats.</span><br>[`read`](io.md#fastmob.io.file.read), [`load_geolife_trajectories`](io.md#fastmob.io.file.load_geolife_trajectories) |
+| [Privacy](privacy.md)<br><span class="muted">Re-identification risk assessment for trajectories.</span><br>[`location_risk`](privacy.md#fastmob.privacy.location_risk) |
+| [Data](data.md)<br><span class="muted">Bundled and downloadable datasets.</span><br>[`load_dataset`](data.md#fastmob.data.load_dataset) |
+| [Visualization](visualization.md)<br><span class="muted">Interactive ECharts views (`fastmob[vis]`).</span><br>`fastmob.vis` |
+
 ## Start from your input
 
 | You have | Start here |
@@ -34,23 +55,6 @@ The result is a pandas DataFrame because `df` is pandas; pass Polars and you get
 | Visits, stays, or trips | [Collective measures](measures/collective.md) |
 | A road/rail graph or GPS trace | [Network](network.md) |
 | A model output to compare | [Evaluation](measures/evaluation.md) |
-
-## Modules
-
-| Module |
-| --- |
-| [Data structures](data-structures.md)<br><span class="muted">Typed trajectory, hierarchy and flow wrappers.</span><br>[`TrajDataFrame`](data-structures.md), [`Positionfixes`](data-structures.md) |
-| [Preprocessing](preprocessing.md)<br><span class="muted">Filtering, segmentation, staypoints, H3 and OD preparation.</span><br>[`filter`](preprocessing.md), [`segment`](preprocessing.md), [`stay_locations`](preprocessing.md) |
-| [Trajectory](trajectory.md)<br><span class="muted">Interpolation, smoothing, shape clustering and comparison.</span><br>[`interpolate`](trajectory.md), [`smooth`](trajectory.md) |
-| [Network](network.md)<br><span class="muted">Road and rail graphs, routing, snapping and map matching.</span><br>[`match_trajectory`](network.md), [`build_road_graph`](network.md) |
-| [Integration](integration.md)<br><span class="muted">Joins with points of interest and events.</span><br>[`join_with_pois`](integration.md), [`join_with_events`](integration.md) |
-| [Measures](measures/index.md)<br><span class="muted">Individual, collective, contact-network and evaluation metrics.</span><br>[`radius_of_gyration`](measures/individual.md), [`jump_lengths`](measures/individual.md) |
-| [Fitting](fitting.md)<br><span class="muted">Truncated power law, visitation law and daily-location fits.</span><br>[`fit_values_to_truncated_powerlaw`](fitting.md) |
-| [Models](models.md)<br><span class="muted">Mobility generation models.</span><br>[`Gravity`](models.md), [`SpatialEPR`](models.md) |
-| [Input/output](io.md)<br><span class="muted">Readers and writers for common trajectory formats.</span><br>[`read`](io.md), [`load_geolife_trajectories`](io.md) |
-| [Privacy](privacy.md)<br><span class="muted">Re-identification risk assessment for trajectories.</span><br>[`location_risk`](privacy.md) |
-| [Data](data.md)<br><span class="muted">Bundled and downloadable datasets.</span><br>[`load_dataset`](data.md) |
-| [Visualization](visualization.md)<br><span class="muted">Interactive ECharts views (`fastmob[vis]`).</span><br>`fastmob.vis` |
 
 !!! note "Column and backend conventions"
 

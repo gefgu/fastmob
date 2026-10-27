@@ -1,8 +1,8 @@
 """Outline the live Lato text in the Inkscape logo so it renders without the font.
 
 Reads docs/src/assets/logo.svg (black text, transparent background) and writes
-docs/src/assets/logo_header.svg: same artwork, text converted to <path> and filled
-white for the always-black site header.
+docs/src/assets/logo_header.svg (white text, for the dark header) and logo_light.svg (black text,
+for the white light-mode header): same artwork, text converted to <path>.
 
 Fonts (Lato, SIL OFL) are passed as arguments; fetch them from
 https://github.com/google/fonts/tree/main/ofl/lato.
@@ -52,12 +52,13 @@ def main() -> None:
     svg = (ASSETS / "logo.svg").read_text()
     texts = TEXT_RE.findall(svg)
     assert len(texts) == len(RUNS), "logo.svg text layout changed; update RUNS"
-    for text, runs, font in zip(texts, RUNS, fonts, strict=True):
-        transform = re.search(r'transform="([^"]+)"', text).group(1)
-        d = " ".join(outline(font, *run) for run in runs)
-        path = f'<path transform="{transform}" d="{d}" style="fill:#ffffff;stroke:none"/>'
-        svg = svg.replace(text, path)
-    (ASSETS / "logo_header.svg").write_text(svg)
+    for name, fill in (("logo_header.svg", "#ffffff"), ("logo_light.svg", "#000000")):
+        out = svg
+        for text, runs, font in zip(texts, RUNS, fonts, strict=True):
+            transform = re.search(r'transform="([^"]+)"', text).group(1)
+            d = " ".join(outline(font, *run) for run in runs)
+            out = out.replace(text, f'<path transform="{transform}" d="{d}" style="fill:{fill};stroke:none"/>')
+        (ASSETS / name).write_text(out)
 
 
 if __name__ == "__main__":

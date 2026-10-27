@@ -45,7 +45,7 @@ def _load_bench():
 
 BENCH = _load_bench()
 
-GOLD, GREY, TEXT = "#a98600", "#8a8a8a", "#666666"
+GOLD, GREY, TEXT = "#a98600", "#8a8a8a", "#555555"
 
 fig, ax = plt.subplots(figsize=(8, 4.2), dpi=200)
 names = list(BENCH)[::-1]
@@ -64,9 +64,7 @@ for i, name in enumerate(names):
         fontweight="bold",
     )
 ax.set_yticks(range(len(names)), names, fontsize=12, color=TEXT)
-ax.set_xlabel(
-    "Time on 4M Brightkite check-ins, time-sorted input (seconds, log scale, lower is better)", fontsize=11, color=TEXT
-)
+ax.set_xlabel("4M Brightkite check-ins, time-sorted (seconds, log scale, lower is better)", fontsize=11, color=TEXT)
 ax.tick_params(colors=TEXT, labelsize=10)
 ax.set_xscale("log")
 ax.set_xlim(0.05, 4000)

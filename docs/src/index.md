@@ -21,7 +21,7 @@ people move. Rust does the heavy lifting; you keep your pandas or Polars datafra
 <div class="figure">
 <picture>
 <source media="(max-width: 600px)" srcset="assets/images/home/home-benchmark-speedup-mobile.png">
-<img src="assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and Fastkit-Mobility execution time on 4M check-ins for five measures; fastmob is 423x to 2658x faster.">
+<img src="assets/images/home/home-benchmark-speedup.png" alt="Bar chart comparing scikit-mobility and Fastkit-Mobility execution time on 4M check-ins for five measures; Fastkit-Mobility is 423x to 2658x faster.">
 </picture>
 </div>
 
@@ -81,7 +81,7 @@ pip install fastmob
 Each level of the hierarchy is derived from the one below it with a single
 method call.
 
-<div class="figure">
+<div class="figure figure--hierarchy">
 <picture>
 <source media="(max-width: 600px)" srcset="assets/images/home/mobility-hierarchy-vertical.svg">
 <img src="assets/images/home/mobility-hierarchy.svg" alt="Diagram: Positionfixes produce Staypoints and Triplegs; these combine into Trips, then Tours. Staypoints also cluster into Locations, which tours return to.">
@@ -100,26 +100,32 @@ method call.
 
 <div class="feature-grid">
 <a class="feature-card" href="learn/clean-and-segment/">
+<img class="feature-card__icon" src="assets/images/icons/icon-map.svg" alt="">
 <h3>Clean and segment</h3>
 <p>Filter noise, compress, and split traces into movement and stops.</p>
 </a>
 <a class="feature-card" href="learn/staypoints-and-locations/">
+<img class="feature-card__icon" src="assets/images/icons/icon-pin.svg" alt="">
 <h3>Staypoints and locations</h3>
 <p>Detect where people stop and cluster recurring places such as home and work.</p>
 </a>
 <a class="feature-card" href="learn/individual-and-collective-measures/">
+<img class="feature-card__icon" src="assets/images/icons/icon-speed.svg" alt="">
 <h3>Measure mobility</h3>
 <p>Radius of gyration, entropy, jump lengths, flows and more, per person or per population.</p>
 </a>
 <a class="feature-card" href="learn/network-analysis/">
+<img class="feature-card__icon" src="assets/images/icons/icon-route.svg" alt="">
 <h3>Networks and map matching</h3>
 <p>Route and map-match trajectories on road and rail graphs.</p>
 </a>
 <a class="feature-card" href="learn/fit-and-evaluate/">
+<img class="feature-card__icon" src="assets/images/icons/icon-code.svg" alt="">
 <h3>Fit and evaluate</h3>
 <p>Fit mobility laws and compare generated trajectories with observed ones.</p>
 </a>
 <a class="feature-card" href="reference/models/">
+<img class="feature-card__icon" src="assets/images/icons/icon-branch.svg" alt="">
 <h3>Generate synthetic mobility</h3>
 <p>Gravity, radiation, EPR and other models for flows and trajectories.</p>
 </a>
@@ -138,14 +144,17 @@ is needed to install; building from source is covered in
 
 <div class="feature-grid">
 <a class="feature-card" href="learn/use-custom-columns-and-dataframe-backends/">
+<img class="feature-card__icon" src="assets/images/icons/icon-dataframe.svg" alt="">
 <h3>Columns and backends →</h3>
 <p>Use your own column names and move between pandas and Polars.</p>
 </a>
 <a class="feature-card" href="learn/notebooks/stay-point-detection-geolife/">
+<img class="feature-card__icon" src="assets/images/icons/icon-book.svg" alt="">
 <h3>Stay-point notebook →</h3>
 <p>An end-to-end example on real GeoLife GPS traces.</p>
 </a>
 <a class="feature-card" href="resource/">
+<img class="feature-card__icon" src="assets/images/icons/icon-shield.svg" alt="">
 <h3>Resources →</h3>
 <p>Datasets, citation, and where to get help.</p>
 </a>

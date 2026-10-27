@@ -34,7 +34,7 @@ nav = [
   ] },
   { "Reference" = [
     { "Reference overview" = "reference/index.md" },
-    { "Data Structures" = [
+    { "Data structures" = [
       { "Data structures overview" = "reference/data-structures.md" },
       { "TrajDataFrame" = "reference/data-structures/traj-dataframe.md" },
       { "Positionfixes" = "reference/data-structures/positionfixes.md" },
@@ -53,12 +53,12 @@ nav = [
       { "Measures overview" = "reference/measures/index.md" },
       { "Individual" = "reference/measures/individual.md" },
       { "Collective" = "reference/measures/collective.md" },
-      { "Contact Network" = "reference/measures/contact-network.md" },
+      { "Contact network" = "reference/measures/contact-network.md" },
       { "Evaluation" = "reference/measures/evaluation.md" },
     ] },
     { "Fitting" = "reference/fitting.md" },
     { "Models" = "reference/models.md" },
-    { "Input/Output" = "reference/io.md" },
+    { "Input/output" = "reference/io.md" },
     { "Privacy" = "reference/privacy.md" },
     { "Data" = "reference/data.md" },
     { "Visualization" = "reference/visualization.md" },

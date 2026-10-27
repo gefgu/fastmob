@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">Fastkit-Mobility module map</title>
+  <desc id="desc">Raw points flow through data structures and preprocessing, then trajectory, network and integration, then measures, fitting and models, then evaluation, privacy and visualization.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#879097"/></marker>
+    <style>
+      .node { fill:#f6f4eb; stroke:#c5aa28; stroke-width:2; }
+      .input { fill:#f0df91; stroke:#aa9000; stroke-width:2; }
+      .label { fill:#343b40; font-family:DejaVu Sans,sans-serif; font-size:19px; font-weight:600; text-anchor:middle; dominant-baseline:middle; }
+      .line { fill:none; stroke:#879097; stroke-width:2.3; }
+      @media(prefers-color-scheme:dark) { .node {fill:#34393c;stroke:#d8bd45}.input{fill:#554c28;stroke:#e2cb64}.label{fill:#f2f0e8}.line{stroke:#a5adb2}.arrow{fill:#a5adb2} }
+    </style>
+  </defs>
+  <!-- connectors between the four stages -->
+  <path class="line" d="M192 235H228V153H255M228 235V317H255"/>
+  <path class="line" d="M445 153H476M445 317H476M476 112V358M476 112H505M476 235H505M476 358H505"/>
+  <path class="line" d="M695 112H726M695 235H726M695 358H726M726 112V358M726 112H755M726 235H755M726 358H755"/>
+  <path class="line" d="M945 112H976M945 235H976M945 358H976M976 112V358M976 112H1005M976 235H1005M976 358H1005"/>
+  <g fill="#879097">
+    <path d="M245 147 255 153 245 159ZM245 311 255 317 245 323Z"/>
+    <path d="M495 106 505 112 495 118ZM495 229 505 235 495 241ZM495 352 505 358 495 364Z"/>
+    <path d="M745 106 755 112 745 118ZM745 229 755 235 745 241ZM745 352 755 358 745 364Z"/>
+    <path d="M995 106 1005 112 995 118ZM995 229 1005 235 995 241ZM995 352 1005 358 995 364Z"/>
+  </g>
+  <rect class="input" x="22" y="206" width="170" height="58" rx="12"/>
+  <text class="label" x="107" y="235">Raw points</text>
+  <g class="node">
+    <rect x="255" y="124" width="190" height="58" rx="12"/><rect x="255" y="288" width="190" height="58" rx="12"/>
+    <rect x="505" y="83" width="190" height="58" rx="12"/><rect x="505" y="206" width="190" height="58" rx="12"/><rect x="505" y="329" width="190" height="58" rx="12"/>
+    <rect x="755" y="83" width="190" height="58" rx="12"/><rect x="755" y="206" width="190" height="58" rx="12"/><rect x="755" y="329" width="190" height="58" rx="12"/>
+    <rect x="1005" y="83" width="170" height="58" rx="12"/><rect x="1005" y="206" width="170" height="58" rx="12"/><rect x="1005" y="329" width="170" height="58" rx="12"/>
+  </g>
+  <g class="label">
+    <text x="350" y="153">Data structures</text><text x="350" y="317">Preprocessing</text>
+    <text x="600" y="112">Trajectory</text><text x="600" y="235">Network</text><text x="600" y="358">Integration</text>
+    <text x="850" y="112">Measures</text><text x="850" y="235">Fitting</text><text x="850" y="358">Models</text>
+    <text x="1090" y="112">Evaluation</text><text x="1090" y="235">Privacy</text><text x="1090" y="358">Visualization</text>
+  </g>
+</svg>

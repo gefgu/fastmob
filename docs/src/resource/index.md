@@ -4,14 +4,17 @@ Datasets, packages, community and background reading for Fastkit-Mobility.
 
 <div class="feature-grid">
 <a class="feature-card" href="https://pypi.org/project/fastmob/">
+<img class="feature-card__icon" src="../assets/images/icons/icon-package.svg" alt="">
 <h3>PyPI →</h3>
 <p><code>pip install fastmob</code></p>
 </a>
 <a class="feature-card" href="https://github.com/gefgu/fastmob">
+<img class="feature-card__icon" src="../assets/images/icons/icon-code.svg" alt="">
 <h3>Source code →</h3>
 <p>Rust kernels, Python API and tests.</p>
 </a>
 <a class="feature-card" href="https://github.com/gefgu/fastmob/issues">
+<img class="feature-card__icon" src="../assets/images/icons/icon-shield.svg" alt="">
 <h3>Get help →</h3>
 <p>Report bugs and ask questions.</p>
 </a>
@@ -20,10 +23,13 @@ Datasets, packages, community and background reading for Fastkit-Mobility.
 ## Datasets
 
 <div class="figure">
+<picture>
+<source media="(max-width: 600px)" srcset="../assets/images/resources/resources-datasets-vertical.png">
 <img src="../assets/images/resources/resources-datasets.png" alt="Brightkite check-ins scattered over the world map next to GeoLife GPS traces forming the ring roads of Beijing.">
+</picture>
 </div>
 
-- **[Brightkite](https://snap.stanford.edu/data/loc-brightkite.html)**: about 4M location check-ins from a social network. The workload for the [benchmarks](../features/benchmarks.md).
+- **[Brightkite](https://snap.stanford.edu/data/loc-brightkite.html)**: about 4.7M location check-ins from a social network (the benchmarks use the first 4M). The workload for the [benchmarks](../features/benchmarks.md).
 - **[GeoLife](https://www.microsoft.com/en-us/research/publication/geolife-gps-trajectory-dataset-user-guide/)**: GPS trajectories of 182 users in Beijing. Read it with `load_geolife_trajectories`; used in the [stay-point notebook](../learn/notebooks/stay-point-detection-geolife.md).
 - **Foursquare NYC and others**: datasets from scikit-mobility, available through `load_dataset`. See the [data reference](../reference/data.md).
 
@@ -47,7 +53,7 @@ Check each dataset's own page for its license and terms of use before redistribu
 
 Ordered along the hierarchy from raw fixes to tours.
 
-<div class="figure">
+<div class="figure figure--hierarchy">
 <picture>
 <source media="(max-width: 600px)" srcset="../assets/images/home/mobility-hierarchy-vertical.svg">
 <img src="../assets/images/home/mobility-hierarchy.svg" alt="Positionfixes produce Staypoints and Triplegs, which combine into Trips and then Tours; Staypoints cluster into Locations, which tours return to.">
