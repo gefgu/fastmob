@@ -63,7 +63,7 @@ jobs:
         run: uv run --group dev ruff check
 
       - name: Tests
-        run: uv run --group dev pytest
+        run: uv run --group dev pytest --ignore=tests/docs  # the docs workflow converts the notebooks first
 
   linux-wheels:
     name: Linux wheels (${{ matrix.target }})
