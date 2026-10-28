@@ -39,6 +39,8 @@ def _specs(family: str, xmin: float, xmax: float, max_cutoff: float) -> list[_Pa
         return [_Param("kappa", xmin * 0.01, max_cutoff, log=True)]
     if family == "lognormal":
         return [_Param("mu", math.log(xmin) - 5.0, math.log(xmax) + 5.0), _Param("sigma", 0.02, 10.0, log=True)]
+    if family == "shifted_powerlaw":
+        return [_Param("r0", xmin * 0.01, xmax, log=True), _Param("beta", 0.01, 6.0)]
     if family == "truncated_powerlaw":
         return [
             _Param("r0", xmin * 0.01, xmax, log=True),
@@ -56,10 +58,12 @@ def _log_density(family: str, x: np.ndarray, p: Sequence[float]) -> np.ndarray:
     if family == "lognormal":
         z = np.log(x)
         return -z - (z - p[0]) ** 2 / (2.0 * p[1] ** 2)
+    if family == "shifted_powerlaw":
+        return -p[1] * np.log(x + p[0])
     return -p[1] * np.log(x + p[0]) - x / p[2]  # truncated_powerlaw: r0, beta, kappa
 
 
-FAMILIES = ("powerlaw", "exponential", "lognormal", "truncated_powerlaw")
+FAMILIES = ("powerlaw", "shifted_powerlaw", "exponential", "lognormal", "truncated_powerlaw")
 
 
 def _to_params(u: np.ndarray, specs: list[_Param]) -> np.ndarray:
@@ -118,7 +122,11 @@ def _neg_loglik(u: np.ndarray, family: str, specs: list[_Param], grid: _Grid, co
 
 
 def _nelder_mead(
-    f, x0: np.ndarray, step: float = 0.5, max_iter: int = 400, tol: float = 1e-9
+    f,
+    x0: np.ndarray,
+    step: float = 0.5,
+    max_iter: int = 400,
+    tol: float = 1e-9,
 ) -> tuple[np.ndarray, float]:
     n = len(x0)
     simplex = np.vstack([x0] + [x0 + step * np.eye(n)[i] for i in range(n)])
@@ -182,7 +190,7 @@ class DistributionFit:
     Parameters
     ----------
     family : str
-        ``"powerlaw"``, ``"exponential"``, ``"lognormal"`` or ``"truncated_powerlaw"``.
+        ``"powerlaw"``, ``"shifted_powerlaw"``, ``"exponential"``, ``"lognormal"`` or ``"truncated_powerlaw"``.
     parameters : dict
         Maximum-likelihood estimates by name.
     std_errors : dict
@@ -363,8 +371,10 @@ def fit_distance_distribution(
     out and counted in ``n_excluded``, so state the range when you report a fit: the estimates depend on it.
 
     The families are ``f(x) ∝ x^-beta`` (``"powerlaw"``), ``exp(-x / kappa)`` (``"exponential"``),
-    a log-normal with parameters ``mu`` and ``sigma`` (``"lognormal"``) and
-    ``(x + r0)^-beta exp(-x / kappa)`` (``"truncated_powerlaw"``, as in González et al., 2008). A parameter that
+    a log-normal with parameters ``mu`` and ``sigma`` (``"lognormal"``), ``(x + r0)^-beta``
+    (``"shifted_powerlaw"``) and ``(x + r0)^-beta exp(-x / kappa)`` (``"truncated_powerlaw"``, as in
+    González et al., 2008). Comparing the last two shows whether the cutoff adds anything beyond the shift
+    ``r0``. A parameter that
     ends on the edge of its search range is listed in ``at_bound``; for the truncated power law this
     typically means that the data have no cutoff.
 
@@ -374,7 +384,8 @@ def fit_distance_distribution(
         Positive values such as jump lengths in kilometres. Pass a flat array; use ``numpy.concatenate`` on
         the lists returned by `jump_lengths`.
     family : str, optional
-        One of ``"truncated_powerlaw"`` (default), ``"powerlaw"``, ``"exponential"`` or ``"lognormal"``.
+        One of ``"truncated_powerlaw"`` (default), ``"shifted_powerlaw"``, ``"powerlaw"``, ``"exponential"`` or
+        ``"lognormal"``.
     xmin : float, optional
         Lower end of the fitted range. Default: the smallest positive value. Raise it to ignore GPS noise.
     xmax : float, optional
@@ -499,7 +510,7 @@ def compare_distance_distributions(
     values : array-like
         Positive values, as for `fit_distance_distribution`.
     families : sequence of str, optional
-        Families to compare. Default: all four.
+        Families to compare. Default: all five.
     **kwargs
         Passed to `fit_distance_distribution` (``xmin``, ``xmax``, ``bins``, ``n_bootstrap``, ``n_gof``,
         ``max_cutoff``, ``random_state``). ``n_bootstrap`` defaults to 0 here, because only the criteria

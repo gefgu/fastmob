@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import narwhals as nw
 import numpy as np
 import pyarrow as pa
@@ -372,14 +374,25 @@ class Gravity:
         for flow_example in nw.from_native(flow_df.df, eager_only=True).iter_rows(named=True):
             self._update_training_set(flow_example)
 
+        design = np.asarray(self.X, dtype=float)
+        design = design[:, design.any(axis=0)]  # an origin with no observed flow has an all-zero dummy
+        if self._gravity_type != "globally constrained":
+            design = design[:, 1:]  # the origin dummies already span the intercept
         poisson_model = GLM(
             self.y,
-            self.X,
+            design,
             family=sm.genmod.families.family.Poisson(
                 link=getattr(sm.genmod.families.links, "Log", sm.genmod.families.links.log)()
             ),
         )
-        poisson_results = poisson_model.fit(cov_type="HC0") if robust else poisson_model.fit()
+        if np.linalg.matrix_rank(design) < design.shape[1]:
+            raise ValueError(
+                "The gravity design matrix is rank-deficient: too few distinct origins or distances to fit"
+            )
+        with warnings.catch_warnings():
+            # IRLS starts from a weighted least squares that statsmodels warns about even for a full-rank design.
+            warnings.filterwarnings("ignore", message="The design matrix is rank-deficient")
+            poisson_results = poisson_model.fit(cov_type="HC0") if robust else poisson_model.fit()
         self._store_fit(poisson_results, robust)
         if self._gravity_type == "globally constrained":
             self._origin_exp = poisson_results.params[1]

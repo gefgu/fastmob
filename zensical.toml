@@ -48,6 +48,8 @@ nav = [
     ] },
     { "5. Modelling, evaluating and protecting" = [
       { "Compare your data to mobility laws" = "learn/compare-to-mobility-laws.md" },
+      { "How the fits work" = "learn/fitting-methods.md" },
+      { "Validate against census flows" = "learn/validate-against-census-flows.md" },
       { "Generate mobility with models" = "learn/generate-mobility.md" },
       { "Fit and compare distributions" = "learn/fit-and-evaluate.md" },
       { "Privacy risk of trajectories" = "learn/privacy-risk.md" },

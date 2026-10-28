@@ -69,3 +69,18 @@ def test_statistics_and_the_error_before_fit():
         Gravity().fit_summary()
     with pytest.raises(RuntimeError, match="fit"):
         Gravity().fit_statistics()
+
+
+def test_fit_tolerates_an_origin_without_observed_flows():
+    from fastmob.core import FlowDataFrame
+
+    locations = _locations()
+    truth = Gravity(gravity_type="singly constrained", deterrence_func_args=[-2.0])
+    flows = truth.generate(locations, out_format="flows_sample", random_state=5)
+    table = flows.df[flows.df["origin"] != 0].reset_index(drop=True)
+    observed = FlowDataFrame(table, locations=locations, tile_id="tile_id")
+
+    model = Gravity(gravity_type="singly constrained")
+    model.fit(observed)
+
+    assert model.fit_summary().num_rows == 2

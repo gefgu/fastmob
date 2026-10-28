@@ -439,6 +439,11 @@
   "page": "learn/fit-and-evaluate.md",
   "title": "Common part of commuters and links"
  },
+ "fastmob.measures.evaluation.flow_models.compare_flow_models": {
+  "anchor": "agreement-with-the-reference",
+  "page": "learn/validate-against-census-flows.md",
+  "title": "Agreement with the reference"
+ },
  "fastmob.measures.evaluation.information.information_gain": {
   "anchor": "information-and-distribution-metrics",
   "page": "learn/fit-and-evaluate.md",
@@ -493,6 +498,21 @@
   "anchor": "law-3-distinct-places-per-day-are-lognormal",
   "page": "learn/compare-to-mobility-laws.md",
   "title": "Law 3: distinct places per day are lognormal"
+ },
+ "fastmob.measures.fitting.distance_distribution.DistributionFit.summary": {
+  "anchor": "how-sure-is-the-fit-range-uncertainty-and-alternatives",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "How sure is the fit? Range, uncertainty and alternatives"
+ },
+ "fastmob.measures.fitting.distance_distribution.compare_distance_distributions": {
+  "anchor": "how-sure-is-the-fit-range-uncertainty-and-alternatives",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "How sure is the fit? Range, uncertainty and alternatives"
+ },
+ "fastmob.measures.fitting.distance_distribution.fit_distance_distribution": {
+  "anchor": "how-sure-is-the-fit-range-uncertainty-and-alternatives",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "How sure is the fit? Range, uncertainty and alternatives"
  },
  "fastmob.measures.fitting.truncated_powerlaw.fit_values_to_truncated_powerlaw": {
   "anchor": "law-1-jump-lengths-follow-a-truncated-power-law",
@@ -733,6 +753,16 @@
   "anchor": "fit-and-run-a-gravity-model",
   "page": "learn/fit-and-evaluate.md",
   "title": "Fit and run a gravity model"
+ },
+ "fastmob.models.gravity.Gravity.fit_statistics": {
+  "anchor": "the-distance-decay-with-a-confidence-interval",
+  "page": "learn/validate-against-census-flows.md",
+  "title": "The distance decay, with a confidence interval"
+ },
+ "fastmob.models.gravity.Gravity.fit_summary": {
+  "anchor": "the-distance-decay-with-a-confidence-interval",
+  "page": "learn/validate-against-census-flows.md",
+  "title": "The distance decay, with a confidence interval"
  },
  "fastmob.models.gravity.Gravity.generate": {
   "anchor": "fit-and-run-a-gravity-model",

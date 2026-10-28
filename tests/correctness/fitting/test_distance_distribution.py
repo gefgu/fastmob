@@ -100,3 +100,13 @@ def test_fit_is_reproducible_with_a_seed():
 
     assert a.parameters == b.parameters
     assert a.ci_low == b.ci_low
+
+
+def test_shifted_powerlaw_beats_the_truncated_one_when_there_is_no_cutoff():
+    values = np.random.default_rng(8).pareto(1.2, 40_000) + 1.0
+    table = compare_distance_distributions(values, ["shifted_powerlaw", "truncated_powerlaw"])
+    rows = {row["family"]: row for row in table.to_pylist()}
+
+    # The extra cutoff parameter buys nothing: the simpler model is within 2 AIC units or better.
+    assert rows["shifted_powerlaw"]["aic"] - rows["truncated_powerlaw"]["aic"] < 2.0
+    assert "kappa" in rows["truncated_powerlaw"]["at_bound"]

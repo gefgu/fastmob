@@ -335,5 +335,25 @@
     "plot_stvd_comparison"
    ]
   ]
+ ],
+ "fitting.md": [
+  [
+   "Distributions of distances",
+   [
+    "fit_distance_distribution",
+    "compare_distance_distributions",
+    "DistributionFit",
+    "fit_values_to_truncated_powerlaw",
+    "log_truncated_powerlaw"
+   ]
+  ],
+  [
+   "Other laws",
+   [
+    "fit_visitation_law",
+    "VisitationLawFit",
+    "fit_daily_location_lognormal"
+   ]
+  ]
  ]
 }
