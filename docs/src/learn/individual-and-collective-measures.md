@@ -8,12 +8,12 @@ Individual measures describe each person; collective measures describe where and
 
 | Question | Start with | Unit |
 | --- | --- | --- |
-| How widely does each person range? | `radius_of_gyration`, `maximum_distance` | km |
-| How long are their trips and waits? | `jump_lengths`, `waiting_times` | km, seconds |
-| How many places, how evenly used? | `number_of_locations`, `uncorrelated_entropy` | count, bits |
-| Which places matter? | `frequency_rank`, `home_location`, `work_location` | places |
-| When do visits occur? | `visits_per_time_unit` (collective) | visits per interval |
-| Which origins and destinations connect? | `od_matrix` (collective) | trips |
+| How widely does each person range? | [`radius_of_gyration`](../reference/measures/individual.md#fastmob.measures.individual.radius_of_gyration), [`maximum_distance`](../reference/measures/individual.md#fastmob.measures.individual.maximum_distance) | km |
+| How long are their trips and waits? | [`jump_lengths`](../reference/measures/individual.md#fastmob.measures.individual.jump_lengths), [`waiting_times`](../reference/measures/individual.md#fastmob.measures.individual.waiting_times) | km, seconds |
+| How many places, how evenly used? | [`number_of_locations`](../reference/measures/individual.md#fastmob.measures.individual.number_of_locations), [`uncorrelated_entropy`](../reference/measures/individual.md#fastmob.measures.individual.uncorrelated_entropy) | count, bits |
+| Which places matter? | [`frequency_rank`](../reference/measures/individual.md#fastmob.measures.individual.frequency_rank), [`home_location`](../reference/measures/individual.md#fastmob.measures.individual.home_location), [`work_location`](../reference/measures/individual.md#fastmob.measures.individual.work_location) | places |
+| When do visits occur? | [`visits_per_time_unit`](../reference/measures/collective.md#fastmob.measures.collective.visits_per_time_unit) (collective) | visits per interval |
+| Which origins and destinations connect? | [`od_matrix`](../reference/measures/collective.md#fastmob.measures.collective.od_matrix) (collective) | trips |
 
 ## Choosing the input
 
@@ -26,4 +26,7 @@ Distances are straight lines in kilometres, times are seconds, and hour-of-day m
 ## Related API
 
 [Individual measures](../reference/measures/individual.md) ·
-[Collective measures](../reference/measures/collective.md)
+[Collective measures](../reference/measures/collective.md) ·
+[Evaluation measures](../reference/measures/evaluation.md)
+
+Worked examples: [Measure individual mobility](measure-individual-mobility.md), [Routine, predictability and mobility profiles](visit-based-measures.md) and [Population measures and flows](population-measures.md).
