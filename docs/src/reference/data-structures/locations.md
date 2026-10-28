@@ -29,6 +29,11 @@ also carry a user-ID column; global catalogues must not. The `scope` and `scheme
 metadata describe identity and whether IDs came from clustering, H3, or an
 external source.
 
+These are the default column names; pass `location_id_col`, `center_lat_col`,
+or `center_lng_col` to use other names. If `center_lng` is absent, longitude
+is detected from `center_lon`, `center_longitude`, `lng`, `lon`, or `longitude`,
+in that order. The source column name and data are preserved.
+
 ```python
 locations, assigned = staypoints.generate_user_locations(epsilon_km=0.1)
 labelled = locations.identify(assigned)

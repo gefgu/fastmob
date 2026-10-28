@@ -17,6 +17,23 @@ import pytest
 from fastmob import Locations, Positionfixes, Staypoints, Triplegs
 
 
+@pytest.mark.parametrize("longitude", ["center_lon", "center_longitude", "lng", "lon", "longitude"])
+def test_locations_detects_longitude_alias(longitude):
+    frame = pd.DataFrame({"location_id": [1], "center_lat": [2.0], longitude: [3.0]})
+    locations = Locations(frame)
+    assert locations.center_lng_col == longitude
+    assert locations.model_input().longitudes.to_pylist() == [3.0]
+    assert list(locations.df.columns) == list(frame.columns)
+
+
+def test_locations_longitude_precedence_and_override():
+    frame = pd.DataFrame({"location_id": [1], "center_lat": [2.0], "center_lng": [3.0], "center_lon": [4.0]})
+    assert Locations(frame).model_input().longitudes.to_pylist() == [3.0]
+    assert Locations(frame, center_lng_col="center_lon").model_input().longitudes.to_pylist() == [4.0]
+    with pytest.raises(ValueError, match="custom"):
+        Locations(frame, center_lng_col="custom")
+
+
 def _two_stop_rows(uid: str | None = "u1"):
     base = pd.Timestamp("2020-01-01 00:00:00")
     rows = []

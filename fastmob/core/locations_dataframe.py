@@ -53,11 +53,14 @@ class Locations(BaseDataFrame):
         Location-ID scheme. User locations default to ``"cluster"`` and
         global locations default to ``"external"``.
     location_id_col : str, optional
-        Column name overrides.
+        Location ID column name. Default is ``"location_id"``.
     center_lat_col : str, optional
-        Column name overrides.
+        Latitude column name. Default is ``"center_lat"``.
     center_lng_col : str, optional
-        Column name overrides.
+        Longitude column name. Default is ``"center_lng"``; if absent,
+        ``center_lon``, ``center_longitude``, ``lng``, ``lon``, and
+        ``longitude`` are tried in that order. Set this to select another
+        column explicitly.
     validate : bool, optional
         When True (default), check that required columns are present.
     """
@@ -74,6 +77,12 @@ class Locations(BaseDataFrame):
         validate: bool = True,
     ):
         super().__init__(df)
+        nw_df = nw.from_native(df, eager_only=True)
+        if center_lng_col == "center_lng" and center_lng_col not in nw_df.columns:
+            center_lng_col = next(
+                (col for col in ("center_lon", "center_longitude", "lng", "lon", "longitude") if col in nw_df.columns),
+                center_lng_col,
+            )
         self.uid_col = uid_col
         self.location_id_col = location_id_col
         self.center_lat_col = center_lat_col
@@ -89,7 +98,6 @@ class Locations(BaseDataFrame):
             raise ValueError("Locations scheme must be 'cluster', 'h3', or 'external'")
 
         if validate:
-            nw_df = nw.from_native(df, eager_only=True)
             required = [location_id_col, center_lat_col, center_lng_col]
             missing = [col for col in required if col not in nw_df.columns]
             if missing:
