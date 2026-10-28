@@ -32,7 +32,7 @@ def test_a_worse_model_scores_lower_and_missing_pairs_count_as_zero():
 
     assert scores["close"]["cpc"] > scores["far"]["cpc"]
     assert scores["close"]["pseudo_r_squared"] > scores["far"]["pseudo_r_squared"]
-    assert scores["far"]["n_pairs"] == 5  # 3 observed and 3 model pairs, one shared
+    assert scores["far"]["n_pairs"] == scores["close"]["n_pairs"] == 5  # one common set: the union of all the pairs
     assert scores["close"]["observed_flow"] == scores["close"]["model_flow"] == 22.0
 
 

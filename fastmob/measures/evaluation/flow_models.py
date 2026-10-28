@@ -56,10 +56,17 @@ def _ranks(values: np.ndarray) -> np.ndarray:
 def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Table:
     """Score one or several flow models against observed origin-destination flows.
 
-    Flows are compared over the union of the origin-destination pairs of the observed table and of each model,
-    leaving out self-loops; a pair that is missing from a table has flow 0 there. The Poisson deviance and
-    pseudo R-squared treat the flows as counts, so compare models whose total flow is on the scale of the
-    observed one (for example generated with the observed outflows).
+    Every model is scored on the same set of pairs: the union of the origin-destination pairs of the observed
+    table and of all the models, leaving out self-loops. A pair that is missing from a table has flow 0 there,
+    so the scores of different models can be compared with each other. The Poisson deviance and pseudo R-squared
+    treat the flows as counts, so compare models whose total flow is on the scale of the observed one (for
+    example generated with the observed outflows).
+
+    Two cautions. The common part of links (CPL) compares which pairs have flow. Expected flows
+    (``out_format="flows"``) are positive on every pair, so their CPL is fixed by the number of observed pairs and
+    says nothing about the model; use sampled (integer) flows for CPL. And a model that was fitted to the observed
+    flows is scored in-sample: compare it with a parameter-free model, or score it on flows that were held out,
+    before concluding that it is better.
 
     Parameters
     ----------
@@ -105,6 +112,20 @@ def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Ta
     if not all(isinstance(m, FlowDataFrame) for m in named.values()):
         raise TypeError("every model must be a FlowDataFrame")
     obs_pairs = _pairs(observed)
+    model_pairs = {name: _pairs(model) for name, model in named.items()}
+    universe = (
+        pa.concat_tables(
+            [obs_pairs.select(["origin", "destination"])]
+            + [t.select(["origin", "destination"]) for t in model_pairs.values()]
+        )
+        .group_by(["origin", "destination"])
+        .aggregate([])
+    )
+    observed_full = universe.join(
+        obs_pairs.rename_columns(["origin", "destination", "observed"]),
+        keys=["origin", "destination"],
+        join_type="left outer",
+    )
     out: dict[str, list] = {
         k: []
         for k in (
@@ -120,12 +141,11 @@ def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Ta
             "pseudo_r_squared",
         )
     }
-    for name, model in named.items():
-        pred_pairs = _pairs(model)
-        joined = obs_pairs.rename_columns(["origin", "destination", "observed"]).join(
+    for name, pred_pairs in model_pairs.items():
+        joined = observed_full.join(
             pred_pairs.rename_columns(["origin", "destination", "predicted"]),
             keys=["origin", "destination"],
-            join_type="full outer",
+            join_type="left outer",
         )
         y = np.nan_to_num(joined["observed"].to_numpy(zero_copy_only=False).astype(float))
         mu = np.nan_to_num(joined["predicted"].to_numpy(zero_copy_only=False).astype(float))

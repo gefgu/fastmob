@@ -110,3 +110,31 @@ def test_shifted_powerlaw_beats_the_truncated_one_when_there_is_no_cutoff():
     # The extra cutoff parameter buys nothing: the simpler model is within 2 AIC units or better.
     assert rows["shifted_powerlaw"]["aic"] - rows["truncated_powerlaw"]["aic"] < 2.0
     assert "kappa" in rows["truncated_powerlaw"]["at_bound"]
+
+
+def test_resampling_whole_groups_widens_the_interval_of_clustered_values():
+    rng = np.random.default_rng(9)
+    users = 40
+    shifts = rng.normal(0.0, 0.4, users)  # each user has their own typical distance
+    values = np.concatenate([rng.lognormal(1.0 + shift, 0.5, 200) for shift in shifts])
+    owner = np.repeat(np.arange(users), 200)
+
+    plain = fit_distance_distribution(values, "lognormal", n_bootstrap=60)
+    clustered = fit_distance_distribution(values, "lognormal", n_bootstrap=60, groups=owner)
+
+    assert clustered.std_errors["mu"] > 3 * plain.std_errors["mu"]
+    assert clustered.parameters == plain.parameters  # the estimate itself does not change
+
+
+def test_groups_must_match_the_values():
+    with pytest.raises(ValueError, match="groups"):
+        fit_distance_distribution(np.arange(1.0, 101.0), "lognormal", groups=[1, 2, 3])
+
+
+def test_a_parameter_at_its_bound_has_no_interval():
+    values = np.random.default_rng(10).pareto(1.2, 40_000) + 1.0
+    fit = fit_distance_distribution(values, "truncated_powerlaw", n_bootstrap=10)
+
+    assert "kappa" in fit.at_bound
+    assert np.isnan(fit.std_errors["kappa"]) and np.isnan(fit.ci_low["kappa"])
+    assert fit.summary().column("at_bound").to_pylist()[-1] is True

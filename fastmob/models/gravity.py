@@ -71,12 +71,12 @@ class Gravity:
 
         T_{ij} = O_i \\frac{m_j f(r_{ij})}{\\sum_k m_k f(r_{ik})}.
 
-    **Globally constrained variant.** Both origin and destination totals are fixed via
-    balancing factors :math:`K_i` and :math:`L_j`:
+    **Globally constrained variant.** Only the total flow of the whole system is fixed, through a
+    single constant :math:`K`:
 
     .. math::
 
-        T_{ij} = K_i O_i L_j D_j f(r_{ij}).
+        T_{ij} = K m_i^{a} m_j^{b} f(r_{ij}), \\qquad \\sum_{ij} T_{ij} = \\sum_i O_i.
 
     Parameters
     ----------
@@ -124,7 +124,7 @@ class Gravity:
     Examples
     --------
     >>> import pandas as pd
-    >>> import numpy as np
+    >>> from fastmob.core import Locations
     >>> from fastmob.models import Gravity
     >>> tessellation = pd.DataFrame({
     ...     "tile_id": [0, 1, 2, 3],
@@ -133,14 +133,13 @@ class Gravity:
     ...     "relevance": [1_000_000, 2_700_000, 880_000, 1_600_000],
     ...     "tot_outflow": [100_000, 250_000, 90_000, 150_000],
     ... })
-    >>> np.random.seed(0)
+    >>> locations = Locations.from_tessellation(tessellation, tile_id_col="tile_id", lat_col="lat", lng_col="lng")
     >>> gravity = Gravity(gravity_type="singly constrained")
     >>> print(gravity)
     Gravity(name="Gravity model", deterrence_func_type="power_law", deterrence_func_args=[-2.0], origin_exp=1.0, destination_exp=1.0, gravity_type="singly constrained")
-    >>> fdf = gravity.generate(tessellation, tile_id_column="tile_id",
-    ...                        tot_outflows_column="tot_outflow",
-    ...                        relevance_column="relevance", out_format="flows")
-    >>> print(fdf.head())
+    >>> flows = gravity.generate(locations, out_format="flows")
+    >>> int(round(flows.to_pandas()["flow"].sum()))
+    590000
 
     References
     ----------
@@ -317,7 +316,7 @@ class Gravity:
         ).to_native()
         return FlowDataFrame(frame, locations=locations, tile_id=locations.location_id_col)
 
-    def fit(self, flow_df, relevance_column=RELEVANCE, robust=True):
+    def fit(self, flow_df, relevance_column=RELEVANCE, robust=True, include_zeros=True):
         """Fit the Gravity model parameters to observed flows via Poisson regression.
 
         Uses a Generalised Linear Model (GLM) with a Poisson family and log link to
@@ -328,10 +327,10 @@ class Gravity:
         Parameters
         ----------
         flow_df : DataFrame with tessellation attribute
-            Observed flows. Must expose a ``.tessellation`` attribute (e.g. the
-            ``FlowDataFrame`` returned by ``Gravity.generate()`` or
-            ``Radiation.generate()``) and contain ``origin``, ``destination``, and
-            ``flow`` columns.
+            Observed flows. Must expose a ``.locations`` catalogue (for example a ``FlowDataFrame`` made with
+            ``locations=...``, or the one returned by ``Gravity.generate()``) and contain ``origin``,
+            ``destination`` and ``flow`` columns. List only the pairs with flow: the pairs without flow are
+            added as zeros (see ``include_zeros``).
         relevance_column : str, optional
             Name of the column in ``flow_df.tessellation`` that holds the location
             relevance (e.g. population). The default is ``"relevance"``.
@@ -339,6 +338,22 @@ class Gravity:
             Report heteroskedasticity-robust (sandwich) standard errors and confidence intervals. Real flows are
             usually overdispersed relative to the Poisson model, which makes the model-based errors too small;
             the point estimates are the same either way. Default True.
+        include_zeros : bool, optional
+            Add every pair of locations that is missing from ``flow_df`` as a flow of 0. Tables of observed flows,
+            such as the output of `trajectory_to_od`, list only the pairs with flow, and fitting those alone
+            biases the distance coefficient towards zero because the long pairs that nobody travels are missing
+            (Santos Silva and Tenreyro, 2006). The added pairs are the off-diagonal pairs of the catalogue whose
+            origin has at least one observed flow. This needs memory for the square of the number of locations;
+            pass False for catalogues of many thousand locations where the table is already complete.
+            Default True.
+        Raises
+        ------
+        ImportError
+            If statsmodels is not installed.
+        AttributeError
+            If ``flow_df`` has no ``locations`` catalogue.
+        ValueError
+            If the design matrix is rank-deficient (too few distinct origins or distances).
 
         Notes
         -----
@@ -349,13 +364,17 @@ class Gravity:
         p-values, and `fit_statistics` the number of flows used, the log-likelihood, the deviance, the
         pseudo R-squared and the dispersion. For ``"power_law"`` the distance coefficient is the exponent
         ``gamma`` of ``flow ∝ distance^gamma`` (negative: flows fall with distance); for ``"exponential"``
-        the table reports the decay rate ``lambda`` of ``exp(-lambda * distance)`` in km^-1.
+        the table reports the decay rate ``lambda`` of ``exp(-lambda * distance)`` in km^-1 (positive: flows fall with
+        distance). Relevance that is itself made of the flows (for example check-ins counted in the destination)
+        makes the destination exponent partly circular; prefer an independent size such as population or jobs.
 
         References
         ----------
         .. [FM1982] Flowerdew, R. & Murray, A. (1982). A method of fitting the gravity
            model based on the Poisson distribution. *Journal of Regional Science*,
            22(2), 191–202.
+        .. [ST2006] Santos Silva, J. M. C. & Tenreyro, S. (2006). The log of gravity.
+           *The Review of Economics and Statistics*, 88(4), 641–658.
         """
         try:
             import statsmodels as sm
@@ -369,17 +388,23 @@ class Gravity:
         self.lats_lngs = np.column_stack((np.asarray(prepared.latitudes), np.asarray(prepared.longitudes)))
         self.weights = np.asarray(prepared.values(relevance_column), dtype=float)
         self.tileid2index = {tileid: i for i, tileid in enumerate(prepared.location_ids().to_list())}
-        self.X, self.y = [], []
+        self.X, self.y, self._pairs = [], [], []
 
         for flow_example in nw.from_native(flow_df.df, eager_only=True).iter_rows(named=True):
             self._update_training_set(flow_example)
 
         design = np.asarray(self.X, dtype=float)
+        response = list(self.y)
+        if include_zeros and self._pairs:
+            extra = self._zero_rows()
+            if extra.size:
+                design = np.vstack([design, extra])
+                response += [0.0] * len(extra)
         design = design[:, design.any(axis=0)]  # an origin with no observed flow has an all-zero dummy
         if self._gravity_type != "globally constrained":
             design = design[:, 1:]  # the origin dummies already span the intercept
         poisson_model = GLM(
-            self.y,
+            response,
             design,
             family=sm.genmod.families.family.Poisson(
                 link=getattr(sm.genmod.families.links, "Log", sm.genmod.families.links.log)()
@@ -404,6 +429,33 @@ class Gravity:
             self._deterrence_func_args = [poisson_results.params[-1]]
         del self.X
         del self.y
+        del self._pairs
+
+    def _zero_rows(self):
+        """Design rows of the pairs with no observed flow, among origins that have at least one."""
+        n = len(self.weights)
+        seen = np.asarray(self._pairs)
+        missing = np.ones((n, n), dtype=bool)
+        missing[seen[:, 0], seen[:, 1]] = False
+        np.fill_diagonal(missing, False)
+        has_flow = np.zeros(n, dtype=bool)
+        has_flow[seen[:, 0]] = True
+        missing &= has_flow[:, None] & (self.weights > 0)[None, :]
+        if self._gravity_type == "globally constrained":
+            missing &= (self.weights > 0)[:, None]
+        origin, destination = np.nonzero(missing)
+        lat1, lng1 = np.radians(self.lats_lngs[origin]).T
+        lat2, lng2 = np.radians(self.lats_lngs[destination]).T
+        a = np.sin((lat2 - lat1) / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin((lng2 - lng1) / 2) ** 2
+        distance = 2.0 * 6371.0088 * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
+        keep = distance > 0
+        origin, destination, distance = origin[keep], destination[keep], distance[keep]
+        if self._gravity_type == "globally constrained":
+            origin_terms = np.log(self.weights[origin])[:, None]
+        else:
+            origin_terms = np.eye(n)[origin]
+        distance_term = -distance if self._deterrence_func_type == "exponential" else np.log(distance)
+        return np.column_stack([np.ones(len(origin)), origin_terms, np.log(self.weights[destination]), distance_term])
 
     def _store_fit(self, results, robust):
         """Keep the summary table and the fit statistics of the Poisson regression."""
@@ -415,10 +467,10 @@ class Gravity:
         interval = np.asarray(results.conf_int())
         rows = {"parameter": [], "estimate": [], "std_error": [], "ci_low": [], "ci_high": [], "p_value": []}
         for name, i in zip(names, positions):
-            flip = -1.0 if name == "distance_coefficient" and self._deterrence_func_type == "exponential" else 1.0
-            low, high = sorted((flip * interval[i, 0], flip * interval[i, 1]))
-            rows["parameter"].append("distance_decay" if flip < 0 else name)
-            rows["estimate"].append(float(flip * results.params[i]))
+            decay = name == "distance_coefficient" and self._deterrence_func_type == "exponential"
+            low, high = interval[i, 0], interval[i, 1]
+            rows["parameter"].append("distance_decay" if decay else name)
+            rows["estimate"].append(float(results.params[i]))
             rows["std_error"].append(float(results.bse[i]))
             rows["ci_low"].append(float(low))
             rows["ci_high"].append(float(high))
@@ -442,7 +494,7 @@ class Gravity:
         pyarrow.Table
             One row per model parameter with ``parameter``, ``estimate``, ``std_error``, ``ci_low``,
             ``ci_high`` (95%) and ``p_value``. For the exponential deterrence function the distance row is
-            ``distance_decay``, the decay rate in km^-1; otherwise ``distance_coefficient`` is the exponent of
+            ``distance_decay``, the decay rate lambda of ``exp(-lambda * distance)`` in km^-1; otherwise ``distance_coefficient`` is the exponent of
             the distance.
 
         Raises
@@ -499,3 +551,4 @@ class Gravity:
         else:
             self.X += [[1.0] + sc_vars + [np.log(weight_destination), np.log(dist)]]
         self.y += [float(trips)]
+        self._pairs.append((self.tileid2index[id_origin], self.tileid2index[id_destination]))

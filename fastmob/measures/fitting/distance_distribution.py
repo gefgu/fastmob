@@ -194,9 +194,9 @@ class DistributionFit:
     parameters : dict
         Maximum-likelihood estimates by name.
     std_errors : dict
-        Bootstrap standard errors (NaN when ``n_bootstrap=0``).
+        Bootstrap standard errors (NaN when ``n_bootstrap=0`` and for parameters at a bound).
     ci_low : dict
-        Lower bounds of the percentile bootstrap confidence intervals.
+        Lower bounds of the percentile bootstrap confidence intervals (NaN as for ``std_errors``).
     ci_high : dict
         Upper bounds of the percentile bootstrap confidence intervals.
     confidence : float
@@ -319,16 +319,23 @@ class DistributionFit:
         )
 
 
-def _positive_values(values: Any) -> np.ndarray:
+def _prepare(
+    values: Any, xmin: float | None, xmax: float | None, bins: int, groups: Any = None
+) -> tuple[np.ndarray, int, float, float, np.ndarray | None]:
     if hasattr(values, "to_numpy"):
         values = values.to_numpy()
-    array = np.asarray(values, dtype=float).ravel()
-    return array[np.isfinite(array)]
-
-
-def _prepare(values: Any, xmin: float | None, xmax: float | None, bins: int) -> tuple[np.ndarray, int, float, float]:
-    array = _positive_values(values)
-    positive = array[array > 0]
+    raw = np.asarray(values, dtype=float).ravel()
+    label = None
+    if groups is not None:
+        label = np.asarray(groups.to_numpy() if hasattr(groups, "to_numpy") else groups).ravel()
+        if len(label) != len(raw):
+            raise ValueError("groups must have one entry per value")
+    finite = np.isfinite(raw)
+    array = raw[finite]
+    label = label[finite] if label is not None else None
+    keep = array > 0
+    positive = array[keep]
+    label = label[keep] if label is not None else None
     if positive.size < 20:
         raise ValueError("At least 20 positive finite values are needed to fit a distribution")
     lo = float(positive.min()) if xmin is None else float(xmin)
@@ -337,12 +344,19 @@ def _prepare(values: Any, xmin: float | None, xmax: float | None, bins: int) -> 
         raise ValueError("xmin and xmax must satisfy 0 < xmin < xmax")
     if bins < 10:
         raise ValueError("bins must be at least 10")
-    inside = positive[(positive >= lo) & (positive <= hi)]
+    in_range = (positive >= lo) & (positive <= hi)
+    inside = positive[in_range]
     if inside.size < 20:
         raise ValueError("Fewer than 20 values lie inside [xmin, xmax]")
     edges = np.geomspace(lo, hi, bins + 1)
     counts, _ = np.histogram(inside, bins=edges)
-    return counts.astype(float), int(array.size - inside.size), lo, hi
+    per_group = None
+    if label is not None:
+        codes = np.unique(label[in_range], return_inverse=True)[1]
+        which = np.clip(np.searchsorted(edges, inside, side="right") - 1, 0, bins - 1)
+        per_group = np.zeros((codes.max() + 1, bins))
+        np.add.at(per_group, (codes, which), 1.0)
+    return counts.astype(float), int(array.size - inside.size), lo, hi, per_group
 
 
 def _starts(specs: list[_Param], rng: np.random.Generator, n: int = 6) -> list[np.ndarray]:
@@ -359,6 +373,7 @@ def fit_distance_distribution(
     n_bootstrap: int = 100,
     confidence: float = 0.95,
     n_gof: int = 0,
+    groups: Any = None,
     max_cutoff: float | None = None,
     random_state: int | None = 0,
 ) -> DistributionFit:
@@ -366,8 +381,9 @@ def fit_distance_distribution(
 
     The values are grouped into geometric bins on ``[xmin, xmax]`` and the family is fitted by maximising the
     multinomial log-likelihood of the bin counts. The confidence intervals are percentile intervals of a
-    bootstrap of the bin counts, and, when ``n_gof`` is positive, a parametric bootstrap gives a p-value for
-    the Kolmogorov-Smirnov distance. Values that are zero, negative, not finite or outside the range are left
+    bootstrap of the bin counts, which treats the values as independent: when they come from a limited number
+    of people pass ``groups`` so that whole people are resampled. When ``n_gof`` is positive, a parametric
+    bootstrap gives a p-value for the Kolmogorov-Smirnov distance. Values that are zero, negative, not finite or outside the range are left
     out and counted in ``n_excluded``, so state the range when you report a fit: the estimates depend on it.
 
     The families are ``f(x) ∝ x^-beta`` (``"powerlaw"``), ``exp(-x / kappa)`` (``"exponential"``),
@@ -397,7 +413,12 @@ def fit_distance_distribution(
     confidence : float, optional
         Confidence level of the intervals, between 0 and 1. Default 0.95.
     n_gof : int, optional
-        Parametric-bootstrap replicates for the goodness-of-fit p-value; 0 skips it. Default 0.
+        Parametric-bootstrap replicates for the goodness-of-fit p-value; 0 skips it. Default 0. The test treats
+        the values as independent, so with clustered values (many jumps per user) it is too optimistic.
+    groups : array-like, optional
+        One label per value (for example the user id of each jump). When given, the bootstrap for the standard
+        errors and intervals resamples whole groups instead of single values, which widens the intervals when
+        the values of a group are alike. Use it whenever the values come from a limited number of people.
     max_cutoff : float, optional
         Largest value that ``kappa`` can take. Default ten times ``xmax``.
     random_state : int, optional
@@ -433,7 +454,7 @@ def fit_distance_distribution(
     """
     if not 0 < confidence < 1:
         raise ValueError("confidence must be between 0 and 1")
-    counts, excluded, lo, hi = _prepare(values, xmin, xmax, bins)
+    counts, excluded, lo, hi, per_group = _prepare(values, xmin, xmax, bins, groups)
     cutoff = float(max_cutoff) if max_cutoff is not None else 10.0 * hi
     specs = _specs(family, lo, hi, cutoff)
     grid = _Grid(lo, hi, bins)
@@ -451,7 +472,10 @@ def fit_distance_distribution(
     if n_bootstrap > 0:
         draws = np.empty((n_bootstrap, k))
         for b in range(n_bootstrap):
-            resampled = rng.multinomial(n, counts / n).astype(float)
+            if per_group is None:
+                resampled = rng.multinomial(n, counts / n).astype(float)
+            else:  # resample whole groups (for example users), as their values are not independent
+                resampled = per_group[rng.integers(0, len(per_group), len(per_group))].sum(axis=0)
             ub, _ = _fit_counts(family, specs, grid, resampled, [u], step=0.1, max_iter=200)
             draws[b] = _to_params(ub, specs)
         alpha = (1.0 - confidence) / 2.0
@@ -471,6 +495,8 @@ def fit_distance_distribution(
 
     positions = {s.name: _position(params[i], s) for i, s in enumerate(specs)}
     at_bound = tuple(name for name, pos in positions.items() if pos < _BOUND_MARGIN or pos > 1 - _BOUND_MARGIN)
+    for name in at_bound:  # a parameter on the edge of its range has no meaningful error or interval
+        std_errors[name] = ci_low[name] = ci_high[name] = math.nan
     return DistributionFit(
         family=family,
         parameters={s.name: float(params[i]) for i, s in enumerate(specs)},
