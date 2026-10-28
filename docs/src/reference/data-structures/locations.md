@@ -14,12 +14,12 @@ collective analysis explicit.
 <!-- api-table:start -->
 | API | Description | Example |
 | --- | --- | --- |
-| [`Locations`](#fastmob.core.locations_dataframe.Locations) | One row per location in either a user or global scope. |  |
-| [`from_tessellation`](#fastmob.core.locations_dataframe.Locations.from_tessellation) | Convert a legacy tessellation into a global location catalogue. | [Fit and run a gravity model](../../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
-| [`identify`](#fastmob.core.locations_dataframe.Locations.identify) | Label each location as `"home"`, `"work"`, or `"other"`. | [Build the visits](../../learn/motifs.md#build-the-visits) |
-| [`model_input`](#fastmob.core.locations_dataframe.Locations.model_input) | Return the validated Arrow-ready input used by spatial models. | [City-wide places instead of per-person places](../../learn/trajectory-hierarchy.md#city-wide-places-instead-of-per-person-places) |
-| [`require_global`](#fastmob.core.locations_dataframe.Locations.require_global) | Return validated global locations as a Narwhals eager dataframe. | [City-wide places instead of per-person places](../../learn/trajectory-hierarchy.md#city-wide-places-instead-of-per-person-places) |
-| [`validate_staypoint_assignments`](#fastmob.core.locations_dataframe.Locations.validate_staypoint_assignments) | Validate non-null staypoint location identities against this catalogue. | [Checking inputs](../../learn/trajectory-hierarchy.md#checking-inputs) |
+| [`Locations`](#fastmob.core.locations_dataframe.Locations) | One row per location in either a user or global scope. | [Fit and run a gravity model](../../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
+| [`Locations.from_tessellation`](#fastmob.core.locations_dataframe.Locations.from_tessellation) | Convert a legacy tessellation into a global location catalogue. | [Fit and run a gravity model](../../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
+| [`Locations.identify`](#fastmob.core.locations_dataframe.Locations.identify) | Label each location as `"home"`, `"work"`, or `"other"`. | [Build the visits](../../learn/motifs.md#build-the-visits) |
+| [`Locations.model_input`](#fastmob.core.locations_dataframe.Locations.model_input) | Return the validated Arrow-ready input used by spatial models. | [City-wide places instead of per-person places](../../learn/trajectory-hierarchy.md#city-wide-places-instead-of-per-person-places) |
+| [`Locations.require_global`](#fastmob.core.locations_dataframe.Locations.require_global) | Return validated global locations as a Narwhals eager dataframe. | [City-wide places instead of per-person places](../../learn/trajectory-hierarchy.md#city-wide-places-instead-of-per-person-places) |
+| [`Locations.validate_staypoint_assignments`](#fastmob.core.locations_dataframe.Locations.validate_staypoint_assignments) | Validate non-null staypoint location identities against this catalogue. | [Checking inputs](../../learn/trajectory-hierarchy.md#checking-inputs) |
 <!-- api-table:end -->
 
 ## Required data

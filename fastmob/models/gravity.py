@@ -365,7 +365,9 @@ class Gravity:
         poisson_model = GLM(
             self.y,
             self.X,
-            family=sm.genmod.families.family.Poisson(link=sm.genmod.families.links.log()),
+            family=sm.genmod.families.family.Poisson(
+                link=getattr(sm.genmod.families.links, "Log", sm.genmod.families.links.log)()
+            ),
         )
         poisson_results = poisson_model.fit()
         if self._gravity_type == "globally constrained":

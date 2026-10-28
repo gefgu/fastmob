@@ -2,7 +2,9 @@
 icon: lucide/users-round
 ---
 
-# Collective Measures
+# Collective measures
+
+Collective measures describe where and when a whole population moves: homes and visits per place, visits over time, origin-destination flows, entropy of places and spatio-temporal occupancy. For a guided introduction see [Measuring people and populations](../../learn/individual-and-collective-measures.md); worked examples are in [Population measures and flows](../../learn/population-measures.md).
 
 <!-- api-table:start -->
 | API | Description | Example |

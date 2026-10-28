@@ -59,9 +59,22 @@ class RoadNetwork:
         the distance is the length of that route, which is not always the
         shortest possible distance.
 
-        Returns ``(distances_m, connected)``, ``connected`` as a bool array;
-        `False` for negative/unsnapped node ids or a disconnected graph
-        component (fall back to straight-line Haversine in that case).
+        Parameters
+        ----------
+        from_nodes : array-like of int
+            Node indexes (``node_idx``) of the origins. Negative ids mean an
+            unsnapped point.
+        to_nodes : array-like of int
+            Node indexes of the destinations, one per origin.
+
+        Returns
+        -------
+        distances_m : pyarrow.Array
+            Route length in metres for each pair.
+        connected : pyarrow.Array
+            Boolean array. ``False`` for negative or unsnapped node ids and for
+            pairs in disconnected parts of the graph; fall back to the
+            straight-line (Haversine) distance for those.
         """
         distances, connected = self._handle.batch_distances(
             pa.array(from_nodes, type=pa.int64()), pa.array(to_nodes, type=pa.int64())

@@ -9,7 +9,7 @@
 | [`load_geolife`](#fastmob.data.load_geolife) | Load GPS trajectories of selected GeoLife users, downloading only what is needed. | [Load the data](../learn/clean-and-detect-stops.md#load-the-data) |
 | [`load_brightkite`](#fastmob.data.load_brightkite) | Load Brightkite location check-ins, downloading only the rows requested. | [Load and clean](../learn/compare-to-mobility-laws.md#load-and-clean) |
 | [`DatasetBuilder`](#fastmob.data.DatasetBuilder) | Base class for dataset-specific builders. |  |
-| [`prepare`](#fastmob.data.DatasetBuilder.prepare) | Turn the downloaded files (a list of paths) into the dataset object; implemented by each dataset builder. |  |
+| [`DatasetBuilder.prepare`](#fastmob.data.DatasetBuilder.prepare) | Turn the downloaded files (a list of paths) into the dataset object; implemented by each dataset builder. |  |
 <!-- api-table:end -->
 
 ## Datasets

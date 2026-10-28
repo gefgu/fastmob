@@ -13,11 +13,11 @@ it suitable for mode classification and trip aggregation.
 <!-- api-table:start -->
 | API | Description | Example |
 | --- | --- | --- |
-| [`Triplegs`](#fastmob.core.triplegs_dataframe.Triplegs) | One row per tripleg (a movement segment between two staypoints). |  |
-| [`calculate_modal_split`](#fastmob.core.triplegs_dataframe.Triplegs.calculate_modal_split) | Aggregate this `mode`-labeled table into a modal-split table. | [Movement between stops](../../learn/trajectory-hierarchy.md#movement-between-stops-triplegs-and-transport-mode) |
-| [`from_positionfixes`](#fastmob.core.triplegs_dataframe.Triplegs.from_positionfixes) | Derive triplegs from positionfixes + already-generated staypoints. | [The same pipeline, step by step](../../learn/trajectory-hierarchy.md#the-same-pipeline-step-by-step) |
-| [`generate_trips`](#fastmob.core.triplegs_dataframe.Triplegs.generate_trips) | Group consecutive triplegs into trips. | [Trips and tours](../../learn/trajectory-hierarchy.md#trips-and-tours) |
-| [`predict_transport_mode`](#fastmob.core.triplegs_dataframe.Triplegs.predict_transport_mode) | Classify each tripleg's transport mode from its average speed. | [Movement between stops](../../learn/trajectory-hierarchy.md#movement-between-stops-triplegs-and-transport-mode) |
+| [`Triplegs`](#fastmob.core.triplegs_dataframe.Triplegs) | One row per tripleg (a movement segment between two staypoints). | [Movement between stops](../../learn/trajectory-hierarchy.md#movement-between-stops-triplegs-and-transport-mode) |
+| [`Triplegs.calculate_modal_split`](#fastmob.core.triplegs_dataframe.Triplegs.calculate_modal_split) | Aggregate this `mode`-labeled table into a modal-split table. | [Movement between stops](../../learn/trajectory-hierarchy.md#movement-between-stops-triplegs-and-transport-mode) |
+| [`Triplegs.from_positionfixes`](#fastmob.core.triplegs_dataframe.Triplegs.from_positionfixes) | Derive triplegs from positionfixes + already-generated staypoints. | [The same pipeline, step by step](../../learn/trajectory-hierarchy.md#the-same-pipeline-step-by-step) |
+| [`Triplegs.generate_trips`](#fastmob.core.triplegs_dataframe.Triplegs.generate_trips) | Group consecutive triplegs into trips. | [Trips and tours](../../learn/trajectory-hierarchy.md#trips-and-tours) |
+| [`Triplegs.predict_transport_mode`](#fastmob.core.triplegs_dataframe.Triplegs.predict_transport_mode) | Classify each tripleg's transport mode from its average speed. | [Movement between stops](../../learn/trajectory-hierarchy.md#movement-between-stops-triplegs-and-transport-mode) |
 <!-- api-table:end -->
 
 ## Required data

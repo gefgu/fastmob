@@ -71,9 +71,18 @@ def entries_for(target: str, obj) -> list[tuple[str, object]]:
 def table(page: Path, examples: dict) -> str:
     base = Path("../" * (len(page.relative_to(REF).parts)))  # from the page to docs/src/reference/..
     lines = ["| API | Description | Example |", "| --- | --- | --- |"]
-    for path, obj in entries(page):
+    rows = entries(page)
+    for path, obj in rows:
         name = path.rsplit(".", 1)[-1]
+        qualname = getattr(obj, "__qualname__", "")
+        if not inspect.isclass(obj) and "." in qualname and "<locals>" not in qualname:
+            name = ".".join(qualname.split(".")[-2:])  # a method row carries its class
         ex = examples.get(canonical(obj))
+        if ex is None and inspect.isclass(obj):  # a class row shows the first example of its methods
+            ex = next(
+                (examples[canonical(o)] for p2, o in rows if p2.startswith(path + ".") and canonical(o) in examples),
+                None,
+            )
         link = f"[{ex['title'].split(':')[0]}]({base / ex['page']}#{ex['anchor']})" if ex else ""
         lines.append(f"| [`{name}`](#{path}) | {summary(obj)} | {link} |")
     return "\n".join(lines)

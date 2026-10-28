@@ -327,9 +327,11 @@ class EPR:
 class DensityEPR(EPR):
     """Density-EPR (d-EPR) trajectory generator.
 
-    The d-EPR model extends `EPR` by weighting exploratory moves according
-    to a gravity model that accounts for location relevance (e.g. population
-    density) [PSRPGB2015] [PSR2016]. The four mechanisms are:
+    The d-EPR model weights exploratory moves according to a gravity model that
+    accounts for location relevance (e.g. population density) [PSRPGB2015]
+    [PSR2016]. `EPR` explores with the same gravity score, so `DensityEPR` and
+    `EPR` produce the same trajectories for equal inputs and seed; this class is
+    provided under the name used in the literature. The four mechanisms are:
 
     **Waiting time choice.** The waiting time :math:`\\Delta t` between two moves
     is drawn from :math:`P(\\Delta t) \\sim \\Delta t^{-1-\\beta} \\exp(-\\Delta t/\\tau)`.

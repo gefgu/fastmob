@@ -21,7 +21,7 @@ def random_location_entropy(
 
     Random location entropy is \\(\\log_2(n)\\), where \\(n\\) is the number of
     distinct users who visited the location.  A location is a unique exact
-    ``(lat, lng)`` pair — matching the skmob convention.
+    ``(lat, lng)`` pair, as in scikit-mobility.
 
     Parameters
     ----------

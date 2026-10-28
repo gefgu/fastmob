@@ -158,8 +158,52 @@ def match_trajectory(
 ) -> pa.Table:
     """Map-match a trajectory with a directed-edge HMM/Viterbi model.
 
-    Results are Arrow-native and preserve input row order. Independent user
-    trajectories are evaluated concurrently; a user sequence is sequential.
+    Chooses, for every GPS fix, the most likely road segment given the fix's
+    distance to nearby segments and the route needed to travel between
+    consecutive fixes. Results are Arrow-native and preserve input row order.
+    Independent users are matched concurrently; one user's fixes are matched in
+    sequence, and the sequence restarts after a time gap or an impossible move.
+
+    Parameters
+    ----------
+    traj : DataFrame
+        Trajectory table (any eager dataframe) with latitude, longitude and
+        datetime columns, and optionally a user column.
+    network : RoadNetwork
+        A prepared road network (see `RoadNetwork.build`).
+    uid_col : str, optional
+        Column name; auto-detected when ``None``.
+    datetime_col : str, optional
+        Column name; auto-detected when ``None``.
+    lat_col : str, optional
+        Column name; auto-detected when ``None``.
+    lng_col : str, optional
+        Column name; auto-detected when ``None``.
+    candidate_radius_m : float, optional
+        Segments within this distance (metres) of a fix are candidates.
+        Default 75.
+    max_candidates : int, optional
+        Most candidate segments kept per fix, nearest first. Default 8.
+    gps_sigma_m : float, optional
+        Assumed standard deviation of the GPS error, in metres: larger values
+        trust the fix less and the route more. Default 20.
+    gap_seconds : float, optional
+        A time gap longer than this between consecutive fixes starts a new
+        sequence. Default 1800 (30 minutes).
+    max_transition_speed_kmh : float, optional
+        A move that would need a higher speed than this between consecutive
+        fixes is not allowed. Default 180.
+
+    Returns
+    -------
+    pyarrow.Table
+        The input columns plus ``matched_edge_from`` and ``matched_edge_to`` (node
+        indexes of the matched segment), ``matched_fraction`` (position along the
+        segment, 0 to 1), ``matched_lat`` and ``matched_lng`` (the projected
+        point), ``distance_to_road_m`` (distance from the fix to the matched point),
+        ``match_status`` (``"matched"``, ``"gap_start"`` for the first fix of a
+        sequence, or ``"unmatched"`` when no candidate was found) and
+        ``match_score`` (the model's log score; larger is better).
     """
     df = nw.from_native(unwrap_native(traj), eager_only=True)
     datetime_col, lat_col, lng_col, detected_uid = _detect_trajectory_columns(

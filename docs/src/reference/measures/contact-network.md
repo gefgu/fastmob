@@ -46,14 +46,14 @@ Arrow-backed event graphs for independent inspection.
 | --- | --- | --- |
 | [`RecastClass`](#fastmob.social.RecastClass) | Relationship classes defined by RECAST Algorithm 1. |  |
 | [`RecastResult`](#fastmob.social.RecastResult) | Classification arrays aligned one-for-one with aggregate observed edges. |  |
-| [`mask`](#fastmob.social.RecastResult.mask) | Return a boolean array that is true for the contacts classified as `relationship`. |  |
+| [`RecastResult.mask`](#fastmob.social.RecastResult.mask) | Return a boolean array that is true for the contacts classified as `relationship`. |  |
 | [`RecastTemporalGraph`](#fastmob.social.RecastTemporalGraph) | Packed Arrow event graphs; offsets delimit the edges for each day. |  |
-| [`event`](#fastmob.social.RecastTemporalGraph.event) | Return the contact graph of time step `index` (one day), raising `IndexError` if out of range. |  |
+| [`RecastTemporalGraph.event`](#fastmob.social.RecastTemporalGraph.event) | Return the contact graph of time step `index` (one day), raising `IndexError` if out of range. |  |
 | [`RecastValidation`](#fastmob.social.RecastValidation) | Section 4/5 RECAST validation artifacts, all in Arrow arrays. |  |
 | [`recast_from_staypoints`](#fastmob.social.recast_from_staypoints) | Classify contacts as Friends, Bridges, Acquaintances or Random (the RECAST method). | [Classify the contacts](../../learn/contact-networks.md#classify-the-contacts-friends-bridges-acquaintances-random) |
 | [`validate_recast_from_staypoints`](#fastmob.social.validate_recast_from_staypoints) | Run the RECAST classifier and return it together with the validation distributions. | [Look inside](../../learn/contact-networks.md#look-inside-daily-graphs-and-their-randomisation) |
 | [`NetworkGraph`](#fastmob.social.NetworkGraph) | An undirected graph stored as sorted, dense integer edge arrays. |  |
-| [`degrees`](#fastmob.social.NetworkGraph.degrees) | Return the number of contacts of each node, as an integer array of length `node_count`. |  |
+| [`NetworkGraph.degrees`](#fastmob.social.NetworkGraph.degrees) | Return the number of contacts of each node, as an integer array of length `node_count`. |  |
 | [`ContactNetworkResult`](#fastmob.social.ContactNetworkResult) | Daily RECAST event graphs plus their raw aggregate contact network. |  |
 | [`co_presence_graph_from_staypoints`](#fastmob.social.co_presence_graph_from_staypoints) | Build the aggregate contact network from the co-presence of users at the same location. | [Build the contact network](../../learn/contact-networks.md#build-the-contact-network) |
 | [`clustering_coefficients`](#fastmob.social.clustering_coefficients) | Return the local clustering coefficient of every node. | [Structure](../../learn/contact-networks.md#structure-clustering-and-neighbourhood-overlap) |

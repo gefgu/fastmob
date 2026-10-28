@@ -138,7 +138,7 @@ def test_reference_example_links_point_at_existing_notebook_sections():
 
 
 def test_learn_notebooks_pin_the_minimum_release():
-    pins = {re.search(r"fastmob>=([0-9.]+)", p.read_text()).group(1) for p in _learn_notebooks()}
+    pins = {re.search(r"fastmob(?:\[\w+\])?>=([0-9.]+)", p.read_text()).group(1) for p in _learn_notebooks()}
     cargo = (ROOT / "fastmob-py" / "Cargo.toml").read_text()
     version = re.search(r'^version = "([^"]+)"', cargo, re.MULTILINE).group(1)
     assert len(pins) == 1, f"notebooks disagree on the minimum fastmob version: {pins}"

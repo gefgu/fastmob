@@ -158,6 +158,20 @@ def fetch_road_network(
 ) -> tuple[pa.Table, pa.Table]:
     """Fetch and build a car-routable graph from Overture road segments.
 
+    Parameters
+    ----------
+    min_lon : float
+        Western edge of the bounding box, in decimal degrees.
+    min_lat : float
+        Southern edge of the bounding box, in decimal degrees.
+    max_lon : float
+        Eastern edge of the bounding box, in decimal degrees.
+    max_lat : float
+        Northern edge of the bounding box, in decimal degrees.
+    overture_release : str
+        Overture Maps release to read, as listed in the public bucket, for
+        example ``"2025-06-25.0"``. Overture removes old releases.
+
     Returns
     -------
     nodes_df

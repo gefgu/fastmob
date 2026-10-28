@@ -7,10 +7,10 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 <!-- api-table:start -->
 | API | Description | Example |
 | --- | --- | --- |
-| [`RoadNetwork`](#fastmob.network.RoadNetwork) | A road (or rail) network prepared once (contraction hierarchy) and reused for many point-to-point physical-distance queries. |  |
-| [`batch_distances`](#fastmob.network.RoadNetwork.batch_distances) | Batch route-length (metres) query for `(from_node, to_node)` pairs. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
-| [`batch_routes`](#fastmob.network.RoadNetwork.batch_routes) | Batch route-geometry query for `(from_node, to_node)` pairs. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
-| [`build`](#fastmob.network.RoadNetwork.build) | Prepare a contraction hierarchy from a road/rail graph's edges. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
+| [`RoadNetwork`](#fastmob.network.RoadNetwork) | A road (or rail) network prepared once (contraction hierarchy) and reused for many point-to-point physical-distance queries. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
+| [`RoadNetwork.batch_distances`](#fastmob.network.RoadNetwork.batch_distances) | Batch route-length (metres) query for `(from_node, to_node)` pairs. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
+| [`RoadNetwork.batch_routes`](#fastmob.network.RoadNetwork.batch_routes) | Batch route-geometry query for `(from_node, to_node)` pairs. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
+| [`RoadNetwork.build`](#fastmob.network.RoadNetwork.build) | Prepare a contraction hierarchy from a road/rail graph's edges. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
 | [`fetch_road_network`](#fastmob.network.fetch_road_network) | Fetch and build a car-routable graph from Overture road segments. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
 | [`build_road_graph`](#fastmob.network.build_road_graph) | Load a saved road graph from disk, or fetch it from Overture Maps and save it. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
 | [`fetch_rail_network`](#fastmob.network.fetch_rail_network) | Fetch rail segments from Overture Maps and build a bidirectional rail graph. | [Rail network](../learn/road-network-analysis.md#rail-network) |
@@ -24,7 +24,7 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 <!-- api-table:end -->
 
 `fetch_road_network` and `fetch_rail_network` require DuckDB: install it with
-`pip install duckdb`. Snapping uses Fastmob's native Rust spatial index and
+`pip install duckdb`. Snapping uses Fastkit-Mobility's native Rust spatial index and
 has no additional Python dependency.
 
 ## Network-aware distance measures

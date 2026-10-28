@@ -13,8 +13,8 @@ and can contain multiple trips.
 <!-- api-table:start -->
 | API | Description | Example |
 | --- | --- | --- |
-| [`Tours`](#fastmob.core.tours_dataframe.Tours) | One row per tour (a sequence of trips returning to its starting location). |  |
-| [`from_trips`](#fastmob.core.tours_dataframe.Tours.from_trips) | Group consecutive trips into tours. | [The same pipeline, step by step](../../learn/trajectory-hierarchy.md#the-same-pipeline-step-by-step) |
+| [`Tours`](#fastmob.core.tours_dataframe.Tours) | One row per tour (a sequence of trips returning to its starting location). | [The same pipeline, step by step](../../learn/trajectory-hierarchy.md#the-same-pipeline-step-by-step) |
+| [`Tours.from_trips`](#fastmob.core.tours_dataframe.Tours.from_trips) | Group consecutive trips into tours. | [The same pipeline, step by step](../../learn/trajectory-hierarchy.md#the-same-pipeline-step-by-step) |
 <!-- api-table:end -->
 
 ## Required data

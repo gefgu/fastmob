@@ -1,6 +1,6 @@
 # Fitting
 
-Fastmob includes fitting utilities for common empirical mobility laws, including
+Fastkit-Mobility includes fitting utilities for common empirical mobility laws, including
 truncated power laws, visitation laws, and daily-location distributions. Use
 these functions after preparing the corresponding trajectory-derived data.
 

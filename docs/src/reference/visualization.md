@@ -51,7 +51,7 @@ chart = vis.ecdf(first_jumps, value_col="jump_lengths", second=second_jumps,
 - `scatter(data, x_col=..., y_col=..., series_col=...)` overlays measure or fit results.
 - `boxplot(data, category_col=..., value_col=..., series_col=...)` summarizes long-form values.
 
-Every Fastmob dataframe wrapper exposes matching `plot_ecdf`, `plot_bar`,
+Every Fastkit-Mobility dataframe wrapper exposes matching `plot_ecdf`, `plot_bar`,
 `plot_heatmap`, `plot_scatter`, and `plot_boxplot` helpers for its existing
 columns. They do not recompute measures.
 
@@ -67,7 +67,7 @@ transition. Use the generic ECharts charts or a dedicated GIS renderer instead.
 
 ## Motif reference data
 
-The literature motif constants are also available through the Fastmob facade:
+The literature motif constants are also available through the Fastkit-Mobility facade:
 
 ```python
 from fastmob.vis import LITERATURE_MOTIF_PERCENTAGES, LITERATURE_TO_FASTMOB_MOTIF_ID
