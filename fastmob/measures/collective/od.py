@@ -39,10 +39,12 @@ def od_matrix(
     origin_col: str | None = None,
     destination_col: str | None = None,
     sort: bool = True,
+    weight_col: str | None = None,
 ) -> Any:
     """Compute an Origin-Destination matrix from a trips DataFrame.
 
-    Groups trips by (origin, destination) pairs and counts them. Returns a
+    Groups trips by (origin, destination) pairs and counts them, or sums
+    their weights when ``weight_col`` is provided. Returns a
     long-format DataFrame with one row per observed origin-destination pair,
     in the same backend as the input.
 
@@ -59,11 +61,15 @@ def od_matrix(
         When True (default), sort the result by ``[origin_col,
         destination_col]``. Order-insensitive callers (e.g. building a
         ``FlowDataFrame`` for CPC) can pass False to skip that sort.
+    weight_col : str or None, optional
+        Numeric column to sum for each pair. If None, count trips instead.
+        Null and NaN weights contribute zero; pairs with only missing weights
+        are retained with a sum of zero. The column must have a numeric dtype.
 
     Returns
     -------
     pandas or Polars DataFrame
-        Long-format OD counts with columns
+        Long-format OD counts or weight sums with columns
         ``[origin_col, destination_col, "count"]``,
         returned in the caller's original backend.
 
@@ -89,12 +95,23 @@ def od_matrix(
     nw_df = nw.from_native(trips, eager_only=True)
     origin_col, destination_col = _detect_od_columns(nw_df, origin_col, destination_col)
 
-    counts = (
-        nw_df.drop_nulls(subset=[origin_col, destination_col])
-        .select([origin_col, destination_col])
-        .group_by([origin_col, destination_col])
-        .agg(nw.len().alias("count"))
-    )
+    valid_trips = nw_df.drop_nulls(subset=[origin_col, destination_col])
+    if weight_col is None:
+        aggregation = nw.len()
+    else:
+        if weight_col not in nw_df.columns:
+            raise ValueError(f"Weight column {weight_col!r} not found in trips.")
+        if not nw_df.schema[weight_col].is_numeric():
+            raise ValueError(f"Weight column {weight_col!r} must have a numeric dtype.")
+        weights = nw.col(weight_col).fill_null(0)
+        if nw_df.schema[weight_col].is_float():
+            weights = weights.fill_nan(0)
+        temporary_col = "__fastmob_weight"
+        while temporary_col in nw_df.columns:
+            temporary_col += "_"
+        valid_trips = valid_trips.with_columns(weights.alias(temporary_col))
+        aggregation = nw.col(temporary_col).sum()
+    counts = valid_trips.group_by([origin_col, destination_col]).agg(aggregation.alias("count"))
     if sort:
         counts = counts.sort([origin_col, destination_col])
 

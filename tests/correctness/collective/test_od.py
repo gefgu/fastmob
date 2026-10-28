@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pandas as pd
+import polars as pl
+import pytest
 from fastmob.measures.collective.od import od_matrix, od_metrics_per_area
 
 
@@ -93,6 +95,45 @@ def test_od_matrix_sort_false_matches_sort_true_rows():
     sorted_cmp = sorted_result.sort_values(["origin_area", "destination_area"]).reset_index(drop=True)
     unsorted_cmp = unsorted_result.sort_values(["origin_area", "destination_area"]).reset_index(drop=True)
     pd.testing.assert_frame_equal(sorted_cmp, unsorted_cmp)
+
+
+@pytest.mark.parametrize("backend", [pd.DataFrame, pl.DataFrame])
+def test_od_matrix_weighted(backend):
+    trips = backend(
+        {
+            "origin_area": ["A", "A", "B", None],
+            "destination_area": ["B", "B", "A", "B"],
+            "weight": [1.5, 2.25, 4.0, 100.0],
+        }
+    )
+    result = od_matrix(trips, weight_col="weight")
+    assert isinstance(result, backend)
+    rows = result.to_dict("records") if backend is pd.DataFrame else result.to_dicts()
+    assert rows == [
+        {"origin_area": "A", "destination_area": "B", "count": 3.75},
+        {"origin_area": "B", "destination_area": "A", "count": 4.0},
+    ]
+    unweighted = od_matrix(trips)
+    rows = unweighted.to_dict("records") if backend is pd.DataFrame else unweighted.to_dicts()
+    assert rows[0]["count"] == 2
+
+
+@pytest.mark.parametrize("backend", [pd.DataFrame, pl.DataFrame])
+def test_od_matrix_missing_weights_and_invalid_dtype(backend):
+    trips = backend({
+        "origin_area": ["A", "A", "B", "B"],
+        "destination_area": ["B", "B", "A", "A"],
+        "weight": [1.5, float("nan"), None, float("nan")],
+    })
+    result = od_matrix(trips, weight_col="weight")
+    rows = result.to_dict("records") if backend is pd.DataFrame else result.to_dicts()
+    assert [row["count"] for row in rows] == [1.5, 0.0]
+
+    invalid = backend({"origin_area": ["A"], "destination_area": ["B"], "weight": ["2"]})
+    with pytest.raises(ValueError, match="numeric dtype"):
+        od_matrix(invalid, weight_col="weight")
+    with pytest.raises(ValueError, match="not found"):
+        od_matrix(invalid, weight_col="missing")
 
 
 def test_od_metrics_per_area_move_inside():
