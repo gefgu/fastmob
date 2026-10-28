@@ -40,7 +40,9 @@ def latlng_to_h3(
         Trajectory dataframe; any Narwhals-compatible eager backend.
     resolution:
         H3 resolution, 0-15.
-    lat_col, lng_col:
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
         Explicit column name overrides; auto-detected when None.
     output_col:
         Name of the new column holding the H3 cell index.
@@ -110,7 +112,10 @@ def h3_to_latlng(
     h3_col:
         Name of the input column containing native unsigned integer H3 cell
         indexes.
-    lat_col, lng_col:
+    lat_col
+        Names of the output columns containing the cell-center latitude and
+        longitude.
+    lng_col
         Names of the output columns containing the cell-center latitude and
         longitude.
 

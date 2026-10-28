@@ -4,7 +4,7 @@
 ``build_stvd`` wraps it for the `Staypoints`/`Locations` hierarchy: it aggregates a
 `Staypoints` table keyed on a global `Locations` catalogue's location IDs, then joins in
 each location's centroid, producing the exact ``(location_id, time_bin, mean_volume,
-center_lat, center_lng)`` shape :func:`fastmob.measures.evaluation.stvd_emd` expects. Call it
+center_lat, center_lng)`` shape `fastmob.measures.evaluation.stvd_emd` expects. Call it
 once per side (e.g. two time periods, or observed vs. simulated) against the same `Locations`
 catalogue, then compare the two results with ``stvd_emd``.
 """
@@ -112,7 +112,7 @@ def mean_area_volume(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         Any Narwhals-compatible eager dataframe with one row per stay event.
     area_col : str or None, optional
         Area column name. Auto-detected from ``LOCATION_CANDIDATES`` when None.
@@ -125,7 +125,7 @@ def mean_area_volume(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         Same backend as input. Columns: ``area``, ``time_bin`` (``"HH:MM"``),
         ``mean_volume``. Rows where ``mean_volume == 0`` are excluded.
         Sorted by ``(area, time_bin)``.
@@ -209,29 +209,29 @@ def build_stvd(
 ) -> Any:
     """Aggregate staypoints against a global Locations catalogue into an STVD frame.
 
-    Combines :func:`mean_area_volume` (per-location, per-time-bin mean visitor volume) with
+    Combines `mean_area_volume` (per-location, per-time-bin mean visitor volume) with
     each location's centroid from ``locations``, producing the ``(location_id, time_bin,
-    mean_volume, center_lat, center_lng)`` shape :func:`fastmob.measures.evaluation.stvd_emd`
+    mean_volume, center_lat, center_lng)`` shape `fastmob.measures.evaluation.stvd_emd`
     consumes directly. Call this once per side against the *same* ``locations`` catalogue so
     the two resulting distributions are defined over the same physical places, then compare
     them with ``stvd_emd``.
 
     Parameters
     ----------
-    staypoints : Staypoints or DataFrame-like
+    staypoints : Staypoints or dataframe
         Staypoints already assigned to ``locations`` (e.g. via
-        :meth:`Staypoints.generate_global_locations` or
-        :meth:`Staypoints.associate_global_locations`). Raw dataframes are wrapped in a
+        `Staypoints.generate_global_locations` or
+        `Staypoints.associate_global_locations`). Raw dataframes are wrapped in a
         `Staypoints` instance with auto-detected columns.
     locations : Locations
-        A global-scope `Locations` catalogue (see :meth:`Locations.require_global`).
+        A global-scope `Locations` catalogue (see `Locations.require_global`).
     location_id_col : str, optional
         Column on ``staypoints`` holding each staypoint's assigned location ID. Default
         ``"location_id"``.
 
     Returns
     -------
-    DataFrame-like
+    dataframe
         Same backend as ``staypoints``. Columns: ``location_id``, ``time_bin``,
         ``mean_volume``, ``center_lat``, ``center_lng``.
 

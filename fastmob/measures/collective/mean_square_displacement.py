@@ -32,8 +32,8 @@ def mean_square_displacement(
     """Return the mean square displacement (km²) across all users.
 
     The mean squared displacement (MSD) measures the average deviation of
-    position from a reference point over time [FS2002]_ [BHG2006]_
-    [SKWB2010]_:
+    position from a reference point over time [FS2002] [BHG2006]
+    [SKWB2010]:
 
     .. math::
 
@@ -46,7 +46,7 @@ def mean_square_displacement(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
     days : int, optional

@@ -9,21 +9,21 @@ metric comparison with another table and the chart builders of the optional `fas
 <!-- api-table:start -->
 | API | Description | Example |
 | --- | --- | --- |
-| [`BaseDataFrame`](#fastmob.core.base.BaseDataFrame) | Small wrapper around an eager dataframe backend. |  |
-| [`compare_to`](#fastmob.core.base.BaseDataFrame.compare_to) | Compare `value_col` against `other`, optionally grouped by `group_col`. | [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) |
-| [`plot_bar`](#fastmob.core.base.BaseDataFrame.plot_bar) | Build a categorical bar chart from existing columns. |  |
-| [`plot_boxplot`](#fastmob.core.base.BaseDataFrame.plot_boxplot) | Build a box plot from existing long-form columns. |  |
-| [`plot_ecdf`](#fastmob.core.base.BaseDataFrame.plot_ecdf) | Build an ECDF chart for an existing numeric or list-valued column. |  |
-| [`plot_heatmap`](#fastmob.core.base.BaseDataFrame.plot_heatmap) | Build a long-form heatmap from existing columns. |  |
-| [`plot_scatter`](#fastmob.core.base.BaseDataFrame.plot_scatter) | Build a scatter chart from existing columns. |  |
-| [`to_native`](#fastmob.core.base.BaseDataFrame.to_native) | Return the stored native dataframe (a PyArrow table for tables built by the library's own readers). | [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) |
-| [`to_pandas`](#fastmob.core.base.BaseDataFrame.to_pandas) | Return the wrapped data as a native pandas DataFrame. | [Load the data](../../learn/clean-and-detect-stops.md#load-the-data) |
-| [`to_polars`](#fastmob.core.base.BaseDataFrame.to_polars) | Return the wrapped data as a native Polars DataFrame. | [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) |
+| [`BaseDataFrame`](#fastmob.core.base.BaseDataFrame) | Small wrapper around an eager dataframe backend. | [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) |
+| [`BaseDataFrame.compare_to`](#fastmob.core.base.BaseDataFrame.compare_to) | Compare `value_col` against `other`, optionally grouped by `group_col`. | [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) |
+| [`BaseDataFrame.plot_bar`](#fastmob.core.base.BaseDataFrame.plot_bar) | Build a categorical bar chart from existing columns. | [Chart the results](../../learn/analyze-a-simple-trajectory.md#chart-the-results) |
+| [`BaseDataFrame.plot_boxplot`](#fastmob.core.base.BaseDataFrame.plot_boxplot) | Build a box plot from existing long-form columns. | [Chart the results](../../learn/analyze-a-simple-trajectory.md#chart-the-results) |
+| [`BaseDataFrame.plot_ecdf`](#fastmob.core.base.BaseDataFrame.plot_ecdf) | Build an ECDF chart for an existing numeric or list-valued column. | [Chart the results](../../learn/analyze-a-simple-trajectory.md#chart-the-results) |
+| [`BaseDataFrame.plot_heatmap`](#fastmob.core.base.BaseDataFrame.plot_heatmap) | Build a long-form heatmap from existing columns. | [Chart the results](../../learn/analyze-a-simple-trajectory.md#chart-the-results) |
+| [`BaseDataFrame.plot_scatter`](#fastmob.core.base.BaseDataFrame.plot_scatter) | Build a scatter chart from existing columns. | [Chart the results](../../learn/analyze-a-simple-trajectory.md#chart-the-results) |
+| [`BaseDataFrame.to_native`](#fastmob.core.base.BaseDataFrame.to_native) | Return the stored native dataframe (a PyArrow table for tables built by the library's own readers). | [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) |
+| [`BaseDataFrame.to_pandas`](#fastmob.core.base.BaseDataFrame.to_pandas) | Return the wrapped data as a native pandas DataFrame. | [Load the data](../../learn/clean-and-detect-stops.md#load-the-data) |
+| [`BaseDataFrame.to_polars`](#fastmob.core.base.BaseDataFrame.to_polars) | Return the wrapped data as a native Polars DataFrame. | [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) |
 <!-- api-table:end -->
 
 ::: fastmob.core.base.BaseDataFrame
     options:
       show_source: false
 
-<!-- example-link -->**Worked example:** [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) · [Load the data](../../learn/clean-and-detect-stops.md#load-the-data)
+<!-- example-link -->**Worked example:** [Convert and compare typed tables](../../learn/process-trajectories.md#convert-and-compare-typed-tables) · [Chart the results](../../learn/analyze-a-simple-trajectory.md#chart-the-results) · [Load the data](../../learn/clean-and-detect-stops.md#load-the-data)
 

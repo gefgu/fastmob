@@ -46,7 +46,13 @@ def compress(
         Trajectory dataframe; any Narwhals-compatible eager backend.
     spatial_radius_km:
         Minimum distance (km) between consecutive output points.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     Returns
     -------

@@ -36,7 +36,7 @@ class Positionfixes(TrajDataFrame):
         Parameters
         ----------
         **kwargs
-            Forwarded to :func:`fastmob.preprocessing.stay_locations`
+            Forwarded to `fastmob.preprocessing.stay_locations`
             (``minutes_for_a_stop``, ``spatial_radius_km``, etc.).
 
         Returns
@@ -106,16 +106,16 @@ class Positionfixes(TrajDataFrame):
         ----------
         staypoints : Staypoints
             Staypoints previously generated from this same trajectory (ideally
-            via :meth:`generate_staypoints`, so stop-detection parameters
+            via `generate_staypoints`, so stop-detection parameters
             match).
         gap_threshold_min : float, optional
             Reserved for future gap-based tripleg splitting; unused by the
             current ``"between_staypoints"`` method. Default ``15.0``.
         **stop_kwargs
             Stop-detection parameter overrides forwarded to
-            :func:`fastmob.preprocessing.segment` (``stop_radius_km``,
+            `fastmob.preprocessing.segment` (``stop_radius_km``,
             ``minutes_for_a_stop``, ...). Defaults to the parameters recorded
-            on ``staypoints`` (from :meth:`generate_staypoints`) when not
+            on ``staypoints`` (from `generate_staypoints`) when not
             given.
 
         Returns

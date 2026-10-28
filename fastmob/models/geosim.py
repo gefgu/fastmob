@@ -14,7 +14,7 @@ class GeoSim:
     """GeoSim social trajectory generator.
 
     GeoSim generates synthetic individual mobility trajectories by combining the EPR
-    exploration/return mechanism with a social influence layer [THSG2015]_. Each
+    exploration/return mechanism with a social influence layer [THSG2015]. Each
     agent is embedded in a social network, and with probability :math:`\\alpha` it
     consults a social contact when choosing its next location.
 
@@ -55,19 +55,19 @@ class GeoSim:
         Human-readable label. The default is ``"GeoSim"``.
     rho : float, optional
         Exploration parameter :math:`\\rho \\in (0, 1]`. The default is ``0.6``
-        [SKWB2010]_.
+        [SKWB2010].
     gamma : float, optional
         Return-penalty exponent :math:`\\gamma \\geq 0`. The default is ``0.21``
-        [SKWB2010]_.
+        [SKWB2010].
     alpha : float, optional
         Social influence probability :math:`\\alpha \\in [0, 1]`. The default is
-        ``0.2`` [THSG2015]_.
+        ``0.2`` [THSG2015].
     beta : float, optional
         Waiting-time tail exponent :math:`\\beta`. The default is ``0.8``
-        [SKWB2010]_.
+        [SKWB2010].
     tau : int, optional
         Waiting-time scale :math:`\\tau` in hours. The default is ``17``
-        [SKWB2010]_.
+        [SKWB2010].
     min_wait_time_hours : float, optional
         Minimum waiting time between moves, in hours. The default is ``1``.
 

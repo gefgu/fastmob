@@ -34,7 +34,7 @@ def home_location(
 
     The home location :math:`h(u)` of an individual :math:`u` is the location
     visited most often during the nighttime window
-    ``[start_night, 24) ∪ [0, end_night)`` [CBTDHVSB2012]_ [PSO2012]_:
+    ``[start_night, 24) ∪ [0, end_night)`` [CBTDHVSB2012] [PSO2012]:
 
     .. math::
 
@@ -48,7 +48,7 @@ def home_location(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
@@ -67,7 +67,7 @@ def home_location(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, lat_col, lng_col]`` (using
         the detected column names).  The returned backend matches the input
         backend.

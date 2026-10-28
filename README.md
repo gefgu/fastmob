@@ -5,120 +5,115 @@
 # Fastkit-Mobility
 
 [![PyPI version](https://img.shields.io/pypi/v/fastmob)](https://pypi.org/project/fastmob/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/fastmob)](https://pypi.org/project/fastmob/)
+[![Total downloads](https://static.pepy.tech/badge/fastmob)](https://pepy.tech/projects/fastmob)
 [![Python versions](https://img.shields.io/pypi/pyversions/fastmob)](https://pypi.org/project/fastmob/)
 [![License](https://img.shields.io/pypi/l/fastmob)](LICENSE)
 
-Fastkit-Mobility (`fastmob` on PyPI) turns raw mobility data into useful trips,
-stays, and measures. Its compiled Rust engine and [Narwhals](https://narwhals-dev.github.io/narwhals/)-based API keep the same workflow running on pandas, Polars, and other eager dataframe backends.
+**Fastkit-Mobility** helps researchers turn location data into insights about how
+people move. Clean GPS traces, find stops and trips, measure travel patterns,
+and simulate mobility using familiar Python dataframes. Its Rust engine handles
+compute-intensive work while you work with pandas or Polars.
 
-Start with position fixes, derive staypoints and triplegs, then build trips and
-tours. The hierarchy follows established mobility data models while keeping the
-input as an ordinary dataframe.
+[Get started](https://gefgu.github.io/fastmob/learn/) · [Explore the examples](https://gefgu.github.io/fastmob/learn/) · [API reference](https://gefgu.github.io/fastmob/reference/) · [Benchmarks](https://gefgu.github.io/fastmob/features/benchmarks/)
 
-## Why fastmob
 
-- **Backend-agnostic** — pass a pandas, Polars, or any other
-  Narwhals-compatible DataFrame; fastmob works without changes.
-- **Rust-accelerated core** — compute-heavy kernels run in parallel,
-  zero-copy Rust instead of Python loops.
-- **A hierarchy for real movement data** — positionfixes, staypoints,
-  triplegs, trips, tours, and locations.
-- **Migration-friendly** — API shapes mirror
-  [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility)
-  where compatibility matters, with reproducible parity tests against it.
-- **Measured, not claimed** — correctness tests, coverage, and
-  reproducible benchmarks back every performance and compatibility claim.
+<p align="center">
+  <img src="docs/src/assets/images/home/home-geolife-staypoints-triplegs.png" alt="GPS fixes, detected stops and trips for one day of a GeoLife participant in Beijing" width="650">
+</p>
 
-## Install
+One day of GeoLife GPS data: grey points are GPS fixes, gold circles are detected
+stops (staypoints), and coloured lines show movement between them (triplegs). Follow the [complete GeoLife example](https://gefgu.github.io/fastmob/learn/notebooks/stay-point-detection-geolife/).
+
+## Try it
+
+Install Fastkit-Mobility and pandas for this example (Python 3.9 or newer):
 
 ```bash
-pip install fastmob
+pip install fastmob pandas
 ```
 
-Install optional capabilities only when needed:
-
-```bash
-pip install duckdb  # fetch road/rail networks from Overture
-pip install statsmodels  # fit the Gravity Poisson-GLM
-pip install "fastmob[vis]"  # visualization package
-```
-
-## Turn raw GPS points into staypoints and trips
+Calculate each person's **radius of gyration**: a measure, in kilometres, of
+how widely their observed locations spread around their centre of movement.
 
 ```python
 import pandas as pd
-from fastmob import Positionfixes
+from fastmob import radius_of_gyration
 
-gps = pd.DataFrame(
-    {
-        "uid": ["alice"] * 9,
-        "datetime": pd.date_range("2024-01-01 08:00", periods=9, freq="10min"),
-        "lat": [41.8902] * 3 + [41.8950, 41.9000, 41.9050] + [41.9109] * 3,
-        "lng": [12.4922] * 3 + [12.4950, 12.4980, 12.4800] + [12.4818] * 3,
-    }
-)
+df = pd.DataFrame({
+    "uid": ["alice"] * 3 + ["bob"] * 3,
+    "datetime": pd.to_datetime(["2020-01-01 08:00", "2020-01-01 09:00", "2020-01-01 10:00"] * 2),
+    "lat": [41.9, 42.0, 42.1, 40.7, 40.8, 41.0],
+    "lng": [12.5, 12.5, 12.6, -74.0, -74.0, -73.9],
+})
 
-fixes = Positionfixes(gps)
-staypoints = fixes.generate_staypoints(minutes_for_a_stop=20, spatial_radius_km=0.2)
-triplegs = fixes.generate_triplegs(staypoints)
-activity_stays = staypoints.create_activity_flag(time_threshold_min=20)
-trips = triplegs.generate_trips(activity_stays)
-print(trips.df[["started_at", "finished_at", "origin_staypoint_id", "destination_staypoint_id"]])
+print(radius_of_gyration(df))
 ```
 
-Fastmob auto-detects common time, latitude, longitude, and user-ID column
-names. Pass explicit `datetime_col`, `lat_col`, `lng_col`, and `uid_col`
-arguments when your schema differs.
-
-Next: [measure people and populations](https://gefgu.github.io/fastmob/learn/individual-and-collective-measures/), [clean and segment trajectories](https://gefgu.github.io/fastmob/learn/clean-and-segment/), [route and map-match GPS traces](https://gefgu.github.io/fastmob/learn/network-analysis/), or explore [mobility models](https://gefgu.github.io/fastmob/reference/models/).
-
-## Full GeoLife benchmark
-
-The full [GeoLife GPS Trajectories](https://www.microsoft.com/en-my/download/details.aspx?id=52367) dataset contains **24,876,978 position fixes**. On an AMD Ryzen 9 9950X3D (16C/32T, 88 GB RAM), Fastmob detected staypoints in **0.59 s**, versus **99.84 s** for Trackintel: **170× faster**.
-
-The comparison uses the same raw GPS corpus and staypoint thresholds (100 m radius, 20-minute dwell, 15-minute observation gap). The detectors have related but non-identical edge and duplicate handling, so the reproducible benchmark reports both timings and comparable detected-stay counts rather than claiming byte-for-byte identical output.
-
-Run the full benchmark locally to record the exact speedup and hardware for your environment:
-
-```bash
-python benchmarks/geolife_staypoints.py \
-  --data-dir "/path/to/Geolife Trajectories 1.3" \
-  --output benchmarks/results/geolife_staypoints.json
+```text
+     uid  radius_of_gyration
+0  alice            9.878827
+1    bob           14.423721
 ```
 
-See the [end-to-end GeoLife comparison notebook](https://gefgu.github.io/fastmob/learn/notebooks/stay-point-detection-geolife/) for the data preparation, equivalent Trackintel call, and visual output comparison.
+In this small example, Bob's observed locations are more spread out than
+Alice's. Explore more [individual and collective measures](https://gefgu.github.io/fastmob/learn/individual-and-collective-measures/).
 
-## Documentation
+## What can you study?
 
-- [Getting started and task recipes](https://gefgu.github.io/fastmob/learn/)
-- [API reference](https://gefgu.github.io/fastmob/reference/)
-- [Network analysis and map matching](https://gefgu.github.io/fastmob/reference/network/)
-- [Release notes](https://gefgu.github.io/fastmob/release_notes/)
+- **Clean and segment traces:** filter noisy GPS data and separate movement from stops. [Learn how](https://gefgu.github.io/fastmob/learn/clean-and-segment/).
+- **Find stops and recurring places:** identify where people spend time and group repeated visits to locations. [Learn how](https://gefgu.github.io/fastmob/learn/staypoints-and-locations/).
+- **Measure movement:** study individual ranges and travel patterns, or flows across a population. [Explore measures](https://gefgu.github.io/fastmob/learn/individual-and-collective-measures/).
+- **Work with transport networks:** route and match GPS traces to road and rail networks. [Explore network analysis](https://gefgu.github.io/fastmob/learn/network-analysis/).
+- **Model mobility:** generate synthetic trajectories or flows and compare models with observations. [Explore models](https://gefgu.github.io/fastmob/reference/models/).
 
-## Development
 
-```bash
-git clone https://github.com/gefgu/fastmob.git
-cd fastmob
-bash scripts/setup_env.sh
-source .venv/bin/activate
-pytest
+## Performance and compatibility
+
+Fastkit-Mobility uses Rust for compute-intensive operations and supports pandas,
+Polars and other eager dataframes through Narwhals. Many measure names and
+signatures follow [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility).
+
+<p align="center">
+  <img src="docs/src/assets/images/home/home-benchmark-speedup.png" alt="Execution times for five mobility measures: Fastkit-Mobility with pandas compared with scikit-mobility on approximately four million Brightkite check-ins" width="800">
+</p>
+
+Average execution time for five measures on approximately 4 million time-sorted
+Brightkite check-ins. Fastkit-Mobility uses pandas; the comparison is with
+scikit-mobility. Times are averages of three runs on an Intel Core i7-10700 with
+Python 3.12, and the chart uses a logarithmic scale. The scikit-mobility input
+contained 3,999,891 rows and the Fastkit-Mobility input 4,000,000. Results depend
+on the operation, data and environment. See the [raw benchmark record](https://github.com/gefgu/fastmob_benchmarks/blob/main/benchmarks/measures/results/py312_intel_core_i7_10700_16c_brightkite4M/measures_benchmarks.json)
+and [more comparisons](https://gefgu.github.io/fastmob/features/benchmarks/).
+
+## Citation
+
+If you use Fastkit-Mobility in research, please cite the
+[NetMob 2026 paper](https://inria.hal.science/hal-05755990):
+
+```bibtex
+@inproceedings{santos2026fastkit,
+  author    = {Santos, Gustavo H. and Viana, Aline Carneiro and
+               Pappalardo, Luca and Silva, Thiago H.},
+  title     = {Fastkit-Mobility: A High-Performance, DataFrame-Agnostic Library for Mobility Analysis},
+  booktitle = {NetMob 2026},
+  address   = {Niter{\'o}i, Brazil},
+  year      = {2026},
+  month     = oct,
+  url       = {https://inria.hal.science/hal-05755990}
+}
 ```
 
-To preview documentation locally:
+For citing a specific software release, see the [citation guide](https://gefgu.github.io/fastmob/about/#cite-fastkit-mobility).
 
-```bash
-uv sync --group docs
-uv run --group docs zensical serve
-```
+## More resources
 
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for documentation conventions and
-the repository workflows.
+- [Guides and tutorials](https://gefgu.github.io/fastmob/learn/) · [API reference](https://gefgu.github.io/fastmob/reference/) · [Release notes](https://gefgu.github.io/fastmob/release_notes/)
+- [Contributing and development setup](docs/CONTRIBUTING.md)
+- [Report an issue](https://github.com/gefgu/fastmob/issues): include package versions, dataframe backend, a minimal example, expected behavior and the full error.
 
 For a fastmob release, set the version in `fastmob-py/Cargo.toml`, run the
 release checks, and tag the tested commit `fastmob-v<version>` (for example,
-`fastmob-v0.3.3`). Push that tag to trigger the wheel builds and PyPI release.
+`fastmob-v0.3.4`). Push that tag to trigger the wheel builds and PyPI release.
 Tags named only `v<version>` do not trigger the fastmob release workflow.
 
 ## Status and support

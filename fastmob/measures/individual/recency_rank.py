@@ -46,7 +46,7 @@ def recency_rank(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
@@ -61,7 +61,7 @@ def recency_rank(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per ``(user, location)`` pair with columns
         ``[uid_col, lat_col, lng_col, "recency_rank"]``.
         Rank 1 is the most recently visited location.

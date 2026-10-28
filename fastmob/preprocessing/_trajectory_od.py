@@ -33,7 +33,7 @@ def trajectory_to_od(
 ) -> Any:
     """Build a long-format Origin-Destination matrix directly from a raw trajectory.
 
-    Tessellates each point into an H3 cell (via :func:`fastmob.preprocessing.latlng_to_h3`),
+    Tessellates each point into an H3 cell (via `fastmob.preprocessing.latlng_to_h3`),
     sorts each user chronologically, and pairs each point's cell with the next
     point's cell (per user) to derive one trip per consecutive fix. Pairing and
     counting are fused into a single Rust pass (see ``od_edge_counts_presorted``)
@@ -45,7 +45,16 @@ def trajectory_to_od(
         Trajectory dataframe; any Narwhals-compatible eager backend.
     resolution:
         H3 resolution, 0-15.
-    uid_col, datetime_col, lat_col, lng_col:
+    uid_col
+        Explicit column name overrides; auto-detected when None. When
+        ``uid_col`` cannot be found, the whole frame is treated as one user.
+    datetime_col
+        Explicit column name overrides; auto-detected when None. When
+        ``uid_col`` cannot be found, the whole frame is treated as one user.
+    lat_col
+        Explicit column name overrides; auto-detected when None. When
+        ``uid_col`` cannot be found, the whole frame is treated as one user.
+    lng_col
         Explicit column name overrides; auto-detected when None. When
         ``uid_col`` cannot be found, the whole frame is treated as one user.
     drop_self_loops:
@@ -67,7 +76,7 @@ def trajectory_to_od(
     DataFrame
         Long-format OD counts with columns ``["origin", "destination",
         "count"]``, sorted by ``["origin", "destination"]`` -- the same shape
-        :func:`fastmob.measures.collective.od.od_matrix` returns. Callers that
+        `fastmob.measures.collective.od.od_matrix` returns. Callers that
         want the wide pivoted form used by some report code can
         ``.pivot(on="destination", index="origin", values="count")`` this
         themselves.
@@ -125,8 +134,8 @@ def trajectory_to_od(
 def _paired_od_edges(df: nw.DataFrame, uid_col: str | None, drop_self_loops: bool):
     """Pair each user's consecutive H3 cells and count unique OD edges in Rust.
 
-    Fuses what used to be a NumPy pairing pass (see :func:`_pair_locations`)
-    followed by a separate Narwhals ``group_by`` in :func:`od_matrix` into one
+    Fuses what used to be a NumPy pairing pass (see `_pair_locations`)
+    followed by a separate Narwhals ``group_by`` in `od_matrix` into one
     pass over data already sorted and grouped by user.
     """
     from fastmob._core import od_edge_counts_presorted
@@ -172,11 +181,11 @@ def trajectory_to_trips(
     drop_self_loops: bool = True,
     presorted: bool = False,
 ) -> Any:
-    """Build a :class:`fastmob.Trips` row for each consecutive ping pair.
+    """Build a `fastmob.Trips` row for each consecutive ping pair.
 
     Each user's fixes are sorted chronologically, tessellated to H3, then
     paired with that user's next fix. Same-cell pairs are dropped by default,
-    matching :func:`trajectory_to_od`. The returned Trips contain
+    matching `trajectory_to_od`. The returned Trips contain
     ``origin_location_id`` and ``destination_location_id`` for direct sparse
     CPC comparisons, alongside trip IDs and the pair's start/finish times.
 
@@ -186,7 +195,7 @@ def trajectory_to_trips(
     ``presorted=True`` skips the internal chronological sort, trusting that
     rows are already ordered by ``[uid_col, datetime_col]`` (or just
     ``datetime_col`` when there is no ``uid_col``) -- see
-    :func:`trajectory_to_od` for the full caveat.
+    `trajectory_to_od` for the full caveat.
     """
     from fastmob.core.trips_dataframe import Trips
 

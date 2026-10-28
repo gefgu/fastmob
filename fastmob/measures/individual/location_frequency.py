@@ -42,7 +42,7 @@ def location_frequency(
 
     The visitation frequency :math:`f(r_i)` of location :math:`r_i` for
     individual :math:`u` is the probability of visiting that location
-    [SKWB2010]_ [PF2018]_:
+    [SKWB2010] [PF2018]:
 
     .. math::
 
@@ -55,7 +55,7 @@ def location_frequency(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
@@ -81,7 +81,7 @@ def location_frequency(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame or list
+    pandas or Polars DataFrame, or list
         When ``as_ranks=False``: one row per ``(user, location)`` pair with
         columns ``[uid_col, lat_col, lng_col, "location_frequency"]``.
         When ``as_ranks=True``: a flat Python ``list[float]`` of mean

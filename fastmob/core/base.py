@@ -61,7 +61,7 @@ class BaseDataFrame:
     def compare_to(self, other, value_col, *, group_col=None, metric=None):
         """Compare ``value_col`` against ``other``, optionally grouped by ``group_col``.
 
-        See :func:`fastmob.measures.evaluation.compare.compare_to`.
+        See `fastmob.measures.evaluation.compare.compare_to`.
         """
         from fastmob.measures.evaluation.compare import compare_to as _compare_to
 

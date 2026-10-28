@@ -27,11 +27,11 @@ class RoadNetwork:
         ----------
         edges_df:
             Columns ``from_node``, ``to_node``, ``weight_ds``, ``length_m``
-            (as returned by :func:`fastmob.network.builder.fetch_road_network`
+            (as returned by `fastmob.network.builder.fetch_road_network`
             / `fetch_rail_network`); any Narwhals-compatible backend.
         nodes_df:
             Columns ``node_idx``, ``lat``, ``lng`` -- used later for snapping
-            via :func:`fastmob.network.snap.snap_locations_to_graph` (stored
+            via `fastmob.network.snap.snap_locations_to_graph` (stored
             as a pyarrow.Table here regardless of input backend, sorted by
             ``node_idx``); any Narwhals-compatible backend.
         """
@@ -53,11 +53,28 @@ class RoadNetwork:
         return cls(nodes_sorted.to_arrow(), edges.to_arrow(), handle)
 
     def batch_distances(self, from_nodes, to_nodes) -> tuple[pa.Array, pa.Array]:
-        """Batch physical-distance (metres) query for `(from_node, to_node)` pairs.
+        """Batch route-length (metres) query for `(from_node, to_node)` pairs.
 
-        Returns ``(distances_m, connected)``, ``connected`` as a bool array;
-        `False` for negative/unsnapped node ids or a disconnected graph
-        component (fall back to straight-line Haversine in that case).
+        The route is the fastest one (minimum travel time at the edge speeds), so
+        the distance is the length of that route, which is not always the
+        shortest possible distance.
+
+        Parameters
+        ----------
+        from_nodes : array-like of int
+            Node indexes (``node_idx``) of the origins. Negative ids mean an
+            unsnapped point.
+        to_nodes : array-like of int
+            Node indexes of the destinations, one per origin.
+
+        Returns
+        -------
+        distances_m : pyarrow.Array
+            Route length in metres for each pair.
+        connected : pyarrow.Array
+            Boolean array. ``False`` for negative or unsnapped node ids and for
+            pairs in disconnected parts of the graph; fall back to the
+            straight-line (Haversine) distance for those.
         """
         distances, connected = self._handle.batch_distances(
             pa.array(from_nodes, type=pa.int64()), pa.array(to_nodes, type=pa.int64())

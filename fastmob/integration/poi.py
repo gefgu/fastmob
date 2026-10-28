@@ -49,7 +49,7 @@ def join_with_pois(
 
     Mirrors PyMove's ``join_with_pois``: an unconditional single-nearest
     lookup with no distance cutoff (contrast with
-    :func:`fastmob.network.snap_locations_to_graph`, which reports
+    `fastmob.network.snap_locations_to_graph`, which reports
     "unsnapped" past `max_distance_m`).
 
     Parameters
@@ -60,9 +60,17 @@ def join_with_pois(
         Points of interest; any Narwhals-compatible eager backend, with
         `poi_lat_col`/`poi_lng_col` columns and, unless overridden,
         `poi_id_col`/`poi_name_col` columns.
-    lat_col, lng_col:
+    lat_col
         Explicit trajectory column overrides; auto-detected when None.
-    poi_lat_col, poi_lng_col, poi_id_col, poi_name_col:
+    lng_col
+        Explicit trajectory column overrides; auto-detected when None.
+    poi_lat_col
+        Column names on `pois_df`.
+    poi_lng_col
+        Column names on `pois_df`.
+    poi_id_col
+        Column names on `pois_df`.
+    poi_name_col
         Column names on `pois_df`.
 
     Returns
@@ -117,7 +125,7 @@ def join_with_pois_by_category(
     Mirrors PyMove's ``join_with_pois_by_category``: for every distinct
     value in ``pois_df[category_col]``, adds an ``id_<category>``/
     ``dist_<category>`` column pair holding the nearest POI *of that
-    category* to each trajectory point (unlike :func:`join_with_pois`,
+    category* to each trajectory point (unlike `join_with_pois`,
     which only reports the single nearest POI overall).
 
     Returns

@@ -19,10 +19,12 @@ def snap_locations_to_graph(
         Rows with lat/lng columns to snap.
     nodes_df:
         Graph nodes with columns ``node_idx``, ``lat``, ``lng`` (as returned
-        by :func:`fastmob.network.builder.fetch_road_network` / `fetch_rail_network`).
+        by `fastmob.network.builder.fetch_road_network` / `fetch_rail_network`).
     max_distance_m:
         Maximum snap distance; farther rows are reported unsnapped.
-    lat_col, lng_col:
+    lat_col
+        Column names on ``tessellation_df``.
+    lng_col
         Column names on ``tessellation_df``.
 
     Returns

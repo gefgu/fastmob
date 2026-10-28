@@ -55,7 +55,7 @@ def predict_transport_mode(
 
     Parameters
     ----------
-    triplegs : Triplegs or DataFrame-like
+    triplegs : Triplegs or dataframe
         A `fastmob.core.Triplegs` instance, or any Narwhals-compatible
         dataframe with a ``speed_col`` column.
     method : str, optional
@@ -64,14 +64,14 @@ def predict_transport_mode(
         Mapping of upper-bound speed threshold (km/h) to mode label,
         evaluated in ascending order (the last key should be ``math.inf``
         to catch every remaining row). Defaults to
-        :data:`DEFAULT_MODE_CATEGORIES`.
+        `DEFAULT_MODE_CATEGORIES`.
     speed_col : str, optional
         Column holding each row's average speed, km/h. Default
         ``"mean_speed_kmh"`` (Triplegs' own column).
 
     Returns
     -------
-    Triplegs or DataFrame-like
+    Triplegs or dataframe
         Input with an added ``mode`` column, in the same type/backend as
         input.
 
@@ -118,8 +118,8 @@ def calculate_modal_split(
 
     Parameters
     ----------
-    triplegs : Triplegs or DataFrame-like
-        Must already have a ``mode`` column (see :func:`predict_transport_mode`).
+    triplegs : Triplegs or dataframe
+        Must already have a ``mode`` column (see `predict_transport_mode`).
     freq : str, optional
         Time-bucket the split by ``started_at``: one of ``"hour"``,
         ``"day"``, ``"week"``, ``"month"``. ``None`` (default): no time
@@ -136,7 +136,7 @@ def calculate_modal_split(
 
     Returns
     -------
-    DataFrame-like
+    dataframe
         One row per ``(mode`` [, ``uid``] [, time bucket]``)``, with a
         ``value`` column.
     """

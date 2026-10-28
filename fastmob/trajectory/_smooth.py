@@ -86,7 +86,7 @@ def smooth(
 
     Every row's ``(lat, lng)`` is replaced with a denoised estimate at its
     original timestamp; row count and row order are unchanged (unlike
-    :func:`fastmob.trajectory.interpolate`, which inserts new points).
+    `fastmob.trajectory.interpolate`, which inserts new points).
 
     Parameters
     ----------
@@ -95,7 +95,13 @@ def smooth(
     method:
         Name of the smoothing algorithm to run. Only ``"kalman_cv"`` is
         shipped currently.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     **method_kwargs:
         Method-specific parameters, forwarded to the matching

@@ -3,7 +3,8 @@
 # directory outside the checkout, then save the executed notebook, a log and the wall time.
 #
 # Usage: scripts/run_notebook_isolated.sh NOTEBOOK OUT_DIR [WHEEL]
-#   WHEEL  optional local fastmob wheel, for notebooks that need an unreleased API;
+#   WHEEL  optional local wheel(s), separated by spaces (fastmob, fastmob-vis), for notebooks that
+#          need an unreleased API;
 #          without it the notebook installs the published release from PyPI.
 #   A call log ``NAME.calls.json`` of the fastmob functions called directly by notebook cells is
 #   written next to the other outputs (see scripts/notebook_trace/sitecustomize.py).
@@ -23,7 +24,8 @@ cd "$work"
 uv venv --seed -q --python "${PYTHON:-3.12}" "$work/venv"
 export VIRTUAL_ENV="$work/venv" PATH="$work/venv/bin:$PATH" TMPDIR="$work/tmp"
 mkdir -p "$TMPDIR"
-uv pip install -q jupyter nbconvert ipykernel ${wheel:+"$wheel"}
+# shellcheck disable=SC2086  # WHEEL may list several wheels separated by spaces
+uv pip install -q jupyter nbconvert ipykernel ${wheel:+$wheel}
 if [ -n "${OVERLAY_SRC:-}" ]; then
     site="$(python -c 'import fastmob, pathlib; print(pathlib.Path(fastmob.__file__).parent)')"
     (cd "$OVERLAY_SRC/fastmob" && find . -name '*.py' -exec cp --parents {} "$site" \;)

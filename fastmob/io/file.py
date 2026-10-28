@@ -82,7 +82,7 @@ def write(tdf, filename, **kwargs):
 
     Parameters
     ----------
-    tdf : TrajDataFrame or DataFrame-like
+    tdf : TrajDataFrame or dataframe
         TrajDataFrame object (or any Narwhals-compatible dataframe) that
         will be saved.
     filename : str

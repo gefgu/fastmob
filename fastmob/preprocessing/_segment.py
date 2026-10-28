@@ -225,7 +225,13 @@ def segment(
         Name of the segmentation algorithm to run. One of
         ``"angle_change"``, ``"observation_gap"``, ``"speed"``, ``"stop"``,
         ``"value_change"`` (default), or ``"temporal"``.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     is_sorted:
         Whether the trajectory is already sorted by user and time. Setting

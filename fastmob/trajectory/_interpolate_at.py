@@ -52,7 +52,7 @@ def interpolate_at(
 ) -> Any:
     """Query each user's interpolated position at one or more timestamps.
 
-    Unlike :func:`fastmob.trajectory.interpolate`, this never changes a
+    Unlike `fastmob.trajectory.interpolate`, this never changes a
     user's own point count -- it answers "where was this user at time t?"
     independently per user and per query timestamp. A query time outside a
     user's own ``[min(datetime), max(datetime)]`` range is marked invalid
@@ -69,7 +69,13 @@ def interpolate_at(
     method:
         ``"linear"`` (default) interpolates position between the two
         surrounding points; ``"nearest"`` returns the closer of the two.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     Returns
     -------

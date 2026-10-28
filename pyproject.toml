@@ -84,10 +84,11 @@ docs = [
     "zensical>=0.0.41; python_version >= '3.10'",
     "mkdocstrings[python]>=0.25",
     "nbconvert>=7.0",
+    "fastmob-vis>=0.1,<0.2",
 ]
 
 [tool.uv.sources]
-fastmob-vis = { path = "fastmob-vis" }
+fastmob-vis = { path = "fastmob-vis", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "benchmarks/tests"]

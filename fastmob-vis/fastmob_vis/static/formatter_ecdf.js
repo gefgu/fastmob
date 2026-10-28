@@ -1,4 +1,6 @@
   const xUnit = meta.xUnit || '';
+  option.xAxis.axisLabel = option.xAxis.axisLabel || {};
+  option.yAxis.axisLabel = option.yAxis.axisLabel || {};
   option.xAxis.axisLabel.formatter = function(v) {
     return Number.isInteger(v) ? String(v) : parseFloat(v.toFixed(2)).toString();
   };

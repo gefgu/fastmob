@@ -79,7 +79,11 @@ def join_with_events(
         Events; any Narwhals-compatible eager backend, with
         `event_lat_col`/`event_lng_col`/`event_datetime_col` columns and,
         unless overridden, `event_id_col`/`event_type_col` columns.
-    lat_col, lng_col, datetime_col:
+    lat_col
+        Explicit trajectory column overrides; auto-detected when None.
+    lng_col
+        Explicit trajectory column overrides; auto-detected when None.
+    datetime_col
         Explicit trajectory column overrides; auto-detected when None.
     time_window_s:
         Symmetric time window (seconds) around each trajectory point's

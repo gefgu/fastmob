@@ -44,7 +44,7 @@ class TrajDataFrame(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data.  Accepted types: ``pandas.DataFrame``, ``polars.DataFrame``,
         any Narwhals-compatible eager frame, plain ``list``, ``numpy.ndarray``, or
         ``dict``.
@@ -302,13 +302,13 @@ class TrajDataFrame(BaseDataFrame):
     def work_location(self, **kwargs):
         """Infer the most-visited weekday daytime location for each user.
 
-        Delegates to :func:`fastmob.measures.individual.work_location` using
+        Delegates to `fastmob.measures.individual.work_location` using
         this dataframe's resolved column metadata and sorted fast path.
 
         Parameters
         ----------
         **kwargs
-            Forwarded to :func:`fastmob.measures.individual.work_location`.
+            Forwarded to `fastmob.measures.individual.work_location`.
 
         Returns
         -------
@@ -343,7 +343,7 @@ class TrajDataFrame(BaseDataFrame):
             before an interpolated point is inserted. Default ``3600.0``.
         **method_kwargs
             Method-specific parameters; see
-            :func:`fastmob.trajectory.interpolate`.
+            `fastmob.trajectory.interpolate`.
 
         Returns
         -------
@@ -387,7 +387,7 @@ class TrajDataFrame(BaseDataFrame):
     def smooth(self, method: str = "kalman_cv", **method_kwargs) -> TrajDataFrame:
         """Smooth the trajectory's positions using a named algorithm.
 
-        Unlike :meth:`interpolate`, row count and row order are unchanged --
+        Unlike `interpolate`, row count and row order are unchanged --
         every point's ``(lat, lng)`` is replaced with a denoised estimate at
         its original timestamp.
 
@@ -397,7 +397,7 @@ class TrajDataFrame(BaseDataFrame):
             Only ``"kalman_cv"`` is shipped currently. Default ``"kalman_cv"``.
         **method_kwargs
             Method-specific parameters; see
-            :func:`fastmob.trajectory.smooth`.
+            `fastmob.trajectory.smooth`.
 
         Returns
         -------
@@ -491,7 +491,7 @@ class TrajDataFrame(BaseDataFrame):
             Default ``"dtw"``.
         **method_kwargs
             Method-specific parameters; see
-            :func:`fastmob.trajectory.trajectory_distance`.
+            `fastmob.trajectory.trajectory_distance`.
 
         Returns
         -------
@@ -1018,7 +1018,7 @@ class TrajDataFrame(BaseDataFrame):
         """Plot detected stop locations on an interactive Folium map.
 
         Requires a TrajDataFrame with a ``leaving_datetime`` column
-        (output of :func:`fastmob.preprocessing.stay_locations`).
+        (output of `fastmob.preprocessing.stay_locations`).
 
         Parameters
         ----------

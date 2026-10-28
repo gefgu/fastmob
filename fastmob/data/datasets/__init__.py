@@ -1,1 +1,1 @@
-"""Dataset builder modules used by :mod:`fastmob.data.load`."""
+"""Dataset builder modules used by `fastmob.data.load`."""

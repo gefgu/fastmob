@@ -174,6 +174,9 @@ Generated notebook `.md` files and `*_files/` directories are ignored and
 must not be edited directly. Run the converter before `pytest tests/docs` or
 `uv run --group docs zensical build`; docs CI runs it automatically.
 
+Keep notebooks free of scaffolding: no timing helpers or run-time tables, no version-requirement
+banners or `assert` guards (the pip cell's `fastmob>=X.Y.Z` pin is enough).
+
 Learn notebooks are tested in a fresh virtualenv and an empty temp directory with
 `scripts/run_notebook_isolated.sh NOTEBOOK OUT_DIR [WHEEL]` (it installs the published release
 unless a local wheel is given, and records which `fastmob` functions the cells call). Notebooks
@@ -183,6 +186,22 @@ with the version at release time (`tests/docs` checks it). Reference catalogue t
 `uv run python scripts/notebook_coverage.py --ledger <coverage.csv> --logs <execution dir>` then
 `uv run python scripts/update_reference_tables.py`. `scripts/api_inventory.py` lists every public
 symbol and checks that it has an anchor in the built site.
+
+Notebooks must be run and their saved outputs recorded on a recent Python, 3.12 or newer
+(`scripts/run_notebook_isolated.sh` defaults to 3.12; set `PYTHON=3.13` for the newest listed in
+`pyproject.toml`). Do not record notebook runs on 3.10 or older. Existing notebooks recorded on 3.10 are re-run on the next pass, not retroactively.
+
+Charts from `fastmob-vis` are saved in a notebook as an `<iframe>` page that embeds ECharts (1.2 MB each).
+After running a notebook with charts, shrink it with `uv run python scripts/compact_vis_outputs.py NOTEBOOK`
+(it swaps the embedded library for a CDN `<script src>`; `tests/docs` rejects outputs over 400 KB).
+`scripts/build_notebook_docs.py` then draws each chart as a static SVG with ECharts' server-side renderer
+(`scripts/render_echarts_widget.js`), so building the docs needs Node.js and `fastmob-vis` (both are set up
+by the `docs` workflow). `run_notebook_isolated.sh` takes several wheels (`"fastmob.whl fastmob_vis.whl"`) when
+a notebook needs an unreleased `fastmob-vis`.
+
+Reference pages group their catalogue by task through `docs/reference_groups.json` (a page, its groups in
+page order, and the `:::` entries of each); `scripts/update_reference_tables.py` fails when the groups and the
+page's directives differ.
 
 API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
 

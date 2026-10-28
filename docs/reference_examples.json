@@ -9,6 +9,31 @@
   "page": "learn/process-trajectories.md",
   "title": "Convert and compare typed tables"
  },
+ "fastmob.core.base.BaseDataFrame.plot_bar": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_boxplot": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_ecdf": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_heatmap": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_scatter": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
  "fastmob.core.base.BaseDataFrame.to_native": {
   "anchor": "convert-and-compare-typed-tables",
   "page": "learn/process-trajectories.md",
@@ -31,32 +56,32 @@
  },
  "fastmob.core.flow_dataframe.FlowDataFrame.common_part_of_commuters": {
   "anchor": "compare-two-flow-tables",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Compare two flow tables"
  },
  "fastmob.core.flow_dataframe.FlowDataFrame.common_part_of_links": {
   "anchor": "compare-two-flow-tables",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Compare two flow tables"
  },
  "fastmob.core.flow_dataframe.FlowDataFrame.get_flow": {
   "anchor": "flows-between-zones",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Flows between zones"
  },
  "fastmob.core.flow_dataframe.FlowDataFrame.get_geometry": {
   "anchor": "flows-between-zones",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Flows between zones"
  },
  "fastmob.core.flow_dataframe.FlowDataFrame.settings_from": {
   "anchor": "compare-two-flow-tables",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Compare two flow tables"
  },
  "fastmob.core.flow_dataframe.FlowDataFrame.to_matrix": {
   "anchor": "flows-between-zones",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Flows between zones"
  },
  "fastmob.core.locations_dataframe.Locations.from_tessellation": {
@@ -136,7 +161,7 @@
  },
  "fastmob.core.staypoints_dataframe.Staypoints.interest_network": {
   "anchor": "when-and-where-is-each-place-busy",
-  "page": "learn/population-measures.md",
+  "page": "learn/occupancy-and-phone-records.md",
   "title": "When and where is each place busy?"
  },
  "fastmob.core.staypoints_dataframe.Staypoints.resolve_dataframe": {
@@ -155,9 +180,9 @@
   "title": "The same pipeline, step by step"
  },
  "fastmob.core.trajectory_dataframe.TrajDataFrame.__init__": {
-  "anchor": "observed-flows-between-zones",
-  "page": "learn/fit-and-evaluate.md",
-  "title": "Observed flows between zones"
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
  },
  "fastmob.core.trajectory_dataframe.TrajDataFrame.compress": {
   "anchor": "summaries-from-the-same-object",
@@ -261,7 +286,7 @@
  },
  "fastmob.core.trips_dataframe.Trips.common_part_of_commuters": {
   "anchor": "compare-two-flow-tables",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Compare two flow tables"
  },
  "fastmob.core.trips_dataframe.Trips.common_part_of_commuters_distance": {
@@ -271,7 +296,7 @@
  },
  "fastmob.core.trips_dataframe.Trips.common_part_of_links": {
   "anchor": "compare-two-flow-tables",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Compare two flow tables"
  },
  "fastmob.core.trips_dataframe.Trips.from_triplegs": {
@@ -286,7 +311,7 @@
  },
  "fastmob.core.trips_dataframe.Trips.to_flow_dataframe": {
   "anchor": "compare-two-flow-tables",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "Compare two flow tables"
  },
  "fastmob.data.brightkite.load_brightkite": {
@@ -346,7 +371,7 @@
  },
  "fastmob.measures.collective.interest_network.interest_network": {
   "anchor": "when-and-where-is-each-place-busy",
-  "page": "learn/population-measures.md",
+  "page": "learn/occupancy-and-phone-records.md",
   "title": "When and where is each place busy?"
  },
  "fastmob.measures.collective.mean_square_displacement.mean_square_displacement": {
@@ -356,12 +381,12 @@
  },
  "fastmob.measures.collective.od.od_matrix": {
   "anchor": "from-check-ins-to-flows",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "From check-ins to flows"
  },
  "fastmob.measures.collective.od.od_metrics_per_area": {
   "anchor": "from-check-ins-to-flows",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "From check-ins to flows"
  },
  "fastmob.measures.collective.random_location_entropy.random_location_entropy": {
@@ -371,12 +396,12 @@
  },
  "fastmob.measures.collective.stvd.build_stvd": {
   "anchor": "when-and-where-is-each-place-busy",
-  "page": "learn/population-measures.md",
+  "page": "learn/occupancy-and-phone-records.md",
   "title": "When and where is each place busy?"
  },
  "fastmob.measures.collective.stvd.mean_area_volume": {
   "anchor": "when-and-where-is-each-place-busy",
-  "page": "learn/population-measures.md",
+  "page": "learn/occupancy-and-phone-records.md",
   "title": "When and where is each place busy?"
  },
  "fastmob.measures.collective.uncorrelated_location_entropy.uncorrelated_location_entropy": {
@@ -831,12 +856,12 @@
  },
  "fastmob.preprocessing.cdr.cdr_to_trips_df": {
   "anchor": "mobile-phone-records",
-  "page": "learn/population-measures.md",
+  "page": "learn/occupancy-and-phone-records.md",
   "title": "Mobile-phone records"
  },
  "fastmob.preprocessing.cdr.cdr_to_visitation_df": {
   "anchor": "mobile-phone-records",
-  "page": "learn/population-measures.md",
+  "page": "learn/occupancy-and-phone-records.md",
   "title": "Mobile-phone records"
  },
  "fastmob.preprocessing.cluster": {
@@ -896,7 +921,7 @@
  },
  "fastmob.preprocessing.trajectory_to_od": {
   "anchor": "from-check-ins-to-flows",
-  "page": "learn/population-measures.md",
+  "page": "learn/flows-between-places.md",
   "title": "From check-ins to flows"
  },
  "fastmob.preprocessing.trajectory_to_trips": {
@@ -1083,5 +1108,155 @@
   "anchor": "compare-two-trajectories",
   "page": "learn/process-trajectories.md",
   "title": "Compare two trajectories"
+ },
+ "fastmob_vis.activity.plot_activity_transition_difference": {
+  "anchor": "moving-between-activities",
+  "page": "learn/visualize-results.md",
+  "title": "Moving between activities"
+ },
+ "fastmob_vis.activity.plot_activity_transition_matrix": {
+  "anchor": "moving-between-activities",
+  "page": "learn/visualize-results.md",
+  "title": "Moving between activities"
+ },
+ "fastmob_vis.activity.plot_daily_activity_difference": {
+  "anchor": "activities-through-the-day",
+  "page": "learn/visualize-results.md",
+  "title": "Activities through the day"
+ },
+ "fastmob_vis.activity.plot_daily_activity_distribution": {
+  "anchor": "activities-through-the-day",
+  "page": "learn/visualize-results.md",
+  "title": "Activities through the day"
+ },
+ "fastmob_vis.activity.plot_visit_purpose_comparison": {
+  "anchor": "visit-purposes",
+  "page": "learn/visualize-results.md",
+  "title": "Visit purposes"
+ },
+ "fastmob_vis.activity.plot_visit_purpose_distribution": {
+  "anchor": "visit-purposes",
+  "page": "learn/visualize-results.md",
+  "title": "Visit purposes"
+ },
+ "fastmob_vis.charts.Chart.render": {
+  "anchor": "save-and-embed-charts",
+  "page": "learn/visualize-results.md",
+  "title": "Save and embed charts"
+ },
+ "fastmob_vis.charts.Chart.to_html": {
+  "anchor": "save-and-embed-charts",
+  "page": "learn/visualize-results.md",
+  "title": "Save and embed charts"
+ },
+ "fastmob_vis.charts.Chart.to_json": {
+  "anchor": "save-and-embed-charts",
+  "page": "learn/visualize-results.md",
+  "title": "Save and embed charts"
+ },
+ "fastmob_vis.charts.Chart.to_svg": {
+  "anchor": "save-and-embed-charts",
+  "page": "learn/visualize-results.md",
+  "title": "Save and embed charts"
+ },
+ "fastmob_vis.charts.bar": {
+  "anchor": "bars-boxes-points-and-a-heatmap-from-a-table",
+  "page": "learn/visualize-results.md",
+  "title": "Bars, boxes, points and a heatmap from a table"
+ },
+ "fastmob_vis.charts.boxplot": {
+  "anchor": "bars-boxes-points-and-a-heatmap-from-a-table",
+  "page": "learn/visualize-results.md",
+  "title": "Bars, boxes, points and a heatmap from a table"
+ },
+ "fastmob_vis.charts.ecdf": {
+  "anchor": "a-distribution-from-one-result",
+  "page": "learn/visualize-results.md",
+  "title": "A distribution from one result"
+ },
+ "fastmob_vis.charts.heatmap": {
+  "anchor": "bars-boxes-points-and-a-heatmap-from-a-table",
+  "page": "learn/visualize-results.md",
+  "title": "Bars, boxes, points and a heatmap from a table"
+ },
+ "fastmob_vis.charts.map": {
+  "anchor": "maps-which-are-interactive-only",
+  "page": "learn/visualize-results.md",
+  "title": "Maps, which are interactive only"
+ },
+ "fastmob_vis.charts.scatter": {
+  "anchor": "bars-boxes-points-and-a-heatmap-from-a-table",
+  "page": "learn/visualize-results.md",
+  "title": "Bars, boxes, points and a heatmap from a table"
+ },
+ "fastmob_vis.ecdf.plot_dwell_time_ecdf": {
+  "anchor": "time-spent-and-time-between-visits",
+  "page": "learn/visualize-results.md",
+  "title": "Time spent and time between visits"
+ },
+ "fastmob_vis.ecdf.plot_jump_lengths_ecdf": {
+  "anchor": "charts-for-one-kind-of-result",
+  "page": "learn/visualize-results.md",
+  "title": "Charts for one kind of result"
+ },
+ "fastmob_vis.ecdf.plot_radius_of_gyration_ecdf": {
+  "anchor": "charts-for-one-kind-of-result",
+  "page": "learn/visualize-results.md",
+  "title": "Charts for one kind of result"
+ },
+ "fastmob_vis.ecdf.plot_trip_duration_ecdf": {
+  "anchor": "time-spent-and-time-between-visits",
+  "page": "learn/visualize-results.md",
+  "title": "Time spent and time between visits"
+ },
+ "fastmob_vis.ecdf.plot_visits_frequency_ecdf": {
+  "anchor": "charts-for-one-kind-of-result",
+  "page": "learn/visualize-results.md",
+  "title": "Charts for one kind of result"
+ },
+ "fastmob_vis.figure.EChartsFigure.to_dict": {
+  "anchor": "save-and-embed-charts",
+  "page": "learn/visualize-results.md",
+  "title": "Save and embed charts"
+ },
+ "fastmob_vis.figure.get_resource_bundle": {
+  "anchor": "save-and-embed-charts",
+  "page": "learn/visualize-results.md",
+  "title": "Save and embed charts"
+ },
+ "fastmob_vis.mobility_laws.plot_distance_frequency_law": {
+  "anchor": "mobility-laws-and-their-fits",
+  "page": "learn/visualize-results.md",
+  "title": "Mobility laws and their fits"
+ },
+ "fastmob_vis.mobility_laws.plot_lognormal_fits": {
+  "anchor": "mobility-laws-and-their-fits",
+  "page": "learn/visualize-results.md",
+  "title": "Mobility laws and their fits"
+ },
+ "fastmob_vis.mobility_laws.plot_truncated_powerlaw_fits": {
+  "anchor": "mobility-laws-and-their-fits",
+  "page": "learn/visualize-results.md",
+  "title": "Mobility laws and their fits"
+ },
+ "fastmob_vis.motifs.plot_motif_literature_comparison": {
+  "anchor": "daily-motifs",
+  "page": "learn/visualize-results.md",
+  "title": "Daily motifs"
+ },
+ "fastmob_vis.profiles.plot_mobility_profiles": {
+  "anchor": "mobility-profiles",
+  "page": "learn/visualize-results.md",
+  "title": "Mobility profiles"
+ },
+ "fastmob_vis.profiles.plot_profile_metrics": {
+  "anchor": "mobility-profiles",
+  "page": "learn/visualize-results.md",
+  "title": "Mobility profiles"
+ },
+ "fastmob_vis.stvd.plot_stvd_comparison": {
+  "anchor": "maps-which-are-interactive-only",
+  "page": "learn/visualize-results.md",
+  "title": "Maps, which are interactive only"
  }
 }

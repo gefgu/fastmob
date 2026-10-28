@@ -158,9 +158,27 @@ def fetch_road_network(
 ) -> tuple[pa.Table, pa.Table]:
     """Fetch and build a car-routable graph from Overture road segments.
 
+    Parameters
+    ----------
+    min_lon : float
+        Western edge of the bounding box, in decimal degrees.
+    min_lat : float
+        Southern edge of the bounding box, in decimal degrees.
+    max_lon : float
+        Eastern edge of the bounding box, in decimal degrees.
+    max_lat : float
+        Northern edge of the bounding box, in decimal degrees.
+    overture_release : str
+        Overture Maps release to read, as listed in the public bucket, for
+        example ``"2025-06-25.0"``. Overture removes old releases.
+
     Returns
     -------
-    nodes_df, edges_df:
+    nodes_df
+        ``nodes_df``: ``node_idx`` (dense, 0-based), ``connector_id``,
+        ``lat``, ``lng``. ``edges_df``: ``from_node``, ``to_node``,
+        ``length_m``, ``speed_kmh``, ``weight_ds``, ``class``.
+    edges_df
         ``nodes_df``: ``node_idx`` (dense, 0-based), ``connector_id``,
         ``lat``, ``lng``. ``edges_df``: ``from_node``, ``to_node``,
         ``length_m``, ``speed_kmh``, ``weight_ds``, ``class``.
@@ -273,12 +291,20 @@ def build_road_graph(
 
     Parameters
     ----------
-    min_lon, min_lat, max_lon, max_lat : float
+    min_lon : float
+        Bounding box in degrees (WGS 84).
+    min_lat : float
+        Bounding box in degrees (WGS 84).
+    max_lon : float
+        Bounding box in degrees (WGS 84).
+    max_lat : float
         Bounding box in degrees (WGS 84).
     overture_release : str
         Overture Maps release id, for example ``"2026-10-21.0"``. Old releases are removed from the public bucket,
         so choose a current one.
-    nodes_output, edges_output : str
+    nodes_output : str
+        Paths of the Parquet files for the graph nodes and edges.
+    edges_output : str
         Paths of the Parquet files for the graph nodes and edges.
 
     Returns
@@ -320,7 +346,13 @@ def fetch_rail_network(
 
     Parameters
     ----------
-    min_lon, min_lat, max_lon, max_lat : float
+    min_lon : float
+        Bounding box in degrees (WGS 84).
+    min_lat : float
+        Bounding box in degrees (WGS 84).
+    max_lon : float
+        Bounding box in degrees (WGS 84).
+    max_lat : float
         Bounding box in degrees (WGS 84).
     overture_release : str
         Overture Maps release id, for example ``"2026-10-21.0"``. Old releases are removed from the public bucket,
@@ -436,14 +468,26 @@ def build_rail_graph(
 
     Parameters
     ----------
-    min_lon, min_lat, max_lon, max_lat : float
+    min_lon : float
+        Bounding box in degrees (WGS 84).
+    min_lat : float
+        Bounding box in degrees (WGS 84).
+    max_lon : float
+        Bounding box in degrees (WGS 84).
+    max_lat : float
         Bounding box in degrees (WGS 84).
     overture_release : str
         Overture Maps release id, for example ``"2026-10-21.0"``. Old releases are removed from the public bucket,
         so choose a current one.
-    nodes_output, edges_output : str
+    nodes_output : str
         Paths of the Parquet files for the graph nodes and edges.
-    classes, speed_kmh_by_class, default_speed_kmh : optional
+    edges_output : str
+        Paths of the Parquet files for the graph nodes and edges.
+    classes : optional
+        As in ``fetch_rail_network``.
+    speed_kmh_by_class : optional
+        As in ``fetch_rail_network``.
+    default_speed_kmh : optional
         As in ``fetch_rail_network``.
 
     Returns

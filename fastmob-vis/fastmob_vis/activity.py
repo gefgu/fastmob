@@ -15,6 +15,7 @@ from ._core import (
 from .brand import FONT_MONO, FONT_SANS
 from .common import activity_color, base_option, heatmap_option, norm_width, resolve_palette
 from .data import (
+    column,
     columns,
     daily_from_raw,
     dataframe_like,
@@ -58,7 +59,12 @@ def _normalize_transition_data(data: Any, name: str) -> tuple[list[str], np.ndar
         and len(index_labels) == len(column_labels)
         and set(index_labels) == set(column_labels)
     )
-    if dataframe_like(data) and not looks_like_square_matrix:
+    # The output of `activity_transition_matrix` has an "activity" column plus one column per
+    # activity: a finished matrix, not a table of visits.
+    is_activity_matrix = "activity" in data_columns and {str(label) for label in data_columns} - {
+        "activity"
+    } == {str(label) for label in column(data, "activity")}
+    if dataframe_like(data) and not looks_like_square_matrix and not is_activity_matrix:
         categories, matrix = transition_from_raw(data)
     elif looks_like_square_matrix:
         categories = index_labels
@@ -198,7 +204,39 @@ def plot_visit_purpose_distribution(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a bar chart of visit-purpose percentages."""
+    """Draw the share of visits by purpose as a bar chart.
+
+    The input is either raw visits (a table with an ``activity`` column, summarised by `visit_purpose_distribution`) or an already-summarised table with ``activity`` and ``percentage`` and/or ``count`` columns, or a tuple ``(labels, percentages[, counts])``.
+
+    Parameters
+    ----------
+    data : dataframe or tuple
+        Raw visits or a summarised distribution, as above.
+    labels : sequence of str, optional
+        Replacement category names, one per category in order.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The bar chart; bars are percentages.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` has a different length from the categories, or ``data`` has none of the accepted shapes.
+    """
     p = resolve_palette(palette)
     categories, percentages, counts, _ = _visit_purpose_distribution(data)
     if labels is not None:
@@ -284,7 +322,37 @@ def plot_visit_purpose_comparison(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a grouped bar chart comparing visit-purpose distributions."""
+    """Compare visit-purpose shares of several datasets as grouped bars.
+
+    Categories are the union over the datasets, in order of first appearance; a dataset with no visits for a category shows 0.
+
+    Parameters
+    ----------
+    datasets : mapping
+        Dataset name to data, each in a form accepted by `plot_visit_purpose_distribution`. Must not be empty.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The grouped bar chart.
+
+    Raises
+    ------
+    ValueError
+        If ``datasets`` is empty or a dataset repeats a label.
+    """
     if not isinstance(datasets, Mapping) or not datasets:
         raise ValueError("datasets must be a non-empty mapping of labels to visit-purpose data")
 
@@ -402,7 +470,37 @@ def plot_activity_transition_matrix(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a heatmap of activity transitions."""
+    """Draw the activity-to-activity transition matrix as a heatmap.
+
+    Rows are the activity a visit comes from and columns the activity it goes to; cells are percentages. The input is raw visits (summarised by `activity_transition_matrix`), the output of that function, a labelled square dataframe or a ``(labels, matrix)`` tuple.
+
+    Parameters
+    ----------
+    matrix_or_visits : dataframe or tuple
+        Raw visits or a transition matrix, as above.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The heatmap.
+
+    Raises
+    ------
+    ValueError
+        If the matrix is not square, does not match its labels, or contains infinite values.
+    """
     p = resolve_palette(palette)
     categories, values = _normalize_transition_data(matrix_or_visits, "data")
     option = heatmap_option(
@@ -442,7 +540,41 @@ def plot_activity_transition_difference(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a signed heatmap of second-minus-first transition percentages."""
+    """Draw the difference between two transition matrices as a signed heatmap.
+
+    Each cell is the second matrix minus the first, in percentage points, on a scale symmetric around zero. Activities missing from one matrix count as 0 there.
+
+    Parameters
+    ----------
+    first : dataframe or tuple
+        Two transition matrices, each in a form accepted by `plot_activity_transition_matrix`.
+    second : dataframe or tuple
+        Two transition matrices, each in a form accepted by `plot_activity_transition_matrix`.
+    labels : sequence of two str, optional
+        Names of the two datasets, used in the legend. Default ``("first", "second")``.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The signed heatmap.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` does not have two entries or a matrix is invalid.
+    """
     p = resolve_palette(palette)
     normalized_labels = _validate_labels(labels)
     first_categories, first_values = _normalize_transition_data(first, normalized_labels[0])
@@ -494,7 +626,41 @@ def plot_daily_activity_distribution(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a DARD heatmap of activity percentages by time of day."""
+    """Draw the daily activity distribution (DARD): the share of each activity by time of day.
+
+    Rows are activities and columns are time-of-day bins; each column sums to 100%. The input is raw visits (summarised by `daily_activity_distribution`), a matrix together with ``categories`` and ``n_bins``, or a ``(matrix, categories, n_bins)`` tuple.
+
+    Parameters
+    ----------
+    data : dataframe, array-like or tuple
+        Raw visits, a matrix, or a tuple, as above.
+    categories : sequence of str, optional
+        Activity names for the matrix rows; needed with a bare matrix.
+    n_bins : int, optional
+        Number of time-of-day bins; needed with a bare matrix.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The heatmap.
+
+    Raises
+    ------
+    ValueError
+        If the matrix shape does not match ``categories`` and ``n_bins``, contains infinite values, or the data has none of the accepted shapes.
+    """
     p = resolve_palette(palette)
     matrix, normalized_categories, normalized_n_bins = _normalize_daily_data(
         data, categories=categories, n_bins=n_bins, name="data"
@@ -542,7 +708,45 @@ def plot_daily_activity_difference(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a signed heatmap of second-minus-first daily activity percentages."""
+    """Draw the difference between two daily activity distributions as a signed heatmap.
+
+    Each cell is the second distribution minus the first, in percentage points. Both must use the same ``n_bins``; activities missing from one count as 0 there.
+
+    Parameters
+    ----------
+    first : dataframe, array-like or tuple
+        Two daily distributions, each in a form accepted by `plot_daily_activity_distribution`.
+    second : dataframe, array-like or tuple
+        Two daily distributions, each in a form accepted by `plot_daily_activity_distribution`.
+    categories : sequence of str, optional
+        Activity names for bare matrices.
+    n_bins : int, optional
+        Number of time-of-day bins for bare matrices.
+    labels : sequence of two str, optional
+        Names of the two datasets. Default ``("first", "second")``.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The signed heatmap.
+
+    Raises
+    ------
+    ValueError
+        If the two datasets use a different ``n_bins``, ``labels`` does not have two entries, or a matrix is invalid.
+    """
     p = resolve_palette(palette)
     normalized_labels = _validate_labels(labels)
     first_values, first_categories, first_n_bins = _normalize_daily_data(

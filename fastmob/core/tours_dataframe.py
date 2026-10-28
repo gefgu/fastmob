@@ -38,7 +38,7 @@ class Tours(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data; any Narwhals-compatible eager backend.
     uid_col : str, optional
         User-ID column name.
@@ -59,7 +59,7 @@ class Tours(BaseDataFrame):
     def from_trips(trips: Any, staypoints_with_location: Any) -> Tours:
         """Group consecutive trips into tours.
 
-        See :meth:`fastmob.core.trips_dataframe.Trips.generate_tours`.
+        See `fastmob.core.trips_dataframe.Trips.generate_tours`.
 
         Parameters
         ----------

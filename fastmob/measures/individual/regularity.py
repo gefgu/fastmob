@@ -34,7 +34,7 @@ def regularity(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with visit rows.
     user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
@@ -46,7 +46,7 @@ def regularity(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[user_id_col, "regularity"]``.
         The returned backend matches the input backend.
 

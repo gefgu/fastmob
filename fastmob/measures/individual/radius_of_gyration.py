@@ -43,14 +43,11 @@ def radius_of_gyration(
     coordinates.
 
     Radius of gyration is order-independent, so chronological sorting is not
-    required for correctness; grouping rows by user is what matters.  Input that
-    already groups each user's rows together is detected automatically and
-    computed on a contiguous fast path, roughly halving the work; there is
-    nothing to opt into.
+    required for correctness; grouping rows by user is what matters.
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory data; any Narwhals-compatible eager dataframe (pandas,
         polars, …).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
@@ -66,7 +63,7 @@ def radius_of_gyration(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "radius_of_gyration"]``.
         The returned backend matches the input backend.
 

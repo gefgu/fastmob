@@ -48,7 +48,7 @@ class Trips(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data; any Narwhals-compatible eager backend.
     uid_col : str, optional
         User-ID column name.
@@ -69,7 +69,7 @@ class Trips(BaseDataFrame):
     def from_triplegs(triplegs: Any, staypoints: Any, gap_threshold_min: float = 15.0) -> Trips:
         """Derive trips from triplegs + activity-flagged staypoints.
 
-        See :meth:`fastmob.core.triplegs_dataframe.Triplegs.generate_trips`.
+        See `fastmob.core.triplegs_dataframe.Triplegs.generate_trips`.
 
         Parameters
         ----------
@@ -293,7 +293,7 @@ class Trips(BaseDataFrame):
     def generate_tours(self, staypoints_with_location: Any) -> Any:
         """Group consecutive trips into tours (round trips back to the same location).
 
-        See :meth:`fastmob.core.tours_dataframe.Tours.from_trips`.
+        See `fastmob.core.tours_dataframe.Tours.from_trips`.
 
         Examples
         --------

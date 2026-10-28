@@ -15,14 +15,14 @@ TOT_OUTFLOW = "tot_outflow"
 
 
 class Radiation:
-    """Radiation model.
+    """Radiation model: flows between places from their populations and the opportunities in between.
 
     The radiation model for human migration. The model assumes that a traveller's
     destination choice follows two steps: each opportunity at every location is
     assigned a random fitness drawn from a distribution :math:`P(z)`, and the traveller
     accepts the closest opportunity whose fitness exceeds a threshold drawn from the
     same distribution. The resulting average flow from :math:`i` to :math:`j` is
-    [SGMB2012]_:
+    [SGMB2012]:
 
     .. math::
 
@@ -49,7 +49,7 @@ class Radiation:
 
     Notes
     -----
-    Generation accepts :class:`~fastmob.core.Locations` with global location IDs
+    Generation accepts `Locations` with global location IDs
     and numeric centre coordinates.
 
     Examples

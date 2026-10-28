@@ -86,7 +86,7 @@ def _encode_locations(df: nw.DataFrame, column: str) -> Any:
 def _encode_locations_pair(visits_series: nw.Series, locations_series: nw.Series, dtype: Any) -> tuple[Any, Any]:
     """Encode two location-id columns with one consistent codebook.
 
-    Used by :func:`daily_motifs_from_staypoints` so a location_id value maps
+    Used by `daily_motifs_from_staypoints` so a location_id value maps
     to the same code on both the visits (Staypoints) side and the locations
     (Locations) side. Integer ids (the real trackintel case -- ``location_id`` from
     ``generate_user_locations`` is always an integer cluster id) are cast
@@ -214,8 +214,8 @@ def _assemble_motif_result(
     raw_dates: Any,
     raw_motifs: Any,
 ) -> Any:
-    """Build the ``[uid_col, "date", "motif_id"]`` result shared by :func:`daily_motifs`
-    and :func:`daily_motifs_from_staypoints`.
+    """Build the ``[uid_col, "date", "motif_id"]`` result shared by `daily_motifs`
+    and `daily_motifs_from_staypoints`.
     """
     import pyarrow as pa
     import pyarrow.compute as pc
@@ -358,7 +358,7 @@ def motif_distribution(daily: Any, motif_id_col: str = "motif_id") -> Any:
 
     Parameters
     ----------
-    daily : DataFrame-like
+    daily : dataframe
         Output of ``daily_motifs`` (one row per user and day), or any table with a motif id column.
     motif_id_col : str, optional
         Column holding the motif ids. Default ``"motif_id"``.

@@ -100,7 +100,13 @@ def cluster_trajectory_shapes(
         fraction like ``0.05``). Default ``0.05``.
     min_cluster_size : int, optional
         DBSCAN minimum points per cluster; must be ``>= 2``. Default ``2``.
-    lat_col, lng_col, datetime_col : str, optional
+    lat_col : str, optional
+        Explicit column name overrides; auto-detected per trajectory when
+        None.
+    lng_col : str, optional
+        Explicit column name overrides; auto-detected per trajectory when
+        None.
+    datetime_col : str, optional
         Explicit column name overrides; auto-detected per trajectory when
         None.
 
@@ -164,7 +170,7 @@ def cluster_trajectory_shapes_from_segments(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         A dataframe already carrying a segment/group id column (e.g. the
         output of `fastmob.preprocessing.segment`).
     segment_col : str, optional
@@ -174,7 +180,7 @@ def cluster_trajectory_shapes_from_segments(
         When given, groups by ``(uid_col, segment_col)`` instead of
         ``segment_col`` alone (segment ids commonly restart per user).
     **kwargs
-        Forwarded to :func:`cluster_trajectory_shapes`.
+        Forwarded to `cluster_trajectory_shapes`.
 
     Returns
     -------

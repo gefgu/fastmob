@@ -27,16 +27,16 @@ def interest_network(staypoints: Staypoints | Any, locations: Locations) -> Any:
 
     Parameters
     ----------
-    staypoints : Staypoints or DataFrame-like
+    staypoints : Staypoints or dataframe
         Staypoints assigned to ``locations``. Raw dataframe-like input is
-        validated through :meth:`Staypoints.coerce`.
+        validated through `Staypoints.coerce`.
     locations : Locations
         Global location catalogue linked to the staypoint ``location_id``
         column.
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         Same backend as ``staypoints`` with columns ``location_id_a``,
         ``location_id_b``, and ``n_people``.
     """

@@ -26,7 +26,7 @@ class FlowDataFrame(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like, optional
+    df : dataframe, optional
         Source data.  Accepted types: ``pandas.DataFrame``,
         ``polars.DataFrame``, any Narwhals-compatible eager frame, ``list``,
         ``numpy.ndarray``, or ``dict``.
@@ -333,7 +333,7 @@ class FlowDataFrame(BaseDataFrame):
     ):
         """Plot origin-destination flows on an interactive Folium map.
 
-        Requires a tessellation to be attached (see :meth:`to_flowdataframe`).
+        Requires a tessellation to be attached (see `to_flowdataframe`).
 
         Parameters
         ----------

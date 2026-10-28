@@ -281,7 +281,7 @@ def intermittance_and_degree_of_return(
     use_trajectory: bool = True,
     impute_gaps: bool = False,
 ) -> Any:
-    """Compute intermittancy and degree of return per user using vectorized operations.
+    """Compute intermittancy and degree of return per user.
 
     For each user, partitions the visit sequence into alternating blocks of
     *explorations* (new places) and *returns* (revisits or home/work visits).
@@ -291,7 +291,7 @@ def intermittance_and_degree_of_return(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with visit rows.
     user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
@@ -334,7 +334,7 @@ def intermittance_and_degree_of_return(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns
         ``[user_id_col, "intermittency", "degree_of_return", "mean_return",
         "mean_exploration"]``. The returned backend matches the input backend.
@@ -499,7 +499,7 @@ def exploration_profiling(
 ) -> Any:
     """Compute intermittency and degree of return, then cluster users into mobility profiles.
 
-    Calls :func:`intermittance_and_degree_of_return` to get per-user statistics, then
+    Calls `intermittance_and_degree_of_return` to get per-user statistics, then
     applies a Rust clustering kernel on the ``degree_of_return`` values to assign each
     user to one of three profiles:
 
@@ -509,7 +509,7 @@ def exploration_profiling(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with visit rows.
     user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if ``None``.
@@ -520,7 +520,7 @@ def exploration_profiling(
         when ``cold_start_strategy="baseline"``.
     cold_start_strategy : str, optional
         How to initialize known places. Passed directly to
-        :func:`intermittance_and_degree_of_return`.
+        `intermittance_and_degree_of_return`.
     known_suffixes : tuple of str, optional
         Location ID suffixes treated as known (only used when
         ``cold_start_strategy="suffix"``).
@@ -531,13 +531,13 @@ def exploration_profiling(
     n_iterations : int, optional
         Maximum iterations for the clustering algorithm.
     impute_gaps : bool, optional
-        If True, pass through to :func:`intermittance_and_degree_of_return` to
+        If True, pass through to `intermittance_and_degree_of_return` to
         fill eligible missing 5-minute trajectory slices before computing
         return/exploration statistics.
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[user_id_col, "intermittency",
         "degree_of_return", "mean_return", "mean_exploration", "profile"]``.
         The ``"profile"`` column contains one of ``"routiners"``,

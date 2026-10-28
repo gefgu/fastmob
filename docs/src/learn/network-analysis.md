@@ -39,3 +39,13 @@ inspect results carefully on curved roads.
 
 See the [network reference](../reference/network.md) for Arrow return types,
 route geometry, OD desire lines, and rail support.
+
+## Related API
+
+[`match_trajectory`](../reference/network.md#fastmob.network.match_trajectory) ·
+[`build_road_graph`](../reference/network.md#fastmob.network.build_road_graph) ·
+[`fetch_road_network`](../reference/network.md#fastmob.network.fetch_road_network) ·
+[`snap_locations_to_graph`](../reference/network.md#fastmob.network.snap_locations_to_graph) ·
+[`RoadNetwork`](../reference/network.md#fastmob.network.RoadNetwork) ·
+[`od_desire_lines`](../reference/network.md#fastmob.network.od_desire_lines) ·
+[`build_rail_graph`](../reference/network.md#fastmob.network.build_rail_graph)

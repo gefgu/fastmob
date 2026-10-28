@@ -21,11 +21,11 @@ def random_location_entropy(
 
     Random location entropy is \\(\\log_2(n)\\), where \\(n\\) is the number of
     distinct users who visited the location.  A location is a unique exact
-    ``(lat, lng)`` pair — matching the skmob convention.
+    ``(lat, lng)`` pair, as in scikit-mobility.
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent all rows are treated as
@@ -41,7 +41,7 @@ def random_location_entropy(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per distinct ``(lat, lng)`` location with columns
         ``[lat_col, lng_col, "random_entropy"]``.
         The returned backend matches the input backend.

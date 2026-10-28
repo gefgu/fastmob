@@ -1,6 +1,6 @@
 """Amichi et al. (2020) Routiner/Regular/Scouter profile classification.
 
-Distinct from this package's :func:`~fastmob.measures.individual.mobility_profiling.exploration_profiling`:
+Distinct from this package's `exploration_profiling`:
 that function clusters on a single feature (``degree_of_return``) via a
 dependency-free Rust KMeans/GMM kernel. This module clusters on **two**
 standardized features (``[intermittency, degree_of_return]``) via a native
@@ -83,7 +83,7 @@ def _cluster_and_label(
     """Cluster users on standardized ``[intermittency, degree_of_return]``
     with KMeans, then label clusters by descending mean degree-of-return
     (highest -> "routiners", lowest -> "scouters"), matching
-    :func:`~fastmob.measures.individual.mobility_profiling.exploration_profiling`'s
+    `exploration_profiling`'s
     naming convention.
     """
     import pyarrow as pa
@@ -143,7 +143,19 @@ def compute_profiles(
         columns (auto-detected when not given explicitly): a user ID, a
         location ID, a stay start timestamp, a stay end timestamp, and
         optionally a "purpose"/activity type column.
-    user_id_col, location_id_col, start_col, end_col, purpose_col:
+    user_id_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    location_id_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    start_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    end_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    purpose_col
         Explicit column name overrides; auto-detected when None.
         ``purpose_col`` may be absent entirely (no activity-type column).
     n_clusters:

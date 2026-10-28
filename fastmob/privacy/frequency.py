@@ -22,11 +22,15 @@ def unique_location_risk(
 ) -> Any:
     """Assess re-identification risk from each user's distinct locations.
 
-    The attacker knows ``knowledge_length`` places, in the sense of the set of distinct places a user visited.
+    The attacker knows ``knowledge_length`` places, enumerated over the set of distinct places a user
+    visited, so a place visited several times is one instance. This is the difference from
+    ``location_risk``, which enumerates visit records. For ``knowledge_length=1`` the two give the same
+    per-user risk; for larger values ``location_risk`` can be higher, because it also lets the attacker
+    know the same place twice.
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory table (any eager dataframe) with latitude and longitude columns.
         A user column is required: the risk is computed for each user against all the others.
     knowledge_length : int
@@ -37,12 +41,19 @@ def unique_location_risk(
         If ``False`` (default) return one row per user with ``risk``, the highest probability over all
         possible attacker knowledge sets of this size. If ``True`` return one row per knowledge
         instance with its probability ``prob``.
-    lat_col, lng_col, uid_col : str, optional
+    lat_col : str, optional
+        Column names; auto-detected when ``None``.
+    lng_col : str, optional
+        Column names; auto-detected when ``None``.
+    uid_col : str, optional
         Column names; auto-detected when ``None``.
     h3_resolution : int, optional
         H3 resolution (0 to 15) used to turn coordinates into places. Coarser cells (lower values)
         make people harder to tell apart. Default 12 (about 10 m). Ignored when ``locations`` is given.
-    locations, location_id_col : optional
+    locations : optional
+        A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
+        your own places instead of H3 cells.
+    location_id_col : optional
         A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
         your own places instead of H3 cells.
 
@@ -51,7 +62,8 @@ def unique_location_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -94,7 +106,7 @@ def location_frequency_risk(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory table (any eager dataframe) with latitude and longitude columns.
         A user column is required: the risk is computed for each user against all the others.
     knowledge_length : int
@@ -107,12 +119,19 @@ def location_frequency_risk(
         If ``False`` (default) return one row per user with ``risk``, the highest probability over all
         possible attacker knowledge sets of this size. If ``True`` return one row per knowledge
         instance with its probability ``prob``.
-    lat_col, lng_col, uid_col : str, optional
+    lat_col : str, optional
+        Column names; auto-detected when ``None``.
+    lng_col : str, optional
+        Column names; auto-detected when ``None``.
+    uid_col : str, optional
         Column names; auto-detected when ``None``.
     h3_resolution : int, optional
         H3 resolution (0 to 15) used to turn coordinates into places. Coarser cells (lower values)
         make people harder to tell apart. Default 12 (about 10 m). Ignored when ``locations`` is given.
-    locations, location_id_col : optional
+    locations : optional
+        A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
+        your own places instead of H3 cells.
+    location_id_col : optional
         A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
         your own places instead of H3 cells.
 
@@ -121,7 +140,8 @@ def location_frequency_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -166,7 +186,7 @@ def location_probability_risk(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory table (any eager dataframe) with latitude and longitude columns.
         A user column is required: the risk is computed for each user against all the others.
     knowledge_length : int
@@ -179,12 +199,19 @@ def location_probability_risk(
         If ``False`` (default) return one row per user with ``risk``, the highest probability over all
         possible attacker knowledge sets of this size. If ``True`` return one row per knowledge
         instance with its probability ``prob``.
-    lat_col, lng_col, uid_col : str, optional
+    lat_col : str, optional
+        Column names; auto-detected when ``None``.
+    lng_col : str, optional
+        Column names; auto-detected when ``None``.
+    uid_col : str, optional
         Column names; auto-detected when ``None``.
     h3_resolution : int, optional
         H3 resolution (0 to 15) used to turn coordinates into places. Coarser cells (lower values)
         make people harder to tell apart. Default 12 (about 10 m). Ignored when ``locations`` is given.
-    locations, location_id_col : optional
+    locations : optional
+        A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
+        your own places instead of H3 cells.
+    location_id_col : optional
         A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
         your own places instead of H3 cells.
 
@@ -193,7 +220,8 @@ def location_probability_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -233,12 +261,13 @@ def location_proportion_risk(
 ) -> Any:
     """Assess re-identification risk from locations and their share of the most visited place.
 
-    The attacker knows ``knowledge_length`` places and how each place's visits compare with those of
-    the person's most visited place.
+    The attacker knows ``knowledge_length`` places and, for each, the number of visits as a proportion of
+    the visits to the person's most visited place (1 for the top place, 0.5 for a place visited half as
+    often). ``tolerance`` allows a relative error on that proportion.
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory table (any eager dataframe) with latitude and longitude columns.
         A user column is required: the risk is computed for each user against all the others.
     knowledge_length : int
@@ -251,12 +280,19 @@ def location_proportion_risk(
         If ``False`` (default) return one row per user with ``risk``, the highest probability over all
         possible attacker knowledge sets of this size. If ``True`` return one row per knowledge
         instance with its probability ``prob``.
-    lat_col, lng_col, uid_col : str, optional
+    lat_col : str, optional
+        Column names; auto-detected when ``None``.
+    lng_col : str, optional
+        Column names; auto-detected when ``None``.
+    uid_col : str, optional
         Column names; auto-detected when ``None``.
     h3_resolution : int, optional
         H3 resolution (0 to 15) used to turn coordinates into places. Coarser cells (lower values)
         make people harder to tell apart. Default 12 (about 10 m). Ignored when ``locations`` is given.
-    locations, location_id_col : optional
+    locations : optional
+        A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
+        your own places instead of H3 cells.
+    location_id_col : optional
         A global ``Locations`` catalogue and the column of ``traj`` holding its location ids, to use
         your own places instead of H3 cells.
 
@@ -265,7 +301,8 @@ def location_proportion_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -308,19 +345,25 @@ def home_work_risk(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory table (any eager dataframe) with latitude, longitude and a user column.
     targets : array-like, optional
         Users to assess; ``None`` assesses every user.
     force_instances : bool, optional
         If ``True``, return the knowledge instance of each user with its probability ``prob`` instead of
         ``risk``.
-    lat_col, lng_col, uid_col : str, optional
+    lat_col : str, optional
+        Column names; auto-detected when ``None``.
+    lng_col : str, optional
+        Column names; auto-detected when ``None``.
+    uid_col : str, optional
         Column names; auto-detected when ``None``.
     h3_resolution : int, optional
         H3 resolution (0 to 15) that turns coordinates into places. Coarser cells make people harder to
         tell apart. Default 12.
-    locations, location_id_col : optional
+    locations : optional
+        A global ``Locations`` catalogue and the column of ``traj`` holding its ids, to use your own places.
+    location_id_col : optional
         A global ``Locations`` catalogue and the column of ``traj`` holding its ids, to use your own places.
 
     Returns

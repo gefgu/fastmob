@@ -25,6 +25,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'  # draws the fastmob-vis charts of the notebook pages as images
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 

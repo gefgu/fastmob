@@ -42,7 +42,7 @@ def uncorrelated_entropy(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
@@ -61,7 +61,7 @@ def uncorrelated_entropy(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "uncorrelated_entropy"]``.
         The returned backend matches the input backend.
 

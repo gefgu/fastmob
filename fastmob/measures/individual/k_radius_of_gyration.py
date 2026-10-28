@@ -42,7 +42,7 @@ def k_radius_of_gyration(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory data; any Narwhals-compatible eager dataframe (pandas,
         polars, ...).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
@@ -60,7 +60,7 @@ def k_radius_of_gyration(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "k_radius_of_gyration"]``.
         The returned backend matches the input backend.
 

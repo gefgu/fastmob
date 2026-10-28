@@ -35,11 +35,19 @@ def work_location(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory table with datetime, latitude and longitude.
-    start_work, end_work : int, optional
+    start_work : int, optional
         Hours of the working window. Default 8 and 18.
-    datetime_col, lat_col, lng_col, uid_col : str, optional
+    end_work : int, optional
+        Hours of the working window. Default 8 and 18.
+    datetime_col : str, optional
+        Column names; auto-detected when ``None``.
+    lat_col : str, optional
+        Column names; auto-detected when ``None``.
+    lng_col : str, optional
+        Column names; auto-detected when ``None``.
+    uid_col : str, optional
         Column names; auto-detected when ``None``.
 
     Returns

@@ -98,11 +98,11 @@ def visits_per_time_unit(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
     time_unit : str or None, optional
-        Alias for ``freq`` (skmob compatibility).  When provided, overrides
+        Alias for ``freq``, kept for compatibility with scikit-mobility.  When provided, overrides
         ``freq``.
     freq : str, optional
         Pandas-compatible offset alias for the time bin width.  Default: ``"1h"``.
@@ -117,7 +117,7 @@ def visits_per_time_unit(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per non-empty time bin with columns
         ``[datetime_col, "n_visits"]``, sorted chronologically.
 

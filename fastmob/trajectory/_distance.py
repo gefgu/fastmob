@@ -107,16 +107,31 @@ def trajectory_distance(
 
     Parameters
     ----------
-    traj_a, traj_b:
+    traj_a
+        Trajectory dataframes; any Narwhals-compatible eager backend, or a
+        ``TrajDataFrame``.
+    traj_b
         Trajectory dataframes; any Narwhals-compatible eager backend, or a
         ``TrajDataFrame``.
     method:
         ``"dtw"``, ``"frechet"``, or ``"hausdorff"`` return a distance in km
         (``0`` = identical shape); ``"lcss"`` returns a similarity in
         ``[0, 1]`` (``1`` = identical shape).
-    datetime_col_a, lat_col_a, lng_col_a, uid_col_a:
+    datetime_col_a
         Explicit column overrides for `traj_a`; auto-detected when None.
-    datetime_col_b, lat_col_b, lng_col_b, uid_col_b:
+    lat_col_a
+        Explicit column overrides for `traj_a`; auto-detected when None.
+    lng_col_a
+        Explicit column overrides for `traj_a`; auto-detected when None.
+    uid_col_a
+        Explicit column overrides for `traj_a`; auto-detected when None.
+    datetime_col_b
+        Explicit column overrides for `traj_b`; auto-detected when None.
+    lat_col_b
+        Explicit column overrides for `traj_b`; auto-detected when None.
+    lng_col_b
+        Explicit column overrides for `traj_b`; auto-detected when None.
+    uid_col_b
         Explicit column overrides for `traj_b`; auto-detected when None.
     **method_kwargs:
         Method-specific parameters, forwarded to the matching

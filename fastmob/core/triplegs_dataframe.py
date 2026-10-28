@@ -55,7 +55,7 @@ class Triplegs(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data; any Narwhals-compatible eager backend.
     uid_col : str, optional
         User-ID column name.
@@ -75,7 +75,7 @@ class Triplegs(BaseDataFrame):
     def predict_transport_mode(self, method: str = "simple-coarse", categories: dict | None = None) -> Triplegs:
         """Classify each tripleg's transport mode from its average speed.
 
-        See :func:`fastmob.preprocessing.predict_transport_mode`.
+        See `fastmob.preprocessing.predict_transport_mode`.
 
         Parameters
         ----------
@@ -106,7 +106,7 @@ class Triplegs(BaseDataFrame):
     ) -> Any:
         """Aggregate this ``mode``-labeled table into a modal-split table.
 
-        See :func:`fastmob.preprocessing.calculate_modal_split`.
+        See `fastmob.preprocessing.calculate_modal_split`.
 
         Returns
         -------
@@ -124,7 +124,7 @@ class Triplegs(BaseDataFrame):
     def generate_trips(self, staypoints: Any, gap_threshold_min: float = 15.0) -> Any:
         """Group consecutive triplegs into trips.
 
-        See :meth:`fastmob.core.trips_dataframe.Trips.from_triplegs`.
+        See `fastmob.core.trips_dataframe.Trips.from_triplegs`.
 
         Examples
         --------
@@ -143,7 +143,7 @@ class Triplegs(BaseDataFrame):
     ) -> Triplegs:
         """Derive triplegs from positionfixes + already-generated staypoints.
 
-        See :meth:`fastmob.core.positionfixes_dataframe.Positionfixes.generate_triplegs`.
+        See `fastmob.core.positionfixes_dataframe.Positionfixes.generate_triplegs`.
 
         Returns
         -------

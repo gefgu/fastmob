@@ -114,7 +114,13 @@ def simplify(
         ``"douglas_peucker"``, ``"top_down_time_ratio"``, ``"min_distance"``,
         ``"min_time_delta"``, ``"max_distance"``, ``"chan_chin"``, or
         ``"imai_iri"``.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     is_sorted:
         Whether the trajectory is already sorted by user and time. Setting

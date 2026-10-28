@@ -20,7 +20,10 @@ def common_part_of_commuters(observed: Any, predicted: Any) -> float:
 
     Parameters
     ----------
-    observed, predicted : Trips or FlowDataFrame
+    observed : Trips or FlowDataFrame
+        Two ``Trips`` tables (each trip counts 1) or two sparse ``FlowDataFrame`` tables (weighted by ``flow``).
+        Both must be the same type.
+    predicted : Trips or FlowDataFrame
         Two ``Trips`` tables (each trip counts 1) or two sparse ``FlowDataFrame`` tables (weighted by ``flow``).
         Both must be the same type.
 
@@ -78,7 +81,9 @@ def common_part_of_links(observed: Any, predicted: Any) -> float:
 
     Parameters
     ----------
-    observed, predicted : Trips or FlowDataFrame
+    observed : Trips or FlowDataFrame
+        Two ``Trips`` tables or two ``FlowDataFrame`` tables of the same type.
+    predicted : Trips or FlowDataFrame
         Two ``Trips`` tables or two ``FlowDataFrame`` tables of the same type.
 
     Returns
@@ -130,7 +135,9 @@ def common_part_of_commuters_distance(observed: Any, predicted: Any) -> float:
 
     Parameters
     ----------
-    observed, predicted : Trips
+    observed : Trips
+        Two ``Trips`` tables, each with a ``distance_km`` column (kilometres).
+    predicted : Trips
         Two ``Trips`` tables, each with a ``distance_km`` column (kilometres).
 
     Returns

@@ -20,7 +20,7 @@ def jensen_shannon_divergence(distribution1: Any, distribution2: Any) -> float:
     """Return Jensen-Shannon divergence between two distributions.
 
     Inputs are normalised internally (raw counts and probabilities both
-    work) and must have the same length -- unlike :func:`wasserstein_distance`,
+    work) and must have the same length -- unlike `wasserstein_distance`,
     the two arrays are paired by index (one entry per category/bin), not
     independent samples.
     """
@@ -37,7 +37,9 @@ def wasserstein_distance(values1: Any, values2: Any) -> float:
 
     Parameters
     ----------
-    values1, values2 : array-like
+    values1 : array-like
+        The two samples (they may have different lengths).
+    values2 : array-like
         The two samples (they may have different lengths).
 
     Returns

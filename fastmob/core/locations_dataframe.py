@@ -42,7 +42,7 @@ class Locations(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data; any Narwhals-compatible eager backend.
     uid_col : str, optional
         User-ID column name for user-scoped locations. Must be ``None`` for
@@ -52,7 +52,11 @@ class Locations(BaseDataFrame):
     scheme : {"cluster", "h3", "external"}, optional
         Location-ID scheme. User locations default to ``"cluster"`` and
         global locations default to ``"external"``.
-    location_id_col, center_lat_col, center_lng_col : str, optional
+    location_id_col : str, optional
+        Column name overrides.
+    center_lat_col : str, optional
+        Column name overrides.
+    center_lng_col : str, optional
         Column name overrides.
     validate : bool, optional
         When True (default), check that required columns are present.
@@ -120,9 +124,15 @@ class Locations(BaseDataFrame):
 
         Parameters
         ----------
-        tessellation : DataFrame-like
+        tessellation : dataframe
             Tile table with IDs and centres or geometries.
-        tile_id_col, lat_col, lng_col, geometry_col : str, optional
+        tile_id_col : str, optional
+            Source column names.
+        lat_col : str, optional
+            Source column names.
+        lng_col : str, optional
+            Source column names.
+        geometry_col : str, optional
             Source column names.
 
         Returns
@@ -194,11 +204,11 @@ class Locations(BaseDataFrame):
     def identify(self, staypoints: Any, method: str = "freq", **kwargs: Any) -> Locations:
         """Label each location as ``"home"``, ``"work"``, or ``"other"``.
 
-        See :func:`fastmob.preprocessing.identify_locations`.
+        See `fastmob.preprocessing.identify_locations`.
 
         Parameters
         ----------
-        staypoints : DataFrame-like or Staypoints
+        staypoints : dataframe or Staypoints
             Location-assigned visits.
         method : str, optional
             Purpose-identification method. Default is ``"freq"``.

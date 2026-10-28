@@ -23,32 +23,37 @@ nav = [
     { "Learn overview" = "learn/index.md" },
     { "1. Getting started" = [
       { "Start with a trajectory" = "learn/analyze-a-simple-trajectory.md" },
-      { "Columns and dataframe libraries" = "learn/use-custom-columns-and-dataframe-backends.md" },
+      { "Use your own columns and dataframe library" = "learn/use-custom-columns-and-dataframe-backends.md" },
     ] },
     { "2. Preparing trajectories" = [
       { "Cleaning and segmentation" = "learn/clean-and-segment.md" },
-      { "Clean GPS data and find stops" = "learn/clean-and-detect-stops.md" },
-      { "Gaps, smoothing and conversion" = "learn/process-trajectories.md" },
+      { "Clean noisy GPS data and find stops" = "learn/clean-and-detect-stops.md" },
+      { "Fill gaps, smooth, compare and convert trajectories" = "learn/process-trajectories.md" },
       { "Stops and locations" = "learn/staypoints-and-locations.md" },
-      { "Stops, trips and tours" = "learn/trajectory-hierarchy.md" },
+      { "Build the trajectory hierarchy: stops, trips and tours" = "learn/trajectory-hierarchy.md" },
     ] },
     { "3. Measuring mobility" = [
       { "Measuring people and populations" = "learn/individual-and-collective-measures.md" },
       { "Measure individual mobility" = "learn/measure-individual-mobility.md" },
-      { "Routine and mobility profiles" = "learn/visit-based-measures.md" },
-      { "Daily mobility motifs" = "learn/motifs.md" },
-      { "Population measures and flows" = "learn/population-measures.md" },
+      { "Routine, predictability and mobility profiles" = "learn/visit-based-measures.md" },
+      { "Find daily mobility motifs" = "learn/motifs.md" },
+      { "Population measures" = "learn/population-measures.md" },
+      { "Flows between places" = "learn/flows-between-places.md" },
+      { "Occupancy and phone records" = "learn/occupancy-and-phone-records.md" },
     ] },
     { "4. Spatial and network analysis" = [
       { "Roads, rails and map matching" = "learn/network-analysis.md" },
-      { "Road network notebook" = "learn/road-network-analysis.md" },
-      { "Contact networks" = "learn/contact-networks.md" },
+      { "Road networks: matching, routing and route flows" = "learn/road-network-analysis.md" },
+      { "Contact networks from stays" = "learn/contact-networks.md" },
     ] },
-    { "5. Modelling and evaluating" = [
-      { "Mobility laws" = "learn/compare-to-mobility-laws.md" },
+    { "5. Modelling, evaluating and protecting" = [
+      { "Compare your data to mobility laws" = "learn/compare-to-mobility-laws.md" },
       { "Generate mobility with models" = "learn/generate-mobility.md" },
       { "Fit and compare distributions" = "learn/fit-and-evaluate.md" },
-      { "Privacy risk" = "learn/privacy-risk.md" },
+      { "Privacy risk of trajectories" = "learn/privacy-risk.md" },
+    ] },
+    { "6. Charting results" = [
+      { "Chart your results" = "learn/visualize-results.md" },
     ] },
   ] },
   { "Reference" = [
@@ -132,6 +137,7 @@ name = "Switch to light mode"
 docstring_style = "numpy"
 show_source = false
 show_root_heading = true
+show_root_full_path = false
 show_symbol_type_heading = false
 show_symbol_type_toc = false
 

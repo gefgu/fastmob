@@ -106,15 +106,40 @@ def plot_mobility_profiles(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Scatter of intermittency vs degree of return, colored by mobility profile.
+    """Scatter intermittency against degree of return, coloured by mobility profile.
 
-    ``profiles`` is a dataframe-like or dict with ``degree_of_return``,
-    ``intermittency`` and a profile-label column (``profile_col``). Points are
-    grouped into one scatter series per profile so the clustering is visible.
+    Points are grouped into one series per profile (Routiner, Regular, Scouter, then any others), which makes the clustering visible. To compare datasets pass a mapping of dataset name to dataset: they are overlaid on the same axes, colour encodes the profile and symbol shape encodes the dataset.
 
-    To compare datasets, pass a mapping of dataset name -> dataset; all datasets are
-    overlaid on the same axes with color encoding the profile and symbol shape
-    encoding the dataset.
+    Parameters
+    ----------
+    profiles : dataframe, dict or mapping
+        A table with ``degree_of_return``, ``intermittency`` and a profile-label column, or a mapping of dataset name to such a table.
+    profile_col : str, optional
+        Column with the profile label. Default ``"agent_type"``.
+    profile_colors : dict, optional
+        Profile name to colour; must cover every profile present. Default: colours from the palette.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The scatter figure.
+
+    Raises
+    ------
+    ValueError
+        If the three columns differ in length, contain non-finite values, or ``profile_colors`` misses a profile.
     """
     datasets = _as_profile_datasets(profiles)
     dataset_names = list(datasets)
@@ -257,11 +282,42 @@ def plot_profile_metrics(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Grouped box plots of mobility metrics, one sub-plot per metric.
+    """Draw box plots of mobility metrics for each mobility profile, one panel per metric.
 
-    ``datasets`` maps a dataset name to a dataframe-like / dict carrying a profile
-    column and the metric columns. Each sub-plot shows the profiles on the x-axis
-    with one box per dataset (dodged), so a one-entry mapping is single-dataset.
+    Each panel shows the profiles on the x-axis with one box per dataset, so a one-entry mapping describes a single dataset.
+
+    Parameters
+    ----------
+    datasets : mapping
+        Dataset name to a table with a profile column and the metric columns. Must not be empty.
+    metrics : sequence of str, optional
+        Metric columns to draw. Default ``("regularity", "diversity", "stationarity", "entropy")``.
+    profile_col : str, optional
+        Column with the profile label. Default ``"agent_type"``.
+    profile_order : sequence of str, optional
+        Order of the profiles on the x-axis. Default ``("Scouter", "Regular", "Routiner")``.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The grouped box-plot panels.
+
+    Raises
+    ------
+    ValueError
+        If ``datasets`` is empty, ``metrics`` is empty, or a column is missing.
     """
     if not isinstance(datasets, Mapping) or not datasets:
         raise ValueError("datasets must be a non-empty mapping of dataset names to profile data")

@@ -20,11 +20,14 @@ def od_desire_lines(
 
     Parameters
     ----------
-    road_network: :class:`fastmob.network.road_graph.RoadNetwork`
+    road_network: `fastmob.network.road_graph.RoadNetwork`
         A prepared network (see ``RoadNetwork.build``); ``from_nodes``/
         ``to_nodes`` are node ids from that network's ``nodes_df`` (e.g.
-        via :func:`fastmob.network.snap.snap_locations_to_graph`).
-    from_nodes, to_nodes: np.ndarray
+        via `fastmob.network.snap.snap_locations_to_graph`).
+    from_nodes : np.ndarray
+        Node ids per OD pair; a negative value marks an unsnapped origin
+        or destination.
+    to_nodes : np.ndarray
         Node ids per OD pair; a negative value marks an unsnapped origin
         or destination.
     flows: np.ndarray

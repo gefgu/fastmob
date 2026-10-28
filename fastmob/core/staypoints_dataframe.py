@@ -34,9 +34,17 @@ class Staypoints(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data; any Narwhals-compatible eager backend.
-    uid_col, lat_col, lng_col, started_at_col, finished_at_col : str, optional
+    uid_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    lat_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    lng_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    started_at_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    finished_at_col : str, optional
         Explicit column name overrides; auto-detected when None.
     validate : bool, optional
         When True (default), check that required columns are present and
@@ -82,12 +90,12 @@ class Staypoints(BaseDataFrame):
 
         Existing instances are returned unchanged. Raw dataframe-like inputs
         are constructed with the same column detection and validation as
-        :class:`Staypoints`, so measures can share one explicit boundary for
+        `Staypoints`, so measures can share one explicit boundary for
         accepting raw staypoint data.
 
         Parameters
         ----------
-        value : Staypoints or DataFrame-like
+        value : Staypoints or dataframe
             Existing wrapper or raw interval table.
         **column_overrides
             Explicit column names, accepted only for a raw table.
@@ -117,7 +125,7 @@ class Staypoints(BaseDataFrame):
 
         Parameters
         ----------
-        df : DataFrame-like
+        df : dataframe
             Staypoint interval table.
         started_at_col : str
             Start-time column.
@@ -193,7 +201,7 @@ class Staypoints(BaseDataFrame):
     def create_activity_flag(self, method: str = "time_threshold", time_threshold_min: float = 15.0) -> Staypoints:
         """Flag each staypoint as a genuine "activity" by dwell time.
 
-        See :func:`fastmob.preprocessing.create_activity_flag`.
+        See `fastmob.preprocessing.create_activity_flag`.
 
         Parameters
         ----------
@@ -395,14 +403,14 @@ class Staypoints(BaseDataFrame):
     def build_stvd(self, locations: Locations, **kwargs: Any) -> Any:
         """Aggregate these staypoints against a global Locations catalogue into an STVD frame.
 
-        See :func:`fastmob.measures.collective.build_stvd`.
+        See `fastmob.measures.collective.build_stvd`.
 
         Parameters
         ----------
         locations : Locations
             Global location catalogue.
         **kwargs
-            Forwarded to :func:`fastmob.measures.collective.build_stvd`.
+            Forwarded to `fastmob.measures.collective.build_stvd`.
 
         Returns
         -------
@@ -420,7 +428,7 @@ class Staypoints(BaseDataFrame):
     def interest_network(self, locations: Locations) -> Any:
         """Return the collective interest network over global ``locations``.
 
-        See :func:`fastmob.measures.collective.interest_network`.
+        See `fastmob.measures.collective.interest_network`.
 
         Returns
         -------
@@ -441,7 +449,7 @@ class Staypoints(BaseDataFrame):
     ) -> Any:
         """Compute one home-anchored mobility motif per user and day.
 
-        See :func:`fastmob.measures.individual.motifs.daily_motifs_from_staypoints`.
+        See `fastmob.measures.individual.motifs.daily_motifs_from_staypoints`.
 
         Parameters
         ----------

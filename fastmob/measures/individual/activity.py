@@ -185,13 +185,19 @@ def daily_activity_distribution(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         Visits with an activity (purpose) column and start and end timestamps.
-    activity_col, start_time_col, end_time_col : str, optional
+    activity_col : str, optional
+        Column names; auto-detected when ``None``.
+    start_time_col : str, optional
+        Column names; auto-detected when ``None``.
+    end_time_col : str, optional
         Column names; auto-detected when ``None``.
     bin_size_minutes : int, optional
         Width of the time bins in minutes. Default 10.
-    day_col, day_filter : optional
+    day_col : optional
+        Restrict the computation to the visits of one day-of-week value.
+    day_filter : optional
         Restrict the computation to the visits of one day-of-week value.
 
     Returns
@@ -298,7 +304,7 @@ def activity_transition_matrix(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with at least an activity
         column and, optionally, a user-ID and timestamp column.
     activity_col : str or None, optional

@@ -97,7 +97,7 @@ def _prepare_visitation_law_data(
 ) -> Any:
     """Prepare per-user H3-cell observations for the universal visitation law.
 
-    A dataframe or :class:`~fastmob.core.Staypoints` is tessellated into
+    A dataframe or `Staypoints` is tessellated into
     shared H3 cells. Timezone-aware timestamps are converted to local naive
     time, matching the daily-motif convention. Home and destination positions
     are H3 cell centers, so one cell has one coordinate for every user.
@@ -109,14 +109,25 @@ def _prepare_visitation_law_data(
     ----------
     staypoints:
         Eager dataframe with user, timestamp, latitude, and longitude columns,
-        or a :class:`~fastmob.core.Staypoints` object.
+        or a `Staypoints` object.
     h3_resolution:
         Shared H3 destination and home resolution, from 0 through 15.
-    user_id_col, timestamp_col, lat_col, lng_col:
+    user_id_col
         Optional dataframe column overrides. Staypoints metadata supplies the
         defaults for a Staypoints input.
-    start_night, end_night:
-        Local hour bounds passed to :func:`fastmob.home_location`.
+    timestamp_col
+        Optional dataframe column overrides. Staypoints metadata supplies the
+        defaults for a Staypoints input.
+    lat_col
+        Optional dataframe column overrides. Staypoints metadata supplies the
+        defaults for a Staypoints input.
+    lng_col
+        Optional dataframe column overrides. Staypoints metadata supplies the
+        defaults for a Staypoints input.
+    start_night
+        Local hour bounds passed to `fastmob.home_location`.
+    end_night
+        Local hour bounds passed to `fastmob.home_location`.
     """
     if isinstance(h3_resolution, bool) or not isinstance(h3_resolution, int) or not 0 <= h3_resolution <= 15:
         raise ValueError("h3_resolution must be an integer between 0 and 15")
@@ -257,8 +268,10 @@ def _bin_visitation_law(
     Parameters
     ----------
     vl_df:
-        Dataframe returned by :func:`_prepare_visitation_law_data`.
-    user_id_col, h3_cell_col:
+        Dataframe returned by `_prepare_visitation_law_data`.
+    user_id_col
+        Column names in ``vl_df``. ``h3_cell_col`` defaults to ``"h3_cell"``.
+    h3_cell_col
         Column names in ``vl_df``. ``h3_cell_col`` defaults to ``"h3_cell"``.
     n_bins:
         Number of logarithmic ``rf`` bins.
@@ -355,10 +368,15 @@ def _fit_visitation_law_spectrum(
 
     Parameters
     ----------
-    rf_values, rho_values:
+    rf_values
         Positive binned values, typically returned by
-        :func:`_bin_visitation_law`.
-    min_rf, max_rf:
+        `_bin_visitation_law`.
+    rho_values
+        Positive binned values, typically returned by
+        `_bin_visitation_law`.
+    min_rf
+        Optional positive inclusive range for fitting.
+    max_rf
         Optional positive inclusive range for fitting.
     return_curve:
         When ``True``, also return smooth fitted curve arrays.

@@ -133,10 +133,27 @@ def _chart_css(chart_type: str | None, *, bundle_libs: bool = True) -> str:
 
 
 def get_resource_bundle(*, echarts: bool = True, leaflet: bool = False) -> str:
-    """Return inline HTML (script/style tags) to inject once in a parent document's <head>.
+    """Return the script and style tags that charts need, to include once in a page.
 
-    Use with bundle_libs=False on all plot functions to share heavy libraries across
-    multiple charts in a single HTML document rather than embedding them per chart.
+    Use this with ``bundle_libs=False`` on every chart of a page so that the large JavaScript libraries are written once instead of once per chart.
+
+    Parameters
+    ----------
+    echarts : bool, optional
+        Include ECharts. Default True.
+    leaflet : bool, optional
+        Include Leaflet and its ECharts extension, needed by `plot_stvd_comparison`. Default False.
+
+    Returns
+    -------
+    str
+        HTML ``<script>`` and ``<style>`` tags to place in the page ``<head>``.
+
+    Examples
+    --------
+    >>> from fastmob import vis
+    >>> vis.get_resource_bundle().startswith("<script>")
+    True
     """
     parts: list[str] = []
     if echarts:
@@ -150,7 +167,32 @@ def get_resource_bundle(*, echarts: bool = True, leaflet: bool = False) -> str:
 
 @dataclass(frozen=True, init=False)
 class EChartsFigure:
-    """Notebook-renderable ECharts option wrapper."""
+    """Low-level notebook-renderable ECharts option.
+
+    Wraps a raw ECharts option dictionary. Most code uses `Chart` instead; `Chart.render` returns this class, and the domain plot helpers such as `plot_jump_lengths_ecdf` return it directly. It has the same exports as `Chart`: `to_dict`, `to_json`, `to_html` and `to_svg`.
+
+    Parameters
+    ----------
+    option : dict
+        The ECharts option.
+    width : str, optional
+        CSS width. Default ``"600px"``.
+    height : str, optional
+        CSS height. Default ``"420px"``.
+    background : str, optional
+        Page background colour. Default ``"white"``.
+    bundle_libs : bool, optional
+        Embed the JavaScript libraries. Default True.
+    display : {"html", "svg"}, optional
+        Notebook display mode. Default ``"html"``.
+
+    Raises
+    ------
+    TypeError
+        If ``option`` is not a dictionary.
+    ValueError
+        If ``display`` is not ``"html"`` or ``"svg"``.
+    """
 
     _option: dict[str, Any] = field(repr=False)
     width: str = "600px"
@@ -181,28 +223,79 @@ class EChartsFigure:
 
     @property
     def option(self) -> dict[str, Any]:
+        """A copy of the ECharts option; changing it does not change the chart."""
         return copy.deepcopy(self._option)
 
     @property
     def option_json(self) -> str:
+        """The ECharts option as a JSON string."""
         return json.dumps(self._option)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a copy of the ECharts option, ready to send to a web page.
+
+        Returns
+        -------
+        dict
+            The ECharts option, including a ``_meta`` entry with the chart type.
+        """
         return copy.deepcopy(self._option)
 
     def to_json(self, filepath: str | Path) -> Path:
+        """Write the ECharts option as a JSON file.
+
+        Parameters
+        ----------
+        filepath : str or pathlib.Path
+            Destination file.
+
+        Returns
+        -------
+        pathlib.Path
+            The file written.
+        """
         path = Path(filepath)
         path.write_text(self.option_json, encoding="utf-8")
         return path
 
     def to_html(self, filepath: str | Path) -> Path:
-        """Write a standalone HTML document that renders the chart."""
+        """Write a standalone HTML page that draws the chart.
+
+        The page embeds the JavaScript libraries, so it opens without a network
+        connection (map tiles excepted).
+
+        Parameters
+        ----------
+        filepath : str or pathlib.Path
+            Destination file.
+
+        Returns
+        -------
+        pathlib.Path
+            The file written.
+        """
         path = Path(filepath)
         path.write_text(self._to_html_string(), encoding="utf-8")
         return path
 
     def to_svg(self, filepath: str | Path | None = None) -> str | Path:
-        """Return or write a static SVG rendering of the chart."""
+        """Draw the chart as a static SVG picture.
+
+        Parameters
+        ----------
+        filepath : str or pathlib.Path, optional
+            Destination file. When omitted the SVG text is returned.
+
+        Returns
+        -------
+        str or pathlib.Path
+            The SVG text, or the file written.
+
+        Raises
+        ------
+        ValueError
+            For maps and STVD comparisons, which can only be drawn with JavaScript.
+        """
         chart_type = self._option.get("_meta", {}).get("chartType")
         if chart_type in _UNSUPPORTED_SVG_CHART_TYPES:
             raise ValueError(f"SVG rendering is not supported for chart type {chart_type!r}")
@@ -251,7 +344,9 @@ class EChartsFigure:
             option_literal=option_literal,
         )
 
-    def _repr_html_(self) -> str:
+    def _repr_html_(self) -> str | None:
+        if self.display == "svg":
+            return None  # the SVG in `_repr_mimebundle_` is the only representation
         if not self.bundle_libs:
             return self._to_inline_snippet()
         iframe_srcdoc = html.escape(self._to_html_string(), quote=True)

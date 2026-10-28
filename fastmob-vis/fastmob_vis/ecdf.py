@@ -8,7 +8,7 @@ import numpy as np
 
 from ._core import build_ecdf_option_json, compute_ecdf
 from .brand import FONT_MONO, FONT_SANS, FONT_SERIF
-from .common import norm_width, resolve_palette
+from .common import norm_width, resolve_palette, thin_points
 from .figure import EChartsFigure
 
 SERIES_ROLES = ["observed", "synthetic", "syn2", "syn3", "baseline"]
@@ -62,8 +62,8 @@ def _plot_ecdf(
     p = resolve_palette(palette)
     left_arr = _as_float_array(left, "left")
     right_arr = _as_float_array(right, "right")
-    left_points = compute_ecdf(left_arr, cdf_cutoff)
-    right_points = compute_ecdf(right_arr, cdf_cutoff)
+    left_points = thin_points(compute_ecdf(left_arr, cdf_cutoff))
+    right_points = thin_points(compute_ecdf(right_arr, cdf_cutoff))
     x_name = f"{x_label.upper()} · {x_unit.upper()}" if x_unit else x_label.upper()
 
     series_inputs = _build_series_inputs(
@@ -97,7 +97,49 @@ def plot_jump_lengths_ecdf(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a Jupyter-renderable ECDF comparison for two jump-length arrays."""
+    """Compare two sets of jump lengths with ECDF curves.
+
+    Both arrays are drawn as empirical cumulative distribution functions on the same axes, the first solid and the second dashed. Use it to compare an observed result with a simulated one. Arrays are not sorted or cleaned beyond dropping nothing: pass finite numbers.
+
+    Parameters
+    ----------
+    left : array-like
+        The two sets of jump lengths.
+    right : array-like
+        The two sets of jump lengths.
+    labels : sequence of two str, optional
+        Series names. Default ``("A", "B")``.
+    title : str, optional
+        Chart title.
+    cdf_cutoff : float, optional
+        Cumulative probability at which each curve stops. Default 0.98.
+    x_label : str, optional
+        X-axis label.
+    x_unit : str, optional
+        Unit shown on the axis and tooltip (default ``"km"``).
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The ECDF figure.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` does not have two entries.
+
+    See Also
+    --------
+    fastmob.vis.ecdf : The dataframe-based ECDF.
+    """
     return _plot_ecdf(left, right, labels, title, palette, cdf_cutoff, x_label, x_unit, width, bundle_libs, display)
 
 
@@ -115,7 +157,49 @@ def plot_visits_frequency_ecdf(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a Jupyter-renderable ECDF comparison for two visit-frequency arrays."""
+    """Compare two sets of visit counts with ECDF curves.
+
+    Both arrays are drawn as empirical cumulative distribution functions on the same axes, the first solid and the second dashed. Use it to compare an observed result with a simulated one. Arrays are not sorted or cleaned beyond dropping nothing: pass finite numbers.
+
+    Parameters
+    ----------
+    left : array-like
+        The two sets of visit counts.
+    right : array-like
+        The two sets of visit counts.
+    labels : sequence of two str, optional
+        Series names. Default ``("A", "B")``.
+    title : str, optional
+        Chart title.
+    cdf_cutoff : float, optional
+        Cumulative probability at which each curve stops. Default 0.98.
+    x_label : str, optional
+        X-axis label.
+    x_unit : str, optional
+        Unit shown on the axis and tooltip.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The ECDF figure.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` does not have two entries.
+
+    See Also
+    --------
+    fastmob.vis.ecdf : The dataframe-based ECDF.
+    """
     return _plot_ecdf(left, right, labels, title, palette, cdf_cutoff, x_label, x_unit, width, bundle_libs, display)
 
 
@@ -133,7 +217,49 @@ def plot_radius_of_gyration_ecdf(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a Jupyter-renderable ECDF comparison for two radius-of-gyration arrays."""
+    """Compare two sets of radii of gyration with ECDF curves.
+
+    Both arrays are drawn as empirical cumulative distribution functions on the same axes, the first solid and the second dashed. Use it to compare an observed result with a simulated one. Arrays are not sorted or cleaned beyond dropping nothing: pass finite numbers.
+
+    Parameters
+    ----------
+    left : array-like
+        The two sets of radii of gyration.
+    right : array-like
+        The two sets of radii of gyration.
+    labels : sequence of two str, optional
+        Series names. Default ``("A", "B")``.
+    title : str, optional
+        Chart title.
+    cdf_cutoff : float, optional
+        Cumulative probability at which each curve stops. Default 0.98.
+    x_label : str, optional
+        X-axis label.
+    x_unit : str, optional
+        Unit shown on the axis and tooltip (default ``"km"``).
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The ECDF figure.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` does not have two entries.
+
+    See Also
+    --------
+    fastmob.vis.ecdf : The dataframe-based ECDF.
+    """
     return _plot_ecdf(left, right, labels, title, palette, cdf_cutoff, x_label, x_unit, width, bundle_libs, display)
 
 
@@ -151,7 +277,49 @@ def plot_trip_duration_ecdf(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a Jupyter-renderable ECDF comparison for two trip-duration arrays."""
+    """Compare two sets of trip durations with ECDF curves.
+
+    Both arrays are drawn as empirical cumulative distribution functions on the same axes, the first solid and the second dashed. Use it to compare an observed result with a simulated one. Arrays are not sorted or cleaned beyond dropping nothing: pass finite numbers.
+
+    Parameters
+    ----------
+    left : array-like
+        The two sets of trip durations.
+    right : array-like
+        The two sets of trip durations.
+    labels : sequence of two str, optional
+        Series names. Default ``("A", "B")``.
+    title : str, optional
+        Chart title.
+    cdf_cutoff : float, optional
+        Cumulative probability at which each curve stops. Default 0.98.
+    x_label : str, optional
+        X-axis label.
+    x_unit : str, optional
+        Unit shown on the axis and tooltip (default ``"min"``).
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The ECDF figure.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` does not have two entries.
+
+    See Also
+    --------
+    fastmob.vis.ecdf : The dataframe-based ECDF.
+    """
     return _plot_ecdf(left, right, labels, title, palette, cdf_cutoff, x_label, x_unit, width, bundle_libs, display)
 
 
@@ -169,5 +337,47 @@ def plot_dwell_time_ecdf(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a Jupyter-renderable ECDF comparison for two dwell-time arrays."""
+    """Compare two sets of dwell times with ECDF curves.
+
+    Both arrays are drawn as empirical cumulative distribution functions on the same axes, the first solid and the second dashed. Use it to compare an observed result with a simulated one. Arrays are not sorted or cleaned beyond dropping nothing: pass finite numbers.
+
+    Parameters
+    ----------
+    left : array-like
+        The two sets of dwell times.
+    right : array-like
+        The two sets of dwell times.
+    labels : sequence of two str, optional
+        Series names. Default ``("A", "B")``.
+    title : str, optional
+        Chart title.
+    cdf_cutoff : float, optional
+        Cumulative probability at which each curve stops. Default 0.98.
+    x_label : str, optional
+        X-axis label.
+    x_unit : str, optional
+        Unit shown on the axis and tooltip (default ``"min"``).
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The ECDF figure.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` does not have two entries.
+
+    See Also
+    --------
+    fastmob.vis.ecdf : The dataframe-based ECDF.
+    """
     return _plot_ecdf(left, right, labels, title, palette, cdf_cutoff, x_label, x_unit, width, bundle_libs, display)

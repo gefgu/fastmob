@@ -203,7 +203,49 @@ def plot_truncated_powerlaw_fits(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Plot empirical points and precomputed truncated power-law fits."""
+    """Plot jump-length distributions with fitted truncated power laws.
+
+    Each dataset is drawn as empirical points with a fitted curve, on log-log axes, optionally beside the reference curve of González et al. (2008). The fit itself is not computed here.
+
+    Parameters
+    ----------
+    *datasets : tuple
+        One or more ``(parameters, x_points, y_points, label)`` tuples. ``parameters`` is ``(c, r0, beta, kappa)`` with ``c``, ``beta``, ``kappa`` > 0 and ``r0`` >= 0; the points are positive arrays of equal length.
+    title : str, optional
+        Chart title.
+    x_label : str, optional
+        Axis labels.
+    y_label : str, optional
+        Axis labels.
+    show_reference : bool, optional
+        Draw the González reference curve. Default True.
+    reference_parameters : tuple of float, optional
+        ``(r0, beta, kappa)`` of the reference. Default ``(1.5, 1.75, 400.0)``.
+    reference_label : str, optional
+        Legend label of the reference.
+    n_points : int, optional
+        Points per fitted curve, at least 2. Default 200.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The log-log figure.
+
+    Raises
+    ------
+    ValueError
+        If no dataset is given, a dataset is malformed, or a parameter is out of range.
+    """
     if not datasets:
         raise ValueError("at least one dataset is required")
 
@@ -277,7 +319,49 @@ def plot_lognormal_fits(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Plot empirical points and precomputed log-normal fits."""
+    """Plot the distribution of daily visited locations with fitted log-normal curves.
+
+    Each dataset is drawn as empirical points with a log-normal curve, optionally beside a reference curve. The fit itself is not computed here.
+
+    Parameters
+    ----------
+    *datasets : tuple
+        One or more ``(x_points, y_points, mu, sigma, label)`` tuples. ``sigma`` must be positive; the points are positive arrays of equal length.
+    title : str, optional
+        Chart title.
+    x_label : str, optional
+        Axis labels.
+    y_label : str, optional
+        Axis labels.
+    show_reference : bool, optional
+        Draw the reference curve. Default True.
+    reference_parameters : tuple of float, optional
+        ``(mu, sigma)`` of the reference. Default ``(1.0, 0.5)``.
+    reference_label : str, optional
+        Legend label of the reference.
+    n_points : int, optional
+        Points per fitted curve, at least 2. Default 200.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The figure.
+
+    Raises
+    ------
+    ValueError
+        If no dataset is given, a dataset is malformed, or ``sigma`` is not positive.
+    """
     if not datasets:
         raise ValueError("at least one dataset is required")
 
@@ -351,7 +435,49 @@ def plot_distance_frequency_law(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Plot empirical distance-frequency points and fitted visitation laws."""
+    """Plot the distance-frequency visitation law with fitted curves.
+
+    Each dataset is drawn as empirical points of visitor density against the product of distance and visit frequency, on log-log axes, with the fitted curve and optionally the reference slope of Schläpfer et al. (2021). The fit itself is not computed here.
+
+    Parameters
+    ----------
+    *datasets : tuple
+        One or more ``(rf_points, rho_points, eta, mu, label)`` tuples. ``eta`` and ``mu`` must be positive; the points are positive arrays of equal length.
+    title : str, optional
+        Chart title.
+    x_label : str, optional
+        Axis labels.
+    y_label : str, optional
+        Axis labels.
+    show_reference : bool, optional
+        Draw the reference slope. Default True.
+    reference_alpha : float, optional
+        Exponent of the reference line. Default -2.0.
+    reference_label : str, optional
+        Legend label of the reference.
+    n_points : int, optional
+        Points per fitted curve, at least 2. Default 200.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The log-log figure.
+
+    Raises
+    ------
+    ValueError
+        If no dataset is given, a dataset is malformed, or ``eta`` or ``mu`` is not positive.
+    """
     if not datasets:
         raise ValueError("at least one dataset is required")
 

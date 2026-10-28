@@ -1,7 +1,7 @@
 """Stable public facade for Fastmob's optional visualization support.
 
 Install it with ``pip install \"fastmob[vis]\"``. The implementation lives in
-the separately distributed :mod:`fastmob_vis` package; its direct imports
+the separately distributed `fastmob_vis` package; its direct imports
 remain supported for compatibility.
 """
 
