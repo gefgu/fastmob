@@ -132,3 +132,56 @@ def test_fit_tolerates_an_origin_without_observed_flows():
     model.fit(observed)
 
     assert model.fit_summary().num_rows == 2
+
+
+def test_concentrated_fit_equals_the_poisson_regression_with_origin_dummies():
+    """The memory-light singly constrained fit must give what the textbook Poisson regression gives."""
+    import statsmodels.api as sm
+    from fastmob.models.gravity import _concentrated_poisson
+
+    rng = np.random.default_rng(21)
+    n_origins, n_destinations = 12, 15
+    origin = np.repeat(np.arange(n_origins), n_destinations)
+    log_size = rng.normal(8.0, 1.0, origin.size)
+    distance = rng.uniform(1.0, 200.0, origin.size)
+    design = np.column_stack([log_size, np.log(distance)])
+    mean = np.exp(1.0 + 0.9 * log_size - 1.6 * np.log(distance) + rng.normal(0, 0.1, n_origins)[origin] - 2.0)
+    response = rng.poisson(mean).astype(float)
+    dummies = np.eye(n_origins)[origin]
+
+    for robust in (True, False):
+        ours = _concentrated_poisson(design, response, origin, robust)
+        full = sm.GLM(response, np.hstack([design, dummies]), family=sm.families.Poisson()).fit(
+            cov_type="HC0" if robust else "nonrobust"
+        )
+        np.testing.assert_allclose(ours.params, full.params[:2], rtol=1e-6)
+        np.testing.assert_allclose(ours.bse, full.bse[:2], rtol=1e-5)
+        assert ours.deviance == pytest.approx(full.deviance, rel=1e-8)
+        assert ours.llf == pytest.approx(full.llf, rel=1e-8)
+        assert ours.df_resid == full.df_resid
+        assert ours.pearson_chi2 == pytest.approx(full.pearson_chi2, rel=1e-6)
+
+
+def test_a_thousand_locations_fit_without_dense_dummies():
+    import resource
+
+    rng = np.random.default_rng(22)
+    n = 600
+    table = pd.DataFrame(
+        {
+            "tile_id": list(range(n)),
+            "lat": 45.0 + rng.random(n) * 3.0,
+            "lng": 7.0 + rng.random(n) * 4.0,
+            "relevance": rng.integers(1_000, 50_000, n),
+            "tot_outflow": rng.integers(50_000, 90_000, n),
+        }
+    )
+    locations = Locations.from_tessellation(table, tile_id_col="tile_id", lat_col="lat", lng_col="lng")
+    flows = Gravity(deterrence_func_args=[-2.0]).generate(locations, out_format="flows_sample", random_state=1)
+    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    model = Gravity()
+    model.fit(flows)
+
+    grown_mb = (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before) / 1024
+    assert grown_mb < 1500  # the dense one-hot design needed several gigabytes
+    assert model.deterrence_func_args[0] == pytest.approx(-2.0, abs=0.05)

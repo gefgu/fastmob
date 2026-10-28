@@ -53,12 +53,15 @@ def _ranks(values: np.ndarray) -> np.ndarray:
     return ranks
 
 
-def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Table:
+def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any, pairs: str = "catalogue") -> pa.Table:
     """Score one or several flow models against observed origin-destination flows.
 
-    Every model is scored on the same set of pairs: the union of the origin-destination pairs of the observed
-    table and of all the models, leaving out self-loops. A pair that is missing from a table has flow 0 there,
-    so the scores of different models can be compared with each other. The Poisson deviance and pseudo R-squared
+    Every model is scored on the same set of pairs, leaving out self-loops, and a pair that is missing from a table
+    has flow 0 there. By default (``pairs="catalogue"``) the pairs are all the pairs of the locations of
+    ``observed``, so the score of a model does not depend on which other models are scored with it; report the
+    ``n_pairs`` column with the scores. With ``pairs="union"`` they are the pairs that have flow in the observed table
+    or in any model, which is the only choice when ``observed`` has no locations, but then a model's score changes
+    when another model is added. The Poisson deviance and pseudo R-squared
     treat the flows as counts, so compare models whose total flow is on the scale of the observed one (for
     example generated with the observed outflows).
 
@@ -74,6 +77,8 @@ def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Ta
         Observed flows with ``origin``, ``destination`` and ``flow`` columns.
     models : FlowDataFrame or mapping of str to FlowDataFrame
         The model flows to score, by name. A single FlowDataFrame is named ``"model"``.
+    pairs : {"catalogue", "union"}, optional
+        The pairs on which the scores are computed, as above. Default ``"catalogue"``.
 
     Returns
     -------
@@ -88,6 +93,9 @@ def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Ta
     ------
     TypeError
         If ``observed`` or a model is not a FlowDataFrame.
+    ValueError
+        If ``pairs`` is not ``"catalogue"`` or ``"union"``, or ``"catalogue"`` is asked for and ``observed`` has no
+        locations.
 
     See Also
     --------
@@ -101,7 +109,7 @@ def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Ta
     >>> from fastmob.measures.evaluation import compare_flow_models
     >>> table = pd.DataFrame({"origin": ["a", "a", "b"], "destination": ["b", "c", "c"], "flow": [10, 5, 7]})
     >>> flows = FlowDataFrame(table, tile_id="tile_id")
-    >>> compare_flow_models(flows, flows).column("cpc").to_pylist()
+    >>> compare_flow_models(flows, flows, pairs="union").column("cpc").to_pylist()
     [1.0]
     """
     from fastmob.core.flow_dataframe import FlowDataFrame
@@ -111,16 +119,29 @@ def compare_flow_models(observed: Any, models: Mapping[str, Any] | Any) -> pa.Ta
     named = {"model": models} if isinstance(models, FlowDataFrame) else dict(models)
     if not all(isinstance(m, FlowDataFrame) for m in named.values()):
         raise TypeError("every model must be a FlowDataFrame")
+    if pairs not in ("catalogue", "union"):
+        raise ValueError('pairs must be "catalogue" or "union"')
     obs_pairs = _pairs(observed)
     model_pairs = {name: _pairs(model) for name, model in named.items()}
-    universe = (
-        pa.concat_tables(
-            [obs_pairs.select(["origin", "destination"])]
-            + [t.select(["origin", "destination"]) for t in model_pairs.values()]
+    keys = [obs_pairs.select(["origin", "destination"])] + [
+        t.select(["origin", "destination"]) for t in model_pairs.values()
+    ]
+    if pairs == "catalogue":
+        if getattr(observed, "locations", None) is None:
+            raise ValueError('pairs="catalogue" needs observed flows with a locations catalogue; use pairs="union"')
+        ids = np.asarray(observed.locations.model_input().location_ids().to_list())
+        grid_origin, grid_destination = np.meshgrid(ids, ids, indexing="ij")
+        off_diagonal = ~np.eye(len(ids), dtype=bool)
+        kind = obs_pairs["origin"].type
+        keys.append(
+            pa.table(
+                {
+                    "origin": pa.array(grid_origin[off_diagonal]).cast(kind),
+                    "destination": pa.array(grid_destination[off_diagonal]).cast(kind),
+                }
+            )
         )
-        .group_by(["origin", "destination"])
-        .aggregate([])
-    )
+    universe = pa.concat_tables(keys).group_by(["origin", "destination"]).aggregate([])
     observed_full = universe.join(
         obs_pairs.rename_columns(["origin", "destination", "observed"]),
         keys=["origin", "destination"],
