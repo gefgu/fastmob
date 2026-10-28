@@ -9,6 +9,31 @@
   "page": "learn/process-trajectories.md",
   "title": "Convert and compare typed tables"
  },
+ "fastmob.core.base.BaseDataFrame.plot_bar": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_boxplot": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_ecdf": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_heatmap": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
+ "fastmob.core.base.BaseDataFrame.plot_scatter": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
+ },
  "fastmob.core.base.BaseDataFrame.to_native": {
   "anchor": "convert-and-compare-typed-tables",
   "page": "learn/process-trajectories.md",
@@ -155,9 +180,9 @@
   "title": "The same pipeline, step by step"
  },
  "fastmob.core.trajectory_dataframe.TrajDataFrame.__init__": {
-  "anchor": "observed-flows-between-zones",
-  "page": "learn/fit-and-evaluate.md",
-  "title": "Observed flows between zones"
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
  },
  "fastmob.core.trajectory_dataframe.TrajDataFrame.compress": {
   "anchor": "summaries-from-the-same-object",
@@ -1083,5 +1108,10 @@
   "anchor": "compare-two-trajectories",
   "page": "learn/process-trajectories.md",
   "title": "Compare two trajectories"
+ },
+ "fastmob_vis.charts.Chart.to_dict": {
+  "anchor": "chart-the-results",
+  "page": "learn/analyze-a-simple-trajectory.md",
+  "title": "Chart the results"
  }
 }

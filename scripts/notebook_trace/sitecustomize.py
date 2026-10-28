@@ -53,8 +53,9 @@ def _install():
             try:
                 from IPython import get_ipython
 
-                count = get_ipython().execution_count
-            except (ImportError, AttributeError):
+                # Newer IPython bumps ``execution_count`` before the cell runs, so count the input history.
+                count = len(get_ipython().user_ns["In"]) - 1
+            except (ImportError, AttributeError, KeyError):
                 count = None
             if (symbol, count) not in calls:
                 calls.add((symbol, count))
