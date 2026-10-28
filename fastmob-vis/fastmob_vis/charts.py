@@ -97,7 +97,8 @@ class Chart:
     Examples
     --------
     >>> from fastmob import vis
-    >>> chart = vis.bar({"who": ["a", "b"], "n": [3, 5]}, category_col="who", value_col="n")
+    >>> import pandas as pd
+    >>> chart = vis.bar(pd.DataFrame({"who": ["a", "b"], "n": [3, 5]}), category_col="who", value_col="n")
     >>> sorted(chart.to_dict())[:3]
     ['_meta', 'animation', 'backgroundColor']
     """
@@ -267,7 +268,8 @@ def ecdf(
     Examples
     --------
     >>> from fastmob import vis
-    >>> chart = vis.ecdf({"jump_km": [0.8, 1.2, 2.4]}, value_col="jump_km", x_unit="km")
+    >>> import pandas as pd
+    >>> chart = vis.ecdf(pd.DataFrame({"jump_km": [0.8, 1.2, 2.4]}), value_col="jump_km", x_unit="km")
     >>> chart.to_dict()["series"][0]["type"]
     'line'
     """
@@ -337,7 +339,8 @@ def bar(data: Any, *, category_col: str, value_col: str, series_col: str | None 
     Examples
     --------
     >>> from fastmob import vis
-    >>> chart = vis.bar({"who": ["a", "b"], "n": [3, 5]}, category_col="who", value_col="n")
+    >>> import pandas as pd
+    >>> chart = vis.bar(pd.DataFrame({"who": ["a", "b"], "n": [3, 5]}), category_col="who", value_col="n")
     >>> chart.to_dict()["xAxis"]["data"]
     ['a', 'b']
     """
@@ -395,7 +398,8 @@ def scatter(data: Any, *, x_col: str, y_col: str, series_col: str | None = None,
     Examples
     --------
     >>> from fastmob import vis
-    >>> chart = vis.scatter({"x": [1, 2], "y": [2, 4]}, x_col="x", y_col="y")
+    >>> import pandas as pd
+    >>> chart = vis.scatter(pd.DataFrame({"x": [1, 2], "y": [2, 4]}), x_col="x", y_col="y")
     >>> chart.to_dict()["series"][0]["data"]
     [[1.0, 2.0], [2.0, 4.0]]
     """
@@ -451,7 +455,8 @@ def heatmap(data: Any, *, x_col: str, y_col: str, value_col: str, title: str = "
     Examples
     --------
     >>> from fastmob import vis
-    >>> chart = vis.heatmap({"h": ["8", "9"], "who": ["a", "a"], "n": [1, 3]}, x_col="h", y_col="who", value_col="n")
+    >>> import pandas as pd
+    >>> chart = vis.heatmap(pd.DataFrame({"h": ["8", "9"], "who": ["a", "a"], "n": [1, 3]}), x_col="h", y_col="who", value_col="n")
     >>> chart.to_dict()["series"][0]["data"]
     [[0, 0, 1.0], [1, 0, 3.0]]
     """
@@ -506,7 +511,8 @@ def boxplot(data: Any, *, category_col: str, value_col: str, series_col: str | N
     Examples
     --------
     >>> from fastmob import vis
-    >>> chart = vis.boxplot({"who": ["a"] * 4, "d": [1, 2, 3, 4]}, category_col="who", value_col="d")
+    >>> import pandas as pd
+    >>> chart = vis.boxplot(pd.DataFrame({"who": ["a"] * 4, "d": [1, 2, 3, 4]}), category_col="who", value_col="d")
     >>> chart.to_dict()["series"][0]["data"]
     [[1.0, 1.75, 2.5, 3.25, 4.0]]
     """
