@@ -315,7 +315,7 @@ class Gravity:
         ).to_native()
         return FlowDataFrame(frame, locations=locations, tile_id=locations.location_id_col)
 
-    def fit(self, flow_df, relevance_column=RELEVANCE):
+    def fit(self, flow_df, relevance_column=RELEVANCE, *, origin_col="origin", destination_col="destination", flow_col=FLOW, locations=None):
         """Fit the Gravity model parameters to observed flows via Poisson regression.
 
         Uses a Generalised Linear Model (GLM) with a Poisson family and log link to
@@ -325,14 +325,19 @@ class Gravity:
 
         Parameters
         ----------
-        flow_df : DataFrame with tessellation attribute
-            Observed flows. Must expose a ``.tessellation`` attribute (e.g. the
-            ``FlowDataFrame`` returned by ``Gravity.generate()`` or
-            ``Radiation.generate()``) and contain ``origin``, ``destination``, and
-            ``flow`` columns.
+        flow_df : FlowDataFrame or dataframe
+            Observed flows, with a locations catalogue attached or supplied via ``locations``.
         relevance_column : str, optional
-            Name of the column in ``flow_df.tessellation`` that holds the location
+            Name of the column in the locations catalogue that holds the location
             relevance (e.g. population). The default is ``"relevance"``.
+        origin_col : str, optional
+            Origin column in the flow table. Default ``"origin"``.
+        destination_col : str, optional
+            Destination column in the flow table. Default ``"destination"``.
+        flow_col : str, optional
+            Flow column in the flow table. Default ``"flow"``.
+        locations : Locations, optional
+            Catalogue to use; overrides the attached catalogue when supplied.
 
         Notes
         -----
@@ -351,16 +356,27 @@ class Gravity:
         except ImportError as exc:
             raise ImportError("Gravity.fit requires statsmodels. Install it with `pip install statsmodels`.") from exc
 
-        if not hasattr(flow_df, "locations") or flow_df.locations is None:
-            raise AttributeError("flow_df must expose a Locations catalogue to fit Gravity.")
-        prepared = flow_df.locations.model_input()
+        if locations is None:
+            locations = getattr(flow_df, "locations", None)
+        if locations is None:
+            raise AttributeError("Gravity.fit requires a Locations catalogue: pass locations= or attach one to flow_df.")
+        if not isinstance(locations, Locations):
+            raise TypeError("Gravity.fit locations must be a Locations catalogue.")
+        try:
+            frame = nw.from_native(flow_df, eager_only=True)
+        except TypeError:
+            frame = nw.from_native(flow_df.df, eager_only=True)
+        missing = [col for col in (origin_col, destination_col, flow_col) if col not in frame.columns]
+        if missing:
+            raise KeyError(f"Gravity.fit missing flow columns: {missing}; available columns: {frame.columns}")
+        prepared = locations.model_input()
         self.lats_lngs = np.column_stack((np.asarray(prepared.latitudes), np.asarray(prepared.longitudes)))
         self.weights = np.asarray(prepared.values(relevance_column), dtype=float)
         self.tileid2index = {tileid: i for i, tileid in enumerate(prepared.location_ids().to_list())}
         self.X, self.y = [], []
 
-        for flow_example in nw.from_native(flow_df.df, eager_only=True).iter_rows(named=True):
-            self._update_training_set(flow_example)
+        for flow_example in frame.iter_rows(named=True):
+            self._update_training_set(flow_example, origin_col, destination_col, flow_col)
 
         poisson_model = GLM(
             self.y,
@@ -381,10 +397,10 @@ class Gravity:
         del self.X
         del self.y
 
-    def _update_training_set(self, flow_example):
-        id_origin = flow_example["origin"]
-        id_destination = flow_example["destination"]
-        trips = flow_example[FLOW]
+    def _update_training_set(self, flow_example, origin_col="origin", destination_col="destination", flow_col=FLOW):
+        id_origin = flow_example[origin_col]
+        id_destination = flow_example[destination_col]
+        trips = flow_example[flow_col]
         if id_origin == id_destination:
             return
         try:
