@@ -73,13 +73,16 @@ Fastkit-Mobility uses Rust for compute-intensive operations and supports pandas,
 Polars and other eager dataframes through Narwhals. Many measure names and
 signatures follow [scikit-mobility](https://github.com/scikit-mobility/scikit-mobility).
 
-For **radius of gyration** on approximately 4 million time-sorted Brightkite
-check-ins, Fastkit-Mobility with pandas averaged **0.10 seconds**, compared with
-**63.44 seconds** for scikit-mobility on the same benchmark machine (Intel Core
-i7-10700, Python 3.12). These are averages of three runs; the scikit-mobility
-input contained 3,999,891 rows and the Fastkit-Mobility input 4,000,000.
-Results depend on the operation, data and environment. See the [raw benchmark
-record](https://github.com/gefgu/fastmob_benchmarks/blob/main/benchmarks/measures/results/py312_intel_core_i7_10700_16c_brightkite4M/measures_benchmarks.json)
+<p align="center">
+  <img src="docs/src/assets/images/home/home-benchmark-speedup.png" alt="Execution times for five mobility measures: Fastkit-Mobility with pandas compared with scikit-mobility on approximately four million Brightkite check-ins" width="800">
+</p>
+
+Average execution time for five measures on approximately 4 million time-sorted
+Brightkite check-ins. Fastkit-Mobility uses pandas; the comparison is with
+scikit-mobility. Times are averages of three runs on an Intel Core i7-10700 with
+Python 3.12, and the chart uses a logarithmic scale. The scikit-mobility input
+contained 3,999,891 rows and the Fastkit-Mobility input 4,000,000. Results depend
+on the operation, data and environment. See the [raw benchmark record](https://github.com/gefgu/fastmob_benchmarks/blob/main/benchmarks/measures/results/py312_intel_core_i7_10700_16c_brightkite4M/measures_benchmarks.json)
 and [more comparisons](https://gefgu.github.io/fastmob/features/benchmarks/).
 
 ## More resources
@@ -87,5 +90,3 @@ and [more comparisons](https://gefgu.github.io/fastmob/features/benchmarks/).
 - [Guides and tutorials](https://gefgu.github.io/fastmob/learn/) · [API reference](https://gefgu.github.io/fastmob/reference/) · [Release notes](https://gefgu.github.io/fastmob/release_notes/)
 - [Contributing and development setup](docs/CONTRIBUTING.md)
 - [Report an issue](https://github.com/gefgu/fastmob/issues): include package versions, dataframe backend, a minimal example, expected behavior and the full error.
-
-To preview the documentation locally, run `bash scripts/serve_docs.sh`.
