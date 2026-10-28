@@ -85,6 +85,26 @@ contained 3,999,891 rows and the Fastkit-Mobility input 4,000,000. Results depen
 on the operation, data and environment. See the [raw benchmark record](https://github.com/gefgu/fastmob_benchmarks/blob/main/benchmarks/measures/results/py312_intel_core_i7_10700_16c_brightkite4M/measures_benchmarks.json)
 and [more comparisons](https://gefgu.github.io/fastmob/features/benchmarks/).
 
+## Citation
+
+If you use Fastkit-Mobility in research, please cite the
+[NetMob 2026 paper](https://inria.hal.science/hal-05755990):
+
+```bibtex
+@inproceedings{santos2026fastkit,
+  author    = {Santos, Gustavo H. and Viana, Aline Carneiro and
+               Pappalardo, Luca and Silva, Thiago H.},
+  title     = {Fastkit-Mobility: A High-Performance, DataFrame-Agnostic Library for Mobility Analysis},
+  booktitle = {NetMob 2026},
+  address   = {Niter{\'o}i, Brazil},
+  year      = {2026},
+  month     = oct,
+  url       = {https://inria.hal.science/hal-05755990}
+}
+```
+
+For citing a specific software release, see the [citation guide](https://gefgu.github.io/fastmob/about/#cite-fastkit-mobility).
+
 ## More resources
 
 - [Guides and tutorials](https://gefgu.github.io/fastmob/learn/) · [API reference](https://gefgu.github.io/fastmob/reference/) · [Release notes](https://gefgu.github.io/fastmob/release_notes/)
