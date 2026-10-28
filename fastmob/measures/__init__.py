@@ -16,6 +16,7 @@ from .evaluation import (
     common_part_of_commuters,
     common_part_of_commuters_distance,
     common_part_of_links,
+    compare_flow_models,
     compare_to,
     information_gain,
     jensen_shannon_divergence,
@@ -29,8 +30,11 @@ from .evaluation import (
     wasserstein_distance,
 )
 from .fitting import (
+    DistributionFit,
     VisitationLawFit,
+    compare_distance_distributions,
     fit_daily_location_lognormal,
+    fit_distance_distribution,
     fit_values_to_truncated_powerlaw,
     fit_visitation_law,
     log_truncated_powerlaw,
@@ -72,12 +76,15 @@ from .individual import (
 
 __all__ = [
     "ComparisonResult",
+    "DistributionFit",
     "VisitationLawFit",
     "activity_transition_matrix",
     "build_stvd",
     "common_part_of_commuters",
     "common_part_of_commuters_distance",
     "common_part_of_links",
+    "compare_distance_distributions",
+    "compare_flow_models",
     "compare_to",
     "compute_profiles",
     "daily_activity_distribution",
@@ -86,6 +93,7 @@ __all__ = [
     "diversity",
     "exploration_profiling",
     "fit_daily_location_lognormal",
+    "fit_distance_distribution",
     "fit_values_to_truncated_powerlaw",
     "fit_visitation_law",
     "frequency_rank",

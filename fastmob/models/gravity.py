@@ -315,7 +315,7 @@ class Gravity:
         ).to_native()
         return FlowDataFrame(frame, locations=locations, tile_id=locations.location_id_col)
 
-    def fit(self, flow_df, relevance_column=RELEVANCE):
+    def fit(self, flow_df, relevance_column=RELEVANCE, robust=True):
         """Fit the Gravity model parameters to observed flows via Poisson regression.
 
         Uses a Generalised Linear Model (GLM) with a Poisson family and log link to
@@ -333,11 +333,21 @@ class Gravity:
         relevance_column : str, optional
             Name of the column in ``flow_df.tessellation`` that holds the location
             relevance (e.g. population). The default is ``"relevance"``.
+        robust : bool, optional
+            Report heteroskedasticity-robust (sandwich) standard errors and confidence intervals. Real flows are
+            usually overdispersed relative to the Poisson model, which makes the model-based errors too small;
+            the point estimates are the same either way. Default True.
 
         Notes
         -----
         Modifies ``deterrence_func_args``, ``destination_exp``, and (for the globally
         constrained variant) ``origin_exp`` in-place.
+
+        After fitting, `fit_summary` returns the estimates with standard errors, 95% confidence intervals and
+        p-values, and `fit_statistics` the number of flows used, the log-likelihood, the deviance, the
+        pseudo R-squared and the dispersion. For ``"power_law"`` the distance coefficient is the exponent
+        ``gamma`` of ``flow ∝ distance^gamma`` (negative: flows fall with distance); for ``"exponential"``
+        the table reports the decay rate ``lambda`` of ``exp(-lambda * distance)`` in km^-1.
 
         References
         ----------
@@ -369,7 +379,8 @@ class Gravity:
                 link=getattr(sm.genmod.families.links, "Log", sm.genmod.families.links.log)()
             ),
         )
-        poisson_results = poisson_model.fit()
+        poisson_results = poisson_model.fit(cov_type="HC0") if robust else poisson_model.fit()
+        self._store_fit(poisson_results, robust)
         if self._gravity_type == "globally constrained":
             self._origin_exp = poisson_results.params[1]
             self._destination_exp = poisson_results.params[2]
@@ -380,6 +391,74 @@ class Gravity:
             self._deterrence_func_args = [poisson_results.params[-1]]
         del self.X
         del self.y
+
+    def _store_fit(self, results, robust):
+        """Keep the summary table and the fit statistics of the Poisson regression."""
+        if self._gravity_type == "globally constrained":
+            names, positions = ["intercept", "origin_exp", "destination_exp", "distance_coefficient"], [0, 1, 2, 3]
+        else:
+            last = len(results.params) - 1
+            names, positions = ["destination_exp", "distance_coefficient"], [last - 1, last]
+        interval = np.asarray(results.conf_int())
+        rows = {"parameter": [], "estimate": [], "std_error": [], "ci_low": [], "ci_high": [], "p_value": []}
+        for name, i in zip(names, positions):
+            flip = -1.0 if name == "distance_coefficient" and self._deterrence_func_type == "exponential" else 1.0
+            low, high = sorted((flip * interval[i, 0], flip * interval[i, 1]))
+            rows["parameter"].append("distance_decay" if flip < 0 else name)
+            rows["estimate"].append(float(flip * results.params[i]))
+            rows["std_error"].append(float(results.bse[i]))
+            rows["ci_low"].append(float(low))
+            rows["ci_high"].append(float(high))
+            rows["p_value"].append(float(results.pvalues[i]))
+        self._fit_summary = pa.table(rows)
+        deviance, null = float(results.deviance), float(results.null_deviance)
+        self._fit_statistics = {
+            "n_observations": int(results.nobs),
+            "log_likelihood": float(results.llf),
+            "deviance": deviance,
+            "pseudo_r_squared": 1.0 - deviance / null if null > 0 else float("nan"),
+            "dispersion": float(results.pearson_chi2 / results.df_resid) if results.df_resid > 0 else float("nan"),
+            "robust_errors": bool(robust),
+        }
+
+    def fit_summary(self):
+        """The fitted parameters with standard errors, confidence intervals and p-values.
+
+        Returns
+        -------
+        pyarrow.Table
+            One row per model parameter with ``parameter``, ``estimate``, ``std_error``, ``ci_low``,
+            ``ci_high`` (95%) and ``p_value``. For the exponential deterrence function the distance row is
+            ``distance_decay``, the decay rate in km^-1; otherwise ``distance_coefficient`` is the exponent of
+            the distance.
+
+        Raises
+        ------
+        RuntimeError
+            If `fit` has not been called.
+        """
+        if not hasattr(self, "_fit_summary"):
+            raise RuntimeError("Call fit() before fit_summary()")
+        return self._fit_summary
+
+    def fit_statistics(self):
+        """Goodness-of-fit statistics of the last fit.
+
+        Returns
+        -------
+        dict
+            ``n_observations`` (flows used), ``log_likelihood``, ``deviance``, ``pseudo_r_squared`` (one minus
+            the ratio of the deviance to the null deviance), ``dispersion`` (Pearson chi-squared per degree of
+            freedom; well above 1 means overdispersion) and ``robust_errors``.
+
+        Raises
+        ------
+        RuntimeError
+            If `fit` has not been called.
+        """
+        if not hasattr(self, "_fit_statistics"):
+            raise RuntimeError("Call fit() before fit_statistics()")
+        return self._fit_statistics
 
     def _update_training_set(self, flow_example):
         id_origin = flow_example["origin"]
