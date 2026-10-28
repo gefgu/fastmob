@@ -54,7 +54,7 @@ def real_entropy(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "real_entropy"]``.
         The returned backend matches the input backend.
 

@@ -15,9 +15,9 @@ from .markov_diary_generator import MarkovDiaryGenerator
 class STS_epr:
     """STS-EPR (Spatial, Temporal, and Social EPR) trajectory generator.
 
-    STS-EPR extends :class:`GeoSim` by incorporating a temporal diary (via
-    :class:`MarkovDiaryGenerator`) and a gravity-weighted individual exploration
-    mechanism [CRP2020]_. Each agent follows a pre-generated mobility diary that
+    STS-EPR extends `GeoSim` by incorporating a temporal diary (via
+    `MarkovDiaryGenerator`) and a gravity-weighted individual exploration
+    mechanism [CRP2020]. Each agent follows a pre-generated mobility diary that
     dictates *when* to move (home vs. away), while the social and EPR mechanisms
     determine *where* to go.
 
@@ -55,13 +55,13 @@ class STS_epr:
         Human-readable label. The default is ``"STS-EPR"``.
     rho : float, optional
         Exploration parameter :math:`\\rho \\in (0, 1]`. The default is ``0.6``
-        [SKWB2010]_.
+        [SKWB2010].
     gamma : float, optional
         Return-penalty exponent :math:`\\gamma \\geq 0`. The default is ``0.21``
-        [SKWB2010]_.
+        [SKWB2010].
     alpha : float, optional
         Social influence probability :math:`\\alpha \\in [0, 1]`. The default is
-        ``0.2`` [THSG2015]_.
+        ``0.2`` [THSG2015].
 
     Attributes
     ----------
@@ -77,8 +77,8 @@ class STS_epr:
     Notes
     -----
     ``spatial_tessellation`` must contain at least 3 tiles and a relevance column.
-    The :class:`MarkovDiaryGenerator` must be fitted before being passed to
-    :meth:`generate`.
+    The `MarkovDiaryGenerator` must be fitted before being passed to
+    `generate`.
 
     References
     ----------
@@ -137,7 +137,7 @@ class STS_epr:
             ``geometry`` column or explicit ``lat`` / ``lng`` columns, and a
             relevance column. Must contain at least 3 tiles.
         diary_generator : MarkovDiaryGenerator
-            A fitted :class:`MarkovDiaryGenerator` that supplies the temporal
+            A fitted `MarkovDiaryGenerator` that supplies the temporal
             mobility diary for each agent.
         social_graph : ``"random"`` or list of (uid, uid) tuples, optional
             Social network for the agents.
@@ -180,7 +180,7 @@ class STS_epr:
         Raises
         ------
         TypeError
-            If ``diary_generator`` is not a :class:`MarkovDiaryGenerator` or
+            If ``diary_generator`` is not a `MarkovDiaryGenerator` or
             ``rsl`` is not a bool.
         ValueError
             If ``n_agents <= 0``, ``start_date > end_date``, ``social_graph`` is

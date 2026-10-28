@@ -44,7 +44,7 @@ def number_of_locations(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "number_of_locations"]``.
         The returned backend matches the input backend.
 

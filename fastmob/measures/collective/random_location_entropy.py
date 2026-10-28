@@ -41,7 +41,7 @@ def random_location_entropy(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per distinct ``(lat, lng)`` location with columns
         ``[lat_col, lng_col, "random_entropy"]``.
         The returned backend matches the input backend.

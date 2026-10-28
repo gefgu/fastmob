@@ -174,7 +174,7 @@ def cluster_trajectory_shapes_from_segments(
         When given, groups by ``(uid_col, segment_col)`` instead of
         ``segment_col`` alone (segment ids commonly restart per user).
     **kwargs
-        Forwarded to :func:`cluster_trajectory_shapes`.
+        Forwarded to `cluster_trajectory_shapes`.
 
     Returns
     -------

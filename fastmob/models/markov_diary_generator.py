@@ -19,7 +19,7 @@ class MarkovDiaryGenerator:
     """Markov Diary Learner and Generator.
 
     A *Mobility Diary Learner* (MDL) learns hourly temporal mobility patterns from
-    real individual trajectories and then synthesises new *mobility diaries* [PS2018]_.
+    real individual trajectories and then synthesises new *mobility diaries* [PS2018].
     A diary :math:`D(t)` is a sequence of *abstract locations* (``0`` = home,
     ``1, 2, …`` = non-home destinations in decreasing visitation-frequency order)
     at hourly resolution.
@@ -30,8 +30,8 @@ class MarkovDiaryGenerator:
     Transition probabilities are estimated by counting state-to-state transitions
     across all individuals.
 
-    A fitted ``MarkovDiaryGenerator`` can be passed to :class:`Ditras` or
-    :class:`STS_epr` to drive their temporal pattern.
+    A fitted ``MarkovDiaryGenerator`` can be passed to `Ditras` or
+    `STS_epr` to drive their temporal pattern.
 
     Parameters
     ----------
@@ -47,7 +47,7 @@ class MarkovDiaryGenerator:
     name : str
         Human-readable label of this instance.
     markov_chain_ : numpy.ndarray or None
-        Flattened CDF matrix built after :meth:`fit`. Shape ``(48 * 48,)``.
+        Flattened CDF matrix built after `fit`. Shape ``(48 * 48,)``.
         ``None`` before fitting.
     time_slot_length : str
         Length of each time slot (fixed at ``"1h"``).
@@ -114,7 +114,7 @@ class MarkovDiaryGenerator:
         Notes
         -----
         Modifies the internal Markov chain in-place. Call before passing this
-        instance to :class:`Ditras` or :class:`STS_epr`.
+        instance to `Ditras` or `STS_epr`.
         """
         if n_individuals < 0:
             raise ValueError("n_individuals must be greater than or equal to zero")
@@ -175,7 +175,7 @@ class MarkovDiaryGenerator:
 
         Notes
         -----
-        If :meth:`fit` has not been called, a trivial diary is generated where the
+        If `fit` has not been called, a trivial diary is generated where the
         agent stays at home (``abstract_location == 0``) for the entire period.
         """
         # When unfitted, pass cdf_matrix=None so the Rust core builds a home-only

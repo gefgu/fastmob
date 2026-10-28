@@ -5,7 +5,7 @@ hide:
 
 # Learn
 
-Guides for mobility researchers, grouped by what you want to do. Start at chapter 1 if this is your first time. Each chapter mixes **notebooks** (run end to end in Colab or Binder from a clean environment, with real public data wherever possible and a measured run time at the end) and **concept pages** (the ideas and the choices that change your results, with no code to run). Looking for a specific function? Use the [API reference](../reference/index.md); each of its entries links to the notebook that runs it.
+Guides for mobility researchers, grouped by what you want to do. Start at chapter 1 if this is your first time. Each chapter mixes **notebooks** (run end to end in Colab or Binder from a clean environment, with real public data wherever possible, each stating its data source and download size) and **concept pages** (the ideas and the choices that change your results, with no code to run). Looking for a specific function? Use the [API reference](../reference/index.md); each of its entries links to the notebook that runs it.
 
 ## 1. Getting started
 

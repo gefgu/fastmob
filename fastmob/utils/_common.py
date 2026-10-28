@@ -257,7 +257,7 @@ def _joint_factorize_arrow_values(*values: Any) -> tuple[pa.Array, ...]:
 def _all_unsigned_integer_arrow(*values: Any) -> bool:
     """True when every Arrow-compatible value already has an unsigned integer type.
 
-    Lets a caller skip :func:`_joint_factorize_arrow_values`: equality among
+    Lets a caller skip `_joint_factorize_arrow_values`: equality among
     already-numeric ids (e.g. H3 cell ids) is well-defined without building a
     shared dense codebook, so factorization there is pure overhead. Signed
     integer columns still go through factorization -- narrower, but avoids
@@ -326,7 +326,7 @@ def _extract_timestamp_arrow(df: nw.DataFrame, datetime_col: str) -> pa.Array | 
 def _timestamps_ms_to_datetime_ns(values: Any) -> np.ndarray:
     """Convert flat milliseconds-since-epoch values (NumPy or Arrow) to a naive ``datetime64[ns]`` NumPy array.
 
-    Inverse of :func:`_extract_timestamps`, shared by every measure that reconstructs a
+    Inverse of `_extract_timestamps`, shared by every measure that reconstructs a
     datetime column from Rust kernel output (e.g. ``fastmob/preprocessing/_stay_locations.py``,
     ``fastmob/trajectory/_interpolate.py``).
     """

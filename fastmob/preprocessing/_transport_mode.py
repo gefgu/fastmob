@@ -64,7 +64,7 @@ def predict_transport_mode(
         Mapping of upper-bound speed threshold (km/h) to mode label,
         evaluated in ascending order (the last key should be ``math.inf``
         to catch every remaining row). Defaults to
-        :data:`DEFAULT_MODE_CATEGORIES`.
+        `DEFAULT_MODE_CATEGORIES`.
     speed_col : str, optional
         Column holding each row's average speed, km/h. Default
         ``"mean_speed_kmh"`` (Triplegs' own column).
@@ -119,7 +119,7 @@ def calculate_modal_split(
     Parameters
     ----------
     triplegs : Triplegs or DataFrame-like
-        Must already have a ``mode`` column (see :func:`predict_transport_mode`).
+        Must already have a ``mode`` column (see `predict_transport_mode`).
     freq : str, optional
         Time-bucket the split by ``started_at``: one of ``"hour"``,
         ``"day"``, ``"week"``, ``"month"``. ``None`` (default): no time

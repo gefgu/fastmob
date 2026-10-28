@@ -1,6 +1,6 @@
 """Amichi et al. (2020) Routiner/Regular/Scouter profile classification.
 
-Distinct from this package's :func:`~fastmob.measures.individual.mobility_profiling.exploration_profiling`:
+Distinct from this package's `exploration_profiling`:
 that function clusters on a single feature (``degree_of_return``) via a
 dependency-free Rust KMeans/GMM kernel. This module clusters on **two**
 standardized features (``[intermittency, degree_of_return]``) via a native
@@ -83,7 +83,7 @@ def _cluster_and_label(
     """Cluster users on standardized ``[intermittency, degree_of_return]``
     with KMeans, then label clusters by descending mean degree-of-return
     (highest -> "routiners", lowest -> "scouters"), matching
-    :func:`~fastmob.measures.individual.mobility_profiling.exploration_profiling`'s
+    `exploration_profiling`'s
     naming convention.
     """
     import pyarrow as pa

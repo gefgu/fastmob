@@ -20,48 +20,72 @@ icon: lucide/users-round
 | [`interest_network`](#fastmob.measures.collective.interest_network.interest_network) | Return pairs of global locations visited by the same people. | [When and where is each place busy?](../../learn/population-measures.md#when-and-where-is-each-place-busy) |
 <!-- api-table:end -->
 
+<a id="fastmob.measures.collective.homes_per_location"></a>
+
 ::: fastmob.measures.collective.homes_per_location
     options:
+      show_root_heading: false
+      show_root_toc_entry: false
       show_source: false
 
 <!-- example-link -->**Worked example:** [Homes and visits per place](../../learn/population-measures.md#homes-and-visits-per-place)
 
 ---
 
+<a id="fastmob.measures.collective.mean_square_displacement"></a>
+
 ::: fastmob.measures.collective.mean_square_displacement
     options:
+      show_root_heading: false
+      show_root_toc_entry: false
       show_source: false
 
 <!-- example-link -->**Worked example:** [How far do people spread over time?](../../learn/population-measures.md#how-far-do-people-spread-over-time)
 
 ---
 
+<a id="fastmob.measures.collective.random_location_entropy"></a>
+
 ::: fastmob.measures.collective.random_location_entropy
     options:
+      show_root_heading: false
+      show_root_toc_entry: false
       show_source: false
 
 <!-- example-link -->**Worked example:** [How many different people use a place?](../../learn/population-measures.md#how-many-different-people-use-a-place)
 
 ---
+
+<a id="fastmob.measures.collective.uncorrelated_location_entropy"></a>
 
 ::: fastmob.measures.collective.uncorrelated_location_entropy
     options:
+      show_root_heading: false
+      show_root_toc_entry: false
       show_source: false
 
 <!-- example-link -->**Worked example:** [How many different people use a place?](../../learn/population-measures.md#how-many-different-people-use-a-place)
 
 ---
 
+<a id="fastmob.measures.collective.visits_per_location"></a>
+
 ::: fastmob.measures.collective.visits_per_location
     options:
+      show_root_heading: false
+      show_root_toc_entry: false
       show_source: false
 
 <!-- example-link -->**Worked example:** [Homes and visits per place](../../learn/population-measures.md#homes-and-visits-per-place)
 
 ---
 
+<a id="fastmob.measures.collective.visits_per_time_unit"></a>
+
 ::: fastmob.measures.collective.visits_per_time_unit
     options:
+      show_root_heading: false
+      show_root_toc_entry: false
       show_source: false
 
 <!-- example-link -->**Worked example:** [Homes and visits per place](../../learn/population-measures.md#homes-and-visits-per-place)

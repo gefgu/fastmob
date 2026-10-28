@@ -37,7 +37,7 @@ def diversity(
         Column name for the location ID. Auto-detected if None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[user_id_col, "diversity"]``.
         The returned backend matches the input backend.
 

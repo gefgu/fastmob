@@ -194,7 +194,7 @@ class Locations(BaseDataFrame):
     def identify(self, staypoints: Any, method: str = "freq", **kwargs: Any) -> Locations:
         """Label each location as ``"home"``, ``"work"``, or ``"other"``.
 
-        See :func:`fastmob.preprocessing.identify_locations`.
+        See `fastmob.preprocessing.identify_locations`.
 
         Parameters
         ----------

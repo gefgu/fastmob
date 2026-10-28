@@ -30,7 +30,7 @@ def maximum_distance(
 
     The maximum distance :math:`d_{max}` travelled by an individual :math:`u`
     is the largest Haversine distance between any two consecutive GPS fixes in
-    the time-ordered trajectory [WTDED2015]_ [LBH2012]_:
+    the time-ordered trajectory [WTDED2015] [LBH2012]:
 
     .. math::
 
@@ -57,7 +57,7 @@ def maximum_distance(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "maximum_distance"]``.
         Distance values are in kilometres.
         The returned backend matches the input backend.

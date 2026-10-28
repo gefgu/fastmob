@@ -29,8 +29,8 @@ def fit_daily_location_lognormal(
 ) -> tuple[list[float], list[float], float, float]:
     """Fit a lognormal distribution to per-user daily distinct-location counts.
 
-    ``staypoints`` may be a :class:`~fastmob.core.Staypoints` object or an
-    eager dataframe. When a :class:`~fastmob.core.Locations` catalogue is
+    ``staypoints`` may be a `Staypoints` object or an
+    eager dataframe. When a `Locations` catalogue is
     supplied, its global or user-scoped location identities are validated
     before fitting. Timezone-aware starts are bucketed by their local
     wall-clock calendar day.

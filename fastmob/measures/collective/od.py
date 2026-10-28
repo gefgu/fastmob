@@ -62,7 +62,7 @@ def od_matrix(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         Long-format OD counts with columns
         ``[origin_col, destination_col, "count"]``,
         returned in the caller's original backend.
@@ -108,13 +108,13 @@ def od_metrics_per_area(
 ) -> Any:
     """Compute per-area mobility metrics from a long-format OD DataFrame.
 
-    Takes the long-format OD DataFrame returned by :func:`od_matrix` and
+    Takes the long-format OD DataFrame returned by `od_matrix` and
     computes MoveInside, InComing, OutGoing, and Total flows for each area.
 
     Parameters
     ----------
     od_df : DataFrame-like
-        Long-format OD DataFrame as returned by :func:`od_matrix`, with
+        Long-format OD DataFrame as returned by `od_matrix`, with
         columns ``[origin_col, destination_col, "count"]``.
     origin_col : str or None, optional
         Column name for the origin area. Auto-detected if None.
@@ -123,7 +123,7 @@ def od_metrics_per_area(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         DataFrame with columns ``["area_code", "MoveInside", "InComing",
         "OutGoing", "Total"]``, one row per area, returned in the caller's
         original backend.

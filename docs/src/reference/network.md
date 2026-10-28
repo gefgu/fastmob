@@ -8,7 +8,7 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 | API | Description | Example |
 | --- | --- | --- |
 | [`RoadNetwork`](#fastmob.network.RoadNetwork) | A road (or rail) network prepared once (contraction hierarchy) and reused for many point-to-point physical-distance queries. |  |
-| [`batch_distances`](#fastmob.network.RoadNetwork.batch_distances) | Batch physical-distance (metres) query for `(from_node, to_node)` pairs. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
+| [`batch_distances`](#fastmob.network.RoadNetwork.batch_distances) | Batch route-length (metres) query for `(from_node, to_node)` pairs. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
 | [`batch_routes`](#fastmob.network.RoadNetwork.batch_routes) | Batch route-geometry query for `(from_node, to_node)` pairs. | [Distances and routes on the network](../learn/road-network-analysis.md#distances-and-routes-on-the-network) |
 | [`build`](#fastmob.network.RoadNetwork.build) | Prepare a contraction hierarchy from a road/rail graph's edges. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
 | [`fetch_road_network`](#fastmob.network.fetch_road_network) | Fetch and build a car-routable graph from Overture road segments. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
@@ -18,8 +18,8 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 | [`snap_locations_to_graph`](#fastmob.network.snap_locations_to_graph) | Snap each tessellation row to its nearest road/rail graph node. | [Snap points to the network](../learn/road-network-analysis.md#snap-points-to-the-network) |
 | [`haversine_m_batch`](#fastmob.network.haversine_m_batch) | Elementwise Haversine distance (metres) between two same-length arrays of points, computed in parallel. |  |
 | [`od_desire_lines`](#fastmob.network.od_desire_lines) | Aggregate OD-pair flows onto the road/rail graph's edges (desire lines). | [Accumulate flows on roads](../learn/road-network-analysis.md#accumulate-flows-on-roads) |
-| [`jump_lengths_road`](#fastmob.measures.individual.network_distance.jump_lengths_road) | Road-network jump lengths (km): distance between consecutive stops for the same user, sorted by datetime | [Road distance versus straight line](../learn/road-network-analysis.md#road-distance-versus-straight-line) |
-| [`radius_of_gyration_road`](#fastmob.measures.individual.network_distance.radius_of_gyration_road) | Road-network radius of gyration (km) per user: RMS network distance from each of a user's stops to the arithmetic-mean centroid of their stops | [Road distance versus straight line](../learn/road-network-analysis.md#road-distance-versus-straight-line) |
+| [`jump_lengths_road`](#fastmob.measures.individual.network_distance.jump_lengths_road) | Jump lengths (km) measured along the road network. | [Road distance versus straight line](../learn/road-network-analysis.md#road-distance-versus-straight-line) |
+| [`radius_of_gyration_road`](#fastmob.measures.individual.network_distance.radius_of_gyration_road) | Radius of gyration (km) per user, measured along the road network. | [Road distance versus straight line](../learn/road-network-analysis.md#road-distance-versus-straight-line) |
 | [`match_trajectory`](#fastmob.network.match_trajectory) | Map-match a trajectory with a directed-edge HMM/Viterbi model. | [Match a GPS trace to roads](../learn/road-network-analysis.md#match-a-gps-trace-to-roads) |
 <!-- api-table:end -->
 

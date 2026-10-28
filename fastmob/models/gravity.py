@@ -45,7 +45,7 @@ class Gravity:
 
     The Gravity model of human migration. In its original formulation, the probability
     :math:`T_{ij}` of moving from location :math:`i` to location :math:`j` is
-    proportional to [Z1946]_:
+    proportional to [Z1946]:
 
     .. math::
 
@@ -53,7 +53,7 @@ class Gravity:
 
     where :math:`P_i` and :math:`P_j` are the populations (or relevances) of locations
     :math:`i` and :math:`j` and :math:`r_{ij}` is the distance between them. The general
-    form is [BBGJLLMRST2018]_:
+    form is [BBGJLLMRST2018]:
 
     .. math::
 
@@ -321,7 +321,7 @@ class Gravity:
         Uses a Generalised Linear Model (GLM) with a Poisson family and log link to
         estimate ``destination_exp`` and ``deterrence_func_args`` (and
         ``origin_exp`` for the globally constrained variant) from real flows
-        [FM1982]_.
+        [FM1982].
 
         Parameters
         ----------

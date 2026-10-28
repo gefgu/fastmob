@@ -33,7 +33,7 @@ def max_distance_from_home(
     """Return the maximum Haversine distance (km) from each user's home location.
 
     The maximum distance from home :math:`dh_{max}(u)` of an individual
-    :math:`u` is defined as [CM2015]_:
+    :math:`u` is defined as [CM2015]:
 
     .. math::
 
@@ -41,7 +41,7 @@ def max_distance_from_home(
 
     where :math:`n_u` is the number of recorded points for :math:`u`,
     :math:`r_i` is a location as a :math:`(lat, lng)` pair, :math:`h(u)` is
-    the home location of :math:`u` (see :func:`home_location`), and
+    the home location of :math:`u` (see `home_location`), and
     :math:`dist` is the Haversine distance.
 
     Parameters
@@ -53,10 +53,10 @@ def max_distance_from_home(
         as a single individual.
     start_night : int, optional
         Hour (0–23) at which the nighttime window begins.  Forwarded to
-        :func:`home_location`.  Default: 22.
+        `home_location`.  Default: 22.
     end_night : int, optional
         Hour (0–23) at which the nighttime window ends (exclusive).  Forwarded
-        to :func:`home_location`.  Default: 7.
+        to `home_location`.  Default: 7.
     datetime_col : str or None, optional
         Explicit datetime column name.  Auto-detected when None.
     lat_col : str or None, optional
@@ -67,7 +67,7 @@ def max_distance_from_home(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "max_distance_from_home"]``.
         Distance values are in kilometres.  The returned backend matches the
         input backend.

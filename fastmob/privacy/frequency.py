@@ -22,7 +22,11 @@ def unique_location_risk(
 ) -> Any:
     """Assess re-identification risk from each user's distinct locations.
 
-    The attacker knows ``knowledge_length`` places, in the sense of the set of distinct places a user visited.
+    The attacker knows ``knowledge_length`` places, enumerated over the set of distinct places a user
+    visited, so a place visited several times is one instance. This is the difference from
+    ``location_risk``, which enumerates visit records. For ``knowledge_length=1`` the two give the same
+    per-user risk; for larger values ``location_risk`` can be higher, because it also lets the attacker
+    know the same place twice.
 
     Parameters
     ----------
@@ -51,7 +55,8 @@ def unique_location_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -121,7 +126,8 @@ def location_frequency_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -193,7 +199,8 @@ def location_probability_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -233,8 +240,9 @@ def location_proportion_risk(
 ) -> Any:
     """Assess re-identification risk from locations and their share of the most visited place.
 
-    The attacker knows ``knowledge_length`` places and how each place's visits compare with those of
-    the person's most visited place.
+    The attacker knows ``knowledge_length`` places and, for each, the number of visits as a proportion of
+    the visits to the person's most visited place (1 for the top place, 0.5 for a place visited half as
+    often). ``tolerance`` allows a relative error on that proportion.
 
     Parameters
     ----------
@@ -265,7 +273,8 @@ def location_proportion_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes

@@ -42,7 +42,7 @@ def _batched_tail_contexts(
     """Vectorized equivalent of ``[seq[-order:] for seq in per_user_sequences]``.
 
     Extracts every user's trailing ``order`` location codes directly from
-    the flat ``(codes_array, indices, ends)`` triple :meth:`NextLocationPredictor.fit`
+    the flat ``(codes_array, indices, ends)`` triple `NextLocationPredictor.fit`
     already builds, without ever materializing a full per-user Python list.
     The whole computation is `numpy` array arithmetic plus a single batched
     `pyarrow.compute.take`, so its cost is ``O(n_users * order)`` rather
@@ -203,11 +203,11 @@ class NextLocationPredictor:
     def _sequences(self) -> dict[Any, list[int]]:
         """Full per-user location-code sequences, lazily materialized.
 
-        Only :meth:`evaluate` needs each user's *entire* history (to slice
+        Only `evaluate` needs each user's *entire* history (to slice
         progressively longer training windows across holdout steps);
-        :meth:`predict_proba` only needs each user's short context tail and
-        gets it from :func:`_batched_tail_contexts` instead, without ever
-        touching this property. Building this dict eagerly in :meth:`fit`
+        `predict_proba` only needs each user's short context tail and
+        gets it from `_batched_tail_contexts` instead, without ever
+        touching this property. Building this dict eagerly in `fit`
         used to dominate its wall time -- one `pyarrow.compute.take(...).
         to_pylist()` call per user, proportional to total row count -- for
         the common case where `evaluate()` is never called.
@@ -238,7 +238,7 @@ class NextLocationPredictor:
         DataFrame
             One row per ``(uid, rank)``: columns ``[uid_col, "rank",
             location_col, "probability"]``, ``rank`` starting at 1, in the
-            same backend :meth:`fit` was given. A user with fewer than
+            same backend `fit` was given. A user with fewer than
             ``top_k`` observed candidates contributes fewer rows.
         """
         self._require_fitted()
@@ -282,8 +282,8 @@ class NextLocationPredictor:
         -------
         DataFrame
             One row per user: columns ``[uid_col, location_col]`` holding
-            the top-ranked prediction, in the same backend :meth:`fit` was
-            given (use :meth:`predict_proba` for ranked
+            the top-ranked prediction, in the same backend `fit` was
+            given (use `predict_proba` for ranked
             candidates/probabilities).
         """
         proba = nw.from_native(self.predict_proba(top_k=max(top_k, 1)), eager_only=True)
@@ -291,7 +291,7 @@ class NextLocationPredictor:
         return top1.to_native()
 
     def evaluate(self, top_k: int = 1, n_holdout: int = 1) -> float:
-        """Holdout-last-``n_holdout`` accuracy over the data given to :meth:`fit`.
+        """Holdout-last-``n_holdout`` accuracy over the data given to `fit`.
 
         For each user with more than ``n_holdout`` observations, walks
         forward through the held-out tail one step at a time: at each step,
@@ -301,7 +301,7 @@ class NextLocationPredictor:
         top-``top_k`` predictions. Accuracy is averaged over every
         (user, step) pair across every user and step.
 
-        This evaluates directly against :meth:`fit`'s own input rather than
+        This evaluates directly against `fit`'s own input rather than
         a separate held-out dataframe, since fastmob's `Staypoints`/
         `Locations` pipeline already produces one canonical per-user
         location sequence -- there is no second, independently-loaded test

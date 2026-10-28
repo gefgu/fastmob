@@ -22,14 +22,14 @@ def homes_per_location(
     """Return the number of users whose home is at each distinct location.
 
     The number of home locations at location :math:`j` is computed as
-    [PRS2016]_:
+    [PRS2016]:
 
     .. math::
 
         N_{\\text{homes}}(j) = \\bigl|\\{h_u \\mid h_u = j,\\, u \\in U\\}\\bigr|
 
     where :math:`h_u` indicates the home location of individual :math:`u`
-    (see :func:`~fastmob.measures.individual.home_location`) and :math:`U`
+    (see `home_location`) and :math:`U`
     is the set of all individuals.
 
     Parameters
@@ -52,7 +52,7 @@ def homes_per_location(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per distinct home location with columns
         ``[lat_col, lng_col, "n_homes"]``, sorted by descending count.
         The returned backend matches the input backend.

@@ -23,7 +23,7 @@ from .metrics import wasserstein_distance
 
 @dataclass(frozen=True)
 class ComparisonResult:
-    """Result of :func:`compare_to`: an overall value and, if grouped, a per-group breakdown."""
+    """Result of `compare_to`: an overall value and, if grouped, a per-group breakdown."""
 
     overall: float
     groups: list[tuple[Any, float]] | None = None
@@ -44,8 +44,8 @@ def compare_to(
 ) -> ComparisonResult:
     """Compare ``value_col`` between two dataframes, optionally grouped by ``group_col``.
 
-    ``metric`` defaults to :func:`wasserstein_distance` and accepts any
-    ``(array, array) -> float`` callable, e.g. :func:`jensen_shannon_divergence`.
+    ``metric`` defaults to `wasserstein_distance` and accepts any
+    ``(array, array) -> float`` callable, e.g. `jensen_shannon_divergence`.
     When ``group_col`` is given, the comparison runs once per label present in
     both dataframes (sorted for determinism) and ``overall`` is the mean across
     groups.

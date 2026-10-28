@@ -117,7 +117,7 @@ def visits_per_time_unit(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per non-empty time bin with columns
         ``[datetime_col, "n_visits"]``, sorted chronologically.
 

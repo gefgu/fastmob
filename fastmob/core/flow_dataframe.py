@@ -333,7 +333,7 @@ class FlowDataFrame(BaseDataFrame):
     ):
         """Plot origin-destination flows on an interactive Folium map.
 
-        Requires a tessellation to be attached (see :meth:`to_flowdataframe`).
+        Requires a tessellation to be attached (see `to_flowdataframe`).
 
         Parameters
         ----------

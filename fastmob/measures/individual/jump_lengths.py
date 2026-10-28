@@ -33,10 +33,6 @@ def jump_lengths(
     A *jump length* is the Haversine distance (in km) between consecutive
     GPS fixes for the same user, sorted by datetime.
 
-    Input that is already grouped by user and ordered by datetime within each
-    user is detected automatically and computed on a contiguous fast path,
-    roughly halving the work; there is nothing to opt into.
-
     Parameters
     ----------
     traj : DataFrame-like

@@ -41,7 +41,7 @@ def waiting_times(
 
     A waiting time (or inter-time) :math:`\\Delta t` is the elapsed time
     between two consecutive trajectory points of individual :math:`u`
-    [SKWB2010]_ [PF2018]_:
+    [SKWB2010] [PF2018]:
 
     .. math::
 

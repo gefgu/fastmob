@@ -45,7 +45,7 @@ def visits_per_location(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per distinct location ID with columns
         ``[location_id_col, "n_visits"]``, sorted by descending visit count.
         The returned backend matches the input backend.

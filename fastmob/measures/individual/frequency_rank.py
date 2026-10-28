@@ -56,7 +56,7 @@ def frequency_rank(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per ``(user, location)`` pair with columns
         ``[uid_col, lat_col, lng_col, "frequency_rank"]``.
         Rank 1 is the most frequently visited location.

@@ -30,7 +30,7 @@ def distance_straight_line(
 
     The distance straight line :math:`d_{SL}` travelled by an individual
     :math:`u` is the sum of Haversine distances between consecutive GPS fixes
-    in the time-ordered trajectory [WTDED2015]_:
+    in the time-ordered trajectory [WTDED2015]:
 
     .. math::
 
@@ -57,7 +57,7 @@ def distance_straight_line(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[uid_col, "distance_straight_line"]``.
         Distance values are in kilometres.
         The returned backend matches the input backend.

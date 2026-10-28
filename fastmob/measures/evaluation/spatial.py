@@ -59,7 +59,7 @@ def stvd_emd(
     Each input is a DataFrame representing a spatial-temporal distribution with
     columns for a time bin (HH:MM string), a weight/volume value, and a WGS84
     latitude/longitude centroid — the exact shape produced by
-    :func:`fastmob.measures.collective.build_stvd`.
+    `fastmob.measures.collective.build_stvd`.
 
     Distances are computed as an entropy-regularised (Sinkhorn) Earth Mover's
     Distance over an explicit cost matrix combining the great-circle

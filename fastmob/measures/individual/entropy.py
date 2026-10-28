@@ -63,7 +63,7 @@ def trajectory_entropy(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns ``[user_id_col, "entropy"]``.
         The returned backend matches the input backend.
 
@@ -151,7 +151,7 @@ def trajectory_predictability(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per user with columns
         ``[user_id_col, "real_entropy", "predictability",
         "n_unique_locations", "n_steps"]``.

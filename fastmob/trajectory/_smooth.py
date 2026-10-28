@@ -86,7 +86,7 @@ def smooth(
 
     Every row's ``(lat, lng)`` is replaced with a denoised estimate at its
     original timestamp; row count and row order are unchanged (unlike
-    :func:`fastmob.trajectory.interpolate`, which inserts new points).
+    `fastmob.trajectory.interpolate`, which inserts new points).
 
     Parameters
     ----------

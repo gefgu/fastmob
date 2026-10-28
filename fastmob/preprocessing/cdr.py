@@ -253,7 +253,7 @@ def cdr_to_trips_df(
     Parameters
     ----------
     visitation_df:
-        Visitation dataframe produced by :func:`cdr_to_visitation_df`.
+        Visitation dataframe produced by `cdr_to_visitation_df`.
     user_id_column:
         Column containing user IDs.
     avg_speed_kmh:

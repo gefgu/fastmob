@@ -49,7 +49,7 @@ class EPR:
 
     The EPR model generates synthetic individual mobility trajectories based on
     two competing mechanisms drawn from empirical observations of human travel
-    patterns [SKWB2010]_:
+    patterns [SKWB2010]:
 
     **Waiting time choice.** The time :math:`\\Delta t` between consecutive moves
     is drawn from a truncated power law:
@@ -69,8 +69,8 @@ class EPR:
     **Return.** A previously visited location :math:`i` is chosen with probability
     :math:`\\Pi_i = f_i`, proportional to its visitation frequency.
 
-    This class is the base for :class:`DensityEPR`, :class:`SpatialEPR`, and
-    :class:`Ditras`.
+    This class is the base for `DensityEPR`, `SpatialEPR`, and
+    `Ditras`.
 
     Parameters
     ----------
@@ -80,18 +80,18 @@ class EPR:
     rho : float, optional
         Exploration parameter :math:`\\rho \\in (0, 1]` in
         :math:`P_{\\text{new}} = \\rho S^{-\\gamma}`. Controls the overall tendency
-        to explore new locations. The default is ``0.6`` [SKWB2010]_.
+        to explore new locations. The default is ``0.6`` [SKWB2010].
     gamma : float, optional
         Return-penalty exponent :math:`\\gamma \\geq 0` in
         :math:`P_{\\text{new}} = \\rho S^{-\\gamma}`. Larger values cause agents to
         return more frequently as they accumulate visited locations. The default is
-        ``0.21`` [SKWB2010]_.
+        ``0.21`` [SKWB2010].
     beta : float, optional
         Tail exponent :math:`\\beta` of the waiting-time distribution. The default
-        is ``0.8`` [SKWB2010]_.
+        is ``0.8`` [SKWB2010].
     tau : int, optional
         Characteristic time scale :math:`\\tau` (in hours) of the waiting-time
-        distribution. The default is ``17`` [SKWB2010]_.
+        distribution. The default is ``17`` [SKWB2010].
     min_wait_time_minutes : int, optional
         Minimum waiting time between two moves, in minutes. The default is ``20``.
 
@@ -201,7 +201,7 @@ class EPR:
             Division of the territory into locations. Must include either a
             ``geometry`` column or explicit ``lat`` / ``lng`` columns.
         gravity_singly : Gravity or None, optional
-            A singly constrained :class:`Gravity` model used to derive
+            A singly constrained `Gravity` model used to derive
             origin–destination trip probabilities. If ``None``, a default
             ``Gravity(gravity_type="singly constrained")`` is created automatically.
             The default is ``None``.
@@ -229,9 +229,9 @@ class EPR:
             If ``starting_locations`` is provided and has fewer entries than
             ``n_agents``.
         TypeError
-            If ``gravity_singly`` is not a :class:`Gravity` instance.
+            If ``gravity_singly`` is not a `Gravity` instance.
         AttributeError
-            If ``gravity_singly`` is a :class:`Gravity` instance but its
+            If ``gravity_singly`` is a `Gravity` instance but its
             ``gravity_type`` is not ``"singly constrained"``.
         """
         if starting_locations is not None and len(starting_locations) < n_agents:
@@ -327,9 +327,9 @@ class EPR:
 class DensityEPR(EPR):
     """Density-EPR (d-EPR) trajectory generator.
 
-    The d-EPR model extends :class:`EPR` by weighting exploratory moves according
+    The d-EPR model extends `EPR` by weighting exploratory moves according
     to a gravity model that accounts for location relevance (e.g. population
-    density) [PSRPGB2015]_ [PSR2016]_. The four mechanisms are:
+    density) [PSRPGB2015] [PSR2016]. The four mechanisms are:
 
     **Waiting time choice.** The waiting time :math:`\\Delta t` between two moves
     is drawn from :math:`P(\\Delta t) \\sim \\Delta t^{-1-\\beta} \\exp(-\\Delta t/\\tau)`.
@@ -358,16 +358,16 @@ class DensityEPR(EPR):
         Human-readable label. The default is ``"Density EPR model"``.
     rho : float, optional
         Exploration parameter :math:`\\rho \\in (0, 1]`. The default is ``0.6``
-        [SKWB2010]_.
+        [SKWB2010].
     gamma : float, optional
         Return-penalty exponent :math:`\\gamma \\geq 0`. The default is ``0.21``
-        [SKWB2010]_.
+        [SKWB2010].
     beta : float, optional
         Waiting-time tail exponent :math:`\\beta`. The default is ``0.8``
-        [SKWB2010]_.
+        [SKWB2010].
     tau : int, optional
         Waiting-time scale :math:`\\tau` in hours. The default is ``17``
-        [SKWB2010]_.
+        [SKWB2010].
     min_wait_time_minutes : int, optional
         Minimum waiting time between moves, in minutes. The default is ``20``.
 
@@ -462,7 +462,7 @@ class DensityEPR(EPR):
             Division of the territory into locations. Must include either a
             ``geometry`` column or explicit ``lat`` / ``lng`` columns.
         gravity_singly : Gravity or None, optional
-            A singly constrained :class:`Gravity` model for the exploration phase.
+            A singly constrained `Gravity` model for the exploration phase.
             If ``None``, a default ``Gravity(gravity_type="singly constrained")``
             is used. The default is ``None``.
         n_agents : int, optional
@@ -496,8 +496,8 @@ class DensityEPR(EPR):
 class SpatialEPR(EPR):
     """Spatial-EPR (s-EPR) trajectory generator.
 
-    The s-EPR model is a distance-only variant of :class:`DensityEPR` that ignores
-    location relevance during exploration [PSRPGB2015]_ [PSR2016]_ [SKWB2010]_. The
+    The s-EPR model is a distance-only variant of `DensityEPR` that ignores
+    location relevance during exploration [PSRPGB2015] [PSR2016] [SKWB2010]. The
     four mechanisms are:
 
     **Waiting time choice.** The waiting time :math:`\\Delta t` between two moves is
@@ -524,16 +524,16 @@ class SpatialEPR(EPR):
         Human-readable label. The default is ``"Spatial EPR model"``.
     rho : float, optional
         Exploration parameter :math:`\\rho \\in (0, 1]`. The default is ``0.6``
-        [SKWB2010]_.
+        [SKWB2010].
     gamma : float, optional
         Return-penalty exponent :math:`\\gamma \\geq 0`. The default is ``0.21``
-        [SKWB2010]_.
+        [SKWB2010].
     beta : float, optional
         Waiting-time tail exponent :math:`\\beta`. The default is ``0.8``
-        [SKWB2010]_.
+        [SKWB2010].
     tau : int, optional
         Waiting-time scale :math:`\\tau` in hours. The default is ``17``
-        [SKWB2010]_.
+        [SKWB2010].
     min_wait_time_minutes : int, optional
         Minimum waiting time between moves, in minutes. The default is ``20``.
 
@@ -626,7 +626,7 @@ class SpatialEPR(EPR):
         spatial_tessellation : DataFrame or GeoDataFrame
             Division of the territory into locations.
         gravity_singly : Gravity or None, optional
-            A singly constrained :class:`Gravity` model. The relevance column is
+            A singly constrained `Gravity` model. The relevance column is
             ignored; only distances affect exploration probabilities. If ``None``,
             a default ``Gravity(gravity_type="singly constrained")`` is created.
             The default is ``None``.
@@ -659,29 +659,29 @@ class Ditras(EPR):
     """DITRAS (DIary-based TRAjectory Simulator) modelling framework.
 
     DITRAS simulates spatio-temporal mobility patterns by combining two probabilistic
-    models [PS2018]_:
+    models [PS2018]:
 
-    **Phase 1 — Mobility Diary Generation.** A :class:`MarkovDiaryGenerator` produces
+    **Phase 1 — Mobility Diary Generation.** A `MarkovDiaryGenerator` produces
     a *mobility diary* :math:`D(t)` that encodes the temporal pattern of an agent's
     routine (home vs. away at each hour).
 
     **Phase 2 — Trajectory Generation.** The mobility diary drives a
-    :class:`DensityEPR`-like spatial mechanism: diary slots labelled ``0`` map the
+    `DensityEPR`-like spatial mechanism: diary slots labelled ``0`` map the
     agent back to its home location; other slots trigger an EPR exploration/return
     step to assign a physical location.
 
     Parameters
     ----------
     diary_generator : MarkovDiaryGenerator
-        A fitted :class:`MarkovDiaryGenerator` used to produce mobility diaries.
+        A fitted `MarkovDiaryGenerator` used to produce mobility diaries.
     name : str, optional
         Human-readable label. The default is ``"Ditras model"``.
     rho : float, optional
         Exploration parameter :math:`\\rho \\in (0, 1]` for the spatial phase.
-        The default is ``0.3`` [PS2018]_.
+        The default is ``0.3`` [PS2018].
     gamma : float, optional
         Return-penalty exponent :math:`\\gamma \\geq 0` for the spatial phase.
-        The default is ``0.21`` [PS2018]_.
+        The default is ``0.21`` [PS2018].
 
     Attributes
     ----------
@@ -695,7 +695,7 @@ class Ditras(EPR):
     Notes
     -----
     ``spatial_tessellation`` accepts any eager dataframe (pandas, polars, …). The
-    diary generator must be fitted via :meth:`MarkovDiaryGenerator.fit` before
+    diary generator must be fitted via `MarkovDiaryGenerator.fit` before
     passing it to this class.
 
     Examples
@@ -760,7 +760,7 @@ class Ditras(EPR):
             Division of the territory into locations. Must include either a
             ``geometry`` column or explicit ``lat`` / ``lng`` columns.
         gravity_singly : Gravity or None, optional
-            A singly constrained :class:`Gravity` model for the exploration phase.
+            A singly constrained `Gravity` model for the exploration phase.
             If ``None``, a default ``Gravity(gravity_type="singly constrained")``
             is used. The default is ``None``.
         n_agents : int, optional

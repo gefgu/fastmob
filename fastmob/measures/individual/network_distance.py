@@ -1,10 +1,10 @@
 """Road/rail-network distance mirrors of jump_lengths/radius_of_gyration.
 
-fastmob's own :func:`~fastmob.measures.individual.jump_lengths.jump_lengths`/
-:func:`~fastmob.measures.individual.radius_of_gyration.radius_of_gyration`
+fastmob's own `jump_lengths`/
+`radius_of_gyration`
 measure straight-line Haversine distance between stop points. This module
 recomputes the two metrics as actual network distance over a prepared
-:class:`fastmob.network.RoadNetwork`, falling back to Haversine per-pair
+`fastmob.network.RoadNetwork`, falling back to Haversine per-pair
 wherever a point is unsnapped or the graph is disconnected between the two
 points.
 """
@@ -58,19 +58,20 @@ def jump_lengths_road(
     datetime_col: str | None = None,
     snap_max_distance_m: float = 750.0,
 ) -> np.ndarray:
-    """Road-network jump lengths (km): distance between consecutive stops
-    for the same user, sorted by datetime -- mirrors
-    :func:`~fastmob.measures.individual.jump_lengths.jump_lengths`'s sort
-    key and its inclusion of zero-length jumps, but measures along the
-    network instead of straight-line, falling back to Haversine per-pair
-    when unsnapped or disconnected.
+    """Jump lengths (km) measured along the road network.
+
+    As in `jump_lengths`, a jump is the distance between consecutive fixes of the
+    same user, ordered by datetime, and zero-length jumps are kept. Here the
+    distance is the length of the fastest route on ``network`` instead of the
+    straight line, and a jump falls back to the straight-line (Haversine) distance
+    when a fix is not snapped to the network or the two fixes are not connected.
 
     Parameters
     ----------
     traj:
         Trajectory dataframe; any Narwhals-compatible eager backend.
     network:
-        A prepared :class:`fastmob.network.RoadNetwork`.
+        A prepared `fastmob.network.RoadNetwork`.
     uid_col, lat_col, lng_col, datetime_col:
         Explicit column name overrides; auto-detected when None.
     snap_max_distance_m:
@@ -132,19 +133,19 @@ def radius_of_gyration_road(
     lng_col: str | None = None,
     snap_max_distance_m: float = 750.0,
 ) -> Any:
-    """Road-network radius of gyration (km) per user: RMS network distance
-    from each of a user's stops to the arithmetic-mean centroid of their
-    stops -- mirrors the unweighted-centroid formula
-    ``r_g(u) = sqrt(mean(d(r_i, r_cm)^2))`` used by
-    :func:`~fastmob.measures.individual.radius_of_gyration.radius_of_gyration`,
-    but measures ``d`` along the network instead of straight-line.
+    """Radius of gyration (km) per user, measured along the road network.
+
+    The root-mean-square distance from each of a user's fixes to the arithmetic-mean
+    centroid of their fixes, ``r_g(u) = sqrt(mean(d(r_i, r_cm)^2))`` as in
+    `radius_of_gyration`, with ``d`` the length of the fastest route on ``network``
+    instead of the straight line.
 
     Parameters
     ----------
     traj:
         Trajectory dataframe; any Narwhals-compatible eager backend.
     network:
-        A prepared :class:`fastmob.network.RoadNetwork`.
+        A prepared `fastmob.network.RoadNetwork`.
     uid_col, lat_col, lng_col:
         Explicit column name overrides; auto-detected when None.
     snap_max_distance_m:

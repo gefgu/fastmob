@@ -22,8 +22,10 @@ def location_risk(
 ) -> Any:
     """Assess re-identification risk from visited locations.
 
-    The attacker knows ``knowledge_length`` distinct places a person visited, without knowing how often
-    or when, and looks for the users who visited all of them.
+    The attacker knows ``knowledge_length`` places a person visited, without knowing how often or when,
+    and looks for the users who visited all of them. The candidate knowledge sets are enumerated over
+    visit records: a place visited three times is three records, so it appears as three instances.
+    Use ``unique_location_risk`` to enumerate distinct places instead.
 
     Parameters
     ----------
@@ -52,7 +54,8 @@ def location_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -120,7 +123,8 @@ def location_sequence_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes
@@ -193,7 +197,8 @@ def location_time_risk(
     DataFrame
         With ``force_instances=False``: columns ``uid`` and ``risk`` (a probability between 0 and 1;
         1 means some knowledge set of this size matches only that user). With ``force_instances=True``:
-        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``.
+        one row per knowledge instance with ``uid``, ``instance``, the known element(s) and ``prob``. Known
+        places are given as ``lat`` and ``lng`` of the H3 cell centre.
         The result is in the input's dataframe type.
 
     Notes

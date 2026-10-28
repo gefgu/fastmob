@@ -82,7 +82,7 @@ class Staypoints(BaseDataFrame):
 
         Existing instances are returned unchanged. Raw dataframe-like inputs
         are constructed with the same column detection and validation as
-        :class:`Staypoints`, so measures can share one explicit boundary for
+        `Staypoints`, so measures can share one explicit boundary for
         accepting raw staypoint data.
 
         Parameters
@@ -193,7 +193,7 @@ class Staypoints(BaseDataFrame):
     def create_activity_flag(self, method: str = "time_threshold", time_threshold_min: float = 15.0) -> Staypoints:
         """Flag each staypoint as a genuine "activity" by dwell time.
 
-        See :func:`fastmob.preprocessing.create_activity_flag`.
+        See `fastmob.preprocessing.create_activity_flag`.
 
         Parameters
         ----------
@@ -395,14 +395,14 @@ class Staypoints(BaseDataFrame):
     def build_stvd(self, locations: Locations, **kwargs: Any) -> Any:
         """Aggregate these staypoints against a global Locations catalogue into an STVD frame.
 
-        See :func:`fastmob.measures.collective.build_stvd`.
+        See `fastmob.measures.collective.build_stvd`.
 
         Parameters
         ----------
         locations : Locations
             Global location catalogue.
         **kwargs
-            Forwarded to :func:`fastmob.measures.collective.build_stvd`.
+            Forwarded to `fastmob.measures.collective.build_stvd`.
 
         Returns
         -------
@@ -420,7 +420,7 @@ class Staypoints(BaseDataFrame):
     def interest_network(self, locations: Locations) -> Any:
         """Return the collective interest network over global ``locations``.
 
-        See :func:`fastmob.measures.collective.interest_network`.
+        See `fastmob.measures.collective.interest_network`.
 
         Returns
         -------
@@ -441,7 +441,7 @@ class Staypoints(BaseDataFrame):
     ) -> Any:
         """Compute one home-anchored mobility motif per user and day.
 
-        See :func:`fastmob.measures.individual.motifs.daily_motifs_from_staypoints`.
+        See `fastmob.measures.individual.motifs.daily_motifs_from_staypoints`.
 
         Parameters
         ----------

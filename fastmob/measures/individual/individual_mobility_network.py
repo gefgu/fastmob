@@ -48,7 +48,7 @@ def individual_mobility_network(
     An Individual Mobility Network (IMN) of an individual :math:`u` is a
     directed weighted graph :math:`G_u = (V, E)` where :math:`V` is the set
     of distinct visited locations and :math:`E` is the set of directed trips
-    between locations [RGNPPG2014]_ [BL2012]_ [SQBB2010]_.  The edge weight
+    between locations [RGNPPG2014] [BL2012] [SQBB2010].  The edge weight
     function
 
     .. math::
@@ -78,7 +78,7 @@ def individual_mobility_network(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame
+    pandas or Polars DataFrame
         One row per directed edge with columns
         ``[uid_col, "lat_origin", "lng_origin", "lat_dest", "lng_dest",
         "n_trips"]``.

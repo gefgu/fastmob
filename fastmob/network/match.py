@@ -1,4 +1,4 @@
-"""Trajectory map matching over a prepared :class:`RoadNetwork`.
+"""Trajectory map matching over a prepared `RoadNetwork`.
 
 The matcher intentionally uses the graph's directed endpoint segments.  This
 keeps it compatible with graphs built today; Overture polyline geometry can be

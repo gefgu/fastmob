@@ -1,11 +1,11 @@
-# Privacy Risk
+# Privacy risk
 
-Rust-backed functions that assess re-identification risk from trajectory data.
+How identifiable is each person if an attacker knows some of their places, visit counts, order or times? These functions return a re-identification risk for each user.
 
 Privacy location comparisons use H3 cells at resolution 12 by default, which
 groups small GPS jitter into one representative location. Every function
-accepts `h3_resolution` from 0 through 15. Forced-instance output uses the
-H3 cell center.
+accepts `h3_resolution` from 0 through 15. Forced-instance output gives each
+known place as the `lat` and `lng` of its H3 cell centre.
 
 ## Catalogue
 
@@ -53,3 +53,4 @@ H3 cell center.
 ::: fastmob.privacy.home_work_risk
 
 <!-- example-link -->**Worked example:** [Other attacker models](../learn/privacy-risk.md#other-attacker-models)
+
