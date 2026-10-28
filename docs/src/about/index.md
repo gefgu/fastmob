@@ -10,7 +10,7 @@ for what it can do.
 [![License](https://img.shields.io/pypi/l/fastmob)](https://github.com/gefgu/fastmob/blob/main/LICENSE)
 [![GitHub](https://img.shields.io/github/stars/gefgu/fastmob?style=social)](https://github.com/gefgu/fastmob)
 
-Released 2026-10-27 ([release notes](../release_notes/index.md)) · Alpha · pandas and Polars via Narwhals
+Released 2026-10-28 ([release notes](../release_notes/index.md)) · Alpha · pandas and Polars via Narwhals
 
 ## Relationship to scikit-mobility
 

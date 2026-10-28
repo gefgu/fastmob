@@ -54,7 +54,7 @@ geo = ["geopandas", "shapely", "pyproj"]
 # `vis` is the separately distributed ECharts/Leaflet visualization package.
 # Keep the minor line bounded: ``fastmob.vis`` is Fastmob's stable public
 # facade, while ``fastmob-vis`` owns the optional implementation and assets.
-vis = ["fastmob-vis>=0.1,<0.2"]
+vis = ["fastmob-vis>=0.1.1,<0.2"]
 
 [dependency-groups]
 dev = [
@@ -84,7 +84,7 @@ docs = [
     "zensical>=0.0.41; python_version >= '3.10'",
     "mkdocstrings[python]>=0.25",
     "nbconvert>=7.0",
-    "fastmob-vis>=0.1,<0.2",
+    "fastmob-vis>=0.1.1,<0.2",
 ]
 
 [tool.uv.sources]

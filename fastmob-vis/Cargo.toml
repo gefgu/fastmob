@@ -1,6 +1,6 @@
 [package]
 name = "fastmob-vis"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "High-performance ECharts visualization for fastmob mobility-analysis results"
 license = "BSD-3-Clause"
