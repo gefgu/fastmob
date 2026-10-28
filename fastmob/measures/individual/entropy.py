@@ -48,7 +48,7 @@ def trajectory_entropy(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with visit rows.
     user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
@@ -140,7 +140,7 @@ def trajectory_predictability(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with visit rows.
     user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.

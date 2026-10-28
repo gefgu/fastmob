@@ -132,7 +132,7 @@ class NextLocationPredictor:
 
         Parameters
         ----------
-        traj : DataFrame-like or Staypoints
+        traj : dataframe or Staypoints
             Source data; any Narwhals-compatible eager backend, or a
             `fastmob.core.Staypoints` instance.
         location_col : str, optional

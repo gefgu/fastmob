@@ -37,7 +37,9 @@ def wasserstein_distance(values1: Any, values2: Any) -> float:
 
     Parameters
     ----------
-    values1, values2 : array-like
+    values1 : array-like
+        The two samples (they may have different lengths).
+    values2 : array-like
         The two samples (they may have different lengths).
 
     Returns

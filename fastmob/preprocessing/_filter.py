@@ -159,10 +159,28 @@ def filter(
     ----------
     traj:
         Trajectory dataframe; any Narwhals-compatible eager backend.
-    max_speed_kmh, include_loops, speed_kmh, max_loop, ratio_max:
+    max_speed_kmh
         Parameters for the default ``method="speed"`` algorithm; unused by
         every other method. See the ``method="speed"`` description below.
-    datetime_col, lat_col, lng_col, uid_col:
+    include_loops
+        Parameters for the default ``method="speed"`` algorithm; unused by
+        every other method. See the ``method="speed"`` description below.
+    speed_kmh
+        Parameters for the default ``method="speed"`` algorithm; unused by
+        every other method. See the ``method="speed"`` description below.
+    max_loop
+        Parameters for the default ``method="speed"`` algorithm; unused by
+        every other method. See the ``method="speed"`` description below.
+    ratio_max
+        Parameters for the default ``method="speed"`` algorithm; unused by
+        every other method. See the ``method="speed"`` description below.
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     is_sorted:
         Whether the trajectory is already sorted by user and time, with nulls

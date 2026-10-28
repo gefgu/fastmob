@@ -71,7 +71,9 @@ def stvd_emd(
 
     Parameters
     ----------
-    dist_a, dist_b:
+    dist_a
+        Any Narwhals-compatible eager DataFrame (pandas, polars, …).
+    dist_b
         Any Narwhals-compatible eager DataFrame (pandas, polars, …).
     alpha:
         Space-time tradeoff: 1 minute equals ``alpha`` metres. Default ``10.0``.
@@ -81,7 +83,9 @@ def stvd_emd(
         Explicit time column name. Auto-detected when ``None``.
     weight_col:
         Explicit weight column name. Auto-detected when ``None``.
-    lat_col, lng_col:
+    lat_col
+        Explicit latitude/longitude column names. Auto-detected when ``None``.
+    lng_col
         Explicit latitude/longitude column names. Auto-detected when ``None``.
     reg:
         Sinkhorn entropic regularization strength (same units as the cost

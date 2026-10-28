@@ -74,7 +74,13 @@ def stay_locations(
         track, i.e. one the user hadn't "stepped out of" yet when tracking
         ended. Matches trackintel's ``generate_staypoints(include_last=...)``,
         except trackintel defaults this to ``False``.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
 
     Returns

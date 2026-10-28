@@ -46,7 +46,7 @@ def recency_rank(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated

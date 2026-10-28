@@ -22,7 +22,9 @@ def snap_locations_to_graph(
         by `fastmob.network.builder.fetch_road_network` / `fetch_rail_network`).
     max_distance_m:
         Maximum snap distance; farther rows are reported unsnapped.
-    lat_col, lng_col:
+    lat_col
+        Column names on ``tessellation_df``.
+    lng_col
         Column names on ``tessellation_df``.
 
     Returns

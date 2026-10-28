@@ -40,7 +40,7 @@ def real_entropy(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime and location-ID columns.
         A user-ID column is optional; when absent the whole frame is treated

@@ -34,9 +34,17 @@ class Staypoints(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data; any Narwhals-compatible eager backend.
-    uid_col, lat_col, lng_col, started_at_col, finished_at_col : str, optional
+    uid_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    lat_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    lng_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    started_at_col : str, optional
+        Explicit column name overrides; auto-detected when None.
+    finished_at_col : str, optional
         Explicit column name overrides; auto-detected when None.
     validate : bool, optional
         When True (default), check that required columns are present and
@@ -87,7 +95,7 @@ class Staypoints(BaseDataFrame):
 
         Parameters
         ----------
-        value : Staypoints or DataFrame-like
+        value : Staypoints or dataframe
             Existing wrapper or raw interval table.
         **column_overrides
             Explicit column names, accepted only for a raw table.
@@ -117,7 +125,7 @@ class Staypoints(BaseDataFrame):
 
         Parameters
         ----------
-        df : DataFrame-like
+        df : dataframe
             Staypoint interval table.
         started_at_col : str
             Start-time column.

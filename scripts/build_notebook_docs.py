@@ -33,6 +33,56 @@ def _launch_links(notebook: Path) -> str:
     )
 
 
+def _escape_line(line: str) -> str:
+    """Escape brackets in prose and HTML, but not inside inline code spans."""
+    if line.lstrip().startswith("<"):
+        return line.replace("[", "&#91;").replace("]", "&#93;")
+    parts = re.split(r"(`[^`\n]*`)", line)
+    return "".join(
+        part
+        if part.startswith("`") and part.endswith("`") and len(part) > 1
+        else part.replace("[", "&#91;").replace("]", "&#93;")
+        for part in parts
+    )
+
+
+def _fence_text_outputs(contents: str) -> str:
+    """Turn nbconvert's indented text outputs (after a code fence) into fenced blocks."""
+    out: list[str] = []
+    lines = contents.split("\n")
+    in_fence = False
+    after_fence = False
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            after_fence = not in_fence
+            out.append(line)
+            i += 1
+            continue
+        indented_text = bool(line.strip()) and line.startswith("    ") and not line.lstrip().startswith("<")
+        if after_fence and not in_fence and indented_text:
+            block = []
+            while i < len(lines) and (
+                (lines[i].startswith("    ") and not lines[i].lstrip().startswith("<")) or lines[i].strip() == ""
+            ):
+                block.append(lines[i])
+                i += 1
+            while block and block[-1].strip() == "":
+                i -= 1
+                block.pop()
+            out.append("```text")
+            out.extend(b[4:] if b.startswith("    ") else b for b in block)
+            out.append("```")
+            continue
+        if line.strip() and not in_fence:
+            after_fence = False if not indented_text else after_fence
+        out.append(line)
+        i += 1
+    return "\n".join(out)
+
+
 def _escape_notebook_brackets(contents: str) -> str:
     """Prevent bracket-heavy output from becoming false links, not source code."""
     links: list[str] = []
@@ -41,7 +91,7 @@ def _escape_notebook_brackets(contents: str) -> str:
         links.append(match.group(0))
         return f"\x00LINK{len(links) - 1}\x00"
 
-    contents = ANSI_ESCAPE.sub("", contents).replace("\r", "")
+    contents = _fence_text_outputs(ANSI_ESCAPE.sub("", contents).replace("\r", ""))
     contents = MARKDOWN_LINK.sub(preserve, contents)
     escaped_lines: list[str] = []
     in_fenced_code = False
@@ -58,7 +108,7 @@ def _escape_notebook_brackets(contents: str) -> str:
         elif in_fenced_code:
             escaped_lines.append(line)
         else:
-            escaped_lines.append(line.replace("[", "&#91;").replace("]", "&#93;"))
+            escaped_lines.append(_escape_line(line))
     contents = "".join(escaped_lines)
     for index, link in enumerate(links):
         contents = contents.replace(f"\x00LINK{index}\x00", link)

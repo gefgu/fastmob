@@ -37,7 +37,7 @@ def create_activity_flag(
 
     Parameters
     ----------
-    staypoints : Staypoints or DataFrame-like
+    staypoints : Staypoints or dataframe
         Must have ``started_at``/``finished_at`` columns (or the
         `Staypoints` wrapper's own resolved column names).
     method : str, optional
@@ -48,7 +48,7 @@ def create_activity_flag(
 
     Returns
     -------
-    Staypoints or DataFrame-like
+    Staypoints or dataframe
         Input with an added boolean ``activity`` column.
 
     References
@@ -112,7 +112,13 @@ def identify_locations(
         home) with the most total weekday daytime dwell
         (``work_start_hour``..``work_end_hour``, Mon-Fri) is labeled
         ``"work"``. Every other location is ``"other"``.
-    night_start_hour, night_end_hour, work_start_hour, work_end_hour : int, optional
+    night_start_hour : int, optional
+        Hour-of-day boundaries (0-23) used by the ``"freq"`` heuristic.
+    night_end_hour : int, optional
+        Hour-of-day boundaries (0-23) used by the ``"freq"`` heuristic.
+    work_start_hour : int, optional
+        Hour-of-day boundaries (0-23) used by the ``"freq"`` heuristic.
+    work_end_hour : int, optional
         Hour-of-day boundaries (0-23) used by the ``"freq"`` heuristic.
 
     Returns

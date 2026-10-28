@@ -426,7 +426,13 @@ def validate_recast_from_staypoints(
         Stays that carry a global ``location_id``.
     locations : Locations
         The global location catalogue.
-    min_minutes_for_encounter, p_rnd, random_replicates, seed : optional
+    min_minutes_for_encounter : optional
+        As in ``recast_from_staypoints``.
+    p_rnd : optional
+        As in ``recast_from_staypoints``.
+    random_replicates : optional
+        As in ``recast_from_staypoints``.
+    seed : optional
         As in ``recast_from_staypoints``.
 
     Returns

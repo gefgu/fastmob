@@ -48,7 +48,7 @@ class Trips(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data; any Narwhals-compatible eager backend.
     uid_col : str, optional
         User-ID column name.

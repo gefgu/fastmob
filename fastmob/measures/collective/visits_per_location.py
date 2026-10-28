@@ -30,7 +30,7 @@ def visits_per_location(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …). Must have datetime and a globally scoped location-ID
         column.

@@ -98,7 +98,13 @@ def interpolate(
     sampling_rate_s:
         Maximum time gap, in seconds, allowed between consecutive points
         before an interpolated point is inserted. Default ``3600.0``.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     **method_kwargs:
         Method-specific parameters, forwarded to the matching

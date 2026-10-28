@@ -263,7 +263,9 @@ def safe_wasserstein(left: np.ndarray, right: np.ndarray) -> float | None:
 
     Parameters
     ----------
-    left, right : numpy.ndarray
+    left : numpy.ndarray
+        The two samples.
+    right : numpy.ndarray
         The two samples.
 
     Returns

@@ -34,7 +34,7 @@ def homes_per_location(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
     start_night : int, optional

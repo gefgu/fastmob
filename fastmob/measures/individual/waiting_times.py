@@ -54,7 +54,7 @@ def waiting_times(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent the whole frame is treated
@@ -73,7 +73,7 @@ def waiting_times(
         Explicit user-ID column name.  Auto-detected when None.
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame or array-like
+    pandas or Polars DataFrame, or array-like
         When ``merge=False``: one row per user with columns
         ``[uid_col, "waiting_times"]``; each cell is an array-like sequence of
         floats (seconds).

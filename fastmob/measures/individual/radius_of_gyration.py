@@ -47,7 +47,7 @@ def radius_of_gyration(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory data; any Narwhals-compatible eager dataframe (pandas,
         polars, …).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated

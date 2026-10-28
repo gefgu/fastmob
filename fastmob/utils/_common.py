@@ -695,7 +695,16 @@ def _prepare_trajectory(
     ----------
     nw_df:
         Narwhals trajectory dataframe.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Resolved column names. Use ``_detect_trajectory_columns`` before
+        calling this function.
+    lat_col
+        Resolved column names. Use ``_detect_trajectory_columns`` before
+        calling this function.
+    lng_col
+        Resolved column names. Use ``_detect_trajectory_columns`` before
+        calling this function.
+    uid_col
         Resolved column names. Use ``_detect_trajectory_columns`` before
         calling this function.
     sort:

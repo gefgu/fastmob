@@ -44,7 +44,7 @@ class TrajDataFrame(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like
+    df : dataframe
         Source data.  Accepted types: ``pandas.DataFrame``, ``polars.DataFrame``,
         any Narwhals-compatible eager frame, plain ``list``, ``numpy.ndarray``, or
         ``dict``.

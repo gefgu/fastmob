@@ -291,7 +291,7 @@ def intermittance_and_degree_of_return(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with visit rows.
     user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if None.
@@ -509,7 +509,7 @@ def exploration_profiling(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         A DataFrame (any Narwhals-compatible backend) with visit rows.
     user_id_col : str or None, optional
         Column name for the user ID. Auto-detected if ``None``.

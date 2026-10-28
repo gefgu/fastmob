@@ -98,7 +98,7 @@ def visits_per_time_unit(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
     time_unit : str or None, optional

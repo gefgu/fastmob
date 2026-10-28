@@ -112,7 +112,7 @@ def mean_area_volume(
 
     Parameters
     ----------
-    visits : DataFrame-like
+    visits : dataframe
         Any Narwhals-compatible eager dataframe with one row per stay event.
     area_col : str or None, optional
         Area column name. Auto-detected from ``LOCATION_CANDIDATES`` when None.
@@ -218,7 +218,7 @@ def build_stvd(
 
     Parameters
     ----------
-    staypoints : Staypoints or DataFrame-like
+    staypoints : Staypoints or dataframe
         Staypoints already assigned to ``locations`` (e.g. via
         `Staypoints.generate_global_locations` or
         `Staypoints.associate_global_locations`). Raw dataframes are wrapped in a
@@ -231,7 +231,7 @@ def build_stvd(
 
     Returns
     -------
-    DataFrame-like
+    dataframe
         Same backend as ``staypoints``. Columns: ``location_id``, ``time_bin``,
         ``mean_volume``, ``center_lat``, ``center_lng``.
 

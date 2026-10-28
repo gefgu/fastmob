@@ -153,3 +153,27 @@ def test_reference_module_pages_have_a_generated_catalogue():
         if re.search(r"^::: ", text, re.MULTILINE) and "<!-- api-table:start -->" not in text:
             missing.append(str(page.relative_to(ROOT)))
     assert not missing, f"Run scripts/update_reference_tables.py and add markers to: {missing}"
+
+
+def test_generated_notebook_pages_do_not_show_escaped_brackets_in_code():
+    import re
+
+    pages = [p for p in (DOCS / "learn").glob("*.md") if p.with_suffix(".ipynb").exists()]
+    assert pages
+    for page in pages:
+        text = page.read_text()
+        fenced = re.findall(r"```.*?```", text, flags=re.S)
+        spans = re.findall(r"`[^`\n]+`", re.sub(r"```.*?```", "", text, flags=re.S))
+        for block in fenced + spans:
+            assert "&#91;" not in block and "&#93;" not in block, f"{page.name}: bracket entity inside code"
+
+
+def test_docstrings_use_no_sphinx_roles_or_grouped_parameters():
+    import re
+
+    pattern_role = re.compile(r":(?:func|class|meth|mod|attr|data):")
+    pattern_group = re.compile(r"^ +[a-z_]\w*(?:, [a-z_]\w*)+ *:", re.M)
+    for path in (ROOT / "fastmob").rglob("*.py"):
+        text = path.read_text()
+        assert not pattern_role.search(text), f"{path.name} uses a Sphinx role"
+        assert not pattern_group.search(text), f"{path.name} groups parameters in one docstring entry"

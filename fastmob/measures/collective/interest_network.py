@@ -27,7 +27,7 @@ def interest_network(staypoints: Staypoints | Any, locations: Locations) -> Any:
 
     Parameters
     ----------
-    staypoints : Staypoints or DataFrame-like
+    staypoints : Staypoints or dataframe
         Staypoints assigned to ``locations``. Raw dataframe-like input is
         validated through `Staypoints.coerce`.
     locations : Locations

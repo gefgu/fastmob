@@ -17,9 +17,13 @@ def nearest_candidate(
 
     Parameters
     ----------
-    query_lat, query_lng: np.ndarray
+    query_lat : np.ndarray
         Points to look up.
-    ref_lat, ref_lng: np.ndarray
+    query_lng : np.ndarray
+        Points to look up.
+    ref_lat : np.ndarray
+        Reference points to search (e.g. graph nodes, POIs, events).
+    ref_lng : np.ndarray
         Reference points to search (e.g. graph nodes, POIs, events).
 
     Returns

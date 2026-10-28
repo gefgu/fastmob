@@ -35,7 +35,7 @@ def jump_lengths(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory data; any Narwhals-compatible eager dataframe (pandas,
         polars, …).  Must have columns for datetime, latitude, and longitude.
         A user-ID column is optional; when absent the whole frame is treated
@@ -55,7 +55,7 @@ def jump_lengths(
 
     Returns
     -------
-    pandas.DataFrame or polars.DataFrame or array-like
+    pandas or Polars DataFrame, or array-like
         When ``merge=False``: a dataframe with columns ``[uid_col, "jump_lengths"]``
         where each row holds an array-like sequence of jump lengths for one
         user.  The returned backend matches the input backend.

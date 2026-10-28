@@ -72,7 +72,13 @@ def jump_lengths_road(
         Trajectory dataframe; any Narwhals-compatible eager backend.
     network:
         A prepared `fastmob.network.RoadNetwork`.
-    uid_col, lat_col, lng_col, datetime_col:
+    uid_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    datetime_col
         Explicit column name overrides; auto-detected when None.
     snap_max_distance_m:
         Maximum distance (metres) to snap a stop to the network; farther
@@ -146,7 +152,11 @@ def radius_of_gyration_road(
         Trajectory dataframe; any Narwhals-compatible eager backend.
     network:
         A prepared `fastmob.network.RoadNetwork`.
-    uid_col, lat_col, lng_col:
+    uid_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
         Explicit column name overrides; auto-detected when None.
     snap_max_distance_m:
         Maximum distance (metres) to snap a stop to the network.

@@ -60,9 +60,17 @@ def join_with_pois(
         Points of interest; any Narwhals-compatible eager backend, with
         `poi_lat_col`/`poi_lng_col` columns and, unless overridden,
         `poi_id_col`/`poi_name_col` columns.
-    lat_col, lng_col:
+    lat_col
         Explicit trajectory column overrides; auto-detected when None.
-    poi_lat_col, poi_lng_col, poi_id_col, poi_name_col:
+    lng_col
+        Explicit trajectory column overrides; auto-detected when None.
+    poi_lat_col
+        Column names on `pois_df`.
+    poi_lng_col
+        Column names on `pois_df`.
+    poi_id_col
+        Column names on `pois_df`.
+    poi_name_col
         Column names on `pois_df`.
 
     Returns

@@ -45,7 +45,16 @@ def trajectory_to_od(
         Trajectory dataframe; any Narwhals-compatible eager backend.
     resolution:
         H3 resolution, 0-15.
-    uid_col, datetime_col, lat_col, lng_col:
+    uid_col
+        Explicit column name overrides; auto-detected when None. When
+        ``uid_col`` cannot be found, the whole frame is treated as one user.
+    datetime_col
+        Explicit column name overrides; auto-detected when None. When
+        ``uid_col`` cannot be found, the whole frame is treated as one user.
+    lat_col
+        Explicit column name overrides; auto-detected when None. When
+        ``uid_col`` cannot be found, the whole frame is treated as one user.
+    lng_col
         Explicit column name overrides; auto-detected when None. When
         ``uid_col`` cannot be found, the whole frame is treated as one user.
     drop_self_loops:

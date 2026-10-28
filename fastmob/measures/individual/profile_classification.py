@@ -143,7 +143,19 @@ def compute_profiles(
         columns (auto-detected when not given explicitly): a user ID, a
         location ID, a stay start timestamp, a stay end timestamp, and
         optionally a "purpose"/activity type column.
-    user_id_col, location_id_col, start_col, end_col, purpose_col:
+    user_id_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    location_id_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    start_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    end_col
+        Explicit column name overrides; auto-detected when None.
+        ``purpose_col`` may be absent entirely (no activity-type column).
+    purpose_col
         Explicit column name overrides; auto-detected when None.
         ``purpose_col`` may be absent entirely (no activity-type column).
     n_clusters:

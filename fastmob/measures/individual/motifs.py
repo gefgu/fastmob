@@ -358,7 +358,7 @@ def motif_distribution(daily: Any, motif_id_col: str = "motif_id") -> Any:
 
     Parameters
     ----------
-    daily : DataFrame-like
+    daily : dataframe
         Output of ``daily_motifs`` (one row per user and day), or any table with a motif id column.
     motif_id_col : str, optional
         Column holding the motif ids. Default ``"motif_id"``.

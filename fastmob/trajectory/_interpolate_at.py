@@ -69,7 +69,13 @@ def interpolate_at(
     method:
         ``"linear"`` (default) interpolates position between the two
         surrounding points; ``"nearest"`` returns the closer of the two.
-    datetime_col, lat_col, lng_col, uid_col:
+    datetime_col
+        Explicit column name overrides; auto-detected when None.
+    lat_col
+        Explicit column name overrides; auto-detected when None.
+    lng_col
+        Explicit column name overrides; auto-detected when None.
+    uid_col
         Explicit column name overrides; auto-detected when None.
     Returns
     -------

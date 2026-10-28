@@ -46,7 +46,7 @@ def mean_square_displacement(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
     days : int, optional

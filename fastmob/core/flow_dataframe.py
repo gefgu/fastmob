@@ -26,7 +26,7 @@ class FlowDataFrame(BaseDataFrame):
 
     Parameters
     ----------
-    df : DataFrame-like, optional
+    df : dataframe, optional
         Source data.  Accepted types: ``pandas.DataFrame``,
         ``polars.DataFrame``, any Narwhals-compatible eager frame, ``list``,
         ``numpy.ndarray``, or ``dict``.

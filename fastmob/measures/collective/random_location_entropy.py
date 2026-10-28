@@ -25,7 +25,7 @@ def random_location_entropy(
 
     Parameters
     ----------
-    traj : DataFrame-like
+    traj : dataframe
         Trajectory dataframe; any Narwhals-compatible eager backend (pandas,
         polars, …).  Must have datetime, latitude, and longitude columns.
         A user-ID column is optional; when absent all rows are treated as
