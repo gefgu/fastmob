@@ -15,7 +15,7 @@ TOT_OUTFLOW = "tot_outflow"
 
 
 class Radiation:
-    """Radiation model.
+    """Radiation model: flows between places from their populations and the opportunities in between.
 
     The radiation model for human migration. The model assumes that a traveller's
     destination choice follows two steps: each opportunity at every location is

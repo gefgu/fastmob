@@ -162,8 +162,8 @@ def test_generated_notebook_pages_do_not_show_escaped_brackets_in_code():
     assert pages
     for page in pages:
         text = page.read_text()
-        fenced = re.findall(r"```.*?```", text, flags=re.S)
-        spans = re.findall(r"`[^`\n]+`", re.sub(r"```.*?```", "", text, flags=re.S))
+        fenced = re.findall(r"```.*?```", text, flags=re.DOTALL)
+        spans = re.findall(r"`[^`\n]+`", re.sub(r"```.*?```", "", text, flags=re.DOTALL))
         for block in fenced + spans:
             assert "&#91;" not in block and "&#93;" not in block, f"{page.name}: bracket entity inside code"
 
@@ -172,7 +172,7 @@ def test_docstrings_use_no_sphinx_roles_or_grouped_parameters():
     import re
 
     pattern_role = re.compile(r":(?:func|class|meth|mod|attr|data):")
-    pattern_group = re.compile(r"^ +[a-z_]\w*(?:, [a-z_]\w*)+ *:", re.M)
+    pattern_group = re.compile(r"^ +[a-z_]\w*(?:, [a-z_]\w*)+ *:", re.MULTILINE)
     for path in (ROOT / "fastmob").rglob("*.py"):
         text = path.read_text()
         assert not pattern_role.search(text), f"{path.name} uses a Sphinx role"

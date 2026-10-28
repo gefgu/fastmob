@@ -73,7 +73,7 @@ def _fence_text_outputs(contents: str) -> str:
                 i -= 1
                 block.pop()
             out.append("```text")
-            out.extend(b[4:] if b.startswith("    ") else b for b in block)
+            out.extend(b.removeprefix("    ") for b in block)
             out.append("```")
             continue
         if line.strip() and not in_fence:

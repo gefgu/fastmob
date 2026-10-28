@@ -16,7 +16,7 @@ _N_STATES = 48  # 24 hours × 2 typicality values
 
 
 class MarkovDiaryGenerator:
-    """Markov Diary Learner and Generator.
+    """Markov diary learner and generator: when a person is at home or away, hour by hour.
 
     A *Mobility Diary Learner* (MDL) learns hourly temporal mobility patterns from
     real individual trajectories and then synthesises new *mobility diaries* [PS2018].

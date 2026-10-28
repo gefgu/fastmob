@@ -3,10 +3,10 @@
 <!-- api-table:start -->
 | API | Description | Example |
 | --- | --- | --- |
-| [`Gravity`](#fastmob.models.gravity.Gravity) | Gravity model. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
+| [`Gravity`](#fastmob.models.gravity.Gravity) | Gravity model: flows between places from their sizes and the distance between them. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
 | [`Gravity.fit`](#fastmob.models.gravity.Gravity.fit) | Fit the Gravity model parameters to observed flows via Poisson regression. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
 | [`Gravity.generate`](#fastmob.models.gravity.Gravity.generate) | Generate synthetic flows with the Gravity model. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
-| [`Radiation`](#fastmob.models.radiation.Radiation) | Radiation model. | [Flows](../learn/generate-mobility.md#flows-gravity-and-radiation-models) |
+| [`Radiation`](#fastmob.models.radiation.Radiation) | Radiation model: flows between places from their populations and the opportunities in between. | [Flows](../learn/generate-mobility.md#flows-gravity-and-radiation-models) |
 | [`Radiation.generate`](#fastmob.models.radiation.Radiation.generate) | Generate synthetic flows with the Radiation model. | [Flows](../learn/generate-mobility.md#flows-gravity-and-radiation-models) |
 | [`EPR`](#fastmob.models.epr.EPR) | Exploration and Preferential Return (EPR) trajectory generator. | [Exploration and preferential return](../learn/generate-mobility.md#exploration-and-preferential-return) |
 | [`EPR.generate`](#fastmob.models.epr.EPR.generate) | Simulate agents from `start_date` to `end_date`. | [Exploration and preferential return](../learn/generate-mobility.md#exploration-and-preferential-return) |
@@ -16,7 +16,7 @@
 | [`SpatialEPR.generate`](#fastmob.models.epr.SpatialEPR.generate) | Simulate agents from `start_date` to `end_date`. | [Exploration and preferential return](../learn/generate-mobility.md#exploration-and-preferential-return) |
 | [`Ditras`](#fastmob.models.epr.Ditras) | DITRAS (DIary-based TRAjectory Simulator) modelling framework. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
 | [`Ditras.generate`](#fastmob.models.epr.Ditras.generate) | Simulate agents from `start_date` to `end_date`. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
-| [`MarkovDiaryGenerator`](#fastmob.models.markov_diary_generator.MarkovDiaryGenerator) | Markov Diary Learner and Generator. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
+| [`MarkovDiaryGenerator`](#fastmob.models.markov_diary_generator.MarkovDiaryGenerator) | Markov diary learner and generator: when a person is at home or away, hour by hour. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
 | [`MarkovDiaryGenerator.fit`](#fastmob.models.markov_diary_generator.MarkovDiaryGenerator.fit) | Learn the Markov mobility diary from real trajectories. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
 | [`MarkovDiaryGenerator.generate`](#fastmob.models.markov_diary_generator.MarkovDiaryGenerator.generate) | Generate a synthetic mobility diary. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
 | [`GeoSim`](#fastmob.models.geosim.GeoSim) | GeoSim social trajectory generator. | [Social ties](../learn/generate-mobility.md#social-ties) |

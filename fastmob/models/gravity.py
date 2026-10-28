@@ -41,7 +41,7 @@ def ci(i, number_locs):
 
 
 class Gravity:
-    """Gravity model.
+    """Gravity model: flows between places from their sizes and the distance between them.
 
     The Gravity model of human migration. In its original formulation, the probability
     :math:`T_{ij}` of moving from location :math:`i` to location :math:`j` is
