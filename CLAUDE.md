@@ -184,6 +184,11 @@ with the version at release time (`tests/docs` checks it). Reference catalogue t
 `uv run python scripts/update_reference_tables.py`. `scripts/api_inventory.py` lists every public
 symbol and checks that it has an anchor in the built site.
 
+Notebooks must be run and their saved outputs recorded on a recent Python, 3.12 or newer
+(`scripts/run_notebook_isolated.sh` defaults to 3.12; set `PYTHON=3.13` for the newest listed in
+`pyproject.toml`). Do not record notebook runs on 3.10 or older, and state the version in the
+run-time table. Existing notebooks recorded on 3.10 are re-run on the next pass, not retroactively.
+
 API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
 
 ### Measures sidebar

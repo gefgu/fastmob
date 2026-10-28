@@ -45,3 +45,7 @@ notebook on `main`.
 To serve the docs locally and regenerate notebook pages automatically on port
 5178, run `bash scripts/serve_docs.sh`. Override the address with
 `DOCS_DEV_ADDR=127.0.0.1:8000` when needed.
+
+Run and record notebooks on a recent Python, 3.12 or newer (`scripts/run_notebook_isolated.sh`
+defaults to 3.12; set `PYTHON=3.13` for the newest supported). Do not record runs on 3.10 or older.
+Notebooks already recorded on 3.10 are re-run on the next pass.
