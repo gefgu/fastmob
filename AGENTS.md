@@ -49,3 +49,10 @@ To serve the docs locally and regenerate notebook pages automatically on port
 Run and record notebooks on a recent Python, 3.12 or newer (`scripts/run_notebook_isolated.sh`
 defaults to 3.12; set `PYTHON=3.13` for the newest supported). Do not record runs on 3.10 or older.
 Notebooks already recorded on 3.10 are re-run on the next pass.
+
+Charts from `fastmob-vis` are saved in a notebook as an `<iframe>` page that embeds ECharts (1.2 MB each).
+After running a notebook with charts, shrink it with `uv run python scripts/compact_vis_outputs.py NOTEBOOK`;
+`scripts/build_notebook_docs.py` then draws each chart as a static SVG with Node.js
+(`scripts/render_echarts_widget.js`), so building the docs needs Node.js and `fastmob-vis`.
+Reference catalogues are grouped by task in `docs/reference_groups.json`;
+`scripts/update_reference_tables.py` fails when the groups and a page's `:::` entries differ.

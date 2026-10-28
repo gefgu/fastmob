@@ -191,6 +191,18 @@ Notebooks must be run and their saved outputs recorded on a recent Python, 3.12 
 (`scripts/run_notebook_isolated.sh` defaults to 3.12; set `PYTHON=3.13` for the newest listed in
 `pyproject.toml`). Do not record notebook runs on 3.10 or older. Existing notebooks recorded on 3.10 are re-run on the next pass, not retroactively.
 
+Charts from `fastmob-vis` are saved in a notebook as an `<iframe>` page that embeds ECharts (1.2 MB each).
+After running a notebook with charts, shrink it with `uv run python scripts/compact_vis_outputs.py NOTEBOOK`
+(it swaps the embedded library for a CDN `<script src>`; `tests/docs` rejects outputs over 400 KB).
+`scripts/build_notebook_docs.py` then draws each chart as a static SVG with ECharts' server-side renderer
+(`scripts/render_echarts_widget.js`), so building the docs needs Node.js and `fastmob-vis` (both are set up
+by the `docs` workflow). `run_notebook_isolated.sh` takes several wheels (`"fastmob.whl fastmob_vis.whl"`) when
+a notebook needs an unreleased `fastmob-vis`.
+
+Reference pages group their catalogue by task through `docs/reference_groups.json` (a page, its groups in
+page order, and the `:::` entries of each); `scripts/update_reference_tables.py` fails when the groups and the
+page's directives differ.
+
 API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
 
 ### Measures sidebar

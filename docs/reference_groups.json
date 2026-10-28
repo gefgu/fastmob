@@ -1,0 +1,339 @@
+{
+ "measures/individual.md": [
+  [
+   "Distance and movement",
+   [
+    "jump_lengths",
+    "distance_straight_line",
+    "maximum_distance",
+    "max_distance_from_home",
+    "radius_of_gyration",
+    "k_radius_of_gyration",
+    "waiting_times"
+   ]
+  ],
+  [
+   "Places",
+   [
+    "home_location",
+    "work_location",
+    "location_frequency",
+    "frequency_rank",
+    "recency_rank",
+    "number_of_locations",
+    "number_of_visits"
+   ]
+  ],
+  [
+   "Regularity and predictability",
+   [
+    "real_entropy",
+    "random_entropy",
+    "uncorrelated_entropy",
+    "trajectory_entropy",
+    "trajectory_predictability",
+    "regularity",
+    "diversity",
+    "intermittance_and_degree_of_return",
+    "exploration_profiling",
+    "compute_profiles"
+   ]
+  ],
+  [
+   "Motifs and mobility networks",
+   [
+    "daily_motifs",
+    "motif_distribution",
+    "individual_mobility_network"
+   ]
+  ],
+  [
+   "Activities and visit purposes",
+   [
+    "activity_transition_matrix",
+    "daily_activity_distribution",
+    "visit_purpose_distribution"
+   ]
+  ],
+  [
+   "Along the road network",
+   [
+    "jump_lengths_road",
+    "radius_of_gyration_road"
+   ]
+  ]
+ ],
+ "measures/collective.md": [
+  [
+   "Where and when people are",
+   [
+    "homes_per_location",
+    "visits_per_location",
+    "visits_per_time_unit"
+   ]
+  ],
+  [
+   "How far people spread",
+   [
+    "mean_square_displacement"
+   ]
+  ],
+  [
+   "How many different people use a place",
+   [
+    "random_location_entropy",
+    "uncorrelated_location_entropy"
+   ]
+  ],
+  [
+   "Flows between areas",
+   [
+    "od_matrix",
+    "od_metrics_per_area",
+    "mean_area_volume"
+   ]
+  ],
+  [
+   "Comparing and linking populations",
+   [
+    "build_stvd",
+    "interest_network"
+   ]
+  ]
+ ],
+ "preprocessing.md": [
+  [
+   "Clean and reduce",
+   [
+    "filter",
+    "compress",
+    "simplify",
+    "segment"
+   ]
+  ],
+  [
+   "Stops and places",
+   [
+    "stay_locations",
+    "cluster",
+    "identify_locations",
+    "create_activity_flag"
+   ]
+  ],
+  [
+   "Trips and travel modes",
+   [
+    "trajectory_to_trips",
+    "trajectory_to_od",
+    "predict_transport_mode",
+    "calculate_modal_split"
+   ]
+  ],
+  [
+   "H3 cells",
+   [
+    "latlng_to_h3",
+    "h3_to_latlng"
+   ]
+  ],
+  [
+   "Phone records",
+   [
+    "cdr_to_trips_df",
+    "cdr_to_visitation_df"
+   ]
+  ]
+ ],
+ "models.md": [
+  [
+   "Flow models",
+   [
+    "Gravity",
+    "Radiation"
+   ]
+  ],
+  [
+   "Individual trajectory models",
+   [
+    "EPR",
+    "DensityEPR",
+    "SpatialEPR",
+    "Ditras",
+    "MarkovDiaryGenerator"
+   ]
+  ],
+  [
+   "Social trajectory models",
+   [
+    "GeoSim",
+    "STS_epr"
+   ]
+  ],
+  [
+   "Next-location prediction",
+   [
+    "NextLocationPredictor"
+   ]
+  ]
+ ],
+ "privacy.md": [
+  [
+   "Attacks on places and sequences",
+   [
+    "location_risk",
+    "unique_location_risk",
+    "location_sequence_risk",
+    "location_time_risk"
+   ]
+  ],
+  [
+   "Attacks on visit frequency",
+   [
+    "location_frequency_risk",
+    "location_probability_risk",
+    "location_proportion_risk"
+   ]
+  ],
+  [
+   "Home and work",
+   [
+    "home_work_risk"
+   ]
+  ]
+ ],
+ "network.md": [
+  [
+   "Build a network",
+   [
+    "fetch_road_network",
+    "build_road_graph",
+    "fetch_rail_network",
+    "build_rail_graph",
+    "RoadNetwork"
+   ]
+  ],
+  [
+   "Snap, route and match",
+   [
+    "snap_locations_to_graph",
+    "haversine_m_batch",
+    "match_trajectory",
+    "od_desire_lines"
+   ]
+  ],
+  [
+   "Measures along the road network",
+   [
+    "jump_lengths_road",
+    "radius_of_gyration_road"
+   ]
+  ]
+ ],
+ "measures/contact-network.md": [
+  [
+   "Build contact networks",
+   [
+    "co_presence_graph_from_staypoints",
+    "temporal_graph_from_staypoints",
+    "graph_from_edges",
+    "NetworkGraph",
+    "ContactNetworkResult"
+   ]
+  ],
+  [
+   "Network statistics",
+   [
+    "clustering_coefficients",
+    "topological_overlap",
+    "distribution_summary",
+    "safe_wasserstein"
+   ]
+  ],
+  [
+   "Null models",
+   [
+    "degree_preserving_random_graph",
+    "random_persistence",
+    "rnd",
+    "t_rnd"
+   ]
+  ],
+  [
+   "Recast: re-timing a contact network",
+   [
+    "recast_from_staypoints",
+    "validate_recast_from_staypoints",
+    "RecastClass",
+    "RecastResult",
+    "RecastTemporalGraph",
+    "RecastEventGraph",
+    "RecastClusteringComparison",
+    "RecastValidation"
+   ]
+  ]
+ ],
+ "visualization.md": [
+  [
+   "Generic charts from a table",
+   [
+    "ecdf",
+    "bar",
+    "scatter",
+    "heatmap",
+    "boxplot",
+    "map"
+   ]
+  ],
+  [
+   "Chart objects and export",
+   [
+    "Chart",
+    "EChartsFigure",
+    "get_resource_bundle"
+   ]
+  ],
+  [
+   "Distributions of results (ECDF)",
+   [
+    "plot_jump_lengths_ecdf",
+    "plot_radius_of_gyration_ecdf",
+    "plot_visits_frequency_ecdf",
+    "plot_trip_duration_ecdf",
+    "plot_dwell_time_ecdf"
+   ]
+  ],
+  [
+   "Visits and activities",
+   [
+    "plot_visit_purpose_distribution",
+    "plot_visit_purpose_comparison",
+    "plot_activity_transition_matrix",
+    "plot_activity_transition_difference",
+    "plot_daily_activity_distribution",
+    "plot_daily_activity_difference"
+   ]
+  ],
+  [
+   "Mobility profiles and motifs",
+   [
+    "plot_mobility_profiles",
+    "plot_profile_metrics",
+    "plot_motif_literature_comparison"
+   ]
+  ],
+  [
+   "Fitted mobility laws",
+   [
+    "plot_truncated_powerlaw_fits",
+    "plot_lognormal_fits",
+    "plot_distance_frequency_law"
+   ]
+  ],
+  [
+   "Maps",
+   [
+    "plot_stvd_comparison"
+   ]
+  ]
+ ]
+}
