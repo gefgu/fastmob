@@ -29,4 +29,4 @@ Distances are straight lines in kilometres, times are seconds, and hour-of-day m
 [Collective measures](../reference/measures/collective.md) ·
 [Evaluation measures](../reference/measures/evaluation.md)
 
-Worked examples: [Measure individual mobility](measure-individual-mobility.md), [Routine, predictability and mobility profiles](visit-based-measures.md) and [Population measures and flows](population-measures.md).
+Worked examples: [Measure individual mobility](measure-individual-mobility.md), [Routine, predictability and mobility profiles](visit-based-measures.md) and [Population measures](population-measures.md), [Flows between places](flows-between-places.md) and [Occupancy and phone records](occupancy-and-phone-records.md).

@@ -1,6 +1,8 @@
 # Generation Models
 
 <!-- api-table:start -->
+**Flow models**
+
 | API | Description | Example |
 | --- | --- | --- |
 | [`Gravity`](#fastmob.models.gravity.Gravity) | Gravity model: flows between places from their sizes and the distance between them. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
@@ -8,6 +10,11 @@
 | [`Gravity.generate`](#fastmob.models.gravity.Gravity.generate) | Generate synthetic flows with the Gravity model. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
 | [`Radiation`](#fastmob.models.radiation.Radiation) | Radiation model: flows between places from their populations and the opportunities in between. | [Flows](../learn/generate-mobility.md#flows-gravity-and-radiation-models) |
 | [`Radiation.generate`](#fastmob.models.radiation.Radiation.generate) | Generate synthetic flows with the Radiation model. | [Flows](../learn/generate-mobility.md#flows-gravity-and-radiation-models) |
+
+**Individual trajectory models**
+
+| API | Description | Example |
+| --- | --- | --- |
 | [`EPR`](#fastmob.models.epr.EPR) | Exploration and Preferential Return (EPR) trajectory generator. | [Exploration and preferential return](../learn/generate-mobility.md#exploration-and-preferential-return) |
 | [`EPR.generate`](#fastmob.models.epr.EPR.generate) | Simulate agents from `start_date` to `end_date`. | [Exploration and preferential return](../learn/generate-mobility.md#exploration-and-preferential-return) |
 | [`DensityEPR`](#fastmob.models.epr.DensityEPR) | Density-EPR (d-EPR) trajectory generator. | [Exploration and preferential return](../learn/generate-mobility.md#exploration-and-preferential-return) |
@@ -19,10 +26,20 @@
 | [`MarkovDiaryGenerator`](#fastmob.models.markov_diary_generator.MarkovDiaryGenerator) | Markov diary learner and generator: when a person is at home or away, hour by hour. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
 | [`MarkovDiaryGenerator.fit`](#fastmob.models.markov_diary_generator.MarkovDiaryGenerator.fit) | Learn the Markov mobility diary from real trajectories. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
 | [`MarkovDiaryGenerator.generate`](#fastmob.models.markov_diary_generator.MarkovDiaryGenerator.generate) | Generate a synthetic mobility diary. | [Realistic daily rhythm](../learn/generate-mobility.md#realistic-daily-rhythm-diaries) |
+
+**Social trajectory models**
+
+| API | Description | Example |
+| --- | --- | --- |
 | [`GeoSim`](#fastmob.models.geosim.GeoSim) | GeoSim social trajectory generator. | [Social ties](../learn/generate-mobility.md#social-ties) |
 | [`GeoSim.generate`](#fastmob.models.geosim.GeoSim.generate) | Simulate a socially connected population from `start_date` to `end_date`. | [Social ties](../learn/generate-mobility.md#social-ties) |
 | [`STS_epr`](#fastmob.models.sts_epr.STS_epr) | STS-EPR (Spatial, Temporal, and Social EPR) trajectory generator. | [Social ties](../learn/generate-mobility.md#social-ties) |
 | [`STS_epr.generate`](#fastmob.models.sts_epr.STS_epr.generate) | Simulate a socially connected population from `start_date` to `end_date`. | [Social ties](../learn/generate-mobility.md#social-ties) |
+
+**Next-location prediction**
+
+| API | Description | Example |
+| --- | --- | --- |
 | [`NextLocationPredictor`](#fastmob.models.next_location.NextLocationPredictor) | Order-k Markov next-location predictor with optional backoff. | [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place) |
 | [`NextLocationPredictor.evaluate`](#fastmob.models.next_location.NextLocationPredictor.evaluate) | Holdout-last-`n_holdout` accuracy over the data given to `fit`. | [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place) |
 | [`NextLocationPredictor.fit`](#fastmob.models.next_location.NextLocationPredictor.fit) | Fit one Markov model per user from each user's location-id sequence. | [Predict the next place](../learn/visit-based-measures.md#predict-the-next-place) |
@@ -113,6 +130,8 @@ pip install statsmodels
 <!-- example-link -->**Worked example:** [Social ties](../learn/generate-mobility.md#social-ties)
 
 ---
+
+## Next-location prediction
 
 ::: fastmob.models.next_location.NextLocationPredictor
     options:

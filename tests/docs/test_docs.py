@@ -177,3 +177,31 @@ def test_docstrings_use_no_sphinx_roles_or_grouped_parameters():
         text = path.read_text()
         assert not pattern_role.search(text), f"{path.name} uses a Sphinx role"
         assert not pattern_group.search(text), f"{path.name} groups parameters in one docstring entry"
+
+
+def test_visualization_reference_documents_every_public_chart_function():
+    import ast
+
+    init = ast.parse((ROOT / "fastmob-vis" / "fastmob_vis" / "__init__.py").read_text())
+    exported = {
+        element.value
+        for node in init.body
+        if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "__all__" for t in node.targets)
+        for element in node.value.elts
+    }
+    page = (DOCS / "reference" / "visualization.md").read_text(encoding="utf-8")
+    documented = {target.rsplit(".", 1)[-1] for target in re.findall(r"^::: ([\w.]+)", page, re.MULTILINE)}
+    # PALETTES is described in a table on the page; the two literature constants are listed in prose.
+    assert exported - documented <= {"PALETTES"}, f"undocumented fastmob_vis names: {exported - documented}"
+
+
+def test_saved_notebook_outputs_stay_small():
+    import json
+
+    for path in _learn_notebooks():
+        for cell in json.loads(path.read_text())["cells"]:
+            for output in cell.get("outputs", []):
+                for mime, value in output.get("data", {}).items():
+                    size = len("".join(value))
+                    # A fastmob-vis chart embeds ECharts (1.2 MB) unless scripts/compact_vis_outputs.py ran.
+                    assert size < 400_000, f"{path.name}: a {mime} output of {size / 1e6:.1f} MB; compact it"

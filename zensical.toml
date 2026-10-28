@@ -37,7 +37,9 @@ nav = [
       { "Measure individual mobility" = "learn/measure-individual-mobility.md" },
       { "Routine, predictability and mobility profiles" = "learn/visit-based-measures.md" },
       { "Find daily mobility motifs" = "learn/motifs.md" },
-      { "Population measures and flows" = "learn/population-measures.md" },
+      { "Population measures" = "learn/population-measures.md" },
+      { "Flows between places" = "learn/flows-between-places.md" },
+      { "Occupancy and phone records" = "learn/occupancy-and-phone-records.md" },
     ] },
     { "4. Spatial and network analysis" = [
       { "Roads, rails and map matching" = "learn/network-analysis.md" },
@@ -49,6 +51,9 @@ nav = [
       { "Generate mobility with models" = "learn/generate-mobility.md" },
       { "Fit and compare distributions" = "learn/fit-and-evaluate.md" },
       { "Privacy risk of trajectories" = "learn/privacy-risk.md" },
+    ] },
+    { "6. Charting results" = [
+      { "Chart your results" = "learn/visualize-results.md" },
     ] },
   ] },
   { "Reference" = [

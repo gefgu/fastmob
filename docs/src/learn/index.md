@@ -32,7 +32,9 @@ Guides for mobility researchers, grouped by what you want to do. Start at chapte
 - [**Measure individual mobility**](measure-individual-mobility.md): notebook, Brightkite. Range, places, entropy, home and work for hundreds of users.
 - [**Routine, predictability and mobility profiles**](visit-based-measures.md): notebook, GeoLife. Regularity, entropy, predictability, return and exploration, activity profiles.
 - [**Find daily mobility motifs**](motifs.md): notebook, GeoLife. The shape of each person's day.
-- [**Population measures and flows**](population-measures.md): notebook, Brightkite. Homes and visits per place, origin-destination flows, zones, co-visitation and occupancy.
+- [**Population measures**](population-measures.md): notebook, Brightkite. Homes and visits per place, spread over time, diversity of visitors.
+- [**Flows between places**](flows-between-places.md): notebook, Brightkite. Origin-destination flows, zones, and comparing two flow tables.
+- [**Occupancy and phone records**](occupancy-and-phone-records.md): notebook, Brightkite and synthetic call records. When places are busy, shared visitors, stays and trips from phone records.
 
 ## 4. Spatial and network analysis
 
@@ -50,3 +52,9 @@ Guides for mobility researchers, grouped by what you want to do. Start at chapte
 - [**Generate mobility with models**](generate-mobility.md): notebook, synthetic data. Exploration and return models, diaries, social ties, gravity and radiation flows.
 - [**Fit and compare distributions**](fit-and-evaluate.md): notebook, Brightkite. Error, information, distribution and common-part metrics.
 - [**Privacy risk of trajectories**](privacy-risk.md): notebook, Brightkite. Re-identification risk under eight attacker models.
+
+## 6. Charting results
+
+*How do I draw what I measured?*
+
+- [**Chart your results**](visualize-results.md): notebook, Brightkite and GeoLife. Distributions, bars, boxes, scatters and heatmaps from any result, and the charts for activities, mobility profiles, motifs and fitted laws.
