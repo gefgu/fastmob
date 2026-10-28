@@ -84,3 +84,20 @@ def test_haversine_m_batch_known_distance():
     # ~1 degree of latitude is ~111.19 km
     d = haversine_m_batch(np.array([0.0]), np.array([0.0]), np.array([1.0]), np.array([0.0]))
     assert d[0] == pytest.approx(111195.0, rel=0.01)
+
+
+def test_public_haversine_m_batch_accepts_array_likes():
+    import numpy as np
+    import pandas as pd
+
+    from fastmob.network import haversine_m_batch as public_haversine
+
+    result = public_haversine(pd.Series([0, 0]), [0, 0], np.array([1, 2], dtype=np.float32), (0, 0))
+    assert isinstance(result, np.ndarray)
+    np.testing.assert_allclose(result, [111195, 222390], rtol=0.01)
+    np.testing.assert_allclose(public_haversine(np.arange(4)[::2], [0, 0], [0, 0], [0, 0]), [0, 222390], rtol=0.01)
+    assert public_haversine([], [], [], []).size == 0
+    with pytest.raises(ValueError, match="same length"):
+        public_haversine([0], [], [0], [0])
+    with pytest.raises(ValueError, match="one-dimensional"):
+        public_haversine([[0]], [0], [0], [0])
