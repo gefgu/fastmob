@@ -54,7 +54,13 @@ pub struct CandidateGraphConfig {
 
 impl Default for CandidateGraphConfig {
     fn default() -> Self {
-        Self { resolution: Resolution::Eight, k_ring: 2, k_ring_max: 32, k_min: 8, max_candidates: 64 }
+        Self {
+            resolution: Resolution::Eight,
+            k_ring: 2,
+            k_ring_max: 32,
+            k_min: 8,
+            max_candidates: 64,
+        }
     }
 }
 
@@ -189,7 +195,12 @@ fn nearby_candidates(
 /// sorted by `(group_of, other)`. Mirrors `mean_area_volume_impl`'s
 /// sort-then-linear-scan style in `../collective/stvd.rs`: cheap because the
 /// input is already sorted, so grouping is one pass with no hashing.
-fn build_csr(sorted_edges: &[(u32, u32, f32)], group_count: usize, group_of: impl Fn(&(u32, u32, f32)) -> u32, other_of: impl Fn(&(u32, u32, f32)) -> u32) -> (Vec<u32>, Vec<(u32, f32)>) {
+fn build_csr(
+    sorted_edges: &[(u32, u32, f32)],
+    group_count: usize,
+    group_of: impl Fn(&(u32, u32, f32)) -> u32,
+    other_of: impl Fn(&(u32, u32, f32)) -> u32,
+) -> (Vec<u32>, Vec<(u32, f32)>) {
     let mut offsets = vec![0u32; group_count + 1];
     for edge in sorted_edges {
         offsets[group_of(edge) as usize + 1] += 1;
@@ -197,7 +208,10 @@ fn build_csr(sorted_edges: &[(u32, u32, f32)], group_count: usize, group_of: imp
     for i in 0..group_count {
         offsets[i + 1] += offsets[i];
     }
-    let values: Vec<(u32, f32)> = sorted_edges.iter().map(|edge| (other_of(edge), edge.2)).collect();
+    let values: Vec<(u32, f32)> = sorted_edges
+        .iter()
+        .map(|edge| (other_of(edge), edge.2))
+        .collect();
     (offsets, values)
 }
 
@@ -235,8 +249,17 @@ pub fn build_candidate_graph(
         .into_par_iter()
         .flat_map_iter(|i| {
             nearby_candidates(
-                lats_a[i], lngs_a[i], ts_a[i], lats_b, lngs_b, ts_b, &buckets_b, &distinct_cells_b,
-                cyclical_period, r, config,
+                lats_a[i],
+                lngs_a[i],
+                ts_a[i],
+                lats_b,
+                lngs_b,
+                ts_b,
+                &buckets_b,
+                &distinct_cells_b,
+                cyclical_period,
+                r,
+                config,
             )
             .into_iter()
             .map(move |(j, cost)| (i as u32, j, cost))
@@ -247,8 +270,17 @@ pub fn build_candidate_graph(
         .into_par_iter()
         .flat_map_iter(|j| {
             nearby_candidates(
-                lats_b[j], lngs_b[j], ts_b[j], lats_a, lngs_a, ts_a, &buckets_a, &distinct_cells_a,
-                cyclical_period, r, config,
+                lats_b[j],
+                lngs_b[j],
+                ts_b[j],
+                lats_a,
+                lngs_a,
+                ts_a,
+                &buckets_a,
+                &distinct_cells_a,
+                cyclical_period,
+                r,
+                config,
             )
             .into_iter()
             .map(move |(i, cost)| (i, j as u32, cost))
@@ -271,7 +303,12 @@ pub fn build_candidate_graph(
     by_b.par_sort_unstable_by_key(|&(i, j, _)| (j, i));
     let (offsets_b, edges_b) = build_csr(&by_b, m, |&(_, j, _)| j, |&(i, _, _)| i);
 
-    CandidateGraph { offsets_a, edges_a, offsets_b, edges_b }
+    CandidateGraph {
+        offsets_a,
+        edges_a,
+        offsets_b,
+        edges_b,
+    }
 }
 
 #[cfg(test)]
@@ -294,7 +331,15 @@ mod tests {
         let ts_b = [480.0, 480.0];
 
         let graph = build_candidate_graph(
-            &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0, default_config(),
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            1440.0,
+            10.0,
+            default_config(),
         );
 
         for i in 0..lats_a.len() {
@@ -319,7 +364,15 @@ mod tests {
         let ts_b = [480.0, 480.0];
 
         let graph = build_candidate_graph(
-            &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0, default_config(),
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            1440.0,
+            10.0,
+            default_config(),
         );
 
         let mut seen = rustc_hash::FxHashSet::default();
@@ -342,7 +395,15 @@ mod tests {
         let ts_b = [480.0, 500.0];
 
         let graph = build_candidate_graph(
-            &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0, default_config(),
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            1440.0,
+            10.0,
+            default_config(),
         );
 
         let mut from_a: Vec<(u32, u32)> = Vec::new();
@@ -376,7 +437,15 @@ mod tests {
         let ts_b = [500.0];
 
         let graph = build_candidate_graph(
-            &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0, default_config(),
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            1440.0,
+            10.0,
+            default_config(),
         );
 
         let expected = pair_cost_m(0.0, 0.0, 480.0, 0.0, 0.001, 500.0, 1440.0, 10.0);
@@ -395,7 +464,15 @@ mod tests {
         let ts_b = [0.0];
 
         let graph = build_candidate_graph(
-            &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0, default_config(),
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            1440.0,
+            10.0,
+            default_config(),
         );
 
         assert_eq!(graph.edge_count(), 1);

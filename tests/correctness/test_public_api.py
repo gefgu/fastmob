@@ -14,6 +14,7 @@ def test_measure_taxonomy_uses_canonical_public_packages():
     from fastmob.measures import collective, evaluation, individual
 
     assert individual.radius_of_gyration is fastmob.radius_of_gyration
+    assert individual.radius_of_gyration_lazy is fastmob.radius_of_gyration_lazy
     assert collective.visits_per_location is fastmob.visits_per_location
     assert evaluation.wasserstein_distance is fastmob.wasserstein_distance
 

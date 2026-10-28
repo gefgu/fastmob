@@ -375,7 +375,8 @@ mod tests {
         let lngs = [0.0; 5];
         let times = [0.0, 0.0, 300.0, 300.0, 1500.0];
 
-        let stops = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
+        let stops =
+            detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
 
         assert_eq!(stops.len(), 1);
         assert_eq!(stops[0].entry_time_s, 0.0);
@@ -391,10 +392,12 @@ mod tests {
         let lngs = [0.0; 3];
         let times = [0.0, 600.0, 1500.0];
 
-        let omitted = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, false);
+        let omitted =
+            detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, false);
         assert!(omitted.is_empty());
 
-        let included = detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
+        let included =
+            detect_stops_for_user(&lats, &lngs, &times, 0.2, 20.0, 1e12, f64::INFINITY, true);
         assert_eq!(included.len(), 1);
         assert_eq!(included[0].entry_time_s, 0.0);
         assert_eq!(included[0].leaving_time_s, 1500.0);

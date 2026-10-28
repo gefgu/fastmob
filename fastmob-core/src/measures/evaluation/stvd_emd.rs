@@ -17,7 +17,11 @@ pub struct SinkhornConfig {
 
 impl Default for SinkhornConfig {
     fn default() -> Self {
-        Self { reg: 0.01, max_iter: 200, tol: None }
+        Self {
+            reg: 0.01,
+            max_iter: 200,
+            tol: None,
+        }
     }
 }
 
@@ -127,7 +131,17 @@ pub fn stvd_emd_impl(
     }
 
     sparse_stvd_emd_impl(
-        lats_a, lngs_a, ts_a, ws_a, lats_b, lngs_b, ts_b, ws_b, alpha, cyclical_period, sinkhorn,
+        lats_a,
+        lngs_a,
+        ts_a,
+        ws_a,
+        lats_b,
+        lngs_b,
+        ts_b,
+        ws_b,
+        alpha,
+        cyclical_period,
+        sinkhorn,
         CandidateGraphConfig::default(),
     )
 }
@@ -171,7 +185,14 @@ pub(crate) fn dense_reference_impl(
         .for_each(|(i, row)| {
             for j in 0..m {
                 row[j] = pair_cost_m(
-                    lats_a[i], lngs_a[i], ts_a[i], lats_b[j], lngs_b[j], ts_b[j], cyclical_period, r,
+                    lats_a[i],
+                    lngs_a[i],
+                    ts_a[i],
+                    lats_b[j],
+                    lngs_b[j],
+                    ts_b[j],
+                    cyclical_period,
+                    r,
                 );
             }
         });
@@ -284,20 +305,22 @@ mod tests {
 
     #[test]
     fn empty_distribution_is_rejected() {
-        assert!(stvd_emd_impl(
-            &[],
-            &[],
-            &[],
-            &[],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            1440.0,
-            SinkhornConfig::default(),
-        )
-        .is_err());
+        assert!(
+            stvd_emd_impl(
+                &[],
+                &[],
+                &[],
+                &[],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+                SinkhornConfig::default(),
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -361,116 +384,139 @@ mod tests {
 
     #[test]
     fn non_positive_cyclical_period_is_rejected() {
-        assert!(stvd_emd_impl(
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            0.0,
-            SinkhornConfig::default(),
-        )
-        .is_err());
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                0.0,
+                SinkhornConfig::default(),
+            )
+            .is_err()
+        );
     }
 
     #[test]
     fn zero_weight_sum_is_rejected() {
-        assert!(stvd_emd_impl(
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            1440.0,
-            SinkhornConfig::default(),
-        )
-        .is_err());
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+                SinkhornConfig::default(),
+            )
+            .is_err()
+        );
     }
 
     #[test]
     fn invalid_weights_and_coordinates_are_rejected() {
-        assert!(stvd_emd_impl(
-            &[f64::NAN],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            1440.0,
-            SinkhornConfig::default(),
-        )
-        .is_err());
-        assert!(stvd_emd_impl(
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[-1.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            1440.0,
-            SinkhornConfig::default(),
-        )
-        .is_err());
+        assert!(
+            stvd_emd_impl(
+                &[f64::NAN],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+                SinkhornConfig::default(),
+            )
+            .is_err()
+        );
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[-1.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+                SinkhornConfig::default(),
+            )
+            .is_err()
+        );
     }
 
     #[test]
     fn invalid_sinkhorn_reg_is_rejected() {
-        assert!(stvd_emd_impl(
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            1440.0,
-            SinkhornConfig { reg: 0.0, ..SinkhornConfig::default() },
-        )
-        .is_err());
-        assert!(stvd_emd_impl(
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            1440.0,
-            SinkhornConfig { max_iter: 0, ..SinkhornConfig::default() },
-        )
-        .is_err());
-        assert!(stvd_emd_impl(
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            &[0.0],
-            &[0.0],
-            &[0.0],
-            &[1.0],
-            10.0,
-            1440.0,
-            SinkhornConfig { tol: Some(-1.0), ..SinkhornConfig::default() },
-        )
-        .is_err());
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+                SinkhornConfig {
+                    reg: 0.0,
+                    ..SinkhornConfig::default()
+                },
+            )
+            .is_err()
+        );
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+                SinkhornConfig {
+                    max_iter: 0,
+                    ..SinkhornConfig::default()
+                },
+            )
+            .is_err()
+        );
+        assert!(
+            stvd_emd_impl(
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                &[0.0],
+                &[0.0],
+                &[0.0],
+                &[1.0],
+                10.0,
+                1440.0,
+                SinkhornConfig {
+                    tol: Some(-1.0),
+                    ..SinkhornConfig::default()
+                },
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -486,7 +532,11 @@ mod tests {
             &[1.0],
             10.0,
             1440.0,
-            SinkhornConfig { reg: 0.1, max_iter: 500, tol: Some(1e-6) },
+            SinkhornConfig {
+                reg: 0.1,
+                max_iter: 500,
+                tol: Some(1e-6),
+            },
         )
         .unwrap();
         assert!(value.abs() < 1e-3, "got {value}");

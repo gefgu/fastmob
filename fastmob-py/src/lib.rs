@@ -15,8 +15,8 @@ mod utils;
 use pyo3::prelude::*;
 
 use integration::events_py;
-use measures::collective::{interest_network, square_displacement, visitation_law};
 use measures::collective::stvd;
+use measures::collective::{interest_network, square_displacement, visitation_law};
 #[cfg(feature = "stvd-emd")]
 use measures::evaluation::stvd_emd;
 use measures::evaluation::{cpc, jsd, kl_divergence, wasserstein};
@@ -495,6 +495,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_class::<models::next_location_py::PyNextLocationModels>()?;
+    m.add_class::<measures::individual::radius_of_gyration_stream::PyRadiusOfGyrationStream>()?;
     m.add_function(wrap_pyfunction!(
         models::geosim::model_geosim_simulate_agents,
         m

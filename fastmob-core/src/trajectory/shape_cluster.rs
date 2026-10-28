@@ -5,8 +5,8 @@
 //! signature values are already normalized to `[0,1]` and a plain Euclidean
 //! ball is the natural (and simpler) neighbourhood shape at that point.
 
-use linfa::traits::Transformer;
 use linfa::DatasetBase;
+use linfa::traits::Transformer;
 use linfa_clustering::Dbscan;
 use ndarray015::Array2;
 

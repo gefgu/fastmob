@@ -10,7 +10,13 @@ const MINUTES_PER_DAY: u16 = 24 * 60;
 /// One expanded 10-minute presence slot: a user seen in an area on a given
 /// calendar date (day-of-week is redundant with date but kept alongside it
 /// so the sort groups every downstream consumer needs are already adjacent).
-type PresenceEntry = (u32 /* area */, i32 /* date */, u8 /* dow */, u16 /* minute */, u32 /* user */);
+type PresenceEntry = (
+    u32, /* area */
+    i32, /* date */
+    u8,  /* dow */
+    u16, /* minute */
+    u32, /* user */
+);
 
 fn expand_row(
     area: u32,
@@ -77,10 +83,19 @@ pub fn mean_area_volume_impl(
     let mut entries: Vec<PresenceEntry> = (0..n)
         .into_par_iter()
         .filter(|&index| valid_rows.is_none_or(|v| v[index]))
-        .try_fold(Vec::new, |mut local, index| -> Result<Vec<PresenceEntry>, String> {
-            expand_row(area_codes[index], user_codes[index], starts_us[index], ends_us[index], &mut local)?;
-            Ok(local)
-        })
+        .try_fold(
+            Vec::new,
+            |mut local, index| -> Result<Vec<PresenceEntry>, String> {
+                expand_row(
+                    area_codes[index],
+                    user_codes[index],
+                    starts_us[index],
+                    ends_us[index],
+                    &mut local,
+                )?;
+                Ok(local)
+            },
+        )
         .try_reduce(Vec::new, |mut a, mut b| {
             a.append(&mut b);
             Ok(a)
@@ -94,7 +109,9 @@ pub fn mean_area_volume_impl(
     // what `HashSet::len()` would have counted -- without ever allocating one.
     let mut presence_counts: Vec<(u32, i32, u8, u16, f64)> = Vec::new();
     let mut iter = entries.into_iter();
-    if let Some((mut cur_area, mut cur_date, mut cur_dow, mut cur_minute, mut last_user)) = iter.next() {
+    if let Some((mut cur_area, mut cur_date, mut cur_dow, mut cur_minute, mut last_user)) =
+        iter.next()
+    {
         let mut count: u32 = 1;
         for (area, date, dow, minute, user) in iter {
             if area == cur_area && date == cur_date && dow == cur_dow && minute == cur_minute {
@@ -121,7 +138,10 @@ pub fn mean_area_volume_impl(
     let mut dates_per_area_dow: FxHashMap<(u32, u8), FxHashSet<i32>> = FxHashMap::default();
     let mut dow_sum: FxHashMap<(u32, u8, u16), f64> = FxHashMap::default();
     for (area, date, dow, minute, count) in presence_counts {
-        dates_per_area_dow.entry((area, dow)).or_default().insert(date);
+        dates_per_area_dow
+            .entry((area, dow))
+            .or_default()
+            .insert(date);
         *dow_sum.entry((area, dow, minute)).or_insert(0.0) += count;
     }
 
@@ -160,7 +180,13 @@ mod tests {
         // Monday 2020-01-06 08:00 and Monday 2020-01-13 08:00.
         let first = 1_578_297_600_000_000_i64;
         let second = first + 7 * 24 * 60 * 60 * 1_000_000;
-        let rows = run(&[4, 4, 4], &[8, 9, 8], &[first, first, second], &[first, first, second]).unwrap();
+        let rows = run(
+            &[4, 4, 4],
+            &[8, 9, 8],
+            &[first, first, second],
+            &[first, first, second],
+        )
+        .unwrap();
         assert_eq!(rows, vec![(4, 480, 1.5 / 7.0)]);
     }
 
@@ -170,7 +196,10 @@ mod tests {
         let end = start + 30 * 60 * 1_000_000;
         let rows = run(&[1, 1], &[2, 2], &[start, end], &[end, start]).unwrap();
         assert_eq!(rows.len(), 4);
-        assert!(rows.iter().all(|&(area, _, mean)| area == 1 && mean == 1.0 / 7.0));
+        assert!(
+            rows.iter()
+                .all(|&(area, _, mean)| area == 1 && mean == 1.0 / 7.0)
+        );
     }
 
     #[test]
@@ -227,7 +256,12 @@ mod tests {
                 let date = dt.date_naive();
                 let minute = (dt.hour() * 60 + dt.minute()) as u16;
                 presence
-                    .entry((areas[i], date.num_days_from_ce(), dt.weekday().num_days_from_monday() as u8, minute))
+                    .entry((
+                        areas[i],
+                        date.num_days_from_ce(),
+                        dt.weekday().num_days_from_monday() as u8,
+                        minute,
+                    ))
                     .or_default()
                     .insert(users[i]);
                 slot += TEN_MINUTES_US;
@@ -237,7 +271,10 @@ mod tests {
         let mut dates_per_area_dow: HashMap<(u32, u8), HashSet<i32>> = HashMap::default();
         let mut dow_sum: HashMap<(u32, u8, u16), f64> = HashMap::default();
         for ((area, date, dow, minute), users_set) in presence {
-            dates_per_area_dow.entry((area, dow)).or_default().insert(date);
+            dates_per_area_dow
+                .entry((area, dow))
+                .or_default()
+                .insert(date);
             *dow_sum.entry((area, dow, minute)).or_insert(0.0) += users_set.len() as f64;
         }
 
@@ -287,7 +324,8 @@ mod tests {
             for _ in 0..n {
                 areas.push(rng.range(3) as u32);
                 users.push(rng.range(4) as u32);
-                let start = base + (rng.range(20) as i64) * 24 * 60 * 60 * 1_000_000
+                let start = base
+                    + (rng.range(20) as i64) * 24 * 60 * 60 * 1_000_000
                     + (rng.range(144) as i64) * TEN_MINUTES_US;
                 // Occasionally invert start/end to exercise the "invalid stay" path too.
                 let duration_bins = rng.range(6) as i64;
@@ -311,8 +349,14 @@ mod tests {
                 expected.len(),
                 "trial {trial} row count diverged for areas={areas:?} users={users:?} starts={starts:?} ends={ends:?}"
             );
-            for ((a_area, a_minute, a_mean), (e_area, e_minute, e_mean)) in actual.iter().zip(expected.iter()) {
-                assert_eq!((a_area, a_minute), (e_area, e_minute), "trial {trial} key diverged");
+            for ((a_area, a_minute, a_mean), (e_area, e_minute, e_mean)) in
+                actual.iter().zip(expected.iter())
+            {
+                assert_eq!(
+                    (a_area, a_minute),
+                    (e_area, e_minute),
+                    "trial {trial} key diverged"
+                );
                 assert!(
                     (a_mean - e_mean).abs() < 1e-9,
                     "trial {trial} mean diverged: {a_mean} vs {e_mean} at area={a_area} minute={a_minute}"

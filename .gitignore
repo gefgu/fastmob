@@ -109,6 +109,9 @@ docs/src/learn/compare-to-mobility-laws.md
 docs/src/learn/compare-to-mobility-laws_files/
 docs/src/learn/notebooks/*.md
 docs/src/learn/notebooks/*_files/
+
+
+hidden/
 docs/src/learn/analyze-a-simple-trajectory.md
 docs/src/learn/analyze-a-simple-trajectory_files/
 docs/src/learn/clean-and-detect-stops.md
@@ -143,3 +146,6 @@ docs/src/learn/occupancy-and-phone-records.md
 docs/src/learn/occupancy-and-phone-records_files/
 docs/src/learn/visualize-results.md
 docs/src/learn/visualize-results_files/
+
+# Run records of the docs audit loops stay local (only prompts are pushed)
+AI/**/runs/

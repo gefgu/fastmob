@@ -16,7 +16,7 @@
 
 use rayon::prelude::*;
 
-use super::stvd_candidate_graph::{build_candidate_graph, CandidateGraph, CandidateGraphConfig};
+use super::stvd_candidate_graph::{CandidateGraph, CandidateGraphConfig, build_candidate_graph};
 use super::stvd_emd::SinkhornConfig;
 
 /// Matches `wass::EPSILON` exactly, for weight-normalization parity.
@@ -126,7 +126,13 @@ fn compute_distance(graph: &CandidateGraph, f: &[f32], g: &[f32], reg: f32) -> f
 
 /// Fixed-iteration sparse Sinkhorn, mirroring `wass::sinkhorn_log` (no
 /// convergence check, always runs exactly `max_iter` rounds).
-pub fn sparse_sinkhorn_log(graph: &CandidateGraph, ws_a: &[f32], ws_b: &[f32], reg: f32, max_iter: usize) -> f32 {
+pub fn sparse_sinkhorn_log(
+    graph: &CandidateGraph,
+    ws_a: &[f32],
+    ws_b: &[f32],
+    reg: f32,
+    max_iter: usize,
+) -> f32 {
     let (_, log_a) = normalize_weights(ws_a);
     let (_, log_b) = normalize_weights(ws_b);
 
@@ -174,7 +180,9 @@ pub fn sparse_sinkhorn_log_with_convergence(
             }
         }
     }
-    Err(format!("Sinkhorn did not converge in {max_iter} iterations"))
+    Err(format!(
+        "Sinkhorn did not converge in {max_iter} iterations"
+    ))
 }
 
 /// End-to-end sparse `stvd_emd`: builds the candidate graph, then solves
@@ -201,7 +209,15 @@ pub fn sparse_stvd_emd_impl(
     let r = (alpha * cyclical_period) / (2.0 * PI);
 
     let graph = build_candidate_graph(
-        lats_a, lngs_a, ts_a, lats_b, lngs_b, ts_b, cyclical_period, r, candidate_config,
+        lats_a,
+        lngs_a,
+        ts_a,
+        lats_b,
+        lngs_b,
+        ts_b,
+        cyclical_period,
+        r,
+        candidate_config,
     );
 
     let a: Vec<f32> = ws_a.iter().map(|&w| w as f32).collect();
@@ -209,8 +225,14 @@ pub fn sparse_stvd_emd_impl(
     let reg = sinkhorn.reg as f32;
 
     let distance = if let Some(tol) = sinkhorn.tol {
-        let (distance, _iterations) =
-            sparse_sinkhorn_log_with_convergence(&graph, &a, &b, reg, sinkhorn.max_iter, tol as f32)?;
+        let (distance, _iterations) = sparse_sinkhorn_log_with_convergence(
+            &graph,
+            &a,
+            &b,
+            reg,
+            sinkhorn.max_iter,
+            tol as f32,
+        )?;
         distance
     } else {
         sparse_sinkhorn_log(&graph, &a, &b, reg, sinkhorn.max_iter)
@@ -239,7 +261,10 @@ mod tests {
         }
     }
 
-    fn random_distribution(rng: &mut XorShift, count: usize) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+    fn random_distribution(
+        rng: &mut XorShift,
+        count: usize,
+    ) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
         let mut lats = Vec::with_capacity(count);
         let mut lngs = Vec::with_capacity(count);
         let mut ts = Vec::with_capacity(count);
@@ -279,13 +304,28 @@ mod tests {
                 let (lats_a, lngs_a, ts_a, ws_a) = random_distribution(&mut rng, n);
                 let (lats_b, lngs_b, ts_b, ws_b) = random_distribution(&mut rng, m);
 
-                let config = SinkhornConfig { reg, max_iter: 200, tol: None };
+                let config = SinkhornConfig {
+                    reg,
+                    max_iter: 200,
+                    tol: None,
+                };
                 let dense = dense_reference_impl(
-                    &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
+                    &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0,
+                    config,
                 )
                 .unwrap();
                 let sparse = sparse_stvd_emd_impl(
-                    &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
+                    &lats_a,
+                    &lngs_a,
+                    &ts_a,
+                    &ws_a,
+                    &lats_b,
+                    &lngs_b,
+                    &ts_b,
+                    &ws_b,
+                    10.0,
+                    1440.0,
+                    config,
                     CandidateGraphConfig::default(),
                 )
                 .unwrap();
@@ -326,13 +366,26 @@ mod tests {
         )
         .unwrap();
         let sparse = sparse_stvd_emd_impl(
-            &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &ws_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            &ws_b,
+            10.0,
+            1440.0,
+            config,
             CandidateGraphConfig::default(),
         )
         .unwrap();
 
         let rel_diff = (dense - sparse).abs() / dense.abs().max(1.0);
-        assert!(rel_diff < 1e-2, "dense={dense} sparse={sparse} rel_diff={rel_diff}");
+        assert!(
+            rel_diff < 1e-2,
+            "dense={dense} sparse={sparse} rel_diff={rel_diff}"
+        );
     }
 
     #[test]
@@ -349,13 +402,26 @@ mod tests {
         )
         .unwrap();
         let sparse = sparse_stvd_emd_impl(
-            &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &ws_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            &ws_b,
+            10.0,
+            1440.0,
+            config,
             CandidateGraphConfig::default(),
         )
         .unwrap();
 
         let rel_diff = (dense - sparse).abs() / dense.abs().max(1.0);
-        assert!(rel_diff < 1e-2, "dense={dense} sparse={sparse} rel_diff={rel_diff}");
+        assert!(
+            rel_diff < 1e-2,
+            "dense={dense} sparse={sparse} rel_diff={rel_diff}"
+        );
     }
 
     #[test]
@@ -370,13 +436,26 @@ mod tests {
         )
         .unwrap();
         let sparse = sparse_stvd_emd_impl(
-            &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &ws_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            &ws_b,
+            10.0,
+            1440.0,
+            config,
             CandidateGraphConfig::default(),
         )
         .unwrap();
 
         let rel_diff = (dense - sparse).abs() / dense.abs().max(1.0);
-        assert!(rel_diff < 1e-2, "dense={dense} sparse={sparse} rel_diff={rel_diff}");
+        assert!(
+            rel_diff < 1e-2,
+            "dense={dense} sparse={sparse} rel_diff={rel_diff}"
+        );
     }
 
     #[test]
@@ -399,22 +478,44 @@ mod tests {
         )
         .unwrap();
         let sparse = sparse_stvd_emd_impl(
-            &lats_a, &lngs_a, &ts_a, &ws_a, &lats_b, &lngs_b, &ts_b, &ws_b, 10.0, 1440.0, config,
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &ws_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            &ws_b,
+            10.0,
+            1440.0,
+            config,
             CandidateGraphConfig::default(),
         )
         .unwrap();
 
         assert!(dense.is_finite() && sparse.is_finite());
         let rel_diff = (dense - sparse).abs() / dense.abs().max(1.0);
-        assert!(rel_diff < 1e-2, "dense={dense} sparse={sparse} rel_diff={rel_diff}");
+        assert!(
+            rel_diff < 1e-2,
+            "dense={dense} sparse={sparse} rel_diff={rel_diff}"
+        );
     }
 
     #[test]
     fn identical_single_point_is_zero_distance() {
         let value = sparse_stvd_emd_impl(
-            &[10.0], &[20.0], &[480.0], &[1.0],
-            &[10.0], &[20.0], &[480.0], &[1.0],
-            10.0, 1440.0, SinkhornConfig::default(), CandidateGraphConfig::default(),
+            &[10.0],
+            &[20.0],
+            &[480.0],
+            &[1.0],
+            &[10.0],
+            &[20.0],
+            &[480.0],
+            &[1.0],
+            10.0,
+            1440.0,
+            SinkhornConfig::default(),
+            CandidateGraphConfig::default(),
         )
         .unwrap();
         assert!(value.abs() < 1e-6, "got {value}");
@@ -430,9 +531,18 @@ mod tests {
         let expected_m = haversine_km(lat1, lng1, lat2, lng2) * 1000.0;
 
         let value = sparse_stvd_emd_impl(
-            &[lat1], &[lng1], &[480.0], &[1.0],
-            &[lat2], &[lng2], &[480.0], &[1.0],
-            10.0, 1440.0, SinkhornConfig::default(), CandidateGraphConfig::default(),
+            &[lat1],
+            &[lng1],
+            &[480.0],
+            &[1.0],
+            &[lat2],
+            &[lng2],
+            &[480.0],
+            &[1.0],
+            10.0,
+            1440.0,
+            SinkhornConfig::default(),
+            CandidateGraphConfig::default(),
         )
         .unwrap();
         assert!(
@@ -453,7 +563,14 @@ mod tests {
         let ws_b = [0.5, 0.5, 0.4];
 
         let graph = build_candidate_graph(
-            &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0 / (2.0 * std::f64::consts::PI),
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            1440.0,
+            10.0 / (2.0 * std::f64::consts::PI),
             CandidateGraphConfig::default(),
         );
         let a: Vec<f32> = ws_a.iter().map(|&w| w as f32).collect();
@@ -487,7 +604,11 @@ mod tests {
             &[0.5, 0.5, 0.4],
             10.0,
             1440.0,
-            SinkhornConfig { reg: 10.0, max_iter: 1, tol: Some(1e-12) },
+            SinkhornConfig {
+                reg: 10.0,
+                max_iter: 1,
+                tol: Some(1e-12),
+            },
             CandidateGraphConfig::default(),
         )
         .unwrap_err();
@@ -533,11 +654,21 @@ mod tests {
         let n = lats_a.len();
         let m = lats_b.len();
         let dense_bytes = (n as u64) * (m as u64) * 8;
-        assert!(dense_bytes > 4 * 1024 * 1024 * 1024, "test setup: should exceed the dense budget");
+        assert!(
+            dense_bytes > 4 * 1024 * 1024 * 1024,
+            "test setup: should exceed the dense budget"
+        );
 
         let start = std::time::Instant::now();
         let graph = build_candidate_graph(
-            &lats_a, &lngs_a, &ts_a, &lats_b, &lngs_b, &ts_b, 1440.0, 10.0 / (2.0 * std::f64::consts::PI),
+            &lats_a,
+            &lngs_a,
+            &ts_a,
+            &lats_b,
+            &lngs_b,
+            &ts_b,
+            1440.0,
+            10.0 / (2.0 * std::f64::consts::PI),
             CandidateGraphConfig::default(),
         );
         let graph_elapsed = start.elapsed();

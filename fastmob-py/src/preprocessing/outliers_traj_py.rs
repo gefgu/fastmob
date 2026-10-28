@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::preprocessing::outliers::{
-    outlier_trajectory_impl, outlier_trajectory_indexed_impl, OutlierConfig as CoreOutlierConfig,
-    OutlierMethod,
+    OutlierConfig as CoreOutlierConfig, OutlierMethod, outlier_trajectory_impl,
+    outlier_trajectory_indexed_impl,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

@@ -4,7 +4,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;
 
-use crate::utils::{arrow_u64_values, as_u64_array, u64_results_into_arrow, ArrowUsizeArrayExt};
+use crate::utils::{ArrowUsizeArrayExt, arrow_u64_values, as_u64_array, u64_results_into_arrow};
 
 /// Pair each user's consecutive H3 cells and count unique `(origin, destination)`
 /// edges in one pass, fusing what `trajectory_to_od` used to do as a separate

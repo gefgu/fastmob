@@ -17,6 +17,7 @@ from .number_of_locations import number_of_locations
 from .number_of_visits import number_of_visits
 from .profile_classification import compute_profiles
 from .radius_of_gyration import radius_of_gyration
+from .radius_of_gyration_lazy import radius_of_gyration_lazy
 from .random_entropy import random_entropy
 from .real_entropy import real_entropy
 from .recency_rank import recency_rank
@@ -47,6 +48,7 @@ __all__ = [
     "number_of_locations",
     "number_of_visits",
     "radius_of_gyration",
+    "radius_of_gyration_lazy",
     "radius_of_gyration_road",
     "random_entropy",
     "real_entropy",

@@ -1,4 +1,6 @@
-use arrow_array::{Array, ArrowPrimitiveType, PrimitiveArray, TimestampMicrosecondArray, UInt32Array};
+use arrow_array::{
+    Array, ArrowPrimitiveType, PrimitiveArray, TimestampMicrosecondArray, UInt32Array,
+};
 use fastmob_core::measures::collective::stvd::mean_area_volume_impl;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -21,7 +23,9 @@ fn nullable_timestamp_us(array: ArrowPyArray, name: &str) -> PyResult<TimestampM
         .as_any()
         .downcast_ref::<TimestampMicrosecondArray>()
         .cloned()
-        .ok_or_else(|| PyValueError::new_err(format!("expected timestamp[us] Arrow array for {name}")))
+        .ok_or_else(|| {
+            PyValueError::new_err(format!("expected timestamp[us] Arrow array for {name}"))
+        })
 }
 
 /// Zero-copy value slice for any dense primitive Arrow array, accounting for
@@ -40,7 +44,11 @@ fn arrow_valid_rows(arrays: &[&dyn Array]) -> Option<Vec<bool>> {
         return None;
     }
     let n = arrays[0].len();
-    Some((0..n).map(|idx| arrays.iter().all(|a| a.is_valid(idx))).collect())
+    Some(
+        (0..n)
+            .map(|idx| arrays.iter().all(|a| a.is_valid(idx)))
+            .collect(),
+    )
 }
 
 /// Aggregate factorized staypoints into STVD rows without Python per-slot objects.

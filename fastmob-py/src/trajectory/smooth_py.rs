@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use fastmob_core::trajectory::smooth::{
-    smooth_trajectory_indexed_impl, smooth_trajectory_presorted_impl,
-    SmoothConfig as CoreSmoothConfig, SmoothMethod,
+    SmoothConfig as CoreSmoothConfig, SmoothMethod, smooth_trajectory_indexed_impl,
+    smooth_trajectory_presorted_impl,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

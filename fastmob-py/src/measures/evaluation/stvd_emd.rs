@@ -1,4 +1,4 @@
-use fastmob_core::measures::evaluation::stvd_emd::{stvd_emd_impl, SinkhornConfig};
+use fastmob_core::measures::evaluation::stvd_emd::{SinkhornConfig, stvd_emd_impl};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_arrow::PyArray as ArrowPyArray;

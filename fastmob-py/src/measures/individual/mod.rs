@@ -12,6 +12,7 @@ pub mod max_distance_from_point;
 pub mod maximum_distance;
 pub mod motifs;
 pub mod radius_of_gyration;
+pub mod radius_of_gyration_stream;
 pub mod recency_rank;
 pub mod spatial_counts;
 pub mod time_ordering;

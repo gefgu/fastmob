@@ -91,11 +91,7 @@ pub fn gravity_od_row_seq(
             }
             let d = haversine_km(lats[origin], lons[origin], lats[j], lons[j]);
             let s = deterrence(d, deterrence_type, deterrence_arg) * rels_dest[j] * origin_power;
-            if s.is_finite() {
-                s
-            } else {
-                0.0
-            }
+            if s.is_finite() { s } else { 0.0 }
         })
         .collect();
     let total: f64 = row.iter().sum();
@@ -240,11 +236,7 @@ pub fn gravity_od_row_impl(
             let score = deterrence(distance, deterrence_type, deterrence_arg)
                 * relevances[j].powf(destination_exp)
                 * relevances[origin].powf(origin_exp);
-            if score.is_finite() {
-                score
-            } else {
-                0.0
-            }
+            if score.is_finite() { score } else { 0.0 }
         })
         .collect();
     let total: f64 = row.iter().sum();

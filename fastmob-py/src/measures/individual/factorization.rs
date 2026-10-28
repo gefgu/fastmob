@@ -20,7 +20,7 @@ use rustc_hash::FxHashMap;
 use crate::utils::{extract_arrow_array, u64_results_into_arrow};
 
 #[derive(Clone, Copy, Debug)]
-struct TotalF64(u64);
+pub(crate) struct TotalF64(pub(crate) u64);
 
 impl TotalF64 {
     /// Encodes `value` as a `u64` whose plain integer order matches IEEE-754
@@ -29,7 +29,7 @@ impl TotalF64 {
     /// comparison downstream (`Ord::cmp`, and in particular the sort in
     /// [`sort_factorized`]) be a single integer compare instead of
     /// reconstructing an `f64` and calling `total_cmp` per comparison.
-    fn new(value: f64) -> Self {
+    pub(crate) fn new(value: f64) -> Self {
         let bits = if value == 0.0 {
             0.0f64.to_bits()
         } else if value.is_nan() {
@@ -45,8 +45,7 @@ impl TotalF64 {
         Self(key)
     }
 
-    #[cfg(test)]
-    fn value(self) -> f64 {
+    pub(crate) fn value(self) -> f64 {
         let bits = if (self.0 as i64) < 0 {
             self.0 & !(1u64 << 63)
         } else {
