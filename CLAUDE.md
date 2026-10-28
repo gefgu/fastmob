@@ -174,6 +174,9 @@ Generated notebook `.md` files and `*_files/` directories are ignored and
 must not be edited directly. Run the converter before `pytest tests/docs` or
 `uv run --group docs zensical build`; docs CI runs it automatically.
 
+Keep notebooks free of scaffolding: no timing helpers or run-time tables, no version-requirement
+banners or `assert` guards (the pip cell's `fastmob>=X.Y.Z` pin is enough).
+
 Learn notebooks are tested in a fresh virtualenv and an empty temp directory with
 `scripts/run_notebook_isolated.sh NOTEBOOK OUT_DIR [WHEEL]` (it installs the published release
 unless a local wheel is given, and records which `fastmob` functions the cells call). Notebooks
@@ -186,8 +189,7 @@ symbol and checks that it has an anchor in the built site.
 
 Notebooks must be run and their saved outputs recorded on a recent Python, 3.12 or newer
 (`scripts/run_notebook_isolated.sh` defaults to 3.12; set `PYTHON=3.13` for the newest listed in
-`pyproject.toml`). Do not record notebook runs on 3.10 or older, and state the version in the
-run-time table. Existing notebooks recorded on 3.10 are re-run on the next pass, not retroactively.
+`pyproject.toml`). Do not record notebook runs on 3.10 or older. Existing notebooks recorded on 3.10 are re-run on the next pass, not retroactively.
 
 API reference pages under `docs/src/reference/` should begin with a compact summary table immediately after the H1. Use the table shape `API | Description`, link each public object to its generated anchor, and keep descriptions short, factual, and consistent with the object's first docstring sentence when possible. Skip navigation-only index pages.
 

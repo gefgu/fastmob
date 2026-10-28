@@ -119,7 +119,7 @@ def test_learn_notebooks_follow_the_notebook_contract():
         assert first.startswith("# ") and "**Question.**" in first and "**Data.**" in first, path.name
         assert "%pip" in code or 'run_line_magic("pip"' in code, path.name
         assert "/content/" not in code and "../" not in code, f"{path.name} uses a non-portable path"
-        assert "total notebook runtime" in "".join(cells[-1]["source"]), f"{path.name} must end with the timing table"
+        assert "PHASES" not in code and "perf_counter" not in code, f"{path.name} carries timing scaffolding"
         assert any(c.get("outputs") for c in cells if c["cell_type"] == "code"), f"{path.name} has no saved outputs"
 
 
