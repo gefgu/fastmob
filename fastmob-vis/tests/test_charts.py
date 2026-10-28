@@ -38,3 +38,19 @@ def test_generic_charts_return_immutable_specs(factory, kwargs):
 def test_ecdf_rejects_non_finite_values():
     with pytest.raises(ValueError, match="finite"):
         ecdf(pa.table({"value": [1.0, np.nan]}), value_col="value")
+
+
+def test_ecdf_thins_long_curves_but_keeps_the_ends():
+    values = np.linspace(0.0, 1.0, 50_000)
+    data = pa.table({"value": values})
+    points = ecdf(data, value_col="value", cdf_cutoff=1.0).to_dict()["series"][0]["data"]
+
+    assert len(points) == 2000
+    assert points[0][0] == 0.0 and points[-1] == [1.0, 1.0]
+
+
+def test_svg_display_has_a_single_representation():
+    chart = bar(pa.table({"c": ["a"], "v": [1.0]}), category_col="c", value_col="v", display="svg")
+
+    assert chart._repr_html_() is None
+    assert set(chart._repr_mimebundle_()) == {"image/svg+xml"}

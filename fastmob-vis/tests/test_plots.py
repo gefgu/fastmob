@@ -1002,3 +1002,15 @@ def test_plot_motif_literature_comparison_is_exported():
     import fastmob_vis
 
     assert "plot_motif_literature_comparison" in fastmob_vis.__all__
+
+
+def test_activity_transition_matrix_accepts_the_measure_output_frame():
+    import pandas as pd
+
+    # The shape `fastmob.activity_transition_matrix` returns: an "activity" column plus one column per activity.
+    result = pd.DataFrame({"activity": ["home", "work"], "home": [26.0, 9.0], "work": [5.0, 60.0]})
+    option = plot_activity_transition_matrix(result).to_dict()
+
+    # Cells are [column (to), row (from), percentage].
+    assert sorted(option["series"][0]["data"]) == [[0, 0, 26.0], [0, 1, 9.0], [1, 0, 5.0], [1, 1, 60.0]]
+    assert option["yAxis"]["data"] == ["home", "work"]

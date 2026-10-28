@@ -8,6 +8,19 @@ from .brand import FONT_MONO, FONT_SANS, FONT_SERIF, PALETTES
 COLOR_ROLES = ["observed", "synthetic", "syn2", "syn3", "baseline"]
 
 
+def thin_points(points: list, limit: int = 2000) -> list:
+    """Keep at most ``limit`` evenly spaced points of a curve, always including the first and last.
+
+    An ECDF of a hundred thousand values has a step per value, which the eye cannot tell
+    from a curve of two thousand and which makes the chart megabytes large.
+    """
+    if len(points) <= limit:
+        return points
+    last = len(points) - 1
+    keep = sorted({round(i * last / (limit - 1)) for i in range(limit)})
+    return [points[i] for i in keep]
+
+
 def norm_width(width: int | str) -> str:
     return f"{width}px" if isinstance(width, int) else width
 

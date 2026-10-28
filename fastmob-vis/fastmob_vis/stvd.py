@@ -204,7 +204,55 @@ def plot_stvd_comparison(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Plot a zoom-adaptive bivariate STVD comparison over a Leaflet basemap."""
+    """Map a spatio-temporal visitation difference (STVD) comparison on a Leaflet basemap.
+
+    Every polygon is coloured by two things at once: how much the visit volume differs between the two datasets (percent) and how far the daily peak moved (hours). Several layers at different H3 resolutions can be given, and the layer that is drawn follows the map zoom. This chart needs an internet connection for the basemap tiles and has no static SVG form.
+
+    Parameters
+    ----------
+    layers : mapping
+        H3 resolution to a GeoJSON FeatureCollection of Polygon or MultiPolygon features. Each feature's ``properties`` must hold the three properties below.
+    area_property : str, optional
+        Property with the area name shown in the tooltip. Default ``"area"``.
+    volume_diff_property : str, optional
+        Property with the volume difference in percent. Default ``"volume_diff_pct"``.
+    peak_shift_property : str, optional
+        Property with the peak shift in hours, between 0 and 12. Default ``"peak_shift_hours"``.
+    volume_threshold : float, optional
+        Absolute volume difference (percent) that separates the colour bins. Must be positive. Default 3.0.
+    zoom_to_resolution : mapping, optional
+        Map zoom level to the H3 resolution drawn from that zoom upward; must include zoom 0. Default: derived from the available layers.
+    center : sequence of float, optional
+        Map centre as longitude, latitude. Default: the centre of the data.
+    zoom : int, optional
+        Initial map zoom. Default 10.
+    tile_url : str, optional
+        Basemap tile URL template. Default: OpenStreetMap.
+    attribution : str, optional
+        Attribution text for the tiles.
+    title : str, optional
+        Chart title. Default ``"STVD comparison"``.
+    height : int or str, optional
+        Map height. Default ``"600px"``.
+    width : int or str, optional
+        Map width. Default ``"100%"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The map figure.
+
+    Raises
+    ------
+    ValueError
+        If a layer is not a FeatureCollection of polygons, a property is missing or non-finite, a peak shift is outside [0, 12], ``volume_threshold`` is not positive, or ``zoom_to_resolution`` is invalid.
+    TypeError
+        If a feature has no ``properties`` object or ``attribution`` is not a string.
+    """
     threshold = _finite_number(volume_threshold, "volume_threshold")
     if threshold <= 0:
         raise ValueError("volume_threshold must be greater than zero")

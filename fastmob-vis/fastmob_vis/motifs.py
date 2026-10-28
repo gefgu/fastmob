@@ -84,7 +84,29 @@ def _motif_axis_label_styles() -> tuple[dict[str, str], dict[str, dict[str, Any]
 
 
 def format_motif_hex_id(motif_id: int | str | None) -> str:
-    """Return a compact hex label for a packed fastmob motif ID."""
+    """Format a packed motif identifier as a hexadecimal label.
+
+    Parameters
+    ----------
+    motif_id : int or str or None
+        A packed motif id, or ``"other"`` or None for the catch-all bin.
+
+    Returns
+    -------
+    str
+        ``hex(motif_id)``, or ``"other"``.
+
+    Raises
+    ------
+    ValueError
+        If ``motif_id`` cannot be read as an integer.
+
+    Examples
+    --------
+    >>> from fastmob_vis.motifs import format_motif_hex_id
+    >>> format_motif_hex_id(255)
+    '0xff'
+    """
     if motif_id is None or motif_id == OTHER_MOTIF_ID:
         return OTHER_MOTIF_ID
     try:
@@ -139,7 +161,25 @@ def _literature_distribution_rows(literature_df: Any | None) -> list[dict[str, A
 
 
 def map_motif_distribution_to_literature_basis(distribution_df: Any) -> list[dict[str, Any]]:
-    """Map a motif distribution to the 17 literature packed IDs plus Other."""
+    """Map a motif distribution onto the 17 literature motifs plus an ``other`` bin.
+
+    Motif ids that are not one of the 17 literature motifs are summed into ``other``. When only counts are given the percentages are computed from them.
+
+    Parameters
+    ----------
+    distribution_df : dataframe or dict
+        A table with a ``motif_id`` column and a ``percentage`` or ``count`` column.
+
+    Returns
+    -------
+    list of dict
+        18 rows with ``motif_id``, ``literature_motif_id``, ``hex_id``, ``percentage`` and ``count``.
+
+    Raises
+    ------
+    ValueError
+        If ``motif_id`` is missing, or neither ``percentage`` nor ``count`` is present.
+    """
     data_columns = columns(distribution_df)
     if "motif_id" not in data_columns:
         raise ValueError("motif distribution must contain a 'motif_id' column")
@@ -220,7 +260,43 @@ def plot_motif_literature_comparison(
     bundle_libs: bool = True,
     display: str = "html",
 ) -> EChartsFigure:
-    """Build a grouped bar chart comparing motif distributions to literature."""
+    """Compare motif distributions with the literature as grouped bars.
+
+    The literature series (percentages of Schneider et al., 2013) is always drawn. Add an observed distribution, a simulated one or both.
+
+    Parameters
+    ----------
+    literature_df : dataframe, optional
+        Replacement literature distribution with ``fastmob_motif_id`` or ``motif_id`` and ``percentage`` or ``count``. Default: the built-in literature values.
+    reference_distribution : dataframe, optional
+        First distribution to compare, with ``motif_id`` and ``percentage`` or ``count``.
+    comparison_distribution : dataframe, optional
+        Second distribution to compare, same form.
+    labels : sequence of two str, optional
+        Names of the two distributions. Default ``("Reference", "Simulation")``.
+    title : str, optional
+        Chart title.
+    palette : str or dict, optional
+        Name of a built-in palette (``"warm"``, ``"ink"``, ``"terracotta"``, ``"forest"``) or a mapping with the same keys as `PALETTES`. Default ``"warm"``.
+    width : int or str, optional
+        Chart width: an integer in pixels or a CSS length such as ``"100%"``.
+    height : str, optional
+        Chart height as a CSS length such as ``"420px"``.
+    bundle_libs : bool, optional
+        Embed the ECharts (and, for maps, Leaflet) JavaScript in the chart. Pass False when the page already loads it, for example with `get_resource_bundle`. Default True.
+    display : {"html", "svg"}, optional
+        How a notebook shows the chart: ``"html"`` is interactive, ``"svg"`` is a static picture that also renders where JavaScript is not run, such as this documentation. Default ``"html"``.
+
+    Returns
+    -------
+    EChartsFigure
+        The grouped bar chart.
+
+    Raises
+    ------
+    ValueError
+        If ``labels`` does not have two entries or a distribution lacks the required columns.
+    """
     if len(labels) != 2:
         raise ValueError("labels must contain exactly two strings")
     p = resolve_palette(palette)
