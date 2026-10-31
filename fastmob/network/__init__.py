@@ -1,7 +1,5 @@
 """Network-constrained distance: road/rail graph construction and routing."""
 
-from fastmob._core import haversine_m_batch
-
 from .builder import build_rail_graph, build_road_graph, fetch_rail_network, fetch_road_network
 from .match import match_trajectory
 from .od_flow import od_desire_lines
@@ -14,6 +12,14 @@ from .speeds import (
     DEFAULT_SPEED_KMH_BY_CLASS,
     DRIVABLE_CLASSES,
 )
+
+
+def haversine_m_batch(lat1, lng1, lat2, lng2):
+    """Compute distances in metres; prefer ``fastmob.utils.haversine``."""
+    from fastmob.utils import haversine
+
+    return haversine(lat1, lng1, lat2, lng2)
+
 
 __all__ = [
     "CAR_SPEED_FACTOR",

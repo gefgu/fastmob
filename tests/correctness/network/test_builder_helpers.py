@@ -84,3 +84,5 @@ def test_haversine_m_batch_known_distance():
     # ~1 degree of latitude is ~111.19 km
     d = haversine_m_batch(np.array([0.0]), np.array([0.0]), np.array([1.0]), np.array([0.0]))
     assert d[0] == pytest.approx(111195.0, rel=0.01)
+
+
