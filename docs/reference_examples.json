@@ -499,10 +499,20 @@
   "page": "learn/compare-to-mobility-laws.md",
   "title": "Law 3: distinct places per day are lognormal"
  },
+ "fastmob.measures.fitting.distance_distribution.DistributionFit.profile": {
+  "anchor": "does-the-data-need-a-cutoff-and-does-a-different-family-fit-better",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Does the data need a cutoff, and does a different family fit better?"
+ },
  "fastmob.measures.fitting.distance_distribution.DistributionFit.summary": {
   "anchor": "how-sure-is-the-fit-range-uncertainty-and-alternatives",
   "page": "learn/compare-to-mobility-laws.md",
   "title": "How sure is the fit? Range, uncertainty and alternatives"
+ },
+ "fastmob.measures.fitting.distance_distribution.ProfileInterval.__str__": {
+  "anchor": "does-the-data-need-a-cutoff-and-does-a-different-family-fit-better",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Does the data need a cutoff, and does a different family fit better?"
  },
  "fastmob.measures.fitting.distance_distribution.compare_distance_distributions": {
   "anchor": "how-sure-is-the-fit-range-uncertainty-and-alternatives",
@@ -513,6 +523,16 @@
   "anchor": "how-sure-is-the-fit-range-uncertainty-and-alternatives",
   "page": "learn/compare-to-mobility-laws.md",
   "title": "How sure is the fit? Range, uncertainty and alternatives"
+ },
+ "fastmob.measures.fitting.distribution_tests.likelihood_ratio_test": {
+  "anchor": "does-the-data-need-a-cutoff-and-does-a-different-family-fit-better",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Does the data need a cutoff, and does a different family fit better?"
+ },
+ "fastmob.measures.fitting.distribution_tests.vuong_test": {
+  "anchor": "does-the-data-need-a-cutoff-and-does-a-different-family-fit-better",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Does the data need a cutoff, and does a different family fit better?"
  },
  "fastmob.measures.fitting.truncated_powerlaw.fit_values_to_truncated_powerlaw": {
   "anchor": "law-1-jump-lengths-follow-a-truncated-power-law",
@@ -528,6 +548,11 @@
   "anchor": "law-2-the-universal-visitation-law",
   "page": "learn/compare-to-mobility-laws.md",
   "title": "Law 2: the universal visitation law"
+ },
+ "fastmob.measures.fitting.xmin_selection.select_xmin": {
+  "anchor": "does-the-data-need-a-cutoff-and-does-a-different-family-fit-better",
+  "page": "learn/compare-to-mobility-laws.md",
+  "title": "Does the data need a cutoff, and does a different family fit better?"
  },
  "fastmob.measures.individual.activity.activity_transition_matrix": {
   "anchor": "what-are-people-doing",

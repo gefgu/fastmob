@@ -12,6 +12,8 @@ import pytest
     "module",
     [
         "fastmob.measures.fitting.distance_distribution",
+        "fastmob.measures.fitting.distribution_tests",
+        "fastmob.measures.fitting.xmin_selection",
         "fastmob.measures.evaluation.flow_models",
         "fastmob.models.gravity",
     ],

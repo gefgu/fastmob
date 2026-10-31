@@ -138,3 +138,76 @@ def test_a_parameter_at_its_bound_has_no_interval():
     assert "kappa" in fit.at_bound
     assert np.isnan(fit.std_errors["kappa"]) and np.isnan(fit.ci_low["kappa"])
     assert fit.summary().column("at_bound").to_pylist()[-1] is True
+
+
+def test_degenerate_family_is_ranked_after_the_others_and_has_no_weight():
+    values = np.random.default_rng(5).exponential(1000.0, size=300) + 1.0
+
+    table = compare_distance_distributions(values, xmin=1.0)
+    rows = table.to_pydict()
+
+    assert rows["family"][0] == "exponential"
+    flags = rows["degenerate"]
+    assert flags == sorted(flags)  # clean fits first
+    assert any(flags)
+    for flag, weight in zip(flags, rows["akaike_weight"]):
+        assert np.isnan(weight) == flag
+    clean_weights = [w for f, w in zip(flags, rows["akaike_weight"]) if not f]
+    assert sum(clean_weights) == pytest.approx(1.0)
+
+    plain = compare_distance_distributions(values, xmin=1.0, degenerate_last=False).to_pydict()
+    assert plain["aic"] == sorted(plain["aic"])
+    assert sum(plain["akaike_weight"]) == pytest.approx(1.0)
+
+
+def test_bounds_override_the_search_range_and_are_checked():
+    values = _truncated_powerlaw(20_000)
+
+    fit = fit_distance_distribution(values, "truncated_powerlaw", n_bootstrap=0, bounds={"kappa": (50.0, 100.0)})
+
+    assert fit.bounds["kappa"] == (50.0, 100.0)
+    assert "kappa" in fit.at_bound
+    with pytest.raises(ValueError, match="not parameters"):
+        fit_distance_distribution(values, "powerlaw", bounds={"kappa": (1.0, 2.0)})
+    with pytest.raises(ValueError, match="low < high"):
+        fit_distance_distribution(values, "powerlaw", bounds={"beta": (3.0, 2.0)})
+    shared = compare_distance_distributions(values, ["powerlaw", "exponential"], bounds={"kappa": (10.0, 1e4)})
+    assert shared.num_rows == 2  # names a family does not have are ignored for it
+
+
+def test_profile_interval_is_closed_for_an_identified_cutoff_and_open_for_a_missing_one():
+    cutoff = fit_distance_distribution(_truncated_powerlaw(50_000), "truncated_powerlaw", n_bootstrap=0)
+    closed = cutoff.profile("kappa")
+    assert not closed.low_open and not closed.high_open
+    assert closed.low <= 400.0 <= closed.high
+
+    pure = np.random.default_rng(3).pareto(1.2, size=20_000) + 1.0
+    pure = pure[pure < 200]
+    none = fit_distance_distribution(pure, "truncated_powerlaw", n_bootstrap=0).profile("kappa")
+    assert none.high_open and not none.low_open
+    assert "no upper limit" in str(none)
+    assert none.table.num_rows > 5
+    with pytest.raises(ValueError, match="not a parameter"):
+        cutoff.profile("sigma")
+    with pytest.raises(ValueError, match="n_points"):
+        cutoff.profile("kappa", n_points=2)
+
+
+def test_exact_likelihood_agrees_with_the_grouped_fit_and_resamples_groups():
+    values = _truncated_powerlaw(4000)
+    grouped = fit_distance_distribution(values, "lognormal", n_bootstrap=0)
+    exact = fit_distance_distribution(values, "lognormal", likelihood="exact", n_bootstrap=0)
+
+    assert exact.likelihood == "exact" and exact.values is not None
+    for name in grouped.parameters:
+        assert exact.parameters[name] == pytest.approx(grouped.parameters[name], rel=0.05, abs=0.05)
+
+    users = np.repeat(np.arange(40), 100)
+    clustered = fit_distance_distribution(
+        values, "lognormal", likelihood="exact", n_bootstrap=10, groups=users, random_state=1
+    )
+    assert clustered.std_errors["sigma"] > 0
+    with pytest.raises(ValueError, match="n_gof"):
+        fit_distance_distribution(values, "lognormal", likelihood="exact", n_gof=5)
+    with pytest.raises(ValueError, match="likelihood"):
+        fit_distance_distribution(values, "lognormal", likelihood="other")

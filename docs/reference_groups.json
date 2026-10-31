@@ -343,6 +343,11 @@
     "fit_distance_distribution",
     "compare_distance_distributions",
     "DistributionFit",
+    "ProfileInterval",
+    "select_xmin",
+    "likelihood_ratio_test",
+    "vuong_test",
+    "ModelTest",
     "fit_values_to_truncated_powerlaw",
     "log_truncated_powerlaw"
    ]

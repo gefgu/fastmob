@@ -10,22 +10,26 @@ This page explains the estimators, their limits and a reporting checklist. To ru
 
 | Step | What is done, and why it matters |
 | --- | --- |
-| Range | Values outside `[xmin, xmax]`, and zeros, are left out and counted in `n_excluded`. Default: smallest positive value to largest. Estimates depend on the range. Zeros are common (repeated check-ins at one place) and have no place in a power law. Raise `xmin` to ignore GPS noise. |
-| Grouping | The values are grouped into 200 geometric bins on the range, and the likelihood is computed from the bin counts, so a million values cost no more than a thousand. |
+| Range | Values outside `[xmin, xmax]`, and zeros, are left out and counted in `n_excluded`. Default: smallest positive value to largest. Estimates depend on the range. Zeros are common (repeated check-ins at one place) and have no place in a power law. Raise `xmin` to ignore GPS noise, or let `select_xmin` pick it by the KS distance (Clauset et al., 2009). |
+| Grouping | By default the values are grouped into 200 geometric bins on the range, and the likelihood is computed from the bin counts, so a million values cost no more than a thousand. `likelihood="exact"` uses the individual values instead (no binning approximation, but slow beyond about 10^5 values). |
 | Likelihood | Each family is normalised on the same range, and the multinomial log-likelihood of the bin counts is maximised. Families are comparable: they explain the same data on the same range. |
 | Uncertainty | The bin counts are resampled (bootstrap, 100 replicates by default) and the model refitted; the report has the standard error and the percentile interval of each parameter. Values from the same person are not independent: pass `groups=` (for example the user of each jump) to resample whole people, which gives wider and more honest intervals. |
 | Fit quality | The KS distance between the empirical and the fitted cumulative distribution; with `n_gof` above 0, a parametric-bootstrap p-value. See the caveat below. |
-| Comparison | AIC and BIC, their difference to the best model, and the Akaike weight. |
+| Comparison | AIC and BIC, their difference to the best model, and the Akaike weight; the likelihood-ratio test for nested families and the Vuong test for the others. |
+| Search range | Each parameter is searched within a range (`bounds=` changes it). A fit that ends on the edge of its range is flagged. |
 
 The five families are the power law `x^-beta`, the shifted power law `(x + r0)^-beta`, the exponential `exp(-x / kappa)`, the log-normal, and the truncated power law `(x + r0)^-beta exp(-x / kappa)` of González et al. (2008). The shifted and the truncated power law differ only by the cutoff `kappa`, so comparing them shows whether the data support a cutoff at all.
 
 ### Reading the result
 
-- **A parameter at its bound.** Each parameter is searched within a range. If an estimate lands on the edge, `at_bound` lists it and the data do not identify it. For the truncated power law, a `kappa` at its upper bound (ten times the largest value by default) means there is no cutoff in the data: the model is a shifted power law, and a fitted `kappa` of 10^8 km is not evidence for a cutoff. Its standard error and interval are reported as NaN: say that the cutoff is not identified.
+- **A parameter at its bound.** Each parameter is searched within a range. If an estimate lands on the edge, `at_bound` lists it and the data do not identify it. For the truncated power law, a `kappa` at its upper bound (ten times the largest value by default) means there is no cutoff in the data: the model is a shifted power law, and a fitted `kappa` of 10^8 km is not evidence for a cutoff. Its standard error and interval are reported as NaN: say that the cutoff is not identified. `fit.profile("kappa")` then gives what the data do say, a profile-likelihood interval whose open end reads "kappa is at least X km"; use `bounds=` to show that the conclusion does not depend on the search range.
 - **Independence.** The intervals and the p-value assume that the values are independent. Jumps from the same person are not, so intervals computed without `groups=` understate the uncertainty about people in general (they describe the fitting error only).
 - **Goodness of fit.** With thousands of observations every simple model is rejected, because the test detects tiny departures. Report the KS distance and the AIC difference, and look at the fit on the data, instead of reading the p-value alone. A small p-value does not mean the model is useless, and a large one does not prove it right.
-- **Several families.** An AIC difference below about 2 means the data cannot choose. The Akaike weight is a relative support among the families you list, not a probability that the family is true. The likelihood is on binned counts: use differences between families, not the absolute value. Read the `at_bound` column first: a family with a parameter on the edge of its range (for example a shifted power law whose `beta` is at its upper limit) is a degenerate fit, and its AIC rank means little. The AIC gaps and weights also treat the values as independent, so they overstate the evidence when many values come from the same people.
+- **Does the data need a cutoff?** `likelihood_ratio_test(shifted, truncated)` asks it directly. The cutoff is a limit of the model (`kappa` to infinity), so the p-value uses the boundary mixture of chi-squared distributions, not the plain one. The same function tests `powerlaw` against `shifted_powerlaw`.
+- **Families that are not nested.** `vuong_test(a, b)` asks whether two families (for example a log-normal and a truncated power law) fit the data differently; a small statistic means the data cannot choose, whatever the AIC difference. Like the other tests it treats the values as independent.
+- **Several families.** An AIC difference below about 2 means the data cannot choose. The Akaike weight is a relative support among the families you list, not a probability that the family is true. The likelihood is on binned counts: use differences between families, not the absolute value. Read the `at_bound` column first: a family with a parameter on the edge of its range (for example a shifted power law whose `beta` is at its upper limit) is a degenerate fit, and its AIC rank means little. `compare_distance_distributions` therefore lists degenerate families last (`degenerate` column), measures `delta_aic` from the best family that is not degenerate and leaves them out of the Akaike weights; pass `degenerate_last=False` for the plain ranking. The AIC gaps and weights also treat the values as independent, so they overstate the evidence when many values come from the same people.
 - **Which estimate to report.** The histogram grid search and the maximum-likelihood fit give different exponents on the same data (for the check-in jumps 1.61 against 1.76, because their ranges and estimators differ). Report the maximum-likelihood one, with its range and interval.
+- **The range.** A single fit is conditional on `xmin`. `select_xmin` fits a grid of candidates and picks the one with the smallest KS distance; it returns the whole table, so report how the estimate moves with `xmin`. The intervals of the final fit do not include the uncertainty about the selected `xmin`.
 - **The earlier fit.** `fit_values_to_truncated_powerlaw` fits a log histogram by a grid search and returns no uncertainty. It is kept for the plotting helpers; use `fit_distance_distribution` for a result that you report.
 
 ## Gravity models
@@ -61,7 +65,7 @@ All models are scored on the same set of pairs, by default every pair of the obs
 ## What to report
 
 1. The data, the filtering, and the number of values or flows used.
-2. For distributions: the family, the range `[xmin, xmax]` and `n_excluded`, the estimates with their intervals, the number of bootstrap replicates and whether people were resampled (`groups=`), the parameters at a bound, the KS distance (and the p-value with its replicates), and the comparison with the alternatives (AIC and weights).
+2. For distributions: the family, the range `[xmin, xmax]` and `n_excluded`, the estimates with their intervals, the number of bootstrap replicates and whether people were resampled (`groups=`), the parameters at a bound, the KS distance (and the p-value with its replicates), the search `bounds` if you changed them, and the comparison with the alternatives (AIC and weights, the likelihood-ratio or Vuong test, and which fits were degenerate).
 3. For gravity fits: the deterrence function, the constraint type, whether zero pairs were included, the estimates with intervals, whether the errors are robust, the dispersion, the zone size and the source of the relevance.
 4. For validation against a reference table: the weighting, the scores and the zone size, with the same scores for a trivial baseline (for example the unweighted sample).
 5. The version of Fastkit-Mobility and the random seeds.
@@ -72,6 +76,8 @@ All models are scored on the same set of pairs, by default every pair of the obs
 - Clauset, A., Shalizi, C. R. & Newman, M. E. J. (2009). Power-law distributions in empirical data. *SIAM Review* 51, 661-703.
 - Flowerdew, R. & Murray, A. (1982). A method of fitting the gravity model based on the Poisson distribution. *Journal of Regional Science* 22, 191-202.
 - Santos Silva, J. M. C. & Tenreyro, S. (2006). The log of gravity. *The Review of Economics and Statistics* 88, 641-658.
+- Chernoff, H. (1954). On the distribution of the likelihood ratio. *Annals of Mathematical Statistics* 25, 573-578.
+- Vuong, Q. H. (1989). Likelihood ratio tests for model selection and non-nested hypotheses. *Econometrica* 57, 307-333.
 - Simini, F., González, M. C., Maritan, A. & Barabási, A.-L. (2012). A universal model for mobility and migration patterns. *Nature* 484, 96-100.
 
 ## Next steps
@@ -84,5 +90,8 @@ All models are scored on the same set of pairs, by default every pair of the obs
 [`fit_distance_distribution`](../reference/fitting.md#fastmob.measures.fitting.distance_distribution.fit_distance_distribution) ·
 [`compare_distance_distributions`](../reference/fitting.md#fastmob.measures.fitting.distance_distribution.compare_distance_distributions) ·
 [`DistributionFit`](../reference/fitting.md#fastmob.measures.fitting.distance_distribution.DistributionFit) ·
+[`select_xmin`](../reference/fitting.md#fastmob.measures.fitting.xmin_selection.select_xmin) ·
+[`likelihood_ratio_test`](../reference/fitting.md#fastmob.measures.fitting.distribution_tests.likelihood_ratio_test) ·
+[`vuong_test`](../reference/fitting.md#fastmob.measures.fitting.distribution_tests.vuong_test) ·
 [`Gravity.fit`](../reference/models.md#fastmob.models.gravity.Gravity.fit) ·
 [`compare_flow_models`](../reference/measures/evaluation.md#fastmob.measures.evaluation.compare_flow_models)

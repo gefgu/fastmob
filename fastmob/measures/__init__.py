@@ -31,13 +31,18 @@ from .evaluation import (
 )
 from .fitting import (
     DistributionFit,
+    ModelTest,
+    ProfileInterval,
     VisitationLawFit,
     compare_distance_distributions,
     fit_daily_location_lognormal,
     fit_distance_distribution,
     fit_values_to_truncated_powerlaw,
     fit_visitation_law,
+    likelihood_ratio_test,
     log_truncated_powerlaw,
+    select_xmin,
+    vuong_test,
 )
 from .individual import (
     activity_transition_matrix,
@@ -77,6 +82,8 @@ from .individual import (
 __all__ = [
     "ComparisonResult",
     "DistributionFit",
+    "ModelTest",
+    "ProfileInterval",
     "VisitationLawFit",
     "activity_transition_matrix",
     "build_stvd",
@@ -108,6 +115,7 @@ __all__ = [
     "jump_lengths_road",
     "k_radius_of_gyration",
     "kullback_leibler_divergence",
+    "likelihood_ratio_test",
     "location_frequency",
     "log_truncated_powerlaw",
     "max_distance_from_home",
@@ -131,6 +139,7 @@ __all__ = [
     "recency_rank",
     "regularity",
     "rmse",
+    "select_xmin",
     "stvd_emd",
     "trajectory_entropy",
     "trajectory_predictability",
@@ -139,6 +148,7 @@ __all__ = [
     "visit_purpose_distribution",
     "visits_per_location",
     "visits_per_time_unit",
+    "vuong_test",
     "waiting_times",
     "wasserstein_distance",
     "work_location",

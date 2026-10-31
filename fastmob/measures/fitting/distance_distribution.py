@@ -15,6 +15,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from statistics import NormalDist
 from typing import Any
 
 import numpy as np
@@ -32,7 +33,7 @@ class _Param:
     log: bool = False
 
 
-def _specs(family: str, xmin: float, xmax: float, max_cutoff: float) -> list[_Param]:
+def _default_specs(family: str, xmin: float, xmax: float, max_cutoff: float) -> list[_Param]:
     if family == "powerlaw":
         return [_Param("beta", 0.01, 10.0)]
     if family == "exponential":
@@ -48,6 +49,31 @@ def _specs(family: str, xmin: float, xmax: float, max_cutoff: float) -> list[_Pa
             _Param("kappa", xmin, max_cutoff, log=True),
         ]
     raise ValueError(f"Unknown family {family!r}; choose from {sorted(FAMILIES)}")
+
+
+def _specs(
+    family: str,
+    xmin: float,
+    xmax: float,
+    max_cutoff: float,
+    bounds: dict[str, tuple[float, float]] | None = None,
+) -> list[_Param]:
+    specs = _default_specs(family, xmin, xmax, max_cutoff)
+    if not bounds:
+        return specs
+    names = [sp.name for sp in specs]
+    unknown = sorted(set(bounds) - set(names))
+    if unknown:
+        raise ValueError(f"bounds names {unknown} are not parameters of {family!r}; its parameters are {names}")
+    out = []
+    for sp in specs:
+        if sp.name in bounds:
+            low, high = (float(b) for b in bounds[sp.name])
+            if not low < high or (sp.log and low <= 0):
+                raise ValueError(f"bounds for {sp.name!r} must satisfy low < high" + (" and low > 0" if sp.log else ""))
+            sp = _Param(sp.name, low, high, sp.log)
+        out.append(sp)
+    return out
 
 
 def _log_density(family: str, x: np.ndarray, p: Sequence[float]) -> np.ndarray:
@@ -112,13 +138,30 @@ class _Grid:
         return mass / mass.sum()
 
 
-def _neg_loglik(u: np.ndarray, family: str, specs: list[_Param], grid: _Grid, counts: np.ndarray) -> float:
-    p = _to_params(u, specs)
+def _neg_ll(family: str, grid: _Grid, counts: np.ndarray, values: np.ndarray | None, p: Sequence[float]) -> float:
+    """Negative log-likelihood: grouped (from the bin counts) or, when ``values`` is given, exact."""
     with np.errstate(all="ignore"):
-        mass = grid.masses(family, p)
-    if not np.all(np.isfinite(mass)):
-        return 1e300
-    return float(-(counts * np.log(np.clip(mass, 1e-300, None))).sum())
+        if values is None:
+            mass = grid.masses(family, p)
+            if not np.all(np.isfinite(mass)):
+                return 1e300
+            return float(-(counts * np.log(np.clip(mass, 1e-300, None))).sum())
+        logf = _log_density(family, grid.x, p)
+        shift = logf.max()
+        total = (grid.w * np.exp(logf - shift)).sum()
+        ll = _log_density(family, values, p).sum() - len(values) * (shift + np.log(total))
+    return float(-ll) if np.isfinite(ll) else 1e300
+
+
+def _neg_loglik(
+    u: np.ndarray,
+    family: str,
+    specs: list[_Param],
+    grid: _Grid,
+    counts: np.ndarray,
+    values: np.ndarray | None = None,
+) -> float:
+    return _neg_ll(family, grid, counts, values, _to_params(u, specs))
 
 
 def _nelder_mead(
@@ -166,9 +209,10 @@ def _fit_counts(
     *,
     step: float = 0.5,
     max_iter: int = 400,
+    values: np.ndarray | None = None,
 ) -> tuple[np.ndarray, float]:
     def objective(u):
-        return _neg_loglik(u, family, specs, grid, counts)
+        return _neg_loglik(u, family, specs, grid, counts, values)
 
     best_u, best_f = None, math.inf
     for start in starts:
@@ -181,6 +225,51 @@ def _fit_counts(
 
 def _ks(counts: np.ndarray, mass: np.ndarray) -> float:
     return float(np.abs(np.cumsum(counts) / counts.sum() - np.cumsum(mass)).max())
+
+
+@dataclass(frozen=True)
+class ProfileInterval:
+    """Profile-likelihood interval of one parameter, from `DistributionFit.profile`.
+
+    Parameters
+    ----------
+    parameter : str
+        The parameter name.
+    estimate : float
+        The maximum-likelihood estimate.
+    low : float
+        Lower end of the interval. When ``low_open`` this is the lower edge of the search range.
+    high : float
+        Upper end of the interval. When ``high_open`` this is the upper edge of the search range.
+    low_open : bool
+        True when the likelihood is still within the interval at the lower edge of the search range, so the
+        data give no lower limit.
+    high_open : bool
+        True when the data give no upper limit (for a cutoff: no evidence of a cutoff below ``high``).
+    confidence : float
+        Confidence level.
+    table : pyarrow.Table
+        The profile curve: ``value``, ``delta_deviance`` and ``inside`` on the grid.
+    """
+
+    parameter: str
+    estimate: float
+    low: float
+    high: float
+    low_open: bool
+    high_open: bool
+    confidence: float
+    table: pa.Table = field(repr=False)
+
+    def __str__(self) -> str:
+        level = f"{100 * self.confidence:g}%"
+        if self.low_open and self.high_open:
+            return f"{self.parameter}: not identified (the whole search range is within the {level} interval)"
+        if self.high_open:
+            return f"{self.parameter} >= {self.low:.4g} ({level}; no upper limit), estimate {self.estimate:.4g}"
+        if self.low_open:
+            return f"{self.parameter} <= {self.high:.4g} ({level}; no lower limit), estimate {self.estimate:.4g}"
+        return f"{self.parameter} in [{self.low:.4g}, {self.high:.4g}] ({level}), estimate {self.estimate:.4g}"
 
 
 @dataclass(frozen=True)
@@ -230,6 +319,13 @@ class DistributionFit:
         The bin edges.
     counts : numpy.ndarray
         The observed counts per bin.
+    likelihood : str
+        ``"grouped"`` (the likelihood of the bin counts) or ``"exact"`` (the likelihood of the individual values).
+    bounds : dict
+        The search range ``(low, high)`` of each parameter. A parameter that ends on one of these edges is in
+        ``at_bound``.
+    values : numpy.ndarray or None
+        The fitted values inside the range, kept only for ``likelihood="exact"``.
     """
 
     family: str
@@ -251,6 +347,25 @@ class DistributionFit:
     at_bound: tuple[str, ...]
     edges: np.ndarray = field(repr=False)
     counts: np.ndarray = field(repr=False)
+    likelihood: str = "grouped"
+    bounds: dict[str, tuple[float, float]] = field(default_factory=dict)
+    values: np.ndarray | None = field(default=None, repr=False)
+
+    def _specs(self) -> list[_Param]:
+        specs = _default_specs(self.family, self.xmin, self.xmax, 10.0 * self.xmax)
+        return [_Param(sp.name, *self.bounds.get(sp.name, (sp.low, sp.high)), sp.log) for sp in specs]
+
+    def _loglik_terms(self) -> tuple[np.ndarray, np.ndarray]:
+        """Log-likelihood contribution of each bin (grouped) or value (exact), and how many values it stands for."""
+        grid, p = self._grid()
+        if self.values is None:
+            mass = grid.masses(self.family, p)
+            seen = self.counts > 0
+            return np.log(mass[seen]), self.counts[seen]
+        logf = _log_density(self.family, grid.x, p)
+        shift = logf.max()
+        log_total = shift + np.log((grid.w * np.exp(logf - shift)).sum())
+        return _log_density(self.family, self.values, p) - log_total, np.ones(len(self.values))
 
     def _grid(self) -> tuple[_Grid, np.ndarray]:
         grid = _Grid(self.xmin, self.xmax, len(self.counts))
@@ -297,6 +412,109 @@ class DistributionFit:
         x = np.asarray(x, dtype=float)
         return np.interp(np.log(np.clip(x, self.xmin, self.xmax)), np.log(self.edges), cumulative)
 
+    def profile(self, parameter: str, confidence: float | None = None, n_points: int = 40) -> ProfileInterval:
+        """Profile-likelihood interval of one parameter.
+
+        The parameter is fixed on a grid across its search range, the other parameters are refitted at each
+        point, and the interval is where the likelihood-ratio statistic ``2 (log L_max - log L_profile)`` stays
+        below the chi-squared quantile with one degree of freedom. Unlike the percentile bootstrap it is
+        defined for a parameter that the data cannot pin down: when the curve is still inside the interval at
+        the edge of the search range, that end is reported as open (for a cutoff ``kappa`` it reads
+        "kappa is at least X km"). The interval uses the fitted likelihood, so it treats the values as
+        independent, and its ends are interpolated between grid points.
+
+        Parameters
+        ----------
+        parameter : str
+            Name of a parameter of the fitted family, as in ``parameters``.
+        confidence : float, optional
+            Confidence level. Default: the level of the fit.
+        n_points : int, optional
+            Grid points across the search range, at least 5. Default 40.
+
+        Returns
+        -------
+        ProfileInterval
+            The interval, which ends are open, and the profile curve as a table.
+
+        Raises
+        ------
+        ValueError
+            If ``parameter`` is not a parameter of the family, or ``confidence`` or ``n_points`` is invalid.
+        """
+        confidence = self.confidence if confidence is None else confidence
+        if not 0 < confidence < 1:
+            raise ValueError("confidence must be between 0 and 1")
+        if n_points < 5:
+            raise ValueError("n_points must be at least 5")
+        specs = self._specs()
+        names = [sp.name for sp in specs]
+        if parameter not in names:
+            raise ValueError(f"{parameter!r} is not a parameter of {self.family!r}; its parameters are {names}")
+        index = names.index(parameter)
+        spec = specs[index]
+        grid = _Grid(self.xmin, self.xmax, len(self.counts))
+        mle = np.array([self.parameters[n] for n in names])
+        free = [sp for i, sp in enumerate(specs) if i != index]
+        if spec.log:
+            points = np.geomspace(spec.low, spec.high, n_points)
+        else:
+            points = np.linspace(spec.low, spec.high, n_points)
+        points = np.unique(np.concatenate([points, [mle[index]]]))
+        neg_ll_max = -self.log_likelihood
+        deltas = np.empty(len(points))
+        previous = None
+        for j, value in enumerate(points):
+            if not free:
+                best = _neg_ll(self.family, grid, self.counts, self.values, np.array([value]))
+            else:
+
+                def objective(u, value=value):
+                    p = np.insert(_to_params(u, free), index, value)
+                    return _neg_ll(self.family, grid, self.counts, self.values, p)
+
+                starts = [_to_unconstrained(np.delete(mle, index), free)]
+                if previous is not None:
+                    starts.append(previous)
+                best = math.inf
+                for start in starts:
+                    u, f = _nelder_mead(objective, start, step=0.3, max_iter=300)
+                    if f < best:
+                        best, previous = f, u
+            deltas[j] = max(2.0 * (best - neg_ll_max), 0.0)
+        critical = NormalDist().inv_cdf(0.5 + confidence / 2.0) ** 2
+        inside = deltas <= critical
+        at = int(np.argmin(np.abs(points - mle[index])))
+        lo_i = at
+        while lo_i > 0 and inside[lo_i - 1]:
+            lo_i -= 1
+        hi_i = at
+        while hi_i < len(points) - 1 and inside[hi_i + 1]:
+            hi_i += 1
+
+        def edge(i_in: int, i_out: int) -> float:  # interpolate where the curve crosses the critical value
+            a, b = points[i_in], points[i_out]
+            fa, fb = deltas[i_in], deltas[i_out]
+            t = 0.0 if fb == fa else (critical - fa) / (fb - fa)
+            if spec.log:
+                return float(math.exp(math.log(a) + t * (math.log(b) - math.log(a))))
+            return float(a + t * (b - a))
+
+        low_open, high_open = lo_i == 0, hi_i == len(points) - 1
+        low = float(points[0]) if low_open else edge(lo_i, lo_i - 1)
+        high = float(points[-1]) if high_open else edge(hi_i, hi_i + 1)
+        table = pa.table({"value": points.tolist(), "delta_deviance": deltas.tolist(), "inside": inside.tolist()})
+        return ProfileInterval(
+            parameter=parameter,
+            estimate=float(mle[index]),
+            low=low,
+            high=high,
+            low_open=low_open,
+            high_open=high_open,
+            confidence=confidence,
+            table=table,
+        )
+
     def summary(self) -> pa.Table:
         """The estimates as a table.
 
@@ -321,7 +539,7 @@ class DistributionFit:
 
 def _prepare(
     values: Any, xmin: float | None, xmax: float | None, bins: int, groups: Any = None
-) -> tuple[np.ndarray, int, float, float, np.ndarray | None]:
+) -> tuple[np.ndarray, int, float, float, np.ndarray | None, np.ndarray, np.ndarray | None]:
     if hasattr(values, "to_numpy"):
         values = values.to_numpy()
     raw = np.asarray(values, dtype=float).ravel()
@@ -351,12 +569,13 @@ def _prepare(
     edges = np.geomspace(lo, hi, bins + 1)
     counts, _ = np.histogram(inside, bins=edges)
     per_group = None
+    codes = None
     if label is not None:
         codes = np.unique(label[in_range], return_inverse=True)[1]
         which = np.clip(np.searchsorted(edges, inside, side="right") - 1, 0, bins - 1)
         per_group = np.zeros((codes.max() + 1, bins))
         np.add.at(per_group, (codes, which), 1.0)
-    return counts.astype(float), int(array.size - inside.size), lo, hi, per_group
+    return counts.astype(float), int(array.size - inside.size), lo, hi, per_group, inside, codes
 
 
 def _starts(specs: list[_Param], rng: np.random.Generator, n: int = 6) -> list[np.ndarray]:
@@ -375,6 +594,8 @@ def fit_distance_distribution(
     n_gof: int = 0,
     groups: Any = None,
     max_cutoff: float | None = None,
+    bounds: dict[str, tuple[float, float]] | None = None,
+    likelihood: str = "grouped",
     random_state: int | None = 0,
 ) -> DistributionFit:
     """Fit a distribution to positive values by maximum likelihood, with confidence intervals.
@@ -421,6 +642,19 @@ def fit_distance_distribution(
         the values of a group are alike. Use it whenever the values come from a limited number of people.
     max_cutoff : float, optional
         Largest value that ``kappa`` can take. Default ten times ``xmax``.
+    bounds : dict, optional
+        Search range ``{parameter: (low, high)}`` of any parameter, in the units of the values for ``r0`` and
+        ``kappa``. It overrides the defaults (and ``max_cutoff``). Use it to check that a conclusion does not
+        depend on the range; the defaults are ``beta`` 0.01 to 10 (6 for the shifted and truncated power laws),
+        ``r0`` ``0.01 xmin`` to ``xmax``, ``kappa`` ``0.01 xmin`` (``xmin`` for the truncated power law) to
+        ``10 xmax``, ``mu`` ``log(xmin) - 5`` to ``log(xmax) + 5`` and ``sigma`` 0.02 to 10. ``r0``, ``kappa`` and
+        ``sigma`` are searched on a log scale, so their lower bound must be positive.
+    likelihood : {"grouped", "exact"}, optional
+        ``"grouped"`` (default) maximises the likelihood of the bin counts, whose cost does not grow with the
+        number of values. ``"exact"`` maximises the likelihood of the individual values (the density
+        normalised on ``[xmin, xmax]``); it removes the approximation of the bins but every evaluation
+        passes over all values, so it is slow beyond about 10^5 values, and ``n_gof`` is not available. The
+        two likelihoods are not comparable with each other.
     random_state : int, optional
         Seed of the bootstrap. Default 0.
 
@@ -433,10 +667,12 @@ def fit_distance_distribution(
     ------
     ValueError
         If ``family`` is unknown, fewer than 20 positive values (or 20 inside the range) are given, or the
-        range, ``bins`` or ``confidence`` is invalid.
+        range, ``bins``, ``confidence``, ``likelihood`` or ``bounds`` is invalid, or ``n_gof`` is positive with
+        ``likelihood="exact"``.
 
     See Also
     --------
+    DistributionFit.profile : Profile-likelihood interval, also for a parameter at its bound.
     compare_distance_distributions : Fit several families and rank them by AIC.
     fit_values_to_truncated_powerlaw : The earlier histogram grid search.
 
@@ -454,12 +690,17 @@ def fit_distance_distribution(
     """
     if not 0 < confidence < 1:
         raise ValueError("confidence must be between 0 and 1")
-    counts, excluded, lo, hi, per_group = _prepare(values, xmin, xmax, bins, groups)
+    if likelihood not in ("grouped", "exact"):
+        raise ValueError('likelihood must be "grouped" or "exact"')
+    if likelihood == "exact" and n_gof > 0:
+        raise ValueError('n_gof needs likelihood="grouped"')
+    counts, excluded, lo, hi, per_group, inside, codes = _prepare(values, xmin, xmax, bins, groups)
     cutoff = float(max_cutoff) if max_cutoff is not None else 10.0 * hi
-    specs = _specs(family, lo, hi, cutoff)
+    specs = _specs(family, lo, hi, cutoff, bounds)
     grid = _Grid(lo, hi, bins)
     rng = np.random.default_rng(random_state)
-    u, neg_ll = _fit_counts(family, specs, grid, counts, _starts(specs, rng))
+    exact = inside if likelihood == "exact" else None
+    u, neg_ll = _fit_counts(family, specs, grid, counts, _starts(specs, rng), values=exact)
     params = _to_params(u, specs)
     mass = grid.masses(family, params)
     n = int(counts.sum())
@@ -471,12 +712,23 @@ def fit_distance_distribution(
     std_errors = dict(ci_low)
     if n_bootstrap > 0:
         draws = np.empty((n_bootstrap, k))
+        if exact is not None and codes is not None:
+            order = np.argsort(codes, kind="stable")
+            by_group = np.split(exact[order], np.cumsum(np.bincount(codes))[:-1])
         for b in range(n_bootstrap):
-            if per_group is None:
+            resampled_values = None
+            if exact is not None:
+                if codes is None:
+                    resampled_values = rng.choice(exact, size=n)
+                else:
+                    chosen = rng.integers(0, len(by_group), len(by_group))
+                    resampled_values = np.concatenate([by_group[i] for i in chosen])
+                resampled = counts
+            elif per_group is None:
                 resampled = rng.multinomial(n, counts / n).astype(float)
             else:  # resample whole groups (for example users), as their values are not independent
                 resampled = per_group[rng.integers(0, len(per_group), len(per_group))].sum(axis=0)
-            ub, _ = _fit_counts(family, specs, grid, resampled, [u], step=0.1, max_iter=200)
+            ub, _ = _fit_counts(family, specs, grid, resampled, [u], step=0.1, max_iter=200, values=resampled_values)
             draws[b] = _to_params(ub, specs)
         alpha = (1.0 - confidence) / 2.0
         for i, s in enumerate(specs):
@@ -517,19 +769,31 @@ def fit_distance_distribution(
         at_bound=at_bound,
         edges=grid.edges,
         counts=counts,
+        likelihood=likelihood,
+        bounds={sp.name: (sp.low, sp.high) for sp in specs},
+        values=exact,
     )
 
 
 def compare_distance_distributions(
     values: Any,
     families: Sequence[str] = FAMILIES,
+    *,
+    degenerate_last: bool = True,
     **kwargs: Any,
 ) -> pa.Table:
     """Fit several families to the same values and rank them by AIC.
 
     Every family is fitted on the same range and bins, so their likelihoods, AIC and BIC are comparable.
-    The table is sorted by AIC; ``akaike_weight`` is the relative support of each family among those listed.
     A small AIC difference (under about 2) means the data cannot tell the families apart.
+
+    A family with a parameter on the edge of its search range (``at_bound``) is a degenerate fit: the shape it
+    reached is not the one the family is meant to describe (a shifted power law with ``beta`` at its upper
+    limit is an exponential in disguise), so its AIC says little. With ``degenerate_last=True`` (the default)
+    those families are listed after the others, ``delta_aic`` is measured from the best family that is not
+    degenerate, and ``akaike_weight`` is computed among the families that are not degenerate only (it is
+    missing for the others). A negative ``delta_aic`` on a degenerate row means that its likelihood is
+    higher, which is what the degeneracy buys; do not read it as support.
 
     Parameters
     ----------
@@ -537,20 +801,28 @@ def compare_distance_distributions(
         Positive values, as for `fit_distance_distribution`.
     families : sequence of str, optional
         Families to compare. Default: all five.
+    degenerate_last : bool, optional
+        Rank families with a parameter at its bound after the others and leave them out of the Akaike
+        weights. With False every family is ranked by AIC alone. Default True.
     **kwargs
         Passed to `fit_distance_distribution` (``xmin``, ``xmax``, ``bins``, ``n_bootstrap``, ``n_gof``,
-        ``max_cutoff``, ``random_state``). ``n_bootstrap`` defaults to 0 here, because only the criteria
-        are needed.
+        ``max_cutoff``, ``bounds``, ``likelihood``, ``random_state``). ``n_bootstrap`` defaults to 0 here,
+        because only the criteria are needed. ``bounds`` may name parameters that some families do not have;
+        each family uses the entries that apply to it.
 
     Returns
     -------
     pyarrow.Table
         One row per family with ``family``, ``n_parameters``, ``log_likelihood``, ``aic``, ``bic``,
-        ``delta_aic``, ``akaike_weight``, ``ks_statistic``, ``gof_p_value`` and ``at_bound``.
+        ``delta_aic``, ``akaike_weight``, ``ks_statistic``, ``gof_p_value``, ``at_bound`` (the parameters on
+        the edge of their range) and ``degenerate`` (True when there is any). The AIC and the Akaike weights
+        treat the values as independent, so they overstate the evidence when many values come from the same people.
 
     See Also
     --------
     fit_distance_distribution : Fit one family with confidence intervals.
+    likelihood_ratio_test : Test a family against the one that extends it.
+    vuong_test : Test two families that are not nested.
 
     Examples
     --------
@@ -562,12 +834,25 @@ def compare_distance_distributions(
     'lognormal'
     """
     kwargs.setdefault("n_bootstrap", 0)
-    fits = [fit_distance_distribution(values, family, **kwargs) for family in families]
+    bounds = kwargs.pop("bounds", None)
+    fits = []
+    for family in families:
+        names = {sp.name for sp in _default_specs(family, 1.0, 2.0, 20.0)}
+        own = {k: v for k, v in bounds.items() if k in names} if bounds else None
+        fits.append(fit_distance_distribution(values, family, bounds=own, **kwargs))
     fits.sort(key=lambda f: f.aic)
+    clean = [f for f in fits if not f.at_bound]
+    if degenerate_last and clean:
+        fits = clean + [f for f in fits if f.at_bound]
+        reference = clean
+    else:
+        reference = fits
     aic = np.array([f.aic for f in fits])
-    delta = aic - aic.min()
-    weights = np.exp(-delta / 2.0)
-    weights /= weights.sum()
+    delta = aic - min(f.aic for f in reference)
+    support = np.exp(-(np.array([f.aic for f in reference]) - min(f.aic for f in reference)) / 2.0)
+    support /= support.sum()
+    by_fit = {id(f): float(w) for f, w in zip(reference, support)}
+    weights = [by_fit.get(id(f), math.nan) for f in fits]
     return pa.table(
         {
             "family": [f.family for f in fits],
@@ -576,9 +861,10 @@ def compare_distance_distributions(
             "aic": aic.tolist(),
             "bic": [f.bic for f in fits],
             "delta_aic": delta.tolist(),
-            "akaike_weight": weights.tolist(),
+            "akaike_weight": weights,
             "ks_statistic": [f.ks_statistic for f in fits],
             "gof_p_value": [f.gof_p_value for f in fits],
             "at_bound": [", ".join(f.at_bound) for f in fits],
+            "degenerate": [bool(f.at_bound) for f in fits],
         }
     )
