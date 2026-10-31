@@ -32,9 +32,6 @@ people move. Rust does the heavy lifting; you keep your pandas or Polars datafra
 pip install fastmob
 ```
 
-Check the installed version with `python -c "import fastmob; print(fastmob.__version__)"`.
-If distribution metadata is unavailable, the version is `"0+unknown"`.
-
 === "pandas"
 
     ```python

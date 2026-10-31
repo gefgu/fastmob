@@ -32,9 +32,6 @@ Install Fastkit-Mobility and pandas for this example (Python 3.9 or newer):
 pip install fastmob pandas
 ```
 
-Check the installed version with `python -c "import fastmob; print(fastmob.__version__)"`.
-When distribution metadata is unavailable, `fastmob.__version__` is `"0+unknown"`.
-
 Calculate each person's **radius of gyration**: a measure, in kilometres, of
 how widely their observed locations spread around their centre of movement.
 
