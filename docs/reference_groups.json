@@ -335,5 +335,13 @@
     "plot_stvd_comparison"
    ]
   ]
+ ],
+ "utils.md": [
+  [
+   "Geographic distance",
+   [
+    "haversine"
+   ]
+  ]
  ]
 }

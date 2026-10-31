@@ -23,7 +23,7 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 | API | Description | Example |
 | --- | --- | --- |
 | [`snap_locations_to_graph`](#fastmob.network.snap_locations_to_graph) | Snap each tessellation row to its nearest road/rail graph node. | [Snap points to the network](../learn/road-network-analysis.md#snap-points-to-the-network) |
-| [`haversine_m_batch`](#fastmob.network.haversine_m_batch) | Elementwise Haversine distance (metres) between same-length, one-dimensional array-like coordinates, including pandas Series. |  |
+| [`haversine_m_batch`](#fastmob.network.haversine_m_batch) | Compute distances in metres; prefer `fastmob.utils.haversine`. |  |
 | [`match_trajectory`](#fastmob.network.match_trajectory) | Map-match a trajectory with a directed-edge HMM/Viterbi model. | [Match a GPS trace to roads](../learn/road-network-analysis.md#match-a-gps-trace-to-roads) |
 | [`od_desire_lines`](#fastmob.network.od_desire_lines) | Aggregate OD-pair flows onto the road/rail graph's edges (desire lines). | [Accumulate flows on roads](../learn/road-network-analysis.md#accumulate-flows-on-roads) |
 
@@ -93,6 +93,8 @@ an unsnapped node is `-1`.
       show_source: false
 
 <!-- example-link -->**Worked example:** [Snap points to the network](../learn/road-network-analysis.md#snap-points-to-the-network)
+
+---
 
 ---
 
