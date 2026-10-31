@@ -10,7 +10,7 @@ corresponding trajectory-derived data. Gravity models are fitted with `Gravity.f
 
 For how the estimators work and what to report, see [How the fits work](../learn/fitting-methods.md).
 For end-to-end examples, see [Compare to mobility laws](../learn/compare-to-mobility-laws.md) and the
-[fit and evaluate guide](../learn/fit-and-evaluate.md).
+[fit and evaluate guide](../learn/fit-and-evaluate.md); the whole cycle on GPS tracks is in [Validate mobility with GeoLife](../learn/validate-mobility-geolife.md).
 
 ## Catalogue
 
@@ -21,8 +21,8 @@ For end-to-end examples, see [Compare to mobility laws](../learn/compare-to-mobi
 | --- | --- | --- |
 | [`fit_distance_distribution`](#fastmob.measures.fitting.distance_distribution.fit_distance_distribution) | Fit a distribution to positive values by maximum likelihood, with confidence intervals. | [How sure is the fit? Range, uncertainty and alternatives](../learn/compare-to-mobility-laws.md#how-sure-is-the-fit-range-uncertainty-and-alternatives) |
 | [`compare_distance_distributions`](#fastmob.measures.fitting.distance_distribution.compare_distance_distributions) | Fit several families to the same values and rank them by AIC. | [How sure is the fit? Range, uncertainty and alternatives](../learn/compare-to-mobility-laws.md#how-sure-is-the-fit-range-uncertainty-and-alternatives) |
-| [`DistributionFit`](#fastmob.measures.fitting.distance_distribution.DistributionFit) | A fitted distribution of positive values, with its uncertainty and fit quality. | [Does the data need a cutoff, and does a different family fit better?](../learn/compare-to-mobility-laws.md#does-the-data-need-a-cutoff-and-does-a-different-family-fit-better) |
-| [`DistributionFit.cdf`](#fastmob.measures.fitting.distance_distribution.DistributionFit.cdf) | Cumulative distribution function at `x` of the fitted distribution. |  |
+| [`DistributionFit`](#fastmob.measures.fitting.distance_distribution.DistributionFit) | A fitted distribution of positive values, with its uncertainty and fit quality. | [Step 1](../learn/validate-mobility-geolife.md#step-1-the-distribution-of-trip-lengths) |
+| [`DistributionFit.cdf`](#fastmob.measures.fitting.distance_distribution.DistributionFit.cdf) | Cumulative distribution function at `x` of the fitted distribution. | [Step 1](../learn/validate-mobility-geolife.md#step-1-the-distribution-of-trip-lengths) |
 | [`DistributionFit.pdf`](#fastmob.measures.fitting.distance_distribution.DistributionFit.pdf) | Probability density at `x` of the fitted distribution, normalised on `[xmin, xmax]`. |  |
 | [`DistributionFit.profile`](#fastmob.measures.fitting.distance_distribution.DistributionFit.profile) | Profile-likelihood interval of one parameter. | [Does the data need a cutoff, and does a different family fit better?](../learn/compare-to-mobility-laws.md#does-the-data-need-a-cutoff-and-does-a-different-family-fit-better) |
 | [`DistributionFit.summary`](#fastmob.measures.fitting.distance_distribution.DistributionFit.summary) | The estimates as a table. | [How sure is the fit? Range, uncertainty and alternatives](../learn/compare-to-mobility-laws.md#how-sure-is-the-fit-range-uncertainty-and-alternatives) |
@@ -61,7 +61,7 @@ For end-to-end examples, see [Compare to mobility laws](../learn/compare-to-mobi
     options:
       show_source: false
 
-<!-- example-link -->**Worked example:** [Does the data need a cutoff, and does a different family fit better?](../learn/compare-to-mobility-laws.md#does-the-data-need-a-cutoff-and-does-a-different-family-fit-better) · [How sure is the fit? Range, uncertainty and alternatives](../learn/compare-to-mobility-laws.md#how-sure-is-the-fit-range-uncertainty-and-alternatives)
+<!-- example-link -->**Worked example:** [Step 1](../learn/validate-mobility-geolife.md#step-1-the-distribution-of-trip-lengths) · [Does the data need a cutoff, and does a different family fit better?](../learn/compare-to-mobility-laws.md#does-the-data-need-a-cutoff-and-does-a-different-family-fit-better) · [How sure is the fit? Range, uncertainty and alternatives](../learn/compare-to-mobility-laws.md#how-sure-is-the-fit-range-uncertainty-and-alternatives)
 
 ::: fastmob.measures.fitting.distance_distribution.ProfileInterval
     options:

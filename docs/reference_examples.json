@@ -499,6 +499,11 @@
   "page": "learn/compare-to-mobility-laws.md",
   "title": "Law 3: distinct places per day are lognormal"
  },
+ "fastmob.measures.fitting.distance_distribution.DistributionFit.cdf": {
+  "anchor": "step-1-the-distribution-of-trip-lengths",
+  "page": "learn/validate-mobility-geolife.md",
+  "title": "Step 1: the distribution of trip lengths"
+ },
  "fastmob.measures.fitting.distance_distribution.DistributionFit.profile": {
   "anchor": "does-the-data-need-a-cutoff-and-does-a-different-family-fit-better",
   "page": "learn/compare-to-mobility-laws.md",

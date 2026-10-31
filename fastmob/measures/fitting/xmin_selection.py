@@ -50,7 +50,7 @@ def select_xmin(
     -------
     pyarrow.Table
         One row per candidate with ``xmin``, ``n`` (values in range), ``ks_statistic``, ``log_likelihood``,
-        one column per parameter and ``selected`` (True on the row with the smallest KS distance).
+        one column per parameter, ``at_bound`` (parameters on the edge of their range) and ``selected`` (True on the row with the smallest KS distance).
 
     Raises
     ------
@@ -72,7 +72,10 @@ def select_xmin(
     """
     if min_values < 20:
         raise ValueError("min_values must be at least 20")
+    if "xmin" in kwargs:
+        raise ValueError("select_xmin chooses xmin; give candidates= to restrict the values tried")
     kwargs.pop("n_bootstrap", None)
+    kwargs.pop("n_gof", None)
     raw = np.asarray(values.to_numpy() if hasattr(values, "to_numpy") else values, dtype=float).ravel()
     positive = np.sort(raw[np.isfinite(raw) & (raw > 0)])
     if positive.size < max(min_values, 20):
@@ -86,8 +89,10 @@ def select_xmin(
         grid = np.sort(np.asarray(candidates, dtype=float))
         grid = grid[grid > 0]
     fits = []
+    upper = kwargs.get("xmax")
     for lo in grid:
-        if (positive >= lo).sum() < min_values:
+        inside = positive >= lo if upper is None else (positive >= lo) & (positive <= upper)
+        if inside.sum() < min_values:
             continue
         fits.append(fit_distance_distribution(positive, family, xmin=float(lo), n_bootstrap=0, **kwargs))
     if not fits:
@@ -102,5 +107,6 @@ def select_xmin(
     }
     for name in fits[0].parameters:
         table[name] = [f.parameters[name] for f in fits]
+    table["at_bound"] = [", ".join(f.at_bound) for f in fits]
     table["selected"] = [i == best for i in range(len(fits))]
     return pa.table(table)

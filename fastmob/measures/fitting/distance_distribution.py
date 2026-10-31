@@ -13,6 +13,7 @@ Kolmogorov-Smirnov distance. Only NumPy is needed.
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from statistics import NormalDist
@@ -113,6 +114,14 @@ def _to_unconstrained(p: Sequence[float], specs: list[_Param]) -> np.ndarray:
         s = min(max(s, 1e-9), 1 - 1e-9)
         u[i] = math.log(s / (1.0 - s))
     return u
+
+
+# A parameter on this edge is a legitimate limit of the family, a simpler model, not a distorted shape.
+_LIMITS = {
+    ("shifted_powerlaw", "r0", -1): "powerlaw",
+    ("truncated_powerlaw", "r0", -1): "power law with exponential cutoff (r0 = 0)",
+    ("truncated_powerlaw", "kappa", 1): "shifted_powerlaw",
+}
 
 
 def _position(p: float, sp: _Param) -> float:
@@ -249,7 +258,10 @@ class ProfileInterval:
     confidence : float
         Confidence level.
     table : pyarrow.Table
-        The profile curve: ``value``, ``delta_deviance`` and ``inside`` on the grid.
+        The profile curve at the points that were evaluated: ``value``, ``delta_deviance`` and ``inside``.
+    nuisance_at_bound : tuple of str
+        Other parameters of the family that reach the edge of their range at the ends of the interval. When
+        there are any, a degenerate shape helps to decide the interval.
     """
 
     parameter: str
@@ -260,16 +272,22 @@ class ProfileInterval:
     high_open: bool
     confidence: float
     table: pa.Table = field(repr=False)
+    nuisance_at_bound: tuple[str, ...] = ()
 
     def __str__(self) -> str:
+        """The interval in words, such as ``kappa >= 1039 (95%; no upper limit)``."""
         level = f"{100 * self.confidence:g}%"
         if self.low_open and self.high_open:
-            return f"{self.parameter}: not identified (the whole search range is within the {level} interval)"
-        if self.high_open:
-            return f"{self.parameter} >= {self.low:.4g} ({level}; no upper limit), estimate {self.estimate:.4g}"
-        if self.low_open:
-            return f"{self.parameter} <= {self.high:.4g} ({level}; no lower limit), estimate {self.estimate:.4g}"
-        return f"{self.parameter} in [{self.low:.4g}, {self.high:.4g}] ({level}), estimate {self.estimate:.4g}"
+            text = f"{self.parameter}: not identified (the whole search range is within the {level} interval)"
+        elif self.high_open:
+            text = f"{self.parameter} >= {self.low:.4g} ({level}; no upper limit), estimate {self.estimate:.4g}"
+        elif self.low_open:
+            text = f"{self.parameter} <= {self.high:.4g} ({level}; no lower limit), estimate {self.estimate:.4g}"
+        else:
+            text = f"{self.parameter} in [{self.low:.4g}, {self.high:.4g}] ({level}), estimate {self.estimate:.4g}"
+        if self.nuisance_at_bound:
+            text += f"; {', '.join(self.nuisance_at_bound)} at a bound along the profile"
+        return text
 
 
 @dataclass(frozen=True)
@@ -351,8 +369,34 @@ class DistributionFit:
     bounds: dict[str, tuple[float, float]] = field(default_factory=dict)
     values: np.ndarray | None = field(default=None, repr=False)
 
+    @property
+    def limits(self) -> dict[str, str]:
+        """Parameters on the edge of their range that are a legitimate limit of the family, by the model they give.
+
+        ``r0`` at its lower edge turns the shifted power law into the plain power law and the truncated power
+        law into a power law with an exponential cutoff; ``kappa`` at its upper edge turns the truncated power
+        law into the shifted one. These are simpler models inside the family, not a distorted shape.
+        """
+        found = {}
+        for sp in self._specs():
+            if sp.name not in self.at_bound:
+                continue
+            side = -1 if _position(self.parameters[sp.name], sp) < 0.5 else 1
+            if (self.family, sp.name, side) in _LIMITS:
+                found[sp.name] = _LIMITS[self.family, sp.name, side]
+        return found
+
+    @property
+    def degenerate(self) -> tuple[str, ...]:
+        """Parameters on the edge of their range that are not a legitimate limit (see ``limits``).
+
+        These mark a distorted fit, for example a shifted power law whose ``beta`` is at its upper limit, which
+        imitates an exponential, so its likelihood and AIC rank say little.
+        """
+        return tuple(n for n in self.at_bound if n not in self.limits)
+
     def _specs(self) -> list[_Param]:
-        specs = _default_specs(self.family, self.xmin, self.xmax, 10.0 * self.xmax)
+        specs = _default_specs(self.family, self.xmin, self.xmax, 1000.0 * self.xmax)
         return [_Param(sp.name, *self.bounds.get(sp.name, (sp.low, sp.high)), sp.log) for sp in specs]
 
     def _loglik_terms(self) -> tuple[np.ndarray, np.ndarray]:
@@ -412,16 +456,19 @@ class DistributionFit:
         x = np.asarray(x, dtype=float)
         return np.interp(np.log(np.clip(x, self.xmin, self.xmax)), np.log(self.edges), cumulative)
 
-    def profile(self, parameter: str, confidence: float | None = None, n_points: int = 40) -> ProfileInterval:
+    def profile(self, parameter: str, confidence: float | None = None) -> ProfileInterval:
         """Profile-likelihood interval of one parameter.
 
-        The parameter is fixed on a grid across its search range, the other parameters are refitted at each
-        point, and the interval is where the likelihood-ratio statistic ``2 (log L_max - log L_profile)`` stays
-        below the chi-squared quantile with one degree of freedom. Unlike the percentile bootstrap it is
-        defined for a parameter that the data cannot pin down: when the curve is still inside the interval at
-        the edge of the search range, that end is reported as open (for a cutoff ``kappa`` it reads
-        "kappa is at least X km"). The interval uses the fitted likelihood, so it treats the values as
-        independent, and its ends are interpolated between grid points.
+        The parameter is fixed at a value, the other parameters are refitted (from several starting points), and
+        the interval is where the likelihood-ratio statistic ``2 (log L_max - log L_profile)`` stays below the
+        chi-squared quantile with one degree of freedom. Each end is found by bisection from the estimate, so
+        the result does not depend on a grid. Unlike the percentile bootstrap it is defined for a parameter that
+        the data cannot pin down: when the statistic is still below the quantile at the edge of the search
+        range, that end is reported as open (for a cutoff ``kappa`` it reads "kappa is at least X km"). The
+        interval treats the values as independent, and it is the contiguous region around the estimate.
+        ``nuisance_at_bound`` lists the other parameters that reach the edge of their range at the ends of
+        the interval: then the interval is partly decided by a degenerate shape (for example a steep shifted
+        power law standing in for an exponential), not only by the parameter.
 
         Parameters
         ----------
@@ -429,24 +476,21 @@ class DistributionFit:
             Name of a parameter of the fitted family, as in ``parameters``.
         confidence : float, optional
             Confidence level. Default: the level of the fit.
-        n_points : int, optional
-            Grid points across the search range, at least 5. Default 40.
 
         Returns
         -------
         ProfileInterval
-            The interval, which ends are open, and the profile curve as a table.
+            The interval, which ends are open, the nuisance parameters at a bound, and the profile curve as a
+            table of the points that were evaluated.
 
         Raises
         ------
         ValueError
-            If ``parameter`` is not a parameter of the family, or ``confidence`` or ``n_points`` is invalid.
+            If ``parameter`` is not a parameter of the family, or ``confidence`` is invalid.
         """
         confidence = self.confidence if confidence is None else confidence
         if not 0 < confidence < 1:
             raise ValueError("confidence must be between 0 and 1")
-        if n_points < 5:
-            raise ValueError("n_points must be at least 5")
         specs = self._specs()
         names = [sp.name for sp in specs]
         if parameter not in names:
@@ -456,63 +500,91 @@ class DistributionFit:
         grid = _Grid(self.xmin, self.xmax, len(self.counts))
         mle = np.array([self.parameters[n] for n in names])
         free = [sp for i, sp in enumerate(specs) if i != index]
-        if spec.log:
-            points = np.geomspace(spec.low, spec.high, n_points)
-        else:
-            points = np.linspace(spec.low, spec.high, n_points)
-        points = np.unique(np.concatenate([points, [mle[index]]]))
+        free_names = [n for i, n in enumerate(names) if i != index]
+        critical = NormalDist().inv_cdf(0.5 + confidence / 2.0) ** 2
         neg_ll_max = -self.log_likelihood
-        deltas = np.empty(len(points))
-        previous = None
-        for j, value in enumerate(points):
+        rng = np.random.default_rng(0)
+        evaluated: dict[float, tuple[float, tuple[str, ...]]] = {}
+        last = [_to_unconstrained(np.delete(mle, index), free)] if free else []
+
+        def value_at(t: float) -> float:
+            if spec.log:
+                return math.exp(math.log(spec.low) + t * (math.log(spec.high) - math.log(spec.low)))
+            return spec.low + t * (spec.high - spec.low)
+
+        def deviance(t: float) -> float:
+            value = value_at(t)
             if not free:
-                best = _neg_ll(self.family, grid, self.counts, self.values, np.array([value]))
+                best, edge = _neg_ll(self.family, grid, self.counts, self.values, np.array([value])), ()
             else:
 
-                def objective(u, value=value):
+                def objective(u):
                     p = np.insert(_to_params(u, free), index, value)
                     return _neg_ll(self.family, grid, self.counts, self.values, p)
 
-                starts = [_to_unconstrained(np.delete(mle, index), free)]
-                if previous is not None:
-                    starts.append(previous)
-                best = math.inf
+                starts = [last[0], _to_unconstrained(np.delete(mle, index), free)]
+                starts += [starts[0] + rng.normal(0.0, 1.0, len(free)) for _ in range(2)]
+                best, best_u = math.inf, None
                 for start in starts:
                     u, f = _nelder_mead(objective, start, step=0.3, max_iter=300)
                     if f < best:
-                        best, previous = f, u
-            deltas[j] = max(2.0 * (best - neg_ll_max), 0.0)
-        critical = NormalDist().inv_cdf(0.5 + confidence / 2.0) ** 2
-        inside = deltas <= critical
-        at = int(np.argmin(np.abs(points - mle[index])))
-        lo_i = at
-        while lo_i > 0 and inside[lo_i - 1]:
-            lo_i -= 1
-        hi_i = at
-        while hi_i < len(points) - 1 and inside[hi_i + 1]:
-            hi_i += 1
+                        best, best_u = f, u
+                last[0] = best_u
+                fitted = _to_params(best_u, free)
+                edge = tuple(
+                    n
+                    for n, sp, v in zip(free_names, free, fitted)
+                    if _position(v, sp) < _BOUND_MARGIN or _position(v, sp) > 1 - _BOUND_MARGIN
+                )
+            delta = max(2.0 * (best - neg_ll_max), 0.0)
+            evaluated[value] = (delta, edge)
+            return delta
 
-        def edge(i_in: int, i_out: int) -> float:  # interpolate where the curve crosses the critical value
-            a, b = points[i_in], points[i_out]
-            fa, fb = deltas[i_in], deltas[i_out]
-            t = 0.0 if fb == fa else (critical - fa) / (fb - fa)
-            if spec.log:
-                return float(math.exp(math.log(a) + t * (math.log(b) - math.log(a))))
-            return float(a + t * (b - a))
-
-        low_open, high_open = lo_i == 0, hi_i == len(points) - 1
-        low = float(points[0]) if low_open else edge(lo_i, lo_i - 1)
-        high = float(points[-1]) if high_open else edge(hi_i, hi_i + 1)
-        table = pa.table({"value": points.tolist(), "delta_deviance": deltas.tolist(), "inside": inside.tolist()})
+        t_hat = min(max(_position(mle[index], spec), 0.0), 1.0)
+        ends, open_ends, nuisance = [], [], set()
+        for bound in (0.0, 1.0):
+            if abs(t_hat - bound) < _BOUND_MARGIN:  # the estimate is on this edge: no search on this side
+                ends.append(value_at(bound))
+                open_ends.append(True)
+                continue
+            if deviance(bound) <= critical:
+                ends.append(value_at(bound))
+                open_ends.append(True)
+                nuisance.update(evaluated[value_at(bound)][1])
+                continue
+            inner, outer = t_hat, bound  # deviance(inner) <= critical < deviance(outer)
+            if free:
+                last[0] = _to_unconstrained(np.delete(mle, index), free)
+            for _ in range(40):
+                middle = 0.5 * (inner + outer)
+                if abs(outer - inner) < 1e-4:
+                    break
+                if deviance(middle) <= critical:
+                    inner = middle
+                else:
+                    outer = middle
+            ends.append(value_at(inner))
+            open_ends.append(False)
+            nuisance.update(evaluated[value_at(inner)][1])
+        evaluated[float(mle[index])] = (0.0, ())
+        points = sorted(evaluated)
+        table = pa.table(
+            {
+                "value": points,
+                "delta_deviance": [evaluated[v][0] for v in points],
+                "inside": [evaluated[v][0] <= critical for v in points],
+            }
+        )
         return ProfileInterval(
             parameter=parameter,
             estimate=float(mle[index]),
-            low=low,
-            high=high,
-            low_open=low_open,
-            high_open=high_open,
+            low=float(ends[0]),
+            high=float(ends[1]),
+            low_open=open_ends[0],
+            high_open=open_ends[1],
             confidence=confidence,
             table=table,
+            nuisance_at_bound=tuple(sorted(nuisance)),
         )
 
     def summary(self) -> pa.Table:
@@ -626,7 +698,11 @@ def fit_distance_distribution(
     xmin : float, optional
         Lower end of the fitted range. Default: the smallest positive value. Raise it to ignore GPS noise.
     xmax : float, optional
-        Upper end of the fitted range. Default: the largest value.
+        Upper end of the fitted range. Default: the largest value, which makes the sample maximum a hard limit of
+        the distribution and can hide a cutoff (the likelihood cannot tell a cutoff from the end of the data). When
+        the study area has a known largest distance (the diagonal of its bounding box, or half the Earth's
+        circumference for global data) pass it here; a warning is issued for the families with a cutoff when
+        ``xmax`` is left out.
     bins : int, optional
         Number of geometric bins, at least 10. Default 200.
     n_bootstrap : int, optional
@@ -641,13 +717,13 @@ def fit_distance_distribution(
         errors and intervals resamples whole groups instead of single values, which widens the intervals when
         the values of a group are alike. Use it whenever the values come from a limited number of people.
     max_cutoff : float, optional
-        Largest value that ``kappa`` can take. Default ten times ``xmax``.
+        Largest value that ``kappa`` can take. Default 1,000 times ``xmax``, so that the cutoff factor is practically 1 over the whole range.
     bounds : dict, optional
         Search range ``{parameter: (low, high)}`` of any parameter, in the units of the values for ``r0`` and
         ``kappa``. It overrides the defaults (and ``max_cutoff``). Use it to check that a conclusion does not
         depend on the range; the defaults are ``beta`` 0.01 to 10 (6 for the shifted and truncated power laws),
         ``r0`` ``0.01 xmin`` to ``xmax``, ``kappa`` ``0.01 xmin`` (``xmin`` for the truncated power law) to
-        ``10 xmax``, ``mu`` ``log(xmin) - 5`` to ``log(xmax) + 5`` and ``sigma`` 0.02 to 10. ``r0``, ``kappa`` and
+        ``1000 xmax``, ``mu`` ``log(xmin) - 5`` to ``log(xmax) + 5`` and ``sigma`` 0.02 to 10. ``r0``, ``kappa`` and
         ``sigma`` are searched on a log scale, so their lower bound must be positive.
     likelihood : {"grouped", "exact"}, optional
         ``"grouped"`` (default) maximises the likelihood of the bin counts, whose cost does not grow with the
@@ -695,7 +771,14 @@ def fit_distance_distribution(
     if likelihood == "exact" and n_gof > 0:
         raise ValueError('n_gof needs likelihood="grouped"')
     counts, excluded, lo, hi, per_group, inside, codes = _prepare(values, xmin, xmax, bins, groups)
-    cutoff = float(max_cutoff) if max_cutoff is not None else 10.0 * hi
+    if xmax is None and family in ("truncated_powerlaw", "exponential"):
+        warnings.warn(
+            "xmax was not given, so the largest value is the upper limit of the fitted range; this can hide a "
+            "cutoff. Pass xmax= the largest distance that is possible in your study area.",
+            UserWarning,
+            stacklevel=2,
+        )
+    cutoff = float(max_cutoff) if max_cutoff is not None else 1000.0 * hi
     specs = _specs(family, lo, hi, cutoff, bounds)
     grid = _Grid(lo, hi, bins)
     rng = np.random.default_rng(random_state)
@@ -787,9 +870,11 @@ def compare_distance_distributions(
     Every family is fitted on the same range and bins, so their likelihoods, AIC and BIC are comparable.
     A small AIC difference (under about 2) means the data cannot tell the families apart.
 
-    A family with a parameter on the edge of its search range (``at_bound``) is a degenerate fit: the shape it
-    reached is not the one the family is meant to describe (a shifted power law with ``beta`` at its upper
-    limit is an exponential in disguise), so its AIC says little. With ``degenerate_last=True`` (the default)
+    A family with a parameter on the edge of its search range (``at_bound``) is a degenerate fit when the edge is
+    not a legitimate limit of the family: the shape it reached is not the one the family is meant to describe (a
+    shifted power law with ``beta`` at its upper limit is an exponential in disguise), so its AIC says little.
+    ``r0`` at its lower edge (a power law, or a power law with an exponential cutoff) and ``kappa`` at its upper
+    edge (no cutoff) are legitimate limits, so those fits are ranked normally; see `DistributionFit.limits`. With ``degenerate_last=True`` (the default)
     those families are listed after the others, ``delta_aic`` is measured from the best family that is not
     degenerate, and ``akaike_weight`` is computed among the families that are not degenerate only (it is
     missing for the others). A negative ``delta_aic`` on a degenerate row means that its likelihood is
@@ -815,7 +900,7 @@ def compare_distance_distributions(
     pyarrow.Table
         One row per family with ``family``, ``n_parameters``, ``log_likelihood``, ``aic``, ``bic``,
         ``delta_aic``, ``akaike_weight``, ``ks_statistic``, ``gof_p_value``, ``at_bound`` (the parameters on
-        the edge of their range) and ``degenerate`` (True when there is any). The AIC and the Akaike weights
+        the edge of their range) and ``degenerate`` (True when one of them is not a legitimate limit). The AIC and the Akaike weights
         treat the values as independent, so they overstate the evidence when many values come from the same people.
 
     See Also
@@ -841,9 +926,9 @@ def compare_distance_distributions(
         own = {k: v for k, v in bounds.items() if k in names} if bounds else None
         fits.append(fit_distance_distribution(values, family, bounds=own, **kwargs))
     fits.sort(key=lambda f: f.aic)
-    clean = [f for f in fits if not f.at_bound]
+    clean = [f for f in fits if not f.degenerate]
     if degenerate_last and clean:
-        fits = clean + [f for f in fits if f.at_bound]
+        fits = clean + [f for f in fits if f.degenerate]
         reference = clean
     else:
         reference = fits
@@ -865,6 +950,6 @@ def compare_distance_distributions(
             "ks_statistic": [f.ks_statistic for f in fits],
             "gof_p_value": [f.gof_p_value for f in fits],
             "at_bound": [", ".join(f.at_bound) for f in fits],
-            "degenerate": [bool(f.at_bound) for f in fits],
+            "degenerate": [bool(f.degenerate) for f in fits],
         }
     )

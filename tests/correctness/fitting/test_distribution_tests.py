@@ -6,6 +6,8 @@ import numpy as np
 import pytest
 from fastmob.measures.fitting import ModelTest, fit_distance_distribution, likelihood_ratio_test, vuong_test
 
+pytestmark = pytest.mark.filterwarnings("ignore:xmax was not given")
+
 
 def _fits(values, *families, **kwargs):
     return [fit_distance_distribution(values, family, n_bootstrap=0, **kwargs) for family in families]
@@ -68,3 +70,27 @@ def test_vuong_cannot_choose_between_two_equally_good_families_and_works_for_exa
 
     lognormal, exponential = _fits(values, "lognormal", "exponential", likelihood="exact")
     assert vuong_test(lognormal, exponential).favours == "lognormal"
+
+
+def test_bootstrap_p_value_agrees_with_the_asymptotic_one_and_keeps_both():
+    pure = np.random.default_rng(3).pareto(1.6, size=6000) + 1.0
+    shifted, truncated = _fits(pure, "shifted_powerlaw", "truncated_powerlaw", xmax=1e7)
+
+    result = likelihood_ratio_test(shifted, truncated, n_bootstrap=30)
+
+    assert result.asymptotic_p_value is not None
+    assert 0.0 < result.p_value <= 1.0
+    assert result.favours is None
+    exact = _fits(pure[:2000], "shifted_powerlaw", "truncated_powerlaw", likelihood="exact", xmax=1e7)
+    with pytest.raises(ValueError, match="grouped"):
+        likelihood_ratio_test(*exact, n_bootstrap=5)
+
+
+def test_vuong_refuses_nested_families_and_the_lrt_warns_when_the_general_fit_is_worse():
+    values = np.random.default_rng(2).lognormal(1.0, 0.8, size=3000)
+    powerlaw, shifted = _fits(values, "powerlaw", "shifted_powerlaw")
+    with pytest.raises(ValueError, match="nested"):
+        vuong_test(powerlaw, shifted)
+    capped = _fits(values, "truncated_powerlaw", bounds={"kappa": (0.5, 0.6)})[0]
+    with pytest.warns(UserWarning, match="lower likelihood"):
+        likelihood_ratio_test(_fits(values, "shifted_powerlaw")[0], capped)

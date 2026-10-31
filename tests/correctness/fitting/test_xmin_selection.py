@@ -6,6 +6,8 @@ import numpy as np
 import pytest
 from fastmob.measures.fitting import select_xmin
 
+pytestmark = pytest.mark.filterwarnings("ignore:xmax was not given")
+
 
 def test_select_xmin_finds_the_start_of_a_power_law_tail():
     rng = np.random.default_rng(4)
@@ -29,3 +31,11 @@ def test_select_xmin_uses_given_candidates_and_checks_arguments():
         select_xmin(values, min_values=5)
     with pytest.raises(ValueError, match="Too few"):
         select_xmin(values[:50], min_values=100)
+
+
+def test_select_xmin_rejects_xmin_ignores_n_gof_and_reports_bounds():
+    values = np.random.default_rng(1).pareto(1.5, size=2000) + 1.0
+    with pytest.raises(ValueError, match="candidates"):
+        select_xmin(values, xmin=2.0)
+    table = select_xmin(values, "powerlaw", n_candidates=4, n_gof=50)
+    assert "at_bound" in table.column_names

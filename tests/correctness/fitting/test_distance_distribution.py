@@ -10,6 +10,8 @@ from fastmob.measures.fitting import (
     fit_distance_distribution,
 )
 
+pytestmark = pytest.mark.filterwarnings("ignore:xmax was not given")
+
 
 def _truncated_powerlaw(n, r0=1.5, beta=1.75, kappa=400.0, seed=0):
     rng = np.random.default_rng(seed)
@@ -189,8 +191,6 @@ def test_profile_interval_is_closed_for_an_identified_cutoff_and_open_for_a_miss
     assert none.table.num_rows > 5
     with pytest.raises(ValueError, match="not a parameter"):
         cutoff.profile("sigma")
-    with pytest.raises(ValueError, match="n_points"):
-        cutoff.profile("kappa", n_points=2)
 
 
 def test_exact_likelihood_agrees_with_the_grouped_fit_and_resamples_groups():
@@ -211,3 +211,43 @@ def test_exact_likelihood_agrees_with_the_grouped_fit_and_resamples_groups():
         fit_distance_distribution(values, "lognormal", likelihood="exact", n_gof=5)
     with pytest.raises(ValueError, match="likelihood"):
         fit_distance_distribution(values, "lognormal", likelihood="other")
+
+
+def test_profile_interval_covers_the_truth_at_the_nominal_rate_without_a_grid():
+    covered = 0
+    runs = 120
+    for seed in range(runs):
+        values = np.random.default_rng(100 + seed).exponential(50.0, size=1000)
+        fit = fit_distance_distribution(values, "exponential", xmin=0.5, xmax=2000.0, n_bootstrap=0)
+        interval = fit.profile("kappa")
+        covered += interval.low <= 50.0 <= interval.high
+    assert 0.88 <= covered / runs <= 1.0
+
+
+def test_profile_reports_nuisance_parameters_that_reach_a_bound():
+    values = np.random.default_rng(5).exponential(1000.0, size=300) + 1.0
+    fit = fit_distance_distribution(values, "truncated_powerlaw", xmin=1.0, xmax=1e5, n_bootstrap=0)
+    interval = fit.profile("kappa")
+    assert isinstance(interval.nuisance_at_bound, tuple)
+    assert fit.profile("kappa", confidence=0.5).high - fit.profile("kappa", confidence=0.5).low < (
+        interval.high - interval.low
+    )
+
+
+def test_legitimate_limits_are_not_degenerate_but_artificial_edges_are():
+    rng = np.random.default_rng(3)
+    pure = rng.pareto(1.6, size=20_000) + 1.0
+    cutoff_free = fit_distance_distribution(pure, "truncated_powerlaw", n_bootstrap=0, xmax=1e7)
+    assert "kappa" in cutoff_free.limits and "kappa" not in cutoff_free.degenerate
+
+    steep = np.random.default_rng(5).exponential(1000.0, size=300) + 1.0
+    shifted = fit_distance_distribution(steep, "shifted_powerlaw", xmin=1.0, n_bootstrap=0)
+    assert "beta" in shifted.degenerate
+    table = compare_distance_distributions(steep, xmin=1.0, xmax=1e5).to_pydict()
+    assert table["degenerate"][table["family"].index("shifted_powerlaw")] is True
+
+
+def test_a_missing_xmax_warns_for_families_with_a_cutoff():
+    values = _truncated_powerlaw(2000)
+    with pytest.warns(UserWarning, match="xmax was not given"):
+        fit_distance_distribution(values, "truncated_powerlaw", n_bootstrap=0)
