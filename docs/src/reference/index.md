@@ -10,6 +10,7 @@ Every public function and class in Fastkit-Mobility, grouped by module. Each mod
 | [Preprocessing](preprocessing.md)<br><span class="muted">Filtering, segmentation, staypoints, H3 and OD preparation.</span><br>[`filter`](preprocessing.md#fastmob.preprocessing.filter), [`segment`](preprocessing.md#fastmob.preprocessing.segment), [`stay_locations`](preprocessing.md#fastmob.preprocessing.stay_locations) |
 | [Trajectory](trajectory.md)<br><span class="muted">Interpolation, smoothing, shape clustering and comparison.</span><br>[`interpolate`](trajectory.md#fastmob.trajectory.interpolate), [`smooth`](trajectory.md#fastmob.trajectory.smooth) |
 | [Tessellation](tessellation.md)<br><span class="muted">Square, H3 and Voronoi tilers.</span><br>[`TessellationTilers`](tessellation.md#fastmob.tessellation.tilers.TessellationTilers) |
+| [Utilities](utils.md)<br><span class="muted">Straight-line geographic distances.</span><br>[`haversine`](utils.md#fastmob.utils.haversine) |
 | [Network](network.md)<br><span class="muted">Road and rail graphs, routing, snapping and map matching.</span><br>[`match_trajectory`](network.md#fastmob.network.match_trajectory), [`build_road_graph`](network.md#fastmob.network.build_road_graph) |
 | [Integration](integration.md)<br><span class="muted">Joins with points of interest and events.</span><br>[`join_with_pois`](integration.md#fastmob.integration.join_with_pois), [`join_with_events`](integration.md#fastmob.integration.join_with_events) |
 | [Measures](measures/index.md)<br><span class="muted">Individual, collective, contact-network and evaluation metrics.</span><br>[`radius_of_gyration`](measures/individual.md#fastmob.measures.individual.radius_of_gyration), [`jump_lengths`](measures/individual.md#fastmob.measures.individual.jump_lengths) |
@@ -27,6 +28,7 @@ Every public function and class in Fastkit-Mobility, grouped by module. Each mod
 | Raw GPS or check-in points | [Data structures](data-structures.md), then [preprocessing](preprocessing.md) |
 | A cleaned trajectory | [Trajectory](trajectory.md) and [individual measures](measures/individual.md) |
 | Visits, stays, or trips | [Collective measures](measures/collective.md) |
+| Coordinate pairs for straight-line distance | [Haversine distance](utils.md) |
 | A road/rail graph or GPS trace | [Network](network.md) |
 | A model output to compare | [Evaluation](measures/evaluation.md) |
 | Trajectories to assess for privacy risk | [Privacy](privacy.md) |

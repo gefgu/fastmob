@@ -360,5 +360,13 @@
     "fit_daily_location_lognormal"
    ]
   ]
+ ],
+ "utils.md": [
+  [
+   "Geographic distance",
+   [
+    "haversine"
+   ]
+  ]
  ]
 }

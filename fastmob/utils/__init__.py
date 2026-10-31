@@ -1,4 +1,5 @@
-"""Private shared implementation helpers.
+"""Utilities for working with mobility data."""
 
-Public utilities live with the feature they support.
-"""
+from ._distance import haversine
+
+__all__ = ["haversine"]

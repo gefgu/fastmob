@@ -59,6 +59,45 @@ pip install statsmodels
 
 ## Flow Models
 
+### Fitting flows with custom column names
+
+`Gravity.fit` accepts a `FlowDataFrame` with an attached `Locations` catalogue,
+or a dataframe or `FlowDataFrame` with the catalogue passed as `locations=`.
+The origin and destination values must match its location IDs, and the catalogue
+must contain the selected relevance column (population or another measure of
+location size). For an existing pandas table `flows_df` with columns `Area_O`,
+`Area_D`, and `Weight_Day`, and a prepared `locations` catalogue:
+
+```python
+from fastmob.core import FlowDataFrame
+from fastmob.models import Gravity
+
+flows = FlowDataFrame(flows_df, locations=locations)
+model = Gravity()
+model.fit(
+    flows,
+    origin_col="Area_O",
+    destination_col="Area_D",
+    flow_col="Weight_Day",
+    relevance_column="relevance",
+)
+```
+
+For an OD table without an attached catalogue, pass it directly:
+
+```python
+model.fit(flows_df, locations=locations, origin_col="Area_O",
+          destination_col="Area_D", flow_col="Weight_Day")
+```
+
+An explicit `locations` argument takes precedence over an attached catalogue.
+
+The default names are `origin`, `destination`, and `flow`. Alternatively,
+`FlowDataFrame` can rename input columns to those defaults using its `origin`,
+`destination`, and `flow` constructor arguments; in that case use the default
+names when fitting. See the [worked example](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model)
+for preparing locations and interpreting a fit.
+
 ::: fastmob.models.gravity.Gravity
     options:
       show_source: false

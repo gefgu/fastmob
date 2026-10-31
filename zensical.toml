@@ -77,6 +77,7 @@ nav = [
     { "Trajectory" = "reference/trajectory.md" },
     { "Tessellation" = "reference/tessellation.md" },
     { "Network" = "reference/network.md" },
+    { "Utilities" = "reference/utils.md" },
     { "Integration" = "reference/integration.md" },
     { "Measures" = [
       { "Measures overview" = "reference/measures/index.md" },
