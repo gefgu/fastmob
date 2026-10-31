@@ -1,3 +1,11 @@
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
+from importlib.metadata import version as _distribution_version
+
+try:
+    __version__ = _distribution_version("fastmob")
+except _PackageNotFoundError:
+    __version__ = "0+unknown"
+
 from . import data, io, privacy, trajectory, utils
 from .core import FlowDataFrame, Locations, Positionfixes, Staypoints, Tours, TrajDataFrame, Triplegs, Trips
 from .measures import (
