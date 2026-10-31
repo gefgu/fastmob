@@ -17,7 +17,7 @@ import pytest
 from fastmob import Locations, Positionfixes, Staypoints, Triplegs
 
 
-@pytest.mark.parametrize("longitude", ["center_lon", "center_longitude", "lng", "lon", "longitude"])
+@pytest.mark.parametrize("longitude", ["center_lon", "center_longitude", "lng", "lon", "longitude", "long"])
 def test_locations_detects_longitude_alias(longitude):
     frame = pd.DataFrame({"location_id": [1], "center_lat": [2.0], longitude: [3.0]})
     locations = Locations(frame)

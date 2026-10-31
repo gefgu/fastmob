@@ -31,7 +31,7 @@ external source.
 
 These are the default column names; pass `location_id_col`, `center_lat_col`,
 or `center_lng_col` to use other names. If `center_lng` is absent, longitude
-is detected from `center_lon`, `center_longitude`, `lng`, `lon`, or `longitude`,
+is detected from `center_lon`, `center_longitude`, `lng`, `lon`, `longitude`, or `long`,
 in that order. The source column name and data are preserved.
 
 ```python
