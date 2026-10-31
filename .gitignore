@@ -104,6 +104,9 @@ tests/shared/skmob_reference/*
 
 graphify-out/
 
+# Local AI audit run records; prompt files remain versioned.
+/AI/**/runs/
+
 # Generated documentation pages and output assets from docs notebooks.
 docs/src/learn/compare-to-mobility-laws.md
 docs/src/learn/compare-to-mobility-laws_files/
@@ -143,3 +146,7 @@ docs/src/learn/occupancy-and-phone-records.md
 docs/src/learn/occupancy-and-phone-records_files/
 docs/src/learn/visualize-results.md
 docs/src/learn/visualize-results_files/
+docs/src/learn/validate-against-census-flows.md
+docs/src/learn/validate-against-census-flows_files/
+docs/src/learn/validate-mobility-geolife.md
+docs/src/learn/validate-mobility-geolife_files/

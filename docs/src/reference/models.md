@@ -7,6 +7,8 @@
 | --- | --- | --- |
 | [`Gravity`](#fastmob.models.gravity.Gravity) | Gravity model: flows between places from their sizes and the distance between them. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
 | [`Gravity.fit`](#fastmob.models.gravity.Gravity.fit) | Fit the Gravity model parameters to observed flows via Poisson regression. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
+| [`Gravity.fit_statistics`](#fastmob.models.gravity.Gravity.fit_statistics) | Goodness-of-fit statistics of the last fit. | [The distance decay, with a confidence interval](../learn/validate-against-census-flows.md#the-distance-decay-with-a-confidence-interval) |
+| [`Gravity.fit_summary`](#fastmob.models.gravity.Gravity.fit_summary) | The fitted parameters with standard errors, confidence intervals and p-values. | [The distance decay, with a confidence interval](../learn/validate-against-census-flows.md#the-distance-decay-with-a-confidence-interval) |
 | [`Gravity.generate`](#fastmob.models.gravity.Gravity.generate) | Generate synthetic flows with the Gravity model. | [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) |
 | [`Radiation`](#fastmob.models.radiation.Radiation) | Radiation model: flows between places from their populations and the opportunities in between. | [Flows](../learn/generate-mobility.md#flows-gravity-and-radiation-models) |
 | [`Radiation.generate`](#fastmob.models.radiation.Radiation.generate) | Generate synthetic flows with the Radiation model. | [Flows](../learn/generate-mobility.md#flows-gravity-and-radiation-models) |
@@ -100,7 +102,7 @@ for preparing locations and interpreting a fit.
     options:
       show_source: false
 
-<!-- example-link -->**Worked example:** [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model)
+<!-- example-link -->**Worked example:** [Fit and run a gravity model](../learn/fit-and-evaluate.md#fit-and-run-a-gravity-model) · [The distance decay, with a confidence interval](../learn/validate-against-census-flows.md#the-distance-decay-with-a-confidence-interval)
 
 ---
 

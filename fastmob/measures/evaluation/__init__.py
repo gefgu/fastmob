@@ -8,6 +8,7 @@ grouping around these primitives.
 
 from .compare import ComparisonResult, compare_to
 from .cpc import common_part_of_commuters, common_part_of_commuters_distance, common_part_of_links
+from .flow_models import compare_flow_models
 from .information import information_gain, kullback_leibler_divergence
 from .metrics import jensen_shannon_divergence, wasserstein_distance
 from .regression import max_error, mse, nrmse, r_squared, rmse
@@ -18,6 +19,7 @@ __all__ = [
     "common_part_of_commuters",
     "common_part_of_commuters_distance",
     "common_part_of_links",
+    "compare_flow_models",
     "compare_to",
     "information_gain",
     "jensen_shannon_divergence",

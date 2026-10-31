@@ -15,9 +15,9 @@ def test_network_fetch_explains_how_to_install_duckdb(monkeypatch):
         fetch_road_network(0.0, 0.0, 1.0, 1.0, "2026-05-20.0")
 
 
-def test_gravity_fit_explains_how_to_install_statsmodels(monkeypatch):
+def test_globally_constrained_gravity_fit_explains_how_to_install_statsmodels(monkeypatch):
     from fastmob.models.gravity import Gravity
 
     monkeypatch.setitem(sys.modules, "statsmodels", None)
     with pytest.raises(ImportError, match=r"pip install statsmodels"):
-        Gravity().fit(None)
+        Gravity(gravity_type="globally constrained").fit(None)

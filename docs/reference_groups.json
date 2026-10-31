@@ -336,6 +336,31 @@
    ]
   ]
  ],
+ "fitting.md": [
+  [
+   "Distributions of distances",
+   [
+    "fit_distance_distribution",
+    "compare_distance_distributions",
+    "DistributionFit",
+    "ProfileInterval",
+    "select_xmin",
+    "likelihood_ratio_test",
+    "vuong_test",
+    "ModelTest",
+    "fit_values_to_truncated_powerlaw",
+    "log_truncated_powerlaw"
+   ]
+  ],
+  [
+   "Other laws",
+   [
+    "fit_visitation_law",
+    "VisitationLawFit",
+    "fit_daily_location_lognormal"
+   ]
+  ]
+ ],
  "utils.md": [
   [
    "Geographic distance",

@@ -49,6 +49,9 @@ Guides for mobility researchers, grouped by what you want to do. Start at chapte
 *Which law or model describes my data, how well, and how identifiable are the people in it?*
 
 - [**Compare your data to mobility laws**](compare-to-mobility-laws.md): notebook, Brightkite. Jump lengths, the visitation law and daily places.
+- [**How the fits work**](fitting-methods.md): concept page. The estimators behind the distance and gravity fits, their uncertainty and what to report.
+- [**Validate against census flows**](validate-against-census-flows.md): notebook, synthetic reference table and Brightkite. Home-to-work flows from trajectories, expansion weights, gravity distance decay with a confidence interval, gravity against radiation.
+- [**Validate mobility with GeoLife**](validate-mobility-geolife.md): notebook, GeoLife GPS tracks. The full cycle from raw tracks to a distance law with confidence intervals, a gravity distance-decay parameter, and a held-out gravity against radiation comparison.
 - [**Generate mobility with models**](generate-mobility.md): notebook, synthetic data. Exploration and return models, diaries, social ties, gravity and radiation flows.
 - [**Fit and compare distributions**](fit-and-evaluate.md): notebook, Brightkite. Error, information, distribution and common-part metrics.
 - [**Privacy risk of trajectories**](privacy-risk.md): notebook, Brightkite. Re-identification risk under eight attacker models.

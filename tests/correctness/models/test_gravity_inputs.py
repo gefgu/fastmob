@@ -93,5 +93,3 @@ def test_fit_accepts_duck_typed_flow_wrapper_and_dataframe_with_df_column():
     native.fit(table, locations=locations)
     assert wrapped.deterrence_func_args == pytest.approx(expected.deterrence_func_args)
     assert native.deterrence_func_args == pytest.approx(expected.deterrence_func_args)
-
-

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import math
+import warnings
+
 import narwhals as nw
 import numpy as np
 import pyarrow as pa
@@ -40,6 +43,147 @@ def ci(i, number_locs):
     return c
 
 
+class _PoissonResults:
+    """The few attributes of a statsmodels GLM result that `Gravity` reads."""
+
+    def __init__(self, **fields):
+        self.__dict__.update(fields)
+
+    def conf_int(self):
+        return self._interval
+
+
+_COV_TYPES = ("nonrobust", "HC0", "HC1")
+
+
+def _resolve_cov_type(robust, cov_type):
+    """The covariance estimator to use: ``cov_type`` when given, else HC0 (robust) or the model-based one."""
+    if cov_type is None:
+        return "HC0" if robust else "nonrobust"
+    if cov_type not in _COV_TYPES:
+        raise ValueError(f"cov_type must be one of {_COV_TYPES} or None, got {cov_type!r}")
+    return cov_type
+
+
+def _concentrated_poisson(design, response, origin, robust):
+    """Poisson regression with one free level per origin, without building the origin dummies.
+
+    For a log-linear Poisson model with an origin effect, the effect has a closed form given the other
+    coefficients, ``exp(alpha_i) = O_i / sum_j exp(x_ij b)``, where ``O_i`` is the total flow of origin ``i``. The
+    remaining coefficients maximise the concentrated (multinomial) likelihood, found here by Newton's method
+    on arrays of one row per pair. The estimates and the heteroskedasticity-robust (HC0) errors equal those of the
+    full Poisson regression on origin dummies, which needs memory growing with the cube of the number of places.
+    ``robust`` is True or False, or the name of the covariance estimator (``"nonrobust"``, ``"HC0"`` or ``"HC1"``;
+    HC1 scales HC0 by ``n / (n - k)`` with ``k`` counting the origin levels, as the regression on dummies does).
+    """
+    cov_type = _resolve_cov_type(robust, None) if isinstance(robust, bool) else _resolve_cov_type(True, robust)
+    order = np.argsort(origin, kind="stable")
+    x, y, o = design[order], response[order], origin[order]
+    _, start, counts = np.unique(o, return_index=True, return_counts=True)
+    totals = np.add.reduceat(y, start)
+    keep = np.repeat(totals > 0, counts)
+    if not keep.all():  # an origin whose observed flows are all zero carries no information
+        x, y, o = x[keep], y[keep], o[keep]
+        _, start, counts = np.unique(o, return_index=True, return_counts=True)
+        totals = np.add.reduceat(y, start)
+    k = x.shape[1]
+    repeat_totals = np.repeat(totals, counts)
+
+    def shares(beta):
+        eta = x @ beta
+        top = np.maximum.reduceat(eta, start)
+        e = np.exp(eta - np.repeat(top, counts))
+        norm = np.add.reduceat(e, start)
+        return eta, e / np.repeat(norm, counts), top + np.log(norm)
+
+    def log_likelihood(beta):
+        eta, _, log_norm = shares(beta)
+        return float(y @ eta - totals @ log_norm)
+
+    beta = np.zeros(k)
+    current = log_likelihood(beta)
+    for _ in range(200):
+        _, p, _ = shares(beta)
+        mean = np.add.reduceat(p[:, None] * x, start) if k else None
+        centered = x - np.repeat(mean, counts, axis=0)
+        gradient = x.T @ y - totals @ mean
+        information = (centered * (repeat_totals * p)[:, None]).T @ centered
+        try:
+            step = np.linalg.solve(information, gradient)
+        except np.linalg.LinAlgError as exc:
+            raise ValueError(
+                "The gravity design matrix is rank-deficient: too few distinct origins or distances to fit"
+            ) from exc
+        scale = 1.0
+        while scale > 1e-8 and log_likelihood(beta + scale * step) < current - 1e-12:
+            scale /= 2.0
+        beta = beta + scale * step
+        new = log_likelihood(beta)
+        done = abs(new - current) < 1e-12 * (1.0 + abs(new)) and np.abs(scale * step).max() < 1e-9
+        current = new
+        if done:
+            break
+
+    _, p, _ = shares(beta)
+    mu = repeat_totals * p
+    mean = np.add.reduceat(p[:, None] * x, start)
+    centered = x - np.repeat(mean, counts, axis=0)
+    information = (centered * mu[:, None]).T @ centered
+    inverse = np.linalg.inv(information)
+    if cov_type == "nonrobust":
+        covariance = inverse
+    else:
+        scores = centered * (y - mu)[:, None]
+        covariance = inverse @ (scores.T @ scores) @ inverse
+        if cov_type == "HC1":
+            covariance = covariance * len(y) / (len(y) - k - len(totals))
+    bse = np.sqrt(np.diag(covariance))
+    z = beta / bse
+    pvalues = np.array([math.erfc(abs(v) / math.sqrt(2.0)) for v in z])
+    interval = np.column_stack([beta - 1.959964 * bse, beta + 1.959964 * bse])
+
+    def deviance(fitted):
+        positive = y > 0
+        term = np.zeros_like(y)
+        term[positive] = y[positive] * np.log(y[positive] / fitted[positive])
+        return float(2.0 * np.sum(term - (y - fitted)))
+
+    unique, inverse_index = np.unique(y, return_inverse=True)
+    log_factorial = np.array([math.lgamma(v + 1.0) for v in unique])[inverse_index]
+    llf = float(np.sum(y * np.log(mu) - mu - log_factorial))
+    return _PoissonResults(
+        params=beta,
+        bse=bse,
+        pvalues=pvalues,
+        _interval=interval,
+        deviance=deviance(mu),
+        null_deviance=deviance(np.full_like(y, y.mean())),
+        nobs=len(y),
+        llf=llf,
+        pearson_chi2=float(np.sum((y - mu) ** 2 / mu)),
+        df_resid=len(y) - k - len(totals),
+    )
+
+
+def _scaled(results, factor):
+    """The results with the covariance multiplied by ``factor`` (the small-sample correction of HC1)."""
+    bse = np.asarray(results.bse) * math.sqrt(factor)
+    params = np.asarray(results.params)
+    z = params / bse
+    return _PoissonResults(
+        params=params,
+        bse=bse,
+        pvalues=np.array([math.erfc(abs(v) / math.sqrt(2.0)) for v in z]),
+        _interval=np.column_stack([params - 1.959964 * bse, params + 1.959964 * bse]),
+        deviance=results.deviance,
+        null_deviance=results.null_deviance,
+        nobs=results.nobs,
+        llf=results.llf,
+        pearson_chi2=results.pearson_chi2,
+        df_resid=results.df_resid,
+    )
+
+
 class Gravity:
     """Gravity model: flows between places from their sizes and the distance between them.
 
@@ -69,12 +213,12 @@ class Gravity:
 
         T_{ij} = O_i \\frac{m_j f(r_{ij})}{\\sum_k m_k f(r_{ik})}.
 
-    **Globally constrained variant.** Both origin and destination totals are fixed via
-    balancing factors :math:`K_i` and :math:`L_j`:
+    **Globally constrained variant.** Only the total flow of the whole system is fixed, through a
+    single constant :math:`K`:
 
     .. math::
 
-        T_{ij} = K_i O_i L_j D_j f(r_{ij}).
+        T_{ij} = K m_i^{a} m_j^{b} f(r_{ij}), \\qquad \\sum_{ij} T_{ij} = \\sum_i O_i.
 
     Parameters
     ----------
@@ -114,15 +258,13 @@ class Gravity:
 
     Notes
     -----
-    ``spatial_tessellation`` accepts any pandas-compatible eager dataframe. It must
-    contain a ``tile_id`` column (or whichever name is passed as ``tile_id_column``)
-    and either a ``geometry`` column (GeoPandas GeoDataFrame) or explicit ``lat`` /
-    ``lng`` columns from which tile centroids are derived.
+    The places are given as a ``Locations`` catalogue (``Locations.from_tessellation`` builds one from a table with
+    a tile id, latitude, longitude, a relevance column and, to generate flows, a total outflow column).
 
     Examples
     --------
     >>> import pandas as pd
-    >>> import numpy as np
+    >>> from fastmob.core import Locations
     >>> from fastmob.models import Gravity
     >>> tessellation = pd.DataFrame({
     ...     "tile_id": [0, 1, 2, 3],
@@ -131,14 +273,13 @@ class Gravity:
     ...     "relevance": [1_000_000, 2_700_000, 880_000, 1_600_000],
     ...     "tot_outflow": [100_000, 250_000, 90_000, 150_000],
     ... })
-    >>> np.random.seed(0)
+    >>> locations = Locations.from_tessellation(tessellation, tile_id_col="tile_id", lat_col="lat", lng_col="lng")
     >>> gravity = Gravity(gravity_type="singly constrained")
     >>> print(gravity)
     Gravity(name="Gravity model", deterrence_func_type="power_law", deterrence_func_args=[-2.0], origin_exp=1.0, destination_exp=1.0, gravity_type="singly constrained")
-    >>> fdf = gravity.generate(tessellation, tile_id_column="tile_id",
-    ...                        tot_outflows_column="tot_outflow",
-    ...                        relevance_column="relevance", out_format="flows")
-    >>> print(fdf.head())
+    >>> flows = gravity.generate(locations, out_format="flows")
+    >>> int(round(flows.to_pandas()["flow"].sum()))
+    590000
 
     References
     ----------
@@ -252,7 +393,7 @@ class Gravity:
         ------
         KeyError
             If ``out_format`` requires a total-outflow column but it is absent from
-            ``spatial_tessellation``.
+            ``locations``.
         """
         if not isinstance(locations, Locations):
             raise TypeError(
@@ -315,7 +456,21 @@ class Gravity:
         ).to_native()
         return FlowDataFrame(frame, locations=locations, tile_id=locations.location_id_col)
 
-    def fit(self, flow_df, relevance_column=RELEVANCE, *, origin_col="origin", destination_col="destination", flow_col=FLOW, locations=None):
+    def fit(
+        self,
+        flow_df,
+        relevance_column=RELEVANCE,
+        robust=True,
+        include_zeros=True,
+        *,
+        origin_col="origin",
+        destination_col="destination",
+        flow_col=FLOW,
+        locations=None,
+        origin_relevance_column=None,
+        destination_relevance_column=None,
+        cov_type=None,
+    ):
         """Fit the Gravity model parameters to observed flows via Poisson regression.
 
         Uses a Generalised Linear Model (GLM) with a Poisson family and log link to
@@ -326,42 +481,134 @@ class Gravity:
         Parameters
         ----------
         flow_df : FlowDataFrame or dataframe
-            Observed flows, with a locations catalogue attached or supplied via ``locations``.
+            Observed flows. Supply a ``Locations`` catalogue via ``locations`` or on the ``FlowDataFrame``
+            (as on the one returned by ``Gravity.generate()``). The table must contain ``origin``,
+            ``destination`` and ``flow`` columns by default. List only the pairs with flow: the pairs without flow are
+            added as zeros (see ``include_zeros``).
         relevance_column : str, optional
-            Name of the column in the locations catalogue that holds the location
-            relevance (e.g. population). The default is ``"relevance"``.
+            Name of the column of the locations catalogue that holds the location
+            relevance (e.g. population). It is used for the origin and the destination unless
+            ``origin_relevance_column`` or ``destination_relevance_column`` is given. The default is
+            ``"relevance"``.
+        robust : bool, optional
+            Report heteroskedasticity-robust (sandwich) standard errors and confidence intervals. Real flows are
+            usually overdispersed relative to the Poisson model, which makes the model-based errors too small;
+            the point estimates are the same either way. Default True. ``cov_type`` overrides it.
+        include_zeros : bool, optional
+            Add every pair of locations that is missing from ``flow_df`` as a flow of 0. Tables of observed flows,
+            such as the output of `trajectory_to_od`, list only the pairs with flow, and fitting those alone
+            biases the distance coefficient towards zero because the long pairs that nobody travels are missing
+            (Santos Silva and Tenreyro, 2006). The added pairs are the off-diagonal pairs of the catalogue whose
+            origin has at least one observed flow. The singly constrained fit needs memory for one row per pair (the square
+            of the number of locations: about 400 MB and 10 seconds for 1,000 locations); pass False only when the table already lists
+            every pair, as complete matrices do.
+            Default True.
         origin_col : str, optional
-            Origin column in the flow table. Default ``"origin"``.
+            Name of the origin column in the flow table. Default ``"origin"``.
         destination_col : str, optional
-            Destination column in the flow table. Default ``"destination"``.
+            Name of the destination column in the flow table. Default ``"destination"``.
         flow_col : str, optional
-            Flow column in the flow table. Default ``"flow"``.
+            Name of the flow column in the flow table. Default ``"flow"``.
         locations : Locations, optional
-            Catalogue to use; overrides the attached catalogue when supplied.
+            Location catalogue to use for fitting. When supplied, it takes precedence over a catalogue
+            attached to ``flow_df``. Required for a native dataframe or a flow object without a catalogue.
+        origin_relevance_column : str, optional
+            Column of the catalogue with the size of the origin (the outflow side, for example residents or
+            departures). Default: ``relevance_column``. Only the globally constrained model has an origin size
+            term (``origin_exp``); the singly constrained model absorbs the origin in one level per origin, so
+            naming a column there is an error.
+        destination_relevance_column : str, optional
+            Column of the catalogue with the size of the destination (the inflow side, for example jobs or
+            arrivals). Default: ``relevance_column``.
+        cov_type : {"nonrobust", "HC0", "HC1"}, optional
+            Covariance estimator of the standard errors. ``"nonrobust"`` is the model-based Poisson one, ``"HC0"``
+            the sandwich estimator and ``"HC1"`` the same with the small-sample factor ``n / (n - k)``, where ``n``
+            is the number of flows and ``k`` the number of fitted coefficients (including one level for each origin
+            in the singly constrained model), as in statsmodels. The estimates do not depend on it. Default:
+            ``"HC0"`` when ``robust`` is True, otherwise ``"nonrobust"``.
+
+        Raises
+        ------
+        ImportError
+            If statsmodels is not installed (only the globally constrained variant needs it).
+        AttributeError
+            If no ``locations`` catalogue is supplied or attached to ``flow_df``.
+        TypeError
+            If ``locations`` is not a ``Locations`` catalogue.
+        KeyError
+            If a selected flow column is missing.
+        ValueError
+            If the design matrix is rank-deficient (too few distinct origins or distances), ``cov_type`` is not
+            one of the options, or ``origin_relevance_column`` is given for the singly constrained model.
 
         Notes
         -----
         Modifies ``deterrence_func_args``, ``destination_exp``, and (for the globally
         constrained variant) ``origin_exp`` in-place.
 
+        After fitting, `fit_summary` returns the estimates with standard errors, 95% confidence intervals and
+        p-values, and `fit_statistics` the number of flows used, the log-likelihood, the deviance, the
+        pseudo R-squared and the dispersion. For ``"power_law"`` the distance coefficient is the exponent
+        ``gamma`` of ``flow ∝ distance^gamma`` (negative: flows fall with distance); for ``"exponential"``
+        the table reports the decay rate ``lambda`` of ``exp(-lambda * distance)`` in km^-1 (positive: flows fall with
+        distance). Relevance that is itself made of the flows (for example check-ins counted in the destination)
+        makes the destination exponent partly circular; prefer an independent size such as population or jobs.
+
         References
         ----------
-        .. [FM1982] Flowerdew, R. & Murray, A. (1982). A method of fitting the gravity
-           model based on the Poisson distribution. *Journal of Regional Science*,
-           22(2), 191–202.
+        - [FM1982] Flowerdew, R. & Murray, A. (1982). A method of fitting the gravity model based on the Poisson
+          distribution. *Journal of Regional Science*, 22(2), 191–202.
+        - [ST2006] Santos Silva, J. M. C. & Tenreyro, S. (2006). The log of gravity. *The Review of Economics and
+          Statistics*, 88(4), 641–658.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from fastmob.core import Locations
+        >>> from fastmob.models import Gravity
+        >>> places = pd.DataFrame({
+        ...     "tile_id": range(6),
+        ...     "lat": [45.0, 45.1, 45.3, 45.2, 45.6, 45.5],
+        ...     "lng": [7.0, 7.4, 7.1, 7.9, 7.6, 7.2],
+        ...     "relevance": [9_000, 7_000, 5_000, 3_000, 8_000, 6_000],
+        ...     "tot_outflow": [60_000, 50_000, 40_000, 30_000, 70_000, 45_000],
+        ... })
+        >>> locations = Locations.from_tessellation(places, tile_id_col="tile_id", lat_col="lat", lng_col="lng")
+        >>> observed = Gravity(deterrence_func_args=[-2.0]).generate(locations, out_format="flows")
+        >>> model = Gravity()
+        >>> model.fit(observed)
+        >>> round(model.deterrence_func_args[0], 2)
+        -2.0
+        >>> model.fit_summary().column("parameter").to_pylist()
+        ['destination_exp', 'distance_coefficient']
         """
-        try:
-            import statsmodels as sm
-            from statsmodels.genmod.generalized_linear_model import GLM
-        except ImportError as exc:
-            raise ImportError("Gravity.fit requires statsmodels. Install it with `pip install statsmodels`.") from exc
+        singly = self._gravity_type != "globally constrained"
+        cov = _resolve_cov_type(robust, cov_type)
+        if singly and origin_relevance_column is not None:
+            raise ValueError(
+                "origin_relevance_column has no effect on the singly constrained model, which has one level for "
+                "each origin; use gravity_type='globally constrained' to fit an origin size exponent"
+            )
+        if not singly:
+            try:
+                import statsmodels as sm
+                from statsmodels.genmod.generalized_linear_model import GLM
+            except ImportError as exc:
+                raise ImportError(
+                    "Gravity.fit with the globally constrained variant requires statsmodels. "
+                    "Install it with `pip install statsmodels`."
+                ) from exc
 
         if locations is None:
             locations = getattr(flow_df, "locations", None)
         if locations is None:
-            raise AttributeError("Gravity.fit requires a Locations catalogue: pass locations= or attach one to flow_df.")
+            raise AttributeError(
+                "Gravity.fit requires a Locations catalogue: pass locations= or attach one to flow_df."
+            )
         if not isinstance(locations, Locations):
             raise TypeError("Gravity.fit locations must be a Locations catalogue.")
+        # Try native frames first: pandas exposes columns as attributes, which can
+        # otherwise make a column named ``df`` look like a wrapper's table.
         try:
             frame = nw.from_native(flow_df, eager_only=True)
         except TypeError:
@@ -371,33 +618,157 @@ class Gravity:
             raise KeyError(f"Gravity.fit missing flow columns: {missing}; available columns: {frame.columns}")
         prepared = locations.model_input()
         self.lats_lngs = np.column_stack((np.asarray(prepared.latitudes), np.asarray(prepared.longitudes)))
-        self.weights = np.asarray(prepared.values(relevance_column), dtype=float)
+        self.weights = np.asarray(prepared.values(destination_relevance_column or relevance_column), dtype=float)
+        self.origin_weights = np.asarray(prepared.values(origin_relevance_column or relevance_column), dtype=float)
         self.tileid2index = {tileid: i for i, tileid in enumerate(prepared.location_ids().to_list())}
-        self.X, self.y = [], []
+        self.X, self.y, self._pairs = [], [], []
 
         for flow_example in frame.iter_rows(named=True):
             self._update_training_set(flow_example, origin_col, destination_col, flow_col)
+        if not self._pairs:
+            raise ValueError("flow_df has no usable origin-destination pair to fit")
 
-        poisson_model = GLM(
-            self.y,
-            self.X,
-            family=sm.genmod.families.family.Poisson(
-                link=getattr(sm.genmod.families.links, "Log", sm.genmod.families.links.log)()
-            ),
-        )
-        poisson_results = poisson_model.fit()
-        if self._gravity_type == "globally constrained":
-            self._origin_exp = poisson_results.params[1]
-            self._destination_exp = poisson_results.params[2]
-            self._deterrence_func_args = [poisson_results.params[3]]
-        else:
+        design = np.asarray(self.X, dtype=float)
+        response = np.asarray(self.y, dtype=float)
+        origin = np.asarray([pair[0] for pair in self._pairs])
+        if include_zeros:
+            extra, extra_origin = self._zero_rows()
+            if len(extra):
+                design = np.vstack([design, extra])
+                response = np.concatenate([response, np.zeros(len(extra))])
+                origin = np.concatenate([origin, extra_origin])
+        if singly:
+            results = _concentrated_poisson(design, response, origin, cov)
+            self._store_fit(results, cov)
             self._origin_exp = 1.0
-            self._destination_exp = poisson_results.params[-2]
-            self._deterrence_func_args = [poisson_results.params[-1]]
+            self._destination_exp = results.params[0]
+            self._deterrence_func_args = [results.params[1]]
+        else:
+            if np.linalg.matrix_rank(design) < design.shape[1]:
+                raise ValueError(
+                    "The gravity design matrix is rank-deficient: too few distinct origins or distances to fit"
+                )
+            poisson_model = GLM(
+                response,
+                design,
+                family=sm.genmod.families.family.Poisson(
+                    link=getattr(sm.genmod.families.links, "Log", sm.genmod.families.links.log)()
+                ),
+            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="The design matrix is rank-deficient")
+                results = poisson_model.fit() if cov == "nonrobust" else poisson_model.fit(cov_type="HC0")
+            if cov == "HC1":  # statsmodels' GLM does not apply the n / (n - k) factor itself
+                results = _scaled(results, results.nobs / (results.nobs - len(results.params)))
+            self._store_fit(results, cov)
+            self._origin_exp = results.params[1]
+            self._destination_exp = results.params[2]
+            self._deterrence_func_args = [results.params[3]]
         del self.X
         del self.y
+        del self._pairs
 
-    def _update_training_set(self, flow_example, origin_col="origin", destination_col="destination", flow_col=FLOW):
+    def _zero_rows(self):
+        """Design rows of the pairs with no observed flow, among origins that have at least one."""
+        n = len(self.weights)
+        seen = np.asarray(self._pairs)
+        missing = np.ones((n, n), dtype=bool)
+        missing[seen[:, 0], seen[:, 1]] = False
+        np.fill_diagonal(missing, False)
+        has_flow = np.zeros(n, dtype=bool)
+        has_flow[seen[:, 0]] = True
+        missing &= has_flow[:, None] & (self.weights > 0)[None, :]
+        if self._gravity_type == "globally constrained":
+            missing &= (self.origin_weights > 0)[:, None]
+        origin, destination = np.nonzero(missing)
+        lat1, lng1 = np.radians(self.lats_lngs[origin]).T
+        lat2, lng2 = np.radians(self.lats_lngs[destination]).T
+        a = np.sin((lat2 - lat1) / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin((lng2 - lng1) / 2) ** 2
+        distance = 2.0 * 6371.0088 * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
+        keep = distance > 0
+        origin, destination, distance = origin[keep], destination[keep], distance[keep]
+        distance_term = -distance if self._deterrence_func_type == "exponential" else np.log(distance)
+        destination_term = np.log(self.weights[destination])
+        if self._gravity_type == "globally constrained":
+            return (
+                np.column_stack(
+                    [np.ones(len(origin)), np.log(self.origin_weights[origin]), destination_term, distance_term]
+                ),
+                origin,
+            )
+        return np.column_stack([destination_term, distance_term]), origin
+
+    def _store_fit(self, results, cov_type):
+        """Keep the summary table and the fit statistics of the Poisson regression."""
+        if self._gravity_type == "globally constrained":
+            names, positions = ["intercept", "origin_exp", "destination_exp", "distance_coefficient"], [0, 1, 2, 3]
+        else:
+            last = len(results.params) - 1
+            names, positions = ["destination_exp", "distance_coefficient"], [last - 1, last]
+        interval = np.asarray(results.conf_int())
+        rows = {"parameter": [], "estimate": [], "std_error": [], "ci_low": [], "ci_high": [], "p_value": []}
+        for name, i in zip(names, positions):
+            decay = name == "distance_coefficient" and self._deterrence_func_type == "exponential"
+            low, high = interval[i, 0], interval[i, 1]
+            rows["parameter"].append("distance_decay" if decay else name)
+            rows["estimate"].append(float(results.params[i]))
+            rows["std_error"].append(float(results.bse[i]))
+            rows["ci_low"].append(float(low))
+            rows["ci_high"].append(float(high))
+            rows["p_value"].append(float(results.pvalues[i]))
+        self._fit_summary = pa.table(rows)
+        deviance, null = float(results.deviance), float(results.null_deviance)
+        self._fit_statistics = {
+            "n_observations": int(results.nobs),
+            "log_likelihood": float(results.llf),
+            "deviance": deviance,
+            "pseudo_r_squared": 1.0 - deviance / null if null > 0 else float("nan"),
+            "dispersion": float(results.pearson_chi2 / results.df_resid) if results.df_resid > 0 else float("nan"),
+            "robust_errors": cov_type != "nonrobust",
+            "cov_type": cov_type,
+        }
+
+    def fit_summary(self):
+        """The fitted parameters with standard errors, confidence intervals and p-values.
+
+        Returns
+        -------
+        pyarrow.Table
+            One row per model parameter with ``parameter``, ``estimate``, ``std_error``, ``ci_low``,
+            ``ci_high`` (95%) and ``p_value``. For the exponential deterrence function the distance row is
+            ``distance_decay``, the decay rate lambda of ``exp(-lambda * distance)`` in km^-1; otherwise ``distance_coefficient`` is the exponent of
+            the distance.
+
+        Raises
+        ------
+        RuntimeError
+            If `fit` has not been called.
+        """
+        if not hasattr(self, "_fit_summary"):
+            raise RuntimeError("Call fit() before fit_summary()")
+        return self._fit_summary
+
+    def fit_statistics(self):
+        """Goodness-of-fit statistics of the last fit.
+
+        Returns
+        -------
+        dict
+            ``n_observations`` (flows used), ``log_likelihood``, ``deviance``, ``pseudo_r_squared`` (one minus
+            the ratio of the deviance to the null deviance), ``dispersion`` (Pearson chi-squared per degree of
+            freedom; well above 1 means overdispersion), ``robust_errors`` and ``cov_type`` (the covariance
+            estimator of the standard errors).
+
+        Raises
+        ------
+        RuntimeError
+            If `fit` has not been called.
+        """
+        if not hasattr(self, "_fit_statistics"):
+            raise RuntimeError("Call fit() before fit_statistics()")
+        return self._fit_statistics
+
+    def _update_training_set(self, flow_example, origin_col, destination_col, flow_col):
         id_origin = flow_example[origin_col]
         id_destination = flow_example[destination_col]
         trips = flow_example[flow_col]
@@ -405,21 +776,20 @@ class Gravity:
             return
         try:
             coords_origin = self.lats_lngs[self.tileid2index[id_origin]]
-            weight_origin = self.weights[self.tileid2index[id_origin]]
+            weight_origin = self.origin_weights[self.tileid2index[id_origin]]
             coords_destination = self.lats_lngs[self.tileid2index[id_destination]]
             weight_destination = self.weights[self.tileid2index[id_destination]]
         except KeyError:
             return
-        if weight_destination <= 0:
+        if weight_destination <= 0 or (self._gravity_type == "globally constrained" and weight_origin <= 0):
             return
         dist = float(_core.haversine_km(*coords_origin, *coords_destination))
-        sc_vars = (
-            [np.log(weight_origin)]
-            if self._gravity_type == "globally constrained"
-            else ci(self.tileid2index[id_origin], len(self.tileid2index))
-        )
-        if self._deterrence_func_type == "exponential":
-            self.X += [[1.0] + sc_vars + [np.log(weight_destination), -dist]]
-        else:
-            self.X += [[1.0] + sc_vars + [np.log(weight_destination), np.log(dist)]]
+        if dist <= 0:
+            return
+        distance_term = -dist if self._deterrence_func_type == "exponential" else np.log(dist)
+        if self._gravity_type == "globally constrained":
+            self.X += [[1.0, np.log(weight_origin), np.log(weight_destination), distance_term]]
+        else:  # the origin enters through its own level, see _concentrated_poisson
+            self.X += [[np.log(weight_destination), distance_term]]
         self.y += [float(trips)]
+        self._pairs.append((self.tileid2index[id_origin], self.tileid2index[id_destination]))
