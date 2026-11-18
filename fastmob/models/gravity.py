@@ -577,7 +577,7 @@ class Gravity:
         >>> observed = Gravity(deterrence_func_args=[-2.0]).generate(locations, out_format="flows")
         >>> model = Gravity()
         >>> model.fit(observed)
-        >>> round(model.deterrence_func_args[0], 2)
+        >>> float(round(model.deterrence_func_args[0], 2))
         -2.0
         >>> model.fit_summary().column("parameter").to_pylist()
         ['destination_exp', 'distance_coefficient']
