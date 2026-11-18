@@ -69,11 +69,11 @@ def _key(library: str, backend: str | None) -> str:
     return f"{library}-{backend}" if library == "fastmob" else CSV_NAMES.get(library, library)
 
 
-def load_json(path: Path, op_field: str, order: str | None = None) -> list[Run]:
+def load_json(path: Path, op_field: str, order: str | None = None, label: str = "4M") -> list[Run]:
     results = json.loads(path.read_text())["results"]
     runs = []
     for r in results:
-        if r.get("label") not in (None, "4M") or r.get("library") is None:
+        if r.get("label") not in (None, label) or r.get("library") is None:
             continue
         if order and r.get("order") not in (None, order):
             continue
@@ -165,6 +165,13 @@ def figures(repo: Path) -> list[Figure]:
         key = (rec["operation"], _key(rec["library"], rec.get("backend")))
         if rec["status"] == "timeout" and rec.get("label") == "4M" and key not in seen:
             preprocessing.append(Run(key[0], key[1], None, None, "timeout"))
+    full_geolife = load_json(
+        repo
+        / "benchmarks/preprocessing/results/py312_amd_ryzen_9_9950x3d_32c_geolife_full/raw/preprocessing_benchmarks.json",
+        "operation",
+        "raw",
+        "full",
+    )
     spark = load_json(
         res("sparkmobility", XEON.replace("py313", "py312"), "sparkmobility_benchmarks.json"), "name", "raw"
     )
@@ -215,6 +222,16 @@ def figures(repo: Path) -> list[Figure]:
             jump,
         )
     )
+    # Memory is deliberately not drawn for full GeoLife: the competitors' deltas sit under 1 MB while Polars
+    # reports gigabytes, which reflects the measurement method, not a real ratio.
+    out.append(
+        Figure(
+            "preprocessing-full-speed",
+            "Preprocessing on full GeoLife: execution time",
+            "24.9M GeoLife points (raw input order), AMD Ryzen 9 9950X3D",
+            full_geolife,
+        )
+    )
     out.append(
         Figure(
             "models-speed",
@@ -257,7 +274,7 @@ def _label(run: Run, metric: str, best_other: float | None) -> str:
         return run.status
     text = (
         f"{value:,.0f}{unit}"
-        if metric == "seconds" and value >= 100
+        if value >= 100
         else f"{value:.3g}{unit}"
         if value >= MEMORY_FLOOR_MB or metric == "seconds"
         else f"<{MEMORY_FLOOR_MB:g}{unit}"

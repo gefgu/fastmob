@@ -10,6 +10,8 @@ The numbers are environment-specific, so read them as benchmark evidence for the
 |---|---|---|---|---|
 | [Individual and collective measures](#measures) | scikit-mobility | 4M Brightkite check-ins | Core i7-10700 | individual measures about 190x to 2,700x faster; two scikit-mobility measures time out; slower than scikit-mobility on `visits_per_location` with pandas (1.28 s against 1.18 s); `visits_per_time_unit` only 2.6x faster |
 | [Preprocessing](#preprocessing) | scikit-mobility, MovingPandas, PTRAIL, MoveTK | 4M GeoLife points | Xeon Silver 4316 | see figure; MovingPandas times out on Douglas-Peucker simplification |
+| [Preprocessing, full GeoLife](#preprocessing-on-full-geolife) | scikit-mobility, MovingPandas, PTRAIL | full GeoLife, 24.9M points | Ryzen 9 9950X3D | 40x to 2,800x faster where a competitor finishes; MovingPandas times out on seven operations |
+| [MoveTK C++ suites](#movetk-c-outliers-and-simplification) | MoveTK | 4M GeoLife points | i7-10700, Ryzen 9 9950X3D, Xeon Silver 4316 | Chan-Chin and Imai-Iri cost 16 to 31 s in MoveTK, with no Fastkit-Mobility counterpart |
 | [Staypoints and locations](#staypoints-and-locations) | trackintel | full GeoLife, 24.9M points | Core i7-10700 | staypoints 0.86 s against 316 s |
 | [Next-location model](#next-location-model) | HuMobi | YJMob100K, 111.5M rows | Ryzen 9 9950X3D | fit 5-6x and predict 39-46x faster on YJMob100K; on Brightkite the pandas fit is only 1.7x faster |
 | [Single function, every library](#one-function-every-library) | eight other libraries | 4M Brightkite check-ins | Core i7-10700 | `jump_lengths`; MoveTK ties at small sizes |
@@ -29,7 +31,7 @@ The numbers are environment-specific, so read them as benchmark evidence for the
 | Timing | Average wall-clock time of repeated runs, with data loading excluded. The `jump_lengths` competitors are timed by `hyperfine` with the interpreter start-up and import baseline subtracted. |
 | Memory | Peak resident memory above a load-only baseline. A bar labelled `<0.1 MB` means the operation stayed below what the method can resolve, not that it used no memory. |
 | Input order | The measures figures use time-sorted input; preprocessing and SparkMobility use raw (unsorted) input. |
-| Timeouts | 900 s for measures (3,600 s for `uncorrelated_location_entropy`). Preprocessing used 900 s per case; MovingPandas was rerun with 32,000 s and its Douglas-Peucker simplification still exceeded it. No SparkMobility case timed out. |
+| Timeouts | 900 s for measures (3,600 s for `uncorrelated_location_entropy`). Preprocessing used 900 s per case (10,800 s for the full-GeoLife run); MovingPandas was rerun with 32,000 s and its Douglas-Peucker simplification still exceeded it. No SparkMobility case timed out. |
 | Datasets | Brightkite (about 4M check-ins; scikit-mobility received 3,999,891 rows, Fastkit-Mobility 4,000,000), GeoLife (24.9M points in full) and YJMob100K (111.5M rows in full). |
 
 Memory ratios are shown only when Fastkit-Mobility uses at least 5 MB, because smaller values sit inside the measurement noise. Raw results, scripts and per-library environments are in the [`fastmob_benchmarks`](https://github.com/gefgu/fastmob_benchmarks) repository.
@@ -61,6 +63,28 @@ MoveTK appears for operations it implements. Its Douglas-Peucker time (1.97 s) i
 ![Preprocessing, execution time](../assets/benchmarks/preprocessing-speed.png)
 
 ![Preprocessing, peak extra memory](../assets/benchmarks/preprocessing-memory.png)
+
+## Preprocessing on full GeoLife
+
+The same operations (apart from `cluster`) on the whole GeoLife dataset (24.9M points, six times the 4M slice above) on the Ryzen 9 9950X3D, with raw input order. Fastkit-Mobility finishes every plotted operation in about one to two seconds. `cluster` is not plotted because scikit-mobility errored on it at this size (Fastkit-Mobility took 15.7 s with pandas and 1.8 s with Polars). MovingPandas exceeded the 10,800 s budget on seven operations (Douglas-Peucker, top-down time ratio and max-distance simplification, the angle-change, stop and value-change segmenters, and the Kalman smoother), shown as *timeout*. Memory is not plotted: MovingPandas, PTRAIL and the pandas backend report near-zero deltas while Polars and scikit-mobility report gigabytes, which reflects how each is measured rather than a real ratio, so the figure would mislead.
+
+![Preprocessing on full GeoLife, execution time](../assets/benchmarks/preprocessing-full-speed.png)
+
+## MoveTK (C++): outliers and simplification
+
+MoveTK is a C++ library, so these suites run its compiled example programs and measure them with GNU `time`, averaged over three runs on a 4M-row GeoLife slice (simplification uses coordinates projected to local planar kilometres, with a 0.05 km tolerance). Each MoveTK time includes parsing the CSV, so a parse-only baseline is listed; the preprocessing figure above uses the net value (total minus baseline) for MoveTK. `smart_greedy` is excluded because MoveTK did not finish it at 100k rows within five minutes. Chan-Chin and Imai-Iri have no Fastkit-Mobility counterpart and are close to each other because MoveTK's Imai-Iri uses Chan-Chin to create edges.
+
+| Seconds (total, including parsing) | Core i7-10700 | Ryzen 9 9950X3D | Xeon Silver 4316 |
+|---|---:|---:|---:|
+| Outliers: parse-only baseline | 2.08 | 1.03 | 3.23 |
+| Outliers: greedy | 4.43 | 2.30 | 8.11 |
+| Outliers: Zheng | 4.67 | 2.80 | 7.05 |
+| Simplification: parse-only baseline | 2.17 | 1.10 | 3.33 |
+| Simplification: Douglas-Peucker | 2.95 | 1.90 | 5.29 |
+| Simplification: Chan-Chin | 16.09 | 18.01 | 30.93 |
+| Simplification: Imai-Iri | 16.34 | 18.07 | 29.40 |
+
+For comparison, reading the outliers CSV takes 1.33 s (pandas) and 0.22 s (Polars) on the i7, 0.80 s and 0.20 s on the Ryzen, and 2.41 s and 0.36 s on the Xeon; the simplification CSV takes 1.39 s and 0.21 s, 0.83 s and 0.20 s, and 2.02 s and 0.27 s. On the Xeon, Fastkit-Mobility's algorithm-only times on the preprocessing input are 1.42 s (pandas) and 1.12 s (Polars) for greedy outliers, 1.36 s and 1.12 s for Zheng, and 3.25 s and 2.74 s for Douglas-Peucker. These are measured on a wider file and after loading, so they are not additive with the table; treat them as a scale reference, not an exact ratio. MoveTK's single-threaded programs run faster on the CPUs with the higher per-core clock, which is why the 16-thread i7 beats the 40-thread Xeon.
 
 ## Staypoints and locations
 
