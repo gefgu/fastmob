@@ -9,7 +9,7 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 
 | API | Description | Example |
 | --- | --- | --- |
-| [`fetch_road_network`](#fastmob.network.fetch_road_network) | Fetch and build a car-routable graph from Overture road segments. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
+| [`fetch_road_network`](#fastmob.network.fetch_road_network) | Fetch and build a routable graph from Overture road segments, for cars or for pedestrians. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
 | [`build_road_graph`](#fastmob.network.build_road_graph) | Load a saved road graph from disk, or fetch it from Overture Maps and save it. | [Trajectory and road network](../learn/road-network-analysis.md#trajectory-and-road-network) |
 | [`fetch_rail_network`](#fastmob.network.fetch_rail_network) | Fetch rail segments from Overture Maps and build a bidirectional rail graph. | [Rail network](../learn/road-network-analysis.md#rail-network) |
 | [`build_rail_graph`](#fastmob.network.build_rail_graph) | Load a saved rail graph from disk, or fetch it from Overture Maps and save it. | [Rail network](../learn/road-network-analysis.md#rail-network) |
@@ -36,8 +36,11 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 <!-- api-table:end -->
 
 `fetch_road_network` and `fetch_rail_network` require DuckDB: install it with
-`pip install duckdb`. Snapping uses Fastkit-Mobility's native Rust spatial index and
-has no additional Python dependency.
+`pip install duckdb`. `fetch_road_network` builds a car network by default. Pass `mode="walk"` for a pedestrian network (footways,
+steps, paths and walkable streets, usable both ways at a fixed walking pace), and `classes=`,
+`speed_kmh_by_class=` and `directed=` to change which streets are kept, their speeds and whether one-way
+restrictions apply. Every edge keeps the Overture `segment_id` and the street `name`, so edges can be grouped
+per street or joined back to the segments, and its `length_m` is measured along the street.
 
 For a worked walk-through (build a network, snap points, compare road and
 straight-line distances, accumulate flows, match a GPS trace) see

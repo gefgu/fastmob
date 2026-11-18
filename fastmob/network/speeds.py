@@ -31,3 +31,21 @@ DEFAULT_RAIL_SPEED_KMH_BY_CLASS: dict[str, float] = {
     "monorail": 28.0,
     "standard_gauge": 45.0,
 }
+
+# Pedestrian networks: every class a person can walk on (not motorways or trunk roads) at a fixed walking pace.
+WALKABLE_CLASSES: tuple[str, ...] = (
+    "pedestrian",
+    "footway",
+    "steps",
+    "path",
+    "cycleway",
+    "track",
+    "living_street",
+    "residential",
+    "service",
+    "unclassified",
+    "tertiary",
+    "secondary",
+    "primary",
+)
+DEFAULT_WALK_SPEED_KMH = 5.04  # 1.4 m/s

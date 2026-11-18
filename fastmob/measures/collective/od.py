@@ -101,11 +101,13 @@ def od_matrix(
     else:
         if weight_col not in nw_df.columns:
             raise ValueError(f"Weight column {weight_col!r} not found in trips.")
-        if not nw_df.schema[weight_col].is_numeric():
+        dtype = nw_df.schema[weight_col]
+        if not dtype.is_numeric():
             raise ValueError(f"Weight column {weight_col!r} must have a numeric dtype.")
         weights = nw.col(weight_col).fill_null(0)
-        if nw_df.schema[weight_col].is_float():
-            weights = weights.fill_nan(0)
+        if dtype in (nw.Float32, nw.Float64):
+            # is_nan on the filled column, so null and NaN weights both count as zero.
+            weights = nw.when(weights.is_nan()).then(0.0).otherwise(weights)
         temporary_col = "__fastmob_weight"
         while temporary_col in nw_df.columns:
             temporary_col += "_"

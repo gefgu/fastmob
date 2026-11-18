@@ -13,7 +13,7 @@ authors = [
     { name = "Gustavo Henrique Bruno dos Santos" },
 ]
 dependencies = [
-    "narwhals>=1.0",
+    "narwhals>=2.11",
     "numpy",
     "pyarrow>=14",
 ]

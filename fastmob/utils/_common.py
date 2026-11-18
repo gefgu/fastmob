@@ -47,6 +47,7 @@ DEST_CANDIDATES: list[str] = [
     "area_d",
     "DESTINATION_AREA",
 ]
+FLOW_CANDIDATES: list[str] = ["flow", "count", "flows", "weight", "trips"]
 
 
 def _pick_existing_column(columns: Iterable[str], candidates: list[str]) -> str | None:
