@@ -1,7 +1,7 @@
 """Regenerate every benchmark figure of the docs from the raw benchmark results.
 
 One chart type (horizontal grouped bars, log axis) is drawn from tidy ``Run``
-records, so adding a figure means adding one entry to ``FIGURES``.
+records, so adding a figure means adding one entry to ``figures()``.
 
 Sources live in the sibling ``fastmob_benchmarks`` repository (``--bench-repo``):
 the measures and preprocessing suites write ``*_benchmarks.json`` with one record
@@ -51,6 +51,7 @@ COLLECTIVE = {
 }
 TEXT = "#555555"
 MEMORY_FLOOR_MB = 0.1
+MEMORY_RATIO_MIN_MB = 5.0  # below this, a memory ratio is inside the measurement noise
 
 
 @dataclass(frozen=True)
@@ -101,6 +102,25 @@ def load_privacy_speed(folder: Path) -> list[Run]:
     return runs
 
 
+def load_stage_csv(path: Path, tier: str, stage_field: str = "stage", where: dict[str, str] | None = None) -> list[Run]:
+    """Stage-timed suites (trajectory_hierarchy, next_location) write one CSV row per library/tier/stage."""
+    with path.open() as fh:
+        rows = [
+            r for r in csv.DictReader(fh) if r["tier"] == tier and all(r.get(k) == v for k, v in (where or {}).items())
+        ]
+    seen: dict[tuple[str, str], Run] = {}
+    for r in rows:
+        seconds = float(r["average_seconds"]) if r["average_seconds"] else None
+        seen[(r["library"], r[stage_field])] = Run(
+            r[stage_field],
+            _key(r["library"].split("-")[0], r["library"].partition("-")[2] or None),
+            seconds,
+            None,
+            r["status"],
+        )
+    return list(seen.values())
+
+
 def load_hyperfine_csv(path: Path, op: str, size: int) -> list[Run]:
     with path.open() as fh:
         rows = [r for r in csv.DictReader(fh) if int(r["size"]) == size]
@@ -123,9 +143,21 @@ def figures(repo: Path) -> list[Figure]:
 
     measures = load_json(res("measures", f"{I7}_brightkite4M", "measures_benchmarks.json"), "name")
     preprocessing = load_json(res("preprocessing", XEON, "preprocessing_benchmarks.json"), "operation")
+    # Timed-out cases never reach the aggregated JSON; recover them from the per-case checkpoints.
+    seen = {(r.op, r.library) for r in preprocessing}
+    for ckpt in sorted((res("preprocessing", XEON, "") / "checkpoints").glob("*_4M.json")):
+        rec = json.loads(ckpt.read_text())
+        key = (rec["operation"], _key(rec["library"], rec.get("backend")))
+        if rec["status"] == "timeout" and rec.get("label") == "4M" and key not in seen:
+            preprocessing.append(Run(key[0], key[1], None, None, "timeout"))
     spark = load_json(
         res("sparkmobility", XEON.replace("py313", "py312"), "sparkmobility_benchmarks.json"), "name", "raw"
     )
+    hierarchy = load_stage_csv(res("trajectory_hierarchy", I7, "trajectory_hierarchy_benchmark.csv"), "full")
+    hierarchy = [r for r in hierarchy if r.op in ("generate_staypoints", "generate_locations")]
+    nextloc_csv = repo / "benchmarks/next_location/results/next_location_benchmark.csv"
+    nextloc_yj = load_stage_csv(nextloc_csv, "yjmobfull", where={"dataset": "yjmob", "order": "2"})
+    nextloc_bk = load_stage_csv(nextloc_csv, "full", where={"dataset": "brightkite", "order": "2"})
     jump = load_hyperfine_csv(res("jump_lengths", I7, "jump_lengths_benchmark.csv"), "jump_lengths", 4_000_000)
     # The jump_lengths CSV cites Fastkit-Mobility; use the measured values from the measures suite instead.
     jump = [r for r in jump if not r.library.startswith("fastmob")] + [
@@ -159,7 +191,38 @@ def figures(repo: Path) -> list[Figure]:
             privacy,
         )
     )
-    out.append(Figure("jump-lengths-libraries", "jump_lengths across eight libraries", brightkite, jump))
+    out.append(
+        Figure(
+            "jump-lengths-libraries",
+            "jump_lengths across nine libraries",
+            brightkite + "; competitors timed by hyperfine minus start-up, Fastkit-Mobility in-process",
+            jump,
+        )
+    )
+    out.append(
+        Figure(
+            "hierarchy-trackintel-speed",
+            "Staypoints and locations vs trackintel: execution time",
+            "full GeoLife (24.9M points), Intel Core i7-10700",
+            hierarchy,
+        )
+    )
+    out.append(
+        Figure(
+            "next-location-yjmob-speed",
+            "Next-location model vs HuMobi: execution time",
+            "full YJMob100K (111.5M rows, 100,000 users), AMD Ryzen 9 9950X3D, order-2 Markov chain",
+            nextloc_yj,
+        )
+    )
+    out.append(
+        Figure(
+            "next-location-brightkite-speed",
+            "Next-location model vs HuMobi: execution time",
+            "full Brightkite (4.7M rows, 39,058 users), AMD Ryzen 9 9950X3D, order-2 Markov chain",
+            nextloc_bk,
+        )
+    )
     return out
 
 
@@ -178,7 +241,7 @@ def _label(run: Run, metric: str, best_other: float | None) -> str:
     if (
         best_other
         and run.library.startswith("fastmob")
-        and (metric == "seconds" or value >= MEMORY_FLOOR_MB)
+        and (metric == "seconds" or value >= MEMORY_RATIO_MIN_MB)
         and best_other / value >= 2
     ):
         text += (
@@ -191,7 +254,7 @@ def _label(run: Run, metric: str, best_other: float | None) -> str:
 
 def draw(fig_spec: Figure, out: Path) -> None:
     metric = fig_spec.metric
-    runs = [r for r in fig_spec.runs if r.status == "ok" or r.status in ("timeout", "error")]
+    runs = [r for r in fig_spec.runs if r.status in ("ok", "timeout", "error")]
     by_op: dict[str, dict[str, Run]] = {}
     for r in runs:
         by_op.setdefault(r.op, {})[r.library] = r
@@ -204,7 +267,7 @@ def draw(fig_spec: Figure, out: Path) -> None:
         op
         for op, libs in by_op.items()
         if any(value(r) is not None for k, r in libs.items() if k.startswith("fastmob"))
-        and any(value(r) is not None for k, r in libs.items() if not k.startswith("fastmob"))
+        and any(value(r) is not None or r.status == "timeout" for k, r in libs.items() if not k.startswith("fastmob"))
     ]
     ops.sort(key=lambda o: -max(value(r) or 0 for r in by_op[o].values()))
     present = [k for k in LIBRARIES if any(k in by_op[o] for o in ops)]
@@ -258,7 +321,7 @@ def draw(fig_spec: Figure, out: Path) -> None:
     fig.text(0.01, 0.995, fig_spec.title, ha="left", va="top", fontsize=12, color=TEXT, fontweight="bold")
     fig.text(0.01, 0.995 - 0.3 / fig.get_figheight(), fig_spec.subtitle, ha="left", va="top", fontsize=8.5, color=TEXT)
     fig.tight_layout(rect=(0, 0, 1, 1 - 0.65 / fig.get_figheight()))
-    fig.savefig(out / f"{fig_spec.name}.png", transparent=True)
+    fig.savefig(out / f"{fig_spec.name}.png", facecolor="white")
     plt.close(fig)
 
 
