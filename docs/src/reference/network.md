@@ -36,12 +36,11 @@ network (not straight-line) distance via a Rust contraction-hierarchy router.
 <!-- api-table:end -->
 
 `fetch_road_network` and `fetch_rail_network` require DuckDB: install it with
-`pip install duckdb`. `fetch_road_network` builds a car network by default; pass `mode="walk"` for a pedestrian
-network (footways, steps, paths and walkable streets, usable both ways at a fixed walking pace), and `classes=`,
+`pip install duckdb`. `fetch_road_network` builds a car network by default. Pass `mode="walk"` for a pedestrian network (footways,
+steps, paths and walkable streets, usable both ways at a fixed walking pace), and `classes=`,
 `speed_kmh_by_class=` and `directed=` to change which streets are kept, their speeds and whether one-way
-restrictions apply. Every edge keeps the Overture `segment_id` and the street `name`, so edges can be grouped per
-street or joined back to the segments, and its `length_m` is measured along the street. Snapping uses Fastkit-Mobility's native Rust spatial index and
-has no additional Python dependency.
+restrictions apply. Every edge keeps the Overture `segment_id` and the street `name`, so edges can be grouped
+per street or joined back to the segments, and its `length_m` is measured along the street.
 
 For a worked walk-through (build a network, snap points, compare road and
 straight-line distances, accumulate flows, match a GPS trace) see

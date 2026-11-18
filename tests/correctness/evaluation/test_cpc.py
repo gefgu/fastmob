@@ -149,7 +149,7 @@ def test_cpc_detects_od_matrix_style_names_independently_per_table():
 def test_cpc_explicit_column_names_resolve_ambiguity():
     table = pd.DataFrame({"origin": ["a"], "destination": ["b"], "count": [3], "weight": [100]})
     other = pd.DataFrame({"origin": ["a"], "destination": ["b"], "flow": [3]})
-    with pytest.raises(ValueError, match="Ambiguous flow column"):
+    with pytest.raises(ValueError, match="observed: ambiguous flow column"):
         fastmob.common_part_of_commuters(table, other)
     score = fastmob.common_part_of_commuters(table, other, observed_columns={"flow": "count"})
     assert score == pytest.approx(1.0)
@@ -157,7 +157,7 @@ def test_cpc_explicit_column_names_resolve_ambiguity():
 
 def test_cpc_reports_missing_and_invalid_columns():
     good = pd.DataFrame(_OBSERVED)
-    with pytest.raises(ValueError, match="Could not find a flow column"):
+    with pytest.raises(ValueError, match="predicted: could not find a flow column"):
         fastmob.common_part_of_commuters(good, good.drop(columns="flow"))
     with pytest.raises(ValueError, match="column 'nope' not found"):
         fastmob.common_part_of_commuters(good, good, predicted_columns={"origin": "nope"})
@@ -169,3 +169,42 @@ def test_cpc_reports_missing_and_invalid_columns():
         fastmob.common_part_of_commuters(good, [[1, 2, 3]])
     with pytest.raises(TypeError, match="two Trips or two flow tables"):
         fastmob.common_part_of_commuters(_trips([("a", "b")]), good)
+
+
+@pytest.mark.parametrize(
+    "predicted_ids",
+    [
+        pd.Series(["a", "a", "b"], dtype="category"),
+        pd.Series(["a", "a", "b"], dtype="string[pyarrow]"),
+    ],
+)
+def test_cpc_unifies_string_like_id_types(predicted_ids):
+    predicted = pd.DataFrame({"origin": predicted_ids, "destination": ["b", "c", "c"], "flow": [8, 5, 9]})
+    assert fastmob.common_part_of_commuters(pd.DataFrame(_OBSERVED), predicted) == pytest.approx(_expected())
+
+
+def test_cpc_unifies_integer_id_widths_and_empty_tables():
+    wide = pd.DataFrame({"origin": np.array([1, 1], dtype=np.int64), "destination": [2, 3], "flow": [4, 4]})
+    narrow = pd.DataFrame(
+        {"origin": np.array([1, 1], dtype=np.int32), "destination": np.array([2, 3], dtype=np.uint8), "flow": [4, 2]}
+    )
+    assert fastmob.common_part_of_commuters(wide, narrow) == pytest.approx(2 * 6 / 14)
+    empty = pd.DataFrame({"origin": [], "destination": [], "flow": []})
+    assert fastmob.common_part_of_commuters(wide, empty) == 0.0
+
+
+def test_cpc_rejects_ids_of_different_kinds_naming_the_types():
+    numeric = pd.DataFrame({"origin": [1], "destination": [2], "flow": [1]})
+    text = pd.DataFrame({"origin": ["1"], "destination": ["2"], "flow": [1]})
+    with pytest.raises(ValueError, match="incompatible types.*observed origin is int64.*predicted origin is"):
+        fastmob.common_part_of_commuters(numeric, text)
+
+
+def test_cpc_input_checks_on_column_arguments():
+    good = pd.DataFrame(_OBSERVED)
+    with pytest.raises(TypeError, match="must be a mapping"):
+        fastmob.common_part_of_commuters(good, good, observed_columns=["origin"])
+    with pytest.raises(ValueError, match="three different columns"):
+        fastmob.common_part_of_commuters(good, good, observed_columns={"destination": "origin"})
+    odd = pd.DataFrame({"df": [1], "origin": ["a"], "destination": ["b"], "flow": [1]})
+    assert fastmob.common_part_of_commuters(odd, odd) == pytest.approx(1.0)

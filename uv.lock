@@ -1090,7 +1090,7 @@ docs = [
 requires-dist = [
     { name = "fastmob-vis", marker = "extra == 'vis'", directory = "fastmob-vis" },
     { name = "geopandas", marker = "extra == 'geo'" },
-    { name = "narwhals", specifier = ">=2.12" },
+    { name = "narwhals", specifier = ">=2.11" },
     { name = "numpy" },
     { name = "pyarrow", specifier = ">=14" },
     { name = "pyproj", marker = "extra == 'geo'" },

@@ -114,20 +114,42 @@ def _direction_for_pair(access_restrictions) -> str | None:
     return "both"
 
 
-def _walkable(access_restrictions) -> bool:
-    """False when a restriction denies pedestrians (or everyone) on the whole piece, in both directions."""
+_FOOT_MODES = ("foot", "pedestrian")
+
+
+def _walk_direction(access_restrictions) -> str | None:
+    """Return 'both', 'forward', 'backward', or None (not walkable) from a piece's access restrictions.
+
+    Only unconditional restrictions count (those with ``during``, ``using``, ``vehicle`` or ``recognized``
+    conditions apply only sometimes, so they do not close the piece). A restriction applies to pedestrians when it
+    names no mode or names foot. An explicit ``allowed`` or ``designated`` entry for foot overrides denials
+    (a pedestrian-only street is ``denied`` for all modes and ``allowed`` for foot).
+    """
     if _is_missing_or_empty(access_restrictions):
-        return True
+        return "both"
+    denied_forward = denied_backward = False
     for entry in access_restrictions:
-        if not entry or entry.get("access_type") != "denied":
+        if not entry:
             continue
         when = entry.get("when") or {}
-        if when.get("heading") is not None:
-            continue  # walking is modelled without direction, so a one-way restriction does not apply
-        mode = when.get("mode")
-        if not mode or any(str(m).lower() in ("foot", "pedestrian") for m in mode):
-            return False
-    return True
+        if any(when.get(key) for key in ("during", "using", "vehicle", "recognized")):
+            continue
+        modes = [str(m).lower() for m in (when.get("mode") or [])]
+        names_foot = any(m in _FOOT_MODES for m in modes)
+        if entry.get("access_type") in ("allowed", "designated") and names_foot:
+            return "both"
+        if entry.get("access_type") != "denied" or (modes and not names_foot):
+            continue
+        heading = when.get("heading")
+        denied_forward = denied_forward or heading in (None, "forward")
+        denied_backward = denied_backward or heading in (None, "backward")
+    if denied_forward and denied_backward:
+        return None
+    if denied_forward:
+        return "backward"
+    if denied_backward:
+        return "forward"
+    return "both"
 
 
 def _segment_source(overture_release: str) -> str:
@@ -142,7 +164,9 @@ def _fetch_pieces(duckdb, overture_release, subtype, classes, bbox, road_fields)
     fractions, measured on the spheroid), so a curved piece is not shortened to the straight line.
     """
     min_lon, min_lat, max_lon, max_lat = bbox
-    class_list = ", ".join(f"'{c}'" for c in classes)
+    if not classes:
+        raise ValueError("classes must name at least one road class")
+    class_list = ", ".join("'" + str(c).replace("'", "''") + "'" for c in classes)
     extra = "speed_limits, access_restrictions," if road_fields else ""
     carried = "o1.speed_limits, o1.access_restrictions," if road_fields else ""
     return duckdb.sql(f"""
@@ -260,8 +284,8 @@ def fetch_road_network(
     With ``mode="drive"`` (default) the graph is for cars: the drivable classes, travel time at 80% of the speed
     limit (or of the class speed when the segment has none) and one-way streets honoured. With ``mode="walk"``
     it is for pedestrians: footways, steps, paths and pedestrian streets plus the streets that can be walked
-    (not motorways or trunk roads), every edge usable both ways at a fixed walking speed of 5.04 km/h (1.4 m/s),
-    leaving out pieces where access is denied to pedestrians.
+    (not motorways or trunk roads), edges usable both ways at a fixed walking speed of 5.04 km/h (1.4 m/s), leaving out
+    pieces where access is denied to pedestrians (an explicit foot allowance, as on pedestrian-only streets, wins).
 
     Parameters
     ----------
@@ -285,7 +309,8 @@ def fetch_road_network(
         Speed in km/h for each class, which overrides the default. For ``"drive"`` it applies to segments that have
         no speed limit; for ``"walk"`` it replaces the walking speed of that class.
     directed : bool, optional
-        Whether one-way restrictions are honoured. Default ``True`` for ``"drive"`` and ``False`` for ``"walk"``;
+        Whether one-way (heading) restrictions are honoured: those that apply to cars for ``"drive"`` and those that
+        apply to pedestrians for ``"walk"``. Default ``True`` for ``"drive"`` and ``False`` for ``"walk"``;
         ``False`` makes every edge usable in both directions.
 
     Returns
@@ -324,10 +349,10 @@ def fetch_road_network(
     for row in df.to_pylist():
         road_class = row["segment_class"]
         if walk:
-            if not _walkable(row["access_restrictions"]):
-                continue
+            direction = _walk_direction(row["access_restrictions"])
+            if direction is not None and not directed:
+                direction = "both"
             speed_kmh = float(speeds.get(road_class, DEFAULT_WALK_SPEED_KMH))
-            direction = "both"
             speed_mps = speed_kmh / 3.6
         else:
             table = {**DEFAULT_SPEED_KMH_BY_CLASS, **speeds}

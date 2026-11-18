@@ -14,7 +14,9 @@ from fastmob.utils._common import _all_unsigned_integer_arrow, _as_arrow, _joint
 _FLOW_ROLES = ("origin", "destination", "flow")
 
 
-def _resolve_flow_column(columns: list[str], role: str, requested: str | None, canonical: str, candidates: list[str]):
+def _resolve_flow_column(
+    columns: list[str], which: str, role: str, requested: str | None, canonical: str, candidates: list[str]
+):
     """Pick the column that plays ``role`` in a flow table.
 
     An explicit name must exist. Otherwise the canonical name wins when present, then exactly one of the shared
@@ -22,7 +24,7 @@ def _resolve_flow_column(columns: list[str], role: str, requested: str | None, c
     """
     if requested is not None:
         if requested not in columns:
-            raise ValueError(f"{role} column {requested!r} not found; available columns: {columns}")
+            raise ValueError(f"{which}: {role} column {requested!r} not found; available columns: {columns}")
         return requested
     if canonical in columns:
         return canonical
@@ -31,24 +33,26 @@ def _resolve_flow_column(columns: list[str], role: str, requested: str | None, c
         return found[0]
     if found:
         raise ValueError(
-            f"Ambiguous {role} column: {found} all look like it. Name the one to use with "
-            f"observed_columns= or predicted_columns= ({role!r} key)."
+            f"{which}: ambiguous {role} column, {found} all look like it. Name the one to use with "
+            f"{which}_columns= ({role!r} key)."
         )
     raise ValueError(
-        f"Could not find a {role} column (looked for {[canonical, *candidates]}); available columns: {columns}. "
-        f"Name it with observed_columns= or predicted_columns= ({role!r} key)."
+        f"{which}: could not find a {role} column (looked for {[canonical, *candidates]}); available columns: "
+        f"{columns}. Name it with {which}_columns= ({role!r} key)."
     )
 
 
 def _flow_arrays(table: Any, which: str, names: Mapping[str, str] | None):
     """Origin, destination and flow columns of a flow table: a ``FlowDataFrame`` or any eager dataframe."""
-    from fastmob.core.flow_dataframe import DESTINATION, FLOW, ORIGIN
+    from fastmob.core.flow_dataframe import DESTINATION, FLOW, ORIGIN, FlowDataFrame
     from fastmob.utils._common import DEST_CANDIDATES, FLOW_CANDIDATES, ORIGIN_CANDIDATES
 
+    if names is not None and not isinstance(names, Mapping):
+        raise TypeError(f"{which}_columns must be a mapping such as {{'flow': 'count'}}, not {type(names).__name__}")
     unknown = set(names or {}) - set(_FLOW_ROLES)
     if unknown:
         raise ValueError(f"{which}_columns keys must be among {_FLOW_ROLES}, got {sorted(unknown)}")
-    native = getattr(table, "df", table)
+    native = table.df if isinstance(table, FlowDataFrame) else table
     try:
         frame = nw.from_native(native, eager_only=True)
     except TypeError as error:
@@ -58,9 +62,15 @@ def _flow_arrays(table: Any, which: str, names: Mapping[str, str] | None):
         ) from error
     columns = list(frame.columns)
     names = names or {}
-    origin = _resolve_flow_column(columns, "origin", names.get("origin"), ORIGIN, ORIGIN_CANDIDATES)
-    destination = _resolve_flow_column(columns, "destination", names.get("destination"), DESTINATION, DEST_CANDIDATES)
-    flow = _resolve_flow_column(columns, "flow", names.get("flow"), FLOW, FLOW_CANDIDATES)
+    origin = _resolve_flow_column(columns, which, "origin", names.get("origin"), ORIGIN, ORIGIN_CANDIDATES)
+    destination = _resolve_flow_column(
+        columns, which, "destination", names.get("destination"), DESTINATION, DEST_CANDIDATES
+    )
+    flow = _resolve_flow_column(columns, which, "flow", names.get("flow"), FLOW, FLOW_CANDIDATES)
+    if len({origin, destination, flow}) < 3:
+        raise ValueError(
+            f"{which}: origin, destination and flow must be three different columns, got {[origin, destination, flow]}"
+        )
     if not frame.schema[flow].is_numeric():
         raise ValueError(f"{which} flow column {flow!r} must be numeric, not {frame.schema[flow]}")
     return (
@@ -68,6 +78,35 @@ def _flow_arrays(table: Any, which: str, names: Mapping[str, str] | None):
         frame.get_column(destination),
         pc.cast(_as_arrow(frame.get_column(flow)), pa.float64()),
     )
+
+
+def _harmonised_endpoints(*columns: Any) -> list[Any]:
+    """Give the four endpoint columns one Arrow type, so ids from different sources can be compared.
+
+    Dictionary (categorical) columns are decoded, string and large_string are unified, integers of different widths
+    or signs become int64 (uint64 when all are unsigned) and an empty or null-typed column takes the others' type.
+    Ids of really different kinds, such as integers and strings, raise a ``ValueError`` naming the types.
+    """
+    arrays = [_as_arrow(column) for column in columns]
+    arrays = [a.combine_chunks() if isinstance(a, pa.ChunkedArray) else a for a in arrays]
+    arrays = [a.dictionary_decode() if pa.types.is_dictionary(a.type) else a for a in arrays]
+    kinds = [a.type for a in arrays if len(a) > 0 and not pa.types.is_null(a.type)]
+    if not kinds:  # empty tables have no meaningful id type
+        return [pc.cast(a, pa.int64()) for a in arrays]
+    if all(pa.types.is_string(t) or pa.types.is_large_string(t) for t in kinds):
+        target = pa.large_string() if any(pa.types.is_large_string(t) for t in kinds) else pa.string()
+    elif all(pa.types.is_integer(t) for t in kinds):
+        target = pa.uint64() if all(pa.types.is_unsigned_integer(t) for t in kinds) else pa.int64()
+    elif all(t == kinds[0] for t in kinds):
+        target = kinds[0]
+    else:
+        names = ["observed origin", "observed destination", "predicted origin", "predicted destination"]
+        raise ValueError(
+            "the location ids of the two tables have incompatible types: "
+            + ", ".join(f"{n} is {a.type}" for n, a in zip(names, arrays, strict=True))
+            + ". Convert them to the same kind (for example both to str) first."
+        )
+    return [a if a.type == target else pc.cast(a, target) for a in arrays]
 
 
 def _prepared_pairs(
@@ -92,6 +131,9 @@ def _prepared_pairs(
                 raise ValueError(f"{caller} requires Trips with origin_location_id and destination_location_id columns")
             pairs.append((frame.get_column(columns[0]), frame.get_column(columns[1])))
         (origin_a, destination_a), (origin_b, destination_b) = pairs
+        origin_a, destination_a, origin_b, destination_b = _harmonised_endpoints(
+            origin_a, destination_a, origin_b, destination_b
+        )
         return origin_a, destination_a, None, origin_b, destination_b, None
     if any(trips):
         raise TypeError(
@@ -100,13 +142,9 @@ def _prepared_pairs(
         )
     origin_a, destination_a, weights_a = _flow_arrays(observed, "observed", observed_columns)
     origin_b, destination_b, weights_b = _flow_arrays(predicted, "predicted", predicted_columns)
-    # Tables from different sources can store the same ids as string and large_string (pandas vs PyArrow).
-    endpoints = [origin_a, destination_a, origin_b, destination_b]
-    arrays = [_as_arrow(column) for column in endpoints]
-    if any(pa.types.is_large_string(a.type) for a in arrays):
-        origin_a, destination_a, origin_b, destination_b = (
-            pc.cast(a, pa.large_string()) if pa.types.is_string(a.type) else a for a in arrays
-        )
+    origin_a, destination_a, origin_b, destination_b = _harmonised_endpoints(
+        origin_a, destination_a, origin_b, destination_b
+    )
     return origin_a, destination_a, weights_a, origin_b, destination_b, weights_b
 
 
