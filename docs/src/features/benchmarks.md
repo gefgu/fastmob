@@ -13,6 +13,8 @@ The numbers are environment-specific, so read them as benchmark evidence for the
 | [Staypoints and locations](#staypoints-and-locations) | trackintel | full GeoLife, 24.9M points | Core i7-10700 | staypoints 0.86 s against 316 s |
 | [Next-location model](#next-location-model) | HuMobi | YJMob100K, 111.5M rows | Ryzen 9 9950X3D | fit 5-6x and predict 39-46x faster on YJMob100K; on Brightkite the pandas fit is only 1.7x faster |
 | [Single function, every library](#one-function-every-library) | eight other libraries | 4M Brightkite check-ins | Core i7-10700 | `jump_lengths`; MoveTK ties at small sizes |
+| [Generative models](#generative-models) | scikit-mobility | 1,000 to 10,000 locations, up to 10,000 agents | Core i7-10700 | EPR variants 70x to 180x faster; Gravity 1.5x to 1.7x and Radiation 2.5x to 3x faster; GeoSim, STS-EPR and Markov Diary 1.5x to 6x faster; Gravity uses more memory at 10,000 locations |
+| [Across CPUs](#across-cpus) | trackintel (staypoints) | Brightkite, GeoLife, YJMob100K | i7-10700, Ryzen 9 9950X3D | same ordering on both CPUs; absolute times differ |
 | [Road network](#road-network) | TransBigData, stplanr with OSRM | GeoLife Beijing | Core i7-10700 | much faster distances, routes and CH preparation; slower fetch-and-extract build |
 | [Privacy risk](#privacy) | scikit-mobility | toy trajectories repeated 30x | Core i7-10700 | see figure |
 | [Distributed baseline](#distributed-baseline-sparkmobility) | SparkMobility | full GeoLife, 24.9M points | Xeon Silver 4316 | see figure |
@@ -73,6 +75,46 @@ Compared with trackintel on the full GeoLife dataset (single runs). Only stages 
 ![Next-location fit and predict on YJMob100K](../assets/benchmarks/next-location-yjmob-speed.png)
 
 ![Next-location fit and predict on Brightkite](../assets/benchmarks/next-location-brightkite-speed.png)
+
+## Generative models
+
+Model generation compared with scikit-mobility. These speeds come from the i7-10700 runs in the benchmark repository, which merge Fastkit-Mobility results recorded under Python 3.11 and 3.12 (scikit-mobility ran on Python 3.10); the same values appear in its Ryzen table, so they are not an independent Ryzen measurement. DensityEPR and SpatialEPR at 10,000 agents are not plotted because neither library was measured there on the i7. Memory is not plotted: several scikit-mobility memory cells were never captured. Where both were measured, Gravity at 10,000 locations uses more memory in Fastkit-Mobility (24,474 MB) than in scikit-mobility (22,543 MB), while Radiation uses less (12,224 MB against 16,284 MB).
+
+![Generative models, execution time](../assets/benchmarks/models-speed.png)
+
+## Across CPUs
+
+The suites were repeated on other machines, and no figure mixes them. The tables put the same Fastkit-Mobility workloads side by side as average seconds. The Ryzen 9 9950X3D is faster than the i7-10700 in every row, and on staypoints Fastkit-Mobility is ahead of trackintel on both.
+
+**Individual measures, 4M Brightkite check-ins (time-sorted)**
+
+| Measure | Backend | Core i7-10700 | Ryzen 9 9950X3D |
+|---|---|---:|---:|
+| `radius_of_gyration` | pandas | 0.100 | 0.058 |
+| `radius_of_gyration` | Polars | 0.088 | 0.056 |
+| `jump_lengths` | pandas | 0.187 | 0.063 |
+| `jump_lengths` | Polars | 0.135 | 0.054 |
+| `number_of_locations` | pandas | 0.142 | 0.041 |
+| `number_of_locations` | Polars | 0.084 | 0.040 |
+| `home_location` | pandas | 0.225 | 0.140 |
+| `home_location` | Polars | 0.104 | 0.056 |
+
+**Staypoint generation, full GeoLife (24.9M points; trackintel is a single run)**
+
+| Library | Core i7-10700 | Ryzen 9 9950X3D |
+|---|---:|---:|
+| Fastkit-Mobility (pandas) | 1.13 | 0.59 |
+| Fastkit-Mobility (Polars) | 0.86 | 0.47 |
+| trackintel | 316 | 99.8 |
+
+**Daily motifs, full YJMob100K (111.5M rows)**
+
+| Backend | Core i7-10700 | Ryzen 9 9950X3D |
+|---|---:|---:|
+| pandas | 6.08 | 3.95 |
+| Polars | 1.21 | 0.46 |
+
+The Xeon Silver 4316 results for the motif suite are not shown: they come from a different stack (Python 3.13), the Polars run timed out on the full dataset (1,800 s), and run-to-run variance was high.
 
 ## Road network
 

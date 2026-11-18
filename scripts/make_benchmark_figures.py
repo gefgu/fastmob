@@ -28,6 +28,7 @@ XEON = "py313_intel_xeon_silver_4316_40c"
 # Library display names and colours, in legend order. Fastkit-Mobility is gold
 # (two steps for its two dataframe backends); every other library is a muted hue.
 LIBRARIES = {
+    "fastmob": ("Fastkit-Mobility", "#e3b800"),
     "fastmob-pandas": ("Fastkit-Mobility (pandas)", "#a98600"),
     "fastmob-polars": ("Fastkit-Mobility (Polars)", "#e3b800"),
     "skmob": ("scikit-mobility", "#8a8a8a"),
@@ -121,6 +122,20 @@ def load_stage_csv(path: Path, tier: str, stage_field: str = "stage", where: dic
     return list(seen.values())
 
 
+def load_model_table(path: Path) -> list[Run]:
+    """Speed cells (``seconds / MB``) of the generative-models table; ``n/a`` cells are skipped."""
+    runs = []
+    for row in json.loads(path.read_text())["rows"]:
+        if row["algorithm"].startswith("Next-Location"):
+            continue  # a different suite (HuMobi), plotted in its own figure
+        scale = "default diary" if row["scale"].startswith("default reference diary") else row["scale"]
+        op = f"{row['algorithm']}, {scale}"
+        for key, cell in (("fastmob", row["fastmob"]), ("skmob", row["competitor"])):
+            if cell != "n/a":
+                runs.append(Run(op, key, float(cell.split("/")[0]), None, "ok"))
+    return runs
+
+
 def load_hyperfine_csv(path: Path, op: str, size: int) -> list[Run]:
     with path.open() as fh:
         rows = [r for r in csv.DictReader(fh) if int(r["size"]) == size]
@@ -158,6 +173,7 @@ def figures(repo: Path) -> list[Figure]:
     nextloc_csv = repo / "benchmarks/next_location/results/next_location_benchmark.csv"
     nextloc_yj = load_stage_csv(nextloc_csv, "yjmobfull", where={"dataset": "yjmob", "order": "2"})
     nextloc_bk = load_stage_csv(nextloc_csv, "full", where={"dataset": "brightkite", "order": "2"})
+    models = load_model_table(repo / "benchmarks/generative_models/results" / I7 / "tables/model_generation_table.json")
     jump = load_hyperfine_csv(res("jump_lengths", I7, "jump_lengths_benchmark.csv"), "jump_lengths", 4_000_000)
     # The jump_lengths CSV cites Fastkit-Mobility; use the measured values from the measures suite instead.
     jump = [r for r in jump if not r.library.startswith("fastmob")] + [
@@ -197,6 +213,14 @@ def figures(repo: Path) -> list[Figure]:
             "jump_lengths across nine libraries",
             brightkite + "; competitors timed by hyperfine minus start-up, Fastkit-Mobility in-process",
             jump,
+        )
+    )
+    out.append(
+        Figure(
+            "models-speed",
+            "Generative models vs scikit-mobility: execution time",
+            "model generation at 1,000 to 10,000 locations and up to 10,000 agents, Intel Core i7-10700",
+            models,
         )
     )
     out.append(
