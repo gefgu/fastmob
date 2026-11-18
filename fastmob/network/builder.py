@@ -169,8 +169,13 @@ def _fetch_pieces(duckdb, overture_release, subtype, classes, bbox, road_fields)
     class_list = ", ".join("'" + str(c).replace("'", "''") + "'" for c in classes)
     extra = "speed_limits, access_restrictions," if road_fields else ""
     carried = "o1.speed_limits, o1.access_restrictions," if road_fields else ""
+    duckdb.sql("INSTALL spatial; LOAD spatial;")
+    try:  # DuckDB 2.x asks for the axis order explicitly; older versions have no such setting
+        duckdb.sql("SET geometry_always_xy = true")
+        along = "ST_LineSubstring(o1.geometry, o1.at, o2.at)"
+    except duckdb.Error:  # ST_Length_Spheroid expects latitude first there
+        along = "ST_FlipCoordinates(ST_LineSubstring(o1.geometry, o1.at, o2.at))"
     return duckdb.sql(f"""
-        INSTALL spatial;  LOAD spatial;
         SET s3_region = 'us-west-2';
 
         WITH segs AS (
@@ -213,7 +218,7 @@ def _fetch_pieces(duckdb, overture_release, subtype, classes, bbox, road_fields)
                 ST_Y(ST_LineInterpolatePoint(o1.geometry, o2.at)) AS to_lat,
                 ST_X(ST_LineInterpolatePoint(o1.geometry, o2.at)) AS to_lng,
                 CASE WHEN o2.at > o1.at
-                     THEN ST_Length_Spheroid(ST_FlipCoordinates(ST_LineSubstring(o1.geometry, o1.at, o2.at)))
+                     THEN ST_Length_Spheroid({along})
                      ELSE 0 END AS length_m
             FROM ordered o1
             JOIN ordered o2 ON o1.segment_id = o2.segment_id AND o2.rn = o1.rn + 1
